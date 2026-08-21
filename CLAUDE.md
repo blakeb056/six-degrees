@@ -21,57 +21,36 @@ strategy, risks): `/Users/blake/six-degrees-v3-plan.md`.
 
 ## Current state
 
-Working: CSV import (parsed in-browser, never persisted), galaxy, tiers,
-Pyramid, List, Paths, sidebar rankings, the Bridges empty state. CI green on
-Node 20 + 22 with a secret/PII guard. 0 lint errors.
+**Standalone as of 2026-08-21.** The app runs entirely locally: SQLite at
+`~/.six-degrees/six-degrees.sqlite`, no account, no keys, no third-party
+service. Runtime dependencies are `next`, `react`, `react-dom`, `d3` — the
+database driver is Node's built-in `node:sqlite`. Node floor is 22.13.
+CI green on 22 and 24 (lint + tests + build + secret/PII guard).
 
-**Not yet standalone.** `lib/supabase.js` and `lib/supabase-admin.js` still
-exist and all 12 API routes import them. A stranger cloning this today gets a
-working CSV path and nothing else — saving, scraping, queue and XP all need a
-Supabase project they don't have.
+How the data layer fits together:
+- `lib/db-client.js` — connection, schema bootstrap from `db/schema.sql`, and
+  the JSON/boolean codecs that keep route code unchanged.
+- `lib/db.js` — a supabase-shaped query builder. All 12 routes kept their call
+  chains; only the import line changed.
+- `lib/rpc.js` — `score_new_connections` and `increment_xp`, transcribed from
+  `scripts/score_new_connections.sql` (still the reference model — change both
+  together). `exec_sql` is deliberately gone.
+- `app/api/network` — one read endpoint; the four client pages fetch it via
+  `lib/network.js`. **No browser-side database access remains.**
+- `tests/db.test.mjs` — 21 tests pinning the adapter contract. Run `npm test`.
 
-## ⭐ THE NEXT TASK — make it genuinely standalone
+Verified end to end: user creation, ingest with scoring that matches the
+canonical model (CEO at a top-prestige company → 7.9, tier S, including the
+30-day recency bonus), and the galaxy rendering from SQLite.
 
-Replace Supabase with local SQLite so the app runs with no account, no keys,
-and no third-party service. This is the single change that makes the README's
-claim true. ~2.5 days; it is the critical path to shipping.
+### ⭐ Next up
 
-**1. `lib/db.js` — a Supabase-shaped adapter over `node:sqlite`.**
-Use `node:sqlite` (built in), NOT `better-sqlite3` — native modules fail
-silently on prebuild misses and would reintroduce a toolchain dependency.
-Implement exactly these chain methods: `.from .select .eq .in .ilike .order
-.limit .single .insert .update .upsert .delete`.
-
-Five contract points a naive adapter gets wrong — pin each with a test:
-  1. Resolve to `{data, error}`. Never reject.
-  2. Expose a real `.then` **and** `.catch` — six call sites await the builder
-     directly.
-  3. The builder must be **mutable and return `this`**. `app/api/notifications/route.js`
-     calls `q.eq(...)` without reassigning; that works today only because
-     supabase-js mutates in place. An immutable builder changes behavior
-     silently, with no error and no failing test.
-  4. `.single()` returns `{data: null, error}` on zero rows.
-  5. snake_case column names throughout.
-
-**2. Swap the 12 routes** — one import line each, no body edits. Replace the
-four `.rpc()` sites directly: `score_new_connections` ×2 → port the CASE
-ladders from `scripts/score_new_connections.sql` (that file is the canonical
-model — every other scorer is diffed against it); `increment_xp` → `UPDATE
-user_stats SET xp = xp + ?`; **delete `exec_sql` outright** — runtime DDL has
-no place in a local app.
-
-**3. Get the client pages off the browser-side database.** Four pages issue
-nine near-identical queries. Add one `/api/network` returning
-`{degree1, degree2, degree3}`. Shortcut: `lib/demo.js`'s `loadDemoNetwork()`
-already returns that exact shape and all four pages already branch on
-`IS_DEMO` — wire the non-demo branch to the same shape. Then delete
-`lib/supabase.js`.
-
-**4. Data lives outside the repo** — `~/.six-degrees/` (SQLite + avatars), so
-an installed copy never writes into its own package directory.
-
-Then: the scraper stays Python and is **not** shipped in 0.1.0 (see below);
-packaging as `npx six-degrees` follows.
+1. **Screenshots/GIF for the README** — the highest-impact missing item. Needs
+   a synthetic network generator so nothing identifiable ships.
+2. **First-run empty state** — a fresh install still shows a blank canvas.
+3. **npx packaging** — `output: 'standalone'`, a `bin/` launcher, port 6363,
+   then publish so `npx six-degrees` works. See the shipping plan.
+4. Make the repo public.
 
 ## Decisions already made — do not relitigate
 
