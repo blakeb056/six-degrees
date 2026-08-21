@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
@@ -58,13 +58,12 @@ function QueueInner() {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      const [d1Res, d2Res, pendingRes] = await Promise.all([
-        supabase.from('linkedin_connections').select('*').eq('degree', 1).eq('user_id', userId),
-        supabase.from('linkedin_connections').select('*').eq('degree', 2).eq('user_id', userId).order('power_score', { ascending: false }),
+      const [net, pendingRes] = await Promise.all([
+        loadNetwork(userId),
         fetch(`/api/outreach?userId=${userId}`).then(r => r.json()).catch(() => ({ pending: [] })),
       ]);
-      const d1 = d1Res.data || [];
-      const d2 = d2Res.data || [];
+      const d1 = net.degree1;
+      const d2 = net.degree2;
       const d1Urls = new Set(d1.map(c => c.profile_url));
       const bridgeById = {};
       d1.forEach(c => { bridgeById[c.id] = c; });

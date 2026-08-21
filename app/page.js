@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { loadNetwork } from '../lib/network';
 import ForceGraph from './components/ForceGraph';
 import GridView from './components/GridView';
 import ListView from './components/ListView';
@@ -74,11 +74,7 @@ function HomeInner() {
         : csv
         ? csv
         : await (async () => {
-            const [d1Res, d2Res] = await Promise.all([
-              supabase.from('linkedin_connections').select('*').eq('degree', 1).eq('user_id', userId).order('power_score', { ascending: false }),
-              supabase.from('linkedin_connections').select('*').eq('degree', 2).eq('user_id', userId).order('power_score', { ascending: false }),
-            ]);
-            return { degree1: d1Res.data || [], degree2: d2Res.data || [] };
+            return await loadNetwork(userId);
           })();
 
       setDegree1(d1);

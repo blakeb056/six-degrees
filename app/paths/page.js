@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
@@ -142,14 +142,10 @@ function PathsInner() {
       if (csv) {
         d1 = csv.degree1;
       } else {
-        const [d1Res, d2Res, d3Res] = await Promise.all([
-          supabase.from('linkedin_connections').select('*').eq('degree', 1).eq('user_id', userId),
-          supabase.from('linkedin_connections').select('*').eq('degree', 2).eq('user_id', userId),
-          supabase.from('linkedin_connections').select('*').eq('degree', 3).eq('user_id', userId),
-        ]);
-        d1 = d1Res.data || [];
-        d2 = d2Res.data || [];
-        d3 = d3Res.data || [];
+        const net = await loadNetwork(userId);
+        d1 = net.degree1;
+        d2 = net.degree2;
+        d3 = net.degree3;
       }
       setD1Data(d1);
       setD2Data(d2);

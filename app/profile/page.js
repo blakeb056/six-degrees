@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
@@ -39,12 +39,9 @@ function ProfileInner() {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      const [d1Res, d2Res] = await Promise.all([
-        supabase.from('linkedin_connections').select('tier,power_score,company,is_catalyst').eq('degree', 1).eq('user_id', userId),
-        supabase.from('linkedin_connections').select('tier,power_score,source_connection_id').eq('degree', 2).eq('user_id', userId),
-      ]);
-      const d1 = d1Res.data || [];
-      const d2 = d2Res.data || [];
+      const net = await loadNetwork(userId);
+      const d1 = net.degree1;
+      const d2 = net.degree2;
 
       const tiers = { S: 0, A: 0, B: 0, C: 0, D: 0 };
       d1.forEach(c => { tiers[c.tier] = (tiers[c.tier] || 0) + 1; });

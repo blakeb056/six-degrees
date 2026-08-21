@@ -1,28 +1,16 @@
-import { supabaseAdmin as supabase } from '../../../lib/supabase-admin';
+import { db as supabase } from '../../../lib/db';
 import { demoGuard } from '../../../lib/api-guard';
+
+// The hosted build created this table at runtime through an `exec_sql` stored
+// procedure. That route accepted arbitrary DDL over an unauthenticated
+// endpoint; the local build creates user_profile in db/schema.sql at startup
+// instead, so no runtime schema changes are needed or possible.
 
 export async function POST(request) {
   const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const profile = await request.json();
 
-    // Create table if not exists (idempotent)
-    await supabase.rpc('exec_sql', {
-      sql: `CREATE TABLE IF NOT EXISTS user_profile (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        name TEXT NOT NULL,
-        headline TEXT,
-        role TEXT,
-        company TEXT,
-        industry TEXT,
-        sectors TEXT[],
-        goals TEXT[],
-        linkedin_url TEXT,
-        created_at TIMESTAMPTZ DEFAULT now()
-      )`
-    }).catch(() => {});
-
-    // Try direct insert — table might already exist from a previous run
     const { error } = await supabase
       .from('user_profile')
       .upsert([{
@@ -35,12 +23,6 @@ export async function POST(request) {
         goals: profile.goals || [],
         linkedin_url: profile.linkedin_url || '',
       }], { onConflict: 'id' });
-
-    if (error && error.code === '42P01') {
-      // Table doesn't exist — create it via raw SQL workaround
-      // Use the from().select() trick to trigger table creation
-      return Response.json({ error: 'Table not created yet. Run the migration manually.', hint: error.message }, { status: 500 });
-    }
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });

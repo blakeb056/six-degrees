@@ -1,4 +1,4 @@
-import { supabaseAdmin as supabase } from '../../../lib/supabase-admin';
+import { db as supabase } from '../../../lib/db';
 import { demoGuard } from '../../../lib/api-guard';
 
 function parseHeadline(h) {
