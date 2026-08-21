@@ -6,6 +6,7 @@ import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
+import Link from 'next/link';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -333,7 +334,7 @@ function PathsInner() {
       }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#fff' }}>Not part of the demo</h1>
         <p style={{ fontSize: 13, margin: 0 }}>The public demo includes the Network Circle and Bridges views only.</p>
-        <a href="/" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>&larr; Back to the network</a>
+        <Link href="/" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );
   }
@@ -350,11 +351,11 @@ function PathsInner() {
     }}>
       <header style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{
+          <Link href="/" style={{
             display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
             fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          }}><span style={{ fontSize: 16 }}>&larr;</span> Map</a>
+          }}><span style={{ fontSize: 16 }}>&larr;</span> Map</Link>
           <h1 style={{
             fontSize: 20, fontWeight: 700, margin: 0,
             background: 'linear-gradient(135deg, #00ff88, #3498DB)',

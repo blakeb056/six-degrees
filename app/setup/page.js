@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
+import Link from 'next/link';
 
 const SCRAPER_URL = 'http://localhost:5555';
 
@@ -47,13 +48,13 @@ function SetupInner() {
         padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)',
         display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
       }}>
-        <a href="/" style={{
+        <Link href="/" style={{
           display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
           fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
           background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
         }}>
           <span style={{ fontSize: 16 }}>&larr;</span> Back to Map
-        </a>
+        </Link>
         <h1 style={{
           fontSize: 22, fontWeight: 700, margin: 0,
           background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',

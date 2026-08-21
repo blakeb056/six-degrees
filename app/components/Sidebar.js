@@ -1293,7 +1293,7 @@ function AutoBridgeButton({ connections, degree2 }) {
       {status === 'done' && (
         <div style={{ textAlign: 'center' }}>
           <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
-            {target?.name}'s bridge mapped! Refresh to see.
+            {target?.name}&rsquo;s bridge mapped! Refresh to see.
           </div>
           <button onClick={() => { setStatus('idle'); setTarget(null); setLog([]); }} style={{
             width: '100%', padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',

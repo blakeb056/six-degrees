@@ -13,6 +13,7 @@ import OnboardingGate from './components/OnboardingGate';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
+import Link from 'next/link';
 
 const TIER_COLORS = {
   S: '#FFD700',
@@ -140,7 +141,7 @@ function HomeInner() {
             >
               Bridges
             </button>
-            {!IS_DEMO && <a
+            {!IS_DEMO && <Link
               href="/paths"
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
@@ -149,8 +150,8 @@ function HomeInner() {
               }}
             >
               Paths
-            </a>}
-            {!IS_DEMO && !csvMode && <a
+            </Link>}
+            {!IS_DEMO && !csvMode && <Link
               href="/queue"
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
@@ -159,8 +160,8 @@ function HomeInner() {
               }}
             >
               Outlink
-            </a>}
-            {!IS_DEMO && !csvMode && !isMobile && <a
+            </Link>}
+            {!IS_DEMO && !csvMode && !isMobile && <Link
               href="/setup"
               style={{
                 padding: '8px 16px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600,
@@ -169,7 +170,7 @@ function HomeInner() {
               }}
             >
               Setup
-            </a>}
+            </Link>}
           </div>
           {/* Notification bell */}
           {!IS_DEMO && !csvMode && <div style={{ position: 'relative', marginLeft: isMobile ? 4 : 8 }}>
@@ -277,7 +278,7 @@ function HomeInner() {
 
         {/* Pending count badge — in header */}
         {isDegreesMode && pending.length > 0 && (
-          <a href="/queue" style={{
+          <Link href="/queue" style={{
             padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, textDecoration: 'none',
             background: 'rgba(255,107,53,0.12)', color: '#FF6B35',
             border: '1px solid rgba(255,107,53,0.25)',
@@ -285,7 +286,7 @@ function HomeInner() {
           }}>
             <span style={{ fontSize: 10 }}>⏳</span>
             {pending.length} Pending
-          </a>
+          </Link>
         )}
       </header>
 
@@ -336,7 +337,7 @@ function HomeInner() {
                   </p>
                   <p style={{ color: '#666', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
                     The local scraper maps those circles (and captures real photos).{' '}
-                    <a href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup &rarr;</a>
+                    <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup &rarr;</Link>
                   </p>
                 </div>
               </div>

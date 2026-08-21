@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 
 // ── Intersection Observer hook for scroll-triggered animations ──
 function useInView(options = {}) {
@@ -143,13 +144,13 @@ function HeroSection() {
           opacity: show ? 1 : 0, transform: show ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.55s',
         }}>
-          <a href="/" style={{
+          <Link href="/" style={{
             padding: '14px 32px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700,
             background: GRADIENT, color: '#000', cursor: 'pointer', textDecoration: 'none',
             boxShadow: '0 4px 24px rgba(255,215,0,0.3)',
           }}>
             Open App
-          </a>
+          </Link>
           <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} style={{
             padding: '14px 32px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)',
             fontSize: 16, fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#fff',
@@ -683,7 +684,7 @@ function TheorySection() {
             proximity, and shared experience.
           </p>
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, marginTop: 16, maxWidth: 560, margin: '16px auto 0' }}>
-            Six degrees of separation isn't just a theory — it's the architecture of human connection.
+            Six degrees of separation isn&rsquo;t just a theory &mdash; it&rsquo;s the architecture of human connection.
             Every string vibrates with potential. Every bridge shortens the distance.
           </p>
 
@@ -694,8 +695,8 @@ function TheorySection() {
             fontStyle: 'italic', color: 'rgba(255,255,255,0.3)', fontSize: 15,
             opacity: inView ? 1 : 0, transition: 'opacity 1.5s ease 0.5s',
           }}>
-            "Everyone is connected to everyone else by six degrees or fewer.
-            The question isn't <em>if</em> — it's <em>through whom</em>."
+            &ldquo;Everyone is connected to everyone else by six degrees or fewer.
+            The question isn&rsquo;t <em>if</em> &mdash; it&rsquo;s <em>through whom</em>.&rdquo;
           </div>
         </div>
       </div>
@@ -729,7 +730,7 @@ function CTASection() {
           <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', marginTop: 16, maxWidth: 480, margin: '16px auto 0' }}>
             Your network is your most valuable asset. Start seeing it for what it really is.
           </p>
-          <a href="/" style={{
+          <Link href="/" style={{
             display: 'inline-block', marginTop: 40,
             padding: '16px 48px', borderRadius: 14, fontSize: 18, fontWeight: 800,
             background: GRADIENT, color: '#000', textDecoration: 'none',
@@ -737,7 +738,7 @@ function CTASection() {
             animation: inView ? 'cta-glow 3s ease-in-out infinite' : 'none',
           }}>
             Enter the Galaxy
-          </a>
+          </Link>
         </div>
 
         {/* Footer */}

@@ -133,7 +133,7 @@ export default function OnboardingGate({ children }) {
           Map your own network &rarr;
         </a>
         <p style={{ color: '#555', fontSize: 12, marginTop: 10, lineHeight: 1.6 }}>
-          Drop LinkedIn&rsquo;s <strong style={{ color: '#888' }}>Connections.csv</strong> export &mdash; scored in your
+          Drop LinkedIn&rsquo;s <strong style={{ color: '#888' }}>Connections.csv</strong>{' '}export &mdash; scored in your
           browser, never uploaded.
         </p>
 

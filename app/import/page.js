@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { parseConnectionsCsv, saveCsvNetwork, ConnectionsCsvError, CSV_USER } from '../../lib/csv';
 import { setUser } from '../../lib/user';
+import Link from 'next/link';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -79,7 +80,7 @@ export default function ImportPage() {
             })}
           </div>
 
-          <a href="/" style={primaryBtn}>See your galaxy →</a>
+          <Link href="/" style={primaryBtn}>See your galaxy →</Link>
           <p style={{ color: '#555', fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
             This stays in this browser tab only — nothing was uploaded or saved. Close the tab and it is gone.
           </p>
@@ -158,12 +159,12 @@ export default function ImportPage() {
           </p>
           <p style={{ margin: 0, color: '#666', fontSize: 13, lineHeight: 1.7 }}>
             Want those? Run the local scraper — it captures 2nd-degree circles and real photos.{' '}
-            <a href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup →</a>
+            <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup →</Link>
           </p>
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 26 }}>
-          <a href="/" style={{ color: '#555', fontSize: 13, textDecoration: 'none' }}>← Back</a>
+          <Link href="/" style={{ color: '#555', fontSize: 13, textDecoration: 'none' }}>← Back</Link>
         </div>
       </div>
     </div>

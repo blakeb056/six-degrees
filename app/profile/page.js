@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
+import Link from 'next/link';
 
 const LEVEL_NAMES = {
   1: 'Observer', 11: 'Connector', 31: 'Networker', 51: 'Strategist', 76: 'Architect',
@@ -99,7 +100,7 @@ function ProfileInner() {
       }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
         <p style={{ margin: 0, fontSize: 13 }}>The public demo includes the Network Circle and Bridges views only.</p>
-        <a href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</a>
+        <Link href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );
   }
@@ -137,13 +138,13 @@ function ProfileInner() {
     }}>
       {/* Header */}
       <header style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <a href="/" style={{
+        <Link href="/" style={{
           display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
           fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
           background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
         }}>
           <span style={{ fontSize: 16 }}>&larr;</span> Back to Map
-        </a>
+        </Link>
         <h1 style={{
           fontSize: 22, fontWeight: 700, margin: 0,
           background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
@@ -335,7 +336,7 @@ function ProfileInner() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#FF6B35' }}>Queue Progress</h3>
-            <a href="/queue" style={{ fontSize: 11, color: '#FF6B35', textDecoration: 'none', fontWeight: 600 }}>View Queue &rarr;</a>
+            <Link href="/queue" style={{ fontSize: 11, color: '#FF6B35', textDecoration: 'none', fontWeight: 600 }}>View Queue &rarr;</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div style={{ textAlign: 'center' }}>
