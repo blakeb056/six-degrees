@@ -15,7 +15,7 @@ When filing an issue, redact names before attaching anything.
 ## Setup
 
 ```bash
-nvm use          # Node 20, from .nvmrc
+nvm use          # Node 22, from .nvmrc
 npm install
 npm run dev      # http://localhost:3000
 ```

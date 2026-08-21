@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/blakeb056/six-degrees-app/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node >= 20">
+  <img src="https://img.shields.io/badge/node-%3E%3D22.13-brightgreen.svg" alt="Node >= 22.13">
   <img src="https://img.shields.io/badge/data-stays%20local-blue.svg" alt="Data stays local">
 </p>
 
@@ -32,6 +32,11 @@ npm run dev
 
 Open <http://localhost:3000>. Choose **Map your own network**, drop in
 LinkedIn's official `Connections.csv`, and your galaxy renders.
+
+No account, no API keys, no database to provision. Your data is written to a
+single SQLite file at `~/.six-degrees/six-degrees.sqlite`, and the four
+runtime dependencies are `next`, `react`, `react-dom` and `d3` — the database
+driver is Node's own built-in `node:sqlite`. Requires **Node 22.13+**.
 
 ## Use your own network
 
@@ -96,13 +101,23 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 
 ## Configuration
 
-Copy `.env.example` to `.env.local`. The app runs with no configuration at all
-if you use the CSV path.
+There is nothing to configure. Two optional environment variables exist:
 
 | Variable | Purpose |
 |---|---|
-| `ADMIN_TOKEN` | Required to call the four destructive API routes. Fails closed when unset. |
-| `NEXT_PUBLIC_DEMO_MODE` | Serves a bundled read-only snapshot instead of live data |
+| `SIX_DEGREES_HOME` | Where the database and avatars live. Defaults to `~/.six-degrees`. |
+| `ADMIN_TOKEN` | Required only to call the four destructive API routes. They fail closed without it. |
+
+## How your data is stored
+
+```
+~/.six-degrees/
+├── six-degrees.sqlite      your network — connections, scores, tiers, queue
+└── avatars/                profile photos, if you run the scraper
+```
+
+To remove everything this app created, delete that folder. Nothing is written
+anywhere else, and nothing is sent anywhere.
 
 ## Contributing
 
