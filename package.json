@@ -1,0 +1,46 @@
+{
+  "name": "six-degrees",
+  "version": "0.1.0",
+  "description": "Map your professional network as a galaxy \u2014 leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
+  "license": "MIT",
+  "author": "Blake Burford",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blakeb056/six-degrees-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/blakeb056/six-degrees-app/issues"
+  },
+  "homepage": "https://github.com/blakeb056/six-degrees-app#readme",
+  "keywords": [
+    "linkedin",
+    "network",
+    "graph",
+    "visualization",
+    "d3",
+    "local-first",
+    "networking",
+    "career"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "d3": "^7.9.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9"
+  }
+}

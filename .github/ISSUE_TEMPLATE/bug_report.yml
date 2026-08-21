@@ -1,0 +1,50 @@
+name: Bug report
+description: Something behaves differently than documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real connection data, exported CSVs, screenshots of real
+        people, or API keys.** Redact names before attaching anything.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `npm run dev`
+        2. Go to /import
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: data-source
+    attributes:
+      label: Which data source?
+      options:
+        - CSV import
+        - Local scraper
+        - Sample/demo data
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, browser
+      placeholder: macOS 15.5, Node 20.11, Chrome 141
+    validations:
+      required: true
