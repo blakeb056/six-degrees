@@ -1,8 +1,6 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const { bridgeId } = await request.json();
 

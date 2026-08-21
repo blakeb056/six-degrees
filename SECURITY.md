@@ -13,8 +13,11 @@ This app is designed to run **on your own machine, against your own network**.
 - The web UI binds to localhost. It is not hardened for exposure to the
   internet, and it has no multi-user authentication or per-user authorization.
 - Four API routes (`admin-delete`, `admin-update`, `delete-cluster`,
-  `setup-profile`) can irreversibly destroy or rewrite data. They require an
-  `ADMIN_TOKEN` bearer and fail closed when it is unset.
+  `setup-profile`) can irreversibly destroy or rewrite data. On localhost they
+  are allowed without a token — anyone who can reach 127.0.0.1 can already open
+  the database file directly, so a token there adds friction rather than
+  safety. Reached from any other host they require `ADMIN_TOKEN` as a bearer,
+  and refuse to run when it is unset.
 - A localhost-bound service is still reachable by any web page you visit if it
   is unauthenticated. Do not bind this app to `0.0.0.0` or expose it through a
   tunnel.

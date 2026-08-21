@@ -1,5 +1,4 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 // XP rewards by tier
 const XP_SEND = { S: 25, A: 15, B: 10, C: 5, D: 2 };
@@ -17,7 +16,6 @@ async function awardXP(userId, amount) {
 }
 
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const body = await request.json();
     const { action, connectionId, profileUrl, userId } = body;
@@ -67,7 +65,6 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');

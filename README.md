@@ -106,7 +106,7 @@ There is nothing to configure. Two optional environment variables exist:
 | Variable | Purpose |
 |---|---|
 | `SIX_DEGREES_HOME` | Where the database and avatars live. Defaults to `~/.six-degrees`. |
-| `ADMIN_TOKEN` | Required only to call the four destructive API routes. They fail closed without it. |
+| `ADMIN_TOKEN` | Only needed if you expose the app beyond localhost. The four destructive routes are open on your own machine and require this bearer token from any other host. |
 
 ## How your data is stored
 

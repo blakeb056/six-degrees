@@ -1,5 +1,4 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 function parseHeadline(h) {
   if (!h) return { role: '', company: '' };
@@ -26,7 +25,6 @@ function getCompanyPrestige(headline, config) {
 }
 
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const body = await request.json();
     const { connections, type, bridgeId, userId, companyName } = body;

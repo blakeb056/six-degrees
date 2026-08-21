@@ -1,8 +1,6 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 export async function GET(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
@@ -18,7 +16,6 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const body = await request.json();
     const userId = body.userId || null;

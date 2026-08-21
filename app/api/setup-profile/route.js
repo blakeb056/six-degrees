@@ -1,5 +1,4 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 // The hosted build created this table at runtime through an `exec_sql` stored
 // procedure. That route accepted arbitrary DDL over an unauthenticated
@@ -7,7 +6,6 @@ import { demoGuard } from '../../../lib/api-guard';
 // instead, so no runtime schema changes are needed or possible.
 
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const profile = await request.json();
 
@@ -35,7 +33,6 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const { data, error } = await supabase
       .from('user_profile')

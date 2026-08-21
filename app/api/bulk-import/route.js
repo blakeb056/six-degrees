@@ -1,5 +1,4 @@
 import { db as supabase } from '../../../lib/db';
-import { demoGuard } from '../../../lib/api-guard';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +14,6 @@ export async function OPTIONS() {
 // Bulk import connections for a specific user
 // Used when importing scraped data from another session
 export async function POST(request) {
-  const _demo = demoGuard(); if (_demo) return _demo;
   try {
     const { connections, userId } = await request.json();
     if (!connections || !Array.isArray(connections) || !userId) {
