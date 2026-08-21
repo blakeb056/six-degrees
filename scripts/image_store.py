@@ -3,9 +3,13 @@
 LinkedIn CDN image URLs (media.licdn.com) are signed and expire in ~3 weeks, so
 storing the raw URL means every avatar breaks on that cycle. Instead, while the
 signed URL is still fresh (right after scraping), we download the bytes, crop to a
-small square, and re-encode as a tiny WebP saved under public/avatars/. The record
-then stores the LOCAL path (/avatars/<slug>.webp), which never expires and is served
-free as a static asset (works in the live app, the static demo, and the local build).
+small square, and re-encode as a tiny WebP saved under the user's data directory
+(~/.six-degrees/avatars, or $SIX_DEGREES_HOME/avatars). The record stores the local
+path /avatars/<slug>.webp, which never expires and is served by app/avatars/[file].
+
+Avatars live outside the repo on purpose: they are photographs of real people and
+must never be committed, and an installed copy of the app must not write into its
+own package directory.
 
 Typical output: 96x96 WebP ~2-4 KB per person (vs ~15-40 KB for the original).
 """
@@ -17,8 +21,12 @@ import pathlib
 import requests
 from PIL import Image, ImageOps
 
-REPO = pathlib.Path(__file__).resolve().parent.parent
-AVATAR_DIR = REPO / "public" / "avatars"
+import os
+
+def _data_dir():
+    return pathlib.Path(os.environ.get("SIX_DEGREES_HOME") or (pathlib.Path.home() / ".six-degrees"))
+
+AVATAR_DIR = _data_dir() / "avatars"
 
 SIZE = 96        # nodes render small; 96px stays crisp on retina
 QUALITY = 72     # WebP quality — good balance for face icons
@@ -31,7 +39,7 @@ def _slug(key):
 
 
 def store_avatar(image_url, key, overwrite=True):
-    """Download image_url, compress to a small square WebP, save under public/avatars/.
+    """Download image_url, compress to a small square WebP, save under the data dir.
 
     Returns the local web path ("/avatars/<slug>.webp") or None if the fetch/decode fails
     (e.g. the signed URL already expired -> 403)."""
