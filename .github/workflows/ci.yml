@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  no-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if credentials or real network data are committed
+        run: |
+          set -e
+          fail=0
+          # Built from fragments so this workflow does not match itself.
+          JWT_PREFIX="eyJhbGciOi""JIUzI1NiIs"
+          if grep -rIn --exclude-dir=.git -F "$JWT_PREFIX" .; then
+            echo "::error::A JWT was found in the tree."; fail=1
+          fi
+          for path in public/demo-data.json public/avatars scripts/connections-raw.txt; do
+            if [ -e "$path" ]; then
+              echo "::error::$path must never be committed — it contains real people."; fail=1
+            fi
+          done
+          exit $fail
