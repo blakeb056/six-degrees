@@ -3,7 +3,7 @@
 6 Degrees LinkedIn Scraper
 
 Uses Playwright with your existing Chrome profile (no login needed).
-Scrapes your connections and pushes directly to Supabase.
+Scrapes your connections into the app running on your own machine.
 
 Usage:
   pip3 install playwright requests
@@ -43,13 +43,10 @@ def _load_env_local():
 
 _ENV_LOCAL = _load_env_local()
 
-APP_URL = os.getenv("APP_URL", "https://six-degrees-linkedin.vercel.app")
-SUPABASE_URL = os.getenv("SUPABASE_URL") or _ENV_LOCAL.get("NEXT_PUBLIC_SUPABASE_URL", "")
-# Anon key — read-only, used for lookups (finding bridges, checking unlocks).
-# Never hardcoded: comes from env or .env.local.
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or _ENV_LOCAL.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
-if not SUPABASE_URL or not SUPABASE_ANON_KEY:
-    print("WARNING: Supabase URL/anon key not found in env or .env.local — reads will fail.")
+# The scraper pushes into the app running on THIS machine. It must never
+# default to somebody else's deployment — that would send a user's network to
+# a server they don't control.
+APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
 
@@ -57,6 +54,27 @@ CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections
 # as a bearer so --rescrape/delete-cluster still work against the deployment.
 # Not needed for ordinary ingest, which is open.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN") or _ENV_LOCAL.get("ADMIN_TOKEN", "")
+
+
+def _assert_local_target():
+    """Refuse to push to a remote host unless explicitly allowed.
+
+    A misconfigured APP_URL would upload someone's private network to a third
+    party, so this fails loudly rather than silently doing it.
+    """
+    from urllib.parse import urlparse
+    host = (urlparse(APP_URL).hostname or "").lower()
+    if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        return
+    if os.getenv("ALLOW_REMOTE_PUSH") == "1":
+        print(f"WARNING: pushing scraped data to remote host {host}")
+        return
+    raise SystemExit(
+        f"Refusing to push scraped data to '{APP_URL}'.\n"
+        "The scraper writes to the app on your own machine. Start it with "
+        "`npm run dev` and leave APP_URL unset, or set ALLOW_REMOTE_PUSH=1 if "
+        "you really mean to send your network to a remote server."
+    )
 
 
 def app_headers(json_body=True):
@@ -183,23 +201,40 @@ def get_scraper_profile_path():
     return str(profile_dir)
 
 
-def supabase_read(endpoint="", params=None):
-    """Read from Supabase using the anon key (read-only)."""
-    headers = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
-    resp = requests.get(f"{SUPABASE_URL}/rest/v1/linkedin_connections{endpoint}", headers=headers, params=params or {})
-    return resp.json() if resp.status_code == 200 else []
+def read_connections(endpoint="", params=None):
+    """Read connections from the local app.
+
+    The hosted build queried the cloud database directly. Locally the app owns
+    the SQLite file, so the scraper asks it instead of opening the database a
+    second time. PostgREST-style values ("eq.1") are unwrapped here so the many
+    existing call sites did not have to change.
+    """
+    query = {}
+    for key, value in (params or {}).items():
+        if key in ("select", "order", "limit"):
+            if key != "select":
+                query[key] = value
+            continue
+        query[key] = value.split(".", 1)[1] if isinstance(value, str) and value.startswith("eq.") else value
+    try:
+        resp = requests.get(f"{APP_URL}/api/connections", params=query, headers=app_headers(json_body=False), timeout=30)
+        if resp.status_code != 200:
+            return []
+        return resp.json().get("connections", [])
+    except Exception:
+        return []
 
 
 def delete_bridge_cluster(bridge_name):
     """Delete all degree-2 connections for a bridge so it can be re-scraped clean."""
     # Find the bridge (read-only)
-    bridges = supabase_read(params={"name": f"eq.{bridge_name}", "degree": "eq.1", "limit": "1"})
+    bridges = read_connections(params={"name": f"eq.{bridge_name}", "degree": "eq.1", "limit": "1"})
     if not bridges:
         print(f"Bridge '{bridge_name}' not found.")
         return None
 
     bridge_id = bridges[0]["id"]
-    existing = supabase_read(params={"source_connection_id": f"eq.{bridge_id}", "degree": "eq.2", "select": "id"})
+    existing = read_connections(params={"source_connection_id": f"eq.{bridge_id}", "degree": "eq.2", "select": "id"})
     count = len(existing)
 
     if count == 0:
@@ -216,7 +251,7 @@ def delete_bridge_cluster(bridge_name):
     return bridge_id
 
 
-def push_to_supabase(connections, degree=1, bridge_id=None, user_id=None):
+def push_connections(connections, degree=1, bridge_id=None, user_id=None):
     """Push connections via Vercel API route (which has write access).
     No local keys needed — the server handles auth."""
 
@@ -268,7 +303,7 @@ def push_to_supabase(connections, degree=1, bridge_id=None, user_id=None):
     # Check for unlocked paths (read-only lookup)
     if degree == 1:
         print("  Checking for unlocked paths...")
-        pending = supabase_read(params={"unlock_status": "eq.pending", "degree": "eq.2", "select": "id,profile_url,name"})
+        pending = read_connections(params={"unlock_status": "eq.pending", "degree": "eq.2", "select": "id,profile_url,name"})
         d1_urls = {c.get("profileUrl", "").strip() for c in connections if c.get("profileUrl")}
         for p in pending:
             if p["profile_url"] in d1_urls:
@@ -279,7 +314,7 @@ def push_to_supabase(connections, degree=1, bridge_id=None, user_id=None):
     return inserted
 
 
-def push_company_to_supabase(people, company_name):
+def push_company(people, company_name):
     """Push company-scraped people to database as degree 3 (company scan).
     Uses the same Vercel API route but with type='company'."""
     connections = []
@@ -454,8 +489,8 @@ def scrape_full(headless=False):
         browser.close()
 
     # Push connections
-    print(f"\nPushing {len(all_connections)} connections to Supabase...")
-    inserted = push_to_supabase(all_connections, degree=1)
+    print(f"\nPushing {len(all_connections)} connections to the app...")
+    inserted = push_connections(all_connections, degree=1)
     print(f"Done! {inserted} processed.")
 
     return all_connections
@@ -476,7 +511,7 @@ def scrape_connections(headless=False):
         params = {"degree": "eq.1", "select": "profile_url", "limit": "2000"}
         if _active_user_id:
             params["user_id"] = f"eq.{_active_user_id}"
-        existing = supabase_read(params=params)
+        existing = read_connections(params=params)
         existing_urls = {e["profile_url"] for e in existing}
         print(f"  {len(existing_urls)} existing connections in database")
     except:
@@ -625,8 +660,8 @@ def scrape_connections(headless=False):
         browser.close()
 
     if all_connections:
-        print(f"\nPushing {len(all_connections)} new connections to Supabase...")
-        inserted = push_to_supabase(all_connections, degree=1)
+        print(f"\nPushing {len(all_connections)} new connections to the app...")
+        inserted = push_connections(all_connections, degree=1)
     else:
         print("\nNo new connections to push.")
 
@@ -817,17 +852,11 @@ def scrape_bridge(bridge_name, headless=False):
     """Scrape degree-2 connections for a single bridge (opens its own browser)."""
     from playwright.sync_api import sync_playwright
 
-    # Find the bridge in Supabase (read-only, filtered by active user)
-    headers = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
+    # Find the bridge (read-only, filtered by active user)
     params = {"name": f"eq.{bridge_name}", "degree": "eq.1", "limit": "1"}
     if _active_user_id:
         params["user_id"] = f"eq.{_active_user_id}"
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/linkedin_connections",
-        headers=headers,
-        params=params,
-    )
-    bridges = resp.json()
+    bridges = read_connections(params=params)
     if not bridges:
         print(f"Bridge '{bridge_name}' not found in database.")
         return
@@ -868,8 +897,8 @@ def scrape_bridge(bridge_name, headless=False):
         print(f"\nDone! No connections found ({status}).")
         return []
 
-    print(f"\nPushing {len(connections)} connections to Supabase...")
-    inserted = push_to_supabase(connections, degree=2, bridge_id=bridge_id)
+    print(f"\nPushing {len(connections)} connections to the app...")
+    inserted = push_connections(connections, degree=2, bridge_id=bridge_id)
     print(f"\nDone! {inserted} new degree-2 connections added via {bridge_name}.")
     return connections
 
@@ -1228,13 +1257,13 @@ def auto_bridge_all(headless=False, log_fn=None):
     d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url", "order": "power_score.desc", "limit": "2000"}
     if _active_user_id:
         d1_params["user_id"] = f"eq.{_active_user_id}"
-    all_d1 = supabase_read(params=d1_params)
+    all_d1 = read_connections(params=d1_params)
 
     # Get existing bridge IDs (already have clusters, for this user)
     d2_params = {"degree": "eq.2", "select": "source_connection_id", "limit": "2000"}
     if _active_user_id:
         d2_params["user_id"] = f"eq.{_active_user_id}"
-    all_d2 = supabase_read(params=d2_params)
+    all_d2 = read_connections(params=d2_params)
     bridged_ids = set(d["source_connection_id"] for d in all_d2 if d.get("source_connection_id"))
 
     # Filter unbridged, sort by tier priority (S first, then by score)
@@ -1394,7 +1423,7 @@ def run_server(port=5555):
                             # Push scraped people to database so they persist
                             if people:
                                 state["log"].append(f"Saving {len(people)} people to database...")
-                                push_company_to_supabase(people, company)
+                                push_company(people, company)
                                 state["log"].append(f"Saved to database ✓")
                             state["result"] = {"status": "done", "action": "company", "found": len(people), "people": people}
                             state["log"].append(f"Done! {len(people)} people found at {company}")
@@ -1489,6 +1518,8 @@ Examples:
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
+
+    _assert_local_target()
 
     if args.server:
         run_server()
