@@ -12,8 +12,6 @@ next-env.d.ts
 
 # local data — never commit a real network
 /data
-/public/avatars
-/public/demo-data.json
 /scripts/connections-raw.txt
 /.playwright-profile
 

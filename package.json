@@ -1,7 +1,7 @@
 {
   "name": "six-degrees",
   "version": "0.1.0",
-  "description": "Map your professional network as a galaxy — leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
+  "description": "Map your professional network as a galaxy \u2014 leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
   "license": "MIT",
   "author": "Blake Burford",
   "repository": {
@@ -27,9 +27,9 @@
   },
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "SIX_DEGREES_BIND=127.0.0.1 next dev -H 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "SIX_DEGREES_BIND=127.0.0.1 next start -H 127.0.0.1",
     "lint": "eslint",
     "test": "node --test tests/*.test.mjs"
   },

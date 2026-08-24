@@ -77,7 +77,7 @@ def localize_images(images):
         if local:
             out.append({"profileUrl": purl, "imageUrl": local})
             ok += 1
-    print("  [image_store] captured %d/%d avatars -> public/avatars/" % (ok, len(images)))
+    print("  [image_store] captured %d/%d avatars -> %s" % (ok, len(images), AVATAR_DIR))
     return out
 
 
