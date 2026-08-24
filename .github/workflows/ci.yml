@@ -35,9 +35,17 @@ jobs:
           if grep -rIn --exclude-dir=.git -F "$JWT_PREFIX" .; then
             echo "::error::A JWT was found in the tree."; fail=1
           fi
-          for path in public/demo-data.json public/avatars scripts/connections-raw.txt; do
+          for path in public/avatars scripts/connections-raw.txt; do
             if [ -e "$path" ]; then
               echo "::error::$path must never be committed — it contains real people."; fail=1
             fi
           done
+          # demo-data.json is allowed ONLY while it is the generated sample.
+          # Anything else in that path is somebody's real exported network.
+          if [ -e public/demo-data.json ]; then
+            if ! grep -q '"synthetic":true' public/demo-data.json; then
+              echo "::error::public/demo-data.json is not the synthetic sample. Regenerate it with: npm run gen:demo"
+              fail=1
+            fi
+          fi
           exit $fail
