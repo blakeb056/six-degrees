@@ -10,6 +10,7 @@ import ChainView from './components/ChainView';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import OnboardingGate from './components/OnboardingGate';
+import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
@@ -313,6 +314,9 @@ function HomeInner() {
               })
           ) : [];
           const selectHandler = (node) => { setSelected(node); if (node) setSidebarCollapsed(false); };
+
+          // No connections at all: offer a way in rather than a black screen.
+          if (degree1.length === 0) return <EmptyState />;
 
           // Every Bridges surface is built from 2nd-degree rows. A CSV import
           // has none, so say why instead of rendering an empty canvas.
