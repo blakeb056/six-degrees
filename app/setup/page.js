@@ -130,7 +130,7 @@ function SetupInner() {
             <OsTabs>
               {(os) => (
                 <CopyBlock
-                  cmd={os === 'mac' ? "cd ~/six-degrees-linkedin && python3 scripts/scrape.py --server" : "cd six-degrees-linkedin && python scripts/scrape.py --server"}
+                  cmd={os === 'mac' ? "cd ~/six-degrees-app && python3 scripts/scrape.py --server" : "cd six-degrees-app && python scripts/scrape.py --server"}
                   label="server"
                   copied={copied}
                   onCopy={copyCmd}
