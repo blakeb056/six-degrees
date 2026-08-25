@@ -61,6 +61,7 @@ function HomeInner() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [pending, setPending] = useState([]);
   const [csvMode, setCsvMode] = useState(false);
+  const [csvSource, setCsvSource] = useState('csv');
 
   useEffect(() => {
     if (!userId) return;
@@ -69,7 +70,7 @@ function HomeInner() {
       // Three possible sources: the bundled demo snapshot, a CSV the visitor
       // imported in this tab (1st-degree only, never persisted), or Supabase.
       const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
-      if (csv) setCsvMode(true);
+      if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
       const { degree1: d1, degree2: d2 } = IS_DEMO
         ? await loadDemoNetwork()
         : csv
@@ -138,6 +139,37 @@ function HomeInner() {
             >
               Bridges
             </button>
+
+            {/* Which network you are looking at, and the way back out of it.
+                Loading the sample used to be a one-way door: it lives in
+                sessionStorage, and nothing in the UI cleared it. */}
+            {csvMode && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                marginLeft: isMobile ? 4 : 10, padding: isMobile ? '4px 8px' : '5px 10px',
+                borderRadius: 999, background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: csvSource === 'sample' ? '#9B59B6' : '#2ecc71',
+                }} />
+                <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+                  {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
+                </span>
+                <button
+                  onClick={() => { clearCsvNetwork(); window.location.href = '/'; }}
+                  title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
+                  style={{
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    color: '#888', fontSize: isMobile ? 13 : 15, lineHeight: 1,
+                    padding: '0 0 0 2px',
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            )}
             {!IS_DEMO && <Link
               href="/paths"
               style={{
