@@ -105,9 +105,14 @@ npm run setup:python
 **Then scrape, in that same second window:**
 
 ```bash
-npm run scrape                                  # your 1st-degree connections
+npm run scrape                                  # first run: full scrape. after that: new only
+npm run scrape:full                             # force a full re-walk of every page
 python3 scripts/scrape.py --bridge "Jane Doe"   # one person's 2nd-degree circle
 ```
+
+The first run walks LinkedIn's search pages and captures profile photos, which
+takes a few minutes. Later runs only look for people added since, so they are
+quick. `npm run scrape` picks the right one based on what you already have.
 
 A Chrome window opens on first run. **Log into LinkedIn by hand** — the scraper
 waits up to five minutes for you and continues on its own once you are signed

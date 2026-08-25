@@ -10,7 +10,9 @@ Usage:
   pip3 install playwright requests
   playwright install chromium
 
-  python3 scripts/scrape.py                          # Scrape degree-1 connections
+  python3 scripts/scrape.py                          # First run: full scrape. Later: new only
+  python3 scripts/scrape.py --full                   # Force a full re-walk of every page
+  python3 scripts/scrape.py --refresh                # Only look for newly added connections
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
 
@@ -1615,6 +1617,10 @@ Examples:
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
         """,
     )
+    parser.add_argument("--full", action="store_true",
+                        help="Full first-time scrape: walks the search pages and captures photos")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Only look for connections added since the last run")
     parser.add_argument("--server", action="store_true", help="Start local scraper server (use website buttons)")
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
@@ -1623,11 +1629,26 @@ Examples:
 
     _assert_local_target()
 
-    if args.server:
+    if args.full:
+        scrape_full(headless=args.headless)
+    elif args.refresh:
+        scrape_connections(headless=args.headless)
+    elif args.server:
         run_server()
     elif args.rescrape:
         rescrape_bridge(args.rescrape, headless=args.headless)
     elif args.bridge:
         scrape_bridge(args.bridge, headless=args.headless)
     else:
-        scrape_connections(headless=args.headless)
+        # Nothing collected yet means this is a first run, and the full scrape
+        # is the one that walks every search page and captures photos. Running
+        # the incremental refresh here is what made a fresh install look broken.
+        existing = read_connections(params={"degree": "eq.1", "limit": "1"})
+        if existing:
+            print("\nExisting connections found — checking for new ones only.")
+            print("Use --full to re-walk everything.\n")
+            scrape_connections(headless=args.headless)
+        else:
+            print("\nNo connections yet — running the full first-time scrape.")
+            print("This walks the search pages and captures photos; it takes a few minutes.\n")
+            scrape_full(headless=args.headless)

@@ -56,7 +56,9 @@
     "start:packaged": "node bin/six-degrees.mjs",
     "scrape": "python3 scripts/scrape.py",
     "scrape:server": "python3 scripts/scrape.py --server",
-    "setup:python": "python3 -m pip install -r scripts/requirements.txt"
+    "setup:python": "python3 -m pip install -r scripts/requirements.txt",
+    "scrape:full": "python3 scripts/scrape.py --full",
+    "scrape:refresh": "python3 scripts/scrape.py --refresh"
   },
   "dependencies": {
     "d3": "^7.9.0",

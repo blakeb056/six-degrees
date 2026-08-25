@@ -55,8 +55,11 @@ If it says it timed out, you are simply not signed in yet — run it again.
 Everything below goes in Terminal 2, with the app still running in Terminal 1.
 
 ```bash
-# Sync your 1st-degree connections
+# First run does a full scrape; later runs only look for new people
 npm run scrape
+
+# Force a full re-walk of every search page
+npm run scrape:full
 
 # Map one bridge's 2nd-degree circle
 python3 scripts/scrape.py --bridge "Jane Doe"
