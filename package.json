@@ -53,7 +53,10 @@
     "test": "node --test tests/*.test.mjs",
     "gen:demo": "node scripts/gen-synthetic.mjs",
     "prepack": "npm run build",
-    "start:packaged": "node bin/six-degrees.mjs"
+    "start:packaged": "node bin/six-degrees.mjs",
+    "scrape": "python3 scripts/scrape.py",
+    "scrape:server": "python3 scripts/scrape.py --server",
+    "setup:python": "python3 -m pip install -r scripts/requirements.txt"
   },
   "dependencies": {
     "d3": "^7.9.0",
