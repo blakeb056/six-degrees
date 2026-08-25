@@ -80,15 +80,42 @@ those map the people you haven't met yet.
 
 ### The deeper path: the local scraper
 
-`scripts/scrape.py` drives **your own installed Chrome** with a persistent
-profile — you log in by hand, once. It captures 2nd-degree circles and
-permanent local avatars. See [`docs/SCRAPING.md`](docs/SCRAPING.md).
+This is the only way to get **2nd-degree** data — who your connections know.
+LinkedIn's export cannot provide it, so Bridges and Outlink stay empty without
+this step.
 
-> [!WARNING]
-> Automating LinkedIn may violate its [User Agreement](https://www.linkedin.com/legal/user-agreement),
-> and accounts have been restricted for it. This is provided for local use
-> against your own account, at your own risk. It never asks for or stores your
-> credentials. **The CSV export above is the supported path.**
+**You need two terminal windows.** The app and the scraper run at the same time:
+the scraper writes into the running app.
+
+**Terminal 1 — start the app and leave it running.** It will not return a
+prompt; that is the server holding the window.
+
+```bash
+cd ~/dev/six-degrees-app
+npm run dev
+```
+
+**Terminal 2 — open a new window (⌘N on macOS) and install the Python side once:**
+
+```bash
+cd ~/dev/six-degrees-app
+npm run setup:python
+```
+
+**Then scrape, in that same second window:**
+
+```bash
+npm run scrape                                  # your 1st-degree connections
+python3 scripts/scrape.py --bridge "Jane Doe"   # one person's 2nd-degree circle
+```
+
+A Chrome window opens on first run. **Log into LinkedIn by hand** — the scraper
+waits up to five minutes for you and continues on its own once you are signed
+in. The session is kept in a profile under your data directory, so this is a
+once-per-machine step.
+
+Requires Python 3.9+ and Google Chrome installed. The scraper drives your real
+Chrome, so no extra browser download is needed.
 
 ## What it does
 

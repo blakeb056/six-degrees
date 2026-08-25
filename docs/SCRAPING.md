@@ -22,18 +22,41 @@ It captures:
 
 ## Setup
 
+The scraper writes into the running app, so **both have to be up at once — two
+terminal windows.**
+
+Terminal 1, and leave it alone (it will not give you a prompt back):
+
 ```bash
-pip3 install -r scripts/requirements.txt
-python3 -m playwright install chromium   # only needed as a fallback
+cd ~/dev/six-degrees-app
+npm run dev
 ```
 
-Google Chrome must be installed — the scraper prefers your real browser.
+Terminal 2 (⌘N), once per machine:
+
+```bash
+cd ~/dev/six-degrees-app
+npm run setup:python
+```
+
+Requires Python 3.9+ and Google Chrome. The scraper drives your real Chrome, so
+`playwright install chromium` is not needed.
+
+## Signing in
+
+A Chrome window opens on the first run. Log into LinkedIn by hand; the scraper
+polls for up to five minutes and carries on by itself once you are in. The
+session lives in a profile inside your data directory, so later runs skip this.
+
+If it says it timed out, you are simply not signed in yet — run it again.
 
 ## Usage
 
+Everything below goes in Terminal 2, with the app still running in Terminal 1.
+
 ```bash
 # Sync your 1st-degree connections
-python3 scripts/scrape.py
+npm run scrape
 
 # Map one bridge's 2nd-degree circle
 python3 scripts/scrape.py --bridge "Jane Doe"

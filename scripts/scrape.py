@@ -2,7 +2,8 @@
 """
 6 Degrees LinkedIn Scraper
 
-Uses Playwright with your existing Chrome profile (no login needed).
+Drives Chrome with a persistent profile. You log into LinkedIn by hand once;
+the session is reused on every later run.
 Scrapes your connections into the app running on your own machine.
 
 Usage:
@@ -191,6 +192,69 @@ async (maxPages) => {
   return results;
 }
 """
+
+
+FEED_URL = "https://www.linkedin.com/feed/"
+LOGIN_WAIT_SECONDS = 300          # five minutes to finish logging in by hand
+LOGIN_POLL_SECONDS = 3
+
+
+def _looks_logged_out(page):
+    """LinkedIn shows several different logged-out pages.
+
+    Matching on the URL alone is not enough: the signed-out landing page is
+    often just linkedin.com/ with a sign-in splash, which slips past a
+    login/authwall check and leaves the scraper collecting nothing.
+    """
+    url = (page.url or "").lower()
+    if any(marker in url for marker in ("/login", "/authwall", "/signup", "/checkpoint", "/uas/")):
+        return True
+    try:
+        # The global nav only renders for a signed-in session.
+        if page.query_selector("nav.global-nav, #global-nav, [data-test-global-nav]"):
+            return False
+        if page.query_selector("a[href*='/login'], button[data-tracking-control-name*='sign-in']"):
+            return True
+    except Exception:
+        pass
+    return "/feed" not in url and "/mynetwork" not in url
+
+
+def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS):
+    """Wait for a human to finish logging in, rather than scraping an empty page.
+
+    The browser uses a persistent profile, so this is a once-per-machine step —
+    every later run finds the session already there and returns immediately.
+    """
+    try:
+        page.goto(FEED_URL, wait_until="domcontentloaded")
+    except Exception:
+        pass
+    time.sleep(3)
+
+    if not _looks_logged_out(page):
+        return True
+
+    print()
+    print("  ==================================================================")
+    print("  Log into LinkedIn in the browser window that just opened.")
+    print("  Nothing is scraped until you are signed in.")
+    print(f"  Waiting up to {timeout_s // 60} minutes; it continues on its own.")
+    print("  ==================================================================")
+    print()
+
+    waited = 0
+    while waited < timeout_s:
+        time.sleep(LOGIN_POLL_SECONDS)
+        waited += LOGIN_POLL_SECONDS
+        if not _looks_logged_out(page):
+            print(f"  Signed in. Continuing.\n")
+            return True
+        if waited % 30 == 0:
+            print(f"  still waiting for sign-in... ({waited}s)", flush=True)
+
+    print("\n  Timed out waiting for sign-in. Run this again once you are logged in.")
+    return False
 
 
 def get_scraper_profile_path():
@@ -409,10 +473,9 @@ def scrape_full(headless=False):
             page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
         except:
             pass
-        time.sleep(5)
-        if "login" in page.url or "authwall" in page.url:
-            print("Please log into LinkedIn in the browser window, then press Enter...")
-            input()
+        if not ensure_logged_in(page):
+            browser.close()
+            return
 
         # Navigate to 1st-degree search
         search_url = "https://www.linkedin.com/search/results/people/?network=%5B%22F%22%5D&origin=FACETED_SEARCH"
@@ -543,10 +606,9 @@ def scrape_connections(headless=False):
             page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
         except:
             pass
-        time.sleep(5)
-        if "login" in page.url or "authwall" in page.url:
-            print("Please log into LinkedIn in the browser window, then press Enter...")
-            input()
+        if not ensure_logged_in(page):
+            browser.close()
+            return
 
         # Navigate to connections page (sorted by Recently added)
         conn_url = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
@@ -893,10 +955,9 @@ def scrape_bridge(bridge_name, headless=False):
             page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
         except Exception:
             pass
-        time.sleep(5)
-        if "login" in page.url or "authwall" in page.url or "checkpoint" in page.url:
-            print("\nPlease log into LinkedIn in the browser window, then press Enter...")
-            input()
+        if not ensure_logged_in(page):
+            browser.close()
+            return
 
         connections, status = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url)
         browser.close()
@@ -941,10 +1002,10 @@ def scrape_company(company_name, headless=False, log_fn=None):
             page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
         except:
             pass
-        time.sleep(5)
-        if "login" in page.url or "authwall" in page.url:
-            log("Please log into LinkedIn...")
-            input()
+        if not ensure_logged_in(page):
+            log("Not signed into LinkedIn — sign in and run this again.")
+            browser.close()
+            return []
 
         # === STEP 1: Find the people search page for this company ===
         # Strategy: try company page first, fall back to search feed
