@@ -1,4 +1,15 @@
--- 6 Degrees — local SQLite schema.
+// The database schema, kept as a module rather than a .sql file on disk.
+//
+// It used to be read with fs from process.cwd() + 'db/schema.sql', which
+// works when the app is started from its own directory and fails everywhere
+// else — including from an installed package, which is the whole point of
+// shipping this. Bundlers follow an import; they do not follow a runtime
+// file read.
+//
+// Every statement is CREATE ... IF NOT EXISTS, so applying it is both
+// first-run setup and a no-op on every later boot.
+
+export const SCHEMA_SQL = `-- 6 Degrees — local SQLite schema.
 --
 -- Ported from the Postgres schema this project ran on before it went
 -- local-first. Type mapping: uuid -> TEXT (generated in JS), jsonb and
@@ -127,3 +138,6 @@ CREATE TABLE IF NOT EXISTS user_profile (
   created_at              TEXT DEFAULT (datetime('now')),
   updated_at              TEXT DEFAULT (datetime('now'))
 );
+`;
+
+export default SCHEMA_SQL;

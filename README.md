@@ -30,14 +30,24 @@ It runs on your machine, against your own data, with no account and no server.
 ## Quickstart
 
 ```bash
+npx six-degrees@latest
+```
+
+That is the whole thing. It starts on <http://127.0.0.1:6363>, opens your
+browser, and offers a sample network you can explore immediately. `@latest` is
+in the command on purpose — npx will otherwise reuse a cached older copy.
+
+Prefer to read the code first, or want to change it:
+
+```bash
 git clone https://github.com/blakeb056/six-degrees-app
 cd six-degrees-app
 npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. Choose **Map your own network**, drop in
-LinkedIn's official `Connections.csv`, and your galaxy renders.
+Either way: choose **Map your own network**, drop in LinkedIn's official
+`Connections.csv`, and your galaxy renders.
 
 No account, no API keys, no database to provision. Your data is written to a
 single SQLite file at `~/.six-degrees/six-degrees.sqlite`, and the four
