@@ -19,38 +19,74 @@ against live LinkedIn.
 Full shipping plan (install story, packaging, release pipeline, README
 strategy, risks): `/Users/blake/six-degrees-v3-plan.md`.
 
-## Current state
+## Current state (2026-08-25)
 
-**Standalone as of 2026-08-21.** The app runs entirely locally: SQLite at
-`~/.six-degrees/six-degrees.sqlite`, no account, no keys, no third-party
-service. Runtime dependencies are `next`, `react`, `react-dom`, `d3` — the
-database driver is Node's built-in `node:sqlite`. Node floor is 22.13.
-CI green on 22 and 24 (lint + tests + build + secret/PII guard).
+**Everything except the scraper is done.** Phases 0-4 complete: standalone on
+local SQLite, security hardened, synthetic sample + empty state, packaged for
+`npx`. 37 tests, CI green on Node 22 and 24, verified from a fresh clone and
+from an installed tarball.
 
-How the data layer fits together:
-- `lib/db-client.js` — connection, schema bootstrap from `db/schema.sql`, and
-  the JSON/boolean codecs that keep route code unchanged.
-- `lib/db.js` — a supabase-shaped query builder. All 12 routes kept their call
-  chains; only the import line changed.
-- `lib/rpc.js` — `score_new_connections` and `increment_xp`, transcribed from
-  `scripts/score_new_connections.sql` (still the reference model — change both
-  together). `exec_sql` is deliberately gone.
-- `app/api/network` — one read endpoint; the four client pages fetch it via
-  `lib/network.js`. **No browser-side database access remains.**
-- `tests/db.test.mjs` — 21 tests pinning the adapter contract. Run `npm test`.
+- `lib/db-client.js` connection + schema (schema is `db/schema.js`, a module —
+  it used to be read from disk relative to cwd, which broke in a package)
+- `lib/db.js` supabase-shaped adapter; all 12 routes changed only an import
+- `lib/rpc.js` scorer, transcribed from `scripts/score_new_connections.sql`
+  (still the reference model — change both together)
+- `lib/gate.js` + `middleware.js` — cross-site write refusal on all of `/api`,
+  plus the destructive-route gate keyed off the server's own bind address
+- `app/api/network` — one read endpoint; no browser-side DB access anywhere
+- `scripts/gen-synthetic.mjs` — the sample network, deterministic
+- `bin/six-degrees.mjs` — the npx launcher, port 6363
 
-Verified end to end: user creation, ingest with scoring that matches the
-canonical model (CEO at a top-prestige company → 7.9, tier S, including the
-30-day recency bonus), and the galaxy rendering from SQLite.
+## ⚠️ THE OPEN PROBLEM: the scraper
 
-### ⭐ Next up
+Everything else works. The scraper is where the remaining risk and work is, and
+it is the only thing standing between this and a publish.
 
-1. **Screenshots/GIF for the README** — the highest-impact missing item. Needs
-   a synthetic network generator so nothing identifiable ships.
-2. **First-run empty state** — a fresh install still shows a blank canvas.
-3. **npx packaging** — `output: 'standalone'`, a `bin/` launcher, port 6363,
-   then publish so `npx six-degrees` works. See the shipping plan.
-4. Make the repo public.
+**Three bugs found by running it on a second machine, all fixed but none
+re-verified against live LinkedIn:**
+
+1. **It did not wait for login.** The check was `"login" in page.url or
+   "authwall" in page.url`; LinkedIn's signed-out landing page is often just
+   `linkedin.com/` with a splash, so it sailed past, scraped an empty page and
+   exited. `ensure_logged_in()` now detects signed-out from the URL *and* the
+   missing global nav, then polls up to five minutes. No blocking `input()`
+   calls remain (they could never work under `--server` anyway).
+2. **The full scrape was unreachable.** `scrape_full()` — the one that walks the
+   search pages and captures photos, the one that produced the original 2,647
+   rows — had no CLI flag and could only be triggered from the local server's
+   buttons. Every command-line run fell through to the incremental refresh,
+   which on an empty database returns almost nothing and looks broken. Now
+   `--full` / `--refresh`, and a bare run picks based on whether anything has
+   been collected.
+3. **Docs never said the app and scraper run at the same time**, in two
+   terminals, and that `npm run dev` never returns a prompt because it *is* the
+   server. That confusion cost the most time.
+
+**Still not done — this is the next task:**
+
+- **One live scrape, watched end to end.** The scraping logic is byte-identical
+  to v1 (verified by diff — same selectors, scrolling, Load-more, pagination).
+  But the plumbing around it is all new and has never completed a real run:
+  reads go through `/api/connections`, writes default to localhost behind
+  `_assert_local_target()`, and the Chrome profile moved into the data dir.
+- Until that passes, do not publish. A broken scraper with Blake's name on npm
+  is worse than a late release.
+
+**Making it run in the background (discussed, not built):**
+
+- `--headless` **already works** on every scrape function and is undocumented.
+  Log in once visibly; the profile persists and later runs need no window.
+  Caveat worth keeping in mind: headless is *more* detectable than headful, so
+  invisibility and staying unflagged pull against each other.
+- **`--attach` mode is the recommended next feature**: connect to the user's
+  already-running Chrome over CDP (`connect_over_cdp`, needs Chrome started
+  with `--remote-debugging-port=9222`) instead of launching a browser. No second
+  window, no separate profile, no login step, and it looks like ordinary
+  browsing. Contained change, replaces `launch_persistent_context` at 4 sites.
+- Rejected: direct Voyager HTTP with the session cookie (fastest and fully
+  background, but undocumented, breaks constantly, and exactly the pattern
+  anti-abuse targets — not something to publish under a real name). LinkedIn's
+  official API does not expose the connection list at all, only a count.
 
 ## Decisions already made — do not relitigate
 

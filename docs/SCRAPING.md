@@ -71,6 +71,20 @@ python3 scripts/scrape.py --rescrape "Jane Doe"
 python3 scripts/scrape.py --server
 ```
 
+## Running it without a visible window
+
+Every mode accepts `--headless`. Log in once with a window so the profile has a
+session, then later runs need no window at all:
+
+```bash
+python3 scripts/scrape.py --full --headless
+```
+
+One caveat worth knowing: headless Chrome is *more* detectable than a visible
+one — it is a fingerprint sites check for. Running invisibly and staying
+unflagged pull in opposite directions, so prefer a visible window if you are
+scraping much at once.
+
 ## Please be considerate
 
 - **One bridge at a time.** Batching bridges in a single session is the fastest
