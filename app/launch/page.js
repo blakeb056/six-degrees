@@ -286,15 +286,18 @@ function GalaxySection() {
             }}>
               {Array.from({ length: ring.count }).map((_, i) => {
                 const angle = (i / ring.count) * Math.PI * 2;
-                const x = Math.cos(angle) * ring.r + ring.r;
-                const y = Math.sin(angle) * ring.r + ring.r;
+                // Rounded because the browser's CSS parser rounds these anyway;
+                // handing React full float precision makes its hydration check
+                // compare 35.00406530937789 against the DOM's "35.0041px".
+                const x = Math.round((Math.cos(angle) * ring.r + ring.r) * 100) / 100;
+                const y = Math.round((Math.sin(angle) * ring.r + ring.r) * 100) / 100;
                 return (
                   <div key={i} style={{
                     position: 'absolute', left: x - 3, top: y - 3,
                     width: 6, height: 6, borderRadius: '50%',
                     background: ring.color,
-                    opacity: 0.6 + Math.random() * 0.4,
-                    animation: `breathe ${2 + Math.random() * 2}s ease-in-out infinite ${Math.random() * 2}s`,
+                    opacity: Number((0.6 + jitter(ri, i, 1) * 0.4).toFixed(3)),
+                    animation: `breathe ${(2 + jitter(ri, i, 2) * 2).toFixed(2)}s ease-in-out infinite ${(jitter(ri, i, 3) * 2).toFixed(2)}s`,
                   }} />
                 );
               })}
@@ -759,6 +762,16 @@ function CTASection() {
 // ═══════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
+// Stable per-dot variation. These values are read during render, so they must
+// come out identical on the server and in the browser. Math.random() gave a
+// different number in each pass; the results are also rounded at the call site,
+// because the browser rounds CSS values when it parses them and React's
+// hydration check compares its own prop against the rounded DOM value.
+function jitter(ring, index, salt) {
+  const n = Math.sin((ring + 1) * 12.9898 + (index + 1) * 78.233 + salt * 37.719) * 43758.5453;
+  return n - Math.floor(n);
+}
+
 export default function LaunchPage() {
   return (
     <div style={{ background: '#0a0a1a', color: '#fff', overflowX: 'hidden' }}>
