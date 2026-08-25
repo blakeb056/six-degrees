@@ -3,6 +3,40 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
+// Connection fields are attacker-reachable: /api/ingest and /api/update-images
+// accept writes, and a page on any other site can POST to this app on localhost.
+// Anything from the database is therefore untrusted text, never markup — these
+// tooltips previously used d3's .html(), which is innerHTML, so a name
+// containing <img onerror=...> executed on hover.
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Only paths this app itself produces, or ordinary remote images. Anything else
+// (javascript:, data:, an attribute-escaping payload) renders nothing.
+function safeImageUrl(url) {
+  const value = String(url ?? '');
+  return /^\/avatars\/[A-Za-z0-9_-]+\.(webp|png|jpe?g)$/.test(value) || /^https:\/\/[^"'\s<>]+$/.test(value)
+    ? value
+    : null;
+}
+
+// Builds the avatar tooltip through the DOM rather than a string, so no value
+// can break out of the attribute it is written into.
+function renderPhoto(sel, d, size, borderColor) {
+  sel.selectAll('*').remove();
+  const src = safeImageUrl(d.profile_image_url);
+  if (!src) { sel.style('opacity', 0); return; }
+  sel.append('img')
+    .attr('src', src)
+    .style('width', size + 'px').style('height', size + 'px')
+    .style('border-radius', '50%').style('object-fit', 'cover')
+    .style('border', `2px solid ${borderColor}`).style('display', 'block')
+    .on('error', function () { this.parentElement.style.display = 'none'; });
+}
+
 export default function ForceGraph({ connections, degree2 = [], onSelect, tierColors, mode, focusNodeRef, userName }) {
   const svgRef = useRef(null);
   const zoomTransformRef = useRef(null);  // Persist zoom across re-renders
@@ -248,18 +282,19 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     d3.select(this).attr('r', nodeRadius(d) * 1.5);
     if (d.profile_image_url && d.id !== 'blake') {
       const size = Math.max(48, nodeRadius(d) * 5);
-      photoTooltip.style('opacity', 1)
-        .html(`<img src="${d.profile_image_url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${tierColors[d.tier] || '#555'};display:block;" onerror="this.parentElement.style.display='none'"/>`)
+      photoTooltip.style('opacity', 1);
+      renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
+      photoTooltip
         .style('left', (event.pageX - size / 2) + 'px')
         .style('top', (event.pageY - size - 8) + 'px');
       tooltip.style('opacity', 1)
-        .html(`<strong>${d.name}</strong>`)
+        .html(`<strong>${esc(d.name)}</strong>`)
         .style('left', (event.pageX - 40) + 'px')
         .style('top', (event.pageY + 12) + 'px')
         .style('text-align', 'center').style('min-width', '80px');
     } else {
       tooltip.style('opacity', 1)
-        .html(`<strong>${d.name}</strong>${d.company ? '<br/>' + d.company : ''}${d.tier ? '<br/>Tier: ' + d.tier : ''}`)
+        .html(`<strong>${esc(d.name)}</strong>${d.company ? '<br/>' + esc(d.company) : ''}${d.tier ? '<br/>Tier: ' + esc(d.tier) : ''}`)
         .style('left', (event.pageX + 12) + 'px').style('top', (event.pageY - 10) + 'px');
     }
   }).on('mousemove', function (event, d) {
@@ -814,8 +849,9 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
     // Photo hover
     if (d.profile_image_url && d.id !== 'blake') {
       const size = Math.max(48, nodeRadius(d) * 4);
-      photoTooltip.style('opacity', 1)
-        .html(`<img src="${d.profile_image_url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${tierColors[d.tier] || '#555'};display:block;" onerror="this.parentElement.style.display='none'"/>`)
+      photoTooltip.style('opacity', 1);
+      renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
+      photoTooltip
         .style('left', (event.pageX - size / 2) + 'px')
         .style('top', (event.pageY - size - 8) + 'px');
     }
@@ -827,12 +863,12 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       ? bridgeNodes.find(b => b.id === d.source_connection_id)?.name : null;
     tooltip.style('opacity', 1)
       .html([
-        `<strong>${d.name}</strong>`,
-        d.role ? d.role.substring(0, 60) : '',
-        d.company ? `<span style="color:${tierColors[d.tier] || '#888'}">@ ${d.company}</span>` : '',
-        d.tier && d.tier !== 'center' ? `Tier ${d.tier} · Score: ${parseFloat(d.power_score).toFixed(1)}` : '',
-        bridgeFor ? `<span style="color:#FFD700">${bridgeFor}</span>` : '',
-        viaBridge ? `<span style="color:#FF6B35">via ${viaBridge}</span>` : '',
+        `<strong>${esc(d.name)}</strong>`,
+        d.role ? esc(d.role.substring(0, 60)) : '',
+        d.company ? `<span style="color:${tierColors[d.tier] || '#888'}">@ ${esc(d.company)}</span>` : '',
+        d.tier && d.tier !== 'center' ? `Tier ${esc(d.tier)} · Score: ${parseFloat(d.power_score).toFixed(1)}` : '',
+        bridgeFor ? `<span style="color:#FFD700">${esc(bridgeFor)}</span>` : '',
+        viaBridge ? `<span style="color:#FF6B35">via ${esc(viaBridge)}</span>` : '',
         d.isMutual ? '<span style="color:#00ff88">Mutual connection</span>' : '',
       ].filter(Boolean).join('<br/>'))
       .style('left', (event.pageX + 12) + 'px').style('top', (event.pageY + 12) + 'px');

@@ -15,4 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runs with no cloud account and no third-party service.
 
 ### Security
-- Destructive API routes require an admin token and fail closed without one.
+- Destructive API routes are open on loopback, require `ADMIN_TOKEN` as a bearer
+  from any other host, and fail closed when exposed with no token set.
+- Cross-site writes are refused on every API route, so a page on another site
+  cannot drive this app through your browser.
+- Values from the database are escaped before rendering; the graph tooltips no
+  longer build markup from stored strings.

@@ -1,18 +1,37 @@
 import { NextResponse } from 'next/server';
-import { isDestructive, gateDecision } from './lib/gate';
+import { isDestructive, gateDecision, isCrossSiteWrite } from './lib/gate';
 
-// Four routes can irreversibly destroy or rewrite the whole network.
+// Two separate protections.
 //
-// What actually protects them is the listening socket: `npm run dev` and
-// `npm start` bind to 127.0.0.1 and export SIX_DEGREES_BIND so this file can
-// tell. If the server is bound anywhere else — a tunnel, -H 0.0.0.0, a
-// container — ADMIN_TOKEN becomes required and these routes fail closed
-// without one.
+// 1. Cross-site writes, on EVERY mutating request. Binding to 127.0.0.1 stops
+//    other machines but not the browser on this one — a page on any website can
+//    POST to this app, and with a simple content type it does so without a
+//    preflight. The response is hidden from that page, but the write lands, and
+//    data written this way is later rendered by the app. Sec-Fetch-Site is set
+//    by the browser and cannot be forged from script; curl and the scraper send
+//    no such header and are unaffected.
 //
-// The rule itself lives in lib/gate.js and is covered by tests/gate.test.mjs.
+// 2. The four routes that irreversibly destroy or rewrite data. Allowed when the
+//    server is bound to loopback, since the operator can open the SQLite file
+//    directly anyway; otherwise ADMIN_TOKEN is required and they fail closed.
+//    The rule lives in lib/gate.js and is covered by tests/gate.test.mjs.
 
 export function middleware(request) {
-  if (!isDestructive(request.nextUrl.pathname)) return NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  if (isCrossSiteWrite({
+    method: request.method,
+    secFetchSite: request.headers.get('sec-fetch-site'),
+    origin: request.headers.get('origin'),
+    host: request.headers.get('host'),
+  })) {
+    return Response.json(
+      { error: 'Cross-site requests are not accepted. This app only answers to pages it serves.' },
+      { status: 403 }
+    );
+  }
+
+  if (!isDestructive(pathname)) return NextResponse.next();
 
   const decision = gateDecision({
     bind: process.env.SIX_DEGREES_BIND || process.env.HOSTNAME,
@@ -25,5 +44,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile'],
+  matcher: ['/api/:path*'],
 };

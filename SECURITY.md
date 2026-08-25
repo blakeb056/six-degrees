@@ -18,9 +18,15 @@ This app is designed to run **on your own machine, against your own network**.
   the database file directly, so a token there adds friction rather than
   safety. Reached from any other host they require `ADMIN_TOKEN` as a bearer,
   and refuse to run when it is unset.
-- A localhost-bound service is still reachable by any web page you visit if it
-  is unauthenticated. Do not bind this app to `0.0.0.0` or expose it through a
-  tunnel.
+- A localhost-bound service is still reachable by any web page you visit — the
+  binding keeps other machines out, not your own browser. Every mutating API
+  request is therefore refused when the browser reports it came from another
+  site (`Sec-Fetch-Site`, with `Origin` as a fallback). Command-line callers
+  such as the scraper send neither header and are unaffected.
+- Values stored in the database are treated as untrusted text and escaped
+  before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)
+  for anything data-bearing.
+- Do not bind this app to `0.0.0.0` or expose it through a tunnel.
 
 ## Your data
 
@@ -31,5 +37,10 @@ Everything stays local:
 - Scraped data and cached avatars are written to your machine and are gitignored.
 - There is no telemetry, no analytics, and no crash reporting.
 
-Never commit `public/avatars/`, `public/demo-data.json`, or any exported CSV —
-they contain real people. CI fails the build if they appear.
+If you run the scraper, `chrome-profile/` in the data directory holds a live
+logged-in LinkedIn session. Never copy, sync, or commit it.
+
+Never commit `public/avatars/` or any exported CSV — they contain real people.
+`public/demo-data.json` is committed, but only ever as the generated synthetic
+sample; CI fails the build if it appears without its `"synthetic":true` marker,
+or if avatars or a raw export show up.

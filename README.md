@@ -106,8 +106,15 @@ tiers:  S ≥ 7.0   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 Seniority is inferred from job title, prestige from a configurable company list,
 signals from headline keywords, and recency gives a small bonus to connections
 made in the last 30 days. The reference implementation is
-[`scripts/score_new_connections.sql`](scripts/score_new_connections.sql) — every
-other scorer in the codebase is diffed against it.
+[`scripts/score_new_connections.sql`](scripts/score_new_connections.sql), and
+[`lib/rpc.js`](lib/rpc.js) is a direct transcription of it — that is what scores
+anything the scraper brings in.
+
+**CSV imports score on a reduced model.** LinkedIn's export has a bare job title
+and no headline, so the headline-signal and recency terms simply cannot be
+computed; those rows are scored from role and company alone
+([`lib/csv.js`](lib/csv.js)). The same person can land a tier apart depending on
+which path they arrived through. The two never mix in one view.
 
 It estimates **network reach**, not human worth. Keep that framing.
 
@@ -115,8 +122,12 @@ It estimates **network reach**, not human worth. Keep that framing.
 
 - A CSV import never leaves your browser and is never persisted
 - Scraped data and avatars are written locally and are gitignored
-- No telemetry, no analytics, no crash reporting, no update check
-- The only outbound requests are to LinkedIn, and only while you are scraping
+- No telemetry, no analytics, no crash reporting from this app
+- The only outbound requests **it** makes are to LinkedIn, and only while you
+  are scraping
+- Next.js collects anonymous build metrics of its own; the `dev`, `build` and
+  `start` scripts set `NEXT_TELEMETRY_DISABLED=1`, so it stays off here. `npm
+  install` talks to the npm registry, as it does for any project.
 
 See [SECURITY.md](SECURITY.md) for the threat model.
 
@@ -134,11 +145,20 @@ There is nothing to configure. Two optional environment variables exist:
 ```
 ~/.six-degrees/
 ├── six-degrees.sqlite      your network — connections, scores, tiers, queue
-└── avatars/                profile photos, if you run the scraper
+├── six-degrees.sqlite-wal  SQLite write-ahead log (and -shm alongside it)
+├── avatars/                profile photos, if you run the scraper
+└── chrome-profile/         only if you run the scraper — see the warning below
 ```
 
-To remove everything this app created, delete that folder. Nothing is written
-anywhere else, and nothing is sent anywhere.
+To remove everything this app created, delete that folder. The app also keeps
+your name and a local id in the browser's `localStorage`; clearing site data for
+`localhost` removes it.
+
+> [!WARNING]
+> `chrome-profile/` holds a **real logged-in LinkedIn session**. It is created
+> only when you run the scraper, is typically several hundred megabytes, and is
+> the one thing here that grants access to your account. Never copy it, sync it,
+> or commit it. Deleting it simply means logging in again next time.
 
 ## Contributing
 

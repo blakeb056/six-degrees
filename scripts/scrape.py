@@ -194,10 +194,18 @@ async (maxPages) => {
 
 
 def get_scraper_profile_path():
-    """Get a separate profile directory for the scraper (avoids Chrome lock conflict)."""
-    home = Path.home()
-    profile_dir = home / ".six-degrees-scraper"
-    profile_dir.mkdir(exist_ok=True)
+    """The Chrome profile the scraper drives.
+
+    Separate from your everyday Chrome profile so the two never fight over the
+    same lock. It holds a real logged-in LinkedIn session, so it lives inside
+    the app's data directory (SIX_DEGREES_HOME, default ~/.six-degrees) and is
+    removed along with everything else when you delete that folder. Treat it
+    like a password: it can be several hundred megabytes and it is the one
+    artifact here that grants access to your account.
+    """
+    base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
+    profile_dir = base / "chrome-profile"
+    profile_dir.mkdir(parents=True, exist_ok=True)
     return str(profile_dir)
 
 
@@ -1347,11 +1355,40 @@ def run_server(port=5555):
     # Track current job
     state = {"running": False, "log": [], "result": None}
 
+    # Only the app served from this machine may drive the scraper. This used to
+    # answer Access-Control-Allow-Origin: * , which let any website the operator
+    # happened to visit start a scrape of their LinkedIn account and read the
+    # results back — including the batched auto-bridge run this file's own
+    # docstring warns gets accounts flagged.
+    ALLOWED_ORIGINS = {
+        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:3210", "http://127.0.0.1:3210",
+    }
+
     class ScrapeHandler(BaseHTTPRequestHandler):
         def _cors(self):
-            self.send_header("Access-Control-Allow-Origin", "*")
+            origin = self.headers.get("Origin")
+            if origin in ALLOWED_ORIGINS:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+        def _reject_cross_site(self):
+            """True (and already responded) if this request came from another site.
+
+            A cross-origin POST with a simple content type reaches this server
+            with no preflight, so refusing the response is not enough — the
+            scrape would already have started.
+            """
+            origin = self.headers.get("Origin")
+            if origin and origin not in ALLOWED_ORIGINS:
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "cross-site request refused"}).encode())
+                return True
+            return False
 
         def do_OPTIONS(self):
             self.send_response(200)
@@ -1359,6 +1396,8 @@ def run_server(port=5555):
             self.end_headers()
 
         def do_GET(self):
+            if self._reject_cross_site():
+                return
             if self.path == "/status":
                 self.send_response(200)
                 self._cors()
@@ -1383,6 +1422,8 @@ def run_server(port=5555):
             self.end_headers()
 
         def do_POST(self):
+            if self._reject_cross_site():
+                return
             content_len = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(content_len)) if content_len else {}
 
