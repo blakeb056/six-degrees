@@ -34,6 +34,19 @@ Keep changes focused. Match the surrounding style rather than reformatting:
 this codebase is plain JavaScript with inline style objects, and consistency
 beats personal preference.
 
+## Screenshots
+
+The images in the README are generated, never hand-captured, so they can never
+accidentally contain a real person:
+
+```bash
+npm run dev
+python3 scripts/screenshots.py        # writes docs/img/*.png
+```
+
+It runs against the sample network only. If you change the UI in a way the
+README shows, regenerate rather than cropping a screenshot of your own data.
+
 ## Commit messages
 
 Explain **why**, not just what. A one-line subject, then a body if the change

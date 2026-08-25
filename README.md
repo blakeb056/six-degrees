@@ -12,6 +12,12 @@
   <img src="https://img.shields.io/badge/data-stays%20local-blue.svg" alt="Data stays local">
 </p>
 
+<p align="center">
+  <img src="docs/img/bridges.png" alt="The Bridges view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
+</p>
+
+<p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
+
 ---
 
 Your network has a shape, and you can't see it. 6 Degrees draws it: every
@@ -39,6 +45,13 @@ runtime dependencies are `next`, `react`, `react-dom` and `d3` — the database
 driver is Node's own built-in `node:sqlite`. Requires **Node 22.13+**.
 
 ## Use your own network
+
+### No setup at all: the sample network
+
+Launch the app and choose **Explore a sample network** — 150 invented people with
+mapped bridge circles, enough to click through every view before you decide
+whether to import anything of your own. Regenerate it any time with
+`npm run gen:demo`.
 
 ### The safe path: LinkedIn's official export
 
@@ -69,11 +82,19 @@ permanent local avatars. See [`docs/SCRAPING.md`](docs/SCRAPING.md).
 
 ## What it does
 
-- **Galaxy** — a force-directed map of your network, sized and colored by power score
-- **Bridges** — your highest-leverage connections on a rotary dial; select one to fan out their circle
-- **Paths** — company intelligence: who you know at each company, and who's still out of reach
-- **Outlink** — a ranked outreach queue built from 2nd-degree recommendations
-- **Tiers** — every person scored S/A/B/C/D from role seniority and company prestige
+**Galaxy** — a force-directed map of your whole network, each person placed on a tier ring and sized by power score.
+
+<img src="docs/img/galaxy.png" alt="The galaxy view: connections orbiting on tier rings" width="100%">
+
+**Bridges** — your highest-leverage 1st-degree people on a ring. Each one shows the size and quality of the circle behind them; select one to fan that circle out. This is the view that answers *who can introduce me to people I don't know yet*.
+
+**Paths** — company intelligence. Who you already know at each company, who is still out of reach, and how much of your foothold is senior.
+
+<img src="docs/img/paths.png" alt="The Paths view: companies ranked by how many people you know inside them" width="100%">
+
+**Outlink** — a ranked outreach queue built from 2nd-degree recommendations.
+
+**Tiers** — everyone scored S/A/B/C/D from role seniority and company prestige.
 
 ## How scoring works
 
