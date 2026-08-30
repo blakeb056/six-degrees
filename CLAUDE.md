@@ -12,9 +12,25 @@ outreach queue.
 Lineage: this is **v1's code, copied file-for-file** (`~/six-degrees-linkedin`,
 the private build that actually works), with personal data removed, browser-only
 CSV import added, and lint debt cleared. A separate earlier rebuild lives at
-`untitled folder 2/six-degrees-v2` (repo `blakeb056/six-degrees`) — it is
-**not** the base for v3; it removed features and its scraper has never been run
-against live LinkedIn.
+`untitled folder 2/six-degrees-v2` (repo `blakeb056/six-degrees-static`) — it
+is **not** the base for v3; it removed features and its scraper has never been
+run against live LinkedIn.
+
+## Naming and surfaces (settled 2026-08-30)
+
+This repo, its directory and the npm package all share one name: **`six-degrees`**
+(`github.com/blakeb056/six-degrees`, `~/dev/six-degrees`). v2 was renamed
+`six-degrees-static` to free it; GitHub redirects the old `six-degrees-app` links.
+
+**v1 stays public but stops being linked.** `six-degrees-linkedin.vercel.app`
+still serves Blake's real network by his standing decision — do not gate it —
+but it is no longer the thing anyone is pointed at. The README, promo and any
+post point here instead. v1 is the cockpit; v3 is the shopfront.
+
+**What 0.1.0 actually delivers on the documented path.** The CSV import cannot
+fill Bridges or Outlink — no official LinkedIn export contains 2nd-degree data.
+The README leads with Galaxy for that reason and marks both views as
+scraper-gated. Do not quietly re-promote Bridges to the hero slot.
 
 Full shipping plan (install story, packaging, release pipeline, README
 strategy, risks): `/Users/blake/six-degrees-v3-plan.md`.
