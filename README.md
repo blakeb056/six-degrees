@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/bridges.png" alt="The Bridges view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
+  <img src="docs/img/galaxy.png" alt="The galaxy view: your whole network placed on tier rings by estimated career leverage" width="100%">
 </p>
 
 <p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
@@ -48,6 +48,21 @@ npm run dev
 
 Either way: choose **Map your own network**, drop in LinkedIn's official
 `Connections.csv`, and your galaxy renders.
+
+### What each way in gives you
+
+|  | Sample network | Your `Connections.csv` | Local scraper |
+|---|---|---|---|
+| Setup | none | ~10 min (LinkedIn emails the file) | Python + Chrome, once |
+| Galaxy, Tiers, Paths | ✅ | ✅ | ✅ |
+| Profile photos | initials | initials | ✅ |
+| **Bridges, Outlink** (2nd-degree) | ✅ | — | ✅ |
+
+**The CSV is the supported path and it is deliberately the shallower one.** LinkedIn's export
+contains only people you are already connected to, so the two views about people you *haven't*
+met — Bridges and Outlink — have nothing to draw. That data exists nowhere in any official
+export; the scraper is the only way to it, and it is opt-in for a reason. Explore the sample
+network first if you want to see those views before deciding.
 
 No account, no API keys, no database to provision. Your data is written to a
 single SQLite file at `~/.six-degrees/six-degrees.sqlite`, and the four
@@ -128,13 +143,15 @@ Chrome, so no extra browser download is needed.
 
 <img src="docs/img/galaxy.png" alt="The galaxy view: connections orbiting on tier rings" width="100%">
 
-**Bridges** — your highest-leverage 1st-degree people on a ring. Each one shows the size and quality of the circle behind them; select one to fan that circle out. This is the view that answers *who can introduce me to people I don't know yet*.
+**Bridges** *(needs 2nd-degree data — scraper or sample only)* — your highest-leverage 1st-degree people on a ring. Each one shows the size and quality of the circle behind them; select one to fan that circle out. This is the view that answers *who can introduce me to people I don't know yet*.
 
 **Paths** — company intelligence. Who you already know at each company, who is still out of reach, and how much of your foothold is senior.
 
 <img src="docs/img/paths.png" alt="The Paths view: companies ranked by how many people you know inside them" width="100%">
 
-**Outlink** — a ranked outreach queue built from 2nd-degree recommendations.
+**Outlink** *(needs 2nd-degree data — scraper or sample only)* — a ranked outreach queue built from 2nd-degree recommendations.
+
+<img src="docs/img/bridges.png" alt="The Bridges view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
 
 **Tiers** — everyone scored S/A/B/C/D from role seniority and company prestige.
 
