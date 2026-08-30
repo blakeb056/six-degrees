@@ -6,12 +6,12 @@
   "author": "Blake Burford",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blakeb056/six-degrees-app.git"
+    "url": "git+https://github.com/blakeb056/six-degrees.git"
   },
   "bugs": {
-    "url": "https://github.com/blakeb056/six-degrees-app/issues"
+    "url": "https://github.com/blakeb056/six-degrees/issues"
   },
-  "homepage": "https://github.com/blakeb056/six-degrees-app#readme",
+  "homepage": "https://github.com/blakeb056/six-degrees#readme",
   "keywords": [
     "linkedin",
     "network",

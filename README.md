@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/blakeb056/six-degrees-app/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D22.13-brightgreen.svg" alt="Node >= 22.13">
   <img src="https://img.shields.io/badge/data-stays%20local-blue.svg" alt="Data stays local">
@@ -40,8 +40,8 @@ in the command on purpose — npx will otherwise reuse a cached older copy.
 Prefer to read the code first, or want to change it:
 
 ```bash
-git clone https://github.com/blakeb056/six-degrees-app
-cd six-degrees-app
+git clone https://github.com/blakeb056/six-degrees
+cd six-degrees
 npm install
 npm run dev
 ```
@@ -106,14 +106,14 @@ the scraper writes into the running app.
 prompt; that is the server holding the window.
 
 ```bash
-cd ~/dev/six-degrees-app
+cd six-degrees
 npm run dev
 ```
 
 **Terminal 2 — open a new window (⌘N on macOS) and install the Python side once:**
 
 ```bash
-cd ~/dev/six-degrees-app
+cd six-degrees
 npm run setup:python
 ```
 

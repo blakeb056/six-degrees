@@ -28,14 +28,14 @@ terminal windows.**
 Terminal 1, and leave it alone (it will not give you a prompt back):
 
 ```bash
-cd ~/dev/six-degrees-app
+cd six-degrees
 npm run dev
 ```
 
 Terminal 2 (⌘N), once per machine:
 
 ```bash
-cd ~/dev/six-degrees-app
+cd six-degrees
 npm run setup:python
 ```
 
