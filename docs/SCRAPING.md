@@ -34,6 +34,17 @@ That page installs the scraper's Python packages into a **private virtual enviro
 inside your data directory (`~/.six-degrees/venv`). It never touches the Python your
 system or Homebrew installed, and it goes away when you delete that folder.
 
+The page has four steps: install, sign in, **1st degree** (the people you know) and
+**2nd degree** (the people they know — this is what fills Bridges and Outlink). The
+second-degree step runs in batches of 10, 25 or 50 and has a **Stop** button; stopping
+closes the browser cleanly and keeps everything found so far.
+
+**Go easy on the 2nd-degree step.** It opens one profile per person, and LinkedIn
+restricts accounts that view a lot of profiles in a short time — that happened during
+development after about an hour of continuous mapping, roughly 20–25 profiles. Run a
+batch, leave it a while, run another. If LinkedIn warns you about unusual activity,
+press Stop and leave it for the day.
+
 ## The terminal way
 
 Still supported, and what you want if you are scripting it. The scraper writes into the
@@ -104,6 +115,17 @@ python3 scripts/scrape.py --rescrape "Jane Doe"
 # Run as a local server so the app's buttons can drive it
 python3 scripts/scrape.py --server
 ```
+
+Second-degree mapping from the shell, with the same safety valves the page uses:
+
+```bash
+python3 scripts/scrape.py --auto-bridge --max-bridges=25   # one batch, then stop
+python3 scripts/scrape.py --auto-bridge --retry-private    # try the hidden ones again
+python3 scripts/scrape.py --clear-skips                    # forget every skip
+```
+
+Ctrl-C stops it cleanly: it finishes what it is doing, closes the browser, and prints
+a summary rather than leaving a window open.
 
 ## Running it without a visible window
 

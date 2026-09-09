@@ -113,8 +113,20 @@ and use the buttons:
    touches the Python your system or Homebrew put there.
 2. **Sign into LinkedIn** — a Chrome window opens and waits for you, with no time
    limit. Close the window to cancel. Once per machine.
-3. **Scan** — the whole list on the first run (about a minute and a half for 750
-   people), only what is new after that. The live log is on the page.
+3. **1st degree** — the people you know. The whole list on the first run, about a
+   minute and a half for 750 people; only what is new after that.
+4. **2nd degree** — the people *they* know. This is what fills **Bridges** and
+   **Outlink**. It opens each connection in turn, so it is slow by design and runs
+   in batches of 10, 25 or 50 with a **Stop** button. Most people hide their
+   connections; those are noted and never retried.
+
+The live log is on the page throughout.
+
+**Go easy on the 2nd-degree step.** LinkedIn restricts accounts that view a lot of
+profiles in a short time — this happened during development after about an hour of
+continuous mapping, roughly 20–25 profiles. Run a batch, leave it a while, run
+another. If LinkedIn warns you about unusual activity, press Stop and leave it for
+the day.
 
 Sign in with your **email and password**. "Continue with Google" and "Sign in with
 Apple" cannot work here: Google blocks its sign-in flow inside automated browsers,
