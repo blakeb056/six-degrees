@@ -16,6 +16,21 @@ First release, not yet published to npm.
 - `npx six-degrees` — a single-command launcher on port 6363 with its own data directory.
 - Reference scoring model (`scripts/score_new_connections.sql`), transcribed to `lib/rpc.js`.
 
+### Fixed
+- The scraper now collects your whole connections list. It was reading only the first ten
+  people: the list sits in its own scroll container, so the page-down it performed never
+  scrolled anything and no further connections ever loaded.
+- Everyone is collected, not just people with a profile photo. Names now come from the
+  profile link rather than being guessed by comparing the start of a name against the URL.
+- Signing in waits for you instead of against you. There is no countdown; close the browser
+  window to cancel. It also detects the sign-in wherever you finish it, including in a
+  second window.
+- `--login` signs in and exits, so a first run is not a sign-in and a scrape at once.
+- A scrape that cannot read the page now says so and stops, instead of reporting that you
+  have no connections.
+- Scraped people are attached to your profile, so a finished scrape can no longer leave the
+  app showing an empty network.
+
 ### Changed
 - The data layer is now local SQLite via Node's built-in `node:sqlite`. The hosted Postgres
   dependency is gone: no account, no keys, no service. Runtime dependencies are `next`,
