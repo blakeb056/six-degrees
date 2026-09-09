@@ -53,56 +53,112 @@ from an installed tarball.
 - `scripts/gen-synthetic.mjs` — the sample network, deterministic
 - `bin/six-degrees.mjs` — the npx launcher, port 6363
 
-## ⚠️ THE OPEN PROBLEM: the scraper
+## The scraper: fixed and verified live (2026-09-09)
 
-Everything else works. The scraper is where the remaining risk and work is, and
-it is the only thing standing between this and a publish.
+**A full live scrape completed end to end for the first time: 752 of 755
+connections collected, pushed, scored, and rendered, with 744 avatars captured
+permanently.** This was the one blocker to publishing.
 
-**Three bugs found by running it on a second machine, all fixed but none
-re-verified against live LinkedIn:**
+Five separate defects had to be cleared. Each one alone produced the same
+symptom — "it opens a window, finds nothing, and closes" — which is why it
+looked like a single unfixable problem for weeks.
 
-1. **It did not wait for login.** The check was `"login" in page.url or
-   "authwall" in page.url`; LinkedIn's signed-out landing page is often just
-   `linkedin.com/` with a splash, so it sailed past, scraped an empty page and
-   exited. `ensure_logged_in()` now detects signed-out from the URL *and* the
-   missing global nav, then polls up to five minutes. No blocking `input()`
-   calls remain (they could never work under `--server` anyway).
-2. **The full scrape was unreachable.** `scrape_full()` — the one that walks the
-   search pages and captures photos, the one that produced the original 2,647
-   rows — had no CLI flag and could only be triggered from the local server's
-   buttons. Every command-line run fell through to the incremental refresh,
-   which on an empty database returns almost nothing and looks broken. Now
-   `--full` / `--refresh`, and a bare run picks based on whether anything has
-   been collected.
-3. **Docs never said the app and scraper run at the same time**, in two
-   terminals, and that `npm run dev` never returns a prompt because it *is* the
-   server. That confusion cost the most time.
+### 1. The page scrolls, the window does not
 
-**Still not done — this is the next task:**
+`scrape_connections()` paged the list with:
 
-- **One live scrape, watched end to end.** The scraping logic is byte-identical
-  to v1 (verified by diff — same selectors, scrolling, Load-more, pagination).
-  But the plumbing around it is all new and has never completed a real run:
-  reads go through `/api/connections`, writes default to localhost behind
-  `_assert_local_target()`, and the Chrome profile moved into the data dir.
-- Until that passes, do not publish. A broken scraper with Blake's name on npm
-  is worse than a late release.
+```python
+page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+```
 
-**Making it run in the background (discussed, not built):**
+On the connections page the list lives inside `<main>`, which is its own scroll
+container with `overflow-y: auto`. The window never scrolls: `window.scrollY`
+stays `0` and `document.body.scrollHeight` equals `window.innerHeight`. That
+call was a **no-op**. LinkedIn renders ten people at a time and loads more on an
+intersection observer, so nothing further ever loaded and every run ended with
+the first ten. This is the "it only went on the first page and stopped" bug.
 
-- `--headless` **already works** on every scrape function and is undocumented.
-  Log in once visibly; the profile persists and later runs need no window.
-  Caveat worth keeping in mind: headless is *more* detectable than headful, so
-  invisibility and staying unflagged pull against each other.
-- **`--attach` mode is the recommended next feature**: connect to the user's
-  already-running Chrome over CDP (`connect_over_cdp`, needs Chrome started
-  with `--remote-debugging-port=9222`) instead of launching a browser. No second
-  window, no separate profile, no login step, and it looks like ordinary
-  browsing. Contained change, replaces `launch_persistent_context` at 4 sites.
-- Rejected: direct Voyager HTTP with the session cookie (fastest and fully
-  background, but undocumented, breaks constantly, and exactly the pattern
-  anti-abuse targets — not something to publish under a real name). LinkedIn's
-  official API does not expose the connection list at all, only a count.
+Fixed by `SCROLL_CONTAINER_JS`, which finds the real scrolling element and sets
+its `scrollTop`, plus a genuine `page.mouse.wheel()` so the observer fires.
+
+### 2. Names were guessed from the URL
+
+The old extractor built a map of profile URLs that contained a `media.licdn.com`
+image, then matched a name to a URL by comparing **the first five letters** of
+the name against the URL slug. Two consequences: anyone without a profile photo
+had no entry at all and was skipped, and anyone whose slug did not begin with
+their name (custom slugs, initials, non-Latin names) was dropped or matched to
+the wrong person.
+
+Fixed by anchoring on the profile link. Each person renders two `<a>` tags
+pointing at the same profile — one wrapping the photo, one wrapping the name and
+headline. `CONNECTIONS_EXTRACT_JS` groups anchors by href and merges them. No
+class names are used anywhere: LinkedIn's are hashed per deploy
+(`_8e33b2ac`, `c313cecd`), so anything keyed off them breaks silently.
+
+### 3. The login check looked for an element that no longer exists
+
+`_looks_logged_out()` treated `nav.global-nav` as proof of a signed-in session.
+That element is gone from every LinkedIn page in 2026, so the check never
+matched and fell through to a URL guess.
+
+Fixed with `_has_session_cookie()`, which reads the `li_at` cookie from the
+browser context. It is set only by a real sign-in, and unlike the DOM it does
+not change shape when the site is redesigned.
+
+### 4. The login timer closed the window mid-login
+
+The wait was five minutes, and on timeout it called `browser.close()`. A first
+sign-in means email, password, and often a 2FA code from another device — this
+regularly ran out, and the punishment was the window disappearing and the whole
+attempt being thrown away.
+
+Now it waits as long as the window is open. **Closing the browser is the cancel
+signal**; there is no timer to lose a race against. `SIX_DEGREES_LOGIN_WAIT`
+overrides the 30-minute backstop. The profile is persistent, so this is a
+once-per-machine step.
+
+### 5. A bare `except` reported a broken scraper as an empty network
+
+The extract call was wrapped in `except Exception: rows = []`. When the injected
+JavaScript failed, every round returned zero rows and the run reported "0
+collected" — indistinguishable from having no connections. It hid a real bug:
+the JS lived in a **non-raw** Python string, so `.split('\n')` became a literal
+newline inside a JavaScript string literal at import time. The file on disk was
+valid; what reached the browser was not.
+
+Fixed the string (`r"""`), and the failure is now loud: it prints the error and
+aborts after three consecutive failures rather than reporting a confident zero.
+
+### 6. Scraped rows had no owner, so the UI ignored them
+
+Not a scraper bug, but it looked like one. The CLI pushed rows with
+`user_id = NULL`; every view filters by user id. 752 rows landed in the database
+and the app still showed the empty state. `resolve_active_user()` now asks the
+app which profile it has and adopts it, failing with an explanation if there is
+no profile or more than one (`SIX_DEGREES_USER` picks between them).
+
+### Modes
+
+| Command | What it does |
+|---|---|
+| `python3 scripts/scrape.py --full` | Walks the whole connections list. ~90s for 750 people. |
+| `python3 scripts/scrape.py --refresh` | Stops after 20 already on file. Seconds. |
+| `python3 scripts/scrape.py` | Picks `--full` on an empty database, `--refresh` otherwise. |
+| `python3 scripts/scrape.py --search` | Legacy people-search route, kept as a fallback. |
+| `--headless` | Works on every mode once signed in. More detectable than headful. |
+
+Two terminals: the app (`npm run dev`) in one, the scraper in the other. The app
+must be running — the scraper writes through its API, not to SQLite directly.
+
+### Still not verified
+
+Bridge (2nd-degree) and company scans use their own extractors with the same
+`window.scrollTo` pattern and the same fuzzy name matching that defects 1 and 2
+describe. **They are very likely broken in the same two ways and have not been
+run since.** They were not touched here because a bridge scrape hits a stranger's
+connection list and is the highest-ToS-risk operation in the project; it should
+be watched live the way this scrape was.
 
 ## Decisions already made — do not relitigate
 

@@ -197,8 +197,32 @@ async (maxPages) => {
 
 
 FEED_URL = "https://www.linkedin.com/feed/"
-LOGIN_WAIT_SECONDS = 300          # five minutes to finish logging in by hand
+# A first sign-in means email, password, and often a 2FA code from another
+# device. Five minutes was not enough, and timing out used to CLOSE the window
+# mid-login and throw the attempt away. Wait for as long as the window is open:
+# closing it is the honest "I am done" signal, and any timer here is a guess.
+LOGIN_WAIT_SECONDS = int(os.getenv("SIX_DEGREES_LOGIN_WAIT", "1800"))
+MAX_SCROLL_ROUNDS = 400           # ~10 people load per round
+SCROLL_PAUSE_SECONDS = 0.9
+SCROLL_STALL_LIMIT = 10           # rounds with no new names before stopping
 LOGIN_POLL_SECONDS = 3
+
+
+def _has_session_cookie(page):
+    """The one signal LinkedIn cannot render away.
+
+    `li_at` is the session cookie. It is set only after a real sign-in and it
+    survives redesigns, which the DOM does not: the `nav.global-nav` element an
+    earlier version of this check looked for no longer exists on any LinkedIn
+    page, so that check silently never matched.
+    """
+    try:
+        for c in page.context.cookies("https://www.linkedin.com"):
+            if c.get("name") == "li_at" and c.get("value"):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def _looks_logged_out(page):
@@ -211,10 +235,9 @@ def _looks_logged_out(page):
     url = (page.url or "").lower()
     if any(marker in url for marker in ("/login", "/authwall", "/signup", "/checkpoint", "/uas/")):
         return True
+    if _has_session_cookie(page):
+        return False
     try:
-        # The global nav only renders for a signed-in session.
-        if page.query_selector("nav.global-nav, #global-nav, [data-test-global-nav]"):
-            return False
         if page.query_selector("a[href*='/login'], button[data-tracking-control-name*='sign-in']"):
             return True
     except Exception:
@@ -222,7 +245,7 @@ def _looks_logged_out(page):
     return "/feed" not in url and "/mynetwork" not in url
 
 
-def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS):
+def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
     """Wait for a human to finish logging in, rather than scraping an empty page.
 
     The browser uses a persistent profile, so this is a once-per-machine step —
@@ -237,11 +260,13 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS):
     if not _looks_logged_out(page):
         return True
 
+    say = log_fn or (lambda m: None)
+    say("Waiting for you to sign into LinkedIn in the browser window...")
     print()
     print("  ==================================================================")
     print("  Log into LinkedIn in the browser window that just opened.")
-    print("  Nothing is scraped until you are signed in.")
-    print(f"  Waiting up to {timeout_s // 60} minutes; it continues on its own.")
+    print("  Nothing is scraped until you are signed in — take as long as")
+    print("  you need. Close the browser window to cancel.")
     print("  ==================================================================")
     print()
 
@@ -249,13 +274,38 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS):
     while waited < timeout_s:
         time.sleep(LOGIN_POLL_SECONDS)
         waited += LOGIN_POLL_SECONDS
-        if not _looks_logged_out(page):
-            print(f"  Signed in. Continuing.\n")
-            return True
-        if waited % 30 == 0:
-            print(f"  still waiting for sign-in... ({waited}s)", flush=True)
 
-    print("\n  Timed out waiting for sign-in. Run this again once you are logged in.")
+        # Closing the window is how you say "not now". Anything else keeps waiting.
+        try:
+            if page.is_closed():
+                print("\n  Browser closed — nothing was scraped.")
+                say("Browser closed before sign-in.")
+                return False
+        except Exception:
+            print("\n  Browser closed — nothing was scraped.")
+            return False
+
+        try:
+            signed_in = not _looks_logged_out(page)
+        except Exception:
+            # A navigation in flight makes the page briefly unreadable; that is
+            # not a logged-out signal, so keep waiting instead of giving up.
+            continue
+
+        if signed_in:
+            print("  Signed in. Continuing.\n")
+            say("Signed in. Continuing.")
+            return True
+
+        if waited % 30 == 0:
+            mins = waited // 60
+            note = f"{mins}m" if mins else f"{waited}s"
+            print(f"  still waiting for sign-in... ({note})", flush=True)
+            say(f"Still waiting for sign-in... ({note})")
+
+    print("\n  Gave up waiting for sign-in. Your progress is saved in the browser")
+    print("  profile — just run this again and it will pick up where you left off.")
+    say("Timed out waiting for sign-in.")
     return False
 
 
@@ -273,6 +323,49 @@ def get_scraper_profile_path():
     profile_dir = base / "chrome-profile"
     profile_dir.mkdir(parents=True, exist_ok=True)
     return str(profile_dir)
+
+
+def resolve_active_user():
+    """Attach this scrape to the profile the app is showing.
+
+    The app filters every view by user id, so rows written with no owner land in
+    the database and then never appear on screen — the scrape looks like it
+    silently did nothing. Ask the app who it has and adopt that profile.
+    """
+    global _active_user_id
+    if _active_user_id:
+        return _active_user_id
+
+    try:
+        resp = requests.get(f"{APP_URL}/api/users", headers=app_headers(json_body=False), timeout=15)
+        users = resp.json().get("users", []) if resp.status_code == 200 else []
+    except Exception:
+        print(f"\n  Could not reach the app at {APP_URL}.")
+        print("  Start it with `npm run dev` in another terminal, then run this again.\n")
+        raise SystemExit(1)
+
+    wanted = os.getenv("SIX_DEGREES_USER", "").strip().lower()
+    if wanted:
+        for u in users:
+            if (u.get("name") or "").strip().lower() == wanted:
+                _active_user_id = u["id"]
+                print(f"  Scraping into profile: {u['name']}")
+                return _active_user_id
+        raise SystemExit(f"No profile named '{os.getenv('SIX_DEGREES_USER')}' in the app.")
+
+    if not users:
+        print(f"\n  No profile yet. Open {APP_URL}, enter your name, then run this again.\n")
+        raise SystemExit(1)
+
+    if len(users) > 1:
+        names = ", ".join(f"'{u.get('name')}'" for u in users)
+        raise SystemExit(
+            f"The app has more than one profile ({names}).\n"
+            "Pick one with: SIX_DEGREES_USER='Your Name' python3 scripts/scrape.py --full")
+
+    _active_user_id = users[0]["id"]
+    print(f"  Scraping into profile: {users[0].get('name')}")
+    return _active_user_id
 
 
 def read_connections(endpoint="", params=None):
@@ -569,26 +662,100 @@ def scrape_full(headless=False):
     return all_connections
 
 
-def scrape_connections(headless=False):
-    """Smart refresh: uses connections page (/mynetwork/invite-connect/connections/)
-    sorted by 'Recently added'. Scrolls + clicks 'Load more' to find new connections.
-    Stops when it hits people already in the database."""
+# The connections page keeps its list inside <main>, which is its own scroll
+# container: the window itself never scrolls, so window.scrollTo() — what this
+# scraper used to call — is a no-op there. Nothing new ever loaded and the run
+# ended with the first ten people. Scroll the real container instead, and send a
+# genuine wheel event too, because the list loads on an intersection observer.
+SCROLL_CONTAINER_JS = """
+() => {
+  let best = null;
+  document.querySelectorAll('main, [role="main"], div').forEach(el => {
+    const cs = getComputedStyle(el);
+    if (!/(auto|scroll)/.test(cs.overflowY)) return;
+    if (el.scrollHeight <= el.clientHeight + 20) return;
+    if (!best || el.scrollHeight > best.scrollHeight) best = el;
+  });
+  const target = best || document.scrollingElement || document.body;
+  target.scrollTop = target.scrollHeight;
+  window.scrollTo(0, document.body.scrollHeight);
+  return target.scrollTop;
+}
+"""
+
+# Anchor everything on the profile link, never on class names (LinkedIn's are
+# hashed per deploy) and never on guessing which text line goes with which URL.
+# Each person renders two <a> tags pointing at the same profile: one wrapping
+# the photo, one wrapping the name and headline. Group by href and merge.
+CONNECTIONS_EXTRACT_JS = r"""
+() => {
+  const root = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+  const clean = s => (s || '').replace(/[’']s profile picture$/i, '').trim();
+  const byHref = new Map();
+  root.querySelectorAll('a[href*="/in/"]').forEach(a => {
+    if (a.closest('nav, header, footer')) return;
+    const raw = a.getAttribute('href') || '';
+    if (!raw.includes('/in/')) return;
+    let url = raw.startsWith('http') ? raw : 'https://www.linkedin.com' + raw;
+    url = url.split('?')[0].split('#')[0].replace(/\/+$/, '') + '/';
+    let rec = byHref.get(url);
+    if (!rec) { rec = { profileUrl: url, name: '', headline: '', imageUrl: '', _named: false }; byHref.set(url, rec); }
+    const img = a.querySelector('img');
+    if (img) {
+      if (!rec.imageUrl && img.src && img.src.includes('licdn.com') && !/ghost|^data:/.test(img.src)) rec.imageUrl = img.src;
+      // Fallback only: the alt text reads "Jane Doe's profile picture".
+      if (!rec.name && img.alt) rec.name = clean(img.alt);
+    }
+    const lines = (a.innerText || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (lines.length) {
+      // The text anchor is authoritative; it always wins over the image alt.
+      if (!rec._named) { rec.name = clean(lines[0]); rec._named = true; }
+      if (!rec.headline && lines[1] && !/^Connected on/i.test(lines[1])) rec.headline = lines[1];
+    }
+  });
+  return [...byHref.values()].filter(r => r.name && r.name.length >= 2).map(({ _named, ...r }) => r);
+}
+"""
+
+
+def _reported_connection_count(page):
+    """The "754 connections" line the page prints above the list."""
+    try:
+        return page.evaluate(
+            """() => { const m = document.body.innerText.match(/([\\d,]+)\\s+connections?/i);
+                       return m ? parseInt(m[1].replace(/,/g, '')) : null; }"""
+        )
+    except Exception:
+        return None
+
+
+def scrape_connections(headless=False, full_walk=False, log_fn=None):
+    """Read your connections from the connections page.
+
+    full_walk=False is the incremental refresh: it walks from the most recently
+    added and stops once it has seen a long run of people already on file.
+    full_walk=True keeps going to the bottom of the list, which is the way to
+    collect an entire network in one pass.
+    """
     from playwright.sync_api import sync_playwright
 
-    print("\n=== Smart Connection Refresh ===\n")
-    print("Checking for new connections...\n")
+    say = log_fn or (lambda m: None)
+    mode = "Full Connection Scrape" if full_walk else "Smart Connection Refresh"
+    print(f"\n=== {mode} ===\n")
 
-    # Get existing profile URLs from database for stop-loss
     existing_urls = set()
-    try:
-        params = {"degree": "eq.1", "select": "profile_url", "limit": "2000"}
-        if _active_user_id:
-            params["user_id"] = f"eq.{_active_user_id}"
-        existing = read_connections(params=params)
-        existing_urls = {e["profile_url"] for e in existing}
-        print(f"  {len(existing_urls)} existing connections in database")
-    except:
-        pass
+    if not full_walk:
+        try:
+            params = {"degree": "eq.1", "select": "profile_url", "limit": "5000"}
+            if _active_user_id:
+                params["user_id"] = f"eq.{_active_user_id}"
+            existing_urls = {e["profile_url"] for e in read_connections(params=params)}
+            print(f"  {len(existing_urls)} existing connections on file")
+        except Exception:
+            pass
+
+    collected = {}
+    reported = None
 
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
@@ -603,143 +770,126 @@ def scrape_connections(headless=False):
         page.set_default_timeout(120000)
         page.set_default_navigation_timeout(120000)
 
-        # Check login
-        try:
-            page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
-        except:
-            pass
-        if not ensure_logged_in(page):
+        if not ensure_logged_in(page, log_fn=log_fn):
             browser.close()
-            return
+            return []
 
-        # Navigate to connections page (sorted by Recently added)
-        conn_url = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
         print("Opening connections page...")
+        say("Opening your connections page...")
         try:
-            page.goto(conn_url, wait_until="commit")
-        except:
+            page.goto(CONNECTIONS_URL, wait_until="domcontentloaded")
+        except Exception:
             pass
-        time.sleep(6)
+        try:
+            # Wait for the list itself, not a fixed sleep: a slow render used to
+            # look identical to an empty network.
+            page.wait_for_selector('a[href*="/in/"]', timeout=60000)
+        except Exception:
+            print("  No connections rendered on the page.")
+            say("No connections rendered — is the page loading?")
+            browser.close()
+            return []
+        time.sleep(3)
 
-        all_connections = []
-        seen_urls = set()
-        new_count = 0
+        reported = _reported_connection_count(page)
+        if reported:
+            print(f"  LinkedIn reports {reported} connections")
+            say(f"LinkedIn reports {reported} connections")
+
         known_streak = 0
+        stalls = 0
+        extract_errors = 0
 
-        # Scroll + Load more loop
-        for round_num in range(60):
-            # Scroll to bottom
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            time.sleep(1)
-
-            # Click "Load more" if visible
+        for round_num in range(MAX_SCROLL_ROUNDS):
             try:
-                load_more = page.locator('button:has-text("Load more")').first
-                if load_more.is_visible(timeout=2000):
-                    load_more.click()
-                    time.sleep(2)
-            except:
+                page.evaluate(SCROLL_CONTAINER_JS)
+            except Exception:
                 pass
+            try:
+                page.mouse.move(700, 500)
+                page.mouse.wheel(0, 3000)
+            except Exception:
+                pass
+            time.sleep(SCROLL_PAUSE_SECONDS)
 
-            # Extract visible connections from the page text
-            # The connections page shows: Name, Headline, "Connected on ...", "Message"
-            # We parse the main text and match names to profile URLs
-            page_data = page.evaluate("""
-            () => {
-              // Build URL map from links
-              const urlMap = {};
-              const imgMap = {};
-              document.querySelectorAll('a').forEach(a => {
-                if (!a.href || !a.href.includes('/in/')) return;
-                const url = a.href.split('?')[0];
-                // Get image inside this link
-                const img = a.querySelector('img[src*="media.licdn.com"]');
-                if (img) imgMap[url] = img.src;
-              });
-
-              // Parse page text for name/headline pairs
-              const main = document.querySelector('main') || document.querySelector('[role="main"]');
-              if (!main) return [];
-              const text = main.innerText;
-              const lines = text.split('\\n').map(l => l.trim()).filter(Boolean);
-              const results = [];
-              const seen = new Set();
-              const junk = ['Recently added', 'Sort by', 'Search by name', 'Search with filters',
-                'Load more', 'connections', 'About', 'Accessibility', 'Help Center'];
-
-              for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                // Skip junk lines
-                if (junk.some(j => line.includes(j))) continue;
-                if (line === 'Message' || line.startsWith('Connected on')) continue;
-                if (line.length > 60 || line.length < 2) continue;
-
-                // Check if next line is a headline (not "Message" or "Connected on")
-                const next = lines[i + 1] || '';
-                if (next === 'Message' || next.startsWith('Connected on') || junk.some(j => next.includes(j))) continue;
-
-                // This looks like a name — find matching URL
-                const matchUrl = Object.keys(imgMap).find(url => {
-                  const slug = url.split('/in/')[1]?.replace('/', '').toLowerCase() || '';
-                  const nameLower = line.toLowerCase().replace(/[^a-z]/g, '');
-                  return slug.includes(nameLower.substring(0, 5)) || nameLower.includes(slug.substring(0, 5));
-                });
-
-                if (!matchUrl || seen.has(matchUrl)) continue;
-                seen.add(matchUrl);
-
-                const headline = (next && !next.startsWith('Connected on') && next !== 'Message') ? next : '';
-                results.push({ name: line, headline, profileUrl: matchUrl, imageUrl: imgMap[matchUrl] || '' });
-              }
-              return results;
-            }
-            """)
-
-            # Check for new vs known
-            round_new = 0
-            for c in page_data:
-                url = c.get("profileUrl", "")
-                if url in seen_urls:
+            before = len(collected)
+            try:
+                rows = page.evaluate(CONNECTIONS_EXTRACT_JS)
+                extract_errors = 0
+            except Exception as exc:
+                # Never let this look like "you have no connections": say it out
+                # loud and give up rather than reporting a confident zero.
+                rows = []
+                extract_errors += 1
+                if extract_errors == 1:
+                    print(f"  Could not read the page: {exc}")
+                    say("Could not read the connections page.")
+                if extract_errors >= 3:
+                    print("  Aborting — the page could not be read three times running.")
+                    browser.close()
+                    return []
+            for row in rows:
+                url = row.get("profileUrl")
+                if not url or url in collected:
                     continue
-                seen_urls.add(url)
-
+                collected[url] = row
                 if url in existing_urls:
                     known_streak += 1
                 else:
-                    round_new += 1
-                    new_count += 1
                     known_streak = 0
-                    all_connections.append(c)
+            gained = len(collected) - before
 
-            if round_num % 5 == 0 and round_num > 0:
-                print(f"  Round {round_num}: {len(seen_urls)} scanned, {new_count} new so far", flush=True)
+            if gained:
+                stalls = 0
+            else:
+                stalls += 1
+                # Older layouts paginate with a button instead of scrolling.
+                try:
+                    more = page.locator('button:has-text("Load more"), button:has-text("Show more")').first
+                    if more.count() and more.is_visible(timeout=500):
+                        more.click()
+                        time.sleep(1.5)
+                        stalls = 0
+                except Exception:
+                    pass
 
-            # Stop if we've seen 20+ known people in a row (caught up with existing data)
-            if known_streak >= 20:
-                print(f"  Caught up — {known_streak} known in a row.")
+            if gained and len(collected) % 50 < gained:
+                msg = f"  {len(collected)}" + (f" / {reported}" if reported else "") + " collected"
+                print(msg, flush=True)
+                say(msg.strip())
+
+            if stalls >= SCROLL_STALL_LIMIT:
+                print(f"  Reached the end of the list ({len(collected)} collected).")
+                break
+            if reported and len(collected) >= reported:
+                print(f"  Collected all {len(collected)} connections.")
+                break
+            if not full_walk and known_streak >= 20:
+                print(f"  Caught up — {known_streak} already on file in a row.")
                 break
 
-            # Stop if no Load more and no new people for 3 rounds
-            if round_num > 5 and round_new == 0:
-                try:
-                    lm = page.locator('button:has-text("Load more")').first
-                    if not lm.is_visible(timeout=1000):
-                        break
-                except:
-                    break
-
-        print(f"\nTotal: {len(seen_urls)} scanned, {new_count} new")
         browser.close()
 
-    if all_connections:
-        print(f"\nPushing {len(all_connections)} new connections to the app...")
-        inserted = push_connections(all_connections, degree=1)
-    else:
-        print("\nNo new connections to push.")
+    found = list(collected.values())
+    new_rows = [r for r in found if r["profileUrl"] not in existing_urls] if existing_urls else found
+    with_photos = sum(1 for r in found if r.get("imageUrl"))
+    print(f"\nCollected {len(found)} connections ({with_photos} with photos); {len(new_rows)} new.")
+    say(f"Collected {len(found)} connections, {len(new_rows)} new")
 
-    print(f"\nDone! {new_count} new connections found.")
-    print(f"Visit {APP_URL} to see your network visualization.")
-    return all_connections
+    # Only meaningful on a full walk: a refresh stops early on purpose.
+    if full_walk and reported and len(found) < reported * 0.5:
+        print(f"  WARNING: LinkedIn reported {reported} but only {len(found)} were read.")
+        print("  Re-run, and if it repeats the page layout has probably changed again.")
+        say(f"Warning: only read {len(found)} of {reported}")
+
+    if new_rows:
+        print(f"\nPushing {len(new_rows)} connections to the app...")
+        push_connections(new_rows, degree=1)
+    else:
+        print("\nNothing new to push.")
+
+    print(f"\nDone. Visit {APP_URL} to see your network.")
+    return new_rows
 
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
@@ -1514,9 +1664,10 @@ def run_server(port=5555):
                 def run_scrape():
                     try:
                         if action == "full-scrape":
-                            state["log"].append("Full account setup — scraping ALL connections via search page...")
-                            state["log"].append("This takes 3-5 minutes...")
-                            result = scrape_full()
+                            state["log"].append("Full account setup — walking your whole connections list...")
+                            result = scrape_connections(
+                                full_walk=True,
+                                log_fn=lambda msg: state["log"].append(msg))
                             count = len(result) if result else 0
                             state["result"] = {"status": "done", "action": "full-scrape", "found": count}
                             state["log"].append(f"Done! {count} connections with images captured")
@@ -1552,7 +1703,8 @@ def run_server(port=5555):
                         else:
                             # Refresh connections only — no auto-bridge
                             state["log"].append("Checking for new connections...")
-                            result = scrape_connections()
+                            result = scrape_connections(
+                                log_fn=lambda msg: state["log"].append(msg))
                             new_count = len(result) if result else 0
                             state["log"].append(f"  {new_count} connections scanned")
                             state["result"] = {"status": "done", "action": "refresh", "found": new_count}
@@ -1613,14 +1765,18 @@ if __name__ == "__main__":
 Examples:
   python3 scripts/scrape.py --server                 # Start local server (use Setup page buttons)
   python3 scripts/scrape.py                          # Scrape your degree-1 connections
+  python3 scripts/scrape.py --full                   # Walk the whole connections list
+  python3 scripts/scrape.py --refresh                # Only what is new since last run
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
         """,
     )
     parser.add_argument("--full", action="store_true",
-                        help="Full first-time scrape: walks the search pages and captures photos")
+                        help="Walk your whole connections list top to bottom (first-time scrape)")
     parser.add_argument("--refresh", action="store_true",
                         help="Only look for connections added since the last run")
+    parser.add_argument("--search", action="store_true",
+                        help="Legacy: collect via the people-search pages instead of the connections page")
     parser.add_argument("--server", action="store_true", help="Start local scraper server (use website buttons)")
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
@@ -1629,8 +1785,13 @@ Examples:
 
     _assert_local_target()
 
-    if args.full:
+    if not args.server:
+        resolve_active_user()
+
+    if args.search:
         scrape_full(headless=args.headless)
+    elif args.full:
+        scrape_connections(headless=args.headless, full_walk=True)
     elif args.refresh:
         scrape_connections(headless=args.headless)
     elif args.server:
@@ -1649,6 +1810,6 @@ Examples:
             print("Use --full to re-walk everything.\n")
             scrape_connections(headless=args.headless)
         else:
-            print("\nNo connections yet — running the full first-time scrape.")
-            print("This walks the search pages and captures photos; it takes a few minutes.\n")
-            scrape_full(headless=args.headless)
+            print("\nNo connections yet — walking your whole connections list.")
+            print("This takes a couple of minutes and captures photos.\n")
+            scrape_connections(headless=args.headless, full_walk=True)
