@@ -25,6 +25,7 @@ in one session — LinkedIn detects automation and flags your account.
 import argparse
 import json
 import os
+import signal
 import sys
 import time
 import requests
@@ -854,6 +855,9 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
         extract_errors = 0
 
         for round_num in range(MAX_SCROLL_ROUNDS):
+            if stop_requested():
+                print("  Stopped — keeping what was collected so far.")
+                break
             try:
                 page.evaluate(SCROLL_CONTAINER_JS)
             except Exception:
@@ -982,6 +986,48 @@ def clear_bridge_skips():
         print("Cleared the skip list — every bridge will be tried again.")
     except FileNotFoundError:
         print("No skips recorded.")
+
+
+# Stopping cleanly.
+#
+# A long auto-bridge run is the one thing here you will want to interrupt, and
+# killing the process outright leaves a Chrome window with a live LinkedIn
+# session orphaned behind it. So SIGTERM sets a flag instead: the loop notices
+# between people, and while counting down, and exits with a summary.
+_stop_requested = False
+
+
+def _request_stop(signum, _frame):
+    global _stop_requested
+    if not _stop_requested:
+        _stop_requested = True
+        print("\n  Stopping after the current step — closing the browser cleanly...", flush=True)
+
+
+def install_stop_handler():
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(sig, _request_stop)
+        except (ValueError, OSError):
+            pass          # not the main thread (server mode) — nothing to install
+
+
+def stop_requested():
+    return _stop_requested
+
+
+def interruptible_sleep(seconds, on_tick=None, step=5):
+    """Sleep, but notice a stop request. Returns False if we were interrupted."""
+    waited = 0
+    while waited < seconds:
+        if stop_requested():
+            return False
+        chunk = min(step, seconds - waited)
+        time.sleep(chunk)
+        waited += chunk
+        if on_tick and waited < seconds:
+            on_tick(seconds - waited)
+    return not stop_requested()
 
 
 BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be polite
@@ -1583,7 +1629,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
     return all_people
 
 
-def auto_bridge_all(headless=False, log_fn=None, retry_private=False):
+def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0):
     """Auto-bridge all unbridged connections, S-tier first then down.
     Picks up from where we left off — skips already-bridged people."""
 
@@ -1635,8 +1681,16 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False):
         if tier_counts.get(t, 0) > 0:
             log(f"  {t}-tier: {tier_counts[t]} to bridge")
 
+    if max_bridges and max_bridges > 0:
+        unbridged = unbridged[:max_bridges]
+        log(f"Stopping after {len(unbridged)} this run.")
+
     results = []
     for i, person in enumerate(unbridged):
+        if stop_requested():
+            log("Stopped.")
+            break
+
         name = person["name"]
         tier = person.get("tier", "?")
         score = person.get("power_score", "?")
@@ -1674,18 +1728,16 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False):
         if i < len(unbridged) - 1:
             cooldown = BRIDGE_COOLDOWN if scraped else BRIDGE_SKIP_COOLDOWN
             log(f"  Waiting {cooldown}s before the next one...")
-            waited = 0
-            while waited < cooldown:
-                time.sleep(min(15, cooldown - waited))
-                waited += min(15, cooldown - waited)
-                if waited < cooldown:
-                    log(f"    {cooldown - waited}s to go")
+            if not interruptible_sleep(cooldown, on_tick=lambda left: log(f"    {left}s to go"), step=15):
+                log("Stopped.")
+                break
 
     # Summary
     success = sum(1 for r in results if r["status"] == "done")
     private = sum(1 for r in results if r["status"] == "private")
     errors = sum(1 for r in results if r["status"] == "error")
-    log(f"Complete: {success} bridged / {private} hidden / {errors} failed")
+    log(f"{'Stopped' if stop_requested() else 'Complete'}: "
+        f"{success} bridged / {private} hidden / {errors} failed")
     if private:
         log("Hidden profiles are remembered and will be skipped next time.")
 
@@ -1938,9 +1990,12 @@ Examples:
                         help="With --auto-bridge: try people previously found to be hidden")
     parser.add_argument("--clear-skips", action="store_true",
                         help="Forget every hidden-profile skip and start clean")
+    parser.add_argument("--max-bridges", type=int, default=0,
+                        help="With --auto-bridge: stop after this many people (0 = no limit)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
 
+    install_stop_handler()
     _assert_local_target()
 
     if args.clear_skips:
@@ -1962,7 +2017,8 @@ Examples:
             push_company(people, args.company)
         print(f"Done. {len(people) if people else 0} found at {args.company}.")
     elif args.auto_bridge:
-        results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private)
+        results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
+                                  max_bridges=args.max_bridges)
         done = sum(1 for r in results if r.get("status") == "done")
         print(f"\nDone. {done}/{len(results)} bridges mapped.")
     elif args.search:

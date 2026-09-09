@@ -24,7 +24,34 @@ const state = {
   startedAt: null,
   exitCode: null,
   child: null,
+  stopping: false,
 };
+
+/** Stop the running job without orphaning the browser it opened.
+ *
+ *  The child is spawned into its own process group, so the negative pid
+ *  signals Chrome too — killing only the Python process would leave a browser
+ *  window open with a live LinkedIn session in it. SIGTERM first, because the
+ *  scraper catches it and closes the browser itself; SIGKILL only if that is
+ *  ignored.
+ */
+function stopChild() {
+  const child = state.child;
+  if (!child) return;
+  state.stopping = true;
+  push('Stopping…');
+  const pid = child.pid;
+  try { process.kill(-pid, 'SIGTERM'); }
+  catch { try { child.kill('SIGTERM'); } catch {} }
+
+  setTimeout(() => {
+    if (state.child && state.child.pid === pid) {
+      push('Still running — forcing it.');
+      try { process.kill(-pid, 'SIGKILL'); }
+      catch { try { child.kill('SIGKILL'); } catch {} }
+    }
+  }, 20000);
+}
 
 function push(line) {
   for (const part of String(line).split('\n')) {
@@ -183,7 +210,7 @@ export async function POST(request) {
   const action = String(body.action || '');
 
   if (action === 'cancel') {
-    if (state.child) { try { state.child.kill('SIGTERM'); } catch {} }
+    stopChild();
     return Response.json({ ok: true, cancelled: true });
   }
 
@@ -192,6 +219,9 @@ export async function POST(request) {
   }
 
   const spec = ACTIONS[action];
+  const maxBridges = Number.isInteger(body.maxBridges) && body.maxBridges > 0
+    ? Math.min(body.maxBridges, 500)
+    : 0;
   let name = null;
   if (spec.needsName) {
     name = cleanName(body.name);
@@ -237,6 +267,7 @@ export async function POST(request) {
             // `--flag=value` is one token on purpose: a name beginning with
             // "-" can then never be read as a flag of its own.
             ...(name ? [`${spec.flag}=${name}`] : spec.flag.split(' ')),
+            ...(maxBridges && action.startsWith('auto-bridge') ? [`--max-bridges=${maxBridges}`] : []),
           ],
         },
       ];
@@ -247,6 +278,7 @@ export async function POST(request) {
   const port = host.includes(':') ? host.split(':').pop() : '80';
 
   state.running = true;
+  state.stopping = false;
   state.action = action;
   state.exitCode = null;
   state.startedAt = Date.now();
@@ -261,7 +293,8 @@ export async function POST(request) {
   };
 
   function finish(code) {
-    push(code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
+    push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
+    state.stopping = false;
     state.running = false;
     state.child = null;
     state.exitCode = code;
@@ -275,7 +308,8 @@ export async function POST(request) {
 
     let child;
     try {
-      child = spawn(step.cmd, step.args, { cwd: root, env: childEnv });
+      // Its own process group, so cancelling reaches the browser as well.
+      child = spawn(step.cmd, step.args, { cwd: root, env: childEnv, detached: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);
@@ -290,6 +324,7 @@ export async function POST(request) {
     });
     child.on('error', (err) => { push(`Could not start: ${err.message}`); finish(-1); });
     child.on('close', (code) => {
+      if (state.stopping) return finish(code ?? 0);
       if (code !== 0 && !step.tolerant) return finish(code);
       runStep(i + 1);
     });

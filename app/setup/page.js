@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
+import { stopScrape } from '../../lib/scraper-client';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -11,6 +12,15 @@ import Link from 'next/link';
 const BG = '#0a0a1a';
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
+const ACTION_LABELS = {
+  install: 'Installing the scraper',
+  login: 'Waiting for you to sign in',
+  full: 'Scanning your whole network',
+  refresh: 'Checking for new connections',
+  'auto-bridge': 'Mapping 2nd-degree connections',
+  'auto-bridge-retry': 'Mapping 2nd degree, hidden ones included',
+};
+
 export default function SetupPage() {
   return <OnboardingGate><SetupInner /></OnboardingGate>;
 }
@@ -18,6 +28,7 @@ export default function SetupPage() {
 function SetupInner() {
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [batch, setBatch] = useState(25);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -40,14 +51,20 @@ function SetupInner() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [s?.log?.length]);
 
-  async function run(action) {
+  async function stop() {
+    setError(null);
+    await stopScrape().catch((e) => setError(e.message));
+    poll();
+  }
+
+  async function run(action, extra = {}) {
     setError(null);
     setBusy(true);
     try {
       const r = await fetch('/api/scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...extra }),
       });
       const d = await r.json();
       if (!r.ok) setError(d.error || 'Could not start.');
@@ -153,12 +170,12 @@ function SetupInner() {
           }
         />
 
-        {/* ---- step 3 : scan ---- */}
+        {/* ---- step 3 : the people you know ---- */}
         <Step
           n={3}
           done={false}
-          title="Scan"
-          body="The first scan walks your whole connections list — about a minute and a half for 750 people. After that, use Check for new."
+          title="1st degree — the people you know"
+          body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
           action={
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Btn onClick={() => run('full')} disabled={!canScrape} primary>
@@ -167,10 +184,69 @@ function SetupInner() {
               <Btn onClick={() => run('refresh')} disabled={!canScrape}>
                 {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
               </Btn>
-              {running && <Btn onClick={() => run('cancel')} tone="bad">Stop</Btn>}
             </div>
           }
         />
+
+        {/* ---- step 4 : who they know ---- */}
+        <Step
+          n={4}
+          done={false}
+          title="2nd degree — the people they know"
+          body={
+            <>
+              This is what fills <b>Bridges</b> and <b>Outlink</b>: it opens each of your
+              connections in turn and reads who <i>they</i> know. Most people hide their
+              connections — those are noted and never tried again.
+              <br /><br />
+              It is slow on purpose, about two minutes between each person. Run it in
+              batches rather than for hours at a stretch: LinkedIn starts showing
+              “unusual activity” warnings on long unbroken runs.
+            </>
+          }
+          action={
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch })} disabled={!canScrape} primary>
+                {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
+              </Btn>
+              <select
+                value={batch}
+                onChange={(e) => setBatch(Number(e.target.value))}
+                disabled={running}
+                style={{
+                  padding: '9px 10px', borderRadius: 7, fontSize: 13.5, fontWeight: 600,
+                  background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
+                }}
+              >
+                <option value={10}>10 people</option>
+                <option value={25}>25 people</option>
+                <option value={50}>50 people</option>
+                <option value={0}>everyone</option>
+              </select>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch })} disabled={!canScrape}>
+                Retry hidden ones
+              </Btn>
+            </div>
+          }
+        />
+
+        {/* ---- stop: one control, always where the log is ---- */}
+        {running && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
+            padding: '14px 16px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.05)', border: LINE,
+          }}>
+            <Spinner />
+            <div style={{ flex: 1, fontSize: 13.5 }}>
+              <b>{ACTION_LABELS[s.action] || 'Working'}</b>
+              <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 2 }}>
+                Stopping closes the browser cleanly and keeps everything found so far.
+              </div>
+            </div>
+            <Btn onClick={stop} tone="bad">Stop</Btn>
+          </div>
+        )}
 
         {error && <Box tone="bad">{error}</Box>}
 

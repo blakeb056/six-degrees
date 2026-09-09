@@ -210,3 +210,37 @@ Two fixes, and the first is the one that matters:
 Also here: the loop now catches `BaseException`, not `Exception`. A `SystemExit`
 raised deep in a helper would otherwise end the whole run while looking like a
 clean exit, which is the least debuggable failure of the set.
+
+---
+
+## 16. LinkedIn restricts accounts for sustained scraping — measured, not theorised
+
+On 2026-09-09 a real account was temporarily restricted after roughly an hour of
+continuous auto-bridging:
+
+> *"We restricted your account because we detected that over time, it has accessed
+> an unusually high volume of LinkedIn profile data."*
+
+Twenty-four hours' notice, lifted the same evening. A warning had appeared during
+the run, before the restriction landed.
+
+At the two-minute cooldown then in force, an hour is roughly **20–25 profiles**.
+That is the only real number this project has, and it is a ceiling observed once —
+not a safe limit. The trigger is *profile views over time*, so the connections
+scrape (one page, several hundred people) is cheap and bridge mapping (one profile
+view each, plus a search walk) is what costs.
+
+What this means for the code:
+
+- **Batching is the default, not an option.** The Scan page offers 10 / 25 / 50 and
+  `--max-bridges` caps a run. An open-ended "map everything" is how you get here.
+- **The cooldown is a real feature.** Do not shorten `BRIDGE_COOLDOWN` to make
+  testing faster; that number is the whole safety margin.
+- **Stopping must be immediate and clean**, because the moment to stop is usually
+  the moment a warning appears. SIGTERM sets a flag, the loop exits between people,
+  and the browser closes itself.
+- **Never help anyone evade a restriction.** If an account is restricted, the answer
+  is to wait it out and scrape less — not to rotate anything.
+
+The README and `docs/SCRAPING.md` already say accounts have been restricted for this.
+This entry exists so the warning carries a number and a date instead of being generic.

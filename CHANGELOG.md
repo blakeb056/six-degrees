@@ -24,7 +24,16 @@ First release, not yet published to npm.
 - Scanning a company or auto-bridging can now be run from the command line too
   (`--company "Acme"`, `--auto-bridge`); they used to exist only behind the old server.
 
+### Added
+- The Scan page now covers 2nd-degree mapping as its own step, in batches of 10, 25 or
+  50 people, with a **Stop** button. Stopping closes the browser cleanly and keeps
+  everything found so far.
+- `--max-bridges` caps how many people one run will visit.
+
 ### Fixed
+- Stopping a run no longer leaves a browser window open behind it. The scraper is
+  started in its own process group and asked to stop rather than killed, so it closes
+  the browser and reports what it managed to do.
 - Auto-bridge no longer stalls on people whose connections are hidden. It notes them,
   moves on, and does not try them again — they used to reappear at the top of the list
   on every run, so the same few profiles were retried forever and the feature looked

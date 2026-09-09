@@ -100,6 +100,13 @@ unless asked. See TRAPS §15 for why recording the attempt is the whole fix.
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.
 
+## Rate limits — a measured one
+
+A real account was temporarily restricted on 2026-09-09 after about an hour of
+continuous auto-bridging — roughly 20–25 profile views at the two-minute cooldown.
+Lifted the same day. See TRAPS §16. Treat that as a ceiling seen once, not a safe
+budget: batch the work, keep the cooldown, and stop at the first warning.
+
 ## Posture
 
 Automating LinkedIn may violate its User Agreement and accounts have been restricted for
