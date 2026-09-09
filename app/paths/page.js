@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
@@ -204,86 +205,40 @@ function PathsInner() {
     if (IS_DEMO) return;
     if (!selectedCompany) return;
     setScanning(true);
-    setScanLog(['Checking scraper server...']);
+    setScanLog(['Checking the scraper...']);
 
-    try {
-      const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-      if (!(await ping.json()).ok) throw new Error();
-    } catch {
-      setScanLog(['Scraper offline — start it first']);
+    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    if (blocked) {
+      setScanLog([blocked]);
       setScanning(false);
       return;
     }
 
-    setScanLog([`Scanning "${selectedCompany.name}" on LinkedIn...`]);
     try {
-      await fetch('http://localhost:5555/scrape', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'company', company: selectedCompany.name, userId }),
+      // The scraper saves what it finds itself, so this only has to wait and
+      // then re-read. The old path pushed a second copy from the browser.
+      const final = await runScrape('company', {
+        name: selectedCompany.name,
+        onLog: setScanLog,
       });
 
-      const poll = setInterval(async () => {
-        try {
-          const r = await fetch('http://localhost:5555/status');
-          const d = await r.json();
-          setScanLog(d.log || []);
-          if (!d.running && d.result) {
-            clearInterval(poll);
-            if (d.result.people && d.result.people.length > 0) {
-              const scrapedPeople = d.result.people;
-
-              // Push to database via API (belt-and-suspenders — scraper may also push)
-              setScanLog(prev => [...prev, `Saving ${scrapedPeople.length} people to database...`]);
-              try {
-                const pushResp = await fetch('/api/ingest', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    connections: scrapedPeople.map(p => ({
-                      name: p.name,
-                      headline: p.headline,
-                      profileUrl: p.profileUrl,
-                      imageUrl: p.imageUrl || '',
-                    })),
-                    type: 'company',
-                    companyName: selectedCompany.name,
-                    userId: userId,
-                  }),
-                });
-                const pushResult = await pushResp.json();
-                setScanLog(prev => [...prev, `Saved to database ✓ (${pushResult.processed || 0} processed)`]);
-
-                // Also push images
-                const images = scrapedPeople
-                  .filter(p => p.imageUrl && p.profileUrl)
-                  .map(p => ({ profileUrl: p.profileUrl, imageUrl: p.imageUrl }));
-                if (images.length > 0) {
-                  await fetch('/api/update-images', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ images }),
-                  });
-                }
-              } catch (pushErr) {
-                setScanLog(prev => [...prev, `DB save error: ${pushErr.message}`]);
-              }
-
-              // Merge into UI state
-              const existingUrls = new Set(companyPeople.map(p => p.profile_url || p.profileUrl));
-              const newPeople = scrapedPeople
-                .filter(p => !existingUrls.has(p.profileUrl))
-                .map(p => ({ ...p, profile_url: p.profileUrl, degree: 3, source: 'scraped' }));
-
-              const merged = [...companyPeople, ...enrichPeople(newPeople)];
-              setCompanyPeople(merged);
-              setScanLog(prev => [...prev, `Added ${newPeople.length} new people to view`]);
-            }
-            setScanning(false);
-          }
-        } catch {}
-      }, 2000);
-    } catch {
-      setScanLog(['Failed to start scan']);
+      if (final.exitCode === 0) {
+        setScanLog(prev => [...prev, 'Loading the new people...']);
+        const r = await fetch(
+          `/api/connections?scanned_company=${encodeURIComponent(selectedCompany.name)}&limit=500`
+        );
+        const d = await r.json();
+        const rows = d.connections || [];
+        if (rows.length) {
+          setCompanyPeople(enrichPeople(rows));
+          setScanLog(prev => [...prev, `${rows.length} people at ${selectedCompany.name}.`]);
+        } else {
+          setScanLog(prev => [...prev, 'Nothing new was found.']);
+        }
+      }
+    } catch (e) {
+      setScanLog([e.message || 'Failed to start the scan']);
+    } finally {
       setScanning(false);
     }
   }

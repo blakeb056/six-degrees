@@ -6,7 +6,7 @@ import { db as supabase } from '../../../lib/db';
 // asks the app instead, so there is exactly one process touching the file.
 //
 // Filters are an allowlist — arbitrary column filtering is not exposed.
-const FILTERS = ['degree', 'name', 'source_connection_id', 'unlock_status', 'tier', 'user_id', 'profile_url'];
+const FILTERS = ['degree', 'name', 'source_connection_id', 'unlock_status', 'tier', 'user_id', 'profile_url', 'scanned_company'];
 
 export async function GET(request) {
   try {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
 import { loadNetwork } from '../lib/network';
 import ForceGraph from './components/ForceGraph';
 import GridView from './components/GridView';
@@ -190,15 +191,19 @@ function HomeInner() {
             >
               Outlink
             </Link>}
-            {!IS_DEMO && !csvMode && !isMobile && <Link
+            {/* Named "Scan" everywhere — nav, page title, README and docs. It is
+                also the only route to 2nd-degree data, so it stays visible on
+                mobile rather than being the one thing a phone user cannot find. */}
+            {!IS_DEMO && !csvMode && <Link
               href="/setup"
               style={{
-                padding: '8px 16px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600,
+                padding: isMobile ? '8px 12px' : '8px 16px', borderRadius: 6, border: 'none',
+                fontSize: 13, fontWeight: 600,
                 background: 'rgba(255,255,255,0.06)', color: '#666', textDecoration: 'none',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
             >
-              Setup
+              Scan
             </Link>}
           </div>
           {/* Notification bell */}
@@ -267,15 +272,14 @@ function HomeInner() {
           {!IS_DEMO && !csvMode && <button
             onClick={async () => {
               try {
-                const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-                if (!(await ping.json()).ok) throw new Error();
-                await fetch('http://localhost:5555/scrape', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'connections', userId }),
-                });
-                alert('Refreshing connections + checking for new bridges...');
-              } catch {
-                alert('Scraper offline — double-click "Start Scraper" on your Desktop.');
+                const status = await scraperStatus();
+                const blocked = notReadyMessage(status);
+                if (blocked) { alert(blocked); return; }
+                if (status.running) { alert('The scraper is already busy.'); return; }
+                await startScrape('refresh');
+                alert('Checking for new connections — watch it on the Scan page.');
+              } catch (e) {
+                alert(e.message);
               }
             }}
             title="Refresh connections + bridges"
@@ -369,7 +373,7 @@ function HomeInner() {
                   </p>
                   <p style={{ color: '#666', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
                     The local scraper maps those circles (and captures real photos).{' '}
-                    <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup &rarr;</Link>
+                    <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Set up scanning &rarr;</Link>
                   </p>
                 </div>
               </div>

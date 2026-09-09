@@ -17,7 +17,9 @@ rejected-by-design table in the spec.
 | `--login` | Signs in, confirms the session saved, exits. |
 | `--search` | Legacy: collects via the people-search pages instead. |
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
-| `--server` | Local HTTP server so the app's Setup buttons can drive it. |
+| `--company "Name"` | Everyone visible at one company. |
+| `--auto-bridge` | Map every bridge in turn, highest tier first. |
+| `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
 | `--headless` | Works on every mode once signed in — but headless Chrome is **more** detectable, not less. |
 
 ## Sign-in
@@ -75,7 +77,9 @@ sees it. TRAPS §7.
 
 The scraper writes **through the app's HTTP API**, never into SQLite directly — one
 writer, one set of scoring rules, no second connection to the database. So the app must
-be running; that is why setup is two terminals.
+be running. From the Scan page that is automatic — the app spawns the scraper as a child
+process through `/api/scraper`, which is why there is no longer a second server or a
+second terminal. From a shell you have to start the app yourself first.
 
 `_assert_local_target()` refuses to push to a non-loopback `APP_URL` unless
 `ALLOW_REMOTE_PUSH=1`, because a misconfigured `APP_URL` would upload a private network

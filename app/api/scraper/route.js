@@ -152,12 +152,27 @@ export async function GET() {
   return Response.json(await status());
 }
 
+// A fixed set. Anything taking a name uses `--flag=value`, a single argv token,
+// so a name that begins with "-" can never be read as a flag of its own — and
+// spawn takes an array, so there is no shell for it to escape into either.
 const ACTIONS = {
-  install: { args: null, label: 'Installing the scraper’s Python packages' },
-  login:   { args: ['--login'],   label: 'Opening LinkedIn so you can sign in' },
-  full:    { args: ['--full'],    label: 'Scanning your whole network' },
-  refresh: { args: ['--refresh'], label: 'Checking for new connections' },
+  install:       { label: 'Installing the scraper’s Python packages' },
+  login:         { flag: '--login',       label: 'Opening LinkedIn so you can sign in' },
+  full:          { flag: '--full',        label: 'Scanning your whole network' },
+  refresh:       { flag: '--refresh',     label: 'Checking for new connections' },
+  'auto-bridge': { flag: '--auto-bridge', label: 'Mapping every bridge in turn' },
+  bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
+  rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
+  company:       { flag: '--company',  needsName: true, label: 'Scanning' },
 };
+
+/** Names come from the page, so they are checked before becoming an argument. */
+function cleanName(raw) {
+  const name = String(raw ?? '').trim();
+  if (!name || name.length > 120) return null;
+  if (/[\u0000-\u001f]/.test(name)) return null;
+  return name;
+}
 
 export async function POST(request) {
   let body = {};
@@ -171,6 +186,13 @@ export async function POST(request) {
 
   if (!Object.hasOwn(ACTIONS, action)) {
     return Response.json({ error: `Unknown action '${action}'` }, { status: 400 });
+  }
+
+  const spec = ACTIONS[action];
+  let name = null;
+  if (spec.needsName) {
+    name = cleanName(body.name);
+    if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
   }
   if (state.running) {
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
@@ -205,7 +227,13 @@ export async function POST(request) {
         { cmd: venvPython(), args: ['-m', 'pip', 'install', '-r', reqs], note: 'Installing Playwright, requests and Pillow' },
       ]
     : [
-        { cmd: python, args: [path.join(root, 'scripts', 'scrape.py'), ...ACTIONS[action].args] },
+        {
+          cmd: python,
+          args: [
+            path.join(root, 'scripts', 'scrape.py'),
+            name ? `${spec.flag}=${name}` : spec.flag,
+          ],
+        },
       ];
 
   // The scraper writes back through this very app, so point it at the port we
@@ -217,7 +245,7 @@ export async function POST(request) {
   state.action = action;
   state.exitCode = null;
   state.startedAt = Date.now();
-  state.log = [ACTIONS[action].label + '…'];
+  state.log = [spec.label + (name ? ` ${name}…` : '…')];
   cached = { at: 0, value: null };
 
   const childEnv = {

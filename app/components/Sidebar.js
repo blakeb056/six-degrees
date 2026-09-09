@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { useUser } from './UserProvider';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending }) {
@@ -848,44 +849,25 @@ function CreateClusterCard({ selected, degree2 }) {
 
   async function startScrape() {
     setStatus('checking');
-    setLog(['Checking scraper server...']);
-    try {
-      const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-      const data = await ping.json();
-      if (!data.ok) throw new Error('Server not ready');
-    } catch {
+    setLog(['Checking the scraper...']);
+    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    if (blocked) {
       setStatus('offline');
-      setLog(['Scraper server is offline. Double-click "Start Scraper" on your Desktop first.']);
+      setLog([blocked]);
       return;
     }
 
     setStatus('scraping');
-    setLog(['Starting bridge scrape for ' + selected.name + '...']);
+    setLog(['Mapping the circle behind ' + selected.name + '...']);
 
     try {
-      await fetch('http://localhost:5555/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bridge', bridge: selected.name, userId }),
-      });
-
-      // Poll for progress
-      const pollInterval = setInterval(async () => {
-        try {
-          const r = await fetch('http://localhost:5555/status');
-          const s = await r.json();
-          setLog(s.log || []);
-          if (!s.running && s.result) {
-            clearInterval(pollInterval);
-            if (s.result.status === 'error') {
-              setStatus('error');
-            } else {
-              setStatus('done');
-              setLog(prev => [...prev, `Done! ${s.result.found || 0} connections found. Refresh to see the cluster.`]);
-            }
-          }
-        } catch { /* keep polling */ }
-      }, 2000);
+      const final = await runScrape('bridge', { name: selected.name, onLog: setLog });
+      if (final.exitCode === 0) {
+        setStatus('done');
+        setLog(prev => [...prev, 'Done. Refresh to see the cluster.']);
+      } else {
+        setStatus('error');
+      }
     } catch {
       setStatus('error');
       setLog(['Failed to start scrape']);
@@ -923,7 +905,7 @@ function CreateClusterCard({ selected, degree2 }) {
             Scraper server offline
           </div>
           <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Double-click <strong>Start Scraper</strong> on your Desktop, then try again
+            Open the <strong>Scan</strong> page to finish setting the scraper up
           </div>
           <button onClick={() => { setStatus('idle'); }} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -1212,32 +1194,17 @@ function AutoBridgeButton({ connections, degree2 }) {
     setStatus('checking');
     setLog([`Scanning ${next.name}'s network...`]);
 
-    try {
-      const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-      if (!(await ping.json()).ok) throw new Error();
-    } catch {
+    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    if (blocked) {
       setStatus('offline');
-      setLog(['Scraper server offline. Start it first.']);
+      setLog([blocked]);
       return;
     }
 
     setStatus('scraping');
     try {
-      await fetch('http://localhost:5555/scrape', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bridge', bridge: next.name, userId }),
-      });
-      const poll = setInterval(async () => {
-        try {
-          const r = await fetch('http://localhost:5555/status');
-          const d = await r.json();
-          setLog(d.log || []);
-          if (!d.running && d.result) {
-            clearInterval(poll);
-            setStatus(d.result.status === 'error' ? 'error' : 'done');
-          }
-        } catch {}
-      }, 2000);
+      const final = await runScrape('bridge', { name: next.name, onLog: setLog });
+      setStatus(final.exitCode === 0 ? 'done' : 'error');
     } catch {
       setStatus('error');
     }

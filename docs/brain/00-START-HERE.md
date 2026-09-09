@@ -33,10 +33,15 @@ Six rules, each learned expensively. If a change violates one, the change is wro
 
 ## Running it
 
-Two terminals. The scraper writes **through the app's HTTP API**, not into SQLite
-directly, so the app must be up.
+```bash
+npm run dev      # never returns a prompt; it is the server
+```
+
+Then open **Scan** (`/setup`) and use the buttons — the app spawns the scraper
+itself through `/api/scraper`. The command line still works and is what you want
+when scripting, but it needs the app running in another window, because the
+scraper writes **through the app's HTTP API**, never into SQLite directly:
 
 ```bash
-npm run dev                      # terminal 1 — never returns a prompt; it is the server
-python3 scripts/scrape.py --full # terminal 2
+python3 scripts/scrape.py --full   # second window, app still up
 ```

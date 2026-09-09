@@ -96,46 +96,49 @@ those map the people you haven't met yet.
 ### The deeper path: the local scraper
 
 This is the only way to get **2nd-degree** data — who your connections know.
-LinkedIn's export cannot provide it, so Bridges and Outlink stay empty without
-this step.
+LinkedIn's export cannot provide it, so Bridges and Outlink stay empty without it.
 
-**You need two terminal windows.** The app and the scraper run at the same time:
-the scraper writes into the running app.
+**You do not need a terminal for this.** Start the app, open **Scan** in the nav,
+and use the buttons:
 
-**Terminal 1 — start the app and leave it running.** It will not return a
-prompt; that is the server holding the window.
+1. **Install what the scraper needs** — one click. It builds a private Python
+   environment inside your data directory and installs into that, so it never
+   touches the Python your system or Homebrew put there.
+2. **Sign into LinkedIn** — a Chrome window opens and waits for you, with no time
+   limit. Close the window to cancel. Once per machine.
+3. **Scan** — the whole list on the first run (about a minute and a half for 750
+   people), only what is new after that. The live log is on the page.
+
+Sign in with your **email and password**. "Continue with Google" and "Sign in with
+Apple" cannot work here: Google blocks its sign-in flow inside automated browsers,
+so that window opens greyed out and never finishes. If your account only has a
+Google login, set a LinkedIn password first.
+
+Needs Python 3.9+ and Google Chrome. The scraper drives your real Chrome, so
+there is no extra browser to download.
+
+<details>
+<summary>Prefer the command line?</summary>
+
+The scraper writes into the running app, so the app has to be up. Start it in one
+window with `npm run dev`, then in a second window:
 
 ```bash
-cd six-degrees
-npm run dev
-```
-
-**Terminal 2 — open a new window (⌘N on macOS) and install the Python side once:**
-
-```bash
-cd six-degrees
-npm run setup:python
-```
-
-**Then scrape, in that same second window:**
-
-```bash
-npm run scrape                                  # first run: full scrape. after that: new only
-npm run scrape:full                             # force a full re-walk of every page
+npm run setup:python                            # once per machine
+python3 scripts/scrape.py --login               # sign in, then exit
+npm run scrape                                  # full the first time, new-only after
+npm run scrape:full                             # walk the whole list again
 python3 scripts/scrape.py --bridge "Jane Doe"   # one person's 2nd-degree circle
+python3 scripts/scrape.py --company "Acme"      # everyone visible at one company
 ```
 
-The first run walks LinkedIn's search pages and captures profile photos, which
-takes a few minutes. Later runs only look for people added since, so they are
-quick. `npm run scrape` picks the right one based on what you already have.
+If `pip` refuses with `externally-managed-environment`, that is your system Python
+protecting itself (PEP 668). Use the Scan page instead — it makes a virtual
+environment for you — or make one yourself.
 
-A Chrome window opens on first run. **Log into LinkedIn by hand** — the scraper
-waits up to five minutes for you and continues on its own once you are signed
-in. The session is kept in a profile under your data directory, so this is a
-once-per-machine step.
+Full detail: [`docs/SCRAPING.md`](docs/SCRAPING.md).
 
-Requires Python 3.9+ and Google Chrome installed. The scraper drives your real
-Chrome, so no extra browser download is needed.
+</details>
 
 ## What it does
 

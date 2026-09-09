@@ -21,6 +21,8 @@ First release, not yet published to npm.
   opens LinkedIn so you can sign in, and runs the scan — with the live log on screen.
   No second terminal, no server to start, nothing to copy and paste.
 - `Start 6 Degrees.command` — double-click on a Mac to start the app and open it.
+- Scanning a company or auto-bridging can now be run from the command line too
+  (`--company "Acme"`, `--auto-bridge`); they used to exist only behind the old server.
 
 ### Fixed
 - The scraper now collects your whole connections list. It was reading only the first ten
@@ -34,6 +36,12 @@ First release, not yet published to npm.
 - `--login` signs in and exits, so a first run is not a sign-in and a scrape at once.
 - A scrape that cannot read the page now says so and stops, instead of reporting that you
   have no connections.
+- Every scan button in the app works again. The buttons on the map, the profile page and
+  the paths page all quietly pointed at a separate server on port 5555 that no longer
+  exists, and told you to double-click a file that no longer exists either. They all run
+  through the app now.
+- Filtering connections by scanned company was silently ignored and returned everything,
+  because that field was missing from the query allowlist.
 - The scraper's packages install into their own environment, so an install can no longer
   succeed against one Python while the scraper runs on a different one that lacks them.
 - Scraped people are attached to your profile, so a finished scrape can no longer leave the

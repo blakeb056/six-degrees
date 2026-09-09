@@ -14,6 +14,8 @@ Usage:
   python3 scripts/scrape.py --full                   # Force a full re-walk of every page
   python3 scripts/scrape.py --refresh                # Only look for newly added connections
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
+  python3 scripts/scrape.py --company "Acme"         # Scan one company
+  python3 scripts/scrape.py --auto-bridge            # Map every bridge in turn
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
 
 IMPORTANT: Only scrape ONE bridge at a time. Do NOT batch multiple bridges
@@ -1833,6 +1835,9 @@ Examples:
     parser.add_argument("--server", action="store_true", help="Start local scraper server (use website buttons)")
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
+    parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
+    parser.add_argument("--auto-bridge", action="store_true",
+                        help="Map every bridge in turn, highest tier first")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
 
@@ -1844,7 +1849,19 @@ Examples:
     if not args.server:
         resolve_active_user()
 
-    if args.search:
+    if args.company:
+        # The server mode scraped and pushed as one step; the CLI has to do the
+        # same or the scan appears to work and saves nothing.
+        people = scrape_company(args.company, headless=args.headless)
+        if people:
+            print(f"\nSaving {len(people)} people from {args.company}...")
+            push_company(people, args.company)
+        print(f"Done. {len(people) if people else 0} found at {args.company}.")
+    elif args.auto_bridge:
+        results = auto_bridge_all(headless=args.headless)
+        done = sum(1 for r in results if r.get("status") == "done")
+        print(f"\nDone. {done}/{len(results)} bridges mapped.")
+    elif args.search:
         scrape_full(headless=args.headless)
     elif args.full:
         scrape_connections(headless=args.headless, full_walk=True)

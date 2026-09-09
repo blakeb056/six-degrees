@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
@@ -199,32 +200,16 @@ function ProfileInner() {
         {/* === SET UP ACCOUNT === */}
         <SetupScrapeCard status={setupStatus} log={setupLog} onStart={async () => {
           setSetupStatus('running');
-          setSetupLog(['Checking scraper server...']);
-          try {
-            const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-            if (!(await ping.json()).ok) throw new Error();
-          } catch {
+          setSetupLog(['Checking the scraper...']);
+          const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+          if (blocked) {
             setSetupStatus('offline');
-            setSetupLog(['Scraper server offline. Double-click "Start Scraper" on your Desktop.']);
+            setSetupLog([blocked]);
             return;
           }
-          setSetupLog(['Starting full account scrape...']);
           try {
-            await fetch('http://localhost:5555/scrape', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'full-scrape', userId }),
-            });
-            const poll = setInterval(async () => {
-              try {
-                const r = await fetch('http://localhost:5555/status');
-                const d = await r.json();
-                setSetupLog(d.log || []);
-                if (!d.running && d.result) {
-                  clearInterval(poll);
-                  setSetupStatus(d.result.status === 'error' ? 'error' : 'done');
-                }
-              } catch {}
-            }, 2000);
+            const final = await runScrape('full', { onLog: setSetupLog });
+            setSetupStatus(final.exitCode === 0 ? 'done' : 'error');
           } catch { setSetupStatus('error'); }
         }} onRetry={() => { setSetupStatus('idle'); setSetupLog([]); }} />
 
@@ -244,32 +229,16 @@ function ProfileInner() {
           {bridgeStatus === 'idle' && (
             <button onClick={async () => {
               setBridgeStatus('running');
-              setBridgeLog(['Checking scraper server...']);
-              try {
-                const ping = await fetch('http://localhost:5555/ping', { signal: AbortSignal.timeout(2000) });
-                if (!(await ping.json()).ok) throw new Error();
-              } catch {
+              setBridgeLog(['Checking the scraper...']);
+              const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+              if (blocked) {
                 setBridgeStatus('offline');
-                setBridgeLog(['Scraper server offline.']);
+                setBridgeLog([blocked]);
                 return;
               }
-              setBridgeLog(['Starting auto-bridge (S-tier first)...']);
               try {
-                await fetch('http://localhost:5555/scrape', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'auto-bridge', userId }),
-                });
-                const poll = setInterval(async () => {
-                  try {
-                    const r = await fetch('http://localhost:5555/status');
-                    const d = await r.json();
-                    setBridgeLog(d.log || []);
-                    if (!d.running && d.result) {
-                      clearInterval(poll);
-                      setBridgeStatus(d.result.status === 'error' ? 'error' : 'done');
-                    }
-                  } catch {}
-                }, 3000);
+                const final = await runScrape('auto-bridge', { onLog: setBridgeLog });
+                setBridgeStatus(final.exitCode === 0 ? 'done' : 'error');
               } catch { setBridgeStatus('error'); }
             }} style={{
               width: '100%', padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -540,7 +509,7 @@ function SetupScrapeCard({ status, log, onStart, onRetry }) {
             Scraper server offline
           </div>
           <p style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Double-click <strong>Start Scraper</strong> on your Desktop first
+            Open the <strong>Scan</strong> page to finish setting the scraper up
           </p>
           <button onClick={onRetry} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',

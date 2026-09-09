@@ -16,12 +16,15 @@ open http://localhost:3000         # enter a name to create a local profile
 ```
 
 Then either import a LinkedIn `Connections.csv` at `/import`, click **Explore a sample
-network** for the synthetic dataset, or scrape:
+network** for the synthetic dataset, or open **Scan** (`/setup`) and use the buttons —
+that path installs the Python side into a venv and runs the scraper for you.
+
+Equivalent from a terminal, with the app still running in another window:
 
 ```bash
 npm run setup:python               # once
 python3 scripts/scrape.py --login  # once per machine, sign in by hand
-python3 scripts/scrape.py --full   # terminal 2, with the app still running
+python3 scripts/scrape.py --full
 ```
 
 ## Verify you have not broken anything
