@@ -13,6 +13,7 @@ Irreversibly destructive. The UI never calls them; the scraper sends the token.
 | `POST /api/admin-update` | Bulk field updates. |
 | `POST /api/delete-cluster` | Deletes an entire bridge cluster. |
 | `POST /api/setup-profile` | Overwrites the profile. |
+| `GET/POST /api/scraper` | Runs the scraper. `GET` reports preflight status; `POST` takes a fixed action enum (`install`/`login`/`full`/`refresh`/`cancel`). **Gated because it spawns processes** — more power than any of the four above. No part of a command line ever comes from the request. |
 
 `lib/gate.js` `gateDecision()`: a valid token allows; a loopback bind allows; **no token
 set on an exposed server fails closed with 503**, not open. That last case is the one

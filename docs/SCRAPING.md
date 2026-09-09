@@ -20,10 +20,24 @@ It captures:
 - profile photos, re-encoded to permanent local WebP files (LinkedIn's CDN URLs
   are signed and expire in about three weeks).
 
-## Setup
+## The easy way — no terminal
 
-The scraper writes into the running app, so **both have to be up at once — two
-terminal windows.**
+Start the app, open **Scan** in the nav (or `/setup`), and use the buttons. The page
+checks what is missing, installs it for you, opens LinkedIn so you can sign in, and runs
+the scrape — showing the live log as it goes.
+
+On a Mac you can start the app itself by double-clicking **`Start 6 Degrees.command`** in
+the project folder. It installs dependencies on the first run and opens your browser.
+Everything after that is buttons.
+
+That page installs the scraper's Python packages into a **private virtual environment**
+inside your data directory (`~/.six-degrees/venv`). It never touches the Python your
+system or Homebrew installed, and it goes away when you delete that folder.
+
+## The terminal way
+
+Still supported, and what you want if you are scripting it. The scraper writes into the
+running app, so **both have to be up at once — two terminal windows.**
 
 Terminal 1, and leave it alone (it will not give you a prompt back):
 
@@ -38,9 +52,6 @@ Terminal 2 (⌘N), once per machine:
 cd six-degrees
 npm run setup:python
 ```
-
-Requires Python 3.9+ and Google Chrome. The scraper drives your real Chrome, so
-`playwright install chromium` is not needed.
 
 ## Signing in
 

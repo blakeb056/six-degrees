@@ -16,6 +16,12 @@ First release, not yet published to npm.
 - `npx six-degrees` — a single-command launcher on port 6363 with its own data directory.
 - Reference scoring model (`scripts/score_new_connections.sql`), transcribed to `lib/rpc.js`.
 
+### Added
+- A **Scan** page that runs the scraper for you. It checks what is missing, installs it,
+  opens LinkedIn so you can sign in, and runs the scan — with the live log on screen.
+  No second terminal, no server to start, nothing to copy and paste.
+- `Start 6 Degrees.command` — double-click on a Mac to start the app and open it.
+
 ### Fixed
 - The scraper now collects your whole connections list. It was reading only the first ten
   people: the list sits in its own scroll container, so the page-down it performed never
@@ -28,6 +34,8 @@ First release, not yet published to npm.
 - `--login` signs in and exits, so a first run is not a sign-in and a scrape at once.
 - A scrape that cannot read the page now says so and stops, instead of reporting that you
   have no connections.
+- The scraper's packages install into their own environment, so an install can no longer
+  succeed against one Python while the scraper runs on a different one that lacks them.
 - Scraped people are attached to your profile, so a finished scrape can no longer leave the
   app showing an empty network.
 

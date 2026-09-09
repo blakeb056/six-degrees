@@ -105,3 +105,11 @@ test('REGRESSION: the no-preflight simple-content-type POST the audit used', () 
     true,
   );
 });
+
+test('the scraper route is gated like the destructive ones', () => {
+  // It spawns processes, which is more power than deleting a row. If this ever
+  // stops being gated, a page on the LAN could start a browser on this machine.
+  assert.equal(isDestructive('/api/scraper'), true);
+  assert.equal(gateDecision({ bind: '127.0.0.1' }).allow, true);
+  assert.equal(gateDecision({ bind: '0.0.0.0', token: undefined }).status, 503);
+});

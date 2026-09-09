@@ -166,3 +166,23 @@ session it wants sits in the cookie jar.
 
 Poll the browser **context** for the `li_at` cookie. Treat "every window closed" as
 cancel, not "this page closed" — signing in legitimately opens and closes tabs.
+
+---
+
+## 14. `python3` is usually the wrong Python, and pip will refuse it
+
+Two traps that compound, and together they are why a careful hand-install could look
+like it worked and still leave nothing working:
+
+1. **`python3` on `PATH` is often Homebrew's**, while the interpreter that actually has
+   Playwright is `/usr/bin/python3`. Install into one, run the other, and the result is
+   indistinguishable from a broken install. Verified on this machine: `python3 -c "import
+   playwright"` fails while `/usr/bin/python3 -c "import playwright"` succeeds.
+2. **Homebrew and system Pythons are externally managed (PEP 668)** and refuse
+   `pip install` outright. The error mentions `externally-managed-environment`, which
+   most people read as a dead end rather than as "use a venv".
+
+So never resolve the interpreter by name. `app/api/scraper/route.js` probes candidates
+for `import playwright, requests, PIL` and picks one that **actually works**, and its
+install path builds a virtualenv in the data directory rather than touching the
+machine's Python. A venv is immune to both traps and is deleted with the data folder.

@@ -8,7 +8,9 @@
 | `app/components/ForceGraph.js` | The D3 galaxy (~950 lines). Force simulation, rings, cluster expansion, hover cards. |
 | `app/components/ChainView.js` | The rotary-dial bridge view. |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
-| `app/api/*` | 14 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/api/*` | 15 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
+| `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
 | `middleware.js` | Refuses cross-site writes on all of `/api`, then applies the destructive-route gate. |
 
 ## Library
