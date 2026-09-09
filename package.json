@@ -55,6 +55,7 @@
     "prepack": "npm run build",
     "start:packaged": "node bin/six-degrees.mjs",
     "scrape": "python3 scripts/scrape.py",
+    "scrape:login": "python3 scripts/scrape.py --login",
     "scrape:server": "python3 scripts/scrape.py --server",
     "setup:python": "python3 -m pip install -r scripts/requirements.txt",
     "scrape:full": "python3 scripts/scrape.py --full",

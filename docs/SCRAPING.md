@@ -44,11 +44,31 @@ Requires Python 3.9+ and Google Chrome. The scraper drives your real Chrome, so
 
 ## Signing in
 
-A Chrome window opens on the first run. Log into LinkedIn by hand; the scraper
-polls for up to five minutes and carries on by itself once you are in. The
-session lives in a profile inside your data directory, so later runs skip this.
+A Chrome window opens on the first run and the scraper waits — it does not
+scrape anything until you are signed in, and it starts on its own the moment you
+are. This is once per machine: the session is saved in a profile inside your
+data directory, so every later run goes straight to work.
 
-If it says it timed out, you are simply not signed in yet — run it again.
+**Sign in with your email and password.** "Continue with Google" and "Sign in
+with Apple" do not work here. Google blocks its sign-in flow inside
+automation-controlled browsers on purpose — the window opens greyed out and
+never completes. That is Google's anti-automation policy, not a bug in this
+tool, and there is nothing to configure around it. If your LinkedIn account only
+has a Google login, set a LinkedIn password first (LinkedIn → Settings →
+Sign in & security → Change password).
+
+If you would rather get the sign-in out of the way as its own step:
+
+```bash
+python3 scripts/scrape.py --login
+```
+
+That opens the window, waits for you, confirms the session was saved, and exits.
+Every scrape after that starts immediately.
+
+There is no time limit — it waits as long as the window is open. **Closing the
+browser window is how you cancel.** If you close it or it gives up, whatever you
+completed is still saved; just run it again.
 
 ## Usage
 
@@ -58,8 +78,11 @@ Everything below goes in Terminal 2, with the app still running in Terminal 1.
 # First run does a full scrape; later runs only look for new people
 npm run scrape
 
-# Force a full re-walk of every search page
+# Walk the whole connections list, top to bottom
 npm run scrape:full
+
+# Sign in only, then exit
+python3 scripts/scrape.py --login
 
 # Map one bridge's 2nd-degree circle
 python3 scripts/scrape.py --bridge "Jane Doe"

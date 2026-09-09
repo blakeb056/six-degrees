@@ -138,6 +138,22 @@ and the app still showed the empty state. `resolve_active_user()` now asks the
 app which profile it has and adopts it, failing with an explanation if there is
 no profile or more than one (`SIX_DEGREES_USER` picks between them).
 
+### Signing in — email and password only
+
+Google and Apple SSO **cannot** work here. Google blocks its OAuth flow inside
+automation-controlled browsers by policy: the window opens greyed out and never
+completes. There is no flag or user-agent trick worth building around it, and
+attempting one would be working to defeat an anti-automation control. The
+scraper says this on screen before the user has a chance to try it.
+
+`--login` (`npm run scrape:login`) does the sign-in as its own step and exits, so
+a first-time user is never debugging a login and a scrape at the same time.
+
+The wait is page-agnostic on purpose: it polls the browser **context** for the
+`li_at` cookie rather than watching one Page object, because signing in can open
+a second window or replace the tab, and a page-bound check then waits forever on
+something the user already navigated away from.
+
 ### Modes
 
 | Command | What it does |
@@ -147,6 +163,7 @@ no profile or more than one (`SIX_DEGREES_USER` picks between them).
 | `python3 scripts/scrape.py` | Picks `--full` on an empty database, `--refresh` otherwise. |
 | `python3 scripts/scrape.py --search` | Legacy people-search route, kept as a fallback. |
 | `--headless` | Works on every mode once signed in. More detectable than headful. |
+| `python3 scripts/scrape.py --login` | Sign in and save the session, then exit. |
 
 Two terminals: the app (`npm run dev`) in one, the scraper in the other. The app
 must be running — the scraper writes through its API, not to SQLite directly.

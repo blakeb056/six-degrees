@@ -205,19 +205,25 @@ LOGIN_WAIT_SECONDS = int(os.getenv("SIX_DEGREES_LOGIN_WAIT", "1800"))
 MAX_SCROLL_ROUNDS = 400           # ~10 people load per round
 SCROLL_PAUSE_SECONDS = 0.9
 SCROLL_STALL_LIMIT = 10           # rounds with no new names before stopping
-LOGIN_POLL_SECONDS = 3
+LOGIN_POLL_SECONDS = 2
 
 
-def _has_session_cookie(page):
+def _has_session_cookie(target):
     """The one signal LinkedIn cannot render away.
 
     `li_at` is the session cookie. It is set only after a real sign-in and it
     survives redesigns, which the DOM does not: the `nav.global-nav` element an
     earlier version of this check looked for no longer exists on any LinkedIn
     page, so that check silently never matched.
+
+    Reads the browser CONTEXT, not a page, on purpose. Signing in can open a
+    second window or replace the tab, and a check bound to one Page object then
+    watches something the user has already navigated away from — it waits
+    forever while the session it is waiting for sits right there in the jar.
     """
+    ctx = getattr(target, "context", target)
     try:
-        for c in page.context.cookies("https://www.linkedin.com"):
+        for c in ctx.cookies("https://www.linkedin.com"):
             if c.get("name") == "li_at" and c.get("value"):
                 return True
     except Exception:
@@ -251,22 +257,31 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
     The browser uses a persistent profile, so this is a once-per-machine step —
     every later run finds the session already there and returns immediately.
     """
+    context = page.context
+
     try:
         page.goto(FEED_URL, wait_until="domcontentloaded")
     except Exception:
         pass
-    time.sleep(3)
+    time.sleep(2)
 
-    if not _looks_logged_out(page):
+    if _has_session_cookie(context) and not _looks_logged_out(page):
         return True
 
     say = log_fn or (lambda m: None)
     say("Waiting for you to sign into LinkedIn in the browser window...")
     print()
     print("  ==================================================================")
-    print("  Log into LinkedIn in the browser window that just opened.")
-    print("  Nothing is scraped until you are signed in — take as long as")
-    print("  you need. Close the browser window to cancel.")
+    print("  Sign into LinkedIn in the browser window that just opened.")
+    print()
+    print("  Use your email and password. \"Continue with Google\" and \"Sign in")
+    print("  with Apple\" do not work here — Google blocks its sign-in flow")
+    print("  inside automated browsers, which is why that window comes up")
+    print("  greyed out and does nothing.")
+    print()
+    print("  Nothing is scraped until you are signed in, and the scrape starts")
+    print("  by itself the moment you are. Take as long as you need.")
+    print("  Close the browser window to cancel.")
     print("  ==================================================================")
     print()
 
@@ -275,9 +290,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
         time.sleep(LOGIN_POLL_SECONDS)
         waited += LOGIN_POLL_SECONDS
 
-        # Closing the window is how you say "not now". Anything else keeps waiting.
+        # Closing every window is how you say "not now". One page closing is
+        # not: signing in legitimately opens and closes tabs.
         try:
-            if page.is_closed():
+            if not [pg for pg in context.pages if not pg.is_closed()]:
                 print("\n  Browser closed — nothing was scraped.")
                 say("Browser closed before sign-in.")
                 return False
@@ -285,28 +301,62 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
             print("\n  Browser closed — nothing was scraped.")
             return False
 
-        try:
-            signed_in = not _looks_logged_out(page)
-        except Exception:
-            # A navigation in flight makes the page briefly unreadable; that is
-            # not a logged-out signal, so keep waiting instead of giving up.
-            continue
-
-        if signed_in:
-            print("  Signed in. Continuing.\n")
-            say("Signed in. Continuing.")
+        # The cookie is the authority and it belongs to the whole browser, so it
+        # is found no matter which tab or window the sign-in finished in.
+        if _has_session_cookie(context):
+            print()
+            print("  ==================================================================")
+            print("  Signed in. Starting the scrape now.")
+            print("  ==================================================================")
+            print()
+            say("Signed in. Starting the scrape.")
             return True
 
-        if waited % 30 == 0:
-            mins = waited // 60
-            note = f"{mins}m" if mins else f"{waited}s"
-            print(f"  still waiting for sign-in... ({note})", flush=True)
-            say(f"Still waiting for sign-in... ({note})")
+        if waited % 15 == 0:
+            mins, secs = divmod(waited, 60)
+            note = f"{mins}m{secs:02d}s" if mins else f"{secs}s"
+            print(f"  waiting for sign-in... ({note})", flush=True)
+            if waited % 60 == 0:
+                say(f"Still waiting for sign-in... ({note})")
 
-    print("\n  Gave up waiting for sign-in. Your progress is saved in the browser")
-    print("  profile — just run this again and it will pick up where you left off.")
+    print("\n  Gave up waiting for sign-in. Whatever you completed is saved in the")
+    print("  browser profile — run this again and it will pick up from there.")
     say("Timed out waiting for sign-in.")
     return False
+
+
+def open_login_window():
+    """Just sign in, confirm it worked, and exit.
+
+    Separated out because a sign-in that has to happen inside a run you are also
+    trying to watch is two things going wrong at once. Do this first, see it
+    succeed, and every later scrape starts immediately.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch_persistent_context(
+            user_data_dir=get_scraper_profile_path(),
+            headless=False,
+            channel="chrome",
+            args=["--disable-blink-features=AutomationControlled"],
+            timeout=120000,
+        )
+        page = browser.pages[0] if browser.pages else browser.new_page()
+        page.set_default_timeout(120000)
+
+        if _has_session_cookie(browser):
+            print("\n  Already signed in — nothing to do.")
+            print("  Run: python3 scripts/scrape.py --full\n")
+            browser.close()
+            return True
+
+        ok = ensure_logged_in(page)
+        if ok:
+            print("  Sign-in saved to this machine. You will not be asked again.")
+            print("  Now run: python3 scripts/scrape.py --full\n")
+        browser.close()
+        return ok
 
 
 def get_scraper_profile_path():
@@ -1765,6 +1815,7 @@ if __name__ == "__main__":
 Examples:
   python3 scripts/scrape.py --server                 # Start local server (use Setup page buttons)
   python3 scripts/scrape.py                          # Scrape your degree-1 connections
+  python3 scripts/scrape.py --login                  # Sign in once, then exit
   python3 scripts/scrape.py --full                   # Walk the whole connections list
   python3 scripts/scrape.py --refresh                # Only what is new since last run
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
@@ -1777,6 +1828,8 @@ Examples:
                         help="Only look for connections added since the last run")
     parser.add_argument("--search", action="store_true",
                         help="Legacy: collect via the people-search pages instead of the connections page")
+    parser.add_argument("--login", action="store_true",
+                        help="Just sign into LinkedIn and save the session, then exit")
     parser.add_argument("--server", action="store_true", help="Start local scraper server (use website buttons)")
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
@@ -1784,6 +1837,9 @@ Examples:
     args = parser.parse_args()
 
     _assert_local_target()
+
+    if args.login:
+        raise SystemExit(0 if open_login_window() else 1)
 
     if not args.server:
         resolve_active_user()
