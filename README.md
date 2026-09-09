@@ -46,8 +46,15 @@ npm install
 npm run dev
 ```
 
+Opens on <http://localhost:3000>. **Needs Node 22.13 or newer** — the database is
+Node's built-in `node:sqlite`, and `npm run dev` stops with a clear message on
+anything older rather than failing later. There is nothing to configure: no
+`.env`, no account, no keys.
+
 Either way: choose **Map your own network**, drop in LinkedIn's official
-`Connections.csv`, and your galaxy renders.
+`Connections.csv`, and your galaxy renders — or open **Scan** to pull it straight
+from LinkedIn (that path also needs Python 3.9+ and Google Chrome, and the app
+installs the Python side for you).
 
 ### What each way in gives you
 

@@ -43,11 +43,14 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "scripts/check-node.mjs"
   ],
   "scripts": {
     "dev": "NEXT_TELEMETRY_DISABLED=1 SIX_DEGREES_BIND=127.0.0.1 next dev -H 127.0.0.1",
+    "predev": "node scripts/check-node.mjs",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build && node scripts/prepare-standalone.mjs",
+    "prebuild": "node scripts/check-node.mjs",
     "start": "NEXT_TELEMETRY_DISABLED=1 SIX_DEGREES_BIND=127.0.0.1 next start -H 127.0.0.1",
     "lint": "eslint",
     "test": "node --test tests/*.test.mjs",
