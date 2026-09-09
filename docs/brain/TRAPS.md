@@ -186,3 +186,27 @@ So never resolve the interpreter by name. `app/api/scraper/route.js` probes cand
 for `import playwright, requests, PIL` and picks one that **actually works**, and its
 install path builds a virtualenv in the data directory rather than touching the
 machine's Python. A venv is immune to both traps and is deleted with the data folder.
+
+---
+
+## 15. A queue defined by absence retries its failures forever
+
+Auto-bridge picked its work with "every 1st-degree person who has no 2nd-degree
+rows". Someone who hides their connections can never *have* 2nd-degree rows — so
+they came back in the list on every run, and because the list is sorted by tier and
+score, the same person was retried in the same position every time. Each attempt
+cost the full profile-load budget plus a two-minute cooldown, so a few hidden people
+near the top made the whole feature look hung rather than slow.
+
+Two fixes, and the first is the one that matters:
+
+- **Record the attempt, not just the result.** `bridge-skips.json` in the data
+  directory remembers who was hidden; `--retry-private` (or the app's retry action)
+  is the way back in. Absence of a result is not the same as absence of an attempt.
+- **Price the cooldown by what actually happened.** A real scrape walks many search
+  pages and earns the full pause. A hidden profile was one page view — charging it
+  two minutes is what turned a run of them into an apparent hang.
+
+Also here: the loop now catches `BaseException`, not `Exception`. A `SystemExit`
+raised deep in a helper would otherwise end the whole run while looking like a
+clean exit, which is the least debuggable failure of the set.

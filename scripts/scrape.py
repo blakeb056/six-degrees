@@ -28,6 +28,7 @@ import os
 import sys
 import time
 import requests
+from datetime import datetime
 from pathlib import Path
 
 # Local helper: download + compress avatars into permanent WebP files so they
@@ -944,6 +945,88 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     return new_rows
 
 
+# Someone whose connections are hidden can never produce a 2nd-degree row. The
+# "who still needs bridging" query is "everyone with no 2nd-degree rows", so
+# without a record of the attempt they come back in the list on every run — and
+# because the list is sorted by tier, the same person is retried first, forever.
+# That is what made auto-bridge look stuck rather than slow.
+def _skips_path():
+    base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "bridge-skips.json"
+
+
+def load_bridge_skips():
+    try:
+        return json.loads(_skips_path().read_text())
+    except Exception:
+        return {}
+
+
+def record_bridge_skip(profile_url, name, reason):
+    skips = load_bridge_skips()
+    skips[profile_url] = {
+        "name": name,
+        "reason": reason,
+        "at": datetime.now().isoformat(timespec="seconds"),
+    }
+    try:
+        _skips_path().write_text(json.dumps(skips, indent=2))
+    except Exception as exc:
+        print(f"  (could not record the skip: {exc})")
+
+
+def clear_bridge_skips():
+    try:
+        _skips_path().unlink()
+        print("Cleared the skip list — every bridge will be tried again.")
+    except FileNotFoundError:
+        print("No skips recorded.")
+
+
+BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be polite
+BRIDGE_SKIP_COOLDOWN = 15         # after a hidden profile: one page view, no need
+BRIDGE_LOAD_ATTEMPTS = 6          # how many times to look for the connections URN
+BRIDGE_LOAD_STEP = 5              # seconds between looks
+
+
+def _profile_unavailable(page):
+    """LinkedIn's explicit "you cannot see this" pages.
+
+    Worth checking separately: these never grow a connections link, so without
+    this the scraper spends its whole budget waiting for something that is not
+    coming.
+    """
+    try:
+        return page.evaluate("""
+        () => {
+          const t = (document.body.innerText || '').toLowerCase();
+          return t.includes('this profile is not available')
+              || t.includes('profile unavailable')
+              || t.includes("this page doesn't exist")
+              || t.includes('page not found');
+        }
+        """)
+    except Exception:
+        return False
+
+
+def _find_connection_urn(page):
+    """The id LinkedIn uses to search someone's connections, read from an href."""
+    try:
+        return page.evaluate("""
+        () => {
+          for (const link of document.querySelectorAll('a')) {
+            const m = (link.href || '').match(/connectionOf[=%5B%22"]*([A-Za-z0-9_:-]+)/);
+            if (m) return m[1];
+          }
+          return null;
+        }
+        """)
+    except Exception:
+        return None
+
+
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
     """
     Core bridge scraping logic. Takes an already-open Playwright page.
@@ -964,49 +1047,32 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
     except Exception as e:
         print(f"  Navigation slow: {str(e)[:50]}... continuing anyway")
 
-    # Step 2: Wait for page to render — check for connections link as signal
-    # Successful runs: takes 10-30s for the link to appear
-    for attempt in range(6):
-        time.sleep(5)
-        try:
-            conn_link = page.locator('a:has-text("500+ connections")').first
-            if conn_link.is_visible(timeout=3000):
-                print(f"  Profile loaded ({(attempt+1)*5}s) — connections link visible")
-                break
-        except:
-            pass
-        if attempt < 5:
-            print(f"  Still loading... ({(attempt+1)*5}s)")
+    # Steps 2 and 3, together. The URN is what we are actually after, and it is
+    # read from a link's href — so look for it on every pass instead of waiting
+    # for a "500+ connections" link first and only then extracting. A public
+    # profile now finishes as soon as the link exists, and a private one is not
+    # charged an extra scroll-and-wait on the way to the same answer.
+    urn = None
+    for attempt in range(BRIDGE_LOAD_ATTEMPTS):
+        time.sleep(BRIDGE_LOAD_STEP)
 
-    # Step 3: Extract URN from profile page links (DON'T click anything)
-    # This is the key fix — clicking was unreliable, reading hrefs is instant
-    urn = page.evaluate("""
-    () => {
-      const links = document.querySelectorAll('a');
-      for (const link of links) {
-        const h = link.href || '';
-        const m = h.match(/connectionOf[=%5B%22"]*([A-Za-z0-9_:-]+)/);
-        if (m) return m[1];
-      }
-      return null;
-    }
-    """)
+        if _profile_unavailable(page):
+            print("  Profile is not viewable — skipping.")
+            return [], "private"
 
-    if not urn:
-        # Scroll down to trigger lazy-loading of the connections section
-        page.evaluate("window.scrollTo(0, 600)")
-        time.sleep(5)
-        urn = page.evaluate("""
-        () => {
-          const links = document.querySelectorAll('a');
-          for (const link of links) {
-            const h = link.href || '';
-            const m = h.match(/connectionOf[=%5B%22"]*([A-Za-z0-9_:-]+)/);
-            if (m) return m[1];
-          }
-          return null;
-        }
-        """)
+        urn = _find_connection_urn(page)
+        if urn:
+            print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
+            break
+
+        # The connections block lazy-loads; nudge it once part-way through.
+        if attempt == BRIDGE_LOAD_ATTEMPTS // 2:
+            try:
+                page.evaluate("window.scrollTo(0, 600)")
+            except Exception:
+                pass
+        elif attempt < BRIDGE_LOAD_ATTEMPTS - 1:
+            print(f"  Still loading... ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
 
     if not urn:
         print(f"  Could not find URN — connections are private.")
@@ -1517,7 +1583,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
     return all_people
 
 
-def auto_bridge_all(headless=False, log_fn=None):
+def auto_bridge_all(headless=False, log_fn=None, retry_private=False):
     """Auto-bridge all unbridged connections, S-tier first then down.
     Picks up from where we left off — skips already-bridged people."""
 
@@ -1542,13 +1608,22 @@ def auto_bridge_all(headless=False, log_fn=None):
     # Filter unbridged, sort by tier priority (S first, then by score)
     tier_order = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
     unbridged = [c for c in all_d1 if c["id"] not in bridged_ids]
+
+    # People already found to be private are not tried again. Without this they
+    # reappear every run, in the same place, and the run never gets past them.
+    skips = {} if retry_private else load_bridge_skips()
+    skipped_now = [c for c in unbridged if c.get("profile_url") in skips]
+    unbridged = [c for c in unbridged if c.get("profile_url") not in skips]
+
     unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
 
     log(f"Found {len(unbridged)} unbridged connections")
     log(f"Already bridged: {len(bridged_ids)}")
+    if skipped_now:
+        log(f"Skipping {len(skipped_now)} whose connections are hidden (--retry-private to try again)")
 
     if not unbridged:
-        log("All connections are already bridged!")
+        log("Nothing left to bridge.")
         return []
 
     # Show plan
@@ -1565,33 +1640,54 @@ def auto_bridge_all(headless=False, log_fn=None):
         name = person["name"]
         tier = person.get("tier", "?")
         score = person.get("power_score", "?")
+        url = person.get("profile_url", "")
 
         log(f"[{i+1}/{len(unbridged)}] {name} ({tier}-tier, score {score})")
 
+        scraped = False
         try:
             result = scrape_bridge(name, headless=headless)
             count = len(result) if result else 0
-            status = "done" if count > 0 else "private"
-            results.append({"name": name, "tier": tier, "found": count, "status": status})
             if count > 0:
-                log(f"  ✓ {count} connections found")
+                scraped = True
+                results.append({"name": name, "tier": tier, "found": count, "status": "done"})
+                log(f"  {count} connections found")
             else:
-                log(f"  ✗ Private or no connections visible")
-        except Exception as e:
+                results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
+                if url:
+                    record_bridge_skip(url, name, "no visible connections")
+                log("  Connections are hidden — noted, and skipped from now on")
+        except KeyboardInterrupt:
+            log("Stopped.")
+            raise
+        except BaseException as exc:
+            # One bad profile must never end the run. BaseException rather than
+            # Exception on purpose: a SystemExit raised deep in a helper would
+            # otherwise take the whole loop down with it.
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
-            log(f"  ✗ Error: {str(e)[:60]}")
+            log(f"  Failed: {str(exc)[:80]}")
 
-        # Cooldown between bridges (skip on last one)
+        # Cooldown between bridges (skip on the last one). A real scrape walks
+        # many search pages and earns the full pause; a hidden profile was one
+        # page view, so charging two minutes for it is what made a run of them
+        # look like a hang.
         if i < len(unbridged) - 1:
-            cooldown = 120
-            log(f"  Cooling down {cooldown}s before next bridge...")
-            time.sleep(cooldown)
+            cooldown = BRIDGE_COOLDOWN if scraped else BRIDGE_SKIP_COOLDOWN
+            log(f"  Waiting {cooldown}s before the next one...")
+            waited = 0
+            while waited < cooldown:
+                time.sleep(min(15, cooldown - waited))
+                waited += min(15, cooldown - waited)
+                if waited < cooldown:
+                    log(f"    {cooldown - waited}s to go")
 
     # Summary
     success = sum(1 for r in results if r["status"] == "done")
     private = sum(1 for r in results if r["status"] == "private")
     errors = sum(1 for r in results if r["status"] == "error")
-    log(f"Complete: {success} bridged / {private} private / {errors} errors")
+    log(f"Complete: {success} bridged / {private} hidden / {errors} failed")
+    if private:
+        log("Hidden profiles are remembered and will be skipped next time.")
 
     return results
 
@@ -1838,10 +1934,18 @@ Examples:
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
     parser.add_argument("--auto-bridge", action="store_true",
                         help="Map every bridge in turn, highest tier first")
+    parser.add_argument("--retry-private", action="store_true",
+                        help="With --auto-bridge: try people previously found to be hidden")
+    parser.add_argument("--clear-skips", action="store_true",
+                        help="Forget every hidden-profile skip and start clean")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
 
     _assert_local_target()
+
+    if args.clear_skips:
+        clear_bridge_skips()
+        raise SystemExit(0)
 
     if args.login:
         raise SystemExit(0 if open_login_window() else 1)
@@ -1858,7 +1962,7 @@ Examples:
             push_company(people, args.company)
         print(f"Done. {len(people) if people else 0} found at {args.company}.")
     elif args.auto_bridge:
-        results = auto_bridge_all(headless=args.headless)
+        results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private)
         done = sum(1 for r in results if r.get("status") == "done")
         print(f"\nDone. {done}/{len(results)} bridges mapped.")
     elif args.search:

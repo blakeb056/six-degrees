@@ -161,6 +161,9 @@ const ACTIONS = {
   full:          { flag: '--full',        label: 'Scanning your whole network' },
   refresh:       { flag: '--refresh',     label: 'Checking for new connections' },
   'auto-bridge': { flag: '--auto-bridge', label: 'Mapping every bridge in turn' },
+  // Hidden profiles are remembered so they are not retried forever; this is
+  // the way back in without a terminal.
+  'auto-bridge-retry': { flag: '--auto-bridge --retry-private', label: 'Mapping every bridge, hidden ones included' },
   bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
@@ -231,7 +234,9 @@ export async function POST(request) {
           cmd: python,
           args: [
             path.join(root, 'scripts', 'scrape.py'),
-            name ? `${spec.flag}=${name}` : spec.flag,
+            // `--flag=value` is one token on purpose: a name beginning with
+            // "-" can then never be read as a flag of its own.
+            ...(name ? [`${spec.flag}=${name}`] : spec.flag.split(' ')),
           ],
         },
       ];

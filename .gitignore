@@ -33,3 +33,6 @@ venv/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# The sandbox used by `npm run fresh` — a throwaway data directory
+.sandbox

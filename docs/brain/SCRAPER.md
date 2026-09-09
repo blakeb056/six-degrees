@@ -18,7 +18,9 @@ rejected-by-design table in the spec.
 | `--search` | Legacy: collects via the people-search pages instead. |
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
 | `--company "Name"` | Everyone visible at one company. |
-| `--auto-bridge` | Map every bridge in turn, highest tier first. |
+| `--auto-bridge` | Map every bridge in turn, highest tier first. Hidden profiles are recorded and skipped on later runs. |
+| `--retry-private` | With `--auto-bridge`: try the people previously found to be hidden. |
+| `--clear-skips` | Forget every hidden-profile skip. |
 | `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
 | `--headless` | Works on every mode once signed in — but headless Chrome is **more** detectable, not less. |
 
@@ -85,14 +87,18 @@ second terminal. From a shell you have to start the app yourself first.
 `ALLOW_REMOTE_PUSH=1`, because a misconfigured `APP_URL` would upload a private network
 to a third party.
 
-## Unverified
+## Bridges
 
-**Bridge and company scans carry their own copies of the old `window.scrollTo` pattern
-and the old name-matching heuristic.** They are very likely broken in exactly the ways
-TRAPS §5 and §6 describe and have not been run since the fix.
+A single bridge scrape (`--bridge "Name"`) is **verified working** — Blake ran one
+end to end on 2026-09-09.
 
-They were left alone deliberately: a bridge scrape reads a *stranger's* connection list
-and is the highest-ToS-risk operation in this project. Watch one live before trusting it.
+`--auto-bridge` walks every unbridged person, highest tier first. What it must survive
+is the common case, not the happy one: **most people's connections are hidden.** Those
+return `[], "private"`, are written to `bridge-skips.json`, and are not tried again
+unless asked. See TRAPS §15 for why recording the attempt is the whole fix.
+
+**Company scans are still unverified** and share the old patterns TRAPS §5 and §6
+describe. Watch one live before trusting it.
 
 ## Posture
 

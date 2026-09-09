@@ -25,6 +25,15 @@ First release, not yet published to npm.
   (`--company "Acme"`, `--auto-bridge`); they used to exist only behind the old server.
 
 ### Fixed
+- Auto-bridge no longer stalls on people whose connections are hidden. It notes them,
+  moves on, and does not try them again — they used to reappear at the top of the list
+  on every run, so the same few profiles were retried forever and the feature looked
+  stuck. `--retry-private` gives them another go; `--clear-skips` forgets all of them.
+- The wait after a hidden profile is now seconds rather than two minutes. The long pause
+  is for runs that actually walked LinkedIn; a hidden profile was a single page view.
+- A hidden or unavailable profile is recognised in seconds instead of costing the full
+  page-load budget twice over.
+- Auto-bridge prints a countdown while it waits, so a pause cannot be mistaken for a hang.
 - The scraper now collects your whole connections list. It was reading only the first ten
   people: the list sits in its own scroll container, so the page-down it performed never
   scrolled anything and no further connections ever loaded.
