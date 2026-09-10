@@ -50,7 +50,15 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
     const container = svgRef.current?.parentElement;
     if (!container) return;
     const updateSize = () => {
-      setDimensions({ width: container.clientWidth, height: container.clientHeight });
+      // Only publish a genuinely new size. A fresh object every observation is
+      // never Object.is-equal, so React re-rendered and the whole scene was
+      // rebuilt on every callback — including the sub-pixel churn a scrollbar
+      // appearing and disappearing produces.
+      const width = Math.round(container.clientWidth);
+      const height = Math.round(container.clientHeight);
+      setDimensions((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      );
     };
     updateSize();
     const ro = new ResizeObserver(updateSize);
@@ -67,6 +75,7 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
 
   useEffect(() => {
     if (!svgRef.current || !connections.length) return;
+    let simulation = null;
     const { width, height } = dimensions;
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -77,12 +86,21 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
     const savedTransform = modeChanged ? null : zoomTransformRef.current;
 
     if (mode === 'degrees') {
-      renderDegreesMode(svg, width, height, connections, degree2, onSelect, tierColors, savedTransform, zoomTransformRef, userName, zoomToClusterRef, zoomOutRef);
+      simulation = renderDegreesMode(svg, width, height, connections, degree2, onSelect, tierColors, savedTransform, zoomTransformRef, userName, zoomToClusterRef, zoomOutRef);
     } else {
-      renderNetworkMode(svg, width, height, connections, onSelect, tierColors, focusNodeRef, savedTransform, zoomTransformRef, userName);
+      simulation = renderNetworkMode(svg, width, height, connections, onSelect, tierColors, focusNodeRef, savedTransform, zoomTransformRef, userName);
     }
 
-    return () => { d3.selectAll('.graph-tooltip').remove(); };
+    return () => {
+      // Stop the force simulation this render started.
+      //
+      // It used to be left running. Every rebuild — and the scene rebuilt on
+      // any resize — added another simulation still ticking over the same
+      // nodes, so they fought each other and the graph shook. Refreshing made
+      // it worse because nothing ever stopped the old ones.
+      simulation?.stop();
+      d3.selectAll('.graph-tooltip').remove();
+    };
   }, [connections, degree2, dimensions, onSelect, tierColors, mode]);
 
   return (
@@ -352,6 +370,7 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     if (zoomTransformRef) zoomTransformRef.current = initialTransform;
   }
 
+  return simulation;
 }
 
 function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierColors, savedTransform, zoomTransformRef, userName, zoomToClusterRef, zoomOutRef) {
@@ -979,6 +998,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
     svg.call(zoomBehavior.transform, initialTransform);
     if (zoomTransformRef) zoomTransformRef.current = initialTransform;
   }
+  return simulation;
 }
 
 function setupDrag(node, simulation, fixedId) {
