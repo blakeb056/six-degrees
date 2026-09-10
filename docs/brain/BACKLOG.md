@@ -190,6 +190,36 @@ no transform — if you change one, change both; the test says so.
 Verified against the real 754-connection network: `0 mapped · 1 hidden · 753 to
 go`, 31 batches, per-tier rows all present.
 
+---
+
+## 4. Revolver and Chain disagreed about how many bridges exist
+
+**Status:** ✅ shipped · **Files:** `app/components/BridgeRing.js`
+
+Blake: *"in the bridge it shows all the tiers but for the revolver it doesn't."*
+
+He was right, and the two views genuinely disagreed. **Chain view takes every bridge**
+(`connections.filter(has a circle).sort(by cluster size)`, no cap). **Revolver sorted by
+circle power and kept twelve** — and the top twelve by circle power skew hard to your
+strongest people, so B, C and D bridges never appeared, while the tier filter beside it
+was counting *all* of them. The dial was showing a biased slice and not saying so.
+
+Item 1 added shift+arrow paging, which nothing on screen mentioned. That is not a fix.
+
+- [x] A visible pager on the dial: `1–12 of 14 · page 1/2 · by circle power`, with
+      clickable ‹ › controls.
+- [x] The tiers present on the current page, shown as coloured letters, so a page that
+      happens to be all-S is obvious rather than looking like your whole network.
+- [x] Discrete pages rather than a sliding window. The first attempt wrapped, which
+      produced `13–24 of 14` — a page that straddles the end is not something anyone
+      can hold in their head, and the label could not be written honestly.
+
+### Still true, and deliberate
+
+The dial holds twelve because the geometry needs it: names and circle-power figures have
+to be readable, and thirty on a ring are not. Paging is the answer, not crowding — but
+the count and the page must always be on screen.
+
 ## Ordering
 
 3 → 1 → 2. The progress bar is small, self-contained and immediately useful while

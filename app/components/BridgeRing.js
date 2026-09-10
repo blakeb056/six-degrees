@@ -169,12 +169,13 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     if (!svgEl || w < 80 || h < 80) return undefined;
     const { bridges: ringAll, clusters: clusterMap } = dataRef.current;
     const total = ringAll.length;
-    const start = total > MAX_BRIDGES ? ringStart % total : 0;
-    // Wrap, so paging past the end returns to the strongest rather than
-    // running out of dial.
-    const ring = total > MAX_BRIDGES
-      ? Array.from({ length: MAX_BRIDGES }, (_, k) => ringAll[(start + k) % total])
-      : ringAll;
+    // Discrete pages, not a sliding wrap. A window that wraps produced labels
+    // like "13-24 of 14", and a page that straddles the end is not something
+    // anyone can hold in their head.
+    const pageCount = Math.max(1, Math.ceil(total / MAX_BRIDGES));
+    const page = ((ringStart % pageCount) + pageCount) % pageCount;
+    const start = page * MAX_BRIDGES;
+    const ring = total > MAX_BRIDGES ? ringAll.slice(start, start + MAX_BRIDGES) : ringAll;
     const n = ring.length;
     if (n === 0) return undefined;
 
@@ -434,17 +435,61 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       .attr('font-size', 9).attr('fill', '#64748b').text('you');
 
     // ---- affordance, fades after the first interaction --------------------
-    // How much of the network this dial is currently showing.
+    // A visible pager.
+    //
+    // The dial holds twelve, sorted by circle power — which skews hard to your
+    // strongest people, so lower tiers never appeared on the first page while
+    // the tier filter beside it was counting every bridge. Chain view shows all
+    // of them, so the two disagreed and only this one was lying. Shift+arrow
+    // already paged, but nothing said so.
     if (total > MAX_BRIDGES) {
-      svg.append('text')
-        .attr('x', cx)
-        .attr('y', Math.max(16, cy - R - (isMobile ? 96 : 118)))
+      const pagerY = Math.max(20, cy - R - (isMobile ? 96 : 118));
+      const first = start + 1;
+      const last = start + n;   // n is the real page size, short on the last page
+      const tiersHere = [...new Set(ring.map((b) => b.tier).filter(Boolean))]
+        .sort((a, b) => 'SABCD'.indexOf(a) - 'SABCD'.indexOf(b));
+
+      const pager = svg.append('g').attr('transform', `translate(${cx}, ${pagerY})`);
+
+      pager.append('text')
         .attr('text-anchor', 'middle')
         .attr('font-size', 10.5)
-        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('fill', 'rgba(255,255,255,0.4)')
         .attr('letter-spacing', '0.06em')
         .attr('pointer-events', 'none')
-        .text(`${n} of ${total} bridges · by circle power · \u2190 \u2192 to page`);
+        .text(`${first}\u2013${last} of ${total} \u00b7 page ${page + 1}/${pageCount} \u00b7 by circle power`);
+
+      // Which tiers you are actually looking at, so a page of all-S is obvious.
+      pager.append('text')
+        .attr('y', 15)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 10)
+        .attr('pointer-events', 'none')
+        .selectAll('tspan')
+        .data(tiersHere)
+        .join('tspan')
+        .attr('dx', (d, i) => (i ? 7 : 0))
+        .attr('fill', (d) => TIER_COLORS[d] || TIER_COLORS.D)
+        .text((d) => d);
+
+      const arrow = (dx, dir, glyph) => {
+        const g = pager.append('g')
+          .attr('transform', `translate(${dx}, 0)`)
+          .style('cursor', 'pointer');
+        g.append('circle').attr('r', 11).attr('fill', 'rgba(255,255,255,0.06)')
+          .attr('stroke', 'rgba(255,255,255,0.14)').attr('stroke-width', 1);
+        g.append('text').attr('text-anchor', 'middle').attr('dy', '0.34em')
+          .attr('font-size', 12).attr('fill', '#cbd5e1')
+          .attr('pointer-events', 'none').text(glyph);
+        g.append('title').text(dir > 0 ? 'Next bridges' : 'Previous bridges');
+        g.on('click', (event) => {
+          event.stopPropagation();
+          suppressClick = true;
+          setRingStart((v) => v + dir);
+        });
+      };
+      arrow(-(isMobile ? 92 : 118), -1, '\u2039');
+      arrow(isMobile ? 92 : 118, 1, '\u203a');
     }
 
     const hint = interactedRef.current ? null : svg.append('text')
@@ -606,7 +651,7 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       // Shift pages the window through the full list; plain arrows move within
       // the twelve currently on the dial.
       if (e.shiftKey && total > MAX_BRIDGES) {
-        setRingStart((v) => (v + delta * MAX_BRIDGES + total) % total);
+        setRingStart((v) => v + delta);
         return;
       }
       rotateToSlot((selIndex + delta + n) % n);
