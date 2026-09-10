@@ -50,6 +50,11 @@ First release, not yet published to npm.
   but the hubs — so it is quicker, and there is something to look at.
 
 ### Fixed
+- Connecting with someone you met through a bridge now registers. They used to stay a
+  2nd-degree contact forever — the import saw they were already on file and skipped
+  them — so the outreach you actually completed never showed up in your network.
+- Their card now says who introduced them, and keeps saying it after they become a
+  direct connection.
 - The Revolver dial shows every bridge it can fit rather than a fixed twelve — around
   forty on a normal window — shrinking them as the ring fills and naming only the
   selected one once names would overlap. It still pages when there are genuinely too

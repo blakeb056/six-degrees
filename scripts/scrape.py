@@ -493,7 +493,12 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None):
     if resp.status_code == 200:
         result = resp.json()
         inserted = result.get("processed", 0)
+        promoted = result.get("promoted", 0)
         print(f"  Pushed {len(connections)} → {inserted} processed")
+        if promoted:
+            # Someone you were introduced to has accepted. The bridge that
+            # produced them is kept on their row, so the path stays visible.
+            print(f"  {promoted} of them were 2nd-degree contacts you have now connected with")
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
         inserted = 0

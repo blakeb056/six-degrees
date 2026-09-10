@@ -48,7 +48,22 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           }}>
             {selected.degree === 2 ? `DEGREE 2 · TIER ${selected.tier}` : `TIER ${selected.tier}`}
           </div>
-          {selected.is_catalyst && (
+          {/* Where this person came from. A path you actually walked is the whole
+            point of the tool, so it stays visible after they become a direct
+            connection — a 1st-degree contact with an origin was someone you
+            reached through somebody. */}
+        {selected.unlocked_from_name && (
+          <div style={{
+            background: 'rgba(52,152,219,0.08)', border: '1px solid rgba(52,152,219,0.28)',
+            borderRadius: 8, padding: '9px 11px', marginBottom: 10,
+            fontSize: 11.5, color: '#8fb8d6', lineHeight: 1.5,
+          }}>
+            {selected.degree === 1 ? 'You met them through ' : 'Reachable through '}
+            <b style={{ color: '#cfe6f7' }}>{selected.unlocked_from_name}</b>
+          </div>
+        )}
+
+        {selected.is_catalyst && (
             <div style={{
               background: '#00ff88', color: '#000', display: 'inline-block',
               padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 800, letterSpacing: 0.5,

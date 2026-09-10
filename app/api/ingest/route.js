@@ -1,4 +1,5 @@
 import { db as supabase } from '../../../lib/db';
+import { promoteToFirstDegree } from '../../../lib/promote';
 
 function parseHeadline(h) {
   if (!h) return { role: '', company: '' };
@@ -117,6 +118,41 @@ export async function POST(request) {
 
     const newRecords = records.filter(r => !existingUrls.has(r.profile_url));
     const existingRecords = records.filter(r => existingUrls.has(r.profile_url));
+    let promoted = 0;
+
+    // Someone you met through a bridge and have now actually connected with.
+    //
+    // The existence check above is not degree-aware, so a person whose only row
+    // was 2nd-degree counted as "already handled" — and the update below only
+    // touches rows at degree 1, of which they had none. They stayed a
+    // 2nd-degree contact forever and the path that produced them was never
+    // recorded. Promote them instead, keeping who introduced them.
+    if (degree === 1 && existingRecords.length > 0) {
+      const stillSecondDegree = new Set();
+      for (let i = 0; i < existingRecords.length; i += 100) {
+        const batch = existingRecords.slice(i, i + 100).map(r => r.profile_url);
+        let q = supabase.from('linkedin_connections')
+          .select('profile_url, degree').in('profile_url', batch).eq('degree', 2);
+        if (userId) q = q.eq('user_id', userId);
+        const { data: d2 } = await q;
+        (d2 || []).forEach(r => stillSecondDegree.add(r.profile_url));
+      }
+      for (const rec of existingRecords) {
+        if (!stillSecondDegree.has(rec.profile_url)) continue;
+        const res = await promoteToFirstDegree(supabase, {
+          profileUrl: rec.profile_url,
+          userId,
+          fields: {
+            name: rec.name,
+            headline: rec.headline,
+            company: rec.company,
+            role: rec.role,
+            ...(rec.profile_image_url ? { profile_image_url: rec.profile_image_url } : {}),
+          },
+        });
+        if (res.promoted) promoted += 1;
+      }
+    }
 
     // Insert truly new records
     let insertError = null;
@@ -342,6 +378,7 @@ export async function POST(request) {
       success: true,
       received: connections.length,
       processed: records.length,
+      promoted,
     });
   } catch (err) {
     console.error('Ingest error:', err);

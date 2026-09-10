@@ -280,3 +280,27 @@ props object and destructures what it needs. Adding one is a row plus a componen
 The one declared exception is Orbit's `allDegree2` — it draws each bridge's circle in
 both modes and narrows to visible bridges itself. It sits in the registry rather than
 in a branch, because an exception you cannot see is one you break later.
+
+---
+
+## 19. A 2nd-degree person you connect with used to vanish
+
+The ingest route decided what was new with a check that was **not degree-aware**: any row
+with that `profile_url` counted as "already on file". It then refreshed the existing ones
+with `.eq('profile_url', …).eq('degree', 1)`.
+
+For someone whose only row was 2nd-degree, both halves missed. The insert skipped them
+because a row existed; the update matched nothing because that row was degree 2. **They
+stayed a 2nd-degree contact forever, no matter how many times you re-scraped**, and the
+path that produced them was never recorded.
+
+This is the failure mode the tool exists to prevent — you did the outreach, they accepted,
+and the graph did not notice.
+
+`lib/promote.js` now owns the transition and keeps the two provenance ideas apart:
+`source_connection_id` (whose circle they are in — cleared) versus
+`unlocked_from_bridge_id` (who introduced them — permanent). It is idempotent, and it
+folds away duplicate rows for the same person rather than leaving them.
+
+Covered by `tests/promotion.test.mjs`, including the assertion that matters: **the origin
+survives a second promotion.**

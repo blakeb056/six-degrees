@@ -24,8 +24,19 @@ installed rather than run from a checkout. TRAPS §4.
   `tier` — see [`SCORING.md`](SCORING.md).
 - `circle_power`, `circle_s_count`, `circle_a_count`, `circle_elite_pct` — how valuable
   the circle *behind* this person is. This is what makes someone a bridge.
-- `unlock_status`, `unlocked_from_bridge_id`, `unlocked_from_name` — the "path opened"
-  mechanic: a 2nd-degree person becomes reachable when a bridge to them is mapped.
+- `unlock_status`, `unlocked_from_bridge_id`, `unlocked_from_name` — **provenance, and it
+  is permanent.** Who introduced this person. Set when a path opens, and kept when they
+  later become a direct connection, so the route you actually walked never disappears.
+
+**Two fields are easy to conflate and must not be:**
+
+| | means | changes |
+|---|---|---|
+| `source_connection_id` | whose circle they sit in *right now* | cleared on promotion — a direct connection sits in nobody's circle |
+| `unlocked_from_bridge_id` | who **introduced** them | never; survives promotion, re-scrapes, and their own later rise to being a bridge |
+
+`lib/promote.js` is the only thing that should move someone between degrees; it keeps
+those two straight and folds away duplicate rows. See TRAPS §19.
 - `profile_image_url` — a **local** `/avatars/*.webp` path after capture, not a CDN URL.
   See TRAPS §3.
 - `user_id` — **every view filters by this.** A row written with NULL lands in the
