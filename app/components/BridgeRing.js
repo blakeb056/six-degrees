@@ -100,6 +100,9 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
   const cbRef = useRef({ onSelect });
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [selectedId, setSelectedId] = useState(null);
+  // The dial holds twelve. A thirteenth bridge used to be silently unreachable;
+  // this is the window's start into the full sorted list.
+  const [ringStart, setRingStart] = useState(0);
   const isMobile = useIsMobile();
 
   useEffect(() => { cbRef.current = { onSelect }; }, [onSelect]);
@@ -122,14 +125,14 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     const chosen = withCircle.length
       ? withCircle
       : [...connections].sort((a, b) => (Number(b.power_score) || 0) - (Number(a.power_score) || 0));
-    return { bridges: chosen.slice(0, MAX_BRIDGES), clusters: byBridge };
+    return { bridges: chosen, clusters: byBridge };
   }, [connections, degree2]);
 
   // Depend on content, not array identity — the parent rebuilds these arrays on
   // every render, and rebuilding the dial mid-drag would fight the pointer.
   const signature = useMemo(
-    () => `${bridges.map((b) => b.id).join(',')}|${degree2.length}`,
-    [bridges, degree2]
+    () => `${bridges.map((b) => b.id).join(',')}|${degree2.length}|${ringStart}`,
+    [bridges, degree2, ringStart]
   );
   const dataRef = useRef({ bridges, clusters });
   useEffect(() => { dataRef.current = { bridges, clusters }; }, [bridges, clusters]);
@@ -165,7 +168,13 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     const { w, h } = size;
     if (!svgEl || w < 80 || h < 80) return undefined;
     const { bridges: ringAll, clusters: clusterMap } = dataRef.current;
-    const ring = ringAll.slice(0, MAX_BRIDGES);
+    const total = ringAll.length;
+    const start = total > MAX_BRIDGES ? ringStart % total : 0;
+    // Wrap, so paging past the end returns to the strongest rather than
+    // running out of dial.
+    const ring = total > MAX_BRIDGES
+      ? Array.from({ length: MAX_BRIDGES }, (_, k) => ringAll[(start + k) % total])
+      : ringAll;
     const n = ring.length;
     if (n === 0) return undefined;
 
@@ -346,9 +355,14 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       const chipY = Math.min(...placed.map((p) => p.y - p.r)) - 22;
       const sCount = selected.circle_s_count ?? 0;
       const aCount = selected.circle_a_count ?? 0;
+      // Say so when there is more than fits. A silent cap looks like a small
+      // circle rather than a truncated one.
+      const shown = placed.length < clusterAll.length
+        ? `showing ${placed.length} of ${clusterAll.length}`
+        : `${placed.length} people`;
       const label = selected.is_catalyst
-        ? `⚡ catalyst circle · ${placed.length} people`
-        : `circle unlocked · ${placed.length} people · ${sCount}S ${aCount}A`;
+        ? `⚡ catalyst circle · ${shown}`
+        : `circle unlocked · ${shown} · ${sCount}S ${aCount}A`;
       const chip = clusterInner.append('g').attr('class', 'cluster-chip')
         .attr('transform', `translate(${cx0}, ${chipY})`)
         .style('opacity', 0)
@@ -420,6 +434,19 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       .attr('font-size', 9).attr('fill', '#64748b').text('you');
 
     // ---- affordance, fades after the first interaction --------------------
+    // How much of the network this dial is currently showing.
+    if (total > MAX_BRIDGES) {
+      svg.append('text')
+        .attr('x', cx)
+        .attr('y', Math.max(16, cy - R - (isMobile ? 96 : 118)))
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 10.5)
+        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('letter-spacing', '0.06em')
+        .attr('pointer-events', 'none')
+        .text(`${n} of ${total} bridges · by circle power · \u2190 \u2192 to page`);
+    }
+
     const hint = interactedRef.current ? null : svg.append('text')
       .attr('x', cx)
       .attr('y', Math.min(isMobile ? h * 0.54 - 12 : h - 12, cy + R + (isMobile ? 42 : 54)))
@@ -490,9 +517,14 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
 
     function rotateToSlot(i) {
       const target = offsetRef.current + normalizeAngle(TOP - slot(i) - offsetRef.current);
-      const id = ring[i].id;
+      const bridge = ring[i];
+      const id = bridge.id;
       if (id !== selectedId) hideCluster();
       tweenTo(target, () => {
+        // The dial owns which bridge is at the top; the rest of the app owns
+        // showing who that is. Before this, clicking a bridge rotated it and
+        // told nobody, which reads exactly like the click doing nothing.
+        cbRef.current.onSelect?.(bridge);
         if (id !== selectedId) setSelectedId(id);
         else showCluster();
       });
@@ -571,6 +603,12 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       else return;
       e.preventDefault();
       fadeHint();
+      // Shift pages the window through the full list; plain arrows move within
+      // the twelve currently on the dial.
+      if (e.shiftKey && total > MAX_BRIDGES) {
+        setRingStart((v) => (v + delta * MAX_BRIDGES + total) % total);
+        return;
+      }
       rotateToSlot((selIndex + delta + n) % n);
     }
 
@@ -610,7 +648,7 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       svgEl.removeEventListener('keydown', onKeyDown);
       svg.selectAll('*').remove();
     };
-  }, [signature, selectedId, isMobile, size, userName, userImage]);
+  }, [signature, selectedId, ringStart, isMobile, size, userName, userImage]);
 
   return (
     <div

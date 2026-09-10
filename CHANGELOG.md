@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- Clicking a bridge on the Revolver dial now opens that person, instead of only spinning
+  them to the top. The dial also says when it is showing part of something — "12 of 14
+  bridges", "showing 24 of 59" — and shift with the arrow keys pages through the rest.
 - The profile page shows how much of your network has actually been mapped: a bar for
   the connections whose circle you have opened, how many keep their connections private,
   and how many are left — with the remainder given in batches rather than as one long

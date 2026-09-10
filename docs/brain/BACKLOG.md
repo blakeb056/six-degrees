@@ -7,7 +7,7 @@ described in `PHASES.md` or the changelog.
 
 ## 1. Revolver: a bridge you click should open, not just rotate
 
-**Status:** ⬜ not started · **Size:** small · **Files:** `app/components/BridgeRing.js`
+**Status:** ✅ shipped · **Size:** small · **Files:** `app/components/BridgeRing.js`
 
 ### What happens now
 
@@ -25,16 +25,27 @@ Two limits compound it, both silent:
 
 ### What it should do
 
-- [ ] Clicking a bridge (or arrowing to it) calls `onSelect(bridge)` **after** the snap
+- [x] Clicking a bridge (or arrowing to it) calls `onSelect(bridge)` **after** the snap
       completes, so the sidebar shows that person: headline, company, circle power,
       S/A counts, and their outreach state.
-- [ ] The readout chip states the truth when the circle is truncated:
+- [x] The readout chip states the truth when the circle is truncated:
       `circle unlocked · showing 24 of 212 · 8S 31A`.
-- [ ] When more than `MAX_BRIDGES` bridges exist, say so on the dial —
+- [x] When more than `MAX_BRIDGES` bridges exist, say so on the dial —
       `12 of 27 bridges · sorted by circle power` — rather than silently dropping them.
-- [ ] Paging or a "show more" affordance for bridges beyond the first twelve. Simplest
+- [x] Paging or a "show more" affordance for bridges beyond the first twelve. Simplest
       version: the ring holds twelve, and a control rotates the *window* through the
       full sorted list.
+
+### How it shipped
+
+`rotateToSlot()` now calls `onSelect(bridge)` once the snap completes, so the sidebar
+shows that person — verified: clicking a bridge opens their panel with tier, score,
+circle power and Why This Matters.
+
+The chip says `showing 24 of 59` when a circle is larger than the fan. The dial says
+`12 of 14 bridges · by circle power · ← → to page` when there are more than twelve, and
+**shift + arrow** pages the window through the full sorted list, wrapping at the end
+rather than running out of dial.
 
 ### Deliberately not doing
 
