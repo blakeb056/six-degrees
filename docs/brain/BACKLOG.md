@@ -214,11 +214,32 @@ Item 1 added shift+arrow paging, which nothing on screen mentioned. That is not 
       produced `13–24 of 14` — a page that straddles the end is not something anyone
       can hold in their head, and the label could not be written honestly.
 
-### Still true, and deliberate
+### Then twelve turned out to be the wrong idea entirely
 
-The dial holds twelve because the geometry needs it: names and circle-power figures have
-to be readable, and thirty on a ring are not. Paging is the answer, not crowding — but
-the count and the page must always be on screen.
+Blake, from the mini: *"its still only showing 12 in the revolver for the s tier."* With
+thirty-nine S-tier bridges, paging four times to prove they exist is not a fix, it is the
+same problem wearing a pager.
+
+And the first attempt at that — a hard switch to "dense" past twelve — was the same
+mistake mirrored: fourteen bridges rendered tiny when they would have fitted at full
+size. **A threshold standing in for a measurement, twice.**
+
+Capacity and node size now come from the ring's own circumference:
+
+| bridges | node radius | labels | pages |
+|---|---|---|---|
+| 8 | 26 | all | 1 |
+| 14 | 26 | all | 1 |
+| 25 | 17 | selected only | 1 |
+| **39** | **11** | selected only | **1** |
+| 60 | 10 | selected only | 2 |
+| 120 | 10 | selected only | 3 |
+
+- [x] Node size scales with the arc between neighbours instead of jumping at a threshold.
+- [x] Names appear while there is room for them (spacing > 70px), otherwise only the
+      selected bridge is named — forty labels on a circle is a wall of text, not a dial.
+- [x] Paging survives for genuinely large sets, and the pager hides itself at one page,
+      reading `all 14 bridges · by circle power`.
 
 ## Ordering
 

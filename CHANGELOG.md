@@ -50,8 +50,10 @@ First release, not yet published to npm.
   but the hubs — so it is quicker, and there is something to look at.
 
 ### Fixed
-- The Revolver dial now says how many bridges it is showing you and lets you page
-  through the rest. It held the twelve with the largest circles and said nothing about
+- The Revolver dial shows every bridge it can fit rather than a fixed twelve — around
+  forty on a normal window — shrinking them as the ring fills and naming only the
+  selected one once names would overlap. It still pages when there are genuinely too
+  many, and says so. It held the twelve with the largest circles and said nothing about
   the others, so lower tiers looked as though they did not exist — while the filter
   beside it was counting them.
 - Stopping a run no longer leaves a browser window open behind it. The scraper is

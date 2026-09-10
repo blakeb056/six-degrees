@@ -18,7 +18,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { select } from 'd3';
 import { TIER_COLORS, initialsFor } from '../../lib/tiers';
 
+// Twelve is what fits at full size, with a name and a circle-power figure under
+// each. Beyond that the dial goes dense: smaller nodes, and only the selected
+// one is labelled — so the capacity comes from the geometry of the ring rather
+// than from a number someone picked. A network with thirty-nine S-tier bridges
+// should show thirty-nine, not page four times to prove they exist.
 export const MAX_BRIDGES = 12;
+const DENSE_NODE_R = 9;
+const DENSE_GAP = 7;
 const MAX_CLUSTER_NODES = 24;
 const TOP = -Math.PI / 2;
 const SNAP_MS = 350;
@@ -169,28 +176,8 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     if (!svgEl || w < 80 || h < 80) return undefined;
     const { bridges: ringAll, clusters: clusterMap } = dataRef.current;
     const total = ringAll.length;
-    // Discrete pages, not a sliding wrap. A window that wraps produced labels
-    // like "13-24 of 14", and a page that straddles the end is not something
-    // anyone can hold in their head.
-    const pageCount = Math.max(1, Math.ceil(total / MAX_BRIDGES));
-    const page = ((ringStart % pageCount) + pageCount) % pageCount;
-    const start = page * MAX_BRIDGES;
-    const ring = total > MAX_BRIDGES ? ringAll.slice(start, start + MAX_BRIDGES) : ringAll;
-    const n = ring.length;
-    if (n === 0) return undefined;
-
-    const svg = select(svgEl);
-    svg.selectAll('*').remove();
-    svg.attr('viewBox', `0 0 ${w} ${h}`);
-    svgEl.style.cursor = 'grab';
-
-    // ---- geometry --------------------------------------------------------
-    const step = (Math.PI * 2) / n;
-    const slot = (i) => TOP + i * step;
-    let selIndex = ring.findIndex((b) => b.id === selectedId);
-    if (selIndex < 0) selIndex = 0;
-    const selected = ring[selIndex];
-
+    if (total === 0) return undefined;
+    // Ring geometry first — the capacity below is derived from it.
     const baseR = isMobile ? 150 : 230;
     const panelW = isMobile ? 0 : 372;
     const bandBase = isMobile ? 56 : 70;
@@ -199,6 +186,47 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     const R = Math.max(90, Math.min(baseR, (h - bandSpan - 84) / 2, (w - panelW) / 2 - 56));
     const cx = isMobile ? w / 2 : Math.max(R + 60, (w - panelW) / 2);
     const cy = Math.max(R + bandSpan + 38, Math.min(h - R - 46, h * (isMobile ? 0.42 : 0.55)));
+
+    // Capacity comes from the ring, not from a number someone picked.
+    //
+    // A hard cap at twelve meant a network with thirty-nine S-tier bridges paged
+    // four times to prove they existed, and a hard switch to "dense" made
+    // fourteen bridges tiny when they would have fit at full size. Both are the
+    // same mistake: a threshold standing in for a measurement.
+    //
+    // Fit as many as the circumference allows at the smallest readable size,
+    // then let the node size scale back up when there is room to spare.
+    const capacity = Math.max(
+      MAX_BRIDGES,
+      Math.floor((2 * Math.PI * R) / (DENSE_NODE_R * 2 + DENSE_GAP))
+    );
+
+    // Discrete pages, not a sliding wrap: a window that wraps produced labels
+    // like "13-24 of 14", which is not a range anyone can hold in their head.
+    const pageCount = Math.max(1, Math.ceil(total / capacity));
+    const page = ((ringStart % pageCount) + pageCount) % pageCount;
+    const start = page * capacity;
+    const ring = total > capacity ? ringAll.slice(start, start + capacity) : ringAll;
+    const n = ring.length;
+    if (n === 0) return undefined;
+
+    const svg = select(svgEl);
+    svg.selectAll('*').remove();
+    svg.attr('viewBox', `0 0 ${w} ${h}`);
+    svgEl.style.cursor = 'grab';
+
+    const step = (Math.PI * 2) / n;
+    const slot = (i) => TOP + i * step;
+
+    // Arc length between neighbours decides both size and whether names fit.
+    const spacing = (2 * Math.PI * R) / Math.max(1, n);
+    const nodeR = Math.max(DENSE_NODE_R, Math.min(26, spacing / 2.6));
+    // A name plus a circle-power figure needs roughly this much room; below it,
+    // only the selected bridge is labelled rather than overlapping every name.
+    const labelsFit = spacing > 70;
+    let selIndex = ring.findIndex((b) => b.id === selectedId);
+    if (selIndex < 0) selIndex = 0;
+    const selected = ring[selIndex];
 
     const defs = svg.append('defs');
     defs.append('filter').attr('id', 'bridge-cloud-blur')
@@ -384,7 +412,10 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
     // ---- bridge nodes on the dial ----------------------------------------
     const bridgesG = svg.append('g');
     const bridgeGroups = ring.map((b, i) => {
-      const r = Math.min(26, 14 + (Number(b.power_score) || 0));
+      // Power still shows through as size, but bounded by what the ring can hold.
+      const r = labelsFit
+        ? Math.min(nodeR, 14 + (Number(b.power_score) || 0))
+        : nodeR + (i === selIndex ? 4 : 0);
       const isSel = i === selIndex;
       const g = bridgesG.append('g').style('cursor', 'pointer').attr('opacity', isSel ? 1 : 0.6);
       if (b.is_catalyst) {
@@ -399,6 +430,9 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
         key: `b-${b.id}`, r, fill: TIER_COLORS[b.tier] || TIER_COLORS.D,
         name: b.name, imageUrl: b.profile_image_url, showInitials: true,
       });
+      // When the ring is tight, only the selection is named — forty labels on a
+      // circle is not a readable dial, it is a wall of text.
+      if (!labelsFit && !isSel) return g;
       const labels = g.append('g')
         .attr('opacity', isSel ? 1 : isMobile ? 0.15 : 0.7)
         .attr('pointer-events', 'none');
@@ -457,7 +491,9 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
         .attr('fill', 'rgba(255,255,255,0.4)')
         .attr('letter-spacing', '0.06em')
         .attr('pointer-events', 'none')
-        .text(`${first}\u2013${last} of ${total} \u00b7 page ${page + 1}/${pageCount} \u00b7 by circle power`);
+        .text(pageCount > 1
+          ? `${first}\u2013${last} of ${total} \u00b7 page ${page + 1}/${pageCount} \u00b7 by circle power`
+          : `all ${total} bridges \u00b7 by circle power`);
 
       // Which tiers you are actually looking at, so a page of all-S is obvious.
       pager.append('text')
@@ -488,8 +524,10 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
           setRingStart((v) => v + dir);
         });
       };
-      arrow(-(isMobile ? 92 : 118), -1, '\u2039');
-      arrow(isMobile ? 92 : 118, 1, '\u203a');
+      if (pageCount > 1) {
+        arrow(-(isMobile ? 92 : 118), -1, '\u2039');
+        arrow(isMobile ? 92 : 118, 1, '\u203a');
+      }
     }
 
     const hint = interactedRef.current ? null : svg.append('text')
@@ -650,7 +688,7 @@ export default function BridgeRing({ connections = [], degree2 = [], onSelect, u
       fadeHint();
       // Shift pages the window through the full list; plain arrows move within
       // the twelve currently on the dial.
-      if (e.shiftKey && total > MAX_BRIDGES) {
+      if (e.shiftKey && pageCount > 1) {
         setRingStart((v) => v + delta);
         return;
       }
