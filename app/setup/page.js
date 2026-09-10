@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape } from '../../lib/scraper-client';
+import UpdatePanel from '../components/UpdatePanel';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -269,6 +270,8 @@ function SetupInner() {
             }}>{s.log.join('\n')}</pre>
           </>
         )}
+
+        <UpdatePanel />
 
         <p style={{ color: '#667', fontSize: 12.5, lineHeight: 1.7, marginTop: 32 }}>
           Automating LinkedIn may go against its User Agreement, and accounts have been

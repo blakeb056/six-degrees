@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+import { projectRoot, dataDir } from '../../../lib/paths';
 
 // The app runs the scraper itself.
 //
@@ -60,24 +60,6 @@ function push(line) {
     state.log.push(t);
   }
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
-}
-
-/** Where scripts/scrape.py lives — differs between a checkout and an install. */
-function projectRoot() {
-  const candidates = [
-    process.env.SIX_DEGREES_ROOT,
-    process.cwd(),
-    path.join(process.cwd(), '..'),
-    path.join(process.cwd(), '..', '..'),
-  ].filter(Boolean);
-  for (const c of candidates) {
-    if (existsSync(path.join(c, 'scripts', 'scrape.py'))) return c;
-  }
-  return null;
-}
-
-function dataDir() {
-  return process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees');
 }
 
 /** Run something short and tell me only whether it worked. */

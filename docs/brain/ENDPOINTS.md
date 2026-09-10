@@ -13,6 +13,7 @@ Irreversibly destructive. The UI never calls them; the scraper sends the token.
 | `POST /api/admin-update` | Bulk field updates. |
 | `POST /api/delete-cluster` | Deletes an entire bridge cluster. |
 | `POST /api/setup-profile` | Overwrites the profile. |
+| `GET/POST /api/update` | Updates a git checkout. `GET` reads local state only (no network). `POST {action:'check'}` runs `git fetch`; `POST {action:'pull'}` fast-forwards. **Gated: it changes the code that runs next.** Refuses on a dirty tree, naming the files; `package-lock.json` alone is discarded because npm regenerates it. |
 | `GET/POST /api/scraper` | Runs the scraper. `GET` reports preflight status; `POST` takes a fixed action enum (`install`/`login`/`full`/`refresh`/`cancel`). **Gated because it spawns processes** — more power than any of the four above. No part of a command line ever comes from the request. |
 
 `lib/gate.js` `gateDecision()`: a valid token allows; a loopback bind allows; **no token

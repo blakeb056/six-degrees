@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- An **Updates** section on the Scan page. Press **Check for updates** to see what has
+  changed since your copy, then install it — no terminal, no `git pull` to remember.
+  Nothing is ever checked automatically and nothing about you is sent; it runs the same
+  two git commands you would type. If you have your own edits, it refuses and tells you
+  which files rather than throwing them away.
 - LinkedIn `Connections.csv` import, parsed entirely in the browser and never persisted.
 - A synthetic sample network (150 invented 1st-degree, 598 2nd-degree, 14 bridges) that
   seeds deterministically, so every view can be explored before importing anything real.

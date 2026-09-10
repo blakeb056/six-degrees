@@ -18,8 +18,14 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
 1. **Local-first, permanently.** The database is a SQLite file on the user's own
    machine. No account, no API key, no hosted service that can bill them, rate-limit
    them, or disappear. A build that requires a network call to function is wrong.
-2. **No telemetry. No analytics. No update check. Ever.** Not opt-out — absent. This
-   tool reads a person's professional network; it must never be able to report on it.
+2. **No telemetry. No analytics. No automatic update check. Ever.** Not opt-out —
+   absent. This tool reads a person's professional network; it must never be able to
+   report on it, and it must never make a request nobody asked for.
+   The one permitted exception is narrow and worth stating precisely: a **button the
+   user presses** may run `git fetch` / `git pull` against the remote their own
+   checkout already has (`/api/update`). It sends nothing about them, it runs only on
+   a click, and it is exactly what they would type. Anything that checks on a timer,
+   on launch, or in the background is the forbidden thing.
 3. **Never commit real network data.** Not a CSV, not an avatar, not a snapshot. CI
    fails the build if any appears. The sample network is generated and every person in
    it is invented.
@@ -54,3 +60,5 @@ Written down so the same idea does not arrive every few months looking fresh.
 | Voyager (LinkedIn's internal HTTP API) | Requires forging an authenticated internal client. More fragile than the DOM and unambiguously adversarial. |
 | Defeating Google's OAuth block | Google blocks its sign-in flow inside automation-controlled browsers deliberately. Working around an anti-automation control is out of scope; the tool tells the user to use email and password instead. |
 | A login gate on the local app | It runs on `127.0.0.1`. A password on a loopback service is theatre that costs real usability. |
+| Auto-updating, or checking for updates on launch | Invariant 2. A request nobody asked for is a request that can be counted. The update button is user-pressed only. |
+| Discarding a user's local changes to force an update | The update refuses on a dirty tree and says which files. The single exception is `package-lock.json`, which npm regenerates and nobody edits on purpose. |
