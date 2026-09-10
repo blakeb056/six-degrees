@@ -103,7 +103,41 @@ for _ in $(seq 1 60); do
   sleep 0.5
 done
 
-open "http://127.0.0.1:$PORT/"
+URL="http://127.0.0.1:$PORT/"
+
+# Open it as a window, not a tab.
+#
+# A Chromium browser started with --app gives a plain window: no address bar,
+# no tabs, its own entry in the Dock. It is the same rendering engine either
+# way, but it stops the app looking like a web page someone left open. Chrome
+# is launched directly rather than via the open command, because arguments
+# passed that way are ignored when the browser is already running, which it
+# usually is. (No backticks in here: this whole script lives inside a
+# JavaScript template literal and a stray one ends it.)
+APP_WINDOW=""
+for B in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+         "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
+         "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" \
+         "/Applications/Chromium.app/Contents/MacOS/Chromium"; do
+  if [ -x "$B" ]; then APP_WINDOW="$B"; break; fi
+done
+
+if [ -n "$APP_WINDOW" ]; then
+  "$APP_WINDOW" --app="$URL" --window-size=1400,900 >/dev/null 2>&1 &
+  WINDOW_PID=$!
+  sleep 2
+  # A Chromium already running forwards the window to itself and the launcher
+  # exits 0, so a live process is not the test. A non-zero exit is, and it means
+  # nothing opened — fall back rather than leaving a running server and a blank
+  # screen.
+  if ! kill -0 $WINDOW_PID 2>/dev/null; then
+    wait $WINDOW_PID 2>/dev/null || open "$URL"
+  fi
+else
+  # No Chromium anywhere: the default browser is a perfectly good home.
+  open "$URL"
+fi
+
 wait $SERVER
 `);
 chmodSync(path.join(APP, 'Contents', 'MacOS', 'six-degrees'), 0o755);
