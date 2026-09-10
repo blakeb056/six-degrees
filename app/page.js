@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
 import { loadNetwork } from '../lib/network';
 import ForceGraph from './components/ForceGraph';
+import OrbitGraph from './components/OrbitGraph';
 import GridView from './components/GridView';
 import ListView from './components/ListView';
 import RingsView from './components/RingsView';
@@ -349,6 +350,11 @@ function HomeInner() {
                 return bridge && bridge.tier === filter;
               })
           ) : [];
+          // Orbit draws each bridge's circle as dots fanned beside them, so it
+          // wants the 2nd degree in both modes — unlike the older views, where
+          // 2nd degree belongs to the Bridges mode only. It filters to the
+          // bridges actually on screen itself, so the tier filter still applies.
+          const orbitD2 = isDegreesMode ? filteredD2 : degree2;
           const selectHandler = (node) => { setSelected(node); if (node) setSidebarCollapsed(false); };
 
           // No connections at all: offer a way in rather than a black screen.
@@ -391,6 +397,17 @@ function HomeInner() {
           }
           if (visualMode === 'rings') {
             return <RingsView connections={filtered} degree2={filteredD2} onSelect={selectHandler} mode={mode} />;
+          }
+          if (visualMode === 'orbit') {
+            return (
+              <OrbitGraph
+                connections={filtered}
+                degree2={orbitD2}
+                onSelect={selectHandler}
+                userName={userName}
+                selectedId={selected?.id ?? null}
+              />
+            );
           }
           // Default: Galaxy (ForceGraph)
           return (

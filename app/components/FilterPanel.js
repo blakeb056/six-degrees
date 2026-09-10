@@ -13,6 +13,7 @@ const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D:
 const VISUAL_MODES = {
   network: [
     { key: 'galaxy', label: 'Galaxy', icon: '🌌', desc: 'Force-directed layout' },
+    { key: 'orbit', label: 'Orbit', icon: '🪐', desc: 'Tier orbits + circle dots' },
     { key: 'rings', label: 'Pyramid', icon: '🔺', desc: 'Tier hierarchy' },
     { key: 'list', label: 'List', icon: '☰', desc: 'Ranked power list' },
   ],
