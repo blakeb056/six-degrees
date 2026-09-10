@@ -44,6 +44,45 @@ export default function UserProvider({ children }) {
       setReady(true);
       return;
     }
+    // No identity in THIS browser — but the database may already have one.
+    //
+    // Identity is kept in localStorage, which is scoped to the origin. The
+    // packaged app serves on 127.0.0.1:6363 and a dev server on localhost:3000,
+    // so opening the same database through the other one looked like a brand
+    // new person: it asked for a name, made a second user, and showed an empty
+    // network while every row sat there under the first id.
+    //
+    // This is a single-user app with a file on one machine. If exactly one
+    // profile exists, it is theirs — adopt it rather than asking. More than
+    // one is genuinely ambiguous, so that still goes to the picker. The
+    // scraper resolves the active user the same way.
+    if (!hasUser()) {
+      fetch('/api/users')
+        .then((r) => r.json())
+        .then((data) => {
+          const users = data.users || [];
+          if (users.length === 1) {
+            const only = users[0];
+            setUser(only.id, only.name);
+            setUserId(only.id);
+            setUserName(only.name);
+            setUserProfile({
+              name: only.name,
+              headline: only.headline || '',
+              role: only.role || '',
+              company: only.company || '',
+              industry: only.industry || '',
+              sectors: only.sectors || [],
+              goals: only.goals || [],
+              linkedin_url: only.linkedin_url || '',
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setReady(true));
+      return;
+    }
+
     if (hasUser()) {
       const id = getUserId();
       const name = getUserName();

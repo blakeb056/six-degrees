@@ -42,6 +42,12 @@ function step(msg) { console.log(`\n▸ ${msg}`); }
 // `git pull` you package the previous commit and cannot tell from the outside —
 // a shipped app that quietly is not the code you just fetched. --fast skips it
 // when you are iterating on the packaging itself and know the build is current.
+// Clear the output BEFORE building. Next traces the project directory into the
+// standalone bundle, so a dist/ left from the previous run gets swallowed into
+// the next one — each build carrying the last one inside it. That is how a
+// 70 MB image became 361 MB.
+rmSync(OUT, { recursive: true, force: true });
+
 step('Building the app');
 if (process.argv.includes('--fast') && existsSync(path.join(ROOT, '.next', 'standalone', 'server.js'))) {
   console.log('  --fast: reusing the existing build (make sure it is current)');
@@ -50,7 +56,6 @@ if (process.argv.includes('--fast') && existsSync(path.join(ROOT, '.next', 'stan
 }
 
 step('Assembling the bundle');
-rmSync(OUT, { recursive: true, force: true });
 mkdirSync(path.join(APP, 'Contents', 'MacOS'), { recursive: true });
 mkdirSync(RES, { recursive: true });
 
@@ -194,8 +199,46 @@ Importing a LinkedIn CSV needs nothing else installed.
 Scanning LinkedIn directly also needs Python 3 and Google Chrome. The Scan page
 inside the app checks for both and sets up the rest itself.
 `);
+// Lay the window out the way every other Mac installer does: the app on the
+// left, the Applications folder on the right, drag across. Without this the
+// disk image opens as a plain file list and nobody knows what to do with it.
+const rw = path.join(OUT, 'rw.dmg');
 run('hdiutil', ['create', '-volname', APP_NAME, '-srcfolder', staging,
-  '-ov', '-format', 'UDZO', dmg]);
+  '-ov', '-format', 'UDRW', rw]);
+
+const mount = execFileSync('hdiutil', ['attach', rw, '-nobrowse', '-readwrite'])
+  .toString().split('\n').map((l) => l.trim()).filter(Boolean).pop().split('\t').pop().trim();
+
+try {
+  execFileSync('osascript', ['-e', `
+    tell application "Finder"
+      tell disk "${APP_NAME}"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {200, 160, 800, 540}
+        set theViewOptions to the icon view options of container window
+        set arrangement of theViewOptions to not arranged
+        set icon size of theViewOptions to 116
+        set position of item "${APP_NAME}.app" of container window to {150, 175}
+        set position of item "Applications" of container window to {450, 175}
+        set position of item "READ ME FIRST.txt" of container window to {300, 320}
+        close
+        open
+        update without registering applications
+        delay 1
+      end tell
+    end tell
+  `], { stdio: 'ignore' });
+} catch {
+  console.log('  (could not style the window; the image still works)');
+}
+
+execFileSync('sync');
+run('hdiutil', ['detach', mount, '-force']);
+run('hdiutil', ['convert', rw, '-format', 'UDZO', '-imagekey', 'zlib-level=9', '-o', dmg, '-ov']);
+rmSync(rw, { force: true });
 rmSync(staging, { recursive: true, force: true });
 
 const size = execFileSync('du', ['-h', dmg]).toString().split('\t')[0];
