@@ -227,6 +227,11 @@ export async function POST(request) {
   const maxBridges = Number.isInteger(body.maxBridges) && body.maxBridges > 0
     ? Math.min(body.maxBridges, 500)
     : 0;
+  // Tiers arrive as a list and become one --tiers=S,A token. Filtered to the
+  // five that exist, so nothing from the request reaches a command line freely.
+  const tiers = Array.isArray(body.tiers)
+    ? body.tiers.map((t) => String(t).toUpperCase()).filter((t) => 'SABCD'.includes(t) && t.length === 1)
+    : [];
   let name = null;
   if (spec.needsName) {
     name = cleanName(body.name);
@@ -273,6 +278,7 @@ export async function POST(request) {
             // "-" can then never be read as a flag of its own.
             ...(name ? [`${spec.flag}=${name}`] : spec.flag.split(' ')),
             ...(maxBridges && action.startsWith('auto-bridge') ? [`--max-bridges=${maxBridges}`] : []),
+            ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
           ],
         },
       ];

@@ -361,3 +361,24 @@ shared**, across 170 distinct pictures, some by more than ninety people. Most of
 are LinkedIn's placeholder silhouette for people with no photo; the rest are genuine
 mis-attributions. From inside `store_avatar` the two are indistinguishable, and **both
 are wrong to save**. Initials are honest; somebody else's face is not.
+
+---
+
+## 21. A limit on a query is a wrong answer waiting for scale
+
+Auto-bridge worked out who still needed a circle by pulling every 2nd-degree row and
+collecting the distinct source ids — `"limit": "2000"`.
+
+Past two thousand 2nd-degree rows, that answer is **silently wrong in the dangerous
+direction**: bridges that had been mapped came back as unmapped, so a resumed run
+scraped them again. On a real database with 2,738 rows, 738 were invisible — and the
+cost is not a wasted loop, it is rate limit spent on work already done, against an
+account that gets restricted for exactly that.
+
+Ask the question you actually mean. `/api/bridges` returns one row per bridge — a few
+dozen instead of a few thousand — and has no limit to outgrow. The 1st-degree list still
+carries a bound, but a high one, and it now says so out loud when it hits it rather than
+quietly returning a short list.
+
+**Where a limit exists and truncation is possible, either the query is wrong or the
+truncation has to be visible.**

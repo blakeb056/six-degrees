@@ -16,6 +16,7 @@ Usage:
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
   python3 scripts/scrape.py --company "Acme"         # Scan one company
   python3 scripts/scrape.py --auto-bridge            # Map every bridge in turn
+  python3 scripts/scrape.py --auto-bridge --tiers=S,A --max-bridges=10
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
 
 IMPORTANT: Only scrape ONE bridge at a time. Do NOT batch multiple bridges
@@ -420,6 +421,23 @@ def resolve_active_user():
     _active_user_id = users[0]["id"]
     print(f"  Scraping into profile: {users[0].get('name')}")
     return _active_user_id
+
+
+def read_bridged_ids():
+    """The ids of connections whose circle has already been mapped."""
+    params = {}
+    if _active_user_id:
+        params["userId"] = _active_user_id
+    try:
+        resp = requests.get(f"{APP_URL}/api/bridges", params=params,
+                            headers=app_headers(json_body=False), timeout=30)
+        if resp.status_code != 200:
+            print("  (could not read mapped bridges; treating none as mapped)")
+            return set()
+        return set(resp.json().get("bridgeIds", []))
+    except Exception:
+        print("  (could not read mapped bridges; treating none as mapped)")
+        return set()
 
 
 def read_connections(endpoint="", params=None):
@@ -1653,7 +1671,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
     return all_people
 
 
-def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0):
+def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None):
     """Auto-bridge all unbridged connections, S-tier first then down.
     Picks up from where we left off — skips already-bridged people."""
 
@@ -1663,17 +1681,20 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             log_fn(msg)
 
     # Get all degree-1 connections (filtered by active user)
-    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url", "order": "power_score.desc", "limit": "2000"}
+    D1_LIMIT = 20000
+    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url",
+                 "order": "power_score.desc", "limit": str(D1_LIMIT)}
     if _active_user_id:
         d1_params["user_id"] = f"eq.{_active_user_id}"
     all_d1 = read_connections(params=d1_params)
+    if len(all_d1) >= D1_LIMIT:
+        log(f"WARNING: only the first {D1_LIMIT} connections were read; some will be missed.")
 
-    # Get existing bridge IDs (already have clusters, for this user)
-    d2_params = {"degree": "eq.2", "select": "source_connection_id", "limit": "2000"}
-    if _active_user_id:
-        d2_params["user_id"] = f"eq.{_active_user_id}"
-    all_d2 = read_connections(params=d2_params)
-    bridged_ids = set(d["source_connection_id"] for d in all_d2 if d.get("source_connection_id"))
+    # Who already has a mapped circle. Asked as one row per bridge rather than
+    # by pulling every 2nd-degree row and de-duplicating — that carried a limit
+    # of 2000, so past that many the answer was quietly wrong and a resumed run
+    # re-scraped people it had already done.
+    bridged_ids = read_bridged_ids()
 
     # Filter unbridged, sort by tier priority (S first, then by score)
     tier_order = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
@@ -1684,6 +1705,20 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     skips = {} if retry_private else load_bridge_skips()
     skipped_now = [c for c in unbridged if c.get("profile_url") in skips]
     unbridged = [c for c in unbridged if c.get("profile_url") not in skips]
+
+    # Choosing tiers rather than "everything" or "only what is new".
+    #
+    # New connections need no special mode: the list of who still needs bridging
+    # is recomputed from the data every run, so anyone added since simply
+    # appears in it, sorted into their tier. What is worth choosing is how far
+    # down the list to go — most people never want to map their D-tier circles,
+    # and that choice is the one that costs rate limit.
+    if tiers:
+        wanted = {t.strip().upper() for t in tiers if t and t.strip()}
+        before = len(unbridged)
+        unbridged = [c for c in unbridged if (c.get("tier") or "D").upper() in wanted]
+        log(f"Limiting to {'/'.join(sorted(wanted, key=lambda t: tier_order.get(t, 9)))}-tier "
+            f"({len(unbridged)} of {before} outstanding)")
 
     unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
 
@@ -2016,6 +2051,8 @@ Examples:
                         help="Forget every hidden-profile skip and start clean")
     parser.add_argument("--max-bridges", type=int, default=0,
                         help="With --auto-bridge: stop after this many people (0 = no limit)")
+    parser.add_argument("--tiers", type=str, default="",
+                        help="With --auto-bridge: only these tiers, e.g. --tiers=S,A")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
 
@@ -2042,7 +2079,8 @@ Examples:
         print(f"Done. {len(people) if people else 0} found at {args.company}.")
     elif args.auto_bridge:
         results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
-                                  max_bridges=args.max_bridges)
+                                  max_bridges=args.max_bridges,
+                                  tiers=args.tiers.split(",") if args.tiers else None)
         done = sum(1 for r in results if r.get("status") == "done")
         print(f"\nDone. {done}/{len(results)} bridges mapped.")
     elif args.search:

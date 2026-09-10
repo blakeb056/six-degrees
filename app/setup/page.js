@@ -33,6 +33,10 @@ function SetupInner() {
   // roughly nineteen bridges in an hour got a real account restricted, so a
   // default above that is a default that can hurt whoever trusts it.
   const [batch, setBatch] = useState(10);
+  // Which tiers to work through. New connections need no separate mode — the
+  // outstanding list is recomputed every run, so anyone added since simply
+  // appears in it. What is worth choosing is how far down to go.
+  const [tiers, setTiers] = useState(['S', 'A']);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -207,12 +211,37 @@ function SetupInner() {
               this is the part LinkedIn notices. During development a real account was
               temporarily restricted after roughly <b>19 people in one sitting</b>.
               Run a batch, leave it for a day, run another — and stop the moment
-              LinkedIn mentions unusual activity.
+              LinkedIn mentions unusual activity. It always picks up where it left
+              off: anyone still without a mapped circle, highest tier first, including
+              people you have connected with since.
             </>
           }
           action={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
+                {['S', 'A', 'B', 'C', 'D'].map((t) => {
+                  const on = tiers.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTiers((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}
+                      disabled={running}
+                      style={{
+                        width: 30, height: 28, borderRadius: 7, fontSize: 12, fontWeight: 700,
+                        cursor: running ? 'not-allowed' : 'pointer', border: LINE,
+                        background: on ? 'rgba(52,152,219,0.22)' : 'rgba(255,255,255,0.05)',
+                        color: on ? '#cfe6f7' : '#667',
+                      }}
+                    >{t}</button>
+                  );
+                })}
+                <span style={{ fontSize: 11.5, color: '#667' }}>
+                  {tiers.length ? 'highest first' : 'pick at least one'}
+                </span>
+              </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch })} disabled={!canScrape} primary>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers })} disabled={!canScrape || !tiers.length} primary>
                 {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
               </Btn>
               <select
@@ -229,9 +258,10 @@ function SetupInner() {
                 <option value={25}>25 people</option>
                 <option value={0}>everyone — not advised</option>
               </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch })} disabled={!canScrape}>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers })} disabled={!canScrape || !tiers.length}>
                 Retry hidden ones
               </Btn>
+            </div>
             </div>
           }
         />

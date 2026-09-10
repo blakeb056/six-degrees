@@ -42,6 +42,17 @@ First release, not yet published to npm.
   everything found so far.
 - `--max-bridges` caps how many people one run will visit.
 
+### Added
+- Choose which tiers the 2nd-degree scan works through. It always resumes where it left
+  off — anyone still without a mapped circle, highest tier first, including people you
+  have connected with since the last run — so there is nothing to remember and nothing
+  to reset.
+
+### Fixed
+- Resuming a scan no longer re-scrapes people you had already done. Past 2,000
+  second-degree records the check for "who is already mapped" was silently returning a
+  partial answer, so finished bridges looked unfinished.
+
 ### Changed
 - Orbit now draws the shape of your network rather than every person at once. The people
   whose circle you have opened are large and named, their circle gathers tightly around
