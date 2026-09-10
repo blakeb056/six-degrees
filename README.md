@@ -30,12 +30,20 @@ It runs on your machine, against your own data, with no account and no server.
 ## Quickstart
 
 ```bash
-npx six-degrees@latest
+git clone https://github.com/blakeb056/six-degrees
+cd six-degrees
+npm install
+npm run dev
 ```
 
-That is the whole thing. It starts on <http://127.0.0.1:6363>, opens your
-browser, and offers a sample network you can explore immediately. `@latest` is
-in the command on purpose — npx will otherwise reuse a cached older copy.
+Opens on <http://localhost:3000> with a sample network you can explore straight
+away. **Needs Node 22.13 or newer** — the database is Node's built-in
+`node:sqlite`, and `npm run dev` stops with a clear message on anything older.
+There is nothing to configure: no `.env`, no account, no keys.
+
+> **Updating?** `git pull` changes the files, not the server that is already
+> running. Restart it afterwards — the app puts a banner across the bottom when
+> the two have drifted apart, naming both versions.
 
 ### Or build a macOS app
 
@@ -43,7 +51,7 @@ in the command on purpose — npx will otherwise reuse a cached older copy.
 npm run build:app
 ```
 
-Produces `dist/Six Degrees.app` and a ~70 MB `.dmg`. A Node runtime is bundled, so once
+Produces `dist/Six Degrees.app` and a ~50 MB `.dmg`. A Node runtime is bundled, so once
 it is installed nothing else is required to import a CSV and explore your network — no
 Node, no clone, no terminal. It opens in a plain window rather than a browser tab.
 

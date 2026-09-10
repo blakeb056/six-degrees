@@ -6,7 +6,7 @@
 | 1 — Standalone | ✅ Supabase → `node:sqlite` via the `lib/db.js` adapter; 12 routes changed one import line each |
 | 2 — Security | ✅ Loopback bind, header-proof gate, cross-site write refusal, XSS sinks escaped |
 | 3 — Presentation | ✅ Synthetic sample network, empty state, hydration fix, README screenshots |
-| 4 — Packaging | ✅ `npx six-degrees`, standalone output, verified by installing the tarball |
+| 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
 | 6 — Publish | ⬜ Repo is public; `npm publish` not yet run |
 

@@ -84,7 +84,7 @@ export async function GET() {
   if (!isGitCheckout()) {
     return Response.json({
       supported: false,
-      reason: 'This copy was installed rather than cloned, so there is nothing to pull. Run npx six-degrees@latest for the current version.',
+      reason: 'This copy was installed rather than cloned, so there is nothing to pull. Update it by installing a newer build over the top.',
     });
   }
   const state = await localState(root);
