@@ -53,6 +53,11 @@ First release, not yet published to npm.
   to reset.
 
 ### Fixed
+- Scan, Profile, Import and Outlink scroll again. A rule that exists so the map can fill
+  the window was applied to the whole app, so on every other page anything below the
+  fold was rendered but unreachable.
+- `npm run dev` now says when another copy is already serving on one of its ports,
+  instead of silently starting on a different one while your browser shows the old.
 - Resuming a scan no longer re-scrapes people you had already done. Past 2,000
   second-degree records the check for "who is already mapped" was silently returning a
   partial answer, so finished bridges looked unfinished.

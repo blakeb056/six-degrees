@@ -382,3 +382,31 @@ quietly returning a short list.
 
 **Where a limit exists and truncation is possible, either the query is wrong or the
 truncation has to be visible.**
+
+---
+
+## 22. Two ways a change can look like it never shipped
+
+Blake pulled, restarted, and could not find two features that were on his disk, in the
+right file, on the right commit. Both causes were environmental, and both are now
+guarded because "remember to do X" is not a fix.
+
+**A dev server serves what it had at launch.** Started before a `git pull`, it keeps
+serving the old code — and starting a second one does not replace it, because Next
+quietly takes the next free port while the browser stays pointed at the first. Three
+servers were live at once on one machine during this session. `predev` now runs
+`scripts/check-stale-server.mjs`, which names what is already listening and gives the
+line to replace it.
+
+**`body { overflow: hidden }` made every document page unscrollable.** It exists so the
+graph canvas can fill the window, but it applied to the whole app: on Scan, Profile,
+Import and Outlink, anything below the fold was rendered, mounted, *running* — and
+unreachable. The tier picker and the update panel were on screen the whole time, past
+the bottom edge, with `/api/update` visible in the server log proving the component was
+alive.
+
+The rule now sits on the map page itself (`body:has(> div > [data-map])`) rather than on
+`body`. **A global that exists for one page will be wrong on every other one.**
+
+The tell, in hindsight, was in the server log: `GET /api/update 200`, twice. Only that
+component calls it. The code was running; the pixels were off-screen.

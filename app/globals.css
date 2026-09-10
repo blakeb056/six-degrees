@@ -8,6 +8,14 @@ body {
   background: #0a0a1a;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* The map pins itself so the graph canvas can fill the window. This used to be
+   on `body`, which meant every other page — Scan, Profile, Import, Outlink —
+   could not scroll at all: anything below the fold was rendered, running, and
+   unreachable. That is how the tier picker and the update panel appeared to be
+   missing when they were on screen the whole time, just past the bottom edge. */
+body:has(> div > [data-map]) {
   overflow: hidden;
 }
 
