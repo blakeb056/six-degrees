@@ -46,7 +46,8 @@
     "SECURITY.md",
     "scripts/check-node.mjs",
     "scripts/audit-avatars.mjs",
-    "scripts/check-stale-server.mjs"
+    "scripts/check-stale-server.mjs",
+    "scripts/update.mjs"
   ],
   "scripts": {
     "dev": "NEXT_TELEMETRY_DISABLED=1 SIX_DEGREES_BIND=127.0.0.1 next dev -H 127.0.0.1",
@@ -67,7 +68,8 @@
     "scrape:full": "python3 scripts/scrape.py --full",
     "scrape:refresh": "python3 scripts/scrape.py --refresh",
     "audit:avatars": "node scripts/audit-avatars.mjs",
-    "build:app": "node scripts/build-app.mjs"
+    "build:app": "node scripts/build-app.mjs",
+    "update": "node scripts/update.mjs"
   },
   "dependencies": {
     "d3": "^7.9.0",

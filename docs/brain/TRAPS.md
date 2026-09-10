@@ -410,3 +410,25 @@ The rule now sits on the map page itself (`body:has(> div > [data-map])`) rather
 
 The tell, in hindsight, was in the server log: `GET /api/update 200`, twice. Only that
 component calls it. The code was running; the pixels were off-screen.
+
+---
+
+## 23. `git pull` refuses here, and says so in one line you will miss
+
+`npm install` rewrites `package-lock.json` whenever the local npm differs from the one
+that produced the committed file. Two machines with different Node versions therefore
+have a permanently dirty tree, git will not pull over local changes, and it exits after
+printing a single line.
+
+Everything after that behaves normally. `cd`, `npm run dev`, the browser — all fine, all
+serving the old code. Blake hit this repeatedly and reasonably concluded the update had
+not worked, because from the outside it had not.
+
+`npm run update` (`scripts/update.mjs`) discards **only** the generated lockfile, refuses
+outright if anything else is dirty, pulls, installs, and says to restart the server. The
+Scan page's Update button does the same through `/api/update`.
+
+While writing it I reproduced TRAPS §20 exactly: `.trim()` on `git status --porcelain`
+strips the leading space from the first line, so `slice(3)` ate a character and the
+script reported `ackage.json`. **The same mistake, in the same session, in a second
+place** — which is the argument for the rule being written down rather than remembered.

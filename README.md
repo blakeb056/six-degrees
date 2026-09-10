@@ -41,9 +41,16 @@ away. **Needs Node 22.13 or newer** — the database is Node's built-in
 `node:sqlite`, and `npm run dev` stops with a clear message on anything older.
 There is nothing to configure: no `.env`, no account, no keys.
 
-> **Updating?** `git pull` changes the files, not the server that is already
-> running. Restart it afterwards — the app puts a banner across the bottom when
-> the two have drifted apart, naming both versions.
+> **Updating?** Use `npm run update`, or the button on the Scan page.
+>
+> Plain `git pull` often refuses here and it is easy to miss: `npm install`
+> rewrites `package-lock.json` whenever your npm differs from the one that
+> produced the committed file, git will not pull over local changes, and it
+> exits after one line. Everything afterwards looks normal and you are still on
+> the old code. `npm run update` discards that generated file, pulls, installs,
+> and reminds you to restart — because files on disk are not the code a running
+> server has already loaded. The app also shows a banner when those two drift
+> apart.
 
 ### Or build a macOS app
 

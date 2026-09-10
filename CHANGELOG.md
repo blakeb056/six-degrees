@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- `npm run update` — discards the regenerated lockfile, pulls, installs, and tells you to
+  restart. Plain `git pull` refuses whenever npm has rewritten `package-lock.json`, which
+  is most of the time on a second machine, and it says so in one line that is easy to
+  miss.
 - A downloadable macOS app. `npm run build:app` produces `Six Degrees.app` and a ~70 MB
   `.dmg` with a Node runtime inside, so importing a CSV needs nothing else installed —
   no Node, no clone, no terminal. macOS asks for one approval on first launch because
