@@ -50,6 +50,9 @@ First release, not yet published to npm.
   but the hubs — so it is quicker, and there is something to look at.
 
 ### Fixed
+- A photo is only ever saved for one person now. If the same picture comes back for
+  somebody else — which is what happens with LinkedIn's placeholder silhouette, and with
+  anyone the scraper mismatched — it is skipped and they show their initials instead.
 - Second-degree people no longer end up wearing someone else's profile photo. The bridge
   scraper matched people by the text of their link, and everyone LinkedIn shows as
   "LinkedIn Member" shares that text — so they all inherited the first one's picture and

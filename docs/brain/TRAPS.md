@@ -348,3 +348,16 @@ look like a clean result.
 
 **The general lesson: when the identifier is derived from the wrong thing, comparing
 identifiers proves nothing.** Compare the artefact.
+
+### The real fix is at capture, not at repair
+
+Cleaning up afterwards is a script you have to remember to run. `store_avatar()` now
+hashes the downloaded bytes **before** re-encoding and refuses to save a picture already
+claimed by somebody else in that run — so two fetches of the same image under different
+signed URLs collide and only the first person keeps it.
+
+Measured on a real database before the guard existed: **2,821 of 3,486 photographs were
+shared**, across 170 distinct pictures, some by more than ninety people. Most of those
+are LinkedIn's placeholder silhouette for people with no photo; the rest are genuine
+mis-attributions. From inside `store_avatar` the two are indistinguishable, and **both
+are wrong to save**. Initials are honest; somebody else's face is not.

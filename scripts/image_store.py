@@ -38,11 +38,31 @@ def _slug(key):
     return hashlib.sha1(key.strip().encode("utf-8")).hexdigest()[:16]
 
 
+# Pictures already claimed by somebody, keyed by the hash of the downloaded
+# bytes. Filled as a run proceeds and consulted before anything is written.
+_claimed = {}
+
+
+def reset_claims():
+    """Start a fresh run. Only useful for tests and long-lived processes."""
+    _claimed.clear()
+
+
 def store_avatar(image_url, key, overwrite=True):
     """Download image_url, compress to a small square WebP, save under the data dir.
 
-    Returns the local web path ("/avatars/<slug>.webp") or None if the fetch/decode fails
-    (e.g. the signed URL already expired -> 403)."""
+    Returns the local web path ("/avatars/<slug>.webp") or None if the fetch/decode
+    fails (e.g. the signed URL already expired -> 403), or if this exact picture
+    already belongs to somebody else.
+
+    That last case matters more than it sounds. Files are named after the PERSON —
+    sha1(profile_url) — so one photograph handed to fifty people used to become fifty
+    separate files holding identical bytes, and nothing downstream could tell. On one
+    real database that was 2,821 of 3,486 photographs: mostly LinkedIn's placeholder
+    silhouette for people who have no picture, plus genuine mis-attributions from a
+    scraper that matched people by the text of their link. Both look the same from
+    here, and both are wrong to save. Initials are honest; somebody else's face is not.
+    """
     if not image_url or not key:
         return None
     slug = _slug(key)
@@ -53,6 +73,15 @@ def store_avatar(image_url, key, overwrite=True):
         resp = requests.get(image_url, timeout=TIMEOUT)
         if resp.status_code != 200 or not resp.content:
             return None
+
+        # Hash what actually arrived, before any re-encoding, so two fetches of
+        # the same picture under different signed URLs still collide.
+        digest = hashlib.sha256(resp.content).hexdigest()
+        owner = _claimed.get(digest)
+        if owner is not None and owner != key:
+            return None
+        _claimed[digest] = key
+
         img = Image.open(io.BytesIO(resp.content))
         img = ImageOps.exif_transpose(img).convert("RGB")
         img = ImageOps.fit(img, (SIZE, SIZE), Image.LANCZOS)  # center-crop to square
@@ -77,7 +106,10 @@ def localize_images(images):
         if local:
             out.append({"profileUrl": purl, "imageUrl": local})
             ok += 1
+    shared = len(images) - ok
     print("  [image_store] captured %d/%d avatars -> %s" % (ok, len(images), AVATAR_DIR))
+    if shared > 0:
+        print("  [image_store] %d skipped: no picture, or the same picture as someone else" % shared)
     return out
 
 
