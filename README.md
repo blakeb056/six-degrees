@@ -37,11 +37,15 @@ That is the whole thing. It starts on <http://127.0.0.1:6363>, opens your
 browser, and offers a sample network you can explore immediately. `@latest` is
 in the command on purpose — npx will otherwise reuse a cached older copy.
 
-### Or download it for macOS
+### Or build a macOS app
 
-A `.dmg` is on the [releases page](https://github.com/blakeb056/six-degrees/releases).
-Drag it to Applications and open it — Node is bundled, so nothing else is required to
-import a CSV and explore your network.
+```bash
+npm run build:app
+```
+
+Produces `dist/Six Degrees.app` and a ~70 MB `.dmg`. A Node runtime is bundled, so once
+it is installed nothing else is required to import a CSV and explore your network — no
+Node, no clone, no terminal. It opens in a plain window rather than a browser tab.
 
 **The first launch needs one approval.** The app is not signed with a paid Apple
 developer certificate, so macOS refuses it once: open **System Settings → Privacy &
@@ -49,6 +53,9 @@ Security**, scroll down, and click **Open Anyway**. Once per machine.
 
 Scanning LinkedIn directly additionally needs Python 3 and Google Chrome; the Scan page
 inside the app checks for both and installs the rest itself.
+
+There are no prebuilt downloads yet — the scraper needs one clean verified run against
+live LinkedIn before handing binaries to strangers is honest.
 
 Prefer to read the code first, or want to change it:
 
