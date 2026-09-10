@@ -5,6 +5,7 @@ import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-clie
 import { loadNetwork } from '../lib/network';
 import ForceGraph from './components/ForceGraph';
 import OrbitGraph from './components/OrbitGraph';
+import BridgeRing from './components/BridgeRing';
 import GridView from './components/GridView';
 import ListView from './components/ListView';
 import RingsView from './components/RingsView';
@@ -386,6 +387,16 @@ function HomeInner() {
             );
           }
 
+          if (visualMode === 'revolver' && isDegreesMode) {
+            return (
+              <BridgeRing
+                connections={filtered}
+                degree2={filteredD2}
+                onSelect={selectHandler}
+                userName={userName}
+              />
+            );
+          }
           if (visualMode === 'chain' && isDegreesMode) {
             return <ChainView connections={filtered} degree2={filteredD2} onSelect={selectHandler} userName={userName} />;
           }

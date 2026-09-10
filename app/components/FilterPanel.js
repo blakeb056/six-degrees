@@ -19,6 +19,7 @@ const VISUAL_MODES = {
   ],
   degrees: [
     { key: 'chain', label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
+    { key: 'revolver', label: 'Revolver', icon: '🎯', desc: 'Rotary dial · spin to switch' },
     { key: 'rings', label: 'Pyramid', icon: '🔺', desc: 'Cluster hierarchy' },
     { key: 'list', label: 'List', icon: '☰', desc: 'Ranked list' },
   ],

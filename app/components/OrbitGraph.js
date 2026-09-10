@@ -496,7 +496,13 @@ const OrbitGraph = forwardRef(function OrbitGraph(
   }, [signature, userName, userImage, isMobile, size]);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height: '100%', width: '100%' }}>
+    <div
+      ref={containerRef}
+      // The view area is a flex column, so a percentage height resolves
+      // against nothing and collapses to zero. Flex into the space instead,
+      // the way the other views do.
+      style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}
+    >
       <svg
         ref={svgRef}
         style={{ display: 'block', height: '100%', width: '100%', touchAction: 'none', userSelect: 'none' }}
