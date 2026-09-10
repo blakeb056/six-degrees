@@ -38,11 +38,15 @@ const run = (cmd, args, opts = {}) =>
 function step(msg) { console.log(`\n▸ ${msg}`); }
 
 // ---- 1. the app itself -----------------------------------------------------
+// Always rebuild. Reusing whatever happened to be in .next means that after a
+// `git pull` you package the previous commit and cannot tell from the outside —
+// a shipped app that quietly is not the code you just fetched. --fast skips it
+// when you are iterating on the packaging itself and know the build is current.
 step('Building the app');
-if (!existsSync(path.join(ROOT, '.next', 'standalone', 'server.js'))) {
-  run('npm', ['run', 'build'], { cwd: ROOT });
+if (process.argv.includes('--fast') && existsSync(path.join(ROOT, '.next', 'standalone', 'server.js'))) {
+  console.log('  --fast: reusing the existing build (make sure it is current)');
 } else {
-  console.log('  reusing the existing standalone build (npm run build to refresh)');
+  run('npm', ['run', 'build'], { cwd: ROOT });
 }
 
 step('Assembling the bundle');
