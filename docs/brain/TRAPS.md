@@ -325,7 +325,26 @@ which is exactly how a fix creates a false sense of safety. Verified by counting
 connections-scraped database has **zero** shared photos across 746 people; the
 bridge-scraped one had many.
 
-`scripts/audit-avatars.mjs` (`npm run audit:avatars`) reports photos used by more than
-one person, and `--fix` clears them so those people fall back to initials. **A wrong
+`scripts/audit-avatars.mjs` (`npm run audit:avatars`) finds them, `--fix` clears them so
+those people fall back to initials, `--prune` also deletes the duplicate files. **A wrong
 face is worse than no face**, and it needs no re-scrape — which matters when the account
-is rate-limited and re-scraping is not available.
+is rate-limited.
+
+### Comparing URLs finds almost nothing — compare the pictures
+
+The first version of that audit grouped by `profile_image_url` and reported four people
+on a database with hundreds of wrong faces. Two reasons, and both matter:
+
+- **LinkedIn signs every image URL** — `…?e=1789592400&v=beta&t=VOCHTeNAhBd…`. The same
+  picture fetched twice comes back under two different URLs, so string comparison sees
+  two unrelated images.
+- **Captured avatars are named `sha1(profile_url).webp`** — after the *person*, not the
+  picture. One photo handed to fifty people becomes fifty distinct files with identical
+  bytes.
+
+So the audit hashes the file contents. It also reports how many photos are still remote
+rather than captured, because those genuinely cannot be compared and would otherwise
+look like a clean result.
+
+**The general lesson: when the identifier is derived from the wrong thing, comparing
+identifiers proves nothing.** Compare the artefact.
