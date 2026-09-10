@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- The profile page shows how much of your network has actually been mapped: a bar for
+  the connections whose circle you have opened, how many keep their connections private,
+  and how many are left — with the remainder given in batches rather than as one long
+  run.
 - An **Updates** section on the Scan page. Press **Check for updates** to see what has
   changed since your copy, then install it — no terminal, no `git pull` to remember.
   Nothing is ever checked automatically and nothing about you is sent; it runs the same

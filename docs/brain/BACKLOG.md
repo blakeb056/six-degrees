@@ -96,7 +96,7 @@ back to top N by power score when none exist**, matching what Revolver already d
 
 ## 3. Profile: how much of the network is actually mapped
 
-**Status:** ⬜ not started · **Size:** small · **Files:** `app/profile/page.js`, possibly `app/api/network`
+**Status:** ✅ shipped · **Size:** small · **Files:** `app/profile/page.js`, possibly `app/api/network`
 
 ### Why
 
@@ -107,17 +107,17 @@ Progress* block; this sits beside it.
 
 ### What it should show
 
-- [ ] A progress bar: **connections whose circle has been mapped, out of all 1st-degree**.
+- [x] A progress bar: **connections whose circle has been mapped, out of all 1st-degree**.
       Mapped = at least one `linkedin_connections` row at `degree = 2` whose
       `source_connection_id` is that person.
-- [ ] The three real states, because two of them are not failure:
+- [x] The three real states, because two of them are not failure:
       `mapped` · `hidden` (in `bridge-skips.json` — their connections are private, this
       will never change) · `not yet tried`.
       **Hidden must not read as incomplete.** A network where every reachable circle is
       open should show as done even if half of it was hidden.
-- [ ] The counts under the bar: `184 mapped · 96 hidden · 474 to go — of 754`.
-- [ ] A per-tier breakdown, since S and A are what you would map first.
-- [ ] An honest estimate of remaining time at the current cooldown, framed as batches
+- [x] The counts under the bar: `184 mapped · 96 hidden · 474 to go — of 754`.
+- [x] A per-tier breakdown, since S and A are what you would map first.
+- [x] An honest estimate of remaining time at the current cooldown, framed as batches
       rather than one run: *"474 left ≈ 19 batches of 25."* Never imply it can be done
       in a sitting; that is how the account got restricted.
 
@@ -131,6 +131,21 @@ database. **Prefer the endpoint** — the skip list is scraper bookkeeping and d
 belong in the network schema.
 
 ---
+
+### How it shipped
+
+`app/components/MappingProgress.js`, rendered on the profile page above Queue
+Progress. Skips are read from the scraper's `bridge-skips.json` through
+`GET /api/scraper` — the endpoint route, as recommended, so scraper bookkeeping
+stays out of the network schema.
+
+Six tests cover the state logic, including the one that matters: **hidden people
+do not stop the bar reaching the end.** The `computeMapping` logic is duplicated
+in `tests/mapping.test.mjs` because the component is JSX and the test runner has
+no transform — if you change one, change both; the test says so.
+
+Verified against the real 754-connection network: `0 mapped · 1 hidden · 753 to
+go`, 31 batches, per-tier rows all present.
 
 ## Ordering
 

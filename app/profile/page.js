@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
+import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
@@ -31,6 +32,7 @@ function ProfileInner() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
+  const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
   const [setupStatus, setSetupStatus] = useState('idle');
   const [setupLog, setSetupLog] = useState([]);
   const [bridgeStatus, setBridgeStatus] = useState('idle');
@@ -71,6 +73,14 @@ function ProfileInner() {
         clusters, catalysts, networkPower, level, xpProgress,
         topCompanies, unlockedPaths: 0,
       });
+
+      // The progress card needs the rows themselves, not just the counts.
+      // Skips live with the scraper rather than in the schema, so they come
+      // from its endpoint — see docs/brain/BACKLOG.md item 3.
+      fetch('/api/scraper')
+        .then((r) => r.json())
+        .then((d) => setMapping({ degree1: d1, degree2: d2, skips: d.skips || [] }))
+        .catch(() => setMapping({ degree1: d1, degree2: d2, skips: [] }));
 
       // Fetch notifications and queue stats
       fetch(`/api/notifications?userId=${userId}`).then(r => r.json()).then(data => setNotifications(data.notifications || [])).catch(() => {});
@@ -294,6 +304,13 @@ function ProfileInner() {
             </div>
           )}
         </div>
+
+        {/* === 2ND-DEGREE MAPPING PROGRESS === */}
+        <MappingProgress
+          degree1={mapping.degree1}
+          degree2={mapping.degree2}
+          skips={mapping.skips}
+        />
 
         {/* === QUEUE PROGRESS === */}
         <div style={{

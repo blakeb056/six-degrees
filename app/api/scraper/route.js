@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
 
@@ -121,6 +121,28 @@ async function findAnyPython() {
   return null;
 }
 
+/** Who the scraper found to be private, so the app can report honestly.
+ *
+ *  This is scraper bookkeeping, not network data — it lives in a JSON file
+ *  beside the database rather than in the schema. The profile page needs it to
+ *  distinguish "not tried yet" from "will never work", which are very
+ *  different numbers to show someone deciding whether they are finished.
+ */
+function bridgeSkips() {
+  try {
+    const raw = readFileSync(path.join(dataDir(), 'bridge-skips.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    return Object.entries(parsed).map(([profileUrl, v]) => ({
+      profileUrl,
+      name: v?.name ?? '',
+      reason: v?.reason ?? '',
+      at: v?.at ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 let cached = { at: 0, value: null };
 
 async function status() {
@@ -152,6 +174,7 @@ async function status() {
     startedAt: state.startedAt,
     exitCode: state.exitCode,
     log: state.log.slice(-120),
+    skips: bridgeSkips(),
   };
   cached = { at: Date.now(), value };
   return value;
