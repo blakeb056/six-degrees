@@ -10,6 +10,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The packaged .app is a copy of the build output, not source.
+    "dist/**",
   ]),
   {
     rules: {

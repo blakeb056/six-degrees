@@ -38,6 +38,7 @@
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
 | `scripts/score_new_connections.sql` | **Reference** scoring model. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |
+| `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`: bundles a Node runtime so the app has no prerequisites for the CSV path. Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). |
 | `bin/six-degrees.mjs` | The `npx` launcher: Node guard, data dir, port probe from 6363. |
 | `tests/*.test.mjs` | 37 tests on `node --test`. No test framework dependency. |
 

@@ -65,7 +65,8 @@
     "setup:python": "python3 -m pip install -r scripts/requirements.txt",
     "scrape:full": "python3 scripts/scrape.py --full",
     "scrape:refresh": "python3 scripts/scrape.py --refresh",
-    "audit:avatars": "node scripts/audit-avatars.mjs"
+    "audit:avatars": "node scripts/audit-avatars.mjs",
+    "build:app": "node scripts/build-app.mjs"
   },
   "dependencies": {
     "d3": "^7.9.0",

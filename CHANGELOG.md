@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- A downloadable macOS app. `npm run build:app` produces `Six Degrees.app` and a ~70 MB
+  `.dmg` with a Node runtime inside, so importing a CSV needs nothing else installed —
+  no Node, no clone, no terminal. macOS asks for one approval on first launch because
+  the app is not signed with a paid developer certificate.
 - Clicking a bridge on the Revolver dial now opens that person, instead of only spinning
   them to the top. The dial also says when it is showing part of something — "12 of 14
   bridges", "showing 24 of 59" — and shift with the arrow keys pages through the rest.
