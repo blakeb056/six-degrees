@@ -44,7 +44,8 @@
     "LICENSE",
     "CHANGELOG.md",
     "SECURITY.md",
-    "scripts/check-node.mjs"
+    "scripts/check-node.mjs",
+    "scripts/audit-avatars.mjs"
   ],
   "scripts": {
     "dev": "NEXT_TELEMETRY_DISABLED=1 SIX_DEGREES_BIND=127.0.0.1 next dev -H 127.0.0.1",
@@ -63,7 +64,8 @@
     "scrape:server": "python3 scripts/scrape.py --server",
     "setup:python": "python3 -m pip install -r scripts/requirements.txt",
     "scrape:full": "python3 scripts/scrape.py --full",
-    "scrape:refresh": "python3 scripts/scrape.py --refresh"
+    "scrape:refresh": "python3 scripts/scrape.py --refresh",
+    "audit:avatars": "node scripts/audit-avatars.mjs"
   },
   "dependencies": {
     "d3": "^7.9.0",

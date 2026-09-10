@@ -50,6 +50,11 @@ First release, not yet published to npm.
   but the hubs — so it is quicker, and there is something to look at.
 
 ### Fixed
+- Second-degree people no longer end up wearing someone else's profile photo. The bridge
+  scraper matched people by the text of their link, and everyone LinkedIn shows as
+  "LinkedIn Member" shares that text — so they all inherited the first one's picture and
+  profile. `npm run audit:avatars` reports any already saved that way, and `--fix` clears
+  them back to initials without re-scraping anything.
 - Connecting with someone you met through a bridge now registers. They used to stay a
   2nd-degree contact forever — the import saw they were already on file and skipped
   them — so the outreach you actually completed never showed up in your network.

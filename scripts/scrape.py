@@ -1169,49 +1169,68 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
         page_results = page.evaluate("""
         () => {
           // Build URL map from profile links
-          const urlMap = {};
-          document.querySelectorAll('a').forEach(a => {
-            const h = a.getAttribute('href') || '';
-            if (!h.includes('/in/')) return;
-            const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
-            const text = a.textContent.trim();
-            if (!text || text.length > 60 || text.includes('mutual') || text.includes('Connect') || text.includes('Invite')) return;
-            if (!urlMap[text]) urlMap[text] = url;
-          });
-          // Build image map from profile photos in search results
-          const imgMap = {};
-          document.querySelectorAll('img').forEach(img => {
-            if (!img.src || !img.src.includes('media.licdn.com')) return;
-            const link = img.closest('a');
-            if (link) {
-              const h = link.getAttribute('href') || '';
-              if (h.includes('/in/')) {
-                const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
-                imgMap[url] = img.src;
+          // Anchor on the profile link, never on the anchor's text.
+          //
+          // This used to build a name -> URL map keyed by the link text, first
+          // one wins. Any two results sharing display text collapsed onto a
+          // single URL — and "LinkedIn Member" is the text for every
+          // out-of-network person in a 2nd-degree search, so one person's photo
+          // was handed to everybody who happened to be unnamed. That is where
+          // the duplicate faces came from.
+          const clean = (t) => (t || '').replace(/[\u2019']s profile picture$/i, '').trim();
+          const byHref = new Map();
+          const root = document.querySelector('[role="main"], main') || document.body;
+
+          root.querySelectorAll('a[href*="/in/"]').forEach((a) => {
+            if (a.closest('nav, header, footer')) return;
+            const raw = a.getAttribute('href') || '';
+            if (!raw.includes('/in/')) return;
+            let url = raw.startsWith('http') ? raw : 'https://www.linkedin.com' + raw;
+            url = url.split('?')[0].split('#')[0].replace(/\/+$/, '') + '/';
+
+            let rec = byHref.get(url);
+            if (!rec) { rec = { profileUrl: url, name: '', headline: '', imageUrl: '', named: false }; byHref.set(url, rec); }
+
+            const img = a.querySelector('img');
+            if (img && img.src && img.src.includes('media.licdn.com') && !/ghost/.test(img.src)) {
+              if (!rec.imageUrl) rec.imageUrl = img.src;
+              if (!rec.name && img.alt) rec.name = clean(img.alt);
+            }
+
+            const lines = (a.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
+            if (lines.length && !rec.named) {
+              const first = clean(lines[0]);
+              if (first && first.length <= 60 && !/^(Connect|Follow|Message|Invite)$/i.test(first)) {
+                rec.name = first;
+                rec.named = true;
+              }
+            }
+
+            // Headline lives beside the name in the result card, not inside the
+            // anchor — walk up to the card and take the line after the name.
+            if (!rec.headline) {
+              let card = a;
+              for (let k = 0; k < 6 && card.parentElement; k++) {
+                card = card.parentElement;
+                const cardLines = (card.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
+                const idx = cardLines.findIndex((l) => clean(l) === rec.name);
+                if (idx >= 0 && cardLines[idx + 1]) {
+                  const cand = cardLines[idx + 1];
+                  if (!/^(Connect|Follow|Message|Invite)$/i.test(cand)
+                      && !/mutual connection/i.test(cand)
+                      && !/followers$/i.test(cand)
+                      && !/^\u2022/.test(cand)) {
+                    rec.headline = cand;
+                  }
+                  break;
+                }
               }
             }
           });
-          const main = document.querySelector('[role="main"], main');
-          const pageText = main ? main.innerText : '';
-          const lines = pageText.split('\\n').map(l => l.trim());
-          const results = [];
-          let i = 0;
-          while (i < lines.length) {
-            if (urlMap[lines[i]]) {
-              const name = lines[i], url = urlMap[name];
-              let headline = '';
-              let j = i + 1;
-              while (j < lines.length && j < i + 8) {
-                const l = lines[j].trim();
-                if (!l || l.match(/^\\u2022\\s*(1st|2nd|3rd)/) || l === name) { j++; continue; }
-                if (l === 'Connect' || l === 'Follow' || l === 'Message' || l.includes('mutual connection') || l.match(/followers$/)) break;
-                if (!headline) { headline = l; j++; continue; }
-                j++;
-              }
-              results.push({ name, headline, profileUrl: url, imageUrl: imgMap[url] || '' });
-            }
-            i++;
-          }
+
+          const results = [...byHref.values()]
+            .filter((r) => r.name && r.name.length >= 2)
+            .map(({ named, ...r }) => r);
           return results;
         }
         """)

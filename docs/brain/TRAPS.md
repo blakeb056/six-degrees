@@ -304,3 +304,28 @@ folds away duplicate rows for the same person rather than leaving them.
 
 Covered by `tests/promotion.test.mjs`, including the assertion that matters: **the origin
 survives a second promotion.**
+
+---
+
+## 20. The bridge scraper handed one person's face to everybody
+
+Same root cause as §5, in the half of the scraper that was left alone. It built a
+**name → URL map keyed by the anchor's text**, first one wins:
+
+```js
+if (!urlMap[text]) urlMap[text] = url;
+```
+
+Any two results sharing display text collapse onto one URL — and **"LinkedIn Member" is
+the anchor text for every out-of-network person** in a 2nd-degree search. All of them
+therefore resolved to the first one's profile URL, and wore the first one's photograph.
+
+The connections-page rewrite fixed this pattern in one place and left it in the other,
+which is exactly how a fix creates a false sense of safety. Verified by counting: the
+connections-scraped database has **zero** shared photos across 746 people; the
+bridge-scraped one had many.
+
+`scripts/audit-avatars.mjs` (`npm run audit:avatars`) reports photos used by more than
+one person, and `--fix` clears them so those people fall back to initials. **A wrong
+face is worse than no face**, and it needs no re-scrape — which matters when the account
+is rate-limited and re-scraping is not available.
