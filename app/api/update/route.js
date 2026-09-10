@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { projectRoot, isGitCheckout } from '../../../lib/paths';
 
 // Updating, when the app is a git checkout.
@@ -13,6 +13,26 @@ import { projectRoot, isGitCheckout } from '../../../lib/paths';
 // Gated with the destructive routes: it changes the code that will run next.
 
 const GIT_TIMEOUT = 60000;
+
+// What the server was serving when it started.
+//
+// `git pull` changes the files on disk. It does not change the code already
+// loaded into a running server, and nothing used to say so — you update, the
+// app looks identical, and the reasonable conclusion is that the update failed.
+// Recording HEAD at startup lets the app notice that the disk has moved on and
+// say "restart me" instead of leaving you to work it out.
+let bootSha = null;
+function shaAtBoot(root) {
+  if (bootSha === null) {
+    try {
+      bootSha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root })
+        .toString().trim();
+    } catch {
+      bootSha = '';
+    }
+  }
+  return bootSha;
+}
 
 function git(args, cwd) {
   return new Promise((resolve) => {
@@ -67,7 +87,16 @@ export async function GET() {
       reason: 'This copy was installed rather than cloned, so there is nothing to pull. Run npx six-degrees@latest for the current version.',
     });
   }
-  return Response.json({ supported: true, ...(await localState(root)) });
+  const state = await localState(root);
+  const boot = shaAtBoot(root);
+  return Response.json({
+    supported: true,
+    ...state,
+    bootSha: boot,
+    // The files moved after this process started, so what you are looking at is
+    // not what is on disk.
+    restartNeeded: Boolean(boot && state.sha && boot !== state.sha),
+  });
 }
 
 export async function POST(request) {

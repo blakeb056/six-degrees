@@ -18,6 +18,7 @@ export const metadata = {
 };
 
 import UserProvider from './components/UserProvider';
+import StaleServerBanner from './components/StaleServerBanner';
 
 export default function RootLayout({ children }) {
   return (
@@ -25,6 +26,10 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0, padding: 0, background: '#0a0a1a' }}>
         <UserProvider>
           {children}
+          {/* Says so when the files on disk have moved past what this server
+              is running. Every page, because the answer to "did my update
+              work?" should not require finding the right screen. */}
+          <StaleServerBanner />
         </UserProvider>
       </body>
     </html>
