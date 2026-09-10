@@ -49,6 +49,12 @@ First release, not yet published to npm.
   network that is a third fewer things on screen and no photographs to load for anyone
   but the hubs — so it is quicker, and there is something to look at.
 
+### Changed
+- The 2nd-degree scan now defaults to 10 people at a time instead of 25, and says why:
+  during development a real account was temporarily restricted after about 19 in one
+  sitting. Shipping a default above the only number we have measured is a default that
+  can hurt whoever trusts it.
+
 ### Fixed
 - A photo is only ever saved for one person now. If the same picture comes back for
   somebody else — which is what happens with LinkedIn's placeholder silhouette, and with

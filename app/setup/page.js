@@ -29,7 +29,10 @@ export default function SetupPage() {
 function SetupInner() {
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [batch, setBatch] = useState(25);
+  // Ten, not twenty-five. The only measured number this project has is that
+  // roughly nineteen bridges in an hour got a real account restricted, so a
+  // default above that is a default that can hurt whoever trusts it.
+  const [batch, setBatch] = useState(10);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -200,9 +203,11 @@ function SetupInner() {
               connections in turn and reads who <i>they</i> know. Most people hide their
               connections — those are noted and never tried again.
               <br /><br />
-              It is slow on purpose, about two minutes between each person. Run it in
-              batches rather than for hours at a stretch: LinkedIn starts showing
-              “unusual activity” warnings on long unbroken runs.
+              It is slow on purpose, about two minutes between each person, because
+              this is the part LinkedIn notices. During development a real account was
+              temporarily restricted after roughly <b>19 people in one sitting</b>.
+              Run a batch, leave it for a day, run another — and stop the moment
+              LinkedIn mentions unusual activity.
             </>
           }
           action={
@@ -219,10 +224,10 @@ function SetupInner() {
                   background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
                 }}
               >
+                <option value={5}>5 people</option>
                 <option value={10}>10 people</option>
                 <option value={25}>25 people</option>
-                <option value={50}>50 people</option>
-                <option value={0}>everyone</option>
+                <option value={0}>everyone — not advised</option>
               </select>
               <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch })} disabled={!canScrape}>
                 Retry hidden ones
