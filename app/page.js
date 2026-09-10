@@ -3,13 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
 import { loadNetwork } from '../lib/network';
-import ForceGraph from './components/ForceGraph';
-import OrbitGraph from './components/OrbitGraph';
-import BridgeRing from './components/BridgeRing';
-import GridView from './components/GridView';
-import ListView from './components/ListView';
-import RingsView from './components/RingsView';
-import ChainView from './components/ChainView';
+import { resolveView } from './components/views';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import OnboardingGate from './components/OnboardingGate';
@@ -351,11 +345,6 @@ function HomeInner() {
                 return bridge && bridge.tier === filter;
               })
           ) : [];
-          // Orbit draws each bridge's circle as dots fanned beside them, so it
-          // wants the 2nd degree in both modes — unlike the older views, where
-          // 2nd degree belongs to the Bridges mode only. It filters to the
-          // bridges actually on screen itself, so the tier filter still applies.
-          const orbitD2 = isDegreesMode ? filteredD2 : degree2;
           const selectHandler = (node) => { setSelected(node); if (node) setSidebarCollapsed(false); };
 
           // No connections at all: offer a way in rather than a black screen.
@@ -387,51 +376,23 @@ function HomeInner() {
             );
           }
 
-          if (visualMode === 'revolver' && isDegreesMode) {
-            return (
-              <BridgeRing
-                connections={filtered}
-                degree2={filteredD2}
-                onSelect={selectHandler}
-                userName={userName}
-              />
-            );
-          }
-          if (visualMode === 'chain' && isDegreesMode) {
-            return <ChainView connections={filtered} degree2={filteredD2} onSelect={selectHandler} userName={userName} />;
-          }
-          if (visualMode === 'grid') {
-            return <GridView connections={filtered} degree2={filteredD2} onSelect={selectHandler} mode={mode} />;
-          }
-          if (visualMode === 'list') {
-            return <ListView connections={filtered} degree2={filteredD2} onSelect={selectHandler} mode={mode} />;
-          }
-          if (visualMode === 'rings') {
-            return <RingsView connections={filtered} degree2={filteredD2} onSelect={selectHandler} mode={mode} />;
-          }
-          if (visualMode === 'orbit') {
-            return (
-              <OrbitGraph
-                connections={filtered}
-                degree2={orbitD2}
-                onSelect={selectHandler}
-                userName={userName}
-                selectedId={selected?.id ?? null}
-              />
-            );
-          }
-          // Default: Galaxy (ForceGraph)
-          return (
-            <ForceGraph
-              connections={filtered}
-              degree2={filteredD2}
-              onSelect={selectHandler}
-              tierColors={TIER_COLORS}
-              mode={mode}
-              focusNodeRef={focusNodeRef}
-              userName={userName}
-            />
-          );
+          // One props object for every view. Each destructures what it needs
+          // and ignores the rest, so adding a visual is a row in views.js
+          // rather than a branch here that has to agree with two other files.
+          const view = resolveView(visualMode, mode);
+          const View = view.component;
+          const viewProps = {
+            connections: filtered,
+            degree2: view.allDegree2 ? degree2 : filteredD2,
+            onSelect: selectHandler,
+            mode,
+            userName,
+            userImage: null,
+            selectedId: selected?.id ?? null,
+            tierColors: TIER_COLORS,
+            focusNodeRef,
+          };
+          return <View {...viewProps} />;
         })()}
         <Sidebar
           selected={selected}

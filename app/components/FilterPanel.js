@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { viewsForMode } from './views';
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -10,25 +11,13 @@ function useIsMobile() {
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
-const VISUAL_MODES = {
-  network: [
-    { key: 'galaxy', label: 'Galaxy', icon: '🌌', desc: 'Force-directed layout' },
-    { key: 'orbit', label: 'Orbit', icon: '🪐', desc: 'Tier orbits + circle dots' },
-    { key: 'rings', label: 'Pyramid', icon: '🔺', desc: 'Tier hierarchy' },
-    { key: 'list', label: 'List', icon: '☰', desc: 'Ranked power list' },
-  ],
-  degrees: [
-    { key: 'chain', label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
-    { key: 'revolver', label: 'Revolver', icon: '🎯', desc: 'Rotary dial · spin to switch' },
-    { key: 'rings', label: 'Pyramid', icon: '🔺', desc: 'Cluster hierarchy' },
-    { key: 'list', label: 'List', icon: '☰', desc: 'Ranked list' },
-  ],
-};
 
 export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilterChange, visualMode, onVisualModeChange, tierCounts, bridgeTierCounts }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees';
-  const modes = VISUAL_MODES[isDegreesMode ? 'degrees' : 'network'] || VISUAL_MODES.network;
+  // Same source of truth the renderer uses, so the menu can never offer a
+  // view that does not exist or miss one that does.
+  const modes = viewsForMode(isDegreesMode ? 'degrees' : 'network');
   const counts = isDegreesMode ? (bridgeTierCounts || {}) : (tierCounts || {});
   const allCount = isDegreesMode
     ? Object.values(bridgeTierCounts || {}).reduce((s, v) => s + v, 0)

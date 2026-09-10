@@ -5,6 +5,9 @@
 | Path | Role |
 |---|---|
 | `app/page.js` | The main view. Owns view switching, tier filters, data-source selection, and the empty state. |
+| `app/components/views.js` | **The view registry.** One row per visual: its component, which modes it belongs to, and any exception it needs. `page.js` and `FilterPanel` both read it, so the menu can never offer a view that does not exist. |
+| `app/components/OrbitGraph.js` | Orbit — tier orbits with each bridge's circle fanned beside them as dots. |
+| `app/components/BridgeRing.js` | Revolver — the rotary dial; spin to switch bridge, circle fans from the top slot. |
 | `app/components/ForceGraph.js` | The D3 galaxy (~950 lines). Force simulation, rings, cluster expansion, hover cards. |
 | `app/components/ChainView.js` | The rotary-dial bridge view. |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |

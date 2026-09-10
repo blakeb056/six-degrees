@@ -244,3 +244,39 @@ What this means for the code:
 
 The README and `docs/SCRAPING.md` already say accounts have been restricted for this.
 This entry exists so the warning carries a number and a date instead of being generic.
+
+---
+
+## 17. Animation frames do not arrive in a hidden tab — so never commit state in one
+
+Both ported views drove their transitions with `requestAnimationFrame`, which is
+correct for animation and stops entirely in a background or hidden tab. The bug was
+what else lived there: the rotary dial **committed the selection inside the tween's
+completion callback**, and the galaxy painted its first positions on the first tick.
+
+So in a background tab, clicking a bridge changed nothing at all, and the graph sat
+stacked at the origin. Both now have a timeout behind the frame loop that lands the
+final state whether or not a frame ever comes.
+
+The general rule: rAF may own *how a change looks*, never *whether it happens*.
+
+This also cost real debugging time in the other direction — a hidden preview pane
+makes a working view look broken in exactly the same way. `document.hidden` is the
+first thing to check before believing a rendering bug.
+
+---
+
+## 18. Adding a view used to need three files to agree
+
+A visual meant a branch in `page.js`'s switch, a row in `FilterPanel`'s own menu list,
+and a hand-picked set of props — each view took a slightly different shape, so the
+wiring was the part that broke. A view offered in the menu but missing from the switch
+renders nothing, and nothing tells you.
+
+`app/components/views.js` is now the single source: component, modes, and any
+exception. Both the renderer and the menu read it, and every view receives the same
+props object and destructures what it needs. Adding one is a row plus a component.
+
+The one declared exception is Orbit's `allDegree2` — it draws each bridge's circle in
+both modes and narrows to visible bridges itself. It sits in the registry rather than
+in a branch, because an exception you cannot see is one you break later.
