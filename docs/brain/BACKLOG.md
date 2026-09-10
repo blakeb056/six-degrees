@@ -56,7 +56,7 @@ the point; past ~30 it becomes the mess described in item 2. Truncate honestly i
 
 ## 2. Orbit: draw the structure, not every person
 
-**Status:** ⬜ not started · **Size:** medium · **Files:** `app/components/OrbitGraph.js`
+**Status:** ✅ shipped · **Size:** medium · **Files:** `app/components/OrbitGraph.js`
 
 ### What happens now
 
@@ -84,21 +84,53 @@ The insight: **the hubs are the subject; the rest is context.** Our version trea
 
 ### What it should do
 
-- [ ] Three visual weights instead of one:
+- [x] Three visual weights instead of one:
       **hub** (has a mapped circle, or top N by circle power) — full treatment, name label;
       **standard** (everyone else at 1st degree) — small disc, initials only, no label,
       no glow, no avatar image;
       **dot** (2nd degree) — as now.
-- [ ] Cap full-weight rendering. Avatars, glows and labels only for hubs and the current
+- [x] Cap full-weight rendering. Avatars, glows and labels only for hubs and the current
       selection. This alone removes most of the element count.
-- [ ] Reveal on demand: hovering or selecting a standard node promotes it to full
+- [x] Reveal on demand: hovering or selecting a standard node promotes it to full
       weight for as long as it is active.
-- [ ] Measure it. Record element count and time-to-settle for 750 D1 / 600 D2 before and
+- [x] Measure it. Record element count and time-to-settle for 750 D1 / 600 D2 before and
       after, in this file. A performance claim without a number is not a claim.
 
-### Open question for Blake
+### Measured
 
-Whether "hub" means *has a mapped circle* (honest, but on an unscraped network almost
+Sample network, 150 1st-degree + 598 2nd-degree, counted in the DOM:
+
+| | before | after |
+|---|---|---|
+| SVG elements | 3,405 | **2,199** |
+| circles | 1,588 | **790** |
+| text | 308 | **36** |
+| lines | 748 | **612** |
+
+**The sample understates it.** It is synthetic and has no photographs, so it never
+paid for the `<image>` and `<clipPath>` pair that every connection with an avatar
+costs. On the real 754-person network with 744 avatars, roughly **1,480 further
+elements and 744 image fetches** are avoided, because only hubs load a picture now.
+
+Three changes did the work, in order of effect:
+
+1. **Context nodes are one circle.** No avatar, no clip path, no initials, no glow, no
+   label. The tooltip already carried the detail on hover, so nothing was lost.
+2. **Selection rings are created on demand.** Every node used to build a hidden ring it
+   would probably never show — about 1,400 elements paying for nothing.
+3. **Circles gather on their bridge, not on a ring of their own.** The 2nd-degree radial
+   force was fighting the link that ties someone to their bridge, and the result was
+   dots strewn through everyone else's space. Setting that strength to zero and
+   shortening the link lets each circle settle around its own hub — which is what made
+   it stop looking messy, independently of the element count.
+
+### Resolved: what counts as a hub
+
+Shipped as recommended — **a mapped circle, falling back to the top 14 by power score
+when nothing is mapped yet**, so a fresh network still shows structure rather than a
+flat field. Matches what Revolver does.
+
+Originally asked as: whether "hub" means *has a mapped circle* (honest, but on an unscraped network almost
 nobody qualifies) or *top N by circle power* (always populated, but shows people whose
 circle you have not actually opened). Recommendation: **has a mapped circle, falling
 back to top N by power score when none exist**, matching what Revolver already does.

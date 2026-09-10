@@ -34,6 +34,8 @@ import { TIER_COLORS, TIER_ORDER, TIER_RING_RADIUS, initialsFor } from '../../li
 const GOLDEN_ANGLE = 2.399963;
 const LABEL_ZOOM_THRESHOLD = 1.1;
 const USER_RADIUS = 26;
+const HUB_FALLBACK = 14;      // hubs to show when no circle has been mapped yet
+const STANDARD_RADIUS = 4.5;  // context nodes: one circle each, nothing more
 
 function safeId(id) {
   return String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -138,6 +140,24 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     // Only draw rings for tiers actually on screen — the filter lives upstream.
     const activeTiers = new Set(visibleD1.map((c) => c.tier).filter(Boolean));
 
+    // Three weights, not one.
+    //
+    // Drawing all 754 connections at full weight — glow, avatar, clip path,
+    // label — is both the lag and the mess: nothing stands out because
+    // everything is equally loud. The people whose circle you have opened are
+    // the subject; everyone else is context. A hub is someone with a mapped
+    // circle, falling back to the strongest people when nothing is mapped yet,
+    // so the view is never empty of structure on a fresh network.
+    const bridgeIds = new Set(liveDegree2.map((c) => c.source_connection_id).filter(Boolean));
+    const hubIds = bridgeIds.size
+      ? new Set(visibleD1.filter((c) => bridgeIds.has(c.id)).map((c) => c.id))
+      : new Set(
+          [...visibleD1]
+            .sort((a, b) => (Number(b.power_score) || 0) - (Number(a.power_score) || 0))
+            .slice(0, HUB_FALLBACK)
+            .map((c) => c.id)
+        );
+
     const userNode = {
       id: '__user__', kind: 'user', tier: null, r: USER_RADIUS,
       targetRadius: 0, connection: null, x: 0, y: 0, fx: 0, fy: 0,
@@ -151,9 +171,10 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       const tier = c.tier || 'D';
       const angle = (tierIndex[tier] = (tierIndex[tier] || 0) + 1, (tierIndex[tier] - 1) * GOLDEN_ANGLE);
       const ring = TIER_RING_RADIUS[tier] || TIER_RING_RADIUS.D;
+      const isHub = hubIds.has(c.id);
       const n = {
-        id: c.id, kind: 'd1', tier,
-        r: 7 + Number(c.power_score || 0) * 1.1,
+        id: c.id, kind: 'd1', hub: isHub, tier,
+        r: isHub ? 7 + Number(c.power_score || 0) * 1.1 : STANDARD_RADIUS,
         targetRadius: ring, connection: c,
         x: Math.cos(angle) * ring, y: Math.sin(angle) * ring,
       };
@@ -215,7 +236,8 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     const linksLayer = viewport.append('g');
     const nodesLayer = viewport.append('g');
 
-    const spoke = spokesLayer.selectAll('line').data(d1Nodes, (d) => d.id).join('line')
+    const hubNodes = d1Nodes.filter((d) => d.hub);
+    const spoke = spokesLayer.selectAll('line').data(hubNodes, (d) => d.id).join('line')
       .attr('stroke', (d) => TIER_COLORS[d.tier] || TIER_COLORS.D)
       .attr('stroke-opacity', 0.09)
       .attr('stroke-width', 0.5);
@@ -244,15 +266,21 @@ const OrbitGraph = forwardRef(function OrbitGraph(
         g.attr('opacity', 0.55);
         g.append('circle').attr('class', 'og-base').attr('r', d.r)
           .attr('fill', TIER_COLORS[d.tier] || TIER_COLORS.D);
-        g.append('circle').attr('class', 'og-sel').attr('r', d.r + 2.5)
-          .attr('fill', 'none').attr('stroke', '#ffffff').attr('stroke-width', 1)
-          .style('opacity', 0);
-        return;
+        return;   // selection ring is created on demand, see applySelection
       }
 
       const isUser = d.kind === 'user';
       const conn = d.connection;
       const color = isUser ? '#818cf8' : (TIER_COLORS[d.tier] || TIER_COLORS.D);
+
+      // Context: one circle, no avatar, no initials, no label. Hovering or
+      // selecting promotes it — the tooltip carries the detail, so nothing is
+      // hidden, it is just not all shouted at once.
+      if (!isUser && !d.hub) {
+        g.attr('opacity', 0.75);
+        g.append('circle').attr('class', 'og-base').attr('r', d.r).attr('fill', color);
+        return;   // selection ring is created on demand, see applySelection
+      }
 
       if (isUser || d.tier === 'S' || d.tier === 'A') {
         g.append('circle').attr('r', d.r * 1.8).attr('fill', color)
@@ -314,7 +342,9 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     const labels = node.select('text.og-label');
     let hoveredId = null;
     // S-tier and catalysts stay labelled so the map is scannable zoomed out.
-    const alwaysLabeled = (d) => d.kind === 'd1' && (d.tier === 'S' || d.connection?.is_catalyst);
+    // Hubs carry their name; context nodes have no label element at all, which
+    // is most of what was removed.
+    const alwaysLabeled = (d) => d.hub === true;
     const refreshLabels = () => {
       labels.style('opacity', (d) =>
         alwaysLabeled(d) ||
@@ -378,13 +408,17 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       ticked();      // static golden-angle layout; no simulation on phones
     } else {
       const simulation = forceSimulation(simNodes)
+        // A 2nd-degree person belongs to their bridge, not to a ring. Giving
+        // them their own radial target fought the link holding them to that
+        // bridge, and the result was dots strewn across everyone else's space.
+        // Zero here lets the link force gather each circle around its own hub.
         .force('radial', forceRadial((d) => d.targetRadius, 0, 0)
-          .strength((d) => (d.kind === 'd1' ? 0.9 : d.kind === 'd2' ? 0.12 : 0)))
+          .strength((d) => (d.kind === 'd1' ? 0.9 : 0)))
         .force('collide', forceCollide((d) => d.r + 2.5))
         .force('charge', forceManyBody().strength(-18))
         .on('tick', ticked);
       if (links.length > 0) {
-        simulation.force('link', forceLink(links).distance(46).strength(0.3));
+        simulation.force('link', forceLink(links).distance(26).strength(0.7));
       }
       sim = simulation;
 
@@ -436,8 +470,20 @@ const OrbitGraph = forwardRef(function OrbitGraph(
 
     // ---- selection -------------------------------------------------------
     applySelectionRef.current = (id) => {
+      // Hubs keep a permanent ring; everyone else gets one only while selected.
+      // Creating 1,400 invisible rings up front was most of the element count.
+      nodesLayer.selectAll('circle.og-sel-temp').remove();
       node.select('circle.og-sel').style('opacity', (d) => (d.id === id ? 1 : 0));
       node.select('circle.og-base').attr('r', (d) => (d.id === id && d.kind !== 'user' ? d.r + 1.5 : d.r));
+      if (id) {
+        node.filter((d) => d.id === id && !d.hub && d.kind !== 'user')
+          .append('circle')
+          .attr('class', 'og-sel-temp')
+          .attr('r', (d) => d.r + 3)
+          .attr('fill', 'none')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1.2);
+      }
       refreshLabels();
     };
     applySelectionRef.current(selectedIdRef.current);

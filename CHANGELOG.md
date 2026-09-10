@@ -42,6 +42,13 @@ First release, not yet published to npm.
   everything found so far.
 - `--max-bridges` caps how many people one run will visit.
 
+### Changed
+- Orbit now draws the shape of your network rather than every person at once. The people
+  whose circle you have opened are large and named, their circle gathers tightly around
+  them, and everyone else is a small dot until you hover or select them. On a 750-person
+  network that is a third fewer things on screen and no photographs to load for anyone
+  but the hubs — so it is quicker, and there is something to look at.
+
 ### Fixed
 - Stopping a run no longer leaves a browser window open behind it. The scraper is
   started in its own process group and asked to stop rather than killed, so it closes
