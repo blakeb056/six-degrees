@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { useUser } from './UserProvider';
+import { routeIndex, routesFor } from '../../lib/separation';
+import Avatar from './Avatar';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending }) {
   const isDegreesMode = mode === 'degrees';
@@ -10,21 +12,30 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
   const [searchQuery, setSearchQuery] = useState('');
 
-  const bridgeMap = {};
-  degree2.forEach(d2 => {
-    if (!d2.source_connection_id) return;
-    if (!bridgeMap[d2.source_connection_id]) bridgeMap[d2.source_connection_id] = [];
-    bridgeMap[d2.source_connection_id].push(d2);
-  });
-
-  const bridgeName = (id) => connections.find(c => c.id === id)?.name || 'Unknown';
-
-  const topD2 = [...degree2].sort((a, b) => (parseFloat(b.power_score) || 0) - (parseFloat(a.power_score) || 0)).slice(0, 25);
+  // Built once per load, not on every render: the panel re-renders on every
+  // click in every view. Above the early return so the hook order never changes.
+  const bridgeMap = useMemo(() => {
+    const m = {};
+    degree2.forEach(d2 => {
+      if (!d2.source_connection_id) return;
+      if (!m[d2.source_connection_id]) m[d2.source_connection_id] = [];
+      m[d2.source_connection_id].push(d2);
+    });
+    return m;
+  }, [degree2]);
+  // Who reaches whom, from the FULL lists this panel is given — so every route
+  // shows even while a tier chip is narrowing the view, and a person picked in
+  // Chains, Revolver or Galaxy gets every route too.
+  const routeIdx = useMemo(() => routeIndex(degree2), [degree2]);
+  const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
 
   if (selected) {
     const isBridge = selected.degree === 1 && bridgeMap[selected.id];
     const bridgeConnections = bridgeMap[selected.id] || [];
-    const viaConnection = selected.degree === 2 ? connections.find(c => c.id === selected.source_connection_id) : null;
+    // Every one of your connections who knows them, top-scored first: the same
+    // person is saved once per bridge, and this used to show only the one row
+    // that happened to be clicked — or nothing, when that row's bridge wasn't found.
+    const routes = selected.degree === 2 ? routesFor(selected, routeIdx, bridgeById) : [];
 
     return (
       <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
@@ -116,23 +127,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           </div>
         )}
 
-        {selected.degree === 2 && viaConnection && (
-          <div style={{
-            background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.3)',
-            borderRadius: 8, padding: 12, marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 10, color: '#FF6B35', fontWeight: 600, marginBottom: 4 }}>PATH TO THIS PERSON</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <span style={{ fontWeight: 700 }}>Blake</span>
-              <Arrow />
-              <span style={{ color: tierColors[viaConnection.tier], fontWeight: 600 }}>{viaConnection.name}</span>
-              <Arrow />
-              <span style={{ color: '#FF6B35', fontWeight: 600 }}>{selected.name}</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#888', marginTop: 6 }}>
-              Via: {viaConnection.role}{viaConnection.company ? ` @ ${viaConnection.company}` : ''}
-            </div>
-          </div>
+        {selected.degree === 2 && routes.length > 0 && (
+          <PathBox key={selected.id} routes={routes} selected={selected} tierColors={tierColors} onSelect={onSelect} />
         )}
 
         {/* === SCORE CARD === */}
@@ -181,7 +177,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             Why This Matters
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: '#ccc' }}>
-            {generateInsights(selected, userProfile, connections, degree2).map((insight, idx) => (
+            {generateInsights(selected, userProfile, connections, degree2, routes).map((insight, idx) => (
               <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                 <span style={{ color: insight.color || '#888', fontSize: 13, lineHeight: 1 }}>{insight.icon}</span>
                 <span>{insight.text}</span>
@@ -375,7 +371,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         >
           <span style={{ fontSize: 16 }}>&larr;</span> Close
         </button>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, color: '#FF6B35' }}>Bridges</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, color: '#FF6B35' }}>Degrees</h3>
         <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
           Your bridge connections and who they unlock.
         </p>
@@ -830,6 +826,91 @@ function Arrow() {
   return <span style={{ color: '#555', fontSize: 16 }}>&rarr;</span>;
 }
 
+const CANT_NAME_TITLE = 'This route came from a scanned list whose connection record doesn’t match anyone in '
+  + 'your 1st-degree list, so who introduces you can’t be named. The person is real, and still reachable.';
+const PATH_LIMIT = 4;
+
+// Every way to a 2nd-degree person, one line each, in the same order the
+// Separation list uses. It starts with "You", not the user's name: that is
+// right for everyone who runs this app. Keyed on the person by its caller, so
+// "Show all" starts folded for each new person.
+function PathBox({ routes, selected, tierColors, onSelect }) {
+  const [showAll, setShowAll] = useState(false);
+  const n = routes.length;
+  const shown = showAll ? routes : routes.slice(0, PATH_LIMIT);
+  const line = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, flexWrap: 'wrap' };
+
+  return (
+    <div style={{
+      background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.3)',
+      borderRadius: 8, padding: 12, marginBottom: 16,
+    }}>
+      <div style={{ fontSize: 10, color: '#FF6B35', fontWeight: 600, marginBottom: 8 }}>
+        PATH TO THIS PERSON{n > 1 ? ` · ${n} WAYS IN` : ''}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {shown.map((r, i) => {
+          if (!r.bridge) {
+            return (
+              <div key={`unnamed-${r.id}`} title={CANT_NAME_TITLE} style={{ ...line, color: '#888', fontStyle: 'italic' }}>
+                <span style={{ fontWeight: 700, fontStyle: 'normal', color: '#fff' }}>You</span>
+                <Arrow />
+                <span>a connection we can&rsquo;t name</span>
+                <Arrow />
+                <span>them</span>
+              </div>
+            );
+          }
+          const b = r.bridge;
+          const c = tierColors[b.tier] || '#ccc';
+          const about = [[b.role, b.company].filter(Boolean).join(' @ '), b.tier ? `${b.tier}-tier` : ''].filter(Boolean).join(' · ');
+          return (
+            <div key={r.id}>
+              <div style={line}>
+                <span style={{ fontWeight: 700 }}>You</span>
+                <Arrow />
+                <button
+                  onClick={() => onSelect && onSelect(b)}
+                  title={`Open ${b.name}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0, border: 'none',
+                    background: 'none', cursor: 'pointer', color: c, fontWeight: 600, fontSize: 13, textAlign: 'left',
+                  }}
+                >
+                  <Avatar person={b} size={18} tierColors={tierColors} />
+                  {b.name}
+                </button>
+                <Arrow />
+                <span style={{ color: '#FF6B35', fontWeight: 600 }}>{selected.name}</span>
+                {/* Not "strongest": the app knows nothing about how well they
+                    know each other, only how this connection scores. */}
+                {i === 0 && n > 1 && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, color: '#FF6B35', padding: '1px 6px', borderRadius: 8,
+                    background: 'rgba(255,107,53,0.15)', whiteSpace: 'nowrap',
+                  }}>top-scored bridge</span>
+                )}
+              </div>
+              {about && <div style={{ fontSize: 11, color: '#888', marginTop: 3 }}>{about}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {n > PATH_LIMIT && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          style={{
+            marginTop: 10, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600,
+            border: '1px solid rgba(255,107,53,0.35)', background: 'transparent', color: '#FF6B35',
+          }}
+        >
+          {showAll ? 'Show fewer' : `Show all ${n}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CreateClusterCard({ selected, degree2 }) {
   const { userId } = useUser();
   const [status, setStatus] = useState('idle'); // idle, checking, scraping, done, error, offline
@@ -1114,7 +1195,7 @@ function ClusterCard({ cs, rank, tierColors, onSelect }) {
 }
 
 // Rule-based insight generator — no AI, just data logic
-function generateInsights(person, user, allConnections, degree2) {
+function generateInsights(person, user, allConnections, degree2, routes = []) {
   const insights = [];
   const headline = (person.headline || '').toLowerCase();
   const role = (person.role || '').toLowerCase();
@@ -1163,11 +1244,23 @@ function generateInsights(person, user, allConnections, degree2) {
     insights.push({ icon: '⚡', text: `Catalyst — network power exceeds personal tier, high stepping-stone value`, color: '#00ff88' });
   }
 
-  // 7. Mutual connection density (degree 2)
-  if (person.degree === 2 && person.source_connection_id) {
-    const bridge = allConnections.find(c => c.id === person.source_connection_id);
-    if (bridge) {
-      insights.push({ icon: '🤝', text: `Reachable via ${bridge.name} (${bridge.tier}-tier) — ${bridge.degree === 1 ? 'direct' : 'indirect'} path`, color: '#3498DB' });
+  // 7. Every way in (degree 2). Built from the merged routes, so it can never
+  //    disagree with the path box above it — it used to name only the one
+  //    bridge on the row that happened to be clicked.
+  if (person.degree === 2 && routes.length > 0) {
+    const named = routes.filter(r => r.bridge);
+    if (routes.length === 1) {
+      insights.push(named.length
+        ? { icon: '🤝', text: `Reachable via ${named[0].bridge.name} (${named[0].bridge.tier}-tier)`, color: '#3498DB' }
+        : { icon: '🤝', text: 'Reachable through a connection we can’t name', color: '#888' });
+    } else {
+      const firstName = (n) => String(n || '').trim().split(/\s+/)[0];
+      const names = named.slice(0, 2).map(r => `${firstName(r.bridge.name)} (${r.bridge.tier})`);
+      const more = routes.length - names.length;
+      const via = names.length === 0 ? 'connections we can’t name'
+        : more > 0 ? `${names.join(', ')} and ${more} more`
+        : names.join(' and ');
+      insights.push({ icon: '🤝', text: `Reachable ${routes.length} ways — via ${via}`, color: '#3498DB' });
     }
   }
 

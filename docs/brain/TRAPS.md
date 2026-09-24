@@ -697,3 +697,74 @@ every 10 pages. `bridge-progress.json` records the last page read and whether th
 more, and "finish people already mapped" carries on from it (people mapped before 0.1.6
 count as read to page 10). A shorter read never winds the record back. The search limit
 stops the batch after saving. `tests/bridge-progress.test.mjs` covers the record.
+
+---
+
+## 35. Reading fast got search blocked, and a block looked like ordinary answers
+
+0.1.6 read a whole list at a page every ~6 s: 27 pages in about three and a half minutes,
+at the end of a night of test runs. Page 28 never opened, and LinkedIn blocked the
+account's search. Nothing was lost (the read had saved as it went and stopped as
+"carry on from 28"), but an audit of what would have happened next was worse:
+
+- **A block reads as normal outcomes.** A profile that won't load is "private" (and the
+  person is skip-listed for good); a search that won't load is "empty"; a blank page is
+  "the end of their list" (and a list being carried on is marked finished). Only one
+  English phrase was treated as LinkedIn pushing back.
+- **Failures sped the loop up.** The pause after a person with nothing was 15 s, against
+  120 s after a real read, so a block produced a profile view and a search every 15 s.
+- **A stuck page ended only that person.** The batch went on to the next one, straight into
+  the same block.
+- **The session cookie survives a security check**, and the cookie was the whole test for
+  "signed in".
+- **The real limit is monthly.** LinkedIn's Help Center (a564226): free accounts have a
+  commercial use limit on people search that resets at midnight PST on the 1st, with no
+  published number and a warning that "may not display if you run through the full amount
+  of searches or views too quickly". Reports put it around 250–350 searches a month.
+  Every page of someone's connections is one search.
+
+What holds it now (0.1.7, a stopgap): 20 s before each page and 60 s more after every 10;
+the full cooldown after any person; LinkedIn's own warning wording, security checks and
+sign-in walls (when you were signed in) checked before every verdict, ending the batch and
+keeping the page text in `~/.six-degrees/pushback/`; a search that won't open for someone
+whose list is visible is push-back, not "empty"; "hidden" only when their profile clearly
+rendered (name in the title or heading) without a connections link, otherwise "unclear",
+recorded nowhere, and two unclear in a row end the batch; "end of list" only from a live
+page that showed results; a closed window is a stop. Not yet: a search budget (monthly,
+not only daily), a cooldown lock, and resume by person.
+
+A first version of the breaker recorded "hidden" and then un-recorded the streak when it
+tripped. Review showed two genuinely hidden people side by side then stalled every batch
+at the same pair, and `--retry-private` erased correct skips. Don't record what you might
+have to take back: decide from evidence first. A second review of that rework found the evidence
+check itself too loose (a first name matched anywhere in the tab title, and every tab
+says "LinkedIn", so Li, Lin and Ed "rendered" on a blank page), and the sign-in check
+sampled the cookie after LinkedIn had already expired it. Both are fixed and tested
+(`tests/profile-shown.test.mjs`).
+
+---
+
+## 36. "Promoting" someone who was already a connection deleted their row, and their circle with it
+
+Building the Separation view turned up 1,072 2nd-degree rows whose `source_connection_id`
+pointed at no row at all: the circles of 13 mapped people, about a third of everyone two
+steps away, invisible in every Degrees view. The rows had been deleted on 2026-09-24 at
+06:29 UTC, during a full scan.
+
+- **Why.** Before 0.1.5 your own connections were saved into other people's circles
+  (§32), so a mapped person could also exist as a 2nd-degree copy under another bridge. A
+  full scan sees them in your connections and calls `promoteToFirstDegree`. That picked
+  the *deepest* row, the 2nd-degree copy, as the one to keep, and deleted the rest,
+  including their real 1st-degree row, whose id their whole circle pointed at.
+- **Second harm.** The kept copy was promoted with an origin, so 150 people who had been
+  connections all along showed "You met them through …".
+- **Why nothing noticed.** Views skip a 2nd-degree row whose bridge they cannot find, so a
+  third of the data disappeared without an error.
+
+What holds it now: when a person already has a 1st-degree row, `lib/promote.js` keeps it
+(the one other rows point at), folds the copies into it, re-points anything that
+referred to a folded row, and adds no origin. `tests/promotion.test.mjs` covers the case.
+The local database was repaired from the 09-23 backup: the 13 ids were re-linked, the
+circle stats restored, and the 150 false origins cleared, with a copy kept first in
+`~/.six-degrees/backups/pre-relink-2026-09-24.sqlite`.
+

@@ -6,8 +6,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-24
+
+A stopgap after 0.1.6 read 27 pages of results in about three and a half minutes and
+LinkedIn blocked the account's search, plus the Separation view. Budgets and an easy resume
+come next. TRAPS §35.
+
+### Added
+- **Separation**, a new Degrees view and the one the Degrees tab now opens on. Everyone you
+  can reach in two steps is ranked on one list, one row per person, however many of your
+  connections know them. Each row shows every way in. A small map above the list draws
+  You → each connection → the top ten, with every route. Search also matches who knows
+  someone, so typing a connection's name shows their circle.
+- The Sidebar's **Path to this person** box lists every route to a 2nd-degree person, not
+  just the one on the row you clicked. A route whose connection can't be found is still
+  shown, as unnamed. It used to make the box disappear.
+
+### Changed
+- **Slower reading.** 20 seconds before each page of results and another minute after
+  every 10. A whole list now takes about 55 minutes, not 10.
+- The pause after someone who came back with nothing is the full two minutes. It was 15
+  seconds, so the scan went faster exactly when LinkedIn was pushing back.
+- The **Bridges** tab is now called **Degrees**. The Filters panel's tier chips there read
+  "Filter by bridge tier", so they aren't confused with a person's own tier.
+
 ### Fixed
+- **A scan stops at the first sign of LinkedIn pushing back** instead of carrying on to
+  the next person. That covers a page of results that won't open, a search that won't open
+  for someone whose connections are visible, LinkedIn's own warnings ("unusual activity
+  from your account", profile viewing restricted, the account restricted, the monthly
+  search limit coming up or reached), and a security check or sign-in wall appearing while
+  you were signed in. What the page showed is kept in `~/.six-degrees/pushback/` so the
+  wording can be recognised, and the message says what to do for that case.
+- **Someone is only marked hidden when LinkedIn clearly showed their profile** (their name
+  in the page heading or title, as a whole word) with no connections link, or said the
+  profile is unavailable. A profile that didn't render is "unclear": nothing is recorded,
+  two unclear people in a row stop the batch, and someone unclear twice moves to the back
+  of the queue so they can't hold it up. A block used to mark everyone after it as hidden,
+  for good. LinkedIn's own "No results found" is taken as a real answer.
+- **A security check no longer counts as signed in.** The session cookie survives one,
+  so a scan used to carry on past it. It now stops, and **Open LinkedIn** on the Scan page
+  (shown even when signed in now) opens a window to finish it by hand. Signing in from
+  scratch still waits through LinkedIn's own two-factor steps.
+- Closing the browser window during a read stops it, and never marks the list finished.
+- **Carrying on into a blank page no longer marks a list finished.** Only LinkedIn's "No
+  results found" does. A search it is limiting can come back blank, and a wrong
+  "finished" dropped the rest of that list for good.
 - The Scan page's note on how long a whole list takes read "15 minutesa person".
+- **A full scan could cut a mapped circle loose.** If one of your connections had also
+  been saved inside someone else's circle (before 0.1.5 kept your own connections out),
+  a full scan "promoted" that copy and deleted their real row. Everyone in their own
+  circle was then left pointing at a row that no longer existed, and they vanished from
+  every Degrees view. The same step gave long-standing connections a "you met them
+  through…" they never had. Their own row is now kept, with no origin added. TRAPS §36.
 
 ## [0.1.6] - 2026-09-24
 
