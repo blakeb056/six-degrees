@@ -697,3 +697,37 @@ every 10 pages. `bridge-progress.json` records the last page read and whether th
 more, and "finish people already mapped" carries on from it (people mapped before 0.1.6
 count as read to page 10). A shorter read never winds the record back. The search limit
 stops the batch after saving. `tests/bridge-progress.test.mjs` covers the record.
+
+---
+
+## 35. Reading fast got search blocked, and a block looked like ordinary answers
+
+0.1.6 read a whole list at a page every ~6 s: 27 pages in about three and a half minutes,
+at the end of a night of test runs. Page 28 never opened, and LinkedIn blocked the
+account's search. Nothing was lost (the read had saved as it went and stopped as
+"carry on from 28"), but an audit of what would have happened next was worse:
+
+- **A block reads as normal outcomes.** A profile that won't load is "private" (and the
+  person is skip-listed for good); a search that won't load is "empty"; a blank page is
+  "the end of their list" (and a list being carried on is marked finished). Only one
+  English phrase was treated as LinkedIn pushing back.
+- **Failures sped the loop up.** The pause after a person with nothing was 15 s, against
+  120 s after a real read, so a block produced a profile view and a search every 15 s.
+- **A stuck page ended only that person.** The batch went on to the next one, straight into
+  the same block.
+- **The session cookie survives a security check**, and the cookie was the whole test for
+  "signed in".
+- **The real limit is monthly.** LinkedIn's Help Center (a564226): free accounts have a
+  commercial use limit on people search that resets at midnight PST on the 1st, with no
+  published number and a warning that "may not display if you run through the full amount
+  of searches or views too quickly". Reports put it around 250–350 searches a month.
+  Every page of someone's connections is one search.
+
+What holds it now (0.1.7, a stopgap): 20 s before each page and 60 s more after every 10;
+the full cooldown after any person; LinkedIn's own warning wording, security checks and
+sign-in walls checked before every verdict, ending the batch and keeping the page text in
+`~/.six-degrees/pushback/`; two people in a row with nothing end the batch and un-mark
+that streak's skips; a blank page while carrying on stays "more to read" unless LinkedIn
+says "No results found". Not yet: a search budget (monthly, not only daily), a cooldown
+lock, and resume by person.
+

@@ -54,8 +54,14 @@ whether LinkedIn had more. **Also finish people already mapped** (on by default;
 short by a page limit, or done before 0.1.6 at 10 pages is finished rather than started
 again. Once the id their connections are searched by is known, their profile isn't
 opened again. Every page is a search on your account, and free accounts have a monthly
-search limit that whole lists use up quickly. When LinkedIn says it has been reached,
-the scan saves what it read, stops the batch, and says so. For every result it keeps the profile link, name, photo and headline;
+search limit that whole lists use up quickly (LinkedIn publishes no number; reports put it
+around 250–350 searches a month, resetting on the 1st). So it reads slowly: 20 seconds
+before each page and another minute after every 10, about 50 minutes for a whole list.
+**It stops at the first sign of LinkedIn pushing back**: a page that won't open, a warning
+about unusual activity or restricted viewing, the search limit, a security check, or a
+sign-in wall. It saves what it read, ends the batch, and keeps what the page showed in
+`~/.six-degrees/pushback/`. Two people in a row with nothing to show also end the batch.
+After any of these, leave it at least a day. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather
 than saved as the headline. People who are already your own connections — they appear

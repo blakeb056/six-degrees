@@ -88,6 +88,15 @@ tick an item in the same change that finishes it.
       was read from page 11 to 12 (the search opened at `&page=11`, and the check of the
       page it landed on passed), then from 13 using the stored search id, with no profile
       view. Each save recorded the page and "more"
+- [x] 0.1.7 — stopgap after LinkedIn blocked search (TRAPS §35): slower reading, stop at
+      the first push-back, a circuit breaker, a security check isn't "signed in", a blank
+      page while carrying on isn't "finished". Checked against the simulated LinkedIn only;
+      no live runs until the block lifts
+- [ ] Search budget (monthly and daily, per LinkedIn account), a cooldown lock the Scan page
+      shows, a Paused panel with Resume per person (by profile URL, not name) and Resume all
+- [ ] Search only 2nd degree (`network=["S"]`) instead of 1st+2nd+3rd: your own connections
+      take up a quarter or more of every page and are thrown away on save. Needs one
+      watched check once search works again
 - [ ] 0.1.6: a whole list read to its real end, live. Seen only in the simulation: the
       three looks for Next, a disabled Next, a click that doesn't move
 - [ ] The monthly search limit's wording. It has never been seen live; the check looks

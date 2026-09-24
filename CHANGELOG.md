@@ -6,7 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-24
+
+A stopgap after 0.1.6 read 27 pages of results in about three and a half minutes and
+LinkedIn blocked the account's search. Budgets and an easy resume come next. TRAPS §35.
+
+### Changed
+- **Slower reading.** 20 seconds before each page of results and another minute after
+  every 10. A whole list now takes up to about 50 minutes, not 10.
+- The pause after someone who came back with nothing is the full two minutes. It was 15
+  seconds, so the scan went faster exactly when LinkedIn was pushing back.
+
 ### Fixed
+- **A scan stops at the first sign of LinkedIn pushing back** instead of carrying on to
+  the next person. That covers a page of results that won't open, LinkedIn's own
+  warnings ("unusual activity from your account", profile viewing restricted, the account
+  restricted, the monthly search limit coming up), a security check, and being signed out.
+  What the page showed is kept in `~/.six-degrees/pushback/` so the wording can be
+  recognised.
+- **Two people in a row with nothing to show stop the batch**, and anyone marked hidden
+  in that streak is un-marked. A block used to mark everyone after it as hidden, for good.
+- **A security check no longer counts as signed in.** The session cookie survives one,
+  so a scan used to carry on past it. It now stops and asks you to finish the check by hand.
+- **Carrying on into a blank page no longer marks a list finished.** Only LinkedIn's "No
+  results found" does. A search it is limiting can come back blank, and a wrong
+  "finished" dropped the rest of that list for good.
 - The Scan page's note on how long a whole list takes read "15 minutesa person".
 
 ## [0.1.6] - 2026-09-24

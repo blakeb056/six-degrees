@@ -258,11 +258,36 @@ def _looks_logged_out(page):
     return "/feed" not in url and "/mynetwork" not in url
 
 
-def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
+def _on_linkedin_wall(context):
+    """"checkpoint" when an open page is LinkedIn's security check, "signin" when
+    it is a sign-in page or wall, else None."""
+    try:
+        for pg in context.pages:
+            if pg.is_closed():
+                continue
+            path = urlparse(pg.url or "").path.lower()
+            if path.startswith("/checkpoint"):
+                return "checkpoint"
+            if path.startswith(("/authwall", "/uas/", "/login")):
+                return "signin"
+    except Exception:
+        pass
+    return None
+
+
+def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_checkpoint=False):
     """Wait for a human to finish logging in, rather than scraping an empty page.
 
     The browser uses a persistent profile, so this is a once-per-machine step —
     every later run finds the session already there and returns immediately.
+
+    The session cookie survives LinkedIn's security check, so the cookie alone
+    used to count as signed in and a scan carried on straight past the check
+    (TRAPS §35). Now an open security check or sign-in page means not signed in.
+    With stop_on_checkpoint, a security check ends the run instead of waiting:
+    it is LinkedIn pushing back, and carrying on after one is what it says
+    turns a warning into a restriction. Signing in (--login) still waits for
+    you to finish it in the window.
     """
     context = page.context
 
@@ -272,7 +297,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
         pass
     time.sleep(2)
 
-    if _has_session_cookie(context) and not _looks_logged_out(page):
+    if stop_on_checkpoint and _on_linkedin_wall(context) == "checkpoint":
+        raise LinkedInPushedBack(0, "a security check. Finish it by hand with Open LinkedIn on the Scan page")
+
+    if _has_session_cookie(context) and not _looks_logged_out(page) and not _on_linkedin_wall(context):
         return True
 
     say = log_fn or (lambda m: None)
@@ -308,9 +336,13 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None):
             print("\n  Browser closed — nothing was scraped.")
             return False
 
-        # The cookie is the authority and it belongs to the whole browser, so it
-        # is found no matter which tab or window the sign-in finished in.
-        if _has_session_cookie(context):
+        # The cookie belongs to the whole browser, so it is found no matter which
+        # tab or window the sign-in finished in — but it is only "signed in" once
+        # no page is still on a security check or sign-in wall.
+        wall = _on_linkedin_wall(context)
+        if wall == "checkpoint" and stop_on_checkpoint:
+            raise LinkedInPushedBack(0, "a security check. Finish it by hand with Open LinkedIn on the Scan page")
+        if _has_session_cookie(context) and not wall:
             print()
             print("  ==================================================================")
             print("  Signed in. Starting the scrape now.")
@@ -507,6 +539,21 @@ class SaveFailed(Exception):
     degree-2 connections added" — to the next person, spending more LinkedIn
     views on people who could not be saved either. TRAPS §32.
     """
+
+
+class LinkedInPushedBack(Exception):
+    """A results page would not open after END_CHECKS tries.
+
+    That is what LinkedIn blocking the account's search looked like on
+    2026-09-24: page 28 of a list never loaded. The batch used to note it for
+    that person and carry on with the next one after a cooldown — straight
+    into the same block. Raised after saving, so `found` is what was read.
+    """
+
+    def __init__(self, found=0, reason="a page that would not open"):
+        super().__init__(reason)
+        self.found = found
+        self.reason = reason
 
 
 class NotSignedIn(Exception):
@@ -1057,12 +1104,18 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
 
 
 BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be polite
-BRIDGE_SKIP_COOLDOWN = 15         # after a hidden profile: one page view, no need
 BRIDGE_LOAD_ATTEMPTS = 6          # how many times to look for the connections URN
 BRIDGE_LOAD_STEP = 5              # seconds between looks
 LINKEDIN_MAX_PAGES = 100          # LinkedIn's people search never goes past page 100
 END_CHECKS = 3                    # looks for another page before calling a list finished
 SAVE_EVERY_PAGES = 10             # save as a long read goes, so a stop loses little
+# Pace between searches. 0.1.6 read a page every ~6 s — 27 searches in three and
+# a half minutes — and LinkedIn blocked the account's search on the 28th. These
+# are a stopgap until the pacing is set from research (TRAPS §35): a rest before
+# every search, and a longer one after every SAVE_EVERY_PAGES. Fixed, not
+# randomised: the point is fewer searches an hour, not looking like a person.
+PAGE_PAUSE = 20                   # seconds before each next page of results
+CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES pages
 LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
 
 
@@ -1411,6 +1464,72 @@ SEARCH_LIMIT_JS = r"""
 }
 """
 
+# LinkedIn pushing back, in its own words (Help Center articles a1393432,
+# a1340567, a1339220) and by where it sends the page. Any of these ends the
+# batch: carrying on after an "unusual activity" warning or a security check is
+# what LinkedIn says turns a warning into a restriction. TRAPS §35.
+PUSHBACK_JS = r"""
+() => {
+  const path = location.pathname.toLowerCase();
+  if (path.startsWith('/checkpoint')) return 'a security check';
+  if (path.startsWith('/authwall') || path.startsWith('/uas/') || path.startsWith('/login')) return 'being signed out';
+  const t = (document.body.innerText || '').toLowerCase();
+  if (t.includes('unusual activity from your account')) return 'an unusual-activity warning';
+  if (t.includes('ability to view profiles has been temporarily restricted')
+      || t.includes('profile viewing temporarily restricted')) return 'profile viewing being restricted';
+  if (t.includes('restricted your account') || t.includes('account has been temporarily restricted')) return 'the account being restricted';
+  if (t.includes('approaching the commercial use limit')) return 'the monthly search limit coming up';
+  return null;
+}
+"""
+
+# LinkedIn's empty-search message: positive evidence that a list has ended, as
+# opposed to a page that simply didn't load.
+NO_RESULTS_JS = r"""
+() => {
+  const root = document.querySelector('[role="main"], main') || document.body;
+  return /no results found/i.test(root.innerText || '');
+}
+"""
+
+
+def _pushback(page):
+    """The reason LinkedIn is pushing back, or None."""
+    try:
+        return page.evaluate(PUSHBACK_JS)
+    except Exception:
+        return None
+
+
+def _keep_pushback_evidence(page, reason):
+    """Keep what the page showed, so the wording can be recognised next time.
+
+    The real notices have never been captured (PHASES.md). Local only, beside
+    the database; nothing here leaves the machine.
+    """
+    try:
+        text = page.evaluate("() => (document.body.innerText || '').slice(0, 2000)")
+    except Exception:
+        text = ""
+    try:
+        base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees")) / "pushback"
+        base.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        (base / f"{stamp}.txt").write_text(f"reason: {reason}\nurl: {getattr(page, 'url', '')}\n\n{text}\n")
+        print(f"  (What the page showed is kept in {base}/{stamp}.txt)")
+    except Exception:
+        pass
+
+
+def _pushed_back(page, reach, reason):
+    """Note push-back on this read: the rest is left for later, never marked finished."""
+    reach["pushed_back"] = True
+    reach["pushback_reason"] = reason
+    reach["more"] = True
+    print(f"  LinkedIn is pushing back ({reason}). Stopping here.")
+    _keep_pushback_evidence(page, reason)
+
+
 # Which page the pagination bar says is showing, when it says.
 CURRENT_PAGE_JS = r"""
 () => {
@@ -1561,7 +1680,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     - Playwright locator click for Next (not JS — more reliable)
     """
     slug = profile_url.split("/in/")[1].rstrip("/")
-    reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False}
+    reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
+             "pushed_back": False}
 
     if urn:
         # Known from an earlier read, so their profile needn't be opened again —
@@ -1583,6 +1703,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         for attempt in range(BRIDGE_LOAD_ATTEMPTS):
             time.sleep(BRIDGE_LOAD_STEP)
 
+            why = _pushback(page)
+            if why:
+                _pushed_back(page, reach, why)
+                return [], "pushback", reach
+
             if _profile_unavailable(page):
                 print("  Profile is not viewable — skipping.")
                 return [], "private", reach
@@ -1602,6 +1727,10 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print(f"  Still loading... ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
 
         if not urn:
+            why = _pushback(page)
+            if why:
+                _pushed_back(page, reach, why)
+                return [], "pushback", reach
             print(f"  Could not find URN — connections are private.")
             return [], "private", reach
 
@@ -1635,6 +1764,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         except:
             print(f"  Still loading... ({10 + (attempt+1)*5}s)")
             time.sleep(5)
+
+    why = _pushback(page)
+    if why:
+        _pushed_back(page, reach, why)
+        return [], "pushback", reach
 
     if not results_loaded:
         print(f"  No search results found — may be private or empty.")
@@ -1681,6 +1815,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             if page.evaluate(SEARCH_LIMIT_JS):
                 print("LinkedIn's monthly search limit.")
                 reach["limited"] = reach["more"] = True
+                _keep_pushback_evidence(page, "the monthly search limit")
+                break
+            why = _pushback(page)
+            if why:
+                print()
+                _pushed_back(page, reach, why)
                 break
             page_results = _read_results_page(page)
         except Exception:
@@ -1690,6 +1830,26 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 break
             raise
         if not page_results:
+            why = _pushback(page)
+            if why:
+                print()
+                _pushed_back(page, reach, why)
+                break
+            ended = False
+            try:
+                ended = bool(page.evaluate(NO_RESULTS_JS))
+            except Exception:
+                pass
+            if pg == start_page and start_page > 1 and not ended:
+                # Carrying on, and the very first page is blank without saying
+                # "No results found". That is how a search LinkedIn is limiting
+                # can look, so it is not taken as the end: a wrong "finished"
+                # would drop the rest of their list for good. TRAPS §35.
+                reach["more"] = True
+                reach["unsure"] = True
+                print(f"blank. That can mean their list ended, or that LinkedIn is limiting "
+                      f"searches, so they are left for the next run to check.")
+                break
             print(f"nothing on it after {END_CHECKS} looks — that's the end of their list.")
             break
 
@@ -1712,6 +1872,16 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print("  No more pages — that's all of their list.")
             break
 
+        # Rest before the next search, and longer after every SAVE_EVERY_PAGES.
+        rest = PAGE_PAUSE
+        if (pg - start_page + 1) % SAVE_EVERY_PAGES == 0:
+            rest += CHUNK_COOLDOWN
+            print(f"  {SAVE_EVERY_PAGES} pages read; resting {rest}s before the next search.")
+        if not interruptible_sleep(rest):
+            reach["more"] = True
+            print(f"  Stopped before page {pg + 1}; the next run carries on from there.")
+            break
+
         try:
             step = _advance(page, pg)
         except Exception:
@@ -1724,8 +1894,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         if step == "stuck":
             reach["more"] = True
             if not stop_requested():
-                print(f"  Page {pg + 1} would not open after {END_CHECKS} tries. "
-                      f"The next run carries on from there.")
+                print(f"  Page {pg + 1} would not open after {END_CHECKS} tries. LinkedIn may be "
+                      f"limiting searches; the next run carries on from there.")
+                _pushed_back(page, reach, _pushback(page) or "a page that would not open")
             break
         pg += 1
 
@@ -1754,8 +1925,9 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
     Returns every connection read ([] when none; None when they could not be
     looked up). Raises SaveFailed if the app refuses a save, NotSignedIn if
-    LinkedIn isn't signed in, and SearchLimitReached, after saving, if
-    LinkedIn's monthly limit ends the read.
+    LinkedIn isn't signed in, and, after saving, SearchLimitReached if
+    LinkedIn's monthly limit ends the read or LinkedInPushedBack if a page
+    would not open.
     """
     from playwright.sync_api import sync_playwright
 
@@ -1820,7 +1992,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
                     page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
                 except Exception:
                     pass
-                if not ensure_logged_in(page):
+                if not ensure_logged_in(page, stop_on_checkpoint=True):
                     raise NotSignedIn()
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
@@ -1831,7 +2003,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
                     browser.close()
                 except Exception:
                     pass
-    except (SaveFailed, NotSignedIn):
+    except (SaveFailed, NotSignedIn, LinkedInPushedBack):
         if stop_requested():
             return []
         raise
@@ -1858,6 +2030,8 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
     if reach["limited"]:
         raise SearchLimitReached(len(read))
+    if reach.get("pushed_back"):
+        raise LinkedInPushedBack(len(read), reach.get("pushback_reason") or "a page that would not open")
 
     if not read:
         print(f"\nDone! No connections found ({status}).")
@@ -2339,6 +2513,25 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         unbridged = unbridged[:max_bridges]
         log(f"Stopping after {len(unbridged)} this run.")
 
+    # Two people in a row with nothing to show is how LinkedIn limiting searches
+    # looks from here: profiles that won't load read as "hidden", searches that
+    # won't load as "empty". On a healthy run that is rare, so two in a row end
+    # the batch, and anyone marked hidden during that streak is un-marked.
+    # TRAPS §35.
+    BREAKER = 2
+    streak, streak_skips = 0, []
+
+    def _unskip(urls):
+        if not urls:
+            return
+        skips_now = load_bridge_skips()
+        for u in urls:
+            skips_now.pop(u, None)
+        try:
+            _skips_path().write_text(json.dumps(skips_now, indent=2))
+        except Exception:
+            pass
+
     results = []
     for i, person in enumerate(unbridged):
         if stop_requested():
@@ -2360,6 +2553,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             count = len(result) if result else 0
             if count > 0:
                 scraped = True
+                streak, streak_skips = 0, []
                 results.append({"name": name, "tier": tier, "found": count, "status": "done"})
                 log(f"  {count} connections read")
             elif stop_requested():
@@ -2374,6 +2568,10 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 if entry.get("hidden"):
                     results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
                 elif entry and not entry.get("more"):
+                    # A finished list is LinkedIn answering normally, so it
+                    # breaks a streak rather than adding to one.
+                    scraped = True
+                    streak, streak_skips = 0, []
                     results.append({"name": name, "tier": tier, "found": 0, "status": "finished"})
                     log(f"  Nothing past page {from_page - 1}: that was all of their list")
                 else:
@@ -2383,6 +2581,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
                 if url:
                     record_bridge_skip(url, name, "no visible connections")
+                    streak_skips.append(url)
                 log("  Connections are hidden — noted, and skipped from now on")
         except KeyboardInterrupt:
             log("Stopped.")
@@ -2391,6 +2590,13 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log("  LinkedIn isn't signed in, so nothing was read. Stopping the batch: sign in")
             log("  on the Scan page, then run it again.")
+            break
+        except LinkedInPushedBack as exc:
+            results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "error"})
+            log(f"  LinkedIn pushed back: {exc.reason}.")
+            log("  Stopping the batch rather than carrying on into it. Everything read is saved, and")
+            log("  the next run carries on from the same page. Leave it at least a day.")
+            _unskip(streak_skips)
             break
         except SearchLimitReached as exc:
             results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "error"})
@@ -2410,12 +2616,20 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log(f"  Failed: {str(exc)[:80]}")
 
-        # Cooldown between bridges (skip on the last one). A real scrape walks
-        # many search pages and earns the full pause; a hidden profile was one
-        # page view, so charging two minutes for it is what made a run of them
-        # look like a hang.
+        if not scraped and not stop_requested():
+            streak += 1
+            if streak >= BREAKER:
+                log(f"  {streak} people in a row came back with nothing, which is how LinkedIn")
+                log("  limiting searches looks. Stopping the batch; anyone marked hidden in that")
+                log("  run of them is un-marked, so they are tried again next time.")
+                _unskip(streak_skips)
+                break
+
+        # Cooldown between bridges (skip on the last one). The same full pause
+        # after a person who came back with nothing: it used to be 15 s, which
+        # made the loop go faster exactly when LinkedIn was pushing back.
         if i < len(unbridged) - 1 and not stop_requested():
-            cooldown = BRIDGE_COOLDOWN if scraped else BRIDGE_SKIP_COOLDOWN
+            cooldown = BRIDGE_COOLDOWN
             log(f"  Waiting {cooldown}s before the next one...")
             if not interruptible_sleep(cooldown, on_tick=lambda left: log(f"    {left}s to go"), step=15):
                 log("Stopped.")
@@ -2704,6 +2918,9 @@ Examples:
         elif issubclass(exc_type, NotSignedIn):
             print("\n  LinkedIn isn't signed in, so nothing was read. Sign in with --login, then run it again.\n",
                   file=sys.stderr)
+        elif issubclass(exc_type, LinkedInPushedBack):
+            print("\n  A page of results would not open — LinkedIn may be limiting searches. What was "
+                  "read is saved; leave it at least a day, then run again with --deeper.\n", file=sys.stderr)
         elif issubclass(exc_type, SearchLimitReached):
             print("\n  LinkedIn says this account has reached its monthly search limit. What was read "
                   "is saved; run again with --deeper once it resets.\n", file=sys.stderr)
