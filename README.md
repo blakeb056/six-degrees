@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="desktop/icon/icon.svg" width="128" height="128" alt="">
+</p>
+
 <h1 align="center">Six Degrees</h1>
 
 <p align="center">
@@ -7,10 +11,11 @@
 
 ## Install it
 
+<p align="center"><strong>Click the button for your Mac to download the app.</strong></p>
+
 <p align="center">
-  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="https://img.shields.io/badge/Download-Apple%20Silicon%20(M1%20or%20newer)-2ea44f?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with Apple Silicon (M1 or newer)"></a>
-  &nbsp;
-  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="https://img.shields.io/badge/Download-Intel%20Mac-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with an Intel processor"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Six Degrees for a Mac with Apple Silicon (M1 or newer)"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a>
 </p>
 
 <p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://blakeb056.github.io/six-degrees/">website</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>

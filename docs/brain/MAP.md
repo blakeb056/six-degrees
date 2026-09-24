@@ -43,6 +43,7 @@
 | `db/schema.js` | The schema, **as a JS module** — not a `.sql` file. See TRAPS §4. |
 | `scripts/scrape.py` | The scanner. The only implementation that has ever actually scanned. Stays Python; the desktop plan ships Python inside the app ([`DESKTOP.md`](DESKTOP.md)). |
 | `scripts/image_store.py` | Downloads and re-encodes avatars to permanent local WebP. |
+| `scripts/readme_buttons.py` | Draws the README's download buttons (`docs/img/download-*.png`) from HTML in Chrome, with the app icon inside. Rerun after changing `desktop/icon/icon.svg`. |
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
 | `scripts/score_new_connections.sql`, `scripts/score-connections.sql` | **Retired** hosted-era scoring, kept for history. The model is `lib/scoring.js`. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |

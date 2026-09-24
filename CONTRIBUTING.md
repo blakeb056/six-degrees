@@ -80,6 +80,13 @@ python3 scripts/screenshots.py        # writes docs/img/*.png
 It runs against the sample network only. If you change the UI in a way the
 README shows, regenerate rather than cropping a screenshot of your own data.
 
+The README's download buttons are pictures too (a README can't style a link).
+Redraw them after changing the icon or their wording; no server needed:
+
+```bash
+python3 scripts/readme_buttons.py     # writes docs/img/download-*.png
+```
+
 ## Commit messages
 
 Explain **why**, not just what. A one-line subject, then a body if the change
