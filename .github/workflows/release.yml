@@ -1,8 +1,14 @@
 name: Release
 
 # Push a tag like v0.2.0 and this builds the Mac app for both chips, publishes
-# the .dmg files with a SHA256SUMS checksum file on a GitHub Release, and — if
-# an NPM_TOKEN secret is configured — publishes the npm package too.
+# the .dmg files with a SHA256SUMS checksum file on a GitHub Release, then builds
+# the npm package on Linux, checks it installs and serves the app
+# (npm-package.yml), and publishes that exact tarball to npm.
+#
+# npm publishing uses npm's trusted publishing: npm is set up (package Settings →
+# Trusted Publisher) to accept blakeb056/six-degrees's release.yml, and GitHub
+# vouches for this run with a short-lived token. No npm token is stored anywhere.
+# Renaming this file breaks that link; update it on npmjs.com if you do.
 #
 # install.sh downloads from the Release this creates, so nothing reaches users
 # until a tag is pushed. Cutting one:
@@ -219,35 +225,45 @@ jobs:
           )"
           fi
 
-  npm:
-    name: npm package
+  npm-package:
+    name: npm package (build and check)
     needs: mac
     if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/npm-package.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+    permissions:
+      contents: read
+
+  npm:
+    name: npm publish
+    needs: [release, npm-package]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # lets GitHub vouch for this run to npm (trusted publishing)
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref }}
+      # No registry-url: that writes an .npmrc expecting a token, which can hide
+      # a trusted-publishing failure behind a confusing auth error.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-      - name: Publish (skipped until an NPM_TOKEN secret exists)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+      - name: Publish the checked tarball
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "No NPM_TOKEN secret — skipping npm publish."
+          npm --version   # trusted publishing needs 11.5.1 or later
+          TGZ=$(ls six-degrees-*.tgz)
+          sha256sum -c "$TGZ.sha256"
+          VERSION=${TGZ#six-degrees-}; VERSION=${VERSION%.tgz}
+          if npm view "six-degrees@$VERSION" version >/dev/null 2>&1; then
+            echo "six-degrees@$VERSION is already on npm; nothing to publish."
             exit 0
           fi
-          npm ci
           # A pre-release goes out under "next", never "latest", so `npx six-degrees`
           # keeps running the last full release.
-          case "${{ inputs.tag || github.ref_name }}" in
-            *-*) npm publish --provenance --access public --tag next ;;
-            *)   npm publish --provenance --access public ;;
+          case "$VERSION" in
+            *-*) npm publish "./$TGZ" --tag next ;;
+            *)   npm publish "./$TGZ" ;;
           esac
-    permissions:
-      contents: read
-      id-token: write
