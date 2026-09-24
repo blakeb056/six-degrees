@@ -6,119 +6,12 @@ import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
+import PathsAnalyzer from '../components/PathsAnalyzer';
 import { useUser } from '../components/UserProvider';
 import Link from 'next/link';
+import { normalizeCompany, getSeniority, SENIORITY_LEVELS } from '../../lib/companies';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-
-// Merge company name variants
-function normalizeCompany(name) {
-  const n = (name || '').trim().toLowerCase();
-  // Social / Media
-  if (n.includes('snap') && (n.includes('inc') || n === 'snap' || n === 'snapchat')) return 'Snap';
-  if (n.includes('meta') && (n.includes('platform') || n === 'meta' || n.includes('facebook'))) return 'Meta';
-  if (n.includes('tiktok') || n.includes('bytedance')) return 'TikTok';
-  if (n.includes('pinterest')) return 'Pinterest';
-  // Big Tech
-  if (n === 'google' || n.includes('alphabet') || (n.includes('google') && n.includes('llc'))) return 'Google';
-  if (n === 'apple' || n === 'apple inc' || n === 'apple inc.') return 'Apple';
-  if (n.includes('amazon') && !n.includes('amazon ')) return 'Amazon';
-  if (n.includes('microsoft')) return 'Microsoft';
-  // AI
-  if (n.includes('anthropic')) return 'Anthropic';
-  if (n.includes('openai') || n === 'open ai') return 'OpenAI';
-  if (n.includes('deepmind')) return 'DeepMind';
-  if (n.includes('cohere')) return 'Cohere';
-  if (n.includes('mistral')) return 'Mistral';
-  if (n.includes('hugging') && n.includes('face')) return 'Hugging Face';
-  // Fintech / Crypto
-  if (n.includes('stripe')) return 'Stripe';
-  if (n.includes('coinbase')) return 'Coinbase';
-  if (n.includes('polymarket')) return 'Polymarket';
-  if (n.includes('blackrock')) return 'BlackRock';
-  if (n.includes('robinhood')) return 'Robinhood';
-  // Growth / Commerce
-  if (n.includes('whatnot')) return 'Whatnot';
-  if (n.includes('shopify')) return 'Shopify';
-  if (n.includes('palantir')) return 'Palantir';
-  if (n.includes('anduril')) return 'Anduril';
-  if (n.includes('netflix')) return 'Netflix';
-  if (n.includes('spotify')) return 'Spotify';
-  if (n.includes('tesla')) return 'Tesla';
-  if (n.includes('spacex')) return 'SpaceX';
-  if (n.includes('nvidia')) return 'NVIDIA';
-  // Defense / Aerospace
-  if (n.includes('lockheed')) return 'Lockheed Martin';
-  if (n.includes('northrop')) return 'Northrop Grumman';
-  if (n.includes('boeing')) return 'Boeing';
-  if (n.includes('l3harris') || n.includes('l3 harris')) return 'L3Harris';
-  if (n.includes('leidos')) return 'Leidos';
-  if (n.includes('nasa')) return 'NASA';
-  if (n.includes('sandia')) return 'Sandia National Labs';
-  if (n.includes('blue origin')) return 'Blue Origin';
-  if (n.includes('raytheon')) return 'Raytheon';
-  if (n.includes('general dynamics')) return 'General Dynamics';
-  if (n.includes('bae systems')) return 'BAE Systems';
-  // Finance
-  if (n.includes('goldman')) return 'Goldman Sachs';
-  if (n.includes('jpmorgan') || n.includes('jp morgan')) return 'JPMorgan Chase';
-  if (n.includes('wells fargo')) return 'Wells Fargo';
-  if (n.includes('citi') && !n.includes('citizen')) return 'Citi';
-  if (n.includes('mastercard')) return 'Mastercard';
-  if (n.includes('visa') && n.length < 15) return 'Visa';
-  if (n.includes('paypal')) return 'PayPal';
-  if (n.includes('bny') || n.includes('bank of new york') || n.includes('mellon')) return 'BNY Mellon';
-  if (n.includes('deloitte')) return 'Deloitte';
-  if (n.includes('bain')) return 'Bain & Company';
-  if (n.includes('bloomberg')) return 'Bloomberg';
-  if (n.includes('usaa')) return 'USAA';
-  if (n.includes('navy federal')) return 'Navy Federal';
-  if (n.includes('raymond james')) return 'Raymond James';
-  if (n.includes('geico')) return 'GEICO';
-  // Enterprise / Industrial
-  if (n.includes('oracle')) return 'Oracle';
-  if (n.includes('ibm')) return 'IBM';
-  if (n.includes('servicenow')) return 'ServiceNow';
-  if (n.includes('siemens')) return 'Siemens';
-  if (n.includes('texas instruments')) return 'Texas Instruments';
-  if (n.includes('qualcomm')) return 'Qualcomm';
-  if (n.includes('databricks')) return 'Databricks';
-  if (n.includes('together.ai') || n.includes('together ai')) return 'Together AI';
-  if (n.includes('zoox')) return 'Zoox';
-  // Entertainment
-  if (n.includes('nbcuniversal') || n.includes('nbc universal')) return 'NBCUniversal';
-  if (n.includes('universal destinations')) return 'Universal Destinations';
-  // Other
-  if (n.includes('humana')) return 'Humana';
-  if (n.includes('booz allen')) return 'Booz Allen Hamilton';
-  if (n.includes('abbott')) return 'Abbott';
-  if (n.includes('walmart')) return 'Walmart';
-  if (n.includes('publix')) return 'Publix';
-  if (n.includes('mitsubishi')) return 'Mitsubishi Power';
-  if (n.includes('oscar health')) return 'Oscar Health';
-  if (n.includes('ford') && n.length < 15) return 'Ford';
-  if (n.includes('coca') && n.includes('cola')) return 'Coca-Cola';
-  if (n.includes('nike')) return 'Nike';
-  if (n.includes('disney')) return 'Disney';
-  if (n.includes('ucf') || n.includes('university of central florida')) return 'UCF';
-  return (name || '').trim();
-}
-
-const SENIORITY_LEVELS = [
-  { key: 'csuite', label: 'C-Suite', match: /ceo|chief|founder|president|chairman|co-founder/i, level: 6 },
-  { key: 'vp', label: 'VP / SVP', match: /\bvp\b|vice president|svp|evp|managing director/i, level: 5 },
-  { key: 'director', label: 'Director / Head', match: /director|head of|senior director/i, level: 4 },
-  { key: 'manager', label: 'Manager / Lead', match: /manager|lead|principal|staff/i, level: 3 },
-  { key: 'senior', label: 'Senior IC', match: /senior|sr\.|sr /i, level: 2 },
-  { key: 'ic', label: 'IC / Entry', match: /./, level: 1 },
-];
-
-function getSeniority(headline) {
-  const h = (headline || '').toLowerCase();
-  if (h.match(/intern|student|aspiring/i)) return { key: 'intern', label: 'Intern / Student', level: 0 };
-  for (const s of SENIORITY_LEVELS) if (s.match.test(h)) return s;
-  return { key: 'ic', label: 'IC / Entry', level: 1 };
-}
 
 export default function PathsPage() {
   return <OnboardingGate><PathsInner /></OnboardingGate>;
@@ -132,6 +25,9 @@ function PathsInner() {
   const [loading, setLoading] = useState(true);
   const [d1Data, setD1Data] = useState([]);
   const [d2Data, setD2Data] = useState([]);
+  const [d3Data, setD3Data] = useState([]);
+  // Map and Industries are the analyzer; Companies is the list it grew from.
+  const [tab, setTab] = useState('map');
 
   useEffect(() => {
     if (IS_DEMO) return;
@@ -150,6 +46,7 @@ function PathsInner() {
       }
       setD1Data(d1);
       setD2Data(d2);
+      setD3Data(d3 || []);
 
       // Build company index from ALL connections (including company scans)
       const companyMap = {};
@@ -326,6 +223,16 @@ function PathsInner() {
             background: 'linear-gradient(135deg, #00ff88, #3498DB)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>Paths</h1>
+          {!selectedCompany && (
+            <div style={{ display: 'flex', gap: 4, marginLeft: 8, padding: 3, borderRadius: 8, background: 'rgba(255,255,255,0.05)' }}>
+              {[['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies']].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)} style={{
+                  padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                  background: tab === k ? 'linear-gradient(135deg, #00ff88, #3498DB)' : 'transparent', color: tab === k ? '#000' : '#aab',
+                }}>{label}</button>
+              ))}
+            </div>
+          )}
           {selectedCompany && (
             <>
               <button onClick={() => { setSelectedCompany(null); setCompanyPeople([]); }}
@@ -356,6 +263,10 @@ function PathsInner() {
         </div>
       </header>
 
+      {!selectedCompany && tab !== 'companies' ? (
+        <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}
+          onOpenCompany={(co) => selectCompany({ ...co, sCount: co.S, aCount: co.A })} />
+      ) : (
       <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
 
@@ -366,7 +277,7 @@ function PathsInner() {
                 Pick a company to see your path to the top. Based on {d1Data.length + d2Data.length} people in your network.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {companies.slice(0, 20).map(co => (
+                {companies.slice(0, 60).map(co => (
                   <button key={co.name} onClick={() => selectCompany(co)} style={{
                     padding: '14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
                     background: 'rgba(255,255,255,0.04)', transition: 'background 0.15s',
@@ -448,6 +359,7 @@ function PathsInner() {
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

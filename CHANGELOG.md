@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-09-24
+
+### Added
+- **Paths is a company and industry analyzer**, in the spirit of LinkedIn's InMaps
+  (2011–2014), the network map LinkedIn used to give people and then retired.
+  - **Map:** every company is a bubble, coloured by industry and sized by your people there,
+    with the share you already know as a white centre and a gold ring when an S-tier person
+    is inside. A line joins two companies when one of your connections at the first knows
+    people at the second.
+  - **Industries:** a card per industry with who you know, who you can reach, director-level
+    people, the top companies and the best way in.
+  - **Filters:** degree, level (director+, C-suite), tier, industry, and search.
+  - **Analyzer panel:** click a company or an industry for the breakdown by level, the ways in
+    (people who work there first, then connections who know the most people there), the
+    most powerful people, and connected companies. "Path to the top" still opens the
+    level-by-level view.
+  - Industry is inferred from company names and headlines and says so; unclear stays unclear.
+- **Outlink is a game: Circles.** Each mapped connection's circle offers its best people five
+  at a time. Mark an invite sent and the ring fills; clear a stage and the next five appear.
+  **Next best moves** picks the three people most worth an invite, nudged toward circles
+  you've started. Level and points come only from invites sent and people who joined your
+  network. People you added whose circle isn't mapped yet show as **new doors**, the next
+  degree to map. The list and Pending are still there.
+- **Orbit in Degrees.** The Network Circle's Orbit, for your mapped circles: each person
+  you've mapped on one ring, with everyone they know fanned out behind them, the most
+  powerful closest, and more room for bigger circles.
+
 ## [0.1.8] - 2026-09-24
 
 ### Added

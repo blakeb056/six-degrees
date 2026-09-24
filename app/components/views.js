@@ -28,7 +28,7 @@ import SeparationView from './SeparationView';
  */
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
-  orbit:    { component: OrbitGraph, modes: ['network'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots', allDegree2: true },
+  orbit:    { component: OrbitGraph, modes: ['network', 'degrees'], label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots; in Degrees, every mapped circle fanned out', allDegree2: true },
   separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
   revolver: { component: BridgeRing, modes: ['degrees'],            label: 'Revolver',      icon: '🎯', desc: 'Rotary dial · spin to switch' },
