@@ -179,6 +179,21 @@ function main() {
     const circle = Array.from({ length: size }, () => person(2, b.id));
     degree2.push(...circle);
   }
+  // In a real network some people are known by more than one of your
+  // connections: that is what "reachable 2+ ways" counts, and what makes
+  // sorting Degrees by ways in worth doing. About one in seven gets a second
+  // route, and some of those a third. Same person, same profile, another bridge.
+  const shared = [];
+  for (const p of degree2) {
+    if (rand() >= 0.15) continue;
+    const others = bridges.filter((b) => b.id !== p.source_connection_id);
+    const routes = rand() < 0.3 ? 2 : 1;
+    for (let k = 0; k < routes; k++) {
+      const b = others.splice(Math.floor(rand() * others.length), 1)[0];
+      shared.push({ ...p, id: `${p.id}-via${k + 1}`, source_connection_id: b.id, influence_signals: {} });
+    }
+  }
+  degree2.push(...shared);
   // Everyone again, together: circles now exist, so bridges get their boost.
   scoreRows([...degree1, ...degree2]);
   degree1.sort((a, b) => b.power_score - a.power_score);
@@ -205,7 +220,7 @@ function main() {
   const kb = Math.round(JSON.stringify(payload).length / 1024);
   console.log(`wrote ${out}  (${kb} KB, seed ${seed})`);
   console.log(`  1st degree : ${degree1.length}`);
-  console.log(`  2nd degree : ${degree2.length} across ${BRIDGE_COUNT} bridges`);
+  console.log(`  2nd degree : ${degree2.length - shared.length} people across ${BRIDGE_COUNT} bridges, ${new Set(shared.map((r) => r.profile_url)).size} of them reachable 2+ ways`);
   console.log(`  catalysts  : ${bridges.filter((b) => b.is_catalyst).length}`);
   console.log(`  tier mix   : ${['S','A','B','C','D'].map((t) => `${t}:${tiers[t] || 0}`).join('  ')}`);
 }

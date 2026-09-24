@@ -102,6 +102,8 @@ def main():
             if script:
                 page.evaluate(script)
                 page.wait_for_timeout(1500)
+            # The dev server's own badge (Next.js's "N" in a corner) isn't part of the app.
+            page.add_style_tag(content="nextjs-portal { display: none !important; }")
             page.screenshot(path=str(OUT / name))
             print(f"  wrote docs/img/{name}")
 
