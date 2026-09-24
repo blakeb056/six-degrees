@@ -10,17 +10,23 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const ua = navigator.userAgent || '';
-  const isMac = /Macintosh|Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua) && navigator.maxTouchPoints <= 1;
+  // iPadOS Safari says "Macintosh", so an iPad is a "Mac" with a touch screen.
+  const isPhone = /iPhone|iPad|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const isMac = /Macintosh|Mac OS X/.test(ua) && !isPhone;
+  let chip = null;
 
   if (!isMac) {
+    if (isPhone) {
+      $('not-mac').textContent = "You're on a phone or tablet. Six Degrees is a Mac app: open this page on your Mac to download it.";
+    }
     $('not-mac').hidden = false;
   } else {
-    const chip = guessChip();
+    chip = guessChip();
     if (chip) {
       const pick = chip === 'silicon' ? $('dl-silicon') : $('dl-intel');
       pick.classList.add('suggested');
       $('chip-guess').textContent = chip === 'silicon'
-        ? 'This looks like an Apple Silicon Mac: the green button is yours.'
+        ? 'This looks like an Apple Silicon Mac: take the Apple Silicon download.'
         : 'This looks like an Intel Mac: take the Intel download.';
       $('chip-guess').hidden = false;
     }
@@ -41,9 +47,18 @@
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((release) => {
       const version = String(release.tag_name || '').replace(/^v/, '');
-      const asset = (release.assets || []).find((a) => a.name === 'Six-Degrees-Mac-Apple-Silicon.dmg');
       if (!version) return;
-      const size = asset ? ` · ${Math.round(asset.size / 1e6)} MB` : '';
+      const mb = (name) => {
+        const a = (release.assets || []).find((x) => x.name === name);
+        return a ? Math.round(a.size / 1e6) : null;
+      };
+      const silicon = mb('Six-Degrees-Mac-Apple-Silicon.dmg');
+      const intel = mb('Six-Degrees-Mac-Intel.dmg');
+      // The size of the download this Mac needs, when we know which; else both.
+      let size = '';
+      if (chip === 'silicon' && silicon) size = ` · ${silicon} MB`;
+      else if (chip === 'intel' && intel) size = ` · ${intel} MB`;
+      else if (silicon && intel) size = ` · ${silicon} MB (Apple Silicon), ${intel} MB (Intel)`;
       $('version-line').textContent = `Version ${version} · macOS 13.5 or later${size} · free and open source`;
     })
     .catch(() => { /* keep the fallback line */ });
@@ -54,6 +69,7 @@
     try {
       await navigator.clipboard.writeText(text);
       copy.textContent = 'Copied';
+      $('copy-status').textContent = 'Install command copied.';
     } catch {
       const range = document.createRange();
       range.selectNodeContents($('cmd'));
@@ -61,6 +77,7 @@
       sel.removeAllRanges();
       sel.addRange(range);
       copy.textContent = 'Press ⌘C';
+      $('copy-status').textContent = 'Install command selected. Press Command C to copy it.';
     }
     setTimeout(() => { copy.textContent = 'Copy'; }, 1800);
   });

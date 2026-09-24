@@ -7,9 +7,9 @@
   --line: rgba(255, 255, 255, 0.1);
   --text: #eef0f6;
   --muted: #a9aec4;
-  --faint: #7d8299;
-  --green: #2ea44f;
-  --green-2: #3fbf63;
+  --faint: #9297ad;
+  --green: #1a7f37;
+  --green-2: #238636;
   --gold: #ffd700;
   --purple: #9b59b6;
   --blue: #3498db;
@@ -64,13 +64,16 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 }
 .dl:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.11); color: var(--text); }
 .dl.primary { background: linear-gradient(180deg, var(--green-2), var(--green)); border-color: transparent; color: #fff; box-shadow: 0 10px 30px rgba(46, 164, 79, 0.3); }
-.dl.primary:hover { background: linear-gradient(180deg, #4ccd70, #35b058); }
+.dl.primary:hover { background: linear-gradient(180deg, #1f883d, #196c2e); }
+.dl.primary .dl-sub { opacity: 1; }
 .dl.suggested { outline: 2px solid var(--gold); outline-offset: 3px; }
+.dl.suggested:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .dl-title { font-weight: 700; font-size: 18px; }
 .dl-sub { font-size: 14px; opacity: 0.85; }
 .hero .fine { margin: 14px 0 0; }
 .guess { color: var(--gold); font-size: 14px; margin: 6px 0 0; }
-.not-mac { max-width: 560px; margin: 18px auto 0; padding: 12px 16px; border-radius: 10px; background: rgba(255, 138, 61, 0.1); border: 1px solid rgba(255, 138, 61, 0.35); color: var(--text); font-size: 15px; }
+.not-mac { max-width: 560px; margin: 0 auto 18px; padding: 12px 16px; border-radius: 10px; background: rgba(255, 138, 61, 0.1); border: 1px solid rgba(255, 138, 61, 0.35); color: var(--text); font-size: 15px; }
 .shot { display: block; margin: 44px auto 6px; border-radius: 12px; }
 .caption { color: var(--faint); font-size: 13px; margin: 0; }
 
@@ -126,12 +129,13 @@ footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align:
 @media (max-width: 860px) {
   .steps, .features, .cards { grid-template-columns: 1fr; }
   .steps { gap: 26px; }
-  .top nav a:not(:last-child) { display: none; }
   section { padding: 40px 0; }
 }
 @media (max-width: 520px) {
   body { font-size: 16px; }
   .hero h1 br { display: none; }
+  .top nav { gap: 16px; }
+  .top nav a:not(:last-child) { display: none; }
   .dl { min-width: 0; width: 100%; }
   .cmd { flex-direction: column; }
   .cmd button { padding: 10px; }
