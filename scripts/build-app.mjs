@@ -200,6 +200,14 @@ wait $SERVER
 `);
 chmodSync(path.join(APP, 'Contents', 'MacOS', 'six-degrees'), 0o755);
 
+// LSArchitecturePriority is not decoration. The app's executable is a shell
+// script, so macOS cannot see which chips it supports, and on Apple Silicon it
+// played safe and ran the script under Rosetta. Everything the launcher started
+// then preferred Intel: the Python that runs the scraper came up x86_64 and could
+// not load the arm64 packages beside it, and a Mac without Rosetta would have been
+// asked to install it just to open the app. Naming the chip makes it native.
+// Checked with a probe app: without this key, sysctl.proc_translated was 1; with
+// it, 0. LSRequiresNativeExecution alone did not change it. TRAPS §30.
 writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -214,6 +222,7 @@ writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" enc
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>LSUIElement</key><false/>
   <key>NSHighResolutionCapable</key><true/>
+  <key>LSArchitecturePriority</key><array><string>${ARCH === 'x64' ? 'x86_64' : 'arm64'}</string></array>
 </dict>
 </plist>
 `);

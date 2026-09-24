@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-24
+
+### Fixed
+- **Scanning failed in the Mac app on Apple Silicon** with an `ImportError` from Pillow
+  ("incompatible architecture (have 'arm64', need 'x86_64')"). The app's launcher is a
+  script, so macOS could not tell which chips it supports and ran it under Rosetta; the
+  Python it started came up Intel and could not load the Apple Silicon packages. The app
+  now declares its chip (`LSArchitecturePriority`), so it runs natively — and it no
+  longer needs Rosetta installed just to open.
+- The Scan page's "installed" check imported only package names, which succeed even
+  when the compiled parts are for the wrong chip. It now loads Pillow's image module
+  and Playwright's sync API, so a mismatch shows as "not installed" before a scan.
+- The one-line installer picks the Apple Silicon build even from a Terminal running
+  under Rosetta, which reports `x86_64` on an Apple Silicon Mac.
+
 ## [0.1.2] - 2026-09-24
 
 ### Fixed

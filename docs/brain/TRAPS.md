@@ -573,3 +573,29 @@ How it was found: a `MutationObserver` on the `<svg>` counting added and removed
 while hovering, and a second one recording its `width` attribute, which flipped
 1193 ↔ 1199 in step with the rebuilds.
 
+---
+
+## 30. A script as the app's executable runs under Rosetta — and so does everything it starts
+
+The Mac app's `CFBundleExecutable` is a bash script. macOS cannot read a chip list out of a
+script, so on Apple Silicon it ran the script under Rosetta (`sysctl.proc_translated` = 1 in
+the launcher). The bundled `node` is arm64-only and so ran natively anyway, which hid it —
+but the preference for Intel carried down the tree: `/usr/bin/python3`, a universal binary,
+started from that server came up **x86_64**, and the arm64 Pillow in the user's
+site-packages failed to load (`have 'arm64', need 'x86_64'`). Reproduced exactly with
+`arch -x86_64 /bin/bash -c '<app node> -e <spawn python3>'` → x86_64, native bash → arm64.
+The same launcher would also have started Chrome under Rosetta if it was not already open,
+and on a Mac without Rosetta it would have asked to install it just to open the app.
+
+**The fix is one `Info.plist` key**: `LSArchitecturePriority`, naming the build's chip.
+Tested with a throwaway probe app that writes `sysctl.proc_translated` on launch: no keys → 1;
+`LSRequiresNativeExecution` alone → still 1; `LSArchitecturePriority` = [arm64] → 0.
+
+Two smaller lessons from the same bug:
+
+- **An import check must load the compiled parts.** `import PIL` succeeds with a C extension
+  for the wrong chip; `from PIL import Image` fails. The Scan page's check said "installed"
+  while every scan died on import.
+- **`uname -m` is not the hardware.** A Terminal under Rosetta reports `x86_64` on Apple
+  Silicon. `install.sh` asks `sysctl hw.optional.arm64` before choosing a build.
+

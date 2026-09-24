@@ -82,7 +82,11 @@ function probe(cmd, args, timeoutMs = 6000) {
   });
 }
 
-const IMPORTS = 'import playwright, requests, PIL';
+// Load the compiled parts, not just the package names. `import PIL` succeeds even
+// when its C extension is built for the other chip; `from PIL import Image` is
+// what fails. The old check said "installed" and the scan then died on import —
+// which is how a Rosetta-launched app showed up (TRAPS §30).
+const IMPORTS = 'import requests; from PIL import Image; from playwright.sync_api import sync_playwright';
 
 /** The interpreter we install into and run from: our own, inside the data dir.
  *
