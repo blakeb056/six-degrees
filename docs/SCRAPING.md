@@ -64,6 +64,13 @@ cd six-degrees
 npm run setup:python
 ```
 
+## Which profile it saves into
+
+The scraper files everything under the app's profile — the one that owns your
+network (a fresh install has exactly one). When the app runs it, it passes that
+profile along; from the command line it asks the running app. To force a
+particular profile by name: `SIX_DEGREES_USER='Your Name' npm run scrape`.
+
 ## Signing in
 
 A Chrome window opens on the first run and the scraper waits — it does not

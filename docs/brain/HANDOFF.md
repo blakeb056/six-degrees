@@ -12,7 +12,7 @@ stay true, then [`00-START-HERE.md`](00-START-HERE.md) for the six rules.
 ```bash
 npm install
 npm run dev                        # terminal 1 — it IS the server; no prompt comes back
-open http://localhost:3000         # enter a name to create a local profile
+open http://localhost:3000         # opens on the welcome screen; no name to enter
 ```
 
 Then either import a LinkedIn `Connections.csv` at `/import`, click **Explore a sample

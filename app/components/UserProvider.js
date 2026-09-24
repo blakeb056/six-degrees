@@ -44,70 +44,44 @@ export default function UserProvider({ children }) {
       setReady(true);
       return;
     }
-    // No identity in THIS browser — but the database may already have one.
+    // Who "you" are is decided by the server, from the data: the profile that
+    // owns the network, or a new one on a fresh install (lib/profile.js).
     //
-    // Identity is kept in localStorage, which is scoped to the origin. The
-    // packaged app serves on 127.0.0.1:6363 and a dev server on localhost:3000,
-    // so opening the same database through the other one looked like a brand
-    // new person: it asked for a name, made a second user, and showed an empty
-    // network while every row sat there under the first id.
-    //
-    // This is a single-user app with a file on one machine. If exactly one
-    // profile exists, it is theirs — adopt it rather than asking. More than
-    // one is genuinely ambiguous, so that still goes to the picker. The
-    // scraper resolves the active user the same way.
-    if (!hasUser()) {
-      fetch('/api/users')
-        .then((r) => r.json())
-        .then((data) => {
-          const users = data.users || [];
-          if (users.length === 1) {
-            const only = users[0];
-            setUser(only.id, only.name);
-            setUserId(only.id);
-            setUserName(only.name);
-            setUserProfile({
-              name: only.name,
-              headline: only.headline || '',
-              role: only.role || '',
-              company: only.company || '',
-              industry: only.industry || '',
-              sectors: only.sectors || [],
-              goals: only.goals || [],
-              linkedin_url: only.linkedin_url || '',
-            });
-          }
-        })
-        .catch(() => {})
-        .finally(() => setReady(true));
-      return;
-    }
+    // It used to live in this browser's localStorage and was asked for by name.
+    // localStorage is per-origin, so the packaged app (127.0.0.1:6363) and a dev
+    // server (localhost:3000) were two strangers to each other, and every name
+    // typed into the prompt that did not match exactly made a new, empty
+    // profile. The network then vanished from view and the scraper refused to
+    // pick between the duplicates. The browser now only caches the answer.
+    const toProfile = (u) => ({
+      name: u.name,
+      headline: u.headline || '',
+      role: u.role || '',
+      company: u.company || '',
+      industry: u.industry || '',
+      sectors: u.sectors || [],
+      goals: u.goals || [],
+      linkedin_url: u.linkedin_url || '',
+    });
 
-    if (hasUser()) {
-      const id = getUserId();
-      const name = getUserName();
-      setUserId(id);
-      setUserName(name);
-      // Fetch full profile from API
-      fetch(`/api/users?id=${id}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.user) {
-            setUserProfile({
-              name: data.user.name,
-              headline: data.user.headline || '',
-              role: data.user.role || '',
-              company: data.user.company || '',
-              industry: data.user.industry || '',
-              sectors: data.user.sectors || [],
-              goals: data.user.goals || [],
-              linkedin_url: data.user.linkedin_url || '',
-            });
-          }
-        })
-        .catch(() => {});
-    }
-    setReady(true);
+    fetch('/api/users?me=1')
+      .then((r) => r.json())
+      .then((data) => {
+        const me = data.user;
+        if (!me) throw new Error('no profile');
+        setUser(me.id, me.name);
+        setUserId(me.id);
+        setUserName(me.name);
+        setUserProfile(toProfile(me));
+      })
+      .catch(() => {
+        // Server unreachable: fall back to whatever this browser last knew.
+        if (hasUser()) {
+          setUserId(getUserId());
+          setUserName(getUserName());
+        }
+      })
+      .finally(() => setReady(true));
   }, []);
 
   const login = (id, name) => {

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
+import { resolveProfile } from '../../../lib/profile';
 
 // The app runs the scraper itself.
 //
@@ -25,6 +26,7 @@ const state = {
   exitCode: null,
   child: null,
   stopping: false,
+  stderrTail: [],
 };
 
 /** Stop the running job without orphaning the browser it opened.
@@ -159,6 +161,11 @@ async function status() {
 
   const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
 
+  // How much is already mapped, so the page can mark the scan step done and
+  // offer the way to the galaxy instead of leaving a new user on a form.
+  let connections = 0;
+  try { connections = resolveProfile({ create: false })?.connections || 0; } catch {}
+
   const value = {
     ready: Boolean(root && usable && chrome),
     checks: {
@@ -169,6 +176,7 @@ async function status() {
       chrome,
       signedIn,
     },
+    connections,
     running: state.running,
     action: state.action,
     startedAt: state.startedAt,
@@ -294,16 +302,32 @@ export async function POST(request) {
   state.exitCode = null;
   state.startedAt = Date.now();
   state.log = [spec.label + (name ? ` ${name}…` : '…')];
+  state.stderrTail = [];
   cached = { at: 0, value: null };
+
+  // Name the profile outright. The scraper would otherwise ask the app which one
+  // to use; passing it means the page and the scrape cannot disagree.
+  let profileId = '';
+  try { profileId = resolveProfile().id; } catch {}
 
   const childEnv = {
     ...process.env,
+    SIX_DEGREES_USER_ID: profileId,
     APP_URL: `http://127.0.0.1:${port}`,
     PYTHONUNBUFFERED: '1',
     SIX_DEGREES_ROOT: root,
   };
 
   function finish(code) {
+    // A failure must say why. stderr is filtered while running because pip and
+    // Playwright are noisy there, and that filter once swallowed the only line
+    // explaining a failed scan, leaving just "exit 1". On a failure, show the
+    // last of it whatever it says.
+    if (code !== 0 && !state.stopping && state.stderrTail.length) {
+      const shown = new Set(state.log);
+      const unseen = state.stderrTail.filter((l) => !shown.has(l));
+      if (unseen.length) push(unseen.join('\n'));
+    }
     push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
     state.stopping = false;
     state.running = false;
@@ -331,6 +355,11 @@ export async function POST(request) {
     child.stderr.on('data', (d) => {
       // pip and playwright both chatter on stderr; only surface real trouble.
       const t = d.toString();
+      for (const line of t.split('\n')) {
+        const l = line.replace(/\s+$/, '');
+        if (l) state.stderrTail.push(l);
+      }
+      if (state.stderrTail.length > 20) state.stderrTail.splice(0, state.stderrTail.length - 20);
       if (/error|Error|Traceback|No module|failed|externally-managed/.test(t)) push(t);
     });
     child.on('error', (err) => { push(`Could not start: ${err.message}`); finish(-1); });

@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import { loadSampleIntoSession } from '../../lib/demo';
 
-// Shown when there is no network to draw yet. Without this a first run is a
-// black screen, which reads as a broken app rather than an empty one.
+// The first thing a new install shows: there is no network yet, so pick a way in.
+//
+// It is also what anyone sees whose database is empty, which is why it asks
+// nothing about them. Scanning is first because it is the only way to the
+// 2nd-degree views; the CSV is the route that touches LinkedIn least; the sample
+// is for looking around before deciding either.
 export default function EmptyState() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -24,52 +28,47 @@ export default function EmptyState() {
   return (
     <div style={{
       position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: 24,
+      justifyContent: 'center', padding: 24, overflowY: 'auto',
     }}>
-      <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
+      <div style={{ maxWidth: 520, width: '100%', textAlign: 'center' }}>
         <div style={{
           width: 68, height: 68, borderRadius: '50%', margin: '0 auto 22px',
           border: '2px solid rgba(255,215,0,0.35)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', fontSize: 26,
         }}>✦</div>
 
-        <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 10px', color: '#fff' }}>
-          Nothing mapped yet
-        </h2>
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 28px' }}>
-          Your galaxy is empty because there are no connections in it. Pick a way in.
-        </p>
-
-        <a href="/import" style={{
-          display: 'block', padding: '15px 18px', borderRadius: 12, marginBottom: 10,
-          background: 'linear-gradient(135deg,#FFD700,#9B59B6)', color: '#0a0a1a',
-          fontWeight: 800, fontSize: 15, textDecoration: 'none',
+        <h2 style={{
+          fontSize: 28, fontWeight: 800, margin: '0 0 10px',
+          background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          Import your LinkedIn CSV
-        </a>
-        <p style={{ color: '#555', fontSize: 12, margin: '0 0 22px', lineHeight: 1.6 }}>
-          LinkedIn&rsquo;s official export, read in your browser. Takes about a minute.
+          Welcome to 6 Degrees
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14.5, lineHeight: 1.7, margin: '0 0 28px' }}>
+          Your network, drawn as a galaxy. Everything stays on this computer.
+          Pick how to bring it in — you can switch later.
         </p>
 
-        <button
+        <Choice
+          href="/setup"
+          primary
+          badge="Recommended"
+          title="Scan my LinkedIn"
+          body="A few guided steps: set up the scanner, sign into LinkedIn yourself, and watch your galaxy fill in. The only way to see who your connections know."
+        />
+
+        <Choice
+          href="/import"
+          title="Import my LinkedIn CSV"
+          body="LinkedIn’s official export, read in your browser. Takes about ten minutes to arrive by email. Shows the people you know, not who they know."
+        />
+
+        <Choice
           onClick={loadSample}
           disabled={busy}
-          style={{
-            width: '100%', padding: '13px 18px', borderRadius: 12, marginBottom: 10,
-            border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.04)',
-            color: '#fff', fontWeight: 700, fontSize: 14,
-            cursor: busy ? 'default' : 'pointer',
-          }}
-        >
-          {busy ? 'Loading…' : 'Explore a sample network'}
-        </button>
-        <p style={{ color: '#555', fontSize: 12, margin: '0 0 22px', lineHeight: 1.6 }}>
-          150 invented people with mapped bridge circles &mdash; nobody real, just something to click.
-        </p>
-
-        <a href="/setup" style={{ color: '#3498DB', fontSize: 13, textDecoration: 'none' }}>
-          Or run the local scraper for 2nd-degree data &rarr;
-        </a>
+          title={busy ? 'Loading…' : 'Explore a sample network'}
+          body="150 invented people, every view working. Nothing about you is used."
+        />
 
         {error && (
           <div style={{ color: '#ff6b6b', fontSize: 13, marginTop: 18 }}>{error}</div>
@@ -77,4 +76,35 @@ export default function EmptyState() {
       </div>
     </div>
   );
+}
+
+function Choice({ href, onClick, disabled, primary, badge, title, body }) {
+  const style = {
+    display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left',
+    padding: '16px 18px', borderRadius: 12, marginBottom: 12, textDecoration: 'none',
+    cursor: disabled ? 'default' : 'pointer', font: 'inherit',
+    border: primary ? '1px solid rgba(255,215,0,0.45)' : '1px solid rgba(255,255,255,0.12)',
+    background: primary
+      ? 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(155,89,182,0.14))'
+      : 'rgba(255,255,255,0.03)',
+    color: '#fff',
+  };
+  const inner = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+        <span style={{ fontSize: 15.5, fontWeight: 750 }}>{title}</span>
+        {badge && (
+          <span style={{
+            fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
+            padding: '3px 8px', borderRadius: 20, background: '#FFD700', color: '#0a0a1a',
+          }}>{badge}</span>
+        )}
+        <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.4)' }}>→</span>
+      </div>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{body}</div>
+    </>
+  );
+  return href
+    ? <a href={href} style={style}>{inner}</a>
+    : <button onClick={onClick} disabled={disabled} style={style}>{inner}</button>;
 }

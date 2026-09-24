@@ -14,19 +14,47 @@ When filing an issue, redact names before attaching anything.
 
 ## Setup
 
+The README's install line is for people who want to *use* the app. To change it,
+run from source:
+
 ```bash
-nvm use          # Node 22, from .nvmrc
-npm install
-npm run dev      # http://localhost:3000
+git clone https://github.com/blakeb056/six-degrees && cd six-degrees && npm install && npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and fill in what you need. The app runs
-without any credentials if you use the CSV import path.
+The `&&`s matter: if the clone fails — most often because a `six-degrees` folder
+from an earlier try is already there — nothing after it runs, instead of quietly
+starting that older copy. Already have a clone? Update it with `npm run update`,
+which also gets past the regenerated `package-lock.json` that makes a plain
+`git pull` refuse.
+
+Needs **Node 22.13+** (`nvm use` reads `.nvmrc`). Opens on <http://localhost:3000>.
+Nothing to configure: no `.env`, no account, no keys. It uses the same data
+folder as the installed app, `~/.six-degrees`; point `SIX_DEGREES_HOME` somewhere
+else to develop against an empty one.
+
+Scraper work also needs Python 3.9+ and Google Chrome — the Scan page sets up
+the Python side. Read `docs/SCRAPING.md` and `docs/brain/TRAPS.md` first.
+
+## Releasing
+
+Bump the version, tag it, push the tag. `.github/workflows/release.yml` builds the
+Mac app for Apple Silicon and Intel, publishes both `.dmg` files and a `SHA256SUMS`
+file on a GitHub Release (which is what `install.sh` downloads), and publishes to
+npm when an `NPM_TOKEN` secret is set.
+
+```bash
+npm version 0.2.0 --no-git-tag-version
+git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
+```
+
+To try a packaged build locally: `npm run build:app`, then
+`SIX_DEGREES_DMG=dist/Six-Degrees-<version>-arm64.dmg bash install.sh`.
 
 ## Before opening a PR
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 

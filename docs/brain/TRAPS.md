@@ -117,8 +117,9 @@ Every view filters by user. The CLI scraper wrote rows with no owner: 752 connec
 landed in the database and the app still showed its empty state — which looks exactly
 like a scraper that did nothing.
 
-`resolve_active_user()` asks the app which profile it has and adopts it, failing loudly
-if there is no profile or more than one. Any new write path must do the same.
+`resolve_active_user()` adopts the app's answer to "which profile is you" —
+`SIX_DEGREES_USER_ID` when the app runs it, otherwise `GET /api/users?me=1`. Any new
+write path must do the same. See §25 for why it no longer refuses on more than one.
 
 ---
 
@@ -456,3 +457,30 @@ If it reappears, the likely difference is the resolved Next version between mach
 
 Smoke test after any change here: build the app, launch it, and curl every API route.
 A rendering page proves nothing about the routes.
+
+---
+
+## 25. Asking for a name made duplicate profiles, and duplicates hid everything
+
+The first screen used to ask "what's your name?" on any browser it had not seen, and
+browser storage is per-origin — the packaged app (`127.0.0.1:6363`) and a dev server
+(`localhost:3000`) are strangers to each other. Every answer that did not exactly match
+an existing name made a new, empty profile. With more than one profile the app would
+not guess and asked again, and the scraper refused to run at all.
+
+It ran for two weeks on the maintainer's own machine: a real network under one
+profile, two empty ones typed on 2026-09-10, the data invisible in any new browser and
+every scan stopping at "exit 1". The refusal *was* printed — but to stderr, and the
+Scan page only surfaced stderr lines containing words like "error", which that
+message did not. So a correct refusal became an unexplained failure.
+
+Fixes, and the rules they leave:
+- **The server decides who "you" are** (`lib/profile.js`): the profile owning the most
+  connections, oldest on a tie; one is created on a fresh install. The browser only
+  caches it. Never reintroduce a prompt that can mint a profile.
+- **The app names the profile to the scraper** (`SIX_DEGREES_USER_ID`), so they cannot
+  disagree.
+- **A failed run always shows its last stderr lines**, filter or not
+  (`app/api/scraper/route.js`, `finish`). Filtering noise is fine while running; on
+  failure the reason outranks tidiness.
+

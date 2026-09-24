@@ -1,4 +1,5 @@
 import { db as supabase } from '../../../lib/db';
+import { resolveProfile } from '../../../lib/profile';
 
 export async function POST(request) {
   try {
@@ -41,6 +42,11 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+
+    // The profile this machine uses, made on first run. See lib/profile.js.
+    if (searchParams.has('me')) {
+      return Response.json({ user: resolveProfile() });
+    }
 
     if (id) {
       const { data, error } = await supabase

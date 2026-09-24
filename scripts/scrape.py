@@ -385,41 +385,49 @@ def resolve_active_user():
 
     The app filters every view by user id, so rows written with no owner land in
     the database and then never appear on screen — the scrape looks like it
-    silently did nothing. Ask the app who it has and adopt that profile.
+    silently did nothing. The app decides which profile is "you" (the one that
+    owns the network — lib/profile.js) and this adopts the same answer, so the
+    two can never disagree. It used to refuse outright when a stray empty
+    profile existed, which stopped every scan with a reason nobody saw.
+
+    Order: SIX_DEGREES_USER_ID (set by the app when it runs this), then
+    SIX_DEGREES_USER by name (for the command line), then ask the app.
     """
     global _active_user_id
     if _active_user_id:
         return _active_user_id
 
+    given_id = os.getenv("SIX_DEGREES_USER_ID", "").strip()
+    if given_id:
+        _active_user_id = given_id
+        return _active_user_id
+
+    wanted = os.getenv("SIX_DEGREES_USER", "").strip().lower()
     try:
-        resp = requests.get(f"{APP_URL}/api/users", headers=app_headers(json_body=False), timeout=15)
-        users = resp.json().get("users", []) if resp.status_code == 200 else []
+        if wanted:
+            resp = requests.get(f"{APP_URL}/api/users", headers=app_headers(json_body=False), timeout=15)
+            users = resp.json().get("users", []) if resp.status_code == 200 else []
+            for u in users:
+                if (u.get("name") or "").strip().lower() == wanted:
+                    _active_user_id = u["id"]
+                    print(f"  Scraping into profile: {u['name']}")
+                    return _active_user_id
+            raise SystemExit(f"No profile named '{os.getenv('SIX_DEGREES_USER')}' in the app.")
+
+        resp = requests.get(f"{APP_URL}/api/users?me=1", headers=app_headers(json_body=False), timeout=15)
+        me = resp.json().get("user") if resp.status_code == 200 else None
+    except SystemExit:
+        raise
     except Exception:
         print(f"\n  Could not reach the app at {APP_URL}.")
         print("  Start it with `npm run dev` in another terminal, then run this again.\n")
         raise SystemExit(1)
 
-    wanted = os.getenv("SIX_DEGREES_USER", "").strip().lower()
-    if wanted:
-        for u in users:
-            if (u.get("name") or "").strip().lower() == wanted:
-                _active_user_id = u["id"]
-                print(f"  Scraping into profile: {u['name']}")
-                return _active_user_id
-        raise SystemExit(f"No profile named '{os.getenv('SIX_DEGREES_USER')}' in the app.")
+    if not me or not me.get("id"):
+        raise SystemExit(f"The app at {APP_URL} did not say which profile to use.")
 
-    if not users:
-        print(f"\n  No profile yet. Open {APP_URL}, enter your name, then run this again.\n")
-        raise SystemExit(1)
-
-    if len(users) > 1:
-        names = ", ".join(f"'{u.get('name')}'" for u in users)
-        raise SystemExit(
-            f"The app has more than one profile ({names}).\n"
-            "Pick one with: SIX_DEGREES_USER='Your Name' python3 scripts/scrape.py --full")
-
-    _active_user_id = users[0]["id"]
-    print(f"  Scraping into profile: {users[0].get('name')}")
+    _active_user_id = me["id"]
+    print(f"  Scraping into profile: {me.get('name')}")
     return _active_user_id
 
 
