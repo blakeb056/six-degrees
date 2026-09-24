@@ -237,6 +237,10 @@ run('hdiutil', ['create', '-volname', APP_NAME, '-srcfolder', staging,
 const mount = execFileSync('hdiutil', ['attach', rw, '-nobrowse', '-readwrite'])
   .toString().split('\n').map((l) => l.trim()).filter(Boolean).pop().split('\t').pop().trim();
 
+// Why a Finder step failed, in one line, for the build log.
+const osaReason = (err) =>
+  ((err && err.stderr ? err.stderr.toString() : '').trim().split('\n').pop() || (err && err.message) || 'unknown');
+
 // The drop target. A Finder alias, not a symlink: macOS 26 draws a symlink to
 // /Applications as a blank dashed square, which leaves the one thing the window
 // asks you to do with nowhere visible to do it. The symlink stays as a fallback
@@ -246,8 +250,10 @@ try {
   execFileSync('osascript', ['-e',
     `tell application "Finder" to make new alias file at (POSIX file "${mount}" as alias) ` +
     `to (POSIX file "/Applications" as alias) with properties {name:"Applications"}`],
-  { stdio: 'ignore', timeout: 60000 });
-} catch { /* fall through to the symlink */ }
+  { stdio: ['ignore', 'ignore', 'pipe'], timeout: 60000 });
+} catch (err) {
+  console.log(`  (Finder could not make the Applications alias: ${osaReason(err)})`);
+}
 const dropTarget = path.join(mount, 'Applications');
 if (!existsSync(dropTarget)) {
   symlinkSync('/Applications', dropTarget);
@@ -265,14 +271,17 @@ if (lstatSync(dropTarget).isFile()) {
       ObjC.import('AppKit');
       const ws = $.NSWorkspace.sharedWorkspace;
       ws.setIconForFileOptions(ws.iconForFile('/Applications'), ${JSON.stringify(dropTarget)}, 0);
-    `], { stdio: 'ignore', timeout: 60000 });
-  } catch {
-    console.log('  (could not give the Applications alias its icon; it will draw as a dashed square)');
+    `], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 60000 });
+  } catch (err) {
+    console.log(`  (could not give the Applications alias its icon: ${osaReason(err)})`);
   }
 }
 
-try {
-  execFileSync('osascript', ['-e', `
+// A bound on every Finder step: on a build machine nobody is watching, a Finder
+// that never answers must fail the step, not hold the release for hours. And
+// keep comments OUT of the AppleScript below — it is AppleScript, where `//` is
+// a syntax error. One slipped in once, and 0.1.0 shipped with a plain window.
+const styleScript = `
     tell application "Finder"
       tell disk "${APP_NAME}"
         open
@@ -296,11 +305,42 @@ try {
         close
       end tell
     end tell
-  // A bound on every Finder step: on a build machine nobody is watching, a
-  // Finder that never answers must fail this step, not hold the release for hours.
-  `], { stdio: 'ignore', timeout: 120000 });
-} catch {
-  console.log('  (could not style the window; the image still works)');
+`;
+
+// Compile it before touching anything, so a syntax slip fails here — loudly, on
+// every machine — instead of as a quiet "could not style" on a release build.
+try {
+  execFileSync('osacompile', ['-o', path.join(OUT, 'style.scpt'), '-e', styleScript],
+    { stdio: ['ignore', 'ignore', 'pipe'] });
+  rmSync(path.join(OUT, 'style.scpt'), { force: true });
+} catch (err) {
+  execFileSync('hdiutil', ['detach', mount, '-force']);
+  console.error(`\n  ✗ The window-layout AppleScript does not compile: ${osaReason(err)}\n`);
+  process.exit(1);
+}
+
+try {
+  execFileSync('osascript', ['-e', styleScript], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 120000 });
+} catch (err) {
+  console.log(`  (could not style the window: ${osaReason(err)})`);
+  // Locally that is a warning — the image still installs. On a release build it
+  // is a failure: a window with no instructions must never ship quietly again.
+  if (process.env.CI) {
+    execFileSync('hdiutil', ['detach', mount, '-force']);
+    console.error('\n  ✗ The disk image window could not be laid out. Refusing to publish a plain one.\n');
+    process.exit(1);
+  }
+}
+
+// Finder writes the layout into .DS_Store when the window closes. No file means
+// the layout never landed, whatever the script reported.
+if (!existsSync(path.join(mount, '.DS_Store'))) {
+  console.log('  (the window layout was not saved — the image will open as a plain list)');
+  if (process.env.CI) {
+    execFileSync('hdiutil', ['detach', mount, '-force']);
+    console.error('\n  ✗ No .DS_Store in the disk image. Refusing to publish a plain window.\n');
+    process.exit(1);
+  }
 }
 
 execFileSync('sync');

@@ -9,6 +9,14 @@ name: Release
 #
 #   npm version 0.2.0 --no-git-tag-version   # bump package.json
 #   git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
+#
+# Testing the packaging without publishing anything — do this before tagging
+# whenever scripts/build-app.mjs or this file changed:
+#
+#   gh workflow run release.yml --ref <branch> -f dry_run=true
+#
+# A dry run builds both .dmg files on GitHub's Macs and keeps them as workflow
+# artifacts. No tag, no Release, no npm.
 
 on:
   push:
@@ -16,8 +24,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to (re)build, e.g. v0.2.0'
-        required: true
+        description: 'Existing tag to (re)build and publish, e.g. v0.2.0 (leave empty for a dry run)'
+        required: false
+      dry_run:
+        description: 'Build the .dmg files only and publish nothing'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -44,6 +56,7 @@ jobs:
           node-version: '24'
           cache: npm
       - name: Tag matches package.json
+        if: ${{ !inputs.dry_run }}
         run: |
           tag="${{ inputs.tag || github.ref_name }}"
           ver="$(node -p "require('./package.json').version")"
@@ -66,6 +79,7 @@ jobs:
   release:
     name: GitHub Release
     needs: mac
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -103,6 +117,7 @@ jobs:
   npm:
     name: npm package
     needs: mac
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
