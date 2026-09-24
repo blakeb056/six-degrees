@@ -1,10 +1,11 @@
 name: Release
 
-# Push a tag like v0.2.0 and this builds the Mac app for both chips, publishes
-# the .dmg files with a SHA256SUMS checksum file on a GitHub Release, and — if
-# an NPM_TOKEN secret is configured — publishes the npm package too.
+# Push a tag like v0.2.0 and this builds the Mac app for both chips and the
+# Windows zip, publishes them with a SHA256SUMS checksum file on a GitHub
+# Release, and — if an NPM_TOKEN secret is configured — publishes the npm
+# package too.
 #
-# install.sh downloads from the Release this creates, so nothing reaches users
+# install.sh and install.ps1 download from the Release this creates, so nothing reaches users
 # until a tag is pushed. Cutting one:
 #
 #   npm version 0.2.0 --no-git-tag-version   # bump package.json
@@ -15,8 +16,9 @@ name: Release
 #
 #   gh workflow run release.yml --ref <branch> -f dry_run=true
 #
-# A dry run builds both .dmg files on GitHub's Macs and keeps them as workflow
-# artifacts. No tag, no Release, no npm.
+# A dry run builds both .dmg files on GitHub's Macs and the Windows zip on a
+# Windows machine (installed and started there as a check) and keeps them as
+# workflow artifacts. No tag, no Release, no npm.
 
 on:
   push:
@@ -76,20 +78,95 @@ jobs:
           path: dist/*.dmg
           if-no-files-found: error
 
+  windows:
+    name: Windows app
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Tag matches package.json
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          ver="$(node -p "require('./package.json').version")"
+          if [ "${tag#v}" != "$ver" ]; then
+            echo "::error::Tag $tag does not match package.json version $ver. Bump the version first."
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm test
+      - name: Build the Windows zip
+        run: node scripts/build-windows.mjs
+      # Install it the way a user does — install.ps1 run as a string, as
+      # `irm … | iex` runs it — in Windows PowerShell 5.1, the one every Windows
+      # PC has. Then start it, reach it, update over the running copy, stop it.
+      - name: Install, start, update and stop it
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:SIX_DEGREES_ZIP = (Get-ChildItem dist\*-win-x64.zip).FullName
+          $env:SIX_DEGREES_NO_OPEN = '1'
+          $env:SIX_DEGREES_NO_DESKTOP = '1'
+          $env:SIX_DEGREES_HOME = Join-Path $env:RUNNER_TEMP 'six-degrees-home'
+          $dest = Join-Path $env:LOCALAPPDATA 'Programs\Six Degrees'
+          $launcher = Join-Path $dest 'launch.ps1'
+          $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          function Get-Page($url) { Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 60 }
+
+          Get-Content .\install.ps1 -Raw | Invoke-Expression
+          if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'Six Degrees\Six Degrees.lnk'))) { throw 'No Start Menu shortcut' }
+
+          $url = (& $ps -NoProfile -ExecutionPolicy Bypass -File $launcher -NoOpen | Select-Object -Last 1).Trim()
+          Write-Host "Running at $url"
+          foreach ($path in '', 'paths', 'queue', 'api/network', 'api/company-scores', 'api/scraper') {
+            $r = Get-Page ($url + $path)
+            if ($r.StatusCode -ne 200) { throw "/$path answered $($r.StatusCode)" }
+            Write-Host "  /$path  200"
+          }
+          if ((Get-Page $url).Content -notmatch '6 Degrees') { throw 'The home page is not Six Degrees' }
+
+          $again = (& $ps -NoProfile -ExecutionPolicy Bypass -File $launcher -NoOpen | Select-Object -Last 1).Trim()
+          if ($again -ne $url) { throw "A second launch started another copy ($again) instead of reusing $url" }
+
+          Get-Content .\install.ps1 -Raw | Invoke-Expression      # an update over the running copy
+          $old = Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -ieq (Join-Path $dest 'node.exe') }
+          if ($old) { throw 'The update left the old copy running' }
+          $url = (& $ps -NoProfile -ExecutionPolicy Bypass -File $launcher -NoOpen | Select-Object -Last 1).Trim()
+          if ((Get-Page $url).StatusCode -ne 200) { throw 'Did not start after the update' }
+
+          & $ps -NoProfile -ExecutionPolicy Bypass -File $launcher -Stop
+          Start-Sleep -Seconds 2
+          if (Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -ieq (Join-Path $dest 'node.exe') }) { throw 'Stop left it running' }
+          Write-Host 'Installed, started, reused, updated and stopped.'
+      - name: Show the server log if that failed
+        if: failure()
+        shell: powershell
+        run: Get-Content (Join-Path $env:TEMP 'six-degrees.log*') -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-x64
+          path: dist/*.zip
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: mac
+    needs: [mac, windows]
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: dmg-*
           merge-multiple: true
           path: out
       - name: Checksums
         working-directory: out
-        run: sha256sum *.dmg > SHA256SUMS && cat SHA256SUMS
+        run: sha256sum *.dmg *.zip > SHA256SUMS && cat SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -105,7 +182,13 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
           ```
 
-          Or download the `.dmg` for your chip below (`arm64` = Apple Silicon, `x64` = Intel). The app is not signed with a paid Apple certificate, so a browser-downloaded copy needs a one-time **System Settings → Privacy & Security → Open Anyway**.
+          **Install on Windows** — paste into PowerShell:
+
+          ```
+          irm https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.ps1 | iex
+          ```
+
+          **Mac:** or download the `.dmg` for your chip below (`arm64` = Apple Silicon, `x64` = Intel). The app is not signed with a paid Apple certificate, so a browser-downloaded copy needs a one-time **System Settings → Privacy & Security → Open Anyway**.
 
           Any system with Node 22.13+: `npx six-degrees@latest`
 

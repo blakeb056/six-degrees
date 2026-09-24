@@ -48,6 +48,19 @@ function stopChild() {
   state.stopping = true;
   push('Stopping…');
   const pid = child.pid;
+  // Windows has no process groups or SIGTERM. taskkill /T walks the tree the
+  // scraper started; without /F it asks Chrome's windows to close, so the
+  // browser shuts down cleanly and keeps the LinkedIn session. Forced after 5s.
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/pid', String(pid), '/T'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
+    setTimeout(() => {
+      if (state.child && state.child.pid === pid) {
+        push('Still running — forcing it.');
+        spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
+      }
+    }, 5000);
+    return;
+  }
   try { process.kill(-pid, 'SIGTERM'); }
   catch { try { child.kill('SIGTERM'); } catch {} }
 
@@ -75,7 +88,7 @@ function probe(cmd, args, timeoutMs = 6000) {
     let done = false;
     const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
     try {
-      const c = spawn(cmd, args, { stdio: 'ignore' });
+      const c = spawn(cmd, args, { stdio: 'ignore', windowsHide: true });
       const t = setTimeout(() => { try { c.kill(); } catch {} finish(false); }, timeoutMs);
       c.on('error', () => { clearTimeout(t); finish(false); });
       c.on('close', (code) => { clearTimeout(t); finish(code === 0); });
@@ -112,13 +125,20 @@ function venvPython() {
     : path.join(base, 'bin', 'python');
 }
 
+// Where to look for Python. On Windows the py launcher comes first: the
+// "python3" and "python" there are often Microsoft Store stubs that open the
+// Store instead of running anything.
+const PYTHONS = process.platform === 'win32'
+  ? ['py', 'python', 'python3']
+  : ['/usr/bin/python3', 'python3', 'python'];
+
 /** A Python that can actually run the scraper right now, or null. */
 async function findUsablePython() {
   const venv = venvPython();
   if (existsSync(venv) && await probe(venv, ['-c', IMPORTS], 8000)) return venv;
   // Respect an existing working install rather than forcing a venv on someone
   // who already did this by hand.
-  for (const c of ['/usr/bin/python3', 'python3', 'python']) {
+  for (const c of PYTHONS) {
     if (await probe(c, ['-c', IMPORTS], 8000)) return c;
   }
   return null;
@@ -126,7 +146,7 @@ async function findUsablePython() {
 
 /** Any Python at all — used to build the venv. */
 async function findAnyPython() {
-  for (const c of ['python3', '/usr/bin/python3', 'python']) {
+  for (const c of PYTHONS) {
     if (await probe(c, ['--version'], 4000)) return c;
   }
   return null;
@@ -170,7 +190,10 @@ async function machineChecks() {
   const chrome =
     process.platform === 'darwin'
       ? existsSync('/Applications/Google Chrome.app')
-      : true; // elsewhere Playwright resolves the channel itself
+      : process.platform === 'win32'
+        ? [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]
+          .filter(Boolean).some((d) => existsSync(path.join(d, 'Google', 'Chrome', 'Application', 'chrome.exe')))
+        : true; // Linux: Playwright resolves the channel itself
 
   const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
 
@@ -457,7 +480,9 @@ export async function POST(request) {
     let child;
     try {
       // Its own process group, so cancelling reaches the browser as well.
-      child = spawn(step.cmd, step.args, { cwd: root, env: childEnv, detached: true });
+      // Its own process group, so Stop can reach the browser it opens (see
+      // stopChild). Not on Windows, where detached means a new console window.
+      child = spawn(step.cmd, step.args, { cwd: root, env: childEnv, detached: process.platform !== 'win32', windowsHide: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);

@@ -48,7 +48,20 @@ paid Apple certificate, so the first launch of a browser-downloaded copy needs o
 approval: **System Settings → Privacy & Security → Open Anyway**. The Terminal line
 above skips that step.
 
-**Anywhere with Node 22.13+** (Linux, Windows, or a Mac you would rather not add an
+**On Windows** — paste this into PowerShell (Start menu → type *PowerShell*):
+
+```powershell
+irm https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.ps1 | iex
+```
+
+It downloads the Windows build, checks it against the published checksum, installs
+it for you (no admin rights) with Start Menu and Desktop shortcuts, and opens it.
+Node is bundled here too. Six Degrees keeps running in the background after you
+close its window; **Stop Six Degrees** in the Start Menu ends it. Run the same line
+again to update — your network lives in `%USERPROFILE%\.six-degrees`.
+[Read the script](install.ps1) first if you like.
+
+**Anywhere with Node 22.13+** (Linux, or a Mac you would rather not add an
 app to):
 
 ```bash

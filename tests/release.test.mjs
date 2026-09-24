@@ -34,4 +34,6 @@ test('an older Mac app is recognised by its path', () => {
 test('each install kind gets its own update line', () => {
   assert.match(updateCommand('mac-app', 'owner/repo'), /raw\.githubusercontent\.com\/owner\/repo\/main\/install\.sh \| bash$/);
   assert.equal(updateCommand('npm', 'owner/repo'), 'npx six-degrees@latest');
+  assert.equal(updateCommand('win-app', 'owner/repo'), 'irm https://raw.githubusercontent.com/owner/repo/main/install.ps1 | iex');
+  assert.equal(installKind({ SIX_DEGREES_INSTALL: 'win-app' }, 'C:\\x'), 'win-app');
 });
