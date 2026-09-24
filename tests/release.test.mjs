@@ -34,4 +34,6 @@ test('an older Mac app is recognised by its path', () => {
 test('each install kind gets its own update line', () => {
   assert.match(updateCommand('mac-app', 'owner/repo'), /raw\.githubusercontent\.com\/owner\/repo\/main\/install\.sh \| bash$/);
   assert.equal(updateCommand('npm', 'owner/repo'), 'npx six-degrees@latest');
+  assert.equal(updateCommand('source', 'owner/repo'), 'git pull && npm ci && npm run build && npm run start:packaged');
+  assert.equal(installKind({ SIX_DEGREES_INSTALL: 'source' }, '/x'), 'source');
 });

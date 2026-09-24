@@ -110,7 +110,7 @@ stop_running_copy() {
 main() {
   printf '\n  6 Degrees — installer\n\n'
 
-  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. Anywhere with Node 22.13+, run:  npx six-degrees@latest"
+  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run it from source (see the README). Windows isn't supported yet."
 
   local arch
   # A Terminal running under Rosetta reports x86_64 even on Apple Silicon, and
@@ -121,6 +121,18 @@ main() {
     *)      fail "Unrecognised Mac chip: $(uname -m)" ;;
   esac
   say "Mac:      $arch"
+
+  # Every release bundles Node 24, which needs macOS 13.5, and the Electron app
+  # needs 13. Refuse plainly rather than install an app that cannot start: on an
+  # older Mac it used to install fine and then fail with a generic alert.
+  local macos major minor
+  macos="$(sw_vers -productVersion 2>/dev/null || echo 0)"
+  major="${macos%%.*}"
+  minor="$(printf '%s' "$macos" | cut -d. -f2)"; minor="${minor:-0}"
+  if [ "$major" -lt 13 ] 2>/dev/null || { [ "$major" -eq 13 ] && [ "$minor" -lt 5 ]; }; then
+    fail "Six Degrees needs macOS 13.5 (Ventura) or later. This Mac runs $macos."
+  fi
+  say "macOS:    $macos"
 
   local tmp
   tmp="$(mktemp -d)"

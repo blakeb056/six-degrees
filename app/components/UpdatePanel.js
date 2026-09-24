@@ -159,7 +159,9 @@ function InstalledUpdates({ local }) {
 
   const how = local.kind === 'mac-app'
     ? 'Paste this into Terminal. It closes this app, puts the new version in its place and opens it. Your network stays where it is.'
-    : 'Run this in a terminal to start the newest version. Your network stays where it is.';
+    : local.kind === 'source'
+      ? 'Stop the app (Ctrl-C), then run this in the six-degrees folder. It fetches the newest code, builds it and starts it again. Your network stays where it is.'
+      : 'Run this in a terminal to start the newest version. Your network stays where it is.';
 
   return (
     <Wrap>

@@ -13,6 +13,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { scoreNetwork, explainScore } from '../lib/scoring.js';
 
 // ── deterministic PRNG (mulberry32) ────────────────────────────────────────
 function rng(seed) {
@@ -77,30 +78,41 @@ const TITLES = [
   'Marketing Intern','Research Assistant',
 ];
 
-// ── scoring: mirrors lib/rpc.js, which mirrors scripts/score_new_connections.sql ──
-const SENIORITY = [
-  [/CEO|Chief|Founder|President|Owner/i, 10],
-  [/VP|Vice President|SVP|EVP|Managing Director|Global Head|Country Director/i, 9],
-  [/Senior Director|Director|Head of|Country Lead/i, 8],
-  [/Senior Manager|Manager,|Engineering Manager|Group Product/i, 7],
-  [/Lead|Principal|Staff|Senior.*Engineer|Senior.*Designer|Senior.*Manager/i, 6],
-  [/Partner|Client Partner|Account Manager|Strategist/i, 5],
-  [/Engineer|Developer|Designer|Analyst|Coordinator/i, 4],
-  [/Intern|Student|Undergraduate|Junior|Entry/i, 2],
-];
-// Invented companies need their own prestige table; the real one keys off real
-// employers and would score every one of these a flat 4.
-const PRESTIGE = {
+// ── scoring: the app's own model (lib/scoring.js), nothing copied ──
+// Invented companies are unknown to its list of real ones, so they get scores
+// the way a user sets their own (Paths → Scores), spread across the ladder so
+// the tier mix looks like a real network.
+const COMPANY_SCORES = new Map(Object.entries({
   'Northwind Labs': 9, 'Halcyon': 9, 'Verity Systems': 8, 'Lumen Robotics': 8,
   'Kestrel Analytics': 7, 'Meridian Health': 7, 'Orchard Pay': 7, 'Tessellate': 6,
   'Bright Harbor Media': 6, 'Ironwood Capital': 8, 'Sable & Finch': 5, 'Cobalt Studio': 5,
   'Fernhill Foods': 4, 'Ridgeline Outfitters': 4, 'Aperture Grid': 5, 'Quarry Interactive': 4,
   'Blue Larch': 4, 'Everly Group': 5, 'Pinecrest University': 3,
-};
+}));
 
-const seniorityOf = (title) => (SENIORITY.find(([re]) => re.test(title)) || [null, 3])[1];
-const prestigeOf = (company) => (company ? (PRESTIGE[company] ?? 4) : 2);
-const tierFor = (p) => (p >= 7 ? 'S' : p >= 5.5 ? 'A' : p >= 4 ? 'B' : p >= 2.5 ? 'C' : 'D');
+/** Score rows in place with the app's model; returns them. */
+function scoreRows(rows) {
+  const { scores } = scoreNetwork(rows, { overrides: COMPANY_SCORES });
+  for (const r of rows) {
+    const s = scores.get(r.id);
+    const c = s.circle;
+    Object.assign(r, {
+      seniority_score: s.title.points,
+      company_prestige_score: s.companyScore,
+      power_score: s.power,
+      tier: s.tier,
+      // The sample's companies were scored for it, not by the viewer.
+      score_why: explainScore(s, s.boost).replace(', your score', ', sample score'),
+      circle_power: c ? Math.round(c.circlePower * 100) / 100 : 0,
+      circle_s_count: c?.sCount || 0,
+      circle_a_count: c?.aCount || 0,
+      circle_elite_pct: c ? Math.round(c.elitePct * 100) / 100 : 0,
+      is_catalyst: Boolean(c?.isCatalyst),
+      catalyst_score: c?.isCatalyst ? c.sCount + c.aCount : 0,
+    });
+  }
+  return rows;
+}
 
 function pickWeighted(rand, items) {
   const total = items.reduce((s, i) => s + i.weight, 0);
@@ -129,9 +141,6 @@ function main() {
     const name = uniqueName();
     const title = TITLES[Math.floor(rand() * TITLES.length)];
     const company = pickWeighted(rand, COMPANIES);
-    const seniority = seniorityOf(title);
-    const prestige = prestigeOf(company);
-    const power = Math.round((seniority * 0.5 + prestige * 0.3) * 10) / 10;
     const slug = name.toLowerCase().replace(/[^a-z]+/g, '-');
     return {
       id: `syn-${degree}-${used.size}-${Math.floor(rand() * 1e6).toString(36)}`,
@@ -144,10 +153,7 @@ function main() {
       profile_url: `https://www.linkedin.com/in/${slug}`,
       profile_image_url: null,        // invented people have no photographs
       connected_date: null,
-      seniority_score: seniority,
-      company_prestige_score: prestige,
-      power_score: power,
-      tier: tierFor(power),
+      seniority_score: 0, company_prestige_score: 0, power_score: 0, tier: null, score_why: null,
       influence_signals: {},
       is_catalyst: false,
       catalyst_score: 0,
@@ -161,7 +167,7 @@ function main() {
   const D1_COUNT = 150;
   const BRIDGE_COUNT = 14;
 
-  const degree1 = Array.from({ length: D1_COUNT }, () => person(1));
+  const degree1 = scoreRows(Array.from({ length: D1_COUNT }, () => person(1)));
   degree1.sort((a, b) => b.power_score - a.power_score);
 
   // The highest-leverage people become bridges with a mapped circle behind
@@ -172,16 +178,10 @@ function main() {
     const size = 18 + Math.floor(rand() * 45);
     const circle = Array.from({ length: size }, () => person(2, b.id));
     degree2.push(...circle);
-
-    const s = circle.filter((c) => c.tier === 'S').length;
-    const a = circle.filter((c) => c.tier === 'A').length;
-    b.circle_s_count = s;
-    b.circle_a_count = a;
-    b.circle_elite_pct = circle.length ? Math.round(((s + a) / circle.length) * 100) / 100 : 0;
-    b.circle_power = Math.round((s * 3 + a * 1.5 + b.circle_elite_pct * 10 + Math.log(circle.length + 1) * 1.5) * 10) / 10;
-    b.is_catalyst = (s >= 5 && b.circle_elite_pct >= 0.25) || b.circle_power >= 50;
-    b.catalyst_score = b.is_catalyst ? b.circle_power : 0;
   }
+  // Everyone again, together: circles now exist, so bridges get their boost.
+  scoreRows([...degree1, ...degree2]);
+  degree1.sort((a, b) => b.power_score - a.power_score);
   degree2.sort((x, y) => y.power_score - x.power_score);
 
   const payload = {

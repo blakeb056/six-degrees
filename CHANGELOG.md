@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
+### Changed
+- **Six Degrees is now a Mac app (Electron) for everyone**: the 0.2.0-beta.1 app, promoted.
+  It has its own window, Dock icon and menu, and the same server, data and scanner inside as
+  0.1.11. Needs **macOS 13.5 or later**.
+- **The README starts with the Mac app**: two download buttons (Apple Silicon, Intel), the
+  exact first-open steps, and the Terminal install as the alternative. Each release now
+  carries `Six-Degrees-Mac-Apple-Silicon.dmg` and `Six-Degrees-Mac-Intel.dmg`, whose names
+  never change, so the buttons always fetch the newest version.
+- The sample network is scored with the app's real model; it was still using the retired
+  formula. It's regenerated, and so are the screenshots, from the new app.
+
+### Fixed
+- The README, installer and release notes no longer point Windows and Linux users at
+  `npx six-degrees`, which was never published and so failed. Linux gets real from-source
+  steps; Windows is honestly "not yet".
+- The installer refuses a Mac older than macOS 13.5 with a plain message. Every version
+  bundles Node 24, which needs 13.5; on an older Mac the app used to install fine and then
+  fail with a generic alert. Both apps now declare the true minimum, so macOS says so too.
+- The README's scoring section, view names (Degrees, not Bridges), feature list, privacy
+  list (PyPI, update checks) and data-folder layout match the app again. The LinkedIn risk
+  warning comes before the first scan, with both incidents.
+- Paths → Map: an industry label near the bottom no longer lands on the legend.
+
 ## [0.2.0-beta.1] - 2026-09-24 (beta: a pre-release, never installed automatically)
 
 ### Added

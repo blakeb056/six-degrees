@@ -67,7 +67,7 @@ export default function EmptyState() {
           onClick={loadSample}
           disabled={busy}
           title={busy ? 'Loading…' : 'Explore a sample network'}
-          body="150 invented people, every view working. Nothing about you is used."
+          body="150 invented connections and the 598 people they know. Every view except Outlink and Scan, which need your own scan. Nothing about you is used."
         />
 
         {error && (

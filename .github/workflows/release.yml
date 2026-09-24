@@ -31,7 +31,7 @@ on:
         type: boolean
         default: false
       shell:
-        description: 'Which Mac app: auto (a beta tag or a dry run → electron, a release tag → classic), electron, or classic'
+        description: 'Which Mac app: auto (electron, the main app since 0.2.0), electron, or classic (the pre-0.2 launcher, kept as a fallback)'
         type: choice
         options: [auto, electron, classic]
         default: auto
@@ -39,9 +39,6 @@ on:
 permissions:
   contents: write
 
-# The desktop build fetches its own Electron; npm's copy of the binary is not needed.
-env:
-  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
 jobs:
   mac:
@@ -75,18 +72,13 @@ jobs:
           fi
       - run: npm ci
       - run: npm test
-      # Which shell (docs/brain/DESKTOP.md): betas (v0.2.0-beta.1) and dry runs
-      # build the Electron app; full releases stay classic until it is promoted.
+      # Which shell (docs/brain/DESKTOP.md): the Electron app for everything since
+      # 0.2.0. The classic launcher stays buildable (shell: classic) as the
+      # fallback for one full release after the switch (rule 5).
       - name: Build the app and disk image
         run: |
           shell="${{ inputs.shell || 'auto' }}"
-          if [ "$shell" = auto ]; then
-            case "${{ inputs.tag || github.ref_name }}" in
-              v*-*) shell=electron ;;
-              v*)   shell=classic ;;
-              *)    shell=electron ;;
-            esac
-          fi
+          [ "$shell" = auto ] && shell=electron
           echo "Building the $shell app"
           echo "APP_SHELL=$shell" >> "$GITHUB_ENV"
           node scripts/build-app.mjs --shell="$shell"
@@ -170,9 +162,19 @@ jobs:
           pattern: dmg-*
           merge-multiple: true
           path: out
-      - name: Checksums
+      # Two downloads with names that never change, so the README's buttons can
+      # point at releases/latest/download/<name> and always get the newest app.
+      # install.sh keeps using the versioned names (…-<version>-arm64.dmg).
+      - name: Downloads with fixed names, and checksums
         working-directory: out
-        run: sha256sum *.dmg > SHA256SUMS && cat SHA256SUMS
+        run: |
+          for f in *.dmg; do
+            case "$f" in
+              *-arm64.dmg) cp "$f" Six-Degrees-Mac-Apple-Silicon.dmg ;;
+              *-x64.dmg)   cp "$f" Six-Degrees-Mac-Intel.dmg ;;
+            esac
+          done
+          sha256sum *.dmg > SHA256SUMS && cat SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -202,15 +204,15 @@ jobs:
           )"
           else
             gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --title "$TAG" --notes "$(cat <<'EOF'
-          **Install on a Mac** — paste into Terminal:
+          **Download for Mac:** **Six-Degrees-Mac-Apple-Silicon.dmg** (any Mac with an Apple M chip) or **Six-Degrees-Mac-Intel.dmg** (older Intel Macs), below. Not sure which? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel. Needs macOS 13.5 (Ventura) or later.
+
+          Open the `.dmg` and drag **Six Degrees** to Applications. It isn't signed with a paid Apple certificate yet, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.
+
+          **Or install from Terminal** (no Open Anyway step, and running it again updates):
 
           ```
           curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
           ```
-
-          Or download the `.dmg` for your chip below (`arm64` = Apple Silicon, `x64` = Intel). The app is not signed with a paid Apple certificate, so a browser-downloaded copy needs a one-time **System Settings → Privacy & Security → Open Anyway**.
-
-          Any system with Node 22.13+: `npx six-degrees@latest`
 
           What changed: see CHANGELOG.md.
           EOF

@@ -228,6 +228,9 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear })
       const bottom = Math.max(box.y + box.h, l.y + 12);
       box.y = Math.min(box.y, l.y - 18); box.h = bottom - box.y;
     }
+    // Room at the foot for the legend drawn over the bottom-left corner, so a
+    // cluster's label never lands on it.
+    box.h += Math.max(60, box.h * 0.1);
     return { nodes, edges, box, labels, cut: Math.max(0, companies.length - shown.length) };
   }, [companies, links]);
 
