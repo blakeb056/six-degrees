@@ -6,7 +6,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-24
+
+### Changed
+- **2nd-degree scans read each person's whole list.** Every read used to stop at page 10
+  (about 100 people) unless you changed a setting, and nothing in the log said so, so a
+  list of 50 pages looked finished at 10. The default is now every page. It keeps
+  clicking Next until the list ends, and looks for another page three times, scrolling
+  down and waiting longer each time, before deciding a list is over. LinkedIn's own
+  search stops at page 100 (about 1,000 people). The log always states the page limit,
+  and says so when it stops at one with more to read.
+- The log no longer calls the search of someone's connections a "3rd+ filter". It never
+  was one: it covers everyone they know, and the app drops your own connections when it
+  saves.
+
+### Added
+- **Carrying on where a read stopped.** How far each person's list has been read is noted
+  in `~/.six-degrees/bridge-progress.json`. With **Also finish people already mapped**
+  (on by default; `--deeper` from a terminal), a scan picks up everyone read only partly,
+  including everyone mapped before this version at 10 pages, from the next page. Their
+  profile isn't opened again once the id their connections are searched by is known.
+- **Long reads save as they go**, every 10 pages. Stopping a scan, a crash, or LinkedIn's
+  monthly search limit for free accounts now costs at most the last few pages, and the
+  next run carries on from the same page.
+- **LinkedIn's monthly search limit is recognised.** The scan saves what it read, stops
+  the batch, and says why, instead of reading empty pages.
+
 ### Fixed
+- A click on Next that didn't move to the next page used to end that person's read as if
+  their list had ended. It is now retried three times, and if the page still won't move,
+  the person is left for the next run to finish.
 - Release builds could still fail at the eject: "Resource busy" sometimes arrives after
   the volume has already unmounted, when only ejecting the disk device failed, and the
   retry kept aiming at a mount point that no longer existed. It now finishes on the

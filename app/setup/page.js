@@ -41,9 +41,13 @@ function SetupInner() {
   // someone: the old fixed tier order skipped straight past new connections that
   // were not S-tier.
   const [order, setOrder] = useRemembered('six-degrees-bridge-order', 'newest');
-  // How many result pages to read per person. Every page is a LinkedIn search,
-  // and free accounts have a monthly search limit, so the default stays at 10.
-  const [pages, setPages] = useRemembered('six-degrees-bridge-pages', 10);
+  // How many result pages to read per person. Every page, by default: a list cut
+  // off at page 10 was the one thing people noticed missing, and a long read now
+  // saves as it goes and carries on where it stopped. A new key, so a 10 that was
+  // remembered from before does not quietly keep the old limit.
+  const [pages, setPages] = useRemembered('six-degrees-bridge-pages-v2', 100);
+  // Also finish people mapped before, from the page each one's read stopped at.
+  const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -266,7 +270,9 @@ function SetupInner() {
               Run a batch, leave it for a day, run another — and stop the moment
               LinkedIn mentions unusual activity. It always picks up where it left
               off: anyone still without a mapped circle, in the order you choose below —
-              your newest connections first, or highest tier first.
+              your newest connections first, or highest tier first. Each person&rsquo;s
+              list is read to the end, saving every 10 pages, and a read that is stopped
+              carries on from the same page next time.
             </>
           }
           action={
@@ -307,21 +313,25 @@ function SetupInner() {
                 </select>
                 <span style={{ fontSize: 12, color: '#8b9a9a' }}>Read up to</span>
                 <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
-                  <option value={10}>10 pages (~100 people) each</option>
-                  <option value={25}>25 pages each</option>
+                  <option value={100}>every page, to the end of their list</option>
                   <option value={50}>50 pages each</option>
-                  <option value={100}>100 pages each (LinkedIn&rsquo;s limit)</option>
+                  <option value={25}>25 pages each</option>
+                  <option value={10}>10 pages (~100 people) each</option>
                 </select>
               </div>
-              {pages > 10 && (
-                <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
-                  Every page is a LinkedIn search. Reading {pages} pages a person takes about{' '}
-                  {Math.round((pages * 6) / 60)} minutes each, and free accounts have a monthly search
-                  limit that deep scans use up fast. Keep batches small.
-                </div>
-              )}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8', cursor: running ? 'not-allowed' : 'pointer' }}>
+                <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
+                Also finish people already mapped, from the page each one stopped at
+              </label>
+              <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
+                Every page is a LinkedIn search, about 8 seconds each, so a long list can take
+                {' '}{pages >= 100 ? 'up to 15 minutes' : `about ${Math.max(1, Math.round((pages * 8) / 60))} minutes`} a
+                person. LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
+                have a monthly search limit: if LinkedIn says it has been reached, the scan saves
+                what it read and stops, and carries on from that page next time. Keep batches small.
+              </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages })} disabled={!canScrape || (order === 'score' && !tiers.length)} primary>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canScrape || (order === 'score' && !tiers.length)} primary>
                 {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
               </Btn>
               <select
@@ -335,7 +345,7 @@ function SetupInner() {
                 <option value={25}>25 people</option>
                 <option value={0}>everyone — not advised</option>
               </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages })} disabled={!canScrape || (order === 'score' && !tiers.length)}>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canScrape || (order === 'score' && !tiers.length)}>
                 Retry hidden ones
               </Btn>
             </div>

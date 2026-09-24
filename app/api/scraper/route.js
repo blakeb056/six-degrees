@@ -262,10 +262,13 @@ export async function POST(request) {
     ? body.tiers.map((t) => String(t).toUpperCase()).filter((t) => 'SABCD'.includes(t) && t.length === 1)
     : [];
   // Which of your connections to map first, and how deep to read each one. Both
-  // are a fixed set, like everything else that reaches the command line.
+  // are a fixed set, like everything else that reaches the command line. 100 is
+  // every page: LinkedIn's search goes no further, and most lists end sooner.
   const order = body.order === 'score' ? 'score' : 'newest';
-  const maxPages = [10, 25, 50, 100].includes(body.maxPages) ? body.maxPages : 10;
+  const maxPages = [10, 25, 50, 100].includes(body.maxPages) ? body.maxPages : 100;
   const readsCircles = action.startsWith('auto-bridge') || action === 'bridge' || action === 'rescrape';
+  // Carry on with people already mapped, from the page each one stopped at.
+  const deeper = body.deeper === true && (action.startsWith('auto-bridge') || action === 'bridge');
   let name = null;
   if (spec.needsName) {
     name = cleanName(body.name);
@@ -314,7 +317,8 @@ export async function POST(request) {
             ...(maxBridges && action.startsWith('auto-bridge') ? [`--max-bridges=${maxBridges}`] : []),
             ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
             ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
-            ...(readsCircles && maxPages !== 10 ? [`--max-pages=${maxPages}`] : []),
+            ...(readsCircles ? [`--max-pages=${maxPages}`] : []),
+            ...(deeper ? ['--deeper'] : []),
           ],
         },
       ];
@@ -345,6 +349,8 @@ export async function POST(request) {
     APP_URL: `http://127.0.0.1:${port}`,
     PYTHONUNBUFFERED: '1',
     SIX_DEGREES_ROOT: root,
+    // So the scraper's hints name the Scan page's settings, not its flags.
+    SIX_DEGREES_FROM_APP: '1',
   };
 
   function finish(code) {
