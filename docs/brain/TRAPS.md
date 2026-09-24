@@ -536,7 +536,10 @@ build is the one that can carry somebody's personal file out of the folder.
   Finder or Spotlight holds the fresh volume for a moment. It never showed while the
   styling step was silently failing, since Finder never opened the disk, and it showed
   the first time it worked: 0.1.1's first Intel release build died on it. `detach()` in
-  `build-app.mjs` retries, plainly and then with `-force`.
+  `build-app.mjs` retries, plainly and then with `-force` — and, since 0.1.5's first
+  Intel build, aims at the disk device once the mount point is gone: "Resource busy" can
+  mean the volume unmounted and only the device eject failed, after which retrying the
+  mount point just says "No such file or directory" forever.
 - **Headless Chrome writes a screenshot and then does not exit** on some macOS
   versions, and a fresh profile can stall on a keychain prompt. `make-dmg-background.mjs`
   uses a stand-in keychain, waits for the file, and ends Chrome itself.
