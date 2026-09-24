@@ -121,6 +121,7 @@ async function main() {
   process.env.PORT = String(port);
   process.env.HOSTNAME = '127.0.0.1';
   process.env.SIX_DEGREES_BIND = '127.0.0.1';   // read by the destructive-route gate
+  process.env.SIX_DEGREES_INSTALL = 'npm';        // tells the Updates panel how to update
   process.env.SIX_DEGREES_HOME = dataDir;
   process.env.NEXT_TELEMETRY_DISABLED = '1';
 

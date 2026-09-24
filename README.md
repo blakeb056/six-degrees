@@ -219,8 +219,10 @@ It estimates **network reach**, not human worth. Keep that framing.
 - A CSV import never leaves your browser and is never persisted
 - Scraped data and avatars are written locally and are gitignored
 - No telemetry, no analytics, no crash reporting from this app
-- The only outbound requests **it** makes are to LinkedIn, and only while you
-  are scraping
+- The only outbound requests **it** makes are to LinkedIn, only while you are
+  scraping — and to GitHub, only when you press **Check for updates**, to read
+  the newest version number. Nothing about you is sent, and nothing checks on
+  its own
 - Next.js collects anonymous build metrics of its own; the `dev`, `build` and
   `start` scripts set `NEXT_TELEMETRY_DISABLED=1`, so it stays off here. `npm
   install` talks to the npm registry, as it does for any project.

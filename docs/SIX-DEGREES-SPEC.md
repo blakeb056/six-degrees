@@ -22,10 +22,13 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    absent. This tool reads a person's professional network; it must never be able to
    report on it, and it must never make a request nobody asked for.
    The one permitted exception is narrow and worth stating precisely: a **button the
-   user presses** may run `git fetch` / `git pull` against the remote their own
-   checkout already has (`/api/update`). It sends nothing about them, it runs only on
-   a click, and it is exactly what they would type. Anything that checks on a timer,
-   on launch, or in the background is the forbidden thing.
+   user presses** may ask whether something newer exists (`/api/update`). For a git
+   checkout that is `git fetch` / `git pull` against the remote it already has; for an
+   installed copy (the Mac app or the npm package) it is one GET for the newest GitHub
+   release's version number, after which the user runs the update themselves. Either
+   way it sends nothing about them beyond the request, runs only on a click, and is
+   what they would do by hand. Anything that checks on a timer, on launch, or in the
+   background is the forbidden thing.
 3. **Never commit real network data.** Not a CSV, not an avatar, not a snapshot. CI
    fails the build if any appears. The sample network is generated and every person in
    it is invented.

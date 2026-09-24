@@ -90,12 +90,18 @@ function SetupInner() {
   const needsChrome = s && !c.chrome;
   const notFound = s && !c.scriptsFound;
   const canScrape = s?.ready && !running;
-  const mapped = s?.connections || 0;
+  // By degree, because one total reads as "connections" and is not: the people
+  // you know, then the people found through them, then company scans.
+  const net = s?.network || { first: 0, second: 0, third: 0 };
+  const mapped = net.first;
   // A run that ended badly, and the line that says why — the last thing it
   // printed before stopping. Shown as a box, not left for someone to find in the log.
   const failed = s && !running && s.exitCode != null && s.exitCode !== 0;
+  // The server keeps the end of stderr for exactly this; older servers did not,
+  // so fall back to the last line the log shows.
   const failReason = failed
-    ? [...(s.log || [])].reverse().find((l) => !/^Stopped \(exit/.test(l) && !/Warning|warnings\.warn/.test(l))
+    ? (s.failure?.length ? s.failure.join('\n')
+      : [...(s.log || [])].reverse().find((l) => !/^Stopped \(exit/.test(l) && !/Warning|warnings\.warn/.test(l)))
     : null;
 
   return (
@@ -129,7 +135,10 @@ function SetupInner() {
           <Box>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <b>{mapped.toLocaleString()} people mapped.</b>{' '}
+                <b>{mapped.toLocaleString()} connections</b>
+                {net.second > 0 && <>, plus {net.second.toLocaleString()} people in their circles</>}
+                {net.third > 0 && <> and {net.third.toLocaleString()} from company scans</>}
+                .{' '}
                 <span style={{ color: '#9aa' }}>Your galaxy is ready.</span>
               </div>
               <Link href="/" style={{
@@ -313,6 +322,7 @@ function SetupInner() {
             <Spinner />
             <div style={{ flex: 1, fontSize: 13.5 }}>
               <b>{ACTION_LABELS[s.action] || 'Working'}</b>
+              {s.progress && <Progress p={s.progress} action={s.action} />}
               <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 2 }}>
                 Stopping closes the browser cleanly and keeps everything found so far.
               </div>
@@ -400,6 +410,43 @@ function Box({ children, tone }) {
       background: tone === 'bad' ? 'rgba(255,80,80,0.08)' : 'rgba(255,255,255,0.05)',
       border: `1px solid ${tone === 'bad' ? 'rgba(255,80,80,0.3)' : 'rgba(255,255,255,0.12)'}`,
     }}>{children}</div>
+  );
+}
+
+// How far the running scan has got (lib/scan-progress.js reads it from the log).
+// "Check for new" gets words, not a bar: it stops as soon as it meets people
+// already saved, so a bar measured against the whole list would sit near empty
+// and then vanish, which looks like a failure.
+function Progress({ p, action }) {
+  const pct = Math.max(0, Math.min(100, Math.round((p.done / p.total) * 100)));
+  let text;
+  if (p.kind === 'batch') text = `Person ${p.current} of ${p.total}`;
+  else if (action === 'refresh') text = `Looked at ${p.done.toLocaleString()} so far — stops once it reaches people already saved`;
+  else text = `${p.done.toLocaleString()} of ${p.total.toLocaleString()} connections · ${pct}%`;
+
+  return (
+    <div style={{ margin: '8px 0 6px' }}>
+      {action !== 'refresh' && (
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={p.total}
+          aria-valuenow={p.done}
+          aria-label={text}
+          style={{
+            height: 8, borderRadius: 4, overflow: 'hidden',
+            background: 'rgba(255,255,255,0.08)', marginBottom: 6,
+          }}
+        >
+          <div style={{
+            width: `${pct}%`, height: '100%', borderRadius: 4,
+            background: 'linear-gradient(90deg, #9B59B6, #3498DB)',
+            transition: 'width 0.6s ease',
+          }} />
+        </div>
+      )}
+      <div style={{ fontSize: 12.5, color: '#cfe6f7' }}>{text}</div>
+    </div>
   );
 }
 

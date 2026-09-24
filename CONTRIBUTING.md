@@ -50,6 +50,11 @@ git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
 To try a packaged build locally: `npm run build:app`, then
 `SIX_DEGREES_DMG=dist/Six-Degrees-<version>-arm64.dmg bash install.sh`.
 
+The picture behind the `.dmg` window is `scripts/dmg/background.html`. After changing
+it, run `node scripts/make-dmg-background.mjs` (needs Google Chrome) and commit the
+`.tiff` it writes; the build only copies that file. Its layout and the icon positions in
+`scripts/build-app.mjs` are one design — change them together.
+
 ## Before opening a PR
 
 ```bash

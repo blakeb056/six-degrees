@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
-import { resolveProfile } from '../../../lib/profile';
+import { resolveProfile, networkCounts } from '../../../lib/profile';
+import { scanProgress } from '../../../lib/scan-progress';
 
 // The app runs the scraper itself.
 //
@@ -27,6 +28,7 @@ const state = {
   child: null,
   stopping: false,
   stderrTail: [],
+  failure: null,   // the last lines of stderr from a run that failed — its reason
 };
 
 /** Stop the running job without orphaning the browser it opened.
@@ -145,9 +147,13 @@ function bridgeSkips() {
   }
 }
 
+// The machine checks (Python, Chrome, signed in) spawn processes, so they are
+// cached for a few seconds. Everything about the running job — its log, how far
+// it has got — and the counts are read fresh on every call: the page polls
+// every 1.5 s, and a progress bar that moves every 4 s looks stuck.
 let cached = { at: 0, value: null };
 
-async function status() {
+async function machineChecks() {
   if (Date.now() - cached.at < 4000 && cached.value) return cached.value;
 
   const root = projectRoot();
@@ -161,31 +167,42 @@ async function status() {
 
   const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
 
-  // How much is already mapped, so the page can mark the scan step done and
-  // offer the way to the galaxy instead of leaving a new user on a form.
-  let connections = 0;
-  try { connections = resolveProfile({ create: false })?.connections || 0; } catch {}
+  const value = { root, usable, anyPython, chrome, signedIn };
+  cached = { at: Date.now(), value };
+  return value;
+}
 
-  const value = {
-    ready: Boolean(root && usable && chrome),
+async function status() {
+  const m = await machineChecks();
+
+  // How much is already mapped, by degree, so the page can mark the scan step
+  // done and offer the way to the galaxy instead of leaving someone on a form.
+  let network = { first: 0, second: 0, third: 0 };
+  try {
+    const me = resolveProfile({ create: false });
+    if (me) network = networkCounts(me.id);
+  } catch {}
+
+  return {
+    ready: Boolean(m.root && m.usable && m.chrome),
     checks: {
-      scriptsFound: Boolean(root),
-      python: Boolean(anyPython),
-      pythonPath: usable || anyPython,
-      dependencies: Boolean(usable),
-      chrome,
-      signedIn,
+      scriptsFound: Boolean(m.root),
+      python: Boolean(m.anyPython),
+      pythonPath: m.usable || m.anyPython,
+      dependencies: Boolean(m.usable),
+      chrome: m.chrome,
+      signedIn: m.signedIn,
     },
-    connections,
+    network,
     running: state.running,
     action: state.action,
     startedAt: state.startedAt,
     exitCode: state.exitCode,
+    failure: state.running ? null : state.failure,
+    progress: state.running ? scanProgress(state.log, state.action) : null,
     log: state.log.slice(-120),
     skips: bridgeSkips(),
   };
-  cached = { at: Date.now(), value };
-  return value;
 }
 
 export async function GET() {
@@ -303,6 +320,7 @@ export async function POST(request) {
   state.startedAt = Date.now();
   state.log = [spec.label + (name ? ` ${name}…` : '…')];
   state.stderrTail = [];
+  state.failure = null;
   cached = { at: 0, value: null };
 
   // Name the profile outright. The scraper would otherwise ask the app which one
@@ -327,6 +345,11 @@ export async function POST(request) {
       const shown = new Set(state.log);
       const unseen = state.stderrTail.filter((l) => !shown.has(l));
       if (unseen.length) push(unseen.join('\n'));
+      // Kept apart for the page's red box. A reason is often more than its last
+      // line — "more than one profile…" followed by "pick one with…" — so keep
+      // the end of it, minus the Python warnings that are not the problem.
+      const reason = state.stderrTail.filter((l) => !/Warning|warnings\.warn\(/.test(l)).slice(-6);
+      state.failure = reason.length ? reason : null;
     }
     push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
     state.stopping = false;

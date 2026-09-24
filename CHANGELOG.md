@@ -21,6 +21,15 @@ First release, not yet published to npm.
 - The Scan page ticks off the scan step once you have connections, offers **See your
   network →**, and when a run stops early it shows the reason in a box rather than
   only "Stopped (exit 1)" at the bottom of the log.
+- A progress bar while scanning: "350 of 817 connections · 43%" for a full walk,
+  "Person 3 of 10" for a 2nd-degree batch. **Check for new** gets words instead of a
+  bar, since it stops as soon as it meets people already saved.
+- The Mac app and the npm package get a working **Updates** panel. **Check for updates**
+  asks GitHub for the newest release's version number — on a click, never by itself —
+  and shows the exact line to run, with a Copy button.
+- The `.dmg` window says what to do: drag the app across, then the one-time **Open
+  Anyway** step for an unsigned app. It replaces the READ ME text file the image used
+  to carry, and the Applications drop target now shows its folder icon.
 
 ### Changed
 - **No more name prompt.** The app works out which profile is yours — the one that
@@ -30,11 +39,26 @@ First release, not yet published to npm.
 - The README leads with installing, not cloning; running from source moved to
   CONTRIBUTING.md, with the commands chained so a failed clone cannot fall through to
   an older copy.
+- The Scan page counts by degree — "814 connections, plus 2,734 people in their
+  circles" — instead of one total that read as connections and was not.
+- `Start 6 Degrees.command` is gone. It started the development server; install the
+  app instead.
 
 ### Fixed
 - A scan that failed printed only "Stopped (exit 1)". Its reason was on stderr, which
   the Scan page filtered to lines mentioning "error"; failures now always show their
-  last lines.
+  last lines, and the red box shows the whole reason rather than its final line.
+- Updating a Mac app that was running left its old server behind, still serving the old
+  version, with the new copy opening on the next port. Next renames its process, so the
+  installer never found it by path; it now finds it by folder, and the app's launcher
+  stops its server whenever the launcher stops.
+- The build copied the repository's `.git` folder and build logs into the app. Inside
+  the Mac app, the `.git` made the installed copy look like a checkout, so its Updates
+  panel would have offered `git pull` against the app itself.
+- The Scan page's status was cached for four seconds, the live log included, so a
+  running scan looked stalled between updates.
+
+### Added
 - `npm run update` — discards the regenerated lockfile, pulls, installs, and tells you to
   restart. Plain `git pull` refuses whenever npm has rewritten `package-lock.json`, which
   is most of the time on a second machine, and it says so in one line that is easy to
@@ -66,7 +90,6 @@ First release, not yet published to npm.
 - A **Scan** page that runs the scraper for you. It checks what is missing, installs it,
   opens LinkedIn so you can sign in, and runs the scan — with the live log on screen.
   No second terminal, no server to start, nothing to copy and paste.
-- `Start 6 Degrees.command` — double-click on a Mac to start the app and open it.
 - Scanning a company or auto-bridging can now be run from the command line too
   (`--company "Acme"`, `--auto-bridge`); they used to exist only behind the old server.
 

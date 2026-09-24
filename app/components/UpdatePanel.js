@@ -45,6 +45,8 @@ export default function UpdatePanel() {
 
   if (!local) return null;
 
+  if (local.installed) return <InstalledUpdates local={local} />;
+
   if (local.supported === false) {
     return (
       <Wrap>
@@ -112,6 +114,89 @@ export default function UpdatePanel() {
       <Body style={{ fontSize: 12, color: '#667', marginTop: 12 }}>
         Nothing is checked automatically and nothing about you is sent — this runs the
         same <Mono>git fetch</Mono> and <Mono>git pull</Mono> you would type yourself.
+      </Body>
+    </Wrap>
+  );
+}
+
+// The Mac app and the npm package update by installing the newer release over
+// the top. This asks GitHub for the newest version number — on a click only —
+// and hands over the exact line to run.
+function InstalledUpdates({ local }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  async function check() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch('/api/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check-release' }),
+      });
+      const d = await r.json();
+      if (!r.ok) setError(d.error || 'Could not check.');
+      else setResult(d);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(local.command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setError('Could not copy — select the line and copy it by hand.');
+    }
+  }
+
+  const how = local.kind === 'mac-app'
+    ? 'Paste this into Terminal. It closes this app, puts the new version in its place and opens it. Your network stays where it is.'
+    : 'Run this in a terminal to start the newest version. Your network stays where it is.';
+
+  return (
+    <Wrap>
+      <Title>Updates</Title>
+      <Body>You have version <Mono>{local.version}</Mono>.</Body>
+
+      {result && !result.latest && <Body>No release has been published yet.</Body>}
+      {result?.latest && !result.newer && <Body>That is the newest version.</Body>}
+
+      {result?.newer && (
+        <>
+          <Body style={{ color: '#00ff88' }}>Version {result.latest.version} is available.</Body>
+          <Body>{how}</Body>
+          <pre style={pre}>{local.command}</pre>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Btn onClick={copy} primary>{copied ? 'Copied' : 'Copy'}</Btn>
+            {result.latest.url && (
+              <a href={result.latest.url} target="_blank" rel="noreferrer"
+                 style={{ color: '#3498DB', fontSize: 13.5 }}>
+                What changed →
+              </a>
+            )}
+          </div>
+        </>
+      )}
+
+      {!result?.newer && (
+        <div style={{ marginTop: 12 }}>
+          <Btn onClick={check} disabled={busy}>{busy ? 'Checking…' : 'Check for updates'}</Btn>
+        </div>
+      )}
+
+      {error && <Body style={{ color: '#ff7676' }}>{error}</Body>}
+
+      <Body style={{ fontSize: 12, color: '#667', marginTop: 12 }}>
+        Nothing is checked automatically. The button asks GitHub for the newest version
+        number and nothing about you is sent.
       </Body>
     </Wrap>
   );

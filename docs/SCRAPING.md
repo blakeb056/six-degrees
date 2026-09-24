@@ -26,9 +26,8 @@ Start the app, open **Scan** in the nav (or `/setup`), and use the buttons. The 
 checks what is missing, installs it for you, opens LinkedIn so you can sign in, and runs
 the scrape — showing the live log as it goes.
 
-On a Mac you can start the app itself by double-clicking **`Start 6 Degrees.command`** in
-the project folder. It installs dependencies on the first run and opens your browser.
-Everything after that is buttons.
+On a Mac, the app itself installs with one line — see **Install** in the README — and
+opens from Applications like any other. Everything after that is buttons.
 
 That page installs the scraper's Python packages into a **private virtual environment**
 inside your data directory (`~/.six-degrees/venv`). It never touches the Python your
@@ -36,7 +35,7 @@ system or Homebrew installed, and it goes away when you delete that folder.
 
 The page has four steps: install, sign in, **1st degree** (the people you know) and
 **2nd degree** (the people they know — this is what fills Bridges and Outlink). The
-second-degree step runs in batches of 10, 25 or 50 and has a **Stop** button; stopping
+second-degree step runs in batches of 5, 10 or 25 and has a **Stop** button; stopping
 closes the browser cleanly and keeps everything found so far.
 
 **Go easy on the 2nd-degree step.** It opens one profile per person, and LinkedIn
