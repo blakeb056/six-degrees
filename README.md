@@ -1,268 +1,264 @@
-<h1 align="center">6 Degrees</h1>
+<h1 align="center">Six Degrees</h1>
 
 <p align="center">
-  <em>Map your professional network as a galaxy — see who bridges you to everyone else,<br />
+  <em>Map your LinkedIn network as a galaxy — see who bridges you to everyone else,<br />
   and find the shortest path to someone you haven't met.</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D22.13-brightgreen.svg" alt="Node >= 22.13">
-  <img src="https://img.shields.io/badge/data-stays%20local-blue.svg" alt="Data stays local">
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="https://img.shields.io/badge/Download-Apple%20Silicon%20(M1%20or%20newer)-2ea44f?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with Apple Silicon (M1 or newer)"></a>
+  &nbsp;
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="https://img.shields.io/badge/Download-Intel%20Mac-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with an Intel processor"></a>
 </p>
 
+<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="#install-it">how to install</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
+
 <p align="center">
-  <img src="docs/img/galaxy.png" alt="The galaxy view: your whole network placed on tier rings by estimated career leverage" width="100%">
+  <img src="docs/img/app-window.png" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="100%">
 </p>
 
 <p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
 
 ---
 
-Your network has a shape, and you can't see it. 6 Degrees draws it: every
-connection placed on a tier ring by estimated career leverage, the handful of
-people whose own circles open the most doors, and the shortest chain from you
-to a stranger worth meeting.
+Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
+know placed on rings by how much they can open up for you, the handful of people
+whose own circles reach the furthest, and the shortest chain from you to a stranger
+worth meeting.
 
-It runs on your machine, against your own data, with no account and no server.
+It's a Mac app. It runs on your computer, against your own data, with no account and
+no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
+Degrees**.)
 
-## Install
+## Install it
 
-**On a Mac** — paste this into Terminal:
+**Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
+**Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
+(Ventura) or later**, and it's about 185 MB.
+
+**The first time you open it**, macOS stops it, because the app isn't signed with a
+paid Apple certificate yet:
+
+1. Open the file you downloaded (**Six-Degrees-Mac-….dmg**, in your Downloads folder).
+   In the window that opens, drag **Six Degrees** onto the **Applications** folder.
+2. Open **Six Degrees** from Applications. macOS says it can't check the app for
+   malware. Close that message with **Done** (on macOS 13 or 14 it may say **OK** or
+   **Cancel**). Anything except *Move to Trash*.
+3. Open **System Settings → Privacy & Security**, scroll down to *"Six Degrees" was
+   blocked*, and click **Open Anyway**. Confirm with **Open** (and your password if
+   asked).
+
+That's once per download; after that it opens like any app.
+
+**Or install it from Terminal** (no approval step). Press ⌘ Space, type *Terminal* and
+press Return. Paste this line into the window that opens and press Return:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
 ```
 
-It downloads the app for your chip, checks it against the published checksum, puts
-**Six Degrees** in your Applications folder and opens it. Nothing else to install:
-a Node runtime is bundled inside. Run the same line again later to update — your
-network lives in `~/.six-degrees`, not in the app, so updates never touch it.
-[Read the script](install.sh) before running it if you like; it is short.
+It downloads the right version for your Mac, checks the file is exactly the one
+published here, puts **Six Degrees** in Applications and opens it.
+[Read the script](install.sh) first if you like.
 
-**Prefer a download?** Grab the `.dmg` for your chip from
-[Releases](https://github.com/blakeb056/six-degrees/releases) (`arm64` = Apple
-Silicon, `x64` = Intel) and drag it to Applications. The app is not signed with a
-paid Apple certificate, so the first launch of a browser-downloaded copy needs one
-approval: **System Settings → Privacy & Security → Open Anyway**. The Terminal line
-above skips that step.
+**Updating.** Choose *Six Degrees → Check for Updates…*, scroll to **Updates** at the
+bottom of the page that opens, and click **Check for updates**. Nothing checks by
+itself. If there's a newer version, it gives you the Terminal line to paste, which
+replaces the app even while it's running. Downloading the new `.dmg` works too; you'll
+repeat step 3 once for it.
 
-**Anywhere with Node 22.13+** (Linux, Windows, or a Mac you would rather not add an
-app to):
+Your network isn't stored in the app. It's in a hidden folder in your home folder,
+`.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
+touch it. Each new version also copies your data into its `backups` folder before it
+first opens it.
+
+**Linux:** run it from source (below); it's tested on Ubuntu.
+**Windows:** not yet. A Windows app is planned; nothing is released.
+
+<details>
+<summary>Run it from source (Linux, or a Mac without the app)</summary>
+
+Needs **Node 22.13 or later** and git.
 
 ```bash
-npx six-degrees@latest
+git clone https://github.com/blakeb056/six-degrees.git
+cd six-degrees
+npm ci
+npm run build
+npm run start:packaged      # opens http://127.0.0.1:6363 in your browser
 ```
 
-**Want to change the code?** Clone it and run the dev server — see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+To update later: stop it (Ctrl-C), then
+`git pull && npm ci && npm run build && npm run start:packaged`.
+Scanning LinkedIn also needs Python 3.9+ and Google Chrome (see below).
+</details>
 
-### First run
+## Before you scan LinkedIn
+
+> [!WARNING]
+> **Scanning drives your own LinkedIn account, and LinkedIn may restrict accounts that
+> do this.** Automating LinkedIn may break its User Agreement. It has happened twice
+> while building this:
+> - The account was temporarily restricted after about 20 profile views in one sitting
+>   (2026-09-09); it was lifted the same evening.
+> - Search was blocked after results were read too fast (2026-09-24).
+>
+> The scanner now reads slowly and keeps to a search budget (by default 50 a day and 250
+> a month; you can change it on the Scan page). It locks itself during a cooldown, and
+> stops at the first sign of push-back. The risk is still yours.
+>
+> **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
+> [`docs/SCRAPING.md`](docs/SCRAPING.md).
+
+## First run
 
 The app opens on a welcome screen with three ways in, and asks nothing about you:
 
-- **Scan my LinkedIn** — a guided page that ticks each step off as it goes: set up
-  the scanner (one click), sign into LinkedIn yourself in a Chrome window, scan.
-  Needs Google Chrome and Python 3.9+; the page checks for both and says what is
-  missing.
-- **Import my LinkedIn CSV** — LinkedIn&rsquo;s official export, read in your browser.
-- **Explore a sample network** — 150 invented people, every view working.
+- **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It sets up
+  the scanner in one click, you sign into LinkedIn yourself in a Chrome window, and then
+  it scans. Needs Google Chrome (in Applications) and Python 3.9+; the page checks that
+  both are installed and says what's missing. The app marks this *Recommended* because
+  it's the only way to Degrees and Outlink. Read the warning above first.
+- **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
+  LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
+  Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
+  `Connections.csv` into the app.
+- **Explore a sample network**: 150 invented connections and the 598 invented people
+  they know. Click through before deciding anything.
 
-### What each way in gives you
-
-|  | Sample network | Your `Connections.csv` | Local scraper |
+|  | Your scan | Your `Connections.csv` | Sample network |
 |---|---|---|---|
-| Setup | none | ~10 min (LinkedIn emails the file) | Python + Chrome, once |
-| Galaxy, Tiers, Paths | ✅ | ✅ | ✅ |
-| Profile photos | initials | initials | ✅ |
-| **Bridges, Outlink** (2nd-degree) | ✅ | — | ✅ |
+| Setup | Python + Chrome, once | ~10 min (LinkedIn emails the file) | none |
+| Network Circle, Paths | ✅ | ✅ | ✅ |
+| **Degrees** (people you *haven't* met) | ✅ | — | ✅ |
+| **Outlink** (getting introduced) | ✅ | — | — |
+| Profile photos | ✅ | initials | initials |
+| LinkedIn account risk | **yes**, see above | none | none |
 
-**The CSV is the supported path and it is deliberately the shallower one.** LinkedIn's export
-contains only people you are already connected to, so the two views about people you *haven't*
-met — Degrees and Outlink — have nothing to draw. That data exists nowhere in any official
-export; the scraper is the only way to it, and it is opt-in for a reason. Explore the sample
-network first if you want to see those views before deciding.
+**The CSV is the safe path, and deliberately the shallower one.** LinkedIn's export only
+contains people you're already connected to, so Degrees and Outlink, the views about
+people you *haven't* met, have nothing to draw. That data exists in no official export;
+the scanner is the only way to it, and it's opt-in for that reason.
 
-No account, no API keys, no database to provision. Your data is written to a
-single SQLite file at `~/.six-degrees/six-degrees.sqlite`, and the four
-runtime dependencies are `next`, `react`, `react-dom` and `d3` — the database
-driver is Node's own built-in `node:sqlite`. The Mac app brings its own Node;
-running from `npx` or from source needs **Node 22.13+**.
-
-## Use your own network
-
-### No setup at all: the sample network
-
-Launch the app and choose **Explore a sample network** — 150 invented people with
-mapped bridge circles, enough to click through every view before you decide
-whether to import anything of your own. Regenerate it any time with
-`npm run gen:demo`.
-
-### The safe path: LinkedIn's official export
-
-1. LinkedIn → **Settings & Privacy → Data privacy → Get a copy of your data**
-2. Select **Connections** and request the archive
-3. LinkedIn emails a download link, usually within ~10 minutes
-4. Unzip it and drop `Connections.csv` into the app's **Import** page
-
-The file is parsed **in your browser**. Nothing is uploaded, nothing is stored,
-and the `Email Address` column is never read. Close the tab and it's gone.
-
-Two honest limits of the official export: it contains **no profile photos**, so
-people render as initials on a tier-colored circle; and it covers only people
-you are *already* connected to, so the Bridges and Outlink views stay empty —
-those map the people you haven't met yet.
-
-### The deeper path: the local scraper
-
-This is the only way to get **2nd-degree** data — who your connections know.
-LinkedIn's export cannot provide it, so Degrees and Outlink stay empty without it.
-
-**You do not need a terminal for this.** Choose **Scan my LinkedIn** on the welcome
-screen (or **Scan** in the nav later) and use the buttons. Each step ticks itself off,
-and if a run stops early the page says why:
-
-1. **Install what the scraper needs** — one click. It builds a private Python
-   environment inside your data directory and installs into that, so it never
-   touches the Python your system or Homebrew put there.
-2. **Sign into LinkedIn** — a Chrome window opens and waits for you, with no time
-   limit. Close the window to cancel. Once per machine.
-3. **1st degree** — the people you know. The whole list on the first run, about a
-   minute and a half for 750 people; only what is new after that.
-4. **2nd degree** — the people *they* know. This is what fills **Bridges** and
-   **Outlink**. It opens each connection in turn, so it is slow by design and runs
-   in batches of 5, 10 or 25 with a **Stop** button. Most people hide their
-   connections; those are noted and never retried.
-
-The live log is on the page throughout.
-
-**Go easy on the 2nd-degree step.** LinkedIn restricts accounts that view a lot of
-profiles in a short time — this happened during development after about an hour of
-continuous mapping, roughly 20–25 profiles. Run a batch, leave it a while, run
-another. If LinkedIn warns you about unusual activity, press Stop and leave it for
-the day.
-
-Sign in with your **email and password**. "Continue with Google" and "Sign in with
-Apple" cannot work here: Google blocks its sign-in flow inside automated browsers,
-so that window opens greyed out and never finishes. If your account only has a
-Google login, set a LinkedIn password first.
-
-Needs Python 3.9+ and Google Chrome. The scraper drives your real Chrome, so
-there is no extra browser to download.
-
-<details>
-<summary>Prefer the command line?</summary>
-
-The scraper writes into the running app, so the app has to be up. Start it in one
-window with `npm run dev`, then in a second window:
-
-```bash
-npm run setup:python                            # once per machine
-python3 scripts/scrape.py --login               # sign in, then exit
-npm run scrape                                  # full the first time, new-only after
-npm run scrape:full                             # walk the whole list again
-python3 scripts/scrape.py --bridge "Jane Doe"   # one person's 2nd-degree circle
-python3 scripts/scrape.py --company "Acme"      # everyone at one company (experimental)
-```
-
-If `pip` refuses with `externally-managed-environment`, that is your system Python
-protecting itself (PEP 668). Use the Scan page instead — it makes a virtual
-environment for you — or make one yourself.
-
-Full detail: [`docs/SCRAPING.md`](docs/SCRAPING.md).
-
-</details>
+While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Your CSV
+×* (click × to go back), and Outlink and Scan are hidden. Neither is ever added to your
+network: they last as long as the app's window is open.
 
 ## What it does
 
-**Galaxy** — a force-directed map of your whole network, each person placed on a tier ring and sized by power score.
+**Network Circle.** Everyone you know, on rings by tier, the most powerful closest to
+you. Switch the drawing between **Galaxy**, **Orbit**, **Pyramid** and **List** in the
+panel on the left.
 
-<img src="docs/img/galaxy.png" alt="The galaxy view: connections orbiting on tier rings" width="100%">
+**Degrees** *(needs a scan or the sample)*. The people two steps away. **Separation**
+ranks every one of them with every way in: which of your connections knows them, and
+how many do. **Orbit**, **Bridge Chains**, **Revolver**, **Pyramid** and **List** draw
+the same people differently.
 
-**Bridges** *(needs 2nd-degree data — scraper or sample only)* — your highest-leverage 1st-degree people on a ring. Each one shows the size and quality of the circle behind them; select one to fan that circle out. This is the view that answers *who can introduce me to people I don't know yet*.
+<img src="docs/img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="100%">
 
-**Paths** — company intelligence. Who you already know at each company, who is still out of reach, and how much of your foothold is senior.
+**Paths.** Your network by company and industry, in the spirit of LinkedIn's old
+InMaps:
+- **Map**: your companies as bubbles (the 140 largest), grouped by industry and linked
+  where your connections at one know people at another.
+- **Industries**: a card per industry.
+- **Companies**: pick one to see its people level by level, up to the top.
+- **Scores**: every scanned company's score, which you can change.
 
-<img src="docs/img/paths.png" alt="The Paths view: companies ranked by how many people you know inside them" width="100%">
+Click a company for its analyzer: who you know there, who you can reach, the warmest way
+in, and its most powerful people.
 
-**Outlink** *(needs 2nd-degree data — scraper or sample only)* — a ranked outreach queue built from 2nd-degree recommendations.
+<img src="docs/img/paths.png" alt="Paths → Map with the company analyzer open: companies grouped by industry, and one company's people by level and ways in" width="100%">
 
-<img src="docs/img/bridges.png" alt="The Degrees view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
+**Outlink** *(needs a scan)*. Getting introduced, as a game. Each mapped connection's
+circle offers its best five people at a time; mark invites as sent to fill the ring and
+unlock the next five. It also shows the next best moves, levels and points (from
+invites sent and people who accepted, never from browsing).
 
-**Tiers** — everyone scored S/A/B/C/D from role seniority and company prestige.
+**Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
+lock, and a **Paused** list you can carry on from.
 
 ## How scoring works
 
 ```
-power score = (seniority × 0.5) + (company prestige × 0.3) + signals + recency
-tiers:  S ≥ 7.0   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
+power = title × (0.45 + 0.055 × company score) + reach bonus + bridge boost
+tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 ```
 
-Seniority is inferred from job title, prestige from a configurable company list,
-signals from headline keywords, and recency gives a small bonus to connections
-made in the last 30 days. The reference implementation is
-[`scripts/score_new_connections.sql`](scripts/score_new_connections.sql), and
-[`lib/rpc.js`](lib/rpc.js) is a direct transcription of it — that is what scores
-anything the scraper brings in.
+- **Title (1–10)** comes from someone's current role in their headline, with former
+  roles at 70%; current students are capped.
+- **Company score (1–10)** is the one you set (Paths → Scores) if there is one. Otherwise
+  it comes from a list of well-known companies, or from how many of your people work
+  there.
+- Multiplying means seniority counts for more at a bigger company. A VP at a company
+  scored 10 gets 9.0; a founder at an unknown company, 6.7.
+- **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions. It counts half
+  at an unknown company, because headlines are self-written.
+- **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
 
-**CSV imports score on a reduced model.** LinkedIn's export has a bare job title
-and no headline, so the headline-signal and recency terms simply cannot be
-computed; those rows are scored from role and company alone
-([`lib/csv.js`](lib/csv.js)). The same person can land a tier apart depending on
-which path they arrived through. The two never mix in one view.
+Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (9/10) · +0.7
+strong circle"). A CSV import shows the score only, and uses the built-in company list
+rather than your own scores. The model is [`lib/scoring.js`](lib/scoring.js), explained
+in [`docs/brain/SCORING.md`](docs/brain/SCORING.md).
 
-It estimates **network reach**, not human worth. Keep that framing.
+It estimates **network position**, not what anyone is worth as a person.
 
 ## Privacy
 
-- A CSV import never leaves your browser and is never persisted
-- Scraped data and avatars are written locally and are gitignored
-- No telemetry, no analytics, no crash reporting from this app
-- The only outbound requests **it** makes are to LinkedIn, only while you are
-  scraping — and to GitHub, only when you press **Check for updates**, to read
-  the newest version number. Nothing about you is sent, and nothing checks on
-  its own
-- Next.js collects anonymous build metrics of its own; the `dev`, `build` and
-  `start` scripts set `NEXT_TELEMETRY_DISABLED=1`, so it stays off here. `npm
-  install` talks to the npm registry, as it does for any project.
+- Your network is stored on your computer and nowhere else. No account, no server, no
+  telemetry, no analytics, no crash reporting.
+- A CSV import is read on your machine and never added to your network. It's held only
+  in the app window's own storage, and you import it again next time.
+- The app contacts only these, and only when you act:
+  - **LinkedIn**, while you scan. Also, until a profile photo has been saved to your
+    computer, the app shows it straight from LinkedIn's image server.
+  - **PyPI** (the Python package library), once, to download the scanner's add-ons.
+  - **GitHub**, only when you click *Check for updates*, to read the newest version
+    number.
+  
+  Nothing about you is sent, and nothing checks on its own.
+- The web framework's own anonymous usage stats are turned off.
 
 See [SECURITY.md](SECURITY.md) for the threat model.
-
-## Configuration
-
-There is nothing to configure. Two optional environment variables exist:
-
-| Variable | Purpose |
-|---|---|
-| `SIX_DEGREES_HOME` | Where the database and avatars live. Defaults to `~/.six-degrees`. |
-| `ADMIN_TOKEN` | Only needed if you expose the app beyond localhost. The four destructive routes are open on your own machine and require this bearer token from any other host. |
 
 ## How your data is stored
 
 ```
-~/.six-degrees/
-├── six-degrees.sqlite      your network — connections, scores, tiers, queue
-├── six-degrees.sqlite-wal  SQLite write-ahead log (and -shm alongside it)
-├── avatars/                profile photos, if you run the scraper
-└── chrome-profile/         only if you run the scraper — see the warning below
+.six-degrees/               in your home folder (hidden)
+├── six-degrees.sqlite      your network: connections, scores, tiers, queue
+├── backups/                a copy of the database before each new version touches it
+├── avatars/                profile photos, if you scan
+├── chrome-profile/         the scanner's Chrome sign-in, if you scan (see below)
+├── venv/                   the scanner's Python add-ons, if you set it up
+├── pushback/               what LinkedIn's page said if it ever pushed back
+└── *.json                  the scanner's budget, cooldown, progress and skip lists
 ```
 
-To remove everything this app created, delete that folder. The app also keeps
-your name and a local id in the browser's `localStorage`; clearing site data for
-`localhost` removes it.
+**To remove everything:** quit the app and drag **Six Degrees** from Applications to the
+Trash. Then in Finder choose **Go → Go to Folder…** (⇧⌘G), paste `~/.six-degrees` and
+move that folder to the Trash. Do the same for
+`~/Library/Application Support/Six Degrees`, the app window's own storage and cache
+(it can include a CSV you imported).
 
 > [!WARNING]
-> `chrome-profile/` holds a **real logged-in LinkedIn session**. It is created
-> only when you run the scraper, is typically several hundred megabytes, and is
-> the one thing here that grants access to your account. Never copy it, sync it,
-> or commit it. Deleting it simply means logging in again next time.
+> `chrome-profile/` holds a **real, signed-in LinkedIn session**. It's the one thing here
+> that grants access to your account. Never copy it, sync it or share it. Deleting it
+> just means signing in again.
+
+## Configuration (for developers)
+
+Nothing to configure. Two optional environment variables exist:
+
+| Variable | Purpose |
+|---|---|
+| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies when you run from source, not when the Mac app is opened from the Dock or Finder. |
+| `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the six routes that delete data, run the scanner or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The one rule that matters: **never
-commit real network data** — no exported CSVs, no avatars, no screenshots of
-real people. CI fails the build if they appear.
+See [CONTRIBUTING.md](CONTRIBUTING.md). The rule that matters most: **never commit real
+network data**. That means no exported CSVs, no avatars, and no screenshots of real
+people.
 
 ## License
 

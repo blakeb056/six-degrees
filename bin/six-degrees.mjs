@@ -121,7 +121,9 @@ async function main() {
   process.env.PORT = String(port);
   process.env.HOSTNAME = '127.0.0.1';
   process.env.SIX_DEGREES_BIND = '127.0.0.1';   // read by the destructive-route gate
-  process.env.SIX_DEGREES_INSTALL = 'npm';        // tells the Updates panel how to update
+  // Tells the Updates panel how to update: a git checkout run from source
+  // updates with git; the npm package (once published) with npx.
+  process.env.SIX_DEGREES_INSTALL = existsSync(path.join(ROOT, '.git')) ? 'source' : 'npm';
   process.env.SIX_DEGREES_HOME = dataDir;
   process.env.NEXT_TELEMETRY_DISABLED = '1';
 

@@ -254,7 +254,7 @@ writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" enc
   <key>CFBundleShortVersionString</key><string>${pkg.version}</string>
   <key>CFBundleExecutable</key><string>six-degrees</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>LSMinimumSystemVersion</key><string>13.5</string>
   <key>LSUIElement</key><false/>
   <key>NSHighResolutionCapable</key><true/>
   <key>LSArchitecturePriority</key><array><string>${ARCH === 'x64' ? 'x86_64' : 'arm64'}</string></array>
@@ -306,6 +306,9 @@ async function buildElectronShell() {
     junk: true,
     extraResource: [SERVER_DIR, NODE_OUT],
     darwinDarkModeSupport: true,
+    // The bundled Node 24 needs macOS 13.5 (Electron itself needs 13), so say
+    // so, and macOS explains it instead of the app failing to start.
+    extendInfo: { LSMinimumSystemVersion: '13.5' },
     osxSign: false,        // signed ad hoc below, after everything is in place
   });
   console.log(`  Electron ${electronVersion} (${ARCH})`);

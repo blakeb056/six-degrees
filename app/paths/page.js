@@ -36,11 +36,14 @@ function PathsInner() {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      // A CSV import is 1st-degree only and lives in this tab, not the database.
+      // A CSV import (1st degree only) and the sample network (both degrees) live
+      // in this tab, not the database. Keep the sample's 2nd degree: without it
+      // the company map has no links and nobody is "reachable".
       const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
       let d1 = [], d2 = [], d3 = [];
       if (csv) {
         d1 = csv.degree1;
+        d2 = csv.degree2 || [];
       } else {
         const net = await loadNetwork(userId);
         d1 = net.degree1;

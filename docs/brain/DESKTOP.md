@@ -1,8 +1,8 @@
 # The desktop app
 
 The plan for turning Six Degrees into an app people download and open. No Terminal, no
-Python, no setup step before a scan. Adopted 2026-09-24. **Current phase: D1, built; first beta
-`v0.2.0-beta.1`.**
+Python, no setup step before a scan. Adopted 2026-09-24. **D1 shipped: the Electron app is the
+main download from 0.2.0.** Next: D2.
 
 Tick items in the same change that finishes them, and keep the status table at the bottom
 current. When this note and the spec disagree, the spec wins; fix this note.
@@ -107,7 +107,10 @@ Contents/Resources/python/      from D2
       running, and the installed copy's signature verifies).
 - [x] CI (rule 6): installs from the image, opens, reaches every page, refuses a second
       copy, quits mid-job, and checks nothing is left. It uploads a picture of the window.
-- [ ] Ships as `v0.2.0-beta.N`. **To promote:** Blake has used it on his real data for a
+- [x] Shipped as `v0.2.0-beta.1`, then **promoted in 0.2.0** at Blake's call ("the Electron
+      app at the top of the README"). He hadn't clicked through the beta himself yet;
+      CI and the checks above had. The classic launcher stays buildable
+      (`release.yml` input `shell: classic`) through the next full release (rule 5). **To promote:** Blake has used it on his real data for a
       few days, and a scan (once LinkedIn allows) started and stopped from it leaves no
       Chrome behind.
 
@@ -188,7 +191,7 @@ reason first:
 |---|---|
 | Tauri instead of Electron | About 10 MB instead of about 125 MB, but on a Mac it renders with Safari's engine. The UI is built and tested in Chrome's engine, which Electron keeps. |
 | Homebrew cask / winget | Good *second* channels, after D4. Homebrew's main catalog needs signed apps. A personal tap works, but brew quarantines what it downloads, which brings the first-launch warning back. |
-| apt and Linux packages | `npx six-degrees` already covers Linux. |
+| apt and Linux packages | Linux runs from source today (README). `npx six-degrees` would cover it once the npm package is published: the name is unclaimed, so claim it first. |
 | A cloud version | The scanner has to be the user's own browser on the user's own connection. Hosting everyone's network also makes the operator responsible for other people's data. |
 | PowerShell one-liner for Windows | Built, and passing CI on branch `windows` (2026-09-24). Parked, not released: D3 replaces it unless Windows is wanted before Electron. |
 
@@ -197,7 +200,7 @@ reason first:
 | Phase | State |
 |---|---|
 | D0 Groundwork | backups ✅ pre-releases ✅; "scanner" wording and the icon still to do |
-| D1 Electron, Mac | **built**; beta `v0.2.0-beta.1` for Blake to try |
+| D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
 | D4 Signing | when Blake decides to pay |

@@ -109,6 +109,10 @@ tick an item in the same change that finishes it.
       here: installed from its own disk image, run against a copy of real data, every page,
       a second launch refused, quit mid-job with nothing left, and an update over a running
       copy. CI repeats that on both chips
+- [x] 0.2.0 — the Electron app promoted to the main download; the README leads with it
+      (fixed-name download buttons, exact first-open steps); no more `npx` for
+      Windows/Linux (never published); a clear refusal below macOS 13.5; the sample network
+      and screenshots regenerated with the real scoring model
 - [ ] Search only 2nd degree (`network=["S"]`) instead of 1st+2nd+3rd: your own connections
       take up a quarter or more of every page and are thrown away on save. Needs one
       watched check once search works again
