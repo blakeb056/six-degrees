@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The Scan page's note on how long a whole list takes read "15 minutesa person".
+
 ## [0.1.6] - 2026-09-24
 
 ### Changed
