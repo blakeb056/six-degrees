@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Six Degrees — see your LinkedIn network as a galaxy</title>
+  <meta name="description" content="A free Mac app that maps your LinkedIn network: who you know, who they know, and the shortest path to anyone. Runs on your own computer; nothing is uploaded.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta property="og:title" content="Six Degrees">
+  <meta property="og:description" content="A free Mac app that maps your LinkedIn network as a galaxy. Runs on your own computer.">
+  <meta property="og:image" content="https://blakeb056.github.io/six-degrees/img/app-window.png">
+  <meta name="theme-color" content="#0b0a1c">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./"><img src="img/icon.svg" alt="" width="32" height="32"> Six Degrees</a>
+    <nav>
+      <a href="#install">Install</a>
+      <a href="#what">What it does</a>
+      <a href="#privacy">Privacy</a>
+      <a href="https://github.com/blakeb056/six-degrees">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img class="app-icon" src="img/icon.svg" alt="" width="96" height="96">
+      <h1>See your LinkedIn network<br>as a galaxy.</h1>
+      <p class="lede">Who you know, who <em>they</em> know, and the shortest path to anyone you haven't met.
+        A free Mac app that runs on your own computer. Nothing is uploaded.</p>
+
+      <div class="downloads" id="download">
+        <a class="dl primary" id="dl-silicon" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+          <span class="dl-title">Download for Mac</span>
+          <span class="dl-sub">Apple Silicon (M1 or newer)</span>
+        </a>
+        <a class="dl" id="dl-intel" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">
+          <span class="dl-title">Download for Mac</span>
+          <span class="dl-sub">Intel</span>
+        </a>
+      </div>
+      <p class="fine" id="version-line">macOS 13.5 or later · about 185 MB · free and open source</p>
+      <p class="guess" id="chip-guess" hidden></p>
+      <p class="not-mac" id="not-mac" hidden>
+        Six Degrees is a Mac app for now. On Linux you can
+        <a href="https://github.com/blakeb056/six-degrees#install-it">run it from source</a>;
+        Windows isn't supported yet.
+      </p>
+
+      <img class="shot" src="img/app-window.png" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="3136" height="2118">
+      <p class="caption">Every person shown on this page is invented.</p>
+    </section>
+
+    <section class="install" id="install">
+      <h2>Install it in a minute</h2>
+      <div class="which">
+        <strong>Which download?</strong> Apple menu → <strong>About This Mac</strong>.
+        "Chip: Apple M…" means <strong>Apple Silicon</strong>. "Processor: …Intel…" means <strong>Intel</strong>.
+      </div>
+
+      <ol class="steps">
+        <li>
+          <h3>Drag it into Applications</h3>
+          <p>Open the file you downloaded (<strong>Six-Degrees-Mac-….dmg</strong>, in your Downloads folder).
+            In the window that opens, drag <strong>Six Degrees</strong> onto the <strong>Applications</strong> folder.</p>
+        </li>
+        <li>
+          <h3>Open it once, and close the warning</h3>
+          <p>Open <strong>Six Degrees</strong> from Applications. macOS says it can't check the app for malware,
+            because it isn't signed with a paid Apple certificate yet. Close that message with <strong>Done</strong>
+            (on macOS 13 or 14: <strong>OK</strong> or <strong>Cancel</strong>). Anything except <em>Move to Trash</em>.</p>
+        </li>
+        <li>
+          <h3>Allow it in System Settings</h3>
+          <p>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll down to
+            <em>"Six Degrees" was blocked</em>, and click <strong>Open Anyway</strong>. Confirm with
+            <strong>Open</strong>. That's once per download; after that it opens like any app.</p>
+        </li>
+      </ol>
+
+      <div class="terminal">
+        <h3>Or skip those steps with Terminal</h3>
+        <p>Press <kbd>⌘</kbd> <kbd>Space</kbd>, type <em>Terminal</em> and press Return. Paste this line and press Return:</p>
+        <div class="cmd">
+          <code id="cmd">curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash</code>
+          <button type="button" id="copy" aria-label="Copy the install command">Copy</button>
+        </div>
+        <p class="fine">It downloads the right version for your Mac, checks the file is exactly the one published,
+          puts Six Degrees in Applications and opens it. Running it again updates the app.
+          <a href="https://github.com/blakeb056/six-degrees/blob/main/install.sh">Read the script</a>.</p>
+      </div>
+    </section>
+
+    <section class="what" id="what">
+      <h2>What it shows you</h2>
+      <div class="features">
+        <article>
+          <h3>Network Circle</h3>
+          <p>Everyone you know on rings by how much they can open up for you, the most powerful closest to you.</p>
+        </article>
+        <article>
+          <h3>Degrees</h3>
+          <p>The people two steps away, ranked, each with every way in: which of your connections can introduce you.</p>
+        </article>
+        <article>
+          <h3>Paths</h3>
+          <p>Your network by company and industry: who you know at each company, who you can reach, and the warmest way in.</p>
+        </article>
+        <article>
+          <h3>Outlink</h3>
+          <p>Getting introduced, as a game: work through each connection's circle five people at a time.</p>
+        </article>
+      </div>
+
+      <figure>
+        <img src="img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="2880" height="1800" loading="lazy">
+        <figcaption><strong>Degrees.</strong> Everyone two steps away, ranked, with the connection who can introduce you.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/paths.png" alt="Paths: companies grouped by industry, and one company's people by level and the ways in" width="2880" height="1800" loading="lazy">
+        <figcaption><strong>Paths.</strong> Companies grouped by industry, and for any one of them, who's there and how to reach them.</figcaption>
+      </figure>
+    </section>
+
+    <section class="ways">
+      <h2>Three ways to bring your network in</h2>
+      <div class="cards">
+        <article>
+          <h3>Explore a sample</h3>
+          <p>150 invented connections and the people they know. See every view before you decide anything.</p>
+        </article>
+        <article>
+          <h3>Import LinkedIn's export</h3>
+          <p>LinkedIn's own <code>Connections.csv</code>, read on your Mac. It shows the people you know, and there's no
+            risk to your LinkedIn account.</p>
+        </article>
+        <article>
+          <h3>Scan your LinkedIn</h3>
+          <p>The only way to see who <em>your connections</em> know. The app drives your own Chrome, slowly,
+            with daily limits. Needs Google Chrome and Python.</p>
+        </article>
+      </div>
+      <p class="warning"><strong>Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that
+        automate it.</strong> It happened twice while building this app. The scanner now reads slowly, keeps to a
+        budget and stops at the first push-back, but the risk is yours. The sample and the CSV import carry no
+        risk at all.</p>
+    </section>
+
+    <section class="privacy" id="privacy">
+      <h2>Your network stays on your Mac</h2>
+      <ul>
+        <li><strong>No account, no server.</strong> Everything is stored in a folder on your computer.</li>
+        <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
+        <li><strong>It only goes online when you act:</strong> LinkedIn while you scan (and for profile photos
+          until they're saved on your Mac), PyPI once to set up the scanner, and GitHub when you check for updates.</li>
+        <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
+          under the MIT licence.</li>
+      </ul>
+      <p class="fine">This page has no trackers either. To show the latest version number, it asks GitHub once.</p>
+    </section>
+
+    <section class="again">
+      <a class="dl primary" href="#download">
+        <span class="dl-title">Get Six Degrees</span>
+        <span class="dl-sub">Free for Mac</span>
+      </a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Six Degrees · MIT licence · <a href="https://github.com/blakeb056/six-degrees">Source on GitHub</a> ·
+      <a href="https://github.com/blakeb056/six-degrees/releases">All releases</a></p>
+    <p class="fine">It estimates network position, not what anyone is worth as a person.</p>
+  </footer>
+</body>
+</html>

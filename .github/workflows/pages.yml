@@ -1,0 +1,42 @@
+name: Website
+
+# The download page at https://blakeb056.github.io/six-degrees/ — site/ plus the
+# README's screenshots and the app icon, published with GitHub Pages. It has no
+# build step and no dependencies: what is in site/ is what is served.
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'docs/img/**', 'desktop/icon/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/img
+          cp -R site/. _site/
+          cp docs/img/app-window.png docs/img/degrees.png docs/img/paths.png _site/img/
+          cp desktop/icon/icon.svg _site/img/icon.svg
+          ls -la _site _site/img
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
