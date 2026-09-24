@@ -27,9 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the list. The list and the scanner's queue follow the same rules (`lib/paused.js`, tested
   against the scanner).
 
+- **Scan my whole network** and **Check for new** also wait out a cooldown. They aren't
+  searches, so they don't count against the budget, but they still open LinkedIn with
+  automation.
+
 ### Fixed
 - Re-mapping someone deleted their circle before checking anything; it now checks the
   cooldown and the budget first.
+- Windows: the scanner uses no Unix-only file lock or date format, and installs `tzdata`
+  so it knows when LinkedIn's month starts.
 
 ## [0.1.7] - 2026-09-24
 

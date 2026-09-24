@@ -253,7 +253,7 @@ const ACTIONS = {
   bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
   // Carry on with one person whose read was cut short. By profile URL, not name:
   // two connections can share a name, and Resume must reach the one clicked.
-  resume:        { flag: '--bridge-url', needsUrl: true, label: 'Carrying on with', searches: true },
+  resume:        { flag: '--bridge-url', needsId: true, label: 'Carrying on with', searches: true },
   // Carry on with everyone whose read was cut short, and nobody new.
   'resume-all':  { flag: '--auto-bridge --only-unfinished', label: 'Carrying on with every paused list', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
@@ -263,8 +263,10 @@ const ACTIONS = {
 /** Only a plain linkedin.com/in/ profile URL becomes an argument. */
 function cleanProfileUrl(raw) {
   const url = String(raw ?? '').trim();
-  if (url.length > 300) return null;
-  return /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%.]+\/?$/.test(url) ? url : null;
+  if (url.length > 400 || /[\u0000-\u001f\s]/.test(url)) return null;
+  // Any LinkedIn host (www., a country subdomain) and any profile slug, which
+  // can be non-ASCII; passed as one --flag=value token, so no shell ever sees it.
+  return /^https?:\/\/([a-z]{2,3}\.|www\.)?linkedin\.com\/in\/[^/?#]+\/?$/i.test(url) ? url : null;
 }
 
 /** Names come from the page, so they are checked before becoming an argument. */
@@ -321,14 +323,24 @@ export async function POST(request) {
     name = cleanName(body.name);
     if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
   }
+  // Resume sends the connection's id; the URL is looked up here, for this
+  // profile, so nothing from the request itself reaches the command line.
   let profileUrl = null;
-  if (spec.needsUrl) {
-    profileUrl = cleanProfileUrl(body.profileUrl);
-    if (!profileUrl) return Response.json({ error: 'A LinkedIn profile URL is required.' }, { status: 400 });
+  if (spec.needsId) {
+    try {
+      const me = resolveProfile({ create: false });
+      const row = me && getDb().prepare(
+        'SELECT profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
+      ).get(String(body.id ?? ''), me.id);
+      profileUrl = row?.profile_url && cleanProfileUrl(row.profile_url);
+    } catch { profileUrl = null; }
+    if (!profileUrl) return Response.json({ error: 'That connection could not be found.' }, { status: 400 });
   }
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
   // too, this just says so before a process is spawned.
-  const searches = spec.searches || action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'company'].includes(action);
+  // The 1st-degree scans aren't searches, but they open LinkedIn with automation too.
+  const searches = spec.searches || action.startsWith('auto-bridge')
+    || ['bridge', 'rescrape', 'company', 'full', 'refresh'].includes(action);
   const cooldown = linkedinState(dataDir()).cooldown;
   if (searches && cooldown) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()} — ${cooldown.reason}.`, cooldown }, { status: 409 });

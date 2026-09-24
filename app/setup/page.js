@@ -252,10 +252,10 @@ function SetupInner() {
           body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
           action={
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Btn onClick={() => run('full')} disabled={!canScrape} primary>
+              <Btn onClick={() => run('full')} disabled={!canSearch} primary>
                 {running && s.action === 'full' ? 'Scanning…' : 'Scan my whole network'}
               </Btn>
-              <Btn onClick={() => run('refresh')} disabled={!canScrape}>
+              <Btn onClick={() => run('refresh')} disabled={!canSearch}>
                 {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
               </Btn>
             </div>
@@ -368,7 +368,7 @@ function SetupInner() {
             <PausedList
               paused={s?.paused || []}
               disabled={!canSearch}
-              onResume={(p) => run('resume', { profileUrl: p.profileUrl })}
+              onResume={(p) => run('resume', { id: p.id })}
               onResumeAll={() => run('resume-all', { maxBridges: batch })}
             />
             </div>

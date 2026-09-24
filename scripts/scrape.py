@@ -1004,6 +1004,11 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     from playwright.sync_api import sync_playwright
 
     say = log_fn or (lambda m: None)
+    # Not a search, so no budget — but after LinkedIn pushed back (a security
+    # check, above all) nothing automated should open it until the cooldown lifts.
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
     mode = "Full Connection Scrape" if full_walk else "Smart Connection Refresh"
     print(f"\n=== {mode} ===\n")
 
@@ -1306,15 +1311,20 @@ class _Locked:
         self.f = None
 
     def __enter__(self):
-        import fcntl
         self.f = open(self.path, "a")
-        fcntl.flock(self.f, fcntl.LOCK_EX)
+        try:
+            import fcntl                   # macOS and Linux; Windows has none
+            fcntl.flock(self.f, fcntl.LOCK_EX)
+        except ImportError:
+            pass
         return self
 
     def __exit__(self, *exc):
-        import fcntl
         try:
+            import fcntl
             fcntl.flock(self.f, fcntl.LOCK_UN)
+        except ImportError:
+            pass
         finally:
             self.f.close()
 
@@ -1351,13 +1361,21 @@ def _read_activity():
     except FileNotFoundError:
         return {"searches": [], "profiles": []}
     except Exception:
-        stamp = int(time.time())
+        # Kept aside, and replaced by a record that says today's budget is used —
+        # written, so it holds for the whole day rather than one check. (Failing
+        # open would read a damaged file as nothing searched.)
+        now = time.time()
         try:
-            path.rename(path.with_name(f"{path.name}.corrupt-{stamp}"))
+            path.rename(path.with_name(f"{path.name}.corrupt-{int(now)}"))
         except OSError:
             pass
         print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
-        return {"searches": [time.time()] * 10000, "profiles": []}
+        fresh = {"searches": [now] * max(1, search_limits()["daily"] or 1), "profiles": []}
+        try:
+            _write_json_atomic(path, fresh)
+        except Exception:
+            pass
+        return fresh
 
 
 def charge_linkedin(kind="searches", n=1):
@@ -1409,10 +1427,21 @@ def searches_left(now=None):
     return (left_day, "daily") if left_day <= left_month else (left_month, "monthly")
 
 
+def _when(ts):
+    t = datetime.fromtimestamp(ts)
+    hour = t.hour % 12 or 12
+    return f"{t.strftime('%a %b')} {t.day}, {hour}:{t.minute:02d} {'AM' if t.hour < 12 else 'PM'}"
+
+
+def _day(ts):
+    t = datetime.fromtimestamp(ts)
+    return f"{t.strftime('%b')} {t.day}"
+
+
 def budget_message(kind):
     lim = search_limits()
     if kind == "monthly":
-        when = datetime.fromtimestamp(next_month_start_pacific()).strftime("%b %-d")
+        when = _day(next_month_start_pacific())
         return (f"This month's search budget ({lim['monthly']}) is used. It starts again on {when} "
                 f"(LinkedIn's month); the next run carries on from the same page.")
     return (f"Today's search budget ({lim['daily']}) is used — it counts the last 24 hours. "
@@ -1441,14 +1470,14 @@ def set_cooldown(seconds=None, until=None, reason=""):
     try:
         _write_json_atomic(_home() / "linkedin-cooldown.json",
                            {"until": until, "reason": reason, "set_at": now})
-        print(f"  Scanning paused until {datetime.fromtimestamp(until).strftime('%a %b %-d, %-I:%M %p')}"
+        print(f"  Scanning paused until {_when(until)}"
               f" ({reason}). The Scan page can lift it.")
     except Exception as exc:
         print(f"  (could not set the cooldown: {exc})")
 
 
 def cooldown_message(cd):
-    until = datetime.fromtimestamp(float(cd["until"])).strftime("%a %b %-d, %-I:%M %p")
+    until = _when(float(cd["until"]))
     return (f"Scanning is paused until {until} — {cd.get('reason') or 'LinkedIn pushed back'}. "
             f"Lift it on the Scan page if you're sure LinkedIn is fine.")
 
@@ -2281,6 +2310,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         # have marked the list finished.
         left, kind = searches_left()
         if left <= 0:
+            # Looking for Next costs nothing. No Next on a live page of results
+            # means the list is finished — not paused at the next page forever.
+            if _find_next(page) is None and not _window_closed(page) and _result_links(page):
+                print(f"  No Next button after {END_CHECKS} looks — that's all of their list.")
+                break
             reach["budget"] = kind
             reach["more"] = True
             print("  " + budget_message(kind))
@@ -2654,6 +2688,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
                 try:
                     people_btn = page.locator('button:has-text("People")').first
                     if people_btn.is_visible(timeout=3000):
+                        charge_linkedin("searches")
                         people_btn.click()
                         time.sleep(5)
                         current = page.url
@@ -2711,6 +2746,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
                     }
                     """)
                     if not is_active:
+                        charge_linkedin("searches")
                         btn.click()
                         log(f"    Clicked {degree_label.replace(chr(92), '')} ✓")
                         time.sleep(2)
@@ -2742,6 +2778,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
             }
             """)
             if degree_links:
+                charge_linkedin("searches", len(degree_links))   # each click reloads the results
                 log(f"    Clicked degree links: {degree_links}")
                 time.sleep(5)
 
@@ -2763,9 +2800,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
         page_num = 1
 
         while page_num <= 20:
-            if searches_left()[0] <= 0:
-                log(budget_message(searches_left()[1]))
-                break
+            pass
             log(f"  Page {page_num}...")
             time.sleep(3)
 
@@ -2837,6 +2872,9 @@ def scrape_company(company_name, headless=False, log_fn=None):
             try:
                 next_btn = page.locator('button:has-text("Next")').first
                 if next_btn.is_visible(timeout=3000):
+                    if searches_left()[0] <= 0:   # before paying for a page, not after
+                        log(budget_message(searches_left()[1]))
+                        break
                     charge_linkedin("searches")
                     next_btn.click()
                     page_num += 1
@@ -3484,47 +3522,53 @@ Examples:
     if not args.server:
         resolve_active_user()
 
-    if args.company:
-        # The server mode scraped and pushed as one step; the CLI has to do the
-        # same or the scan appears to work and saves nothing.
-        people = scrape_company(args.company, headless=args.headless)
-        if people:
-            print(f"\nSaving {len(people)} people from {args.company}...")
-            push_company(people, args.company)
-        print(f"Done. {len(people) if people else 0} found at {args.company}.")
-    elif args.auto_bridge:
-        results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
-                                  max_bridges=args.max_bridges,
-                                  tiers=args.tiers.split(",") if args.tiers else None,
-                                  order=args.order, max_pages=args.max_pages, deeper=args.deeper,
-                                  only_unfinished=args.only_unfinished)
-        done = sum(1 for r in results if r.get("status") == "done")
-        print(f"\nDone. {done}/{len(results)} bridges mapped.")
-    elif args.search:
-        scrape_full(headless=args.headless)
-    elif args.full:
-        scrape_connections(headless=args.headless, full_walk=True)
-    elif args.refresh:
-        scrape_connections(headless=args.headless)
-    elif args.server:
-        run_server()
-    elif args.rescrape:
-        rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
-    elif args.bridge_url:
-        scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=True,
-                      profile_url=args.bridge_url)
-    elif args.bridge:
-        scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
-    else:
-        # Nothing collected yet means this is a first run, and the full scrape
-        # is the one that walks every search page and captures photos. Running
-        # the incremental refresh here is what made a fresh install look broken.
-        existing = read_connections(params={"degree": "eq.1", "limit": "1"})
-        if existing:
-            print("\nExisting connections found — checking for new ones only.")
-            print("Use --full to re-walk everything.\n")
-            scrape_connections(headless=args.headless)
-        else:
-            print("\nNo connections yet — walking your whole connections list.")
-            print("This takes a couple of minutes and captures photos.\n")
+    # A budget or a cooldown ending a run is the design working, not a failure:
+    # say why and exit 0, so the Scan page doesn't show it as a red error.
+    try:
+        if args.company:
+            # The server mode scraped and pushed as one step; the CLI has to do the
+            # same or the scan appears to work and saves nothing.
+            people = scrape_company(args.company, headless=args.headless)
+            if people:
+                print(f"\nSaving {len(people)} people from {args.company}...")
+                push_company(people, args.company)
+            print(f"Done. {len(people) if people else 0} found at {args.company}.")
+        elif args.auto_bridge:
+            results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
+                                      max_bridges=args.max_bridges,
+                                      tiers=args.tiers.split(",") if args.tiers else None,
+                                      order=args.order, max_pages=args.max_pages, deeper=args.deeper,
+                                      only_unfinished=args.only_unfinished)
+            done = sum(1 for r in results if r.get("status") == "done")
+            print(f"\nDone. {done}/{len(results)} bridges mapped.")
+        elif args.search:
+            scrape_full(headless=args.headless)
+        elif args.full:
             scrape_connections(headless=args.headless, full_walk=True)
+        elif args.refresh:
+            scrape_connections(headless=args.headless)
+        elif args.server:
+            run_server()
+        elif args.rescrape:
+            rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
+        elif args.bridge_url:
+            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=True,
+                          profile_url=args.bridge_url)
+        elif args.bridge:
+            scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
+        else:
+            # Nothing collected yet means this is a first run, and the full scrape
+            # is the one that walks every search page and captures photos. Running
+            # the incremental refresh here is what made a fresh install look broken.
+            existing = read_connections(params={"degree": "eq.1", "limit": "1"})
+            if existing:
+                print("\nExisting connections found — checking for new ones only.")
+                print("Use --full to re-walk everything.\n")
+                scrape_connections(headless=args.headless)
+            else:
+                print("\nNo connections yet — walking your whole connections list.")
+                print("This takes a couple of minutes and captures photos.\n")
+                scrape_connections(headless=args.headless, full_walk=True)
+    except (BudgetReached, CoolingDown) as exc:
+        print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)))
+        raise SystemExit(0)
