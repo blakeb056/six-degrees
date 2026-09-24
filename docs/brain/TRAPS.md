@@ -646,3 +646,23 @@ connections before a 2nd-degree or company insert (with tests); the scraper de-d
 across pages before pushing; a non-200 save raises `SaveFailed`, which stops a batch with
 the reason; and the ingest response says what was new rather than what was sent.
 
+---
+
+## 33. A rewrite that drops a field fails silently — twice over
+
+The 1st-degree reader was rewritten on 2026-09-09 (anchor on the profile link, TRAPS §5) and
+the new `CONNECTIONS_EXTRACT_JS` never read the "Connected on …" line. The old reader had.
+Nothing failed: `connected_date` was simply null for every row, so:
+
+- "Newest first" could only guess from when rows were saved — and a full scan that finds
+  people an earlier scan missed saves *old* connections with a *new* timestamp. The queue
+  started with someone connected long ago instead of the newest person.
+- The scoring bonus for connections made in the last 30 days (`recencyBonus`, lib/rpc.js)
+  silently never applied.
+
+When replacing an extractor, list the fields the old one returned and check the new one
+returns every one. The date is now read by climbing from each profile link to the nearest
+block holding exactly one "Connected on" line (more than one means the climb reached the
+list and would take a neighbour's date), and `lib/ingest.js` `toIsoDate` parses it by hand —
+`new Date(text).toISOString()` shifts the day east of Greenwich and throws on bad text.
+

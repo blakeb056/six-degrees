@@ -46,6 +46,13 @@ test('2nd-degree batches count finished people, not the one starting', () => {
   assert.deepEqual(scanProgress(log, 'auto-bridge-retry').current, 3);
 });
 
+test('after the walk it says it is saving, not stuck at 99%', () => {
+  const log = ['  807 / 817 collected', '  Reached the end of the list (814 collected).',
+    'Collected 814 connections (806 with photos).', 'Pushing 814 connections to the app...'];
+  assert.deepEqual(scanProgress(log, 'full'), { kind: 'saving' });
+  assert.deepEqual(scanProgress([...log, '  [image_store] captured 60/60 avatars'], 'full'), { kind: 'saving' });
+});
+
 test('other actions have no bar', () => {
   assert.equal(scanProgress(['  50 / 817 collected'], 'login'), null);
   assert.equal(scanProgress(['[1/10] Someone'], 'install'), null);

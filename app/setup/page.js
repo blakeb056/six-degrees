@@ -40,10 +40,10 @@ function SetupInner() {
   // Which connections to map first. Newest is what people expect after adding
   // someone: the old fixed tier order skipped straight past new connections that
   // were not S-tier.
-  const [order, setOrder] = useState('newest');
+  const [order, setOrder] = useRemembered('six-degrees-bridge-order', 'newest');
   // How many result pages to read per person. Every page is a LinkedIn search,
   // and free accounts have a monthly search limit, so the default stays at 10.
-  const [pages, setPages] = useState(10);
+  const [pages, setPages] = useRemembered('six-degrees-bridge-pages', 10);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -271,7 +271,7 @@ function SetupInner() {
           }
           action={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
                 {['S', 'A', 'B', 'C', 'D'].map((t) => {
                   const on = tiers.includes(t);
@@ -292,7 +292,13 @@ function SetupInner() {
                 <span style={{ fontSize: 11.5, color: '#667' }}>
                   {tiers.length ? '' : 'pick at least one'}
                 </span>
-              </div>
+              </div>}
+              {order === 'newest' && (
+                <div style={{ fontSize: 12, color: '#8b9a9a', lineHeight: 1.6 }}>
+                  Goes by the date you connected, newest first, across every tier. Run
+                  {' '}<b>Check for new</b> first so your latest connections are in the list.
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: '#8b9a9a' }}>Start with</span>
                 <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
@@ -315,7 +321,7 @@ function SetupInner() {
                 </div>
               )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers, order, maxPages: pages })} disabled={!canScrape || !tiers.length} primary>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages })} disabled={!canScrape || (order === 'score' && !tiers.length)} primary>
                 {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
               </Btn>
               <select
@@ -329,7 +335,7 @@ function SetupInner() {
                 <option value={25}>25 people</option>
                 <option value={0}>everyone — not advised</option>
               </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers, order, maxPages: pages })} disabled={!canScrape || !tiers.length}>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages })} disabled={!canScrape || (order === 'score' && !tiers.length)}>
                 Retry hidden ones
               </Btn>
             </div>
@@ -388,9 +394,28 @@ function SetupInner() {
         </p>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes slide { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }`}</style>
     </div>
   );
+}
+
+// A setting this browser remembers between visits: the order and depth someone
+// picked should not reset every time the page opens. localStorage can be missing
+// or throw (private windows), and then it is simply not remembered.
+function useRemembered(key, fallback) {
+  const [value, setValue] = useState(fallback);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved !== null) setValue(JSON.parse(saved));
+    } catch { /* not remembered */ }
+  }, [key]);
+  const set = (next) => {
+    setValue(next);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* not remembered */ }
+  };
+  return [value, set];
 }
 
 const code = { background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: 4 };
@@ -447,6 +472,23 @@ function Box({ children, tone }) {
 // already saved, so a bar measured against the whole list would sit near empty
 // and then vanish, which looks like a failure.
 function Progress({ p, action }) {
+  if (p.kind === 'saving') {
+    return (
+      <div style={{ margin: '8px 0 6px' }}>
+        <div role="progressbar" aria-label="Saving" style={{
+          height: 8, borderRadius: 4, overflow: 'hidden', background: 'rgba(255,255,255,0.08)', marginBottom: 6,
+        }}>
+          <div style={{
+            width: '35%', height: '100%', borderRadius: 4,
+            background: 'linear-gradient(90deg, #9B59B6, #3498DB)', animation: 'slide 1.2s ease-in-out infinite',
+          }} />
+        </div>
+        <div style={{ fontSize: 12.5, color: '#cfe6f7' }}>
+          Saving to your network and fetching photos — this can take a minute or two.
+        </div>
+      </div>
+    );
+  }
   const pct = Math.max(0, Math.min(100, Math.round((p.done / p.total) * 100)));
   let text;
   if (p.kind === 'batch') text = `Person ${p.current} of ${p.total}`;
