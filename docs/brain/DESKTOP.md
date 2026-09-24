@@ -1,7 +1,8 @@
 # The desktop app
 
 The plan for turning Six Degrees into an app people download and open. No Terminal, no
-Python, no setup step before a scan. Adopted 2026-09-24. **Current phase: D1, not started.**
+Python, no setup step before a scan. Adopted 2026-09-24. **Current phase: D1, built; first beta
+`v0.2.0-beta.1`.**
 
 Tick items in the same change that finishes them, and keep the status table at the bottom
 current. When this note and the spec disagree, the spec wins; fix this note.
@@ -65,7 +66,10 @@ wrong, however good it looks.
       last five and never touching hand-made copies. Checked on a copy of real data (3,877
       people copied)
 - [ ] A real app icon: 1024px artwork → `.icns` for the Mac and `.ico` for Windows. Today
-      there is none on the Mac, and only a 32px favicon. Needs Blake's direction.
+      there is none on the Mac, and the favicon is **Next.js's default Vercel triangle**
+      (Vercel's mark, not ours). The Electron build uses a placeholder
+      (`desktop/icon/icon.svg`: you at the centre, your circles in the tier colours) until
+      Blake picks one.
 - [x] Mark tags with a hyphen (`v0.2.0-beta.1`) as pre-releases in `release.yml`, with
       install-to-a-separate-folder notes; npm gets them under `next`, never `latest`
 
@@ -80,25 +84,29 @@ Contents/Resources/app/         the same standalone server (+ scanner files)
 Contents/Resources/python/      from D2
 ```
 
-- [ ] Main process: start `server.js` on the bundled Node with the same settings as today's
-      launcher (127.0.0.1, ports walked up from 6363, `SIX_DEGREES_INSTALL=mac-app`,
-      telemetry off), wait for it to answer, then open the window on it.
-- [ ] Quitting (Cmd-Q, or the menu) first stops a running scan the way the Stop button
-      does, so the scanner closes its Chrome itself, and only then stops the server.
-      Nothing is left behind. This matches what the old launcher's `trap` did (TRAPS §26).
-- [ ] One copy at a time: opening the app again brings its window forward.
-- [ ] Links: anything not on the app's own address opens in the default browser (rule 7).
-- [ ] Safe defaults: context isolation on, Node integration off, sandbox on. The window
-      only ever shows the app's own local address.
-- [ ] A native menu: About (with the version), Check for Updates…, Edit (copy/paste), Quit.
-- [ ] Packaging: `@electron/packager` builds the `.app` for each chip (arm64 on
-      `macos-15`, x64 on `macos-15-intel`). The **existing `.dmg` step** in `build-app.mjs`
-      (window layout, Applications alias, background; TRAPS §28) is reused unchanged.
-      The app name and bundle id stay the same, so `install.sh` and a copy already in
-      Applications update in place.
-- [ ] `install.sh` still stops a running copy (TRAPS §26). Electron runs as several
-      processes; check they are all found by path.
-- [ ] CI smoke test, rule 6.
+- [x] Main process (`desktop/main.mjs`): start `server.js` on the bundled Node with the
+      same settings as the old launcher (127.0.0.1, ports walked up from 6363,
+      `SIX_DEGREES_INSTALL=mac-app`, telemetry off), show a "starting" page, and swap in the
+      app once it answers. `--data-dir PATH` runs it against a copy of the data.
+- [x] Quitting stops a running scan the way the Stop button does, so the scanner closes its
+      Chrome itself, and only then the server. It asks first only if you're looking at it
+      (TRAPS §38). Checked: quit mid-job with another app in front, and job, server and app
+      were gone in about 2 seconds.
+- [x] One copy at a time: opening it again brings the window forward (checked).
+- [x] Links: anything not on the app's own address opens in the default browser (rule 7);
+      the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
+- [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,
+      and only clipboard-write and full-screen permissions.
+- [x] A native menu: About, Check for Updates… (opens the Scan page's Updates panel), Edit,
+      View, Window, and Help (GitHub, what changed, the data folder, the log).
+- [x] Packaging: `@electron/packager` (Electron 44.4.5) per chip, then the existing `.dmg`
+      step, filled with `ditto` (TRAPS §37), with the app inside the image checked on every
+      build. Same app name and bundle id. **Needs macOS 13 or later** (Electron 44), where
+      the classic app ran on 11.
+- [x] `install.sh` stops a running Electron copy and replaces it (checked: nothing left
+      running, and the installed copy's signature verifies).
+- [x] CI (rule 6): installs from the image, opens, reaches every page, refuses a second
+      copy, quits mid-job, and checks nothing is left. It uploads a picture of the window.
 - [ ] Ships as `v0.2.0-beta.N`. **To promote:** Blake has used it on his real data for a
       few days, and a scan (once LinkedIn allows) started and stopped from it leaves no
       Chrome behind.
@@ -189,7 +197,7 @@ reason first:
 | Phase | State |
 |---|---|
 | D0 Groundwork | backups ✅ pre-releases ✅; "scanner" wording and the icon still to do |
-| D1 Electron, Mac | **next**: Blake's priority |
+| D1 Electron, Mac | **built**; beta `v0.2.0-beta.1` for Blake to try |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
 | D4 Signing | when Blake decides to pay |

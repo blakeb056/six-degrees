@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-beta.1] - 2026-09-24 (beta: a pre-release, never installed automatically)
+
+### Added
+- **Six Degrees as a real Mac app (Electron).** Its own window, Dock icon and menu, instead
+  of a Chrome window. Inside, it runs the same server as before, so every screen, your data
+  and the scanner behave exactly as they do in 0.1.11.
+  - **Quitting cleans up.** A running scan is stopped the way the Stop button stops it, so
+    its Chrome window closes, and then the server. If you're looking at the app when you
+    quit during a scan, it asks first.
+  - **LinkedIn opens in your own browser**, never inside the app.
+  - Opening it again brings the window forward. Closing the window leaves it running,
+    like any Mac app, so a scan carries on; Quit ends it.
+  - `--data-dir PATH` runs it against a copy of your data:
+    `open "Six Degrees.app" --args --data-dir ~/six-degrees-copy`.
+  - A placeholder icon (you at the centre, your circles in the tier colours) until a real
+    one is chosen.
+- **Needs macOS 13 (Ventura) or later**, where the classic app ran on macOS 11.
+- The download is about 175 MB (the classic app is about 55 MB). Full releases stay the
+  classic app until this one is promoted (`docs/brain/DESKTOP.md`).
+
 ## [0.1.11] - 2026-09-24
 
 ### Security

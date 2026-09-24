@@ -14,9 +14,13 @@ const nextConfig = {
   // is named here. `.git` above all: inside the Mac app it made the installed
   // copy look like a checkout, so its Updates panel would have tried to
   // `git pull` into the app bundle. Logs carry local paths and are never needed.
+  //
+  // The desktop shell (desktop/) and Electron itself are packed around the
+  // server, never inside it: Electron alone is ~250 MB.
   outputFileTracingExcludes: {
-    '*': ['dist/*.app/**', 'dist/*.dmg', 'dist/staging/**', 'docs/**', 'tests/**',
-          '.git/**', '*.log', 'scripts/dmg/**'],
+    '*': ['dist/*.app/**', 'dist/*.dmg', 'dist/staging/**', 'dist/electron-stage/**', 'docs/**', 'tests/**',
+          '.git/**', '*.log', 'scripts/dmg/**', 'desktop/**',
+          'node_modules/electron/**', 'node_modules/@electron/**'],
   },
   // Emits .next/standalone with a server and only the dependencies actually
   // reached, so the published package can run without node_modules being

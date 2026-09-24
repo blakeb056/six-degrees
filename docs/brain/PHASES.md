@@ -105,6 +105,10 @@ tick an item in the same change that finishes it.
       fixed; `npm audit` clean). Also the data backup before each new version and betas as
       pre-releases (DESKTOP.md D0). Checked on a copy of real data: every page, the
       cross-site guards, and the backup (3,877 people copied)
+- [x] 0.2.0-beta.1 (pre-release) — the Electron app for the Mac (DESKTOP.md D1). Checked
+      here: installed from its own disk image, run against a copy of real data, every page,
+      a second launch refused, quit mid-job with nothing left, and an update over a running
+      copy. CI repeats that on both chips
 - [ ] Search only 2nd degree (`network=["S"]`) instead of 1st+2nd+3rd: your own connections
       take up a quarter or more of every page and are thrown away on save. Needs one
       watched check once search works again

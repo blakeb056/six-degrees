@@ -30,9 +30,18 @@ on:
         description: 'Build the .dmg files only and publish nothing'
         type: boolean
         default: false
+      shell:
+        description: 'Which Mac app: auto (a beta tag or a dry run → electron, a release tag → classic), electron, or classic'
+        type: choice
+        options: [auto, electron, classic]
+        default: auto
 
 permissions:
   contents: write
+
+# The desktop build fetches its own Electron; npm's copy of the binary is not needed.
+env:
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
 jobs:
   mac:
@@ -66,10 +75,84 @@ jobs:
           fi
       - run: npm ci
       - run: npm test
+      # Which shell (docs/brain/DESKTOP.md): betas (v0.2.0-beta.1) and dry runs
+      # build the Electron app; full releases stay classic until it is promoted.
       - name: Build the app and disk image
-        run: node scripts/build-app.mjs
+        run: |
+          shell="${{ inputs.shell || 'auto' }}"
+          if [ "$shell" = auto ]; then
+            case "${{ inputs.tag || github.ref_name }}" in
+              v*-*) shell=electron ;;
+              v*)   shell=classic ;;
+              *)    shell=electron ;;
+            esac
+          fi
+          echo "Building the $shell app"
+          echo "APP_SHELL=$shell" >> "$GITHUB_ENV"
+          node scripts/build-app.mjs --shell="$shell"
         env:
           BUNDLE_ARCH: ${{ matrix.arch }}
+      # The Electron app as people get it: installed from its own disk image by
+      # install.sh, not the copy in dist/ (a link that only resolves on the build
+      # machine passes there and fails everywhere else, TRAPS §37). Then open
+      # it, reach it, refuse a second copy, quit it mid-job, and check that
+      # nothing is left running.
+      - name: Install it from the disk image, open, reach, quit, and check nothing is left
+        if: env.APP_SHELL == 'electron'
+        run: |
+          set -u
+          apps="$RUNNER_TEMP/apps"
+          SIX_DEGREES_DMG="$(ls dist/*.dmg)" SIX_DEGREES_DEST="$apps" SIX_DEGREES_NO_OPEN=1 bash install.sh
+          app="$apps/Six Degrees.app"
+          codesign --verify --deep --strict "$app"
+          if find "$app" -type l -exec readlink {} \; | grep -q '^/'; then echo "::error::The installed app has absolute symlinks"; exit 1; fi
+
+          export SIX_DEGREES_HOME="$RUNNER_TEMP/six-degrees-home" SIX_DEGREES_SMOKE=1
+          export SIX_DEGREES_SMOKE_SHOT="$RUNNER_TEMP/window-${{ matrix.arch }}.png"
+          "$app/Contents/MacOS/Six Degrees" > "$RUNNER_TEMP/app.log" 2>&1 &
+          app_pid=$!
+          url=""
+          for i in $(seq 1 120); do
+            url=$(grep -o 'SIX_DEGREES_READY http://[0-9.:]*' "$RUNNER_TEMP/app.log" | awk '{print $2}' | tail -1)
+            [ -n "$url" ] && break
+            kill -0 $app_pid 2>/dev/null || { echo "::error::The app exited while starting"; cat "$RUNNER_TEMP/app.log"; exit 1; }
+            sleep 1
+          done
+          [ -n "$url" ] || { echo "::error::The app never became ready"; cat "$RUNNER_TEMP/app.log"; exit 1; }
+          echo "Running at $url"
+          for p in "" paths queue setup api/network api/company-scores api/scraper; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url/$p"); echo "  /$p $code"
+            [ "$code" = 200 ] || exit 1
+          done
+
+          "$app/Contents/MacOS/Six Degrees" > "$RUNNER_TEMP/second.log" 2>&1 &
+          second=$!
+          for i in $(seq 1 20); do kill -0 $second 2>/dev/null || break; sleep 1; done
+          if kill -0 $second 2>/dev/null; then echo "::error::A second copy kept running"; exit 1; fi
+          echo "A second launch handed over and exited"
+
+          # A job to stop: the scanner's setup (pip, no LinkedIn), uncached so it runs a while.
+          server=$(lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN | awk 'NR==2{print $2}')
+          curl -s -X POST -H 'Content-Type: application/json' -d '{"action":"install"}' "$url/api/scraper"; echo
+          sleep 3
+          jobs=$(pgrep -P "$server" | tr '\n' ' ')
+          echo "job processes: ${jobs:-none}"
+          kill -TERM $app_pid
+          for i in $(seq 1 40); do kill -0 $app_pid 2>/dev/null || break; sleep 1; done
+          if kill -0 $app_pid 2>/dev/null; then echo "::error::The app did not quit"; exit 1; fi
+          sleep 2
+          for j in $jobs; do if kill -0 "$j" 2>/dev/null; then echo "::error::Job $j was left running"; exit 1; fi; done
+          if lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN; then echo "::error::The server was left running"; exit 1; fi
+          if ps -axo command | grep -F "$app/Contents/" | grep -v grep; then echo "::error::App processes were left running"; exit 1; fi
+          echo "Installed from the image, opened, reached, refused a second copy, quit mid-job, left nothing."
+        env:
+          PIP_NO_CACHE_DIR: '1'
+      - uses: actions/upload-artifact@v4
+        if: always() && env.APP_SHELL == 'electron'
+        with:
+          name: window-${{ matrix.arch }}
+          path: ${{ runner.temp }}/window-*.png
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: dmg-${{ matrix.arch }}
