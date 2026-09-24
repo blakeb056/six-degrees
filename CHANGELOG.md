@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-24
+
 ### Fixed
+- **Hovering a dot in the Galaxy made it rebuild itself hundreds of times a second** —
+  the rings collapsed and re-formed for as long as the mouse stayed on a dot. The hover
+  tooltips sat invisibly at the bottom of the page, making it 18px taller than the
+  window; on a Mac that shows scrollbars (a mouse, an external display) that meant a
+  scrollbar, and moving the tooltip on hover removed it again. Each flip of the
+  scrollbar resized the graph, and each resize rebuilt it. Tooltips now float above the
+  page, and a resize waits to settle before it rebuilds anything.
+- Clicking a dot, or anything else that re-rendered the page, also reset the Galaxy's
+  layout: the page handed it a new, empty list and a new click handler every time. Both
+  are now stable, so the scene only rebuilds when what it shows actually changes.
 - A release build could fail at the very end with "Resource busy": right after Finder
   lays out the disk image's window, Finder or Spotlight can still hold the volume. The
   build now retries the eject, and says when it had to. Nothing changes in the app.

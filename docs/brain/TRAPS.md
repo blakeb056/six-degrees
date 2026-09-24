@@ -541,3 +541,35 @@ build is the one that can carry somebody's personal file out of the folder.
   versions, and a fresh profile can stall on a keychain prompt. `make-dmg-background.mjs`
   uses a stand-in keychain, waits for the file, and ends Chrome itself.
 
+---
+
+## 29. An invisible tooltip made the Galaxy rebuild itself in a loop
+
+Hovering any dot in the Galaxy rebuilt the whole scene hundreds of times a second — about
+250 rebuilds and 200,000 replaced elements in three seconds of a still mouse. The chain:
+
+1. The hover tooltips were `position: absolute` with no `top`/`left` until first used,
+   so they sat at their static position — below everything — and made the page 18px
+   taller than the window.
+2. On a Mac showing scrollbars (a mouse, an external display) that is a scrollbar, and
+   the graph's container was 6px narrower.
+3. Hovering gave the tooltip a position, the page fit the window again, the scrollbar
+   went, and the container widened.
+4. The `ResizeObserver` published the new size and the scene rebuilt — creating fresh
+   tooltips at the bottom of the page. Scrollbar back, container narrower, rebuild…
+
+It needs visible scrollbars, so a trackpad-only laptop never shows it. The rules it left:
+
+- **Anything a component appends to `<body>` is `position: fixed`**, placed with
+  `clientX`/`clientY`. A fixed element cannot change the page's size.
+- **A resize that rebuilds the scene is debounced** (`ForceGraph.js`, 150 ms), so no
+  flicker can drive a rebuild loop again.
+- **What a scene-rebuilding component receives must be stable.** `app/page.js` memoises
+  the filtered lists and the click handler; an inline `[]` or arrow function is a new
+  value every render, and each one was a full rebuild. `ForceGraph` reads `onSelect`
+  through a ref for the same reason.
+
+How it was found: a `MutationObserver` on the `<svg>` counting added and removed nodes
+while hovering, and a second one recording its `width` attribute, which flipped
+1193 ↔ 1199 in step with the rebuilds.
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
@@ -12,6 +12,9 @@ import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
 import Link from 'next/link';
+
+// One shared empty list, so "no 2nd-degree data" is the same value every render.
+const NO_DEGREE2 = [];
 
 const TIER_COLORS = {
   S: '#FFD700',
@@ -97,7 +100,27 @@ function HomeInner() {
 
   const isDegreesMode = mode === 'degrees';
   const connections = degree1;
-  const filtered = filter === 'all' ? connections : connections.filter(c => c.tier === filter);
+
+  // What the views draw. Memoised because the graph views rebuild their whole
+  // scene when these change identity: computed inline, every re-render — a click,
+  // the sidebar opening, notifications arriving — reset the galaxy's layout. The
+  // empty list in network mode was a new [] each time, which was enough on its own.
+  const filtered = useMemo(
+    () => (filter === 'all' ? connections : connections.filter(c => c.tier === filter)),
+    [connections, filter],
+  );
+  const filteredD2 = useMemo(() => {
+    if (!isDegreesMode) return NO_DEGREE2;
+    if (filter === 'all') return degree2;
+    return degree2.filter(c => {
+      const bridge = degree1.find(d1 => d1.id === c.source_connection_id);
+      return bridge && bridge.tier === filter;
+    });
+  }, [isDegreesMode, filter, degree1, degree2]);
+  const selectHandler = useCallback((node) => {
+    setSelected(node);
+    if (node) setSidebarCollapsed(false);
+  }, []);
 
   if (loading) {
     return (
@@ -338,14 +361,6 @@ function HomeInner() {
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
-          const filteredD2 = isDegreesMode ? (filter === 'all'
-            ? degree2
-            : degree2.filter(c => {
-                const bridge = degree1.find(d1 => d1.id === c.source_connection_id);
-                return bridge && bridge.tier === filter;
-              })
-          ) : [];
-          const selectHandler = (node) => { setSelected(node); if (node) setSidebarCollapsed(false); };
 
           // No connections at all: offer a way in rather than a black screen.
           if (degree1.length === 0) return <EmptyState />;

@@ -46,6 +46,14 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
   const [focusedCluster, setFocusedCluster] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
+  // The scene is rebuilt from scratch whenever its inputs change, so only real
+  // changes should count. A parent re-rendering hands over a new onSelect every
+  // time; reading it through a ref keeps the scene from resetting on every click.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; });
+  // The network view never uses degree2, so a new array there is not a change.
+  const sceneDegree2 = mode === 'degrees' ? degree2 : null;
+
   useEffect(() => {
     const container = svgRef.current?.parentElement;
     if (!container) return;
@@ -61,9 +69,16 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
       );
     };
     updateSize();
-    const ro = new ResizeObserver(updateSize);
+    // A resize rebuilds the whole scene, so wait for it to settle. Dragging a
+    // window edge, or anything that flickers the size, otherwise rebuilds on every
+    // frame — and a rebuild that itself changes the size never stops (TRAPS §29).
+    let timer = null;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(updateSize, 150);
+    });
     ro.observe(container);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); clearTimeout(timer); };
   }, []);
 
   // Listen for cluster focus events from D3
@@ -85,10 +100,11 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
     prevModeRef.current = mode;
     const savedTransform = modeChanged ? null : zoomTransformRef.current;
 
+    const select = (d) => onSelectRef.current?.(d);
     if (mode === 'degrees') {
-      simulation = renderDegreesMode(svg, width, height, connections, degree2, onSelect, tierColors, savedTransform, zoomTransformRef, userName, zoomToClusterRef, zoomOutRef);
+      simulation = renderDegreesMode(svg, width, height, connections, sceneDegree2 || [], select, tierColors, savedTransform, zoomTransformRef, userName, zoomToClusterRef, zoomOutRef);
     } else {
-      simulation = renderNetworkMode(svg, width, height, connections, onSelect, tierColors, focusNodeRef, savedTransform, zoomTransformRef, userName);
+      simulation = renderNetworkMode(svg, width, height, connections, select, tierColors, focusNodeRef, savedTransform, zoomTransformRef, userName);
     }
 
     return () => {
@@ -101,7 +117,10 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
       simulation?.stop();
       d3.selectAll('.graph-tooltip').remove();
     };
-  }, [connections, degree2, dimensions, onSelect, tierColors, mode]);
+    // focusNodeRef and userName are read at build time on purpose; see above for
+    // why onSelect is not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connections, sceneDegree2, dimensions, tierColors, mode]);
 
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -141,10 +160,20 @@ export default function ForceGraph({ connections, degree2 = [], onSelect, tierCo
   );
 }
 
+// Tooltips are fixed to the window, never part of the page's layout.
+//
+// They used to be position:absolute with no top/left until the first hover, so
+// an invisible one sat at the bottom of the page and made it 18px taller than the
+// window. On a Mac with visible scrollbars that was a scrollbar, and the graph was
+// 6px narrower. Hovering moved the tooltip, the scrollbar went, the graph widened,
+// the resize rebuilt the scene, the rebuild put fresh tooltips back at the bottom,
+// the scrollbar returned — and so on, hundreds of rebuilds a second for as long as
+// the mouse stayed on a dot. TRAPS §29. Fixed elements cannot resize the page.
 function createTooltip() {
   return d3.select('body').append('div')
     .attr('class', 'graph-tooltip')
-    .style('position', 'absolute').style('background', 'rgba(0,0,0,0.92)').style('color', '#fff')
+    .style('position', 'fixed').style('top', '0px').style('left', '0px')
+    .style('background', 'rgba(0,0,0,0.92)').style('color', '#fff')
     .style('padding', '8px 12px').style('border-radius', '6px').style('font-size', '12px')
     .style('pointer-events', 'none').style('opacity', 0).style('z-index', 1000)
     .style('border', '1px solid rgba(255,255,255,0.2)').style('max-width', '280px');
@@ -293,7 +322,8 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
   // Profile photo hover — shows pfp over the dot, falls back to text tooltip
   const photoTooltip = d3.select('body').append('div')
     .attr('class', 'graph-tooltip')
-    .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
+    .style('position', 'fixed').style('top', '0px').style('left', '0px')
+    .style('pointer-events', 'none').style('opacity', 0)
     .style('z-index', 1001).style('transition', 'opacity 0.15s');
 
   node.on('mouseover', function (event, d) {
@@ -303,25 +333,25 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
       photoTooltip.style('opacity', 1);
       renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
       photoTooltip
-        .style('left', (event.pageX - size / 2) + 'px')
-        .style('top', (event.pageY - size - 8) + 'px');
+        .style('left', (event.clientX - size / 2) + 'px')
+        .style('top', (event.clientY - size - 8) + 'px');
       tooltip.style('opacity', 1)
         .html(`<strong>${esc(d.name)}</strong>`)
-        .style('left', (event.pageX - 40) + 'px')
-        .style('top', (event.pageY + 12) + 'px')
+        .style('left', (event.clientX - 40) + 'px')
+        .style('top', (event.clientY + 12) + 'px')
         .style('text-align', 'center').style('min-width', '80px');
     } else {
       tooltip.style('opacity', 1)
         .html(`<strong>${esc(d.name)}</strong>${d.company ? '<br/>' + esc(d.company) : ''}${d.tier ? '<br/>Tier: ' + esc(d.tier) : ''}`)
-        .style('left', (event.pageX + 12) + 'px').style('top', (event.pageY - 10) + 'px');
+        .style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mousemove', function (event, d) {
     if (d.profile_image_url && d.id !== 'blake') {
       const size = Math.max(48, nodeRadius(d) * 5);
-      photoTooltip.style('left', (event.pageX - size / 2) + 'px').style('top', (event.pageY - size - 8) + 'px');
-      tooltip.style('left', (event.pageX - 40) + 'px').style('top', (event.pageY + 12) + 'px');
+      photoTooltip.style('left', (event.clientX - size / 2) + 'px').style('top', (event.clientY - size - 8) + 'px');
+      tooltip.style('left', (event.clientX - 40) + 'px').style('top', (event.clientY + 12) + 'px');
     } else {
-      tooltip.style('left', (event.pageX + 12) + 'px').style('top', (event.pageY - 10) + 'px');
+      tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mouseout', function (event, d) {
     d3.select(this).attr('r', nodeRadius(d));
@@ -859,7 +889,8 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
   const tooltip = createTooltip();
   const photoTooltip = d3.select('body').append('div')
     .attr('class', 'graph-tooltip')
-    .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
+    .style('position', 'fixed').style('top', '0px').style('left', '0px')
+    .style('pointer-events', 'none').style('opacity', 0)
     .style('z-index', 1001).style('transition', 'opacity 0.15s');
 
   node.on('mouseover', function (event, d) {
@@ -871,8 +902,8 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       photoTooltip.style('opacity', 1);
       renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
       photoTooltip
-        .style('left', (event.pageX - size / 2) + 'px')
-        .style('top', (event.pageY - size - 8) + 'px');
+        .style('left', (event.clientX - size / 2) + 'px')
+        .style('top', (event.clientY - size - 8) + 'px');
     }
 
     // Text tooltip below
@@ -890,13 +921,13 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
         viaBridge ? `<span style="color:#FF6B35">via ${esc(viaBridge)}</span>` : '',
         d.isMutual ? '<span style="color:#00ff88">Mutual connection</span>' : '',
       ].filter(Boolean).join('<br/>'))
-      .style('left', (event.pageX + 12) + 'px').style('top', (event.pageY + 12) + 'px');
+      .style('left', (event.clientX + 12) + 'px').style('top', (event.clientY + 12) + 'px');
   }).on('mousemove', function (event, d) {
     if (d.profile_image_url && d.id !== 'blake') {
       const size = Math.max(48, nodeRadius(d) * 4);
-      photoTooltip.style('left', (event.pageX - size / 2) + 'px').style('top', (event.pageY - size - 8) + 'px');
+      photoTooltip.style('left', (event.clientX - size / 2) + 'px').style('top', (event.clientY - size - 8) + 'px');
     }
-    tooltip.style('left', (event.pageX + 12) + 'px').style('top', (event.pageY + 12) + 'px');
+    tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY + 12) + 'px');
   }).on('mouseout', function (event, d) {
     d3.select(this).attr('r', nodeRadius(d))
       .attr('filter', (d.nodeType === 'bridge') ? 'url(#bridge-glow)' : (d.tier === 'S' ? 'url(#glow)' : null));
