@@ -22,6 +22,9 @@ export async function GET(request) {
 
     const order = searchParams.get('order');
     if (order === 'power_score.desc') q.order('power_score', { ascending: false });
+    // The order rows were saved in. A scan saves LinkedIn's "recently added"
+    // list top to bottom, so this is how the scraper finds your newest connections.
+    if (order === 'added') q.order('rowid', { ascending: true });
 
     const limit = searchParams.get('limit');
     if (limit) q.limit(Number(limit));

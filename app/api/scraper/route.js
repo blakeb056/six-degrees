@@ -261,6 +261,11 @@ export async function POST(request) {
   const tiers = Array.isArray(body.tiers)
     ? body.tiers.map((t) => String(t).toUpperCase()).filter((t) => 'SABCD'.includes(t) && t.length === 1)
     : [];
+  // Which of your connections to map first, and how deep to read each one. Both
+  // are a fixed set, like everything else that reaches the command line.
+  const order = body.order === 'score' ? 'score' : 'newest';
+  const maxPages = [10, 25, 50, 100].includes(body.maxPages) ? body.maxPages : 10;
+  const readsCircles = action.startsWith('auto-bridge') || action === 'bridge' || action === 'rescrape';
   let name = null;
   if (spec.needsName) {
     name = cleanName(body.name);
@@ -308,6 +313,8 @@ export async function POST(request) {
             ...(name ? [`${spec.flag}=${name}`] : spec.flag.split(' ')),
             ...(maxBridges && action.startsWith('auto-bridge') ? [`--max-bridges=${maxBridges}`] : []),
             ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
+            ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
+            ...(readsCircles && maxPages !== 10 ? [`--max-pages=${maxPages}`] : []),
           ],
         },
       ];

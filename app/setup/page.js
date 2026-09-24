@@ -37,6 +37,13 @@ function SetupInner() {
   // outstanding list is recomputed every run, so anyone added since simply
   // appears in it. What is worth choosing is how far down to go.
   const [tiers, setTiers] = useState(['S', 'A']);
+  // Which connections to map first. Newest is what people expect after adding
+  // someone: the old fixed tier order skipped straight past new connections that
+  // were not S-tier.
+  const [order, setOrder] = useState('newest');
+  // How many result pages to read per person. Every page is a LinkedIn search,
+  // and free accounts have a monthly search limit, so the default stays at 10.
+  const [pages, setPages] = useState(10);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
 
@@ -258,8 +265,8 @@ function SetupInner() {
               temporarily restricted after roughly <b>19 people in one sitting</b>.
               Run a batch, leave it for a day, run another — and stop the moment
               LinkedIn mentions unusual activity. It always picks up where it left
-              off: anyone still without a mapped circle, highest tier first, including
-              people you have connected with since.
+              off: anyone still without a mapped circle, in the order you choose below —
+              your newest connections first, or highest tier first.
             </>
           }
           action={
@@ -283,28 +290,46 @@ function SetupInner() {
                   );
                 })}
                 <span style={{ fontSize: 11.5, color: '#667' }}>
-                  {tiers.length ? 'highest first' : 'pick at least one'}
+                  {tiers.length ? '' : 'pick at least one'}
                 </span>
               </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Start with</span>
+                <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
+                  <option value="newest">Newest connections first</option>
+                  <option value="score">Highest tier first</option>
+                </select>
+                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Read up to</span>
+                <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
+                  <option value={10}>10 pages (~100 people) each</option>
+                  <option value={25}>25 pages each</option>
+                  <option value={50}>50 pages each</option>
+                  <option value={100}>100 pages each (LinkedIn&rsquo;s limit)</option>
+                </select>
+              </div>
+              {pages > 10 && (
+                <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
+                  Every page is a LinkedIn search. Reading {pages} pages a person takes about{' '}
+                  {Math.round((pages * 6) / 60)} minutes each, and free accounts have a monthly search
+                  limit that deep scans use up fast. Keep batches small.
+                </div>
+              )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers })} disabled={!canScrape || !tiers.length} primary>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers, order, maxPages: pages })} disabled={!canScrape || !tiers.length} primary>
                 {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
               </Btn>
               <select
                 value={batch}
                 onChange={(e) => setBatch(Number(e.target.value))}
                 disabled={running}
-                style={{
-                  padding: '9px 10px', borderRadius: 7, fontSize: 13.5, fontWeight: 600,
-                  background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
-                }}
+                style={selectStyle}
               >
                 <option value={5}>5 people</option>
                 <option value={10}>10 people</option>
                 <option value={25}>25 people</option>
                 <option value={0}>everyone — not advised</option>
               </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers })} disabled={!canScrape || !tiers.length}>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers, order, maxPages: pages })} disabled={!canScrape || !tiers.length}>
                 Retry hidden ones
               </Btn>
             </div>
@@ -369,6 +394,10 @@ function SetupInner() {
 }
 
 const code = { background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: 4 };
+const selectStyle = {
+  padding: '9px 10px', borderRadius: 7, fontSize: 13.5, fontWeight: 600,
+  background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
+};
 
 function Step({ n, done, title, body, action }) {
   return (

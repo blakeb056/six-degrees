@@ -48,6 +48,9 @@ tick an item in the same change that finishes it.
       (TRAPS §30). Verified: launcher and server not translated, a Check for new ran clean
 - [x] 0.1.4 — 2nd-degree scans read past page 1 again: a JavaScript snippet in a plain
       Python string was a syntax error (TRAPS §31). Every snippet is now parsed in CI
+- [x] 0.1.5 — 2nd-degree results are saved: a repeated profile no longer fails the batch,
+      your own connections stay out of other circles, a failed save stops the batch
+      (TRAPS §32). Newest-connections-first order and pages-per-person added
 
 ### Needs the maintainer
 

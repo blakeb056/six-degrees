@@ -1,4 +1,5 @@
 import { db as supabase } from '../../../lib/db';
+import { uniqueByProfile, splitAlreadyConnected } from '../../../lib/ingest';
 import { promoteToFirstDegree } from '../../../lib/promote';
 
 function parseHeadline(h) {
@@ -49,7 +50,7 @@ export async function POST(request) {
       }
     }
 
-    const records = connections.map(c => {
+    let records = connections.map(c => {
       const { role, company } = parseHeadline(c.headline);
       const rec = {
         degree,
@@ -94,6 +95,29 @@ export async function POST(request) {
       }
       return rec;
     }).filter(r => r.name && r.profile_url);
+
+    // One record per person, and — for someone else's circle or a company — not
+    // people who are already your own connections. A repeated profile made the
+    // whole insert fail on the unique index, so a bridge's people were read and
+    // none saved; your own connections arrive as the "mutual connections" links
+    // under each result and are not people you have not met. TRAPS §32.
+    const received = records.length;
+    records = uniqueByProfile(records);
+    const duplicates = received - records.length;
+    let alreadyConnected = 0;
+    if (degree > 1 && userId && records.length > 0) {
+      const firstDegree = new Set();
+      const all = records.map(r => r.profile_url);
+      for (let i = 0; i < all.length; i += 100) {
+        const { data: mine } = await supabase.from('linkedin_connections')
+          .select('profile_url').in('profile_url', all.slice(i, i + 100))
+          .eq('user_id', userId).eq('degree', 1);
+        (mine || []).forEach(r => firstDegree.add(r.profile_url));
+      }
+      const split = splitAlreadyConnected(records, firstDegree);
+      records = split.keep;
+      alreadyConnected = split.alreadyConnected;
+    }
 
     // Pre-filter: find which profile_urls already exist for this specific context
     // The unique index is (profile_url, source_connection_id, user_id)
@@ -378,6 +402,12 @@ export async function POST(request) {
       success: true,
       received: connections.length,
       processed: records.length,
+      // What actually happened, so the scraper can say it instead of implying
+      // everything it sent was added.
+      saved: newRecords.length,
+      alreadyKnown: existingRecords.length,
+      alreadyConnected,
+      duplicates,
       promoted,
     });
   } catch (err) {
