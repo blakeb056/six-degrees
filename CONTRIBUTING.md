@@ -87,6 +87,8 @@ Redraw them after changing the icon or their wording; no server needed:
 python3 scripts/readme_buttons.py     # writes docs/img/download-*.png
 ```
 
+Then look at the two pictures before committing them.
+
 ## Commit messages
 
 Explain **why**, not just what. A one-line subject, then a body if the change

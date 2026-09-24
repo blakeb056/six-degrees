@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="desktop/icon/icon.svg" width="128" height="128" alt="">
+  <a href="https://blakeb056.github.io/six-degrees/"><img src="desktop/icon/icon.svg" width="128" height="128" alt="Six Degrees website"></a>
 </p>
 
 <h1 align="center">Six Degrees</h1>
