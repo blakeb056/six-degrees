@@ -42,10 +42,20 @@ closes the browser cleanly and keeps everything found so far.
 on" date, across every tier — or highest tier first, where the tier chips decide who is
 included. The date is read during the 1st-degree scan, so run **Check for new** first
 (and one **Scan my whole network** to date everyone saved before 0.1.5). **How deep.** For each person it
-opens their profile, then a search of their connections, and reads the results a page
-at a time — 10 pages (about 100 people) by default, or 25, 50 or 100 (LinkedIn's limit)
-— waiting a few seconds between pages. Every page is a search on your account, and free
-accounts have a monthly search limit, so deep reads use it up quickly. For every result it keeps the profile link, name, photo and headline;
+opens their profile, then a search of everyone they are connected to, and reads the
+results a page at a time until their list ends — every page by default, or up to 10, 25
+or 50 if you choose. LinkedIn's search itself stops at page 100 (about 1,000 people).
+Before calling a list finished it looks for a Next button three times, scrolling to the
+foot of the page and waiting longer each time, and a click that doesn't move to the next
+page is tried three times. A long read saves every 10 pages, and
+`~/.six-degrees/bridge-progress.json` notes the last page read for each person and
+whether LinkedIn had more. **Also finish people already mapped** (on by default;
+`--deeper` in a terminal) carries on from that page, so a read that was stopped, cut
+short by a page limit, or done before 0.1.6 at 10 pages is finished rather than started
+again. Once the id their connections are searched by is known, their profile isn't
+opened again. Every page is a search on your account, and free accounts have a monthly
+search limit that whole lists use up quickly. When LinkedIn says it has been reached,
+the scan saves what it read, stops the batch, and says so. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather
 than saved as the headline. People who are already your own connections — they appear
@@ -145,6 +155,9 @@ Second-degree mapping from the shell, with the same safety valves the page uses:
 
 ```bash
 python3 scripts/scrape.py --auto-bridge --max-bridges=25   # one batch, then stop
+python3 scripts/scrape.py --auto-bridge --deeper           # ...and finish partly read lists
+python3 scripts/scrape.py --bridge "Jane Doe" --deeper     # carry on with one person
+python3 scripts/scrape.py --auto-bridge --max-pages=10     # stop each read at page 10
 python3 scripts/scrape.py --auto-bridge --retry-private    # try the hidden ones again
 python3 scripts/scrape.py --clear-skips                    # forget every skip
 ```

@@ -18,6 +18,7 @@ Usage:
   python3 scripts/scrape.py --auto-bridge            # Map every bridge in turn
   python3 scripts/scrape.py --auto-bridge --tiers=S,A --max-bridges=10
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
+  python3 scripts/scrape.py --auto-bridge --deeper   # ...and finish lists read only partly
 
 IMPORTANT: Only scrape ONE bridge at a time. Do NOT batch multiple bridges
 in one session — LinkedIn detects automation and flags your account.
@@ -32,6 +33,7 @@ import time
 import requests
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
@@ -507,9 +509,37 @@ class SaveFailed(Exception):
     """
 
 
-def push_connections(connections, degree=1, bridge_id=None, user_id=None):
+class NotSignedIn(Exception):
+    """LinkedIn wasn't signed in, or the window was closed while waiting for it.
+
+    Not a fact about the person being read. It used to come back as "no
+    connections", and that person was noted as hidden and skipped for good — a
+    stop pressed while the browser was opening did exactly that. TRAPS §34.
+    """
+
+
+class SearchLimitReached(Exception):
+    """LinkedIn says this account has used up its searches for the month.
+
+    Every page of someone's connections is a search, and a free account has a
+    monthly allowance that reading whole lists uses up fast. Raised after what
+    was read has been saved, so `found` is how many that was; the record of how
+    far the read got means the next run carries on from the same page.
+    """
+
+    def __init__(self, found=0):
+        super().__init__("LinkedIn's monthly search limit")
+        self.found = found
+
+
+def push_connections(connections, degree=1, bridge_id=None, user_id=None, on_saved=None):
     """Push connections via Vercel API route (which has write access).
-    No local keys needed — the server handles auth."""
+    No local keys needed — the server handles auth.
+
+    on_saved runs as soon as the app has the rows, before the photos: those can
+    take a while, and a stop that lands during them must not lose the note of
+    how far a read got.
+    """
 
     # Send to Vercel API route — it writes with the service_role key
     payload = {
@@ -549,6 +579,9 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None):
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
         raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
+
+    if on_saved:
+        on_saved()
 
     # Batch update profile images separately (faster than inline)
     images_to_update = [
@@ -1023,6 +1056,16 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     return new_rows
 
 
+BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be polite
+BRIDGE_SKIP_COOLDOWN = 15         # after a hidden profile: one page view, no need
+BRIDGE_LOAD_ATTEMPTS = 6          # how many times to look for the connections URN
+BRIDGE_LOAD_STEP = 5              # seconds between looks
+LINKEDIN_MAX_PAGES = 100          # LinkedIn's people search never goes past page 100
+END_CHECKS = 3                    # looks for another page before calling a list finished
+SAVE_EVERY_PAGES = 10             # save as a long read goes, so a stop loses little
+LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
+
+
 # Someone whose connections are hidden can never produce a 2nd-degree row. The
 # "who still needs bridging" query is "everyone with no 2nd-degree rows", so
 # without a record of the attempt they come back in the list on every run — and
@@ -1060,6 +1103,111 @@ def clear_bridge_skips():
         print("Cleared the skip list — every bridge will be tried again.")
     except FileNotFoundError:
         print("No skips recorded.")
+
+
+# How far each person's connections have been read.
+#
+# Reading someone's whole list can take a hundred pages and a quarter of an hour.
+# Without a note of where a read got to, a stop, LinkedIn's monthly search limit
+# or a crash threw all of it away and the next run started again at page 1 — and
+# before 0.1.6 nobody's list was read past page 10 at all, with no way to go
+# back for the rest. Every save now notes the last page read and whether
+# LinkedIn had more, and the next run carries on from the page after. Kept per
+# profile in the app, beside the skip list. TRAPS §34.
+#
+#   {"<profile id>": {"<their profile url>": {
+#       "name": ..., "pages": 25,  # read through page 25
+#       "more": true,              # LinkedIn had a page 26
+#       "urn": ...,                # the id their connections are searched by
+#       "hidden": true,            # only when their list had gone private
+#       "at": ...}}}
+def _progress_path():
+    base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "bridge-progress.json"
+
+
+def _progress_owner():
+    return str(_active_user_id or "default")
+
+
+def _read_progress_file():
+    try:
+        data = json.loads(_progress_path().read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def load_bridge_progress():
+    """How far each of this profile's people has been read, by profile URL."""
+    mine = _read_progress_file().get(_progress_owner())
+    return mine if isinstance(mine, dict) else {}
+
+
+def _change_progress(change):
+    data = _read_progress_file()
+    mine = data.get(_progress_owner())
+    if not isinstance(mine, dict):
+        mine = {}
+    change(mine)
+    data[_progress_owner()] = mine
+    try:
+        path = _progress_path()
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(path)          # never a half-written file
+    except Exception as exc:
+        print(f"  (could not note how far this read got: {exc})")
+
+
+def record_bridge_progress(profile_url, name, pages, more, urn=None):
+    """Note that someone's connections have been read through page `pages`.
+
+    It never winds the note back. A read from page 1 that stops short of an
+    earlier, deeper one leaves the deeper one standing: those pages are still
+    saved. forget_bridge_progress() is for when they are not.
+    """
+    def change(mine):
+        old = mine.get(profile_url) or {}
+        read, left = int(pages), bool(more)
+        if int(old.get("pages") or 0) > read:
+            read, left = int(old["pages"]), bool(old.get("more"))
+        entry = {"name": name, "pages": read, "more": left,
+                 "at": datetime.now().isoformat(timespec="seconds")}
+        if urn or old.get("urn"):
+            entry["urn"] = urn or old.get("urn")
+        mine[profile_url] = entry
+    _change_progress(change)
+
+
+def mark_bridge_hidden(profile_url, name):
+    """Their list was readable once and is not now. What is mapped stays."""
+    def change(mine):
+        old = mine.get(profile_url) or {"pages": LEGACY_PAGES_READ, "more": True}
+        mine[profile_url] = {**old, "name": name, "hidden": True,
+                             "at": datetime.now().isoformat(timespec="seconds")}
+    _change_progress(change)
+
+
+def forget_bridge_progress(profile_url):
+    _change_progress(lambda mine: mine.pop(profile_url, None))
+
+
+def next_page_to_read(entry, retry_hidden=False):
+    """The page to carry on from for someone already mapped, or None if there is nothing left.
+
+    No note at all means they were mapped before 0.1.6 kept one, and every read
+    then stopped at page 10.
+    """
+    if entry is None:
+        return LEGACY_PAGES_READ + 1
+    if entry.get("hidden") and not retry_hidden:
+        return None
+    if not entry.get("more"):
+        return None
+    nxt = int(entry.get("pages") or 0) + 1
+    return nxt if nxt <= LINKEDIN_MAX_PAGES else None
 
 
 # Stopping cleanly.
@@ -1104,10 +1252,6 @@ def interruptible_sleep(seconds, on_tick=None, step=5):
     return not stop_requested()
 
 
-BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be polite
-BRIDGE_SKIP_COOLDOWN = 15         # after a hidden profile: one page view, no need
-BRIDGE_LOAD_ATTEMPTS = 6          # how many times to look for the connections URN
-BRIDGE_LOAD_STEP = 5              # seconds between looks
 
 
 def _profile_unavailable(page):
@@ -1147,103 +1291,15 @@ def _find_connection_urn(page):
         return None
 
 
-def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=10):
-    """
-    Core bridge scraping logic. Takes an already-open Playwright page.
-    Returns (connections_list, status_string).
-
-    Timing is calibrated from successful runs:
-    - 30s profile render wait (LinkedIn is slow)
-    - 10s after search URL navigation
-    - 3s between pagination clicks
-    - Playwright locator click for Next (not JS — more reliable)
-    """
-    slug = profile_url.split("/in/")[1].rstrip("/")
-
-    # Step 1: Navigate to profile (wait_until="commit" — don't wait for full load)
-    print(f"  Opening {bridge_name}'s profile...")
-    try:
-        page.goto(profile_url, wait_until="commit")
-    except Exception as e:
-        print(f"  Navigation slow: {str(e)[:50]}... continuing anyway")
-
-    # Steps 2 and 3, together. The URN is what we are actually after, and it is
-    # read from a link's href — so look for it on every pass instead of waiting
-    # for a "500+ connections" link first and only then extracting. A public
-    # profile now finishes as soon as the link exists, and a private one is not
-    # charged an extra scroll-and-wait on the way to the same answer.
-    urn = None
-    for attempt in range(BRIDGE_LOAD_ATTEMPTS):
-        time.sleep(BRIDGE_LOAD_STEP)
-
-        if _profile_unavailable(page):
-            print("  Profile is not viewable — skipping.")
-            return [], "private"
-
-        urn = _find_connection_urn(page)
-        if urn:
-            print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
-            break
-
-        # The connections block lazy-loads; nudge it once part-way through.
-        if attempt == BRIDGE_LOAD_ATTEMPTS // 2:
-            try:
-                page.evaluate("window.scrollTo(0, 600)")
-            except Exception:
-                pass
-        elif attempt < BRIDGE_LOAD_ATTEMPTS - 1:
-            print(f"  Still loading... ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
-
-    if not urn:
-        print(f"  Could not find URN — connections are private.")
-        return [], "private"
-
-    print(f"  Found URN: {urn[:30]}...")
-
-    # Step 4: Navigate directly to search URL with 3rd+ degree filter baked in
-    # This is the URL format that works: network=["F","S","O"] + connectionOf=["URN"]
-    search_url = f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
-    print("  Opening connections search with 3rd+ filter...")
-    try:
-        page.goto(search_url, wait_until="commit")
-    except:
-        pass
-
-    # Step 5: Wait for search results — 10s initial + up to 30s retry
-    # Successful runs: results appear within 10-15s
-    time.sleep(10)
-    results_loaded = False
-    for attempt in range(6):
-        try:
-            page.wait_for_selector('a[href*="/in/"]', timeout=5000)
-            print("  Search results loaded!")
-            results_loaded = True
-            break
-        except:
-            print(f"  Still loading... ({10 + (attempt+1)*5}s)")
-            time.sleep(5)
-
-    if not results_loaded:
-        print(f"  No search results found — may be private or empty.")
-        return [], "empty"
-
-    # Step 6: Paginate and extract — 3s between pages, up to max_pages (10 by
-    # default, about 100 people; LinkedIn stops at 100). Every page is a search.
-    # Successful runs: 8-10 results per page, ~90 total across 10 pages
-    connections = []
-    for pg in range(1, max_pages + 1):
-        print(f"  Page {pg}... ", end="", flush=True)
-        time.sleep(3)
-
-        # Extract from current page.
-        #
-        # A raw string (r"""), like every snippet of JavaScript in this file must
-        # be. In a plain string Python turns the "\n" in split('\n') into a real
-        # line break before the browser sees it, and the whole function is a
-        # syntax error — "Invalid or unexpected token". That broke every
-        # 2nd-degree scan on page 1 from 2026-09-09 until it was noticed.
-        # tests/scraper-js.test.mjs now parses every snippet on every PR. TRAPS §31.
-        page_results = page.evaluate(r"""
+# What one page of someone's connections holds.
+#
+# A raw string (r"""), like every snippet of JavaScript in this file must be. In
+# a plain string Python turns the "\n" in split('\n') into a real line break
+# before the browser sees it, and the whole function is a syntax error —
+# "Invalid or unexpected token". That broke every 2nd-degree scan on page 1 from
+# 2026-09-09 until it was noticed. tests/scraper-js.test.mjs now parses every
+# snippet on every PR. TRAPS §31.
+BRIDGE_RESULTS_JS = r"""
         () => {
           // Build URL map from profile links
           // Anchor on the profile link, never on the anchor's text.
@@ -1315,44 +1371,392 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=10):
             .map(({ named, ...r }) => r);
           return results;
         }
-        """)
-        connections.extend(page_results)
-        print(f"{len(page_results)} found (total: {len(connections)})")
+        """
 
-        if pg < max_pages:
-            # Playwright locator click — more reliable than JS click
-            try:
-                next_btn = page.locator('button:has-text("Next")').first
-                if next_btn.is_visible(timeout=3000):
-                    next_btn.click()
-                    time.sleep(3)
-                else:
-                    print("  No more pages.")
-                    break
-            except:
-                print("  No more pages.")
-                break
+# The profile links on the page, as a fingerprint: how a click on Next is known
+# to have brought up a different page rather than the same one again.
+RESULT_LINKS_JS = r"""
+() => {
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const out = new Set();
+  root.querySelectorAll('a[href*="/in/"]').forEach((a) => {
+    if (a.closest('nav, header, footer')) return;
+    out.add((a.getAttribute('href') || '').split('?')[0]);
+  });
+  return [...out].sort();
+}
+"""
 
-    # Filter out the bridge themselves
-    connections = [c for c in connections if slug not in c.get("profileUrl", "")]
+# "About 1,340 results" above the list. Only for the log: it is approximate, and
+# the end of a list is decided by the pages themselves.
+RESULT_COUNT_JS = r"""
+() => {
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const text = (root.innerText || '').slice(0, 3000);
+  const m = text.match(/(?:About\s+)?(\d[\d,.]*)\s*([KkMm])?\+?\s+results?\b/);
+  if (!m) return null;
+  let n = parseFloat(m[1].replace(/,/g, ''));
+  if (m[2]) n *= /k/i.test(m[2]) ? 1000 : 1000000;
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+"""
 
-    # The same person can turn up on more than one page, and a mutual connection
-    # repeats under many results. Keep each profile once: the app used to refuse a
-    # whole batch that named anyone twice (TRAPS §32).
+# LinkedIn's wording when a free account has used its searches for the month.
+SEARCH_LIMIT_JS = r"""
+() => {
+  const t = (document.body.innerText || '').toLowerCase();
+  return t.includes('commercial use limit')
+      || t.includes('reached the monthly limit')
+      || t.includes('reached your monthly limit');
+}
+"""
+
+# Which page the pagination bar says is showing, when it says.
+CURRENT_PAGE_JS = r"""
+() => {
+  for (const el of document.querySelectorAll('[aria-current="true"], [aria-current="page"]')) {
+    const t = (el.innerText || el.textContent || '').trim();
+    if (/^\d{1,3}$/.test(t)) return parseInt(t, 10);
+  }
+  return null;
+}
+"""
+
+
+def _url_page(url):
+    """The page number in a LinkedIn search URL; page 1 when there is none."""
+    try:
+        return int(parse_qs(urlparse(url).query).get("page", ["1"])[0])
+    except (ValueError, TypeError):
+        return 1
+
+
+def _result_links(page):
+    try:
+        return page.evaluate(RESULT_LINKS_JS)
+    except Exception:
+        return []
+
+
+def _scroll_to_foot(page):
+    try:
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    except Exception:
+        pass
+
+
+def _read_results_page(page):
+    """The people on the current page, looked for END_CHECKS times if it seems empty."""
+    for attempt in range(1, END_CHECKS + 1):
+        found = page.evaluate(BRIDGE_RESULTS_JS)
+        if found:
+            return found
+        if attempt < END_CHECKS:
+            _scroll_to_foot(page)
+            time.sleep(2 * attempt)
+    return []
+
+
+def _find_next(page):
+    """LinkedIn's Next button when there is another page, else None.
+
+    Looked for END_CHECKS times, scrolling to the foot of the list and waiting a
+    little longer each time: the pagination bar renders late, and calling a list
+    finished because the button was slow would stop that person short for good.
+    A Next that is there but disabled is LinkedIn saying this is the last page.
+    """
+    for attempt in range(1, END_CHECKS + 1):
+        try:
+            btn = page.locator('button:has-text("Next")').first
+            if btn.is_visible() and btn.is_enabled():
+                return btn
+        except Exception:
+            pass
+        if attempt < END_CHECKS:
+            print(f"  No Next button yet; looking again ({attempt + 1} of {END_CHECKS})...")
+            _scroll_to_foot(page)
+            time.sleep(2 * attempt)
+    return None
+
+
+def _wait_for_new_results(page, before, seconds):
+    """True once the profile links differ from `before` — the page really changed."""
+    waited = 0
+    while waited < seconds:
+        time.sleep(1)
+        waited += 1
+        now = _result_links(page)
+        if now and now != before:
+            return True
+    return False
+
+
+def _advance(page, pg):
+    """Go from results page pg to pg + 1. Returns "moved", "end" or "stuck".
+
+    "end" only once _find_next has looked END_CHECKS times. A click that leaves
+    the same results showing is tried again, up to END_CHECKS times; after that
+    the read stops as "stuck", which leaves the rest to the next run rather than
+    calling the list finished.
+    """
+    before = _result_links(page)
+    btn = _find_next(page)
+    if btn is None:
+        return "end"
+    for attempt in range(1, END_CHECKS + 1):
+        try:
+            btn.click(timeout=15000)
+        except Exception:
+            pass
+        if _wait_for_new_results(page, before, 10):
+            return "moved"
+        if _url_page(page.url) == pg + 1:
+            # The click landed and the page is just slow. Clicking again could
+            # skip a page, so give it longer instead.
+            return "moved" if _wait_for_new_results(page, before, 15) else "stuck"
+        print(f"  Page {pg + 1} did not open; clicking Next again ({attempt + 1} of {END_CHECKS})...")
+        btn = _find_next(page)
+        if btn is None:
+            return "stuck"
+    return "stuck"
+
+
+def _dedupe(connections):
+    """Keep each profile once: the app refused a whole batch that named anyone twice (TRAPS §32)."""
     seen, unique = set(), []
     for c in connections:
         url = c.get("profileUrl")
         if url and url not in seen:
             seen.add(url)
             unique.append(c)
-    connections = unique
-    print(f"  Total: {len(connections)} connections")
-
-    return connections, "success"
+    return unique
 
 
-def scrape_bridge(bridge_name, headless=False, max_pages=10):
-    """Scrape degree-2 connections for a single bridge (opens its own browser)."""
+def _page_limit_hint(next_page):
+    if os.environ.get("SIX_DEGREES_FROM_APP"):
+        return (f'To read the rest, set "Read up to" to every page on the Scan page and keep '
+                f'"Also finish people already mapped" ticked: the next run carries on from page {next_page}.')
+    return f"Run again with --deeper, and no --max-pages, to carry on from page {next_page}."
+
+
+def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
+                       start_page=1, urn=None, on_save=None):
+    """
+    Read one person's connections, from start_page until their list ends or
+    max_pages. Takes an already-open Playwright page.
+
+    Returns (connections, status, reach). `connections` is what has not already
+    been handed to on_save(connections, last_page, more, urn), which is called
+    every SAVE_EVERY_PAGES pages of a long read. `reach` says how far it got:
+      last     the last page read (start_page - 1 if none)
+      more     LinkedIn has pages after `last` that were not read
+      urn      the id LinkedIn searches their connections by
+      found    how many people were read in all
+      limited  LinkedIn's monthly search limit ended the read
+
+    Timing is calibrated from successful runs:
+    - 30s profile render wait (LinkedIn is slow)
+    - 10s after search URL navigation
+    - 3s on each page before reading it
+    - Playwright locator click for Next (not JS — more reliable)
+    """
+    slug = profile_url.split("/in/")[1].rstrip("/")
+    reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False}
+
+    if urn:
+        # Known from an earlier read, so their profile needn't be opened again —
+        # one fewer profile view, which is what LinkedIn counts most.
+        print(f"  Going straight to {bridge_name}'s connections (their search id is known).")
+    else:
+        # Step 1: Navigate to profile (wait_until="commit" — don't wait for full load)
+        print(f"  Opening {bridge_name}'s profile...")
+        try:
+            page.goto(profile_url, wait_until="commit")
+        except Exception as e:
+            print(f"  Navigation slow: {str(e)[:50]}... continuing anyway")
+
+        # Steps 2 and 3, together. The URN is what we are actually after, and it is
+        # read from a link's href — so look for it on every pass instead of waiting
+        # for a "500+ connections" link first and only then extracting. A public
+        # profile now finishes as soon as the link exists, and a private one is not
+        # charged an extra scroll-and-wait on the way to the same answer.
+        for attempt in range(BRIDGE_LOAD_ATTEMPTS):
+            time.sleep(BRIDGE_LOAD_STEP)
+
+            if _profile_unavailable(page):
+                print("  Profile is not viewable — skipping.")
+                return [], "private", reach
+
+            urn = _find_connection_urn(page)
+            if urn:
+                print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
+                break
+
+            # The connections block lazy-loads; nudge it once part-way through.
+            if attempt == BRIDGE_LOAD_ATTEMPTS // 2:
+                try:
+                    page.evaluate("window.scrollTo(0, 600)")
+                except Exception:
+                    pass
+            elif attempt < BRIDGE_LOAD_ATTEMPTS - 1:
+                print(f"  Still loading... ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
+
+        if not urn:
+            print(f"  Could not find URN — connections are private.")
+            return [], "private", reach
+
+        print(f"  Found URN: {urn[:30]}...")
+        reach["urn"] = urn
+
+    # Step 4: search everyone they are connected to. network=["F","S","O"] is
+    # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
+    # it saves. It used to be announced as a "3rd+ filter", which it never was.
+    search_url = f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
+    if start_page > 1:
+        search_url += f"&page={start_page}"
+        print(f"  Opening their connections at page {start_page}...")
+    else:
+        print("  Opening their connections...")
+    try:
+        page.goto(search_url, wait_until="commit")
+    except:
+        pass
+
+    # Step 5: Wait for search results — 10s initial + up to 30s retry
+    # Successful runs: results appear within 10-15s
+    time.sleep(10)
+    results_loaded = False
+    for attempt in range(6):
+        try:
+            page.wait_for_selector('a[href*="/in/"]', timeout=5000)
+            print("  Search results loaded!")
+            results_loaded = True
+            break
+        except:
+            print(f"  Still loading... ({10 + (attempt+1)*5}s)")
+            time.sleep(5)
+
+    if not results_loaded:
+        print(f"  No search results found — may be private or empty.")
+        return [], "empty", reach
+
+    if start_page > 1:
+        # Carrying on only works if LinkedIn really opened that page. If it
+        # quietly showed page 1 instead, reading on would note pages as read
+        # that never were.
+        shown = None
+        try:
+            shown = page.evaluate(CURRENT_PAGE_JS)
+        except Exception:
+            pass
+        at = _url_page(page.url)
+        if at != start_page or (shown is not None and shown != start_page):
+            print(f"  LinkedIn opened page {shown or at}, not page {start_page}. "
+                  "Stopping so no page is noted as read that wasn't.")
+            reach["more"] = True
+            return [], "error", reach
+
+    try:
+        total = page.evaluate(RESULT_COUNT_JS)
+    except Exception:
+        total = None
+    if total:
+        pages = -(-total // 10)
+        print(f"  About {total:,} results in their list: {pages} pages"
+              + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
+    until = "until their list ends" if max_pages >= LINKEDIN_MAX_PAGES else f"up to page {max_pages}"
+    print(f"  Reading from page {start_page} {until}, saving every {SAVE_EVERY_PAGES} pages.")
+
+    # Step 6: read each page, then move to the next, until the list ends. Every
+    # page is a search on your account.
+    chunk, chunk_pages, pg = [], 0, start_page
+    while True:
+        if stop_requested():
+            reach["more"] = True
+            print(f"  Stopped at page {pg}; the next run carries on from there.")
+            break
+        print(f"  Page {pg}... ", end="", flush=True)
+        try:
+            time.sleep(3)
+            if page.evaluate(SEARCH_LIMIT_JS):
+                print("LinkedIn's monthly search limit.")
+                reach["limited"] = reach["more"] = True
+                break
+            page_results = _read_results_page(page)
+        except Exception:
+            if stop_requested():      # the browser went down with the stop
+                reach["more"] = True
+                print("stopped.")
+                break
+            raise
+        if not page_results:
+            print(f"nothing on it after {END_CHECKS} looks — that's the end of their list.")
+            break
+
+        page_results = [c for c in page_results if slug not in c.get("profileUrl", "")]
+        chunk.extend(page_results)
+        chunk_pages += 1
+        reach["last"] = pg
+        reach["found"] += len(page_results)
+        print(f"{len(page_results)} found (total: {reach['found']})")
+
+        if pg >= LINKEDIN_MAX_PAGES:
+            print(f"  That was page {pg}, as far as LinkedIn's search goes.")
+            break
+        if pg >= max_pages:
+            reach["more"] = _find_next(page) is not None
+            if reach["more"]:
+                print(f"  Stopped at the {max_pages}-page limit, and LinkedIn has more. "
+                      + _page_limit_hint(pg + 1))
+            else:
+                print("  No more pages — that's all of their list.")
+            break
+
+        try:
+            step = _advance(page, pg)
+        except Exception:
+            if not stop_requested():
+                raise
+            step = "stuck"
+        if step == "end":
+            print(f"  No Next button after {END_CHECKS} looks — that's all of their list.")
+            break
+        if step == "stuck":
+            reach["more"] = True
+            if not stop_requested():
+                print(f"  Page {pg + 1} would not open after {END_CHECKS} tries. "
+                      f"The next run carries on from there.")
+            break
+        pg += 1
+
+        # Save as it goes, so a stop, a crash or the search limit costs at most
+        # the last few pages rather than the whole list.
+        if on_save and chunk_pages >= SAVE_EVERY_PAGES:
+            on_save(_dedupe(chunk), reach["last"], True, reach["urn"])
+            chunk, chunk_pages = [], 0
+
+    # Filter out the bridge themselves (already done page by page) and keep each
+    # profile once: the same person can turn up on more than one page, and a
+    # mutual connection repeats under many results.
+    chunk = _dedupe(chunk)
+    print(f"  Read {reach['found']} in all, pages {start_page}–{reach['last']}"
+          if reach["last"] >= start_page else "  Nothing read.")
+
+    return chunk, "success", reach
+
+
+def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, deeper=False, fresh=False):
+    """Read one person's connections into the app (opens its own browser).
+
+    deeper: carry on from the page the last read of them stopped at, instead of
+            starting again at page 1.
+    fresh:  their mapped circle was just deleted, so forget how far it was read.
+
+    Returns every connection read ([] when none; None when they could not be
+    looked up). Raises SaveFailed if the app refuses a save, NotSignedIn if
+    LinkedIn isn't signed in, and SearchLimitReached, after saving, if
+    LinkedIn's monthly limit ends the read.
+    """
     from playwright.sync_api import sync_playwright
 
     # Find the bridge (read-only, filtered by active user)
@@ -1368,41 +1772,101 @@ def scrape_bridge(bridge_name, headless=False, max_pages=10):
     bridge_id = bridge["id"]
     profile_url = bridge["profile_url"]
 
-    print(f"\n=== Scraping connections of {bridge_name} ===\n")
+    if fresh:
+        forget_bridge_progress(profile_url)
+    start_page, urn = 1, None
+    if deeper:
+        entry = load_bridge_progress().get(profile_url)
+        nxt = next_page_to_read(entry, retry_hidden=True)
+        if nxt is None:
+            print(f"Every page of {bridge_name}'s connections has been read already.")
+            return []
+        if nxt > max_pages:
+            print(f"Pages 1–{nxt - 1} of {bridge_name}'s connections are read already. "
+                  f"Choose more than {max_pages} pages to read further.")
+            return []
+        start_page, urn = nxt, (entry or {}).get("urn")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(),
-            headless=headless,
-            channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"],
-            timeout=120000,
-        )
+    print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scraping'} connections of {bridge_name} ===\n")
 
-        page = browser.pages[0] if browser.pages else browser.new_page()
-        page.set_default_timeout(120000)
-        page.set_default_navigation_timeout(120000)
+    read = []
 
-        # Check login
-        try:
-            page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
-        except Exception:
-            pass
-        if not ensure_logged_in(page):
-            browser.close()
+    def save(connections, last, more, urn_now):
+        if not connections:
+            record_bridge_progress(profile_url, bridge_name, last, more, urn_now)
             return
+        print(f"  Saving {len(connections)} (through page {last})...")
+        push_connections(connections, degree=2, bridge_id=bridge_id,
+                         on_saved=lambda: record_bridge_progress(profile_url, bridge_name, last, more, urn_now))
+        read.extend(connections)
 
-        connections, status = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=max_pages)
-        browser.close()
+    outcome = None
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch_persistent_context(
+                user_data_dir=get_scraper_profile_path(),
+                headless=headless,
+                channel="chrome",
+                args=["--disable-blink-features=AutomationControlled"],
+                timeout=120000,
+            )
+            try:
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                page.set_default_timeout(120000)
+                page.set_default_navigation_timeout(120000)
 
-    if not connections:
+                # Check login
+                try:
+                    page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
+                except Exception:
+                    pass
+                if not ensure_logged_in(page):
+                    raise NotSignedIn()
+
+                outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
+                                             max_pages=max_pages, start_page=start_page, urn=urn,
+                                             on_save=save)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+    except (SaveFailed, NotSignedIn):
+        if stop_requested():
+            return []
+        raise
+    except Exception:
+        # A stop takes the browser down with it, and closing it can then fail.
+        # If the read itself got to the end, what it found is still saved below.
+        if outcome is None:
+            if stop_requested():
+                return []
+            raise
+
+    connections, status, reach = outcome
+
+    if connections:
+        print(f"\nSaving {len(connections)} connections to the app...")
+        save(connections, reach["last"], reach["more"], reach["urn"])
+    elif status == "success" and (start_page > 1 or reach["last"] >= 1):
+        # Nothing unsaved, but where the read ended is still worth noting — for a
+        # read carried on from page 11 that found nothing, it means "finished".
+        record_bridge_progress(profile_url, bridge_name, reach["last"], reach["more"], reach["urn"])
+    elif status == "private" and start_page > 1:
+        mark_bridge_hidden(profile_url, bridge_name)
+        print("  Their connections are not visible any more — keeping what is mapped.")
+
+    if reach["limited"]:
+        raise SearchLimitReached(len(read))
+
+    if not read:
         print(f"\nDone! No connections found ({status}).")
         return []
 
-    print(f"\nPushing {len(connections)} connections to the app...")
-    inserted = push_connections(connections, degree=2, bridge_id=bridge_id)
-    print(f"\nDone! {inserted} new degree-2 connections added via {bridge_name}.")
-    return connections
+    left = (f" LinkedIn has more; the next run carries on from page {reach['last'] + 1}."
+            if reach["more"] else " That's all of their list.")
+    print(f"\nDone! {len(read)} of {bridge_name}'s connections read and saved.{left}")
+    return read
 
 
 def scrape_company(company_name, headless=False, log_fn=None):
@@ -1747,9 +2211,12 @@ def scrape_company(company_name, headless=False, log_fn=None):
 
 
 def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None,
-                    order="newest", max_pages=10):
-    """Auto-bridge all unbridged connections, S-tier first then down.
-    Picks up from where we left off — skips already-bridged people."""
+                    order="newest", max_pages=LINKEDIN_MAX_PAGES, deeper=False):
+    """Map everyone whose circle is not mapped yet, in the order chosen.
+
+    Picks up from where it left off. With deeper, it also finishes people
+    already mapped whose list goes on, from the page their last read stopped at.
+    """
 
     def log(msg):
         print(msg)
@@ -1775,15 +2242,32 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     # re-scraped people it had already done.
     bridged_ids = read_bridged_ids()
 
+    # Someone counts as mapped once any of their list has been read, even if
+    # everyone on it was already one of your connections and nothing was saved —
+    # otherwise they would be read again from page 1 on every run.
+    progress = load_bridge_progress()
+    mapped = set(bridged_ids) | {c["id"] for c in all_d1 if c.get("profile_url") in progress}
+
     # Filter unbridged, sort by tier priority (S first, then by score)
     tier_order = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
-    unbridged = [c for c in all_d1 if c["id"] not in bridged_ids]
+    unbridged = [c for c in all_d1 if c["id"] not in mapped]
 
     # People already found to be private are not tried again. Without this they
     # reappear every run, in the same place, and the run never gets past them.
     skips = {} if retry_private else load_bridge_skips()
     skipped_now = [c for c in unbridged if c.get("profile_url") in skips]
     unbridged = [c for c in unbridged if c.get("profile_url") not in skips]
+
+    # People already mapped whose list goes on past where it was read.
+    unfinished = []
+    for c in all_d1:
+        if c["id"] not in mapped:
+            continue
+        nxt = next_page_to_read(progress.get(c.get("profile_url")), retry_hidden=retry_private)
+        if nxt is not None and nxt <= max_pages:
+            unfinished.append({**c, "_from_page": nxt})
+    if deeper:
+        unbridged = unbridged + unfinished
 
     # Choosing tiers rather than "everything" or "only what is new".
     #
@@ -1820,11 +2304,21 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     else:
         unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
         log("Order: highest tier first")
-    if max_pages != 10:
-        log(f"Reading up to {max_pages} pages per person")
+    # Always said, so a read that stops at a page limit is never a mystery.
+    if max_pages >= LINKEDIN_MAX_PAGES:
+        log(f"Reading every page of each person's connections until their list ends "
+            f"(LinkedIn shows {LINKEDIN_MAX_PAGES} pages at most), saving every {SAVE_EVERY_PAGES}")
+    else:
+        log(f"Reading up to {max_pages} pages per person (about {max_pages * 10} of their connections)")
 
-    log(f"Found {len(unbridged)} unbridged connections")
-    log(f"Already bridged: {len(bridged_ids)}")
+    finishing = sum(1 for c in unbridged if c.get("_from_page", 1) > 1)
+    log(f"Found {len(unbridged) - finishing} unbridged connections")
+    log(f"Already bridged: {len(mapped)}")
+    if deeper:
+        log(f"Finishing {finishing} already mapped whose list goes on, from the page each stopped at")
+    elif unfinished:
+        log(f"({len(unfinished)} already mapped have more pages to read. "
+            f"Tick \"Also finish people already mapped\" to include them.)")
     if skipped_now:
         log(f"Skipping {len(skipped_now)} whose connections are hidden (--retry-private to try again)")
 
@@ -1855,17 +2349,36 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         tier = person.get("tier", "?")
         score = person.get("power_score", "?")
         url = person.get("profile_url", "")
+        from_page = person.get("_from_page", 1)
 
-        log(f"[{i+1}/{len(unbridged)}] {name} ({tier}-tier, score {score})")
+        log(f"[{i+1}/{len(unbridged)}] {name} ({tier}-tier, score {score})"
+            + (f", carrying on from page {from_page}" if from_page > 1 else ""))
 
         scraped = False
         try:
-            result = scrape_bridge(name, headless=headless, max_pages=max_pages)
+            result = scrape_bridge(name, headless=headless, max_pages=max_pages, deeper=from_page > 1)
             count = len(result) if result else 0
             if count > 0:
                 scraped = True
                 results.append({"name": name, "tier": tier, "found": count, "status": "done"})
-                log(f"  {count} connections found")
+                log(f"  {count} connections read")
+            elif stop_requested():
+                pass              # stopped part-way: nothing to conclude about them
+            elif result is None:
+                results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
+                log("  Could not find them in the app to read their list")
+            elif from_page > 1:
+                # Carrying on found no one new. Say which of the reasons it was;
+                # none of them is "hidden from now on" for someone already mapped.
+                entry = load_bridge_progress().get(url) or {}
+                if entry.get("hidden"):
+                    results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
+                elif entry and not entry.get("more"):
+                    results.append({"name": name, "tier": tier, "found": 0, "status": "finished"})
+                    log(f"  Nothing past page {from_page - 1}: that was all of their list")
+                else:
+                    results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
+                    log("  Could not read further this time; the next run tries again")
             else:
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
                 if url:
@@ -1874,6 +2387,17 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         except KeyboardInterrupt:
             log("Stopped.")
             raise
+        except NotSignedIn:
+            results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
+            log("  LinkedIn isn't signed in, so nothing was read. Stopping the batch: sign in")
+            log("  on the Scan page, then run it again.")
+            break
+        except SearchLimitReached as exc:
+            results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "error"})
+            log("  LinkedIn says this account has reached its monthly search limit.")
+            log("  Everything read so far is saved. Once the limit resets (the start of next month")
+            log("  for a free account) the next run carries on from the same page.")
+            break
         except SaveFailed as exc:
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log(f"  The app could not save these connections: {str(exc)[:120]}")
@@ -1890,7 +2414,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         # many search pages and earns the full pause; a hidden profile was one
         # page view, so charging two minutes for it is what made a run of them
         # look like a hang.
-        if i < len(unbridged) - 1:
+        if i < len(unbridged) - 1 and not stop_requested():
             cooldown = BRIDGE_COOLDOWN if scraped else BRIDGE_SKIP_COOLDOWN
             log(f"  Waiting {cooldown}s before the next one...")
             if not interruptible_sleep(cooldown, on_tick=lambda left: log(f"    {left}s to go"), step=15):
@@ -1901,15 +2425,17 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     success = sum(1 for r in results if r["status"] == "done")
     private = sum(1 for r in results if r["status"] == "private")
     errors = sum(1 for r in results if r["status"] == "error")
+    finished = sum(1 for r in results if r["status"] == "finished")
     log(f"{'Stopped' if stop_requested() else 'Complete'}: "
-        f"{success} bridged / {private} hidden / {errors} failed")
+        f"{success} bridged / {private} hidden / {errors} failed"
+        + (f" / {finished} had nothing more" if finished else ""))
     if private:
         log("Hidden profiles are remembered and will be skipped next time.")
 
     return results
 
 
-def rescrape_bridge(bridge_name, headless=False, max_pages=10):
+def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
     """Delete all existing cluster data for a bridge and re-scrape from scratch."""
     print(f"\n=== Re-scraping {bridge_name} (delete + fresh scrape) ===\n")
 
@@ -1918,7 +2444,7 @@ def rescrape_bridge(bridge_name, headless=False, max_pages=10):
     if bridge_id is None:
         return
 
-    scrape_bridge(bridge_name, headless=headless, max_pages=max_pages)
+    scrape_bridge(bridge_name, headless=headless, max_pages=max_pages, fresh=True)
 
 
 def run_server(port=5555):
@@ -2161,17 +2687,26 @@ Examples:
                         help="With --auto-bridge: only these tiers, e.g. --tiers=S,A")
     parser.add_argument("--order", choices=("newest", "score"), default="newest",
                         help="With --auto-bridge: newest connections first (default), or highest tier first")
-    parser.add_argument("--max-pages", type=int, default=10,
-                        help="Result pages to read per person, 10 by default (about 100 people). "
-                             "LinkedIn stops at 100. Every page is a search on your account.")
+    parser.add_argument("--max-pages", type=int, default=LINKEDIN_MAX_PAGES,
+                        help="Result pages to read per person. By default every page, until their "
+                             "list ends (LinkedIn shows 100 at most). Every page is a search on your account.")
+    parser.add_argument("--deeper", action="store_true",
+                        help="Carry on with people already mapped, from the page their last read "
+                             "stopped at. With --auto-bridge: alongside new people. With --bridge: that person.")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
-    args.max_pages = max(1, min(100, args.max_pages))
+    args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
 
     # A failed save ends the run with its reason, not a traceback (TRAPS §32).
     def _say_why(exc_type, exc, tb):
         if issubclass(exc_type, SaveFailed):
             print(f"\n  The app could not save what was scraped: {exc}\n", file=sys.stderr)
+        elif issubclass(exc_type, NotSignedIn):
+            print("\n  LinkedIn isn't signed in, so nothing was read. Sign in with --login, then run it again.\n",
+                  file=sys.stderr)
+        elif issubclass(exc_type, SearchLimitReached):
+            print("\n  LinkedIn says this account has reached its monthly search limit. What was read "
+                  "is saved; run again with --deeper once it resets.\n", file=sys.stderr)
         else:
             sys.__excepthook__(exc_type, exc, tb)
     sys.excepthook = _say_why
@@ -2201,7 +2736,7 @@ Examples:
         results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
                                   max_bridges=args.max_bridges,
                                   tiers=args.tiers.split(",") if args.tiers else None,
-                                  order=args.order, max_pages=args.max_pages)
+                                  order=args.order, max_pages=args.max_pages, deeper=args.deeper)
         done = sum(1 for r in results if r.get("status") == "done")
         print(f"\nDone. {done}/{len(results)} bridges mapped.")
     elif args.search:
@@ -2215,7 +2750,7 @@ Examples:
     elif args.rescrape:
         rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
     elif args.bridge:
-        scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages)
+        scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
     else:
         # Nothing collected yet means this is a first run, and the full scrape
         # is the one that walks every search page and captures photos. Running

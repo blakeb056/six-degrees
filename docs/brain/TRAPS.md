@@ -669,3 +669,31 @@ block holding exactly one "Connected on" line (more than one means the climb rea
 list and would take a neighbour's date), and `lib/ingest.js` `toIsoDate` parses it by hand —
 `new Date(text).toISOString()` shifts the day east of Greenwich and throws on bad text.
 
+---
+
+## 34. Every 2nd-degree read stopped at page 10, and nothing said so
+
+Someone's connections ran to 30 or 50 pages; every read stopped at 10, and a whole list
+of those looked finished. "Read up to 10 pages" was a default on the Scan page, the log
+only mentioned the limit when it was *not* 10, and the last line was `Total: 98
+connections`, which looks like the end. Asking for more pages didn't help either:
+people already mapped were never queued again, so there was no way back for pages
+11 onwards.
+
+- **Nothing recorded how far a read got.** The only question the queue could ask was
+  "has any of their circle been saved?" A read that stopped at 10, was stopped by hand, or
+  ran into LinkedIn's monthly search limit counted as done, or (if the batch's save
+  failed) started again from page 1.
+- **The end of a list was one glance.** `is_visible(timeout=3000)` doesn't wait:
+  Playwright ignores that timeout, so a pagination bar that rendered late ended the list
+  there. A click that didn't move the page was treated the same way.
+- **The log misdescribed the search.** It said "3rd+ filter"; the URL asks for 1st, 2nd
+  and 3rd+.
+
+What holds it now: every page by default, up to LinkedIn's own 100. The log states the
+limit on every run and says when it stopped at one with more to read. The end of a list
+takes three looks for Next, and a click that doesn't move gets three tries. Saves happen
+every 10 pages. `bridge-progress.json` records the last page read and whether there was
+more, and "finish people already mapped" carries on from it (people mapped before 0.1.6
+count as read to page 10). A shorter read never winds the record back. The search limit
+stops the batch after saving. `tests/bridge-progress.test.mjs` covers the record.

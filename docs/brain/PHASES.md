@@ -52,6 +52,11 @@ tick an item in the same change that finishes it.
       your own connections stay out of other circles, a failed save stops the batch
       (TRAPS §32). Newest-connections-first order (by the "Connected on" date, captured
       again — §33) and pages-per-person added
+- [x] 0.1.6 — each person's whole list is read (every page by default, three looks before
+      calling a list finished), long reads save every 10 pages, and how far each read got
+      is recorded so the next run carries on, including lists mapped before at 10 pages
+      (TRAPS §34). The reader was checked against a simulated LinkedIn: page limits, a late
+      Next button, clicks that don't land, the search limit, a stop part-way, page 100
 
 ### Needs the maintainer
 
@@ -79,6 +84,16 @@ tick an item in the same change that finishes it.
 - [ ] The Intel `.dmg`: built and published, never opened on an Intel Mac
 - [ ] The progress bar during a real scan (seen against a stand-in scanner that prints
       the same lines)
+- [x] 0.1.6 carrying on, against live LinkedIn, 2026-09-24: a person mapped at 10 pages
+      was read from page 11 to 12 (the search opened at `&page=11`, and the check of the
+      page it landed on passed), then from 13 using the stored search id, with no profile
+      view. Each save recorded the page and "more"
+- [ ] 0.1.6: a whole list read to its real end, live. Seen only in the simulation: the
+      three looks for Next, a disabled Next, a click that doesn't move
+- [ ] The monthly search limit's wording. It has never been seen live; the check looks
+      for "commercial use limit" and "reached … monthly limit"
+- [ ] "About N results" never appeared live: LinkedIn's current results page showed no
+      count the reader recognised. It is log-only, so nothing depends on it
 
 ### Later
 
