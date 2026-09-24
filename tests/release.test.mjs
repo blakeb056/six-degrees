@@ -37,3 +37,11 @@ test('each install kind gets its own update line', () => {
   assert.equal(updateCommand('source', 'owner/repo'), 'git pull && npm ci && npm run build && npm run start:packaged');
   assert.equal(installKind({ SIX_DEGREES_INSTALL: 'source' }, '/x'), 'source');
 });
+
+test('an npx copy with its own data folder is restarted with it', () => {
+  assert.equal(updateCommand('npm', 'owner/repo', { dataDir: '/data/six' }), "npx six-degrees@latest --data-dir '/data/six'");
+  assert.equal(updateCommand('npm', 'owner/repo', { dataDir: "/it's here" }), "npx six-degrees@latest --data-dir '/it'\\''s here'");
+  assert.equal(updateCommand('npm', 'owner/repo', { dataDir: null }), 'npx six-degrees@latest');
+  // The other kinds keep their data where the app puts it.
+  assert.doesNotMatch(updateCommand('mac-app', 'owner/repo', { dataDir: '/data/six' }), /data-dir/);
+});

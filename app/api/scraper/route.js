@@ -167,10 +167,11 @@ async function machineChecks() {
   const usable = await findUsablePython();
   const anyPython = usable || await findAnyPython();
 
+  // Where Playwright's "chrome" channel looks for Google Chrome (Chromium doesn't count).
   const chrome =
-    process.platform === 'darwin'
-      ? existsSync('/Applications/Google Chrome.app')
-      : true; // elsewhere Playwright resolves the channel itself
+    process.platform === 'darwin' ? existsSync('/Applications/Google Chrome.app')
+      : process.platform === 'linux' ? existsSync('/opt/google/chrome/chrome')
+        : true; // elsewhere Playwright resolves the channel itself
 
   const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
 
