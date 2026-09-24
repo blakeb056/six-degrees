@@ -60,7 +60,7 @@ function useIsMobile() {
 }
 
 const OrbitGraph = forwardRef(function OrbitGraph(
-  { connections = [], degree2 = [], onSelect, userName = 'You', userImage = null, selectedId = null },
+  { connections = [], degree2 = [], onSelect, userName = 'You', userImage = null, selectedId = null, mode = 'network' },
   ref
 ) {
   const containerRef = useRef(null);
@@ -131,7 +131,11 @@ const OrbitGraph = forwardRef(function OrbitGraph(
 
     // ---- nodes & links ---------------------------------------------------
     const { connections: liveConnections, degree2: liveDegree2 } = dataRef.current;
-    const visibleD1 = liveConnections;
+    // In Degrees the subject is the circles, so only the people you've mapped
+    // are drawn, each with room for everyone behind them.
+    const degreesMode = mode === 'degrees';
+    const mappedIds = new Set(liveDegree2.map((c) => c.source_connection_id).filter(Boolean));
+    const visibleD1 = degreesMode ? liveConnections.filter((c) => mappedIds.has(c.id)) : liveConnections;
     const d1ById = new Map(visibleD1.map((c) => [c.id, c]));
     const visibleD2 = liveDegree2.filter(
       (c) => c.source_connection_id && d1ById.has(c.source_connection_id)
@@ -194,7 +198,54 @@ const OrbitGraph = forwardRef(function OrbitGraph(
 
     const d2Nodes = [];
     const links = [];
-    for (const [bridgeId, cluster] of clusters) {
+    let sceneRadius = TIER_RING_RADIUS.B + 70;
+    if (degreesMode) {
+      // One ring of the people you've mapped, biggest circle first, each given
+      // an equal wedge. Their circle fans outward in arcs: the most powerful
+      // closest to them, dot size and colour by their own power and tier.
+      const ordered = [...d1Nodes].sort((a, b) =>
+        (clusters.get(b.id)?.length || 0) - (clusters.get(a.id)?.length || 0));
+      const n = Math.max(1, ordered.length);
+      const R = Math.max(140, n * 9);
+      // Room in proportion to how many are behind each person (square-rooted,
+      // so one huge circle can't take the whole ring): big circles spread into
+      // fans instead of shooting out as thin spikes.
+      const weight = (d) => Math.sqrt((clusters.get(d.id)?.length || 0) + 4);
+      const total = ordered.reduce((sum, d) => sum + weight(d), 0) || 1;
+      let cursor = -Math.PI / 2;
+      ordered.forEach((b) => {
+        const share = (weight(b) / total) * Math.PI * 2;
+        const angle = cursor + share / 2;
+        cursor += share;
+        const wedge = Math.min(share * 0.88, 1.6);
+        b.x = b.fx = Math.cos(angle) * R;
+        b.y = b.fy = Math.sin(angle) * R;
+        b.hub = true;
+        b.r = 9 + Math.min(10, (clusters.get(b.id)?.length || 0) / 40);
+        const people = [...(clusters.get(b.id) || [])]
+          .sort((p, q) => (Number(q.power_score) || 0) - (Number(p.power_score) || 0));
+        let placed = 0;
+        let r = R + b.r + 16;
+        while (placed < people.length) {
+          const fit = Math.max(1, Math.floor((r * wedge) / 9));
+          const row = people.slice(placed, placed + fit);
+          row.forEach((c, j) => {
+            const a = angle + (row.length === 1 ? 0 : (j / (row.length - 1) - 0.5) * wedge);
+            const node = {
+              id: c.id, kind: 'd2', tier: c.tier || 'D',
+              r: 1.8 + Math.min(10, Number(c.power_score) || 0) * 0.32,
+              connection: c, x: Math.cos(a) * r, y: Math.sin(a) * r,
+            };
+            node.fx = node.x; node.fy = node.y;
+            d2Nodes.push(node);
+          });
+          placed += row.length;
+          r += 9;
+        }
+        sceneRadius = Math.max(sceneRadius, r + 10);
+      });
+    }
+    for (const [bridgeId, cluster] of degreesMode ? [] : clusters) {
       const bridgeNode = d1NodeById.get(bridgeId);
       if (!bridgeNode) continue;
       const baseAngle = d1AngleById.get(bridgeId) ?? 0;
@@ -242,7 +293,13 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       .attr('stroke-opacity', 0.09)
       .attr('stroke-width', 0.5);
 
-    for (const tier of TIER_ORDER) {
+    if (degreesMode && d1Nodes.length) {
+      const R = Math.hypot(d1Nodes[0].x, d1Nodes[0].y);
+      ringsLayer.append('circle').attr('r', R).attr('fill', 'none')
+        .attr('stroke', '#FF6B35').attr('stroke-opacity', 0.18).attr('stroke-width', 1)
+        .attr('stroke-dasharray', '3 7');
+    }
+    for (const tier of degreesMode ? [] : TIER_ORDER) {
       if (!activeTiers.has(tier)) continue;
       ringsLayer.append('circle')
         .attr('r', TIER_RING_RADIUS[tier])
@@ -263,7 +320,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       const g = select(this);
 
       if (d.kind === 'd2') {
-        g.attr('opacity', 0.55);
+        g.attr('opacity', degreesMode ? 0.85 : 0.55);
         g.append('circle').attr('class', 'og-base').attr('r', d.r)
           .attr('fill', TIER_COLORS[d.tier] || TIER_COLORS.D);
         return;   // selection ring is created on demand, see applySelection
@@ -404,8 +461,8 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     };
 
     let sim = null;
-    if (isMobile) {
-      ticked();      // static golden-angle layout; no simulation on phones
+    if (isMobile || degreesMode) {
+      ticked();      // static layouts: golden-angle on phones, wedges in Degrees
     } else {
       const simulation = forceSimulation(simNodes)
         // A 2nd-degree person belongs to their bridge, not to a ring. Giving
@@ -451,7 +508,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     }
 
     // ---- zoom & pan ------------------------------------------------------
-    const zoomBehavior = zoom().scaleExtent([0.3, 3]).on('zoom', (event) => {
+    const zoomBehavior = zoom().scaleExtent([0.15, 3]).on('zoom', (event) => {
       viewport.attr('transform', event.transform.toString());
       // Persist only user-driven camera moves; saving the programmatic initial
       // transform would pin the view to stale dimensions across resizes.
@@ -463,7 +520,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     });
     svg.call(zoomBehavior).on('dblclick.zoom', null);
 
-    const fitK = Math.max(0.3, Math.min(3, Math.min(width, height) / ((TIER_RING_RADIUS.B + 70) * 2)));
+    const fitK = Math.max(0.15, Math.min(3, Math.min(width, height) / (sceneRadius * 2)));
     const initialTransform =
       savedTransformRef.current ?? zoomIdentity.translate(width / 2, height / 2).scale(fitK);
     svg.call(zoomBehavior.transform, initialTransform);
@@ -539,7 +596,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       svg.on('click', null);
       svg.selectAll('*').remove();
     };
-  }, [signature, userName, userImage, isMobile, size]);
+  }, [signature, userName, userImage, isMobile, size, mode]);
 
   return (
     <div

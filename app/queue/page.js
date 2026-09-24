@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
+import OutlinkQuest from '../components/OutlinkQuest';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import Link from 'next/link';
@@ -33,7 +34,10 @@ function QueueInner() {
   const [selected, setSelected] = useState(new Set());
   const [sentIds, setSentIds] = useState(new Set());
   const [pendingList, setPendingList] = useState([]);
-  const [view, setView] = useState('recs'); // recs | pending
+  // Circles is the game (lib/quest.js); the list and Pending are still here.
+  const [view, setView] = useState('quest'); // quest | recs | pending
+  const [added, setAdded] = useState([]);
+  const [mappedIds, setMappedIds] = useState(() => new Set());
   const [bridgeFilter, setBridgeFilter] = useState(null);
 
   // Default to bridge view — shows D1 person → their D2 people
@@ -64,6 +68,8 @@ function QueueInner() {
       ]);
       const d1 = net.degree1;
       const d2 = net.degree2;
+      setAdded(d1.filter(c => c.unlocked_from_bridge_id));
+      setMappedIds(new Set(d2.map(c => c.source_connection_id).filter(Boolean)));
       const d1Urls = new Set(d1.map(c => c.profile_url));
       const bridgeById = {};
       d1.forEach(c => { bridgeById[c.id] = c; });
@@ -215,6 +221,10 @@ function QueueInner() {
           }}>Outlink</h1>
           {/* View toggle: Recommendations vs Pending */}
           <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: 2 }}>
+            <button onClick={() => setView('quest')} style={{
+              padding: '5px 12px', borderRadius: 4, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              background: view === 'quest' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'transparent', color: view === 'quest' ? '#000' : '#FFD700',
+            }}>Circles</button>
             <button onClick={() => setView('recs')} style={{
               padding: '5px 12px', borderRadius: 4, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
               background: view === 'recs' ? '#fff' : 'transparent', color: view === 'recs' ? '#000' : '#888',
@@ -242,8 +252,8 @@ function QueueInner() {
             </>)}
           </div>
         </div>
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        {/* Filters (the list's; the Circles game has its own order) */}
+        <div style={{ display: view === 'quest' ? 'none' : 'flex', gap: 6 }}>
           {[
             { k: 'all', l: `All (${recs.length})` },
             { k: 'S', l: `S (${tierCounts.S})`, c: TIER_COLORS.S },
@@ -280,7 +290,35 @@ function QueueInner() {
         </div>
       )}
 
+      {view === 'quest' && (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <OutlinkQuest
+            recs={recs}
+            sentIds={sentIds}
+            added={added}
+            mappedIds={mappedIds}
+            onSend={async (r) => {
+              try {
+                await fetch('/api/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'mark-sent', connectionId: r.id, profileUrl: r.profile_url, userId }) });
+                setSentIds(prev => new Set([...prev, r.id]));
+                setPendingList(prev => (prev.some(x => x.id === r.id) ? prev : [...prev, r]));
+              } catch {}
+            }}
+            onUndo={async (r) => {
+              try {
+                await fetch('/api/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'undo', connectionId: r.id, userId }) });
+                setSentIds(prev => { const next = new Set(prev); next.delete(r.id); return next; });
+                setPendingList(prev => prev.filter(x => x.id !== r.id));
+              } catch {}
+            }}
+          />
+        </div>
+      )}
+
       {/* Scrollable list */}
+      {view !== 'quest' && (
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 24px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
 
@@ -641,6 +679,7 @@ function QueueInner() {
           </>)}
         </div>
       </div>
+      )}
     </div>
   );
 }
