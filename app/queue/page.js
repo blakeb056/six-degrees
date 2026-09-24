@@ -102,7 +102,7 @@ function QueueInner() {
         textAlign: 'center', padding: 24,
       }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
-        <div style={{ fontSize: 13 }}>The public demo includes the Network Circle and Bridges views only.</div>
+        <div style={{ fontSize: 13 }}>The public demo includes the Network Circle and Degrees views only.</div>
         <Link href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );

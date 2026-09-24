@@ -109,14 +109,25 @@ function HomeInner() {
     () => (filter === 'all' ? connections : connections.filter(c => c.tier === filter)),
     [connections, filter],
   );
+  // Lookups built once per load. Every click re-renders this component, and the
+  // three places below used to scan one list inside another — degree1.find per
+  // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
+  // a click, at 20k rows.
+  const d1ById = useMemo(() => new Map(degree1.map(c => [c.id, c])), [degree1]);
+  const bridgeIds = useMemo(
+    () => new Set(degree2.map(d => d.source_connection_id).filter(Boolean)),
+    [degree2],
+  );
+  const bridgeTierCounts = useMemo(() => {
+    const counts = {};
+    degree1.forEach(c => { if (bridgeIds.has(c.id)) counts[c.tier] = (counts[c.tier] || 0) + 1; });
+    return counts;
+  }, [degree1, bridgeIds]);
   const filteredD2 = useMemo(() => {
     if (!isDegreesMode) return NO_DEGREE2;
     if (filter === 'all') return degree2;
-    return degree2.filter(c => {
-      const bridge = degree1.find(d1 => d1.id === c.source_connection_id);
-      return bridge && bridge.tier === filter;
-    });
-  }, [isDegreesMode, filter, degree1, degree2]);
+    return degree2.filter(c => d1ById.get(c.source_connection_id)?.tier === filter);
+  }, [isDegreesMode, filter, d1ById, degree2]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) setSidebarCollapsed(false);
@@ -130,6 +141,10 @@ function HomeInner() {
       </div>
     );
   }
+
+  // Resolved once, because two places care: the renderer below, and the Galaxy
+  // toggle, which hides over Separation.
+  const view = resolveView(visualMode, mode);
 
   return (
     <div data-map style={{ height: '100vh', overflow: 'hidden', background: '#0a0a1a', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -150,14 +165,14 @@ function HomeInner() {
               {isMobile ? 'Circle' : 'Network Circle'}
             </button>
             <button
-              onClick={() => { setMode('degrees'); setSelected(null); setFilter('all'); setVisualMode('chain'); }}
+              onClick={() => { setMode('degrees'); setSelected(null); setFilter('all'); setVisualMode('separation'); }}
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
                 background: mode === 'degrees' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'rgba(255,255,255,0.12)',
                 color: mode === 'degrees' ? '#000' : '#fff',
               }}
             >
-              Bridges
+              Degrees
             </button>
 
             {/* Which network you are looking at, and the way back out of it.
@@ -320,7 +335,7 @@ function HomeInner() {
               const sCount = degree1.filter(c => c.tier === 'S').length;
               const aCount = degree1.filter(c => c.tier === 'A').length;
               const bCount = degree1.filter(c => c.tier === 'B').length;
-              const clusters = degree1.filter(c => degree2.some(d => d.source_connection_id === c.id)).length;
+              const clusters = degree1.filter(c => bridgeIds.has(c.id)).length;
               const d2S = degree2.filter(c => c.tier === 'S').length;
               const np = (sCount*100)+(aCount*40)+(bCount*15)+(clusters*200)+(d2S*50)+degree1.length;
               return Math.floor(Math.sqrt(np / 10));
@@ -352,12 +367,7 @@ function HomeInner() {
           visualMode={visualMode}
           onVisualModeChange={setVisualMode}
           tierCounts={stats?.tiers || {}}
-          bridgeTierCounts={(() => {
-            const counts = {};
-            degree1.filter(c => degree2.some(d => d.source_connection_id === c.id))
-              .forEach(c => { counts[c.tier] = (counts[c.tier] || 0) + 1; });
-            return counts;
-          })()}
+          bridgeTierCounts={bridgeTierCounts}
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
@@ -365,7 +375,7 @@ function HomeInner() {
           // No connections at all: offer a way in rather than a black screen.
           if (degree1.length === 0) return <EmptyState />;
 
-          // Every Bridges surface is built from 2nd-degree rows. A CSV import
+          // Every Degrees surface is built from 2nd-degree rows. A CSV import
           // has none, so say why instead of rendering an empty canvas.
           if (isDegreesMode && degree2.length === 0) {
             return (
@@ -376,7 +386,7 @@ function HomeInner() {
                 <div style={{ maxWidth: 440 }}>
                   <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>&#128279;</div>
                   <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px', color: '#fff' }}>
-                    Bridges need 2nd-degree data
+                    Degrees need 2nd-degree data
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
                     This view maps who <em>your connections</em>{' '}know &mdash; the people you haven&rsquo;t met yet.
@@ -394,7 +404,6 @@ function HomeInner() {
           // One props object for every view. Each destructures what it needs
           // and ignores the rest, so adding a visual is a row in views.js
           // rather than a branch here that has to agree with two other files.
-          const view = resolveView(visualMode, mode);
           const View = view.component;
           const viewProps = {
             connections: filtered,
@@ -446,8 +455,11 @@ function HomeInner() {
           }}
         />
 
-        {/* Galaxy experimental toggle — bottom right, Bridges mode only */}
-        {isDegreesMode && (
+        {/* Galaxy experimental toggle — bottom right, Degrees mode only.
+            Hidden over Separation: Galaxy isn't a Degrees view, so from there
+            the toggle could only fall back to Separation itself, and on a
+            phone it sat on top of the score column. */}
+        {isDegreesMode && view.key !== 'separation' && (
           <div style={{
             position: 'absolute', bottom: 20, right: 20, zIndex: 20,
             display: 'flex', alignItems: 'center', gap: 8,

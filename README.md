@@ -80,7 +80,7 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 
 **The CSV is the supported path and it is deliberately the shallower one.** LinkedIn's export
 contains only people you are already connected to, so the two views about people you *haven't*
-met — Bridges and Outlink — have nothing to draw. That data exists nowhere in any official
+met — Degrees and Outlink — have nothing to draw. That data exists nowhere in any official
 export; the scraper is the only way to it, and it is opt-in for a reason. Explore the sample
 network first if you want to see those views before deciding.
 
@@ -117,7 +117,7 @@ those map the people you haven't met yet.
 ### The deeper path: the local scraper
 
 This is the only way to get **2nd-degree** data — who your connections know.
-LinkedIn's export cannot provide it, so Bridges and Outlink stay empty without it.
+LinkedIn's export cannot provide it, so Degrees and Outlink stay empty without it.
 
 **You do not need a terminal for this.** Choose **Scan my LinkedIn** on the welcome
 screen (or **Scan** in the nav later) and use the buttons. Each step ticks itself off,
@@ -188,7 +188,7 @@ Full detail: [`docs/SCRAPING.md`](docs/SCRAPING.md).
 
 **Outlink** *(needs 2nd-degree data — scraper or sample only)* — a ranked outreach queue built from 2nd-degree recommendations.
 
-<img src="docs/img/bridges.png" alt="The Bridges view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
+<img src="docs/img/bridges.png" alt="The Degrees view: your highest-leverage connections on a ring, each showing how many people their own circle reaches" width="100%">
 
 **Tiers** — everyone scored S/A/B/C/D from role seniority and company prestige.
 

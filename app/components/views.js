@@ -17,6 +17,7 @@ import BridgeRing from './BridgeRing';
 import GridView from './GridView';
 import ListView from './ListView';
 import RingsView from './RingsView';
+import SeparationView from './SeparationView';
 
 /**
  * `modes` — which top-level mode the view belongs in ('network', 'degrees').
@@ -28,6 +29,7 @@ import RingsView from './RingsView';
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
   orbit:    { component: OrbitGraph, modes: ['network'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots', allDegree2: true },
+  separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
   revolver: { component: BridgeRing, modes: ['degrees'],            label: 'Revolver',      icon: '🎯', desc: 'Rotary dial · spin to switch' },
   rings:    { component: RingsView,  modes: ['network', 'degrees'], label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
@@ -35,8 +37,12 @@ export const VIEWS = {
   grid:     { component: GridView,   modes: ['network', 'degrees'], label: 'Grid',          icon: '▦', desc: 'Cards' },
 };
 
-/** The order they appear in the menu. */
-const ORDER = ['galaxy', 'orbit', 'chain', 'revolver', 'rings', 'list'];
+/**
+ * The order they appear in the menu. Separation is the first Degrees view, so
+ * it is also where resolveView lands when the chosen view isn't a Degrees one
+ * (Galaxy, say, carried over from Network Circle).
+ */
+const ORDER = ['galaxy', 'orbit', 'separation', 'chain', 'revolver', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

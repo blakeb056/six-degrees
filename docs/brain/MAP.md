@@ -10,6 +10,7 @@
 | `app/components/BridgeRing.js` | Revolver — the rotary dial; spin to switch bridge, circle fans from the top slot. |
 | `app/components/ForceGraph.js` | The D3 galaxy (~950 lines). Force simulation, rings, cluster expansion, hover cards. |
 | `app/components/ChainView.js` | The rotary-dial bridge view. |
+| `app/components/SeparationView.js` | Separation: every 2nd-degree person ranked, one row each with every way in, under a small map of the top of the list. Windowed, so it is never capped. |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
 | `app/api/*` | 15 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
@@ -24,6 +25,7 @@
 | `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
 | `lib/rpc.js` | The scoring model at runtime. Mirror of the reference SQL. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
+| `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |
 | `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser. Never persisted. |
 | `lib/user.js` | Identity/context provider. |
 | `lib/demo.js` | The static demo-mode short circuit, inherited from v1. |

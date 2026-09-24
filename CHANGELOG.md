@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Separation**, a new Degrees view and the one the Degrees tab now opens on. Everyone you
+  can reach in two steps is ranked on one list, one row per person, however many of your
+  connections know them. Each row shows every way in. A small map above the list draws
+  You → each connection → the top ten, with every route. Search also matches who knows
+  someone, so typing a connection's name shows their circle.
+- The Sidebar's **Path to this person** box lists every route to a 2nd-degree person, not
+  just the one on the row you clicked. A route whose connection can't be found is still
+  shown, as unnamed. It used to make the box disappear.
+
+### Changed
+- The **Bridges** tab is now called **Degrees**. The Filters panel's tier chips there read
+  "Filter by bridge tier", so they aren't confused with a person's own tier.
+
 ### Fixed
 - The Scan page's note on how long a whole list takes read "15 minutesa person".
 
