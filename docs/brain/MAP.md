@@ -11,8 +11,11 @@
 | `app/components/ForceGraph.js` | The D3 galaxy (~950 lines). Force simulation, rings, cluster expansion, hover cards. |
 | `app/components/ChainView.js` | The rotary-dial bridge view. |
 | `app/components/SeparationView.js` | Separation: every 2nd-degree person ranked, one row each with every way in, under a small map of the top of the list. Windowed, so it is never capped. |
+| `app/components/PathsAnalyzer.js` | Paths → Map and Industries: an InMaps-style company map by inferred industry, industry cards, and the analyzer panel for a company or industry. |
+| `app/components/CompanyScores.js` | Paths → Scores: every company with its score, where the score comes from, and the control to set your own. |
+| `app/components/OutlinkQuest.js` | Outlink → Circles: working through each mapped circle five people at a time (rules in `lib/quest.js`). |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
-| `app/api/*` | 15 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/api/*` | 18 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
 | `middleware.js` | Refuses cross-site writes on all of `/api`, then applies the destructive-route gate. |
@@ -23,7 +26,10 @@
 |---|---|
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
 | `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
-| `lib/rpc.js` | The scoring model at runtime. Mirror of the reference SQL. |
+| `lib/scoring.js` | **The scoring model: the only one.** Titles, companies, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
+| `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` writes `lib/scoring.js`'s results back to every row. |
+| `lib/companies.js` | Companies and industries for Paths: the company index, inferred industries, company-to-company links, ways in. Reads titles and companies through `lib/scoring.js`. |
+| `lib/quest.js` | Outlink's game rules: stages of five, next best moves, levels, new doors. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
 | `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |
 | `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser. Never persisted. |
@@ -35,14 +41,14 @@
 | Path | Role |
 |---|---|
 | `db/schema.js` | The schema, **as a JS module** — not a `.sql` file. See TRAPS §4. |
-| `scripts/scrape.py` | The scraper. The only implementation that has ever actually scraped. |
+| `scripts/scrape.py` | The scanner. The only implementation that has ever actually scanned. Stays Python; the desktop plan ships Python inside the app ([`DESKTOP.md`](DESKTOP.md)). |
 | `scripts/image_store.py` | Downloads and re-encodes avatars to permanent local WebP. |
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
-| `scripts/score_new_connections.sql` | **Reference** scoring model. |
+| `scripts/score_new_connections.sql`, `scripts/score-connections.sql` | **Retired** hosted-era scoring, kept for history. The model is `lib/scoring.js`. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |
 | `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`: bundles a Node runtime so the app has no prerequisites for the CSV path. Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). |
 | `bin/six-degrees.mjs` | The `npx` launcher: Node guard, data dir, port probe from 6363. |
-| `tests/*.test.mjs` | 37 tests on `node --test`. No test framework dependency. |
+| `tests/*.test.mjs` | About 150 tests on `node --test`. No test framework dependency. |
 
 ## Data directory
 

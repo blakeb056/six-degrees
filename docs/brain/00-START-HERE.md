@@ -18,8 +18,9 @@ Six rules, each learned expensively. If a change violates one, the change is wro
 4. **A scraper that cannot read its page must say so, never report zero.** A swallowed
    error that becomes "0 connections" is indistinguishable from an empty network and
    hides real bugs for months. TRAPS §7.
-5. **The scoring model exists twice** — `scripts/score_new_connections.sql` (reference)
-   and `lib/rpc.js` (runtime). Change both in the same commit or the tiers drift.
+5. **The scoring model exists once**: `lib/scoring.js`. Everything scores through it
+   (import, CSV, Paths). Never transcribe it anywhere else; three copies that disagreed
+   is what 0.1.10 cleaned up. [`SCORING.md`](SCORING.md).
 6. **Never commit real network data.** CI enforces it; do not route around the guard.
 
 ## Where to go next
@@ -27,7 +28,9 @@ Six rules, each learned expensively. If a change violates one, the change is wro
 - Changing the UI or a route → [`MAP.md`](MAP.md), then [`ENDPOINTS.md`](ENDPOINTS.md)
 - Changing how data is stored → [`SCHEMA.md`](SCHEMA.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Changing scoring or tiers → [`SCORING.md`](SCORING.md)
-- Touching the scraper → [`SCRAPER.md`](SCRAPER.md), and **read [`TRAPS.md`](TRAPS.md) first**
+- Touching the scanner → [`SCRAPER.md`](SCRAPER.md), and **read [`TRAPS.md`](TRAPS.md) first**
+- Packaging, the desktop app, Windows → [`DESKTOP.md`](DESKTOP.md): the plan, its phases,
+  and the rules that protect the working version
 - Deciding whether something is allowed at all → [`../SIX-DEGREES-SPEC.md`](../SIX-DEGREES-SPEC.md)
 - Picking this up cold → [`HANDOFF.md`](HANDOFF.md)
 - What stands between this and a public launch → [`PHASES.md`](PHASES.md), the Phase 6 checklist

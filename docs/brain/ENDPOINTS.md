@@ -25,7 +25,8 @@ that matters — a misconfigured deployment must not become a wipe vector.
 | Route | Does |
 |---|---|
 | `GET/POST /api/connections` | Read connections. The scraper's read path. |
-| `POST /api/ingest` | The write path. Parses headlines, scores, upserts. |
+| `POST /api/ingest` | The write path. Parses headlines and upserts, then rescores everyone (`lib/scoring.js`, via `rpc('score_new_connections')`). |
+| `GET/POST /api/company-scores` | Every company in the network with its score and where it comes from (yours, known list, estimate). `POST {name, score}` sets a score (1–10), and `score: null` returns it to automatic. Either way, everyone is rescored. |
 | `POST /api/update-images` | Batch-attaches local avatar paths (100 per call). |
 | `GET/POST /api/users` | List, look up, or create a local profile. `?me=1` returns the profile this machine uses, creating it on first run (`lib/profile.js`). |
 | `GET /api/network` | The shaped graph the views consume. |
