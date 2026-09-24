@@ -27,7 +27,7 @@ that matters — a misconfigured deployment must not become a wipe vector.
 | `GET/POST /api/connections` | Read connections. The scraper's read path. |
 | `POST /api/ingest` | The write path. Parses headlines, scores, upserts. |
 | `POST /api/update-images` | Batch-attaches local avatar paths (100 per call). |
-| `GET/POST /api/users` | List, look up, or create a local profile. |
+| `GET/POST /api/users` | List, look up, or create a local profile. `?me=1` returns the profile this machine uses, creating it on first run (`lib/profile.js`). |
 | `GET /api/network` | The shaped graph the views consume. |
 | `GET/POST /api/queue` | Outreach queue. |
 | `GET/POST /api/notifications` | Notifications. |

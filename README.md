@@ -27,69 +27,47 @@ to a stranger worth meeting.
 
 It runs on your machine, against your own data, with no account and no server.
 
-## Quickstart
+## Install
+
+**On a Mac** — paste this into Terminal:
 
 ```bash
-git clone https://github.com/blakeb056/six-degrees
-cd six-degrees
-npm install
-npm run dev
+curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
 ```
 
-Opens on <http://localhost:3000> with a sample network you can explore straight
-away. **Needs Node 22.13 or newer** — the database is Node's built-in
-`node:sqlite`, and `npm run dev` stops with a clear message on anything older.
-There is nothing to configure: no `.env`, no account, no keys.
+It downloads the app for your chip, checks it against the published checksum, puts
+**Six Degrees** in your Applications folder and opens it. Nothing else to install:
+a Node runtime is bundled inside. Run the same line again later to update — your
+network lives in `~/.six-degrees`, not in the app, so updates never touch it.
+[Read the script](install.sh) before running it if you like; it is short.
 
-> **Updating?** Use `npm run update`, or the button on the Scan page.
->
-> Plain `git pull` often refuses here and it is easy to miss: `npm install`
-> rewrites `package-lock.json` whenever your npm differs from the one that
-> produced the committed file, git will not pull over local changes, and it
-> exits after one line. Everything afterwards looks normal and you are still on
-> the old code. `npm run update` discards that generated file, pulls, installs,
-> and reminds you to restart — because files on disk are not the code a running
-> server has already loaded. The app also shows a banner when those two drift
-> apart.
+**Prefer a download?** Grab the `.dmg` for your chip from
+[Releases](https://github.com/blakeb056/six-degrees/releases) (`arm64` = Apple
+Silicon, `x64` = Intel) and drag it to Applications. The app is not signed with a
+paid Apple certificate, so the first launch of a browser-downloaded copy needs one
+approval: **System Settings → Privacy & Security → Open Anyway**. The Terminal line
+above skips that step.
 
-### Or build a macOS app
+**Anywhere with Node 22.13+** (Linux, Windows, or a Mac you would rather not add an
+app to):
 
 ```bash
-npm run build:app
+npx six-degrees@latest
 ```
 
-Produces `dist/Six Degrees.app` and a ~50 MB `.dmg`. A Node runtime is bundled, so once
-it is installed nothing else is required to import a CSV and explore your network — no
-Node, no clone, no terminal. It opens in a plain window rather than a browser tab.
+**Want to change the code?** Clone it and run the dev server — see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-**The first launch needs one approval.** The app is not signed with a paid Apple
-developer certificate, so macOS refuses it once: open **System Settings → Privacy &
-Security**, scroll down, and click **Open Anyway**. Once per machine.
+### First run
 
-Scanning LinkedIn directly additionally needs Python 3 and Google Chrome; the Scan page
-inside the app checks for both and installs the rest itself.
+The app opens on a welcome screen with three ways in, and asks nothing about you:
 
-There are no prebuilt downloads yet — the scraper needs one clean verified run against
-live LinkedIn before handing binaries to strangers is honest.
-
-Prefer to read the code first, or want to change it:
-
-```bash
-git clone https://github.com/blakeb056/six-degrees
-cd six-degrees
-npm install
-npm run dev
-```
-
-Opens on <http://localhost:3000>. **Needs Node 22.13 or newer** — the database is
-Node's built-in `node:sqlite`, and `npm run dev` stops with a clear message on
-anything older rather than failing later. There is nothing to configure: no
-`.env`, no account, no keys.
-
-Either way: choose **Map your own network**, drop in LinkedIn's official
-`Connections.csv`, and your galaxy renders — or open **Scan** to pull it straight
-from LinkedIn (that path also needs Python 3.9+ and Google Chrome, and the app
-installs the Python side for you).
+- **Scan my LinkedIn** — a guided page that ticks each step off as it goes: set up
+  the scanner (one click), sign into LinkedIn yourself in a Chrome window, scan.
+  Needs Google Chrome and Python 3.9+; the page checks for both and says what is
+  missing.
+- **Import my LinkedIn CSV** — LinkedIn&rsquo;s official export, read in your browser.
+- **Explore a sample network** — 150 invented people, every view working.
 
 ### What each way in gives you
 
@@ -109,7 +87,8 @@ network first if you want to see those views before deciding.
 No account, no API keys, no database to provision. Your data is written to a
 single SQLite file at `~/.six-degrees/six-degrees.sqlite`, and the four
 runtime dependencies are `next`, `react`, `react-dom` and `d3` — the database
-driver is Node's own built-in `node:sqlite`. Requires **Node 22.13+**.
+driver is Node's own built-in `node:sqlite`. The Mac app brings its own Node;
+running from `npx` or from source needs **Node 22.13+**.
 
 ## Use your own network
 
@@ -140,8 +119,9 @@ those map the people you haven't met yet.
 This is the only way to get **2nd-degree** data — who your connections know.
 LinkedIn's export cannot provide it, so Bridges and Outlink stay empty without it.
 
-**You do not need a terminal for this.** Start the app, open **Scan** in the nav,
-and use the buttons:
+**You do not need a terminal for this.** Choose **Scan my LinkedIn** on the welcome
+screen (or **Scan** in the nav later) and use the buttons. Each step ticks itself off,
+and if a run stops early the page says why:
 
 1. **Install what the scraper needs** — one click. It builds a private Python
    environment inside your data directory and installs into that, so it never
@@ -152,7 +132,7 @@ and use the buttons:
    minute and a half for 750 people; only what is new after that.
 4. **2nd degree** — the people *they* know. This is what fills **Bridges** and
    **Outlink**. It opens each connection in turn, so it is slow by design and runs
-   in batches of 10, 25 or 50 with a **Stop** button. Most people hide their
+   in batches of 5, 10 or 25 with a **Stop** button. Most people hide their
    connections; those are noted and never retried.
 
 The live log is on the page throughout.

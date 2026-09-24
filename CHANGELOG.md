@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First release, not yet published to npm.
 
 ### Added
+- **One-line install on a Mac**: `curl -fsSL …/install.sh | bash` fetches the newest
+  release for your chip, verifies its SHA-256, puts the app in Applications and opens
+  it — with no Gatekeeper prompt, because curl does not mark the file as downloaded.
+  Running it again updates. `SIX_DEGREES_DMG` installs a local `.dmg` for testing.
+- A release workflow: pushing a `v*` tag builds the app on Apple Silicon and Intel,
+  publishes both `.dmg`s and a `SHA256SUMS` on a GitHub Release, and publishes to npm
+  when an `NPM_TOKEN` secret exists.
+- A welcome screen for a first run: **Scan my LinkedIn** (recommended), **Import my
+  LinkedIn CSV**, or **Explore a sample network**.
+- The Scan page ticks off the scan step once you have connections, offers **See your
+  network →**, and when a run stops early it shows the reason in a box rather than
+  only "Stopped (exit 1)" at the bottom of the log.
+
+### Changed
+- **No more name prompt.** The app works out which profile is yours — the one that
+  owns your network — and creates one on a fresh install. The prompt minted a new,
+  empty profile for every name that did not match exactly, and with more than one
+  profile the network disappeared from view and the scraper refused to run.
+- The README leads with installing, not cloning; running from source moved to
+  CONTRIBUTING.md, with the commands chained so a failed clone cannot fall through to
+  an older copy.
+
+### Fixed
+- A scan that failed printed only "Stopped (exit 1)". Its reason was on stderr, which
+  the Scan page filtered to lines mentioning "error"; failures now always show their
+  last lines.
 - `npm run update` — discards the regenerated lockfile, pulls, installs, and tells you to
   restart. Plain `git pull` refuses whenever npm has rewritten `package-lock.json`, which
   is most of the time on a second machine, and it says so in one line that is easy to

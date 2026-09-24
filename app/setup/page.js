@@ -90,6 +90,13 @@ function SetupInner() {
   const needsChrome = s && !c.chrome;
   const notFound = s && !c.scriptsFound;
   const canScrape = s?.ready && !running;
+  const mapped = s?.connections || 0;
+  // A run that ended badly, and the line that says why — the last thing it
+  // printed before stopping. Shown as a box, not left for someone to find in the log.
+  const failed = s && !running && s.exitCode != null && s.exitCode !== 0;
+  const failReason = failed
+    ? [...(s.log || [])].reverse().find((l) => !/^Stopped \(exit/.test(l) && !/Warning|warnings\.warn/.test(l))
+    : null;
 
   return (
     <div style={{
@@ -115,7 +122,37 @@ function SetupInner() {
           This reads your own LinkedIn connections in a real Chrome window on this
           machine and saves them here. Nothing leaves your computer, and you will never
           be asked for your password — you sign in yourself, once.
+          {!mapped && ' Three steps and your galaxy appears; each one ticks itself off.'}
         </p>
+
+        {mapped > 0 && !running && (
+          <Box>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <b>{mapped.toLocaleString()} people mapped.</b>{' '}
+                <span style={{ color: '#9aa' }}>Your galaxy is ready.</span>
+              </div>
+              <Link href="/" style={{
+                padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 700,
+                color: '#0a0a1a', textDecoration: 'none',
+                background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+              }}>See your network →</Link>
+            </div>
+          </Box>
+        )}
+
+        {failed && (
+          <Box tone="bad">
+            <b>The last run stopped before it finished.</b>
+            {failReason && (
+              <div style={{
+                marginTop: 6, color: '#e8c4c4', whiteSpace: 'pre-wrap',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5,
+              }}>{failReason}</div>
+            )}
+            <div style={{ color: '#9aa', marginTop: 6 }}>The full log is below.</div>
+          </Box>
+        )}
 
         {notFound && (
           <Box tone="bad">
@@ -181,7 +218,7 @@ function SetupInner() {
         {/* ---- step 3 : the people you know ---- */}
         <Step
           n={3}
-          done={false}
+          done={mapped > 0}
           title="1st degree — the people you know"
           body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
           action={
