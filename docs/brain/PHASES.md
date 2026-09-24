@@ -9,6 +9,7 @@
 | 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
 | 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixed the `.dmg` window 0.1.0 shipped without; v0.1.2 fixed the Galaxy rebuilding itself on hover. The checklist below holds what is left. |
+| 7 — Desktop app | 🟡 **Planned 2026-09-24** in [`DESKTOP.md`](DESKTOP.md): Electron on the Mac first, then Python inside the app, then Windows, then signing. Not started. |
 
 ## What "verified live" means for phase 5
 
@@ -112,10 +113,12 @@ tick an item in the same change that finishes it.
 
 ### Later
 
-- [ ] Port the scraper to Node `playwright-core`, which removes Python from the
-      requirements
-- [ ] An app icon: the app and its `.dmg` use the generic one
-- [ ] A one-click update from inside the Mac app, instead of a line to paste
+- [ ] ~~Port the scraper to Node `playwright-core`~~. Superseded: shipping Python inside
+      the app removes the requirement without a rewrite ([`DESKTOP.md`](DESKTOP.md) D2).
+      The port is D5 there, optional and gated
+- [ ] An app icon: the app and its `.dmg` use the generic one → [`DESKTOP.md`](DESKTOP.md) D0
+- [ ] A one-click update from inside the Mac app, instead of a line to paste →
+      [`DESKTOP.md`](DESKTOP.md) D4
 - [ ] Opening the sidebar resizes the Galaxy and rebuilds it once (its layout restarts).
       Re-centring the existing scene on a resize, instead of rebuilding it, would make
       that smooth too

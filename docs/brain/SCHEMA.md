@@ -15,13 +15,17 @@ installed rather than run from a checkout. TRAPS §4.
 | `notifications` | In-app notifications. |
 | `queue_items` | The outreach queue. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
+| `company_scores` | A company score **you** set (Paths → Scores): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
+| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from; a mismatch rescores everyone once. |
 
 ## `linkedin_connections` — the fields that carry meaning
 
 - `degree` — 1 direct, 2 via a bridge, 3 from a company scan.
 - `source_connection_id` — which bridge this person was found behind. NULL for 1st-degree.
-- `power_score`, `seniority_score`, `company_prestige_score`, `influence_signals` (JSON),
-  `tier` — see [`SCORING.md`](SCORING.md).
+- `power_score`, `seniority_score` (now the title's points), `company_prestige_score`,
+  `tier`, and `score_why`, the working in words: see [`SCORING.md`](SCORING.md). All are
+  rewritten by every rescore; never hand-edit them. `influence_signals` (JSON) is legacy
+  and no longer written.
 - `circle_power`, `circle_s_count`, `circle_a_count`, `circle_elite_pct` — how valuable
   the circle *behind* this person is. This is what makes someone a bridge.
 - `unlock_status`, `unlocked_from_bridge_id`, `unlocked_from_name` — **provenance, and it
@@ -57,6 +61,13 @@ One row per person, per bridge, per user. The `COALESCE` calls are not decoratio
 plain `UNIQUE` index NULLs compare as distinct, so every re-scrape of a 1st-degree
 person (whose `source_connection_id` is NULL) would insert a duplicate. This mirrors the
 rule the original Postgres schema enforced.
+
+## Adding a column
+
+`CREATE TABLE IF NOT EXISTS` never adds a column to a table that already exists, so a
+new column on an existing table also goes in `ADDED_COLUMNS` in `lib/db-client.js`,
+which runs `ALTER TABLE … ADD COLUMN` once on older databases (first used for `score_why`).
+New tables need nothing extra.
 
 ## Conventions
 

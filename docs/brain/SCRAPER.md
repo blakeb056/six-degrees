@@ -1,9 +1,11 @@
 # The scraper
 
-`scripts/scrape.py` — Python + Playwright, driving the user's **real installed Chrome**
-through a persistent profile. It is the only implementation that has ever actually
-scraped; treat it as load-bearing legacy, not as a candidate for a rewrite. See the
-rejected-by-design table in the spec.
+`scripts/scrape.py`, the scanner: Python + Playwright, driving the user's **real
+installed Chrome** through a persistent profile. It is the only implementation that has
+ever actually scanned, so treat it as load-bearing, not as a candidate for a rewrite. See
+the rejected-by-design table in the spec. The desktop app keeps it as it is and ships
+Python *inside* the app instead ([`DESKTOP.md`](DESKTOP.md) D2). A port is D5 there,
+optional and gated. (User-facing text says "scanner"; the file names are legacy.)
 
 **Read [`TRAPS.md`](TRAPS.md) §5–7 and §12–13 before changing anything here.**
 
