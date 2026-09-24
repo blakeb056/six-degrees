@@ -112,9 +112,11 @@ main() {
   [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. Anywhere with Node 22.13+, run:  npx six-degrees@latest"
 
   local arch
+  # A Terminal running under Rosetta reports x86_64 even on Apple Silicon, and
+  # would fetch the Intel build. Ask the hardware instead.
   case "$(uname -m)" in
     arm64)  arch="arm64" ;;
-    x86_64) arch="x64" ;;
+    x86_64) if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then arch="arm64"; else arch="x64"; fi ;;
     *)      fail "Unrecognised Mac chip: $(uname -m)" ;;
   esac
   say "Mac:      $arch"

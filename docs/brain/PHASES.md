@@ -44,6 +44,8 @@ tick an item in the same change that finishes it.
       the scraper's files are found from npm's cache
 - [x] 0.1.2 — hovering a Galaxy dot no longer rebuilds the scene in a loop (TRAPS §29).
       Verified in the installed app: a still hover went from ~250 rebuilds in 3 s to none
+- [x] 0.1.3 — the Mac app runs natively on Apple Silicon, so scanning works from it
+      (TRAPS §30). Verified: launcher and server not translated, a Check for new ran clean
 
 ### Needs the maintainer
 
