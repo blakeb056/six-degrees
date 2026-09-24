@@ -69,7 +69,10 @@ wrong, however good it looks.
       there is none on the Mac, and the favicon is **Next.js's default Vercel triangle**
       (Vercel's mark, not ours). The Electron build uses a placeholder
       (`desktop/icon/icon.svg`: you at the centre, your circles in the tier colours) until
-      Blake picks one.
+      Blake picks one. The icon is used in four places: the Mac app (`build-app.mjs`), the
+      website (`pages.yml`), the README's header, and saved inside the README's download
+      buttons. For that last one, run `python3 scripts/readme_buttons.py` and commit
+      `docs/img/download-*.png`.
 - [x] Mark tags with a hyphen (`v0.2.0-beta.1`) as pre-releases in `release.yml`, with
       install-to-a-separate-folder notes; npm gets them under `next`, never `latest`
 
