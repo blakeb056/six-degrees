@@ -8,7 +8,7 @@
 | 3 — Presentation | ✅ Synthetic sample network, empty state, hydration fix, README screenshots |
 | 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
-| 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixes the `.dmg` window 0.1.0 shipped without. The checklist below holds what is left. |
+| 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixed the `.dmg` window 0.1.0 shipped without; v0.1.2 fixed the Galaxy rebuilding itself on hover. The checklist below holds what is left. |
 
 ## What "verified live" means for phase 5
 
@@ -42,6 +42,8 @@ tick an item in the same change that finishes it.
       uncommitted files it is about to ship (TRAPS §27)
 - [x] `npm pack` run through `npx` from the tarball: starts, every route answers,
       the scraper's files are found from npm's cache
+- [x] 0.1.2 — hovering a Galaxy dot no longer rebuilds the scene in a loop (TRAPS §29).
+      Verified in the installed app: a still hover went from ~250 rebuilds in 3 s to none
 
 ### Needs the maintainer
 
