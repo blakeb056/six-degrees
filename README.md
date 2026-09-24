@@ -13,7 +13,7 @@
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="https://img.shields.io/badge/Download-Intel%20Mac-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with an Intel processor"></a>
 </p>
 
-<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
+<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://blakeb056.github.io/six-degrees/">website</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
