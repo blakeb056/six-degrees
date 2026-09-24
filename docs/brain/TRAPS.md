@@ -736,7 +736,11 @@ not only daily), a cooldown lock, and resume by person.
 A first version of the breaker recorded "hidden" and then un-recorded the streak when it
 tripped. Review showed two genuinely hidden people side by side then stalled every batch
 at the same pair, and `--retry-private` erased correct skips. Don't record what you might
-have to take back: decide from evidence first.
+have to take back: decide from evidence first. A second review of that rework found the evidence
+check itself too loose (a first name matched anywhere in the tab title, and every tab
+says "LinkedIn", so Li, Lin and Ed "rendered" on a blank page), and the sign-in check
+sampled the cookie after LinkedIn had already expired it. Both are fixed and tested
+(`tests/profile-shown.test.mjs`).
 
 ---
 

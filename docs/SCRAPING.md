@@ -61,8 +61,9 @@ before each page and another minute after every 10, about 55 minutes for a whole
 about unusual activity or restricted viewing, the search limit, a security check, or a
 sign-in wall. It saves what it read, ends the batch, and keeps what the page showed in
 `~/.six-degrees/pushback/`. Someone is marked hidden only when LinkedIn clearly showed their
-profile with no connections link; a profile that didn't render is left unmarked, and two
-of those in a row end the batch. After any of these, leave it at least a day. A security
+profile with no connections link (or said it is unavailable); a profile that didn't render
+is left unmarked, two of those in a row end the batch, and anyone unclear twice waits at the
+back of the queue (`~/.six-degrees/bridge-unclear.json`). After any of these, leave it at least a day. A security
 check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather

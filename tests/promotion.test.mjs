@@ -109,3 +109,43 @@ test('a bridge found in another circle keeps their own row, circle and all', asy
   const { data: circle } = await db.from('linkedin_connections').select('*').eq('id', 'pat-circle-1');
   assert.equal(circle[0].source_connection_id, 'pat-d1', 'their circle still points at them');
 });
+
+test('rows that pointed at a folded copy are moved to the row kept', async () => {
+  const { promoteToFirstDegree } = await import('../lib/promote.js');
+  const KIM = 'https://www.linkedin.com/in/kim/';
+  await db.from('linkedin_connections').insert([
+    { id: 'kim-d1', degree: 1, name: 'Kim', profile_url: KIM, user_id: USER, tier: 'A', power_score: 6 },
+    { id: 'kim-copy', degree: 2, name: 'Kim', profile_url: KIM, source_connection_id: BRIDGE, user_id: USER },
+    // Rows that (wrongly) hang off the copy: a circle member and an origin.
+    { id: 'behind-copy', degree: 2, name: 'Behind', profile_url: 'https://www.linkedin.com/in/behind/',
+      source_connection_id: 'kim-copy', user_id: USER },
+    { id: 'met-via-copy', degree: 1, name: 'Met', profile_url: 'https://www.linkedin.com/in/met/',
+      unlocked_from_bridge_id: 'kim-copy', user_id: USER },
+  ]);
+  await promoteToFirstDegree(db, { profileUrl: KIM, userId: USER });
+  const get = async (id) => (await db.from('linkedin_connections').select('*').eq('id', id)).data[0];
+  assert.equal(await get('kim-copy'), undefined, 'the copy is folded away');
+  assert.equal((await get('behind-copy')).source_connection_id, 'kim-d1');
+  assert.equal((await get('met-via-copy')).unlocked_from_bridge_id, 'kim-d1');
+});
+
+test("another profile's rows are never touched", async () => {
+  const { promoteToFirstDegree } = await import('../lib/promote.js');
+  const OTHER = 'user-2';
+  const LEE = 'https://www.linkedin.com/in/lee/';
+  await db.from('users').insert([{ id: OTHER, name: 'Someone else' }]);
+  await db.from('linkedin_connections').insert([
+    { id: 'lee-mine', degree: 1, name: 'Lee', profile_url: LEE, user_id: USER },
+    { id: 'lee-copy', degree: 2, name: 'Lee', profile_url: LEE, source_connection_id: BRIDGE, user_id: USER },
+    { id: 'lee-theirs', degree: 1, name: 'Lee', profile_url: LEE, user_id: OTHER },
+  ]);
+  await promoteToFirstDegree(db, { profileUrl: LEE, userId: USER });
+  const { data } = await db.from('linkedin_connections').select('*').eq('profile_url', LEE);
+  assert.deepEqual(data.map((r) => r.id).sort(), ['lee-mine', 'lee-theirs']);
+
+  const res = await promoteToFirstDegree(db, { profileUrl: LEE });
+  assert.equal(res.promoted, false, 'without a profile, nothing is done');
+  const { data: after } = await db.from('linkedin_connections').select('*').eq('profile_url', LEE);
+  assert.equal(after.length, 2);
+});
+

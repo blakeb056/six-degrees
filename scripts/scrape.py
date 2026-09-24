@@ -1184,6 +1184,42 @@ def record_bridge_skip(profile_url, name, reason):
         print(f"  (could not record the skip: {exc})")
 
 
+# People whose reads came back unclear. Nothing about them is concluded, but
+# without a count, two of them side by side would stop every batch at the same
+# place, forever. After UNCLEAR_LIMIT unclear reads they go to the back of the
+# queue — still tried, just not first. A clear read wipes the count.
+UNCLEAR_LIMIT = 2
+
+
+def _unclear_path():
+    base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "bridge-unclear.json"
+
+
+def load_unclear():
+    try:
+        data = json.loads(_unclear_path().read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def note_unclear(profile_url, clear=False):
+    data = load_unclear()
+    if clear:
+        if profile_url not in data:
+            return
+        data.pop(profile_url, None)
+    else:
+        n = int((data.get(profile_url) or {}).get("n") or 0) + 1
+        data[profile_url] = {"n": n, "at": datetime.now().isoformat(timespec="seconds")}
+    try:
+        _unclear_path().write_text(json.dumps(data, indent=2))
+    except Exception:
+        pass
+
+
 def clear_bridge_skips():
     try:
         _skips_path().unlink()
@@ -1825,6 +1861,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 shown = bool(page.evaluate(PROFILE_SHOWN_JS, bridge_name))
             except Exception:
                 pass
+            if stop_requested() or _window_closed(page):
+                return [], "stopped", reach
             if not shown:
                 # Their profile never rendered, so this says nothing about them.
                 # Marking them hidden here is what made a block skip-list people
@@ -1880,6 +1918,19 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         return [], "limited", reach
 
     if not results_loaded:
+        if stop_requested() or _window_closed(page):
+            reach["more"] = True
+            return [], "stopped", reach
+        try:
+            says_none = bool(page.evaluate(NO_RESULTS_JS))
+        except Exception:
+            says_none = False
+        if says_none:
+            # LinkedIn's own empty state: a real answer, not push-back.
+            print("  LinkedIn says there are no results here.")
+            if start_page > 1:
+                return [], "success", reach           # carrying on: their list ended
+            return [], "empty", reach
         # Their connections link was there, so their list is visible: a search
         # that won't open is LinkedIn failing us, not them hiding anything.
         _pushed_back(page, reach, "a search that would not open")
@@ -1935,7 +1986,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 break
             page_results = _read_results_page(page)
         except Exception:
-            if stop_requested():      # the browser went down with the stop
+            if stop_requested() or _window_closed(page):   # the browser went down with the stop
                 reach["more"] = True
                 print("stopped.")
                 break
@@ -2004,7 +2055,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             break
         if step == "stuck":
             reach["more"] = True
-            if not stop_requested():
+            if not stop_requested() and not _window_closed(page):
                 print(f"  Page {pg + 1} would not open after {END_CHECKS} tries. LinkedIn may be "
                       f"limiting searches; the next run carries on from there.")
                 _pushed_back(page, reach, _pushback(page) or "a page that would not open")
@@ -2156,6 +2207,8 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         mark_bridge_hidden(profile_url, bridge_name)
         print("  Their connections are not visible any more — keeping what is mapped.")
 
+    if status == "stopped" or stop_requested():
+        return _read(read, "stopped")
     if reach["limited"]:
         raise SearchLimitReached(len(read))
     if reach.get("pushed_back"):
@@ -2613,6 +2666,13 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     else:
         log(f"Reading up to {max_pages} pages per person (about {max_pages * 10} of their connections)")
 
+    unclear = load_unclear()
+    parked = [c for c in unbridged if int((unclear.get(c.get("profile_url")) or {}).get("n") or 0) >= UNCLEAR_LIMIT]
+    if parked:
+        parked_ids = {c["id"] for c in parked}
+        unbridged = [c for c in unbridged if c["id"] not in parked_ids] + parked
+        log(f"{len(parked)} came back unclear {UNCLEAR_LIMIT}+ times, so they go to the back of the queue")
+
     finishing = sum(1 for c in unbridged if c.get("_from_page", 1) > 1)
     log(f"Found {len(unbridged) - finishing} unbridged connections")
     log(f"Already bridged: {len(mapped)}")
@@ -2691,6 +2751,12 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 elif url:
                     record_bridge_skip(url, name, "no visible connections")
                     log("  Connections are hidden — noted, and skipped from now on")
+            elif status == "empty":
+                healthy = True
+                results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
+                if url:
+                    record_bridge_skip(url, name, "LinkedIn showed no one in their list")
+                log("  LinkedIn shows no one in their list — noted, and skipped from now on")
             elif status == "finished":
                 healthy = True
                 results.append({"name": name, "tier": tier, "found": 0, "status": "finished"})
@@ -2748,14 +2814,19 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 
         if stop_requested():
             continue          # the loop's own check says "Stopped." and ends it
+        if url and results and results[-1]["name"] == name:
+            if healthy:
+                note_unclear(url, clear=True)
+            elif results[-1]["status"] == "unclear":
+                note_unclear(url)
         if healthy:
             streak = 0
         else:
             streak += 1
             if streak >= BREAKER:
-                log(f"  {streak} people in a row came back unclear, which is how LinkedIn limiting")
-                log("  us looks. Stopping the batch; nobody was marked hidden for it, and they")
-                log("  are tried again next time. Leave it a few hours first.")
+                log(f"  {streak} people in a row with no clear answer (a profile that didn't load, or")
+                log("  a failure), which is how LinkedIn limiting us looks. Stopping the batch;")
+                log("  nobody was marked hidden for it. Leave it at least a day.")
                 stopped_early = "unclear reads in a row"
                 break
 
@@ -2903,6 +2974,8 @@ def run_server(port=5555):
                 state["result"] = None
 
                 def run_scrape():
+                    global _stop_requested
+                    _stop_requested = False   # a window closed in an earlier job stops only that job
                     try:
                         if action == "full-scrape":
                             state["log"].append("Full account setup — walking your whole connections list...")

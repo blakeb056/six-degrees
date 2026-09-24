@@ -38,10 +38,12 @@ come next. TRAPS §35.
   search limit coming up or reached), and a security check or sign-in wall appearing while
   you were signed in. What the page showed is kept in `~/.six-degrees/pushback/` so the
   wording can be recognised, and the message says what to do for that case.
-- **Someone is only marked hidden when LinkedIn clearly showed their profile** with no
-  connections link. A profile that didn't render is "unclear": nothing is recorded, and
-  two unclear people in a row stop the batch. A block used to mark everyone after it as
-  hidden, for good.
+- **Someone is only marked hidden when LinkedIn clearly showed their profile** (their name
+  in the page heading or title, as a whole word) with no connections link, or said the
+  profile is unavailable. A profile that didn't render is "unclear": nothing is recorded,
+  two unclear people in a row stop the batch, and someone unclear twice moves to the back
+  of the queue so they can't hold it up. A block used to mark everyone after it as hidden,
+  for good. LinkedIn's own "No results found" is taken as a real answer.
 - **A security check no longer counts as signed in.** The session cookie survives one,
   so a scan used to carry on past it. It now stops, and **Open LinkedIn** on the Scan page
   (shown even when signed in now) opens a window to finish it by hand. Signing in from
