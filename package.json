@@ -1,6 +1,6 @@
 {
   "name": "six-degrees",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Map your professional network as a galaxy — leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
   "license": "MIT",
   "author": "Blake Burford",
@@ -73,12 +73,12 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
-    "next": "16.2.9",
+    "next": "16.3.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "eslint": "^9",
-    "eslint-config-next": "16.2.9"
+    "eslint-config-next": "16.3.6"
   }
 }
