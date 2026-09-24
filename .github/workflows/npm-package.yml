@@ -1,0 +1,73 @@
+# Builds the npm package for a tag on Linux, installs it from the tarball, and
+# checks that it starts and serves the app. Publishes nothing and needs no
+# secrets: the tarball is kept as a workflow artifact.
+#
+# It exists for the package's FIRST publish. npm can't set up trusted publishing
+# (release.yml's npm job) for a name that doesn't exist yet, so the first version
+# is published by hand, from this tarball:
+#
+#   gh workflow run npm-package.yml -f tag=v0.2.0
+#   gh run download <run id> -n npm-package      # six-degrees-0.2.0.tgz + .sha256
+#   npm login
+#   npm publish six-degrees-0.2.0.tgz --access public
+#
+# Built on Linux because the package bundles one native module (sharp, pulled in
+# by Next) for the machine that builds it, and npm is the Linux way in (Macs get
+# the app). release.yml publishes from Linux too.
+
+name: npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build and pack
+        run: |
+          npm ci
+          npm pack
+          ls -la *.tgz
+          sha256sum *.tgz | tee "$(ls *.tgz).sha256"
+      - name: Nothing personal or secret inside
+        run: |
+          if tar -tzf *.tgz | grep -Ei '(^|/)\.env($|\.)|chrome-profile|\.sqlite|\.pem$|id_rsa'; then
+            echo "::error::The package contains a file that must never be published (listed above)."
+            exit 1
+          fi
+      - name: Installs from the tarball and serves the app
+        run: |
+          PREFIX="$RUNNER_TEMP/prefix"
+          npm install -g --prefix "$PREFIX" ./*.tgz
+          "$PREFIX/bin/six-degrees" --no-open --port 6399 --data-dir "$RUNNER_TEMP/home" > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:6399/; then break; fi
+            sleep 1
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:6399/)
+          css=$(curl -s http://127.0.0.1:6399/ | grep -o '/_next/static/[^"]*\.css' | head -1)
+          css_code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:6399$css")
+          echo "page: $code  stylesheet $css: $css_code"
+          cat "$RUNNER_TEMP/server.log"
+          [ "$code" = 200 ] && [ -n "$css" ] && [ "$css_code" = 200 ]
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: |
+            *.tgz
+            *.tgz.sha256
+          retention-days: 14
