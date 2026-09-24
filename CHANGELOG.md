@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-09-24
+
+### Security
+- **Next.js 16.2.9 → 16.3.6.** It fixes two critical remote-code-execution advisories
+  (GHSA-2xp9-vwfh-vxw4 in image optimization, GHSA-p293-qw3h-jr36 on Windows), a middleware
+  bypass under Turbopack (GHSA-6gpp-xcg3-4w24; this app's cross-site guard *is* middleware),
+  and several denial-of-service, request-forgery and cache issues. Listening only on this
+  computer doesn't make these safe: any website you visit can make your browser send
+  requests to `127.0.0.1`, and the cross-site guard blocks writes, not reads. `npm audit`
+  now reports 0.
+
 ### Added
 - **A copy of your data before every new version touches it.** The first time a new version
   opens your database, it copies it into `~/.six-degrees/backups/` first (the newest five
