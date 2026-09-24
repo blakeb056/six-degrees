@@ -25,6 +25,10 @@
   "engines": {
     "node": ">=22.13"
   },
+  "os": [
+    "darwin",
+    "linux"
+  ],
   "private": false,
   "bin": {
     "six-degrees": "bin/six-degrees.mjs"
@@ -73,16 +77,14 @@
     "desktop": "electron desktop",
     "update": "node scripts/update.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
     "d3": "^7.9.0",
+    "electron": "44.4.5",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
     "next": "16.3.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
-  },
-  "devDependencies": {
-    "@electron/packager": "20.3.0",
-    "electron": "44.4.5",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.6"
   }
 }

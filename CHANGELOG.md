@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README, the website and the installer's message now point Linux users to it, with how to
   update it and where it keeps your data.
 
+### Fixed
+- **`npx six-degrees` downloads about 22 MB instead of about 235 MB.** The package already
+  carries its built server; Next, React and d3 are now build-time only.
+- On Windows, npm now refuses the package with a clear "not supported" message instead of
+  installing it and crashing at start.
+- On Linux without a desktop, `npx six-degrees` prints the address to open instead of a
+  crash when there's no browser to launch.
+- The Scan page checks for Google Chrome on Linux too (where Playwright looks for it).
+- Updating an npx copy says to stop it first, and keeps `--data-dir` if it was started
+  with one, so the new version finds your network.
+
 ### Changed
 - The app says **scanner** and **scan** everywhere you read it (the Scan page, the side
   panel, the profile page, the import page); the code names are unchanged.

@@ -60,19 +60,23 @@ Your network isn't stored in the app. It's in a hidden folder in your home folde
 touch it. Each new version also copies your data into its `backups` folder before it
 first opens it.
 
-**Linux:** with **Node 22.13 or later**, run:
+**Linux:** install **Node 22.13 or later** (from nodejs.org or nvm; Ubuntu's own
+`nodejs` package is too old), then run:
 
 ```bash
 npx six-degrees
 ```
 
-It opens http://127.0.0.1:6363 in your browser, keeps your data in `~/.six-degrees`
-(it prints the folder when it starts), and stops with Ctrl-C. To update, stop it and run
-`npx six-degrees@latest`; the Updates panel at the bottom of the Scan page shows the same
-line. Scanning LinkedIn also needs Python 3.9+ and Google Chrome. It's tested on Ubuntu,
-and works on a Mac too if you'd rather not install the app.
+It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without a
+desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
+`--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
+`npx six-degrees@latest`; the Updates panel at the bottom of the Scan page gives the same
+line. Scanning LinkedIn also needs Google Chrome (not Chromium) and Python 3.9+ with venv
+(on Ubuntu: `sudo apt install python3-venv`). It's tested on Ubuntu, and works on a Mac
+too if you'd rather not install the app.
 
-**Windows:** not yet. A Windows app is planned; nothing is released.
+**Windows:** not yet. There's no Windows app, and `npx six-degrees` doesn't run on
+Windows yet; npm says so if you try.
 
 <details>
 <summary>Run it from source (contributors)</summary>
@@ -132,7 +136,7 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 
 - **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It sets up
   the scanner in one click, you sign into LinkedIn yourself in a Chrome window, and then
-  it scans. Needs Google Chrome (in Applications) and Python 3.9+; the page checks that
+  it scans. Needs Google Chrome and Python 3.9+; the page checks that
   both are installed and says what's missing. The app marks this *Recommended* because
   it's the only way to Degrees and Outlink. Read the warning above first.
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On

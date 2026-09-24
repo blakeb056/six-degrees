@@ -84,10 +84,15 @@ function freePort(start, attempts = 20) {
 function openBrowser(url) {
   const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
   const args = platform() === 'win32' ? ['', url] : [url];
+  // A machine with no desktop (no xdg-open) can't open one; say where to go.
+  // spawn reports a missing command as an 'error' event, not a throw.
+  const instead = () => console.log(`  Open ${url} in your browser.`);
   try {
-    spawn(cmd, args, { stdio: 'ignore', detached: true, shell: platform() === 'win32' }).unref();
+    const child = spawn(cmd, args, { stdio: 'ignore', detached: true, shell: platform() === 'win32' });
+    child.on('error', instead);
+    child.unref();
   } catch {
-    /* a browser that will not open is not worth failing over */
+    instead();
   }
 }
 

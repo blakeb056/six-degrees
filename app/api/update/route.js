@@ -1,5 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { projectRoot, isGitCheckout } from '../../../lib/paths';
+import { projectRoot, isGitCheckout, dataDir } from '../../../lib/paths';
+import { homedir } from 'node:os';
+import path from 'node:path';
 import { repoSlug, compareVersions, installKind, updateCommand } from '../../../lib/release';
 import pkg from '../../../package.json';
 
@@ -86,6 +88,12 @@ async function localState(root) {
 // compares it with the one baked into this build. One GET to GitHub, only when
 // the button is pressed, carrying nothing about the user: the spec's invariant 2
 // names exactly this as permitted. Never call it from anything that runs on its own.
+// The folder this copy keeps its network in, when it isn't the default one.
+function customDataDir() {
+  const dir = dataDir();
+  return path.resolve(dir) === path.join(homedir(), '.six-degrees') ? null : dir;
+}
+
 function installedInfo(root) {
   const slug = repoSlug(pkg.repository);
   const kind = installKind(process.env, root || '');
@@ -95,7 +103,7 @@ function installedInfo(root) {
     kind,
     version: pkg.version,
     slug,
-    command: slug ? updateCommand(kind, slug) : null,
+    command: slug ? updateCommand(kind, slug, { dataDir: customDataDir() }) : null,
   };
 }
 
