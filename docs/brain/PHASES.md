@@ -8,7 +8,7 @@
 | 3 — Presentation | ✅ Synthetic sample network, empty state, hydration fix, README screenshots |
 | 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
-| 6 — Launch | 🟨 The install path is built and verified locally (branch `onboarding-install`); nothing is released yet. **The checklist below is the list.** |
+| 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixes the `.dmg` window 0.1.0 shipped without. The checklist below holds what is left. |
 
 ## What "verified live" means for phase 5
 
@@ -21,7 +21,7 @@ Not a unit test — the real thing, watched.
 The one list of what stands between this repo and a public launch. Keep it current:
 tick an item in the same change that finishes it.
 
-### Built and verified locally (branch `onboarding-install`, not merged)
+### Done — released in 0.1.0 (merged as PR #1, 2026-09-24)
 
 - [x] One-line Mac install, `install.sh`: newest release for the Mac's chip, SHA-256
       checked, installed and opened; running it again updates, stopping a running copy
@@ -45,21 +45,25 @@ tick an item in the same change that finishes it.
 
 ### Needs the maintainer
 
-- [ ] Review and merge `onboarding-install`
-- [ ] Tag `v0.1.0` straight after merging. The README's install line points at a release,
-      so it fails for visitors until the first one exists. This is also the first run of
-      the release workflow — watch it
-- [ ] Run the real one-liner on a Mac once the release is up
-- [ ] Decide on company scans: ship as they are, or label them experimental. They have
-      never been run live. (2nd-degree mapping has, since 2026-09-09.)
+- [x] Review and merge `onboarding-install` — PR #1, merged 2026-09-24
+- [x] Tag `v0.1.0` straight after merging — released 2026-09-24. The release workflow went
+      green on its first run, and published both `.dmg` files and `SHA256SUMS`
+- [x] Run the real one-liner on a Mac — 2026-09-24, Apple Silicon: found the release,
+      SHA-256 verified, installed, opened with no Gatekeeper prompt, and its Updates panel
+      reported "the newest version"
+- [x] Company scans — shipped labelled **experimental** (Paths page asks before the first
+      one; SCRAPING.md says so). Still never run live; 2nd-degree mapping has, since 09-09
 - [ ] Optional: an npm account and an `NPM_TOKEN` repository secret, which turns on
       `npx six-degrees@latest`. The name was still free on 2026-09-23
 
 ### Not verified yet
 
-- [ ] The release workflow on GitHub's runners, including the Finder step that lays out
-      the `.dmg` window (it has only ever run on a desktop Mac)
-- [ ] The Updates panel's "Version X is available" state, which needs a second release
+- [x] The release workflow on GitHub's runners — it ran, and it showed the `.dmg` window
+      step had been failing: 0.1.0 shipped a plain window. Fixed in 0.1.1 (TRAPS §28);
+      the fix was proven with a dry run of the workflow before tagging
+- [ ] The Updates panel's "Version X is available" state — checkable now: a 0.1.0 install
+      should offer 0.1.1
+- [ ] The Intel `.dmg`: built and published, never opened on an Intel Mac
 - [ ] The progress bar during a real scan (seen against a stand-in scanner that prints
       the same lines)
 
@@ -71,3 +75,9 @@ tick an item in the same change that finishes it.
 - [ ] A one-click update from inside the Mac app, instead of a line to paste
 - [ ] Next.js deprecation warnings in the build: `middleware` → `proxy`, and `viewport`
       moved out of `metadata`
+- [ ] GitHub Actions warns that `checkout`, `setup-node` and the artifact actions at v4
+      run on deprecated Node 20. Current majors are v7/v8 — upgrade deliberately, one at
+      a time, not in passing
+- [ ] A local build's "uncommitted files" warning lists untracked files only; a modified
+      tracked file ships silently. Releases build from a clean checkout, so this only
+      matters for a hand-made build
