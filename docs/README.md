@@ -3,7 +3,7 @@
 | Document | What it answers |
 |---|---|
 | [`SIX-DEGREES-SPEC.md`](SIX-DEGREES-SPEC.md) | **The law.** Invariants, what "done" means, and what was rejected on purpose. |
-| [`SCRAPING.md`](SCRAPING.md) | User-facing: how to run the scraper, sign in, and what it costs you. |
+| [`SCRAPING.md`](SCRAPING.md) | User-facing: how to run the scanner, sign in, and what it costs you. |
 | [`brain/00-START-HERE.md`](brain/00-START-HERE.md) | **Agents start here.** The router and the non-negotiables. |
 | [`brain/MAP.md`](brain/MAP.md) | Which file does what. |
 | [`brain/ARCHITECTURE.md`](brain/ARCHITECTURE.md) | How the pieces fit, and why local-first. |

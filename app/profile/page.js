@@ -210,7 +210,7 @@ function ProfileInner() {
         {/* === SET UP ACCOUNT === */}
         <SetupScrapeCard status={setupStatus} log={setupLog} onStart={async () => {
           setSetupStatus('running');
-          setSetupLog(['Checking the scraper...']);
+          setSetupLog(['Checking the scanner...']);
           const blocked = notReadyMessage(await scraperStatus().catch(() => null));
           if (blocked) {
             setSetupStatus('offline');
@@ -239,7 +239,7 @@ function ProfileInner() {
           {bridgeStatus === 'idle' && (
             <button onClick={async () => {
               setBridgeStatus('running');
-              setBridgeLog(['Checking the scraper...']);
+              setBridgeLog(['Checking the scanner...']);
               const blocked = notReadyMessage(await scraperStatus().catch(() => null));
               if (blocked) {
                 setBridgeStatus('offline');
@@ -262,7 +262,7 @@ function ProfileInner() {
           {bridgeStatus === 'offline' && (
             <div>
               <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
-                Scraper offline — start it first
+                Scanner offline — start it first
               </div>
               <button onClick={() => setBridgeStatus('idle')} style={{
                 width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -507,7 +507,7 @@ function SetupScrapeCard({ status, log, onStart, onRetry }) {
         {status === 'done' && <span style={{ fontSize: 10, color: '#00ff88', fontWeight: 600 }}>Complete</span>}
       </div>
       <p style={{ fontSize: 11, color: '#888', margin: '0 0 12px' }}>
-        Full scrape of all your LinkedIn connections with profile photos. Takes 3-5 minutes.
+        Full scan of all your LinkedIn connections with profile photos. Takes 3-5 minutes.
       </p>
 
       {status === 'idle' && (
@@ -516,17 +516,17 @@ function SetupScrapeCard({ status, log, onStart, onRetry }) {
           background: 'linear-gradient(135deg, #3498DB, #9B59B6)',
           color: '#fff', fontWeight: 700, fontSize: 14,
         }}>
-          Set Up Account — Full Scrape
+          Set Up Account — Full Scan
         </button>
       )}
 
       {status === 'offline' && (
         <div>
           <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
-            Scraper server offline
+            Scanner offline
           </div>
           <p style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Open the <strong>Scan</strong> page to finish setting the scraper up
+            Open the <strong>Scan</strong> page to finish setting the scanner up
           </p>
           <button onClick={onRetry} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -552,7 +552,7 @@ function SetupScrapeCard({ status, log, onStart, onRetry }) {
 
       {status === 'done' && (
         <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-          All connections scraped with images! Refresh the app to see your network.
+          All connections scanned with images! Refresh the app to see your network.
         </div>
       )}
 

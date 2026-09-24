@@ -58,8 +58,9 @@ wrong, however good it looks.
 
 ### D0 — Groundwork (ships in a normal 0.1.x)
 
-- [ ] "Scraper" → "scanner" in every user-facing string: Scan page steps, errors,
-      `docs/SCRAPING.md` and the README. Code names stay.
+- [x] "Scraper" → "scanner" in every user-facing string: Scan page steps, errors,
+      `docs/SCRAPING.md`, SECURITY.md and the README. Code names stay. Still says "scrape" in
+      its own live-log lines: `scripts/scrape.py`, which rule 1 keeps unedited.
 - [x] Back up the database on the first launch of each new version (rule 3). Every later
       phase depends on it. `backupOnNewVersion()` in `lib/db-client.js`: `VACUUM INTO`
       `backups/auto-before-<version>-<time>.sqlite` before the schema step, keeping the
@@ -202,7 +203,7 @@ reason first:
 
 | Phase | State |
 |---|---|
-| D0 Groundwork | backups ✅ pre-releases ✅; "scanner" wording and the icon still to do |
+| D0 Groundwork | backups ✅ pre-releases ✅ "scanner" wording ✅; the icon still to do |
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |

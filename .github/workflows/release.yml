@@ -205,7 +205,7 @@ jobs:
 
           Your data is copied into ~/.six-degrees/backups/ before a new version first opens it.
 
-          What changed: see CHANGELOG.md.
+          What changed: see [CHANGELOG.md](https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md).
           EOF
           )"
           else
@@ -220,7 +220,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
           ```
 
-          What changed: see CHANGELOG.md.
+          What changed: see [CHANGELOG.md](https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md).
           EOF
           )"
           fi
