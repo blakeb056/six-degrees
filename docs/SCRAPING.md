@@ -64,7 +64,19 @@ sign-in wall. It saves what it read, ends the batch, and keeps what the page sho
 profile with no connections link (or said it is unavailable); a profile that didn't render
 is left unmarked, two of those in a row end the batch, and anyone unclear twice waits at the
 back of the queue (`~/.six-degrees/bridge-unclear.json`). After any of these, leave it at least a day. A security
-check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it. For every result it keeps the profile link, name, photo and headline;
+check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it.
+
+**The budget and the cooldown.** Every search and profile view is written down, and the
+Scan page shows how many searches were made in the last 24 hours and this month (LinkedIn's
+month, from midnight Pacific on the 1st), against a budget you set there: 50 a day and 250
+a month by default. At either limit a read saves, stops, and carries on from the same page
+next time. When LinkedIn pushes back, a cooldown stops anything that searches for a day
+(until the 1st, for the monthly limit); the Scan page shows when it lifts, and lets you lift
+it early once search works for you again.
+
+**Paused lists.** Everyone whose list was only partly read is listed on the Scan page with
+the page they carry on from. **Resume** carries on with one of them; **Resume all** with
+every paused list, and nobody new. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather
 than saved as the headline. People who are already your own connections — they appear

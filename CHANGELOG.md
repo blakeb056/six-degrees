@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-09-24
+
+### Added
+- **A search budget.** Every people search and profile view is written down
+  (`~/.six-degrees/linkedin-activity.json`), and scans stop at a daily budget (the last 24
+  hours, 50 by default) and a monthly one (LinkedIn's month, which starts at midnight
+  Pacific on the 1st; 250 by default), both set on the Scan page. A read that reaches either
+  saves what it read and stops, never marking a list finished, and carries on from the
+  same page next time. The budget belongs to the LinkedIn account, not to a profile in the
+  app, and a damaged record counts as the day used up. It applies to company scans too.
+- **A cooldown lock.** When LinkedIn pushes back, nothing that searches runs for a day (until
+  LinkedIn's month turns, for its monthly limit; six hours after two unclear reads in a
+  row). The Scan page shows it in red with the time it lifts, the scan buttons wait, and
+  **Lift it early** is there for when search works normally again.
+- **A Paused list with Resume.** The Scan page lists everyone whose list was only partly
+  read, with the page each one carries on from, newest connections first. **Resume** carries
+  on with one person (found by their profile URL, so two people with the same name can't be
+  mixed up) and **Resume all** with every paused list and nobody new, always to the end of
+  the list. The list and the scanner's queue follow the same rules (`lib/paused.js`, tested
+  against the scanner).
+
+- **Scan my whole network** and **Check for new** also wait out a cooldown. They aren't
+  searches, so they don't count against the budget, but they still open LinkedIn with
+  automation.
+
+### Fixed
+- Re-mapping someone deleted their circle before checking anything; it now checks the
+  cooldown and the budget first.
+- Windows: the scanner uses no Unix-only file lock or date format, and installs `tzdata`
+  so it knows when LinkedIn's month starts.
+
 ## [0.1.7] - 2026-09-24
 
 A stopgap after 0.1.6 read 27 pages of results in about three and a half minutes and

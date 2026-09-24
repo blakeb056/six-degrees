@@ -327,6 +327,7 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     if stop_on_checkpoint and signed_out:
         reason = "a security check" if wall == "checkpoint" else "being signed out"
         _keep_pushback_evidence(page, reason)
+        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {reason}")
         raise LinkedInPushedBack(0, reason)
 
     if _has_session_cookie(context) and not _looks_logged_out(page) and not wall:
@@ -590,6 +591,23 @@ class LinkedInPushedBack(Exception):
         self.reason = reason
 
 
+class BudgetReached(Exception):
+    """Today's or this month's search budget is used. Raised after saving."""
+
+    def __init__(self, found=0, kind="daily"):
+        super().__init__(f"the {kind} search budget")
+        self.found = found
+        self.kind = kind
+
+
+class CoolingDown(Exception):
+    """A cooldown lock is active: nothing may search LinkedIn until it lifts."""
+
+    def __init__(self, cd):
+        super().__init__(cooldown_message(cd))
+        self.cd = cd
+
+
 class NotSignedIn(Exception):
     """LinkedIn wasn't signed in, or the window was closed while waiting for it.
 
@@ -767,6 +785,12 @@ def scrape_full(headless=False):
     This is the setup method — captures everything including profile photos."""
     from playwright.sync_api import sync_playwright
 
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    if searches_left()[0] <= 0:
+        raise BudgetReached(0, searches_left()[1])
+
     print("\n=== Full Account Setup Scrape ===\n")
     print("This scrapes ALL connections via the search page (not the connections page).")
     print("Takes 3-5 minutes for ~500 connections.\n")
@@ -797,6 +821,7 @@ def scrape_full(headless=False):
         search_url = "https://www.linkedin.com/search/results/people/?network=%5B%22F%22%5D&origin=FACETED_SEARCH"
         print("Opening 1st-degree connections search...")
         try:
+            charge_linkedin("searches")
             page.goto(search_url, wait_until="commit")
         except:
             pass
@@ -862,6 +887,10 @@ def scrape_full(headless=False):
             try:
                 next_btn = page.locator('button:has-text("Next")').first
                 if next_btn.is_visible(timeout=3000):
+                    if searches_left()[0] <= 0:
+                        print("  " + budget_message(searches_left()[1]))
+                        break
+                    charge_linkedin("searches")
                     next_btn.click()
                     page_num += 1
                     time.sleep(3)
@@ -975,6 +1004,11 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     from playwright.sync_api import sync_playwright
 
     say = log_fn or (lambda m: None)
+    # Not a search, so no budget — but after LinkedIn pushed back (a security
+    # check, above all) nothing automated should open it until the cooldown lifts.
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
     mode = "Full Connection Scrape" if full_walk else "Smart Connection Refresh"
     print(f"\n=== {mode} ===\n")
 
@@ -1218,6 +1252,234 @@ def note_unclear(profile_url, clear=False):
         _unclear_path().write_text(json.dumps(data, indent=2))
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# How much this machine has asked of LinkedIn, and whether it may ask now.
+#
+# LinkedIn's limit on people search for free accounts is monthly: it resets at
+# midnight Pacific on the 1st, with no published number (Help Center a564226;
+# reports put it around 250–350 a month). Every page of someone's connections
+# is one search. 0.1.6 spent a night's worth in minutes and search was blocked
+# (TRAPS §35). So every search and profile view is written down here, and a run
+# stops — saving what it read, carrying on later from the same page — when the
+# day's or the month's budget is used. A cooldown lock is set when LinkedIn
+# pushes back, and nothing searches until it lifts.
+#
+# These belong to the LinkedIn account (the one Chrome profile), not to a
+# profile in the app: three app profiles must not triple the budget. The app's
+# Scan page reads and edits the same files (lib/linkedin-limits.js).
+#
+#   linkedin-activity.json  {"searches": [epoch s, ...], "profiles": [...]}
+#   scan-limits.json        {"daily": 50, "monthly": 250}   0 = no cap
+#   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
+# ---------------------------------------------------------------------------
+DEFAULT_DAILY_SEARCHES = 50
+DEFAULT_MONTHLY_SEARCHES = 250
+DAY_SECONDS = 24 * 3600
+PACIFIC = "America/Los_Angeles"
+
+
+def _home():
+    base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _write_json_atomic(path, data):
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+class _Locked:
+    """An exclusive lock around a read-modify-write, so two runs can't lose counts."""
+
+    def __init__(self, name):
+        self.path = _home() / f".{name}.lock"
+        self.f = None
+
+    def __enter__(self):
+        self.f = open(self.path, "a")
+        try:
+            import fcntl                   # macOS and Linux; Windows has none
+            fcntl.flock(self.f, fcntl.LOCK_EX)
+        except ImportError:
+            pass
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            import fcntl
+            fcntl.flock(self.f, fcntl.LOCK_UN)
+        except ImportError:
+            pass
+        finally:
+            self.f.close()
+
+
+def month_start_pacific(now=None):
+    """Epoch seconds of midnight Pacific on the 1st of this month: when LinkedIn resets."""
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo(PACIFIC)
+    t = datetime.fromtimestamp(now if now is not None else time.time(), tz)
+    return t.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp()
+
+
+def next_month_start_pacific(now=None):
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo(PACIFIC)
+    t = datetime.fromtimestamp(now if now is not None else time.time(), tz)
+    y, m = (t.year + 1, 1) if t.month == 12 else (t.year, t.month + 1)
+    return datetime(y, m, 1, tzinfo=tz).timestamp()
+
+
+def _read_activity():
+    """The record, or — if it can't be read — a record that says the day is used.
+
+    Failing open would read a damaged file as "nothing used yet". The damaged
+    copy is kept beside it.
+    """
+    path = _home() / "linkedin-activity.json"
+    try:
+        data = json.loads(path.read_text())
+        if not isinstance(data, dict):
+            raise ValueError("not an object")
+        return {"searches": [float(x) for x in data.get("searches", [])],
+                "profiles": [float(x) for x in data.get("profiles", [])]}
+    except FileNotFoundError:
+        return {"searches": [], "profiles": []}
+    except Exception:
+        # Kept aside, and replaced by a record that says today's budget is used —
+        # written, so it holds for the whole day rather than one check. (Failing
+        # open would read a damaged file as nothing searched.)
+        now = time.time()
+        try:
+            path.rename(path.with_name(f"{path.name}.corrupt-{int(now)}"))
+        except OSError:
+            pass
+        print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
+        fresh = {"searches": [now] * max(1, search_limits()["daily"] or 1), "profiles": []}
+        try:
+            _write_json_atomic(path, fresh)
+        except Exception:
+            pass
+        return fresh
+
+
+def charge_linkedin(kind="searches", n=1):
+    """Write down n searches (or profile views) made just now."""
+    now = time.time()
+    keep_from = month_start_pacific(now) - 32 * DAY_SECONDS
+    with _Locked("linkedin-activity"):
+        data = _read_activity()
+        data[kind] = [t for t in data.get(kind, []) if t >= keep_from] + [now] * n
+        other = "profiles" if kind == "searches" else "searches"
+        data[other] = [t for t in data.get(other, []) if t >= keep_from]
+        try:
+            _write_json_atomic(_home() / "linkedin-activity.json", data)
+        except Exception as exc:
+            print(f"  (could not write down LinkedIn activity: {exc})")
+
+
+def search_limits():
+    try:
+        data = json.loads((_home() / "scan-limits.json").read_text())
+    except Exception:
+        data = {}
+    def num(v, default):
+        try:
+            v = int(v)
+            return v if v >= 0 else default
+        except (TypeError, ValueError):
+            return default
+    return {"daily": num(data.get("daily"), DEFAULT_DAILY_SEARCHES),
+            "monthly": num(data.get("monthly"), DEFAULT_MONTHLY_SEARCHES)}
+
+
+def linkedin_usage(now=None):
+    now = now if now is not None else time.time()
+    data = _read_activity()
+    month0 = month_start_pacific(now)
+    return {
+        "searches_today": sum(1 for t in data["searches"] if t > now - DAY_SECONDS),
+        "searches_month": sum(1 for t in data["searches"] if t >= month0),
+        "profiles_today": sum(1 for t in data["profiles"] if t > now - DAY_SECONDS),
+    }
+
+
+def searches_left(now=None):
+    """(how many searches may still be made, "daily" | "monthly" — whichever runs out first)."""
+    use, lim = linkedin_usage(now), search_limits()
+    left_day = max(0, lim["daily"] - use["searches_today"]) if lim["daily"] else 10 ** 9
+    left_month = max(0, lim["monthly"] - use["searches_month"]) if lim["monthly"] else 10 ** 9
+    return (left_day, "daily") if left_day <= left_month else (left_month, "monthly")
+
+
+def _when(ts):
+    t = datetime.fromtimestamp(ts)
+    hour = t.hour % 12 or 12
+    return f"{t.strftime('%a %b')} {t.day}, {hour}:{t.minute:02d} {'AM' if t.hour < 12 else 'PM'}"
+
+
+def _day(ts):
+    t = datetime.fromtimestamp(ts)
+    return f"{t.strftime('%b')} {t.day}"
+
+
+def budget_message(kind):
+    lim = search_limits()
+    if kind == "monthly":
+        when = _day(next_month_start_pacific())
+        return (f"This month's search budget ({lim['monthly']}) is used. It starts again on {when} "
+                f"(LinkedIn's month); the next run carries on from the same page.")
+    return (f"Today's search budget ({lim['daily']}) is used — it counts the last 24 hours. "
+            f"The next run carries on from the same page.")
+
+
+def read_cooldown(now=None):
+    """The active cooldown, or None."""
+    now = now if now is not None else time.time()
+    try:
+        data = json.loads((_home() / "linkedin-cooldown.json").read_text())
+        if float(data.get("until", 0)) > now:
+            return data
+    except Exception:
+        pass
+    return None
+
+
+def set_cooldown(seconds=None, until=None, reason=""):
+    """Nothing searches LinkedIn until this lifts. Never shortens an existing one."""
+    now = time.time()
+    until = until if until is not None else now + seconds
+    current = read_cooldown(now)
+    if current and float(current["until"]) >= until:
+        return
+    try:
+        _write_json_atomic(_home() / "linkedin-cooldown.json",
+                           {"until": until, "reason": reason, "set_at": now})
+        print(f"  Scanning paused until {_when(until)}"
+              f" ({reason}). The Scan page can lift it.")
+    except Exception as exc:
+        print(f"  (could not set the cooldown: {exc})")
+
+
+def cooldown_message(cd):
+    until = _when(float(cd["until"]))
+    return (f"Scanning is paused until {until} — {cd.get('reason') or 'LinkedIn pushed back'}. "
+            f"Lift it on the Scan page if you're sure LinkedIn is fine.")
 
 
 def clear_bridge_skips():
@@ -1748,6 +2010,7 @@ def _advance(page, pg):
             return "stuck"
         return "end"
     for attempt in range(1, END_CHECKS + 1):
+        charge_linkedin("searches")     # every click that can load a page counts
         try:
             btn.click(timeout=15000)
         except Exception:
@@ -1815,6 +2078,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     else:
         # Step 1: Navigate to profile (wait_until="commit" — don't wait for full load)
         print(f"  Opening {bridge_name}'s profile...")
+        charge_linkedin("profiles")
         try:
             page.goto(profile_url, wait_until="commit")
         except Exception as e:
@@ -1879,11 +2143,18 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
     # it saves. It used to be announced as a "3rd+ filter", which it never was.
     search_url = f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
+    left, kind = searches_left()
+    if left <= 0:
+        reach["budget"] = kind
+        reach["more"] = True
+        print("  " + budget_message(kind))
+        return [], "budget", reach
     if start_page > 1:
         search_url += f"&page={start_page}"
         print(f"  Opening their connections at page {start_page}...")
     else:
         print("  Opening their connections...")
+    charge_linkedin("searches")
     try:
         page.goto(search_url, wait_until="commit")
     except:
@@ -2034,6 +2305,21 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print("  No more pages — that's all of their list.")
             break
 
+        # The budget is checked before every search, and it ends the read on its
+        # own path: through the page-limit branch, a missing Next button would
+        # have marked the list finished.
+        left, kind = searches_left()
+        if left <= 0:
+            # Looking for Next costs nothing. No Next on a live page of results
+            # means the list is finished — not paused at the next page forever.
+            if _find_next(page) is None and not _window_closed(page) and _result_links(page):
+                print(f"  No Next button after {END_CHECKS} looks — that's all of their list.")
+                break
+            reach["budget"] = kind
+            reach["more"] = True
+            print("  " + budget_message(kind))
+            break
+
         # Rest before the next search, and longer after every SAVE_EVERY_PAGES.
         rest = PAGE_PAUSE
         if (pg - start_page + 1) % SAVE_EVERY_PAGES == 0:
@@ -2095,7 +2381,8 @@ def _read(connections, status):
     return out
 
 
-def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, deeper=False, fresh=False):
+def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, deeper=False, fresh=False,
+                  profile_url=None):
     """Read one person's connections into the app (opens its own browser).
 
     deeper: carry on from the page the last read of them stopped at, instead of
@@ -2110,18 +2397,31 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     """
     from playwright.sync_api import sync_playwright
 
-    # Find the bridge (read-only, filtered by active user)
-    params = {"name": f"eq.{bridge_name}", "degree": "eq.1", "limit": "1"}
+    # Nothing searches while a cooldown is on, or with no budget left. Checked
+    # before a browser opens: even the sign-in check is a LinkedIn page view.
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    left, kind = searches_left()
+    if left <= 0:
+        print(budget_message(kind))
+        raise BudgetReached(0, kind)
+
+    # Find the bridge (read-only, filtered by active user). By profile URL when
+    # given — Resume uses it, since two connections can share a name — else by name.
+    params = ({"profile_url": f"eq.{profile_url}", "degree": "eq.1", "limit": "1"} if profile_url
+              else {"name": f"eq.{bridge_name}", "degree": "eq.1", "limit": "1"})
     if _active_user_id:
         params["user_id"] = f"eq.{_active_user_id}"
     bridges = read_connections(params=params)
     if not bridges:
-        print(f"Bridge '{bridge_name}' not found in database.")
+        print(f"Bridge '{bridge_name or profile_url}' not found in database.")
         return
 
     bridge = bridges[0]
     bridge_id = bridge["id"]
     profile_url = bridge["profile_url"]
+    bridge_name = bridge.get("name") or bridge_name
 
     if fresh:
         forget_bridge_progress(profile_url)
@@ -2210,9 +2510,14 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     if status == "stopped" or stop_requested():
         return _read(read, "stopped")
     if reach["limited"]:
+        set_cooldown(until=next_month_start_pacific(), reason="LinkedIn's monthly search limit")
         raise SearchLimitReached(len(read))
     if reach.get("pushed_back"):
-        raise LinkedInPushedBack(len(read), reach.get("pushback_reason") or "a page that would not open")
+        why = reach.get("pushback_reason") or "a page that would not open"
+        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+        raise LinkedInPushedBack(len(read), why)
+    if reach.get("budget"):
+        raise BudgetReached(len(read), reach["budget"])
 
     if not read:
         print(f"\nDone! No connections found ({status}).")
@@ -2235,6 +2540,15 @@ def scrape_company(company_name, headless=False, log_fn=None):
             log_fn(msg)
 
     log(f"Scraping employees at: {company_name}")
+
+    # A company scan is people searches too: the same cooldown and budget.
+    cd = read_cooldown()
+    if cd:
+        log(cooldown_message(cd))
+        return []
+    if searches_left()[0] <= 0:
+        log(budget_message(searches_left()[1]))
+        return []
 
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
@@ -2323,6 +2637,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
             log(f"  Searching LinkedIn feed for: {company_name}")
             search_url = f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(company_name)}"
             try:
+                charge_linkedin("searches")
                 page.goto(search_url, wait_until="commit")
             except:
                 pass
@@ -2373,6 +2688,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
                 try:
                     people_btn = page.locator('button:has-text("People")').first
                     if people_btn.is_visible(timeout=3000):
+                        charge_linkedin("searches")
                         people_btn.click()
                         time.sleep(5)
                         current = page.url
@@ -2405,6 +2721,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
 
         log(f"  Opening people search...")
         try:
+            charge_linkedin("searches")
             page.goto(base_url, wait_until="commit")
         except:
             pass
@@ -2429,6 +2746,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
                     }
                     """)
                     if not is_active:
+                        charge_linkedin("searches")
                         btn.click()
                         log(f"    Clicked {degree_label.replace(chr(92), '')} ✓")
                         time.sleep(2)
@@ -2460,6 +2778,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
             }
             """)
             if degree_links:
+                charge_linkedin("searches", len(degree_links))   # each click reloads the results
                 log(f"    Clicked degree links: {degree_links}")
                 time.sleep(5)
 
@@ -2469,6 +2788,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
             log(f"  Degree buttons not found — using URL with all degrees")
             all_degrees_url = f"https://www.linkedin.com/search/results/people/?currentCompany=%5B%22{company_id}%22%5D&network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&origin=FACETED_SEARCH"
             try:
+                charge_linkedin("searches")
                 page.goto(all_degrees_url, wait_until="commit")
             except:
                 pass
@@ -2480,6 +2800,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
         page_num = 1
 
         while page_num <= 20:
+            pass
             log(f"  Page {page_num}...")
             time.sleep(3)
 
@@ -2551,6 +2872,10 @@ def scrape_company(company_name, headless=False, log_fn=None):
             try:
                 next_btn = page.locator('button:has-text("Next")').first
                 if next_btn.is_visible(timeout=3000):
+                    if searches_left()[0] <= 0:   # before paying for a page, not after
+                        log(budget_message(searches_left()[1]))
+                        break
+                    charge_linkedin("searches")
                     next_btn.click()
                     page_num += 1
                     time.sleep(3)
@@ -2566,7 +2891,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
 
 
 def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None,
-                    order="newest", max_pages=LINKEDIN_MAX_PAGES, deeper=False):
+                    order="newest", max_pages=LINKEDIN_MAX_PAGES, deeper=False, only_unfinished=False):
     """Map everyone whose circle is not mapped yet, in the order chosen.
 
     Picks up from where it left off. With deeper, it also finishes people
@@ -2577,6 +2902,18 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         print(msg)
         if log_fn:
             log_fn(msg)
+
+    cd = read_cooldown()
+    if cd:
+        log(cooldown_message(cd))
+        return []
+    left, kind = searches_left()
+    if left <= 0:
+        log(budget_message(kind))
+        return []
+    use, lim = linkedin_usage(), search_limits()
+    log(f"Search budget: {use['searches_today']} of {lim['daily'] or 'no limit'} used today, "
+        f"{use['searches_month']} of {lim['monthly'] or 'no limit'} this month")
 
     # Get all degree-1 connections (filtered by active user)
     D1_LIMIT = 20000
@@ -2621,7 +2958,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         nxt = next_page_to_read(progress.get(c.get("profile_url")), retry_hidden=retry_private)
         if nxt is not None and nxt <= max_pages:
             unfinished.append({**c, "_from_page": nxt})
-    if deeper:
+    if only_unfinished:
+        # "Resume all": only people whose read was cut short, nobody new.
+        unbridged = list(unfinished)
+        deeper = True
+    elif deeper:
         unbridged = unbridged + unfinished
 
     # Choosing tiers rather than "everything" or "only what is new".
@@ -2718,6 +3059,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         if stop_requested():
             log("Stopped.")
             break
+        left, kind = searches_left()
+        if left <= 0:
+            log(budget_message(kind))
+            stopped_early = f"the {kind} search budget"
+            break
 
         name = person["name"]
         tier = person.get("tier", "?")
@@ -2730,7 +3076,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 
         healthy = False           # LinkedIn answered normally for this person
         try:
-            result = scrape_bridge(name, headless=headless, max_pages=max_pages, deeper=from_page > 1)
+            result = scrape_bridge(name, headless=headless, max_pages=max_pages, deeper=from_page > 1,
+                                   profile_url=url or None)
             count = len(result) if result else 0
             status = getattr(result, "status", None)
             if count > 0:
@@ -2778,6 +3125,15 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         except KeyboardInterrupt:
             log("Stopped.")
             raise
+        except BudgetReached as exc:
+            results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "unclear"})
+            log("  " + budget_message(exc.kind))
+            stopped_early = f"the {exc.kind} search budget"
+            break
+        except CoolingDown as exc:
+            log("  " + str(exc))
+            stopped_early = "a cooldown"
+            break
         except NotSignedIn:
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log("  LinkedIn isn't signed in, so nothing was read. Stopping the batch: sign in")
@@ -2828,6 +3184,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 log("  a failure), which is how LinkedIn limiting us looks. Stopping the batch;")
                 log("  nobody was marked hidden for it. Leave it at least a day.")
                 stopped_early = "unclear reads in a row"
+                set_cooldown(seconds=6 * 3600, reason="two people in a row with no clear answer")
                 break
 
         # Cooldown between bridges (skip on the last one). The same full pause
@@ -2859,6 +3216,14 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
     """Delete all existing cluster data for a bridge and re-scrape from scratch."""
     print(f"\n=== Re-scraping {bridge_name} (delete + fresh scrape) ===\n")
+
+    # Check before deleting anything: a cooldown or an empty budget would leave
+    # their circle deleted and not read again.
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    if searches_left()[0] <= 0:
+        raise BudgetReached(0, searches_left()[1])
 
     print(f"Deleting old cluster data...")
     bridge_id = delete_bridge_cluster(bridge_name)
@@ -3116,6 +3481,10 @@ Examples:
     parser.add_argument("--deeper", action="store_true",
                         help="Carry on with people already mapped, from the page their last read "
                              "stopped at. With --auto-bridge: alongside new people. With --bridge: that person.")
+    parser.add_argument("--bridge-url", type=str,
+                        help="Carry on with one person, found by their LinkedIn profile URL (implies --deeper)")
+    parser.add_argument("--only-unfinished", action="store_true",
+                        help="With --auto-bridge: only people whose read was cut short (Resume all)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
@@ -3127,6 +3496,9 @@ Examples:
         elif issubclass(exc_type, NotSignedIn):
             print("\n  LinkedIn isn't signed in, so nothing was read. Sign in with --login, then run it again.\n",
                   file=sys.stderr)
+        elif issubclass(exc_type, (BudgetReached, CoolingDown)):
+            msg = budget_message(exc.kind) if issubclass(exc_type, BudgetReached) else str(exc)
+            print(f"\n  {msg}\n", file=sys.stderr)
         elif issubclass(exc_type, LinkedInPushedBack):
             print(f"\n  LinkedIn pushed back: {getattr(exc, 'reason', exc)}. What was read is saved. "
                   f"{_pushback_advice(getattr(exc, 'reason', ''))}\n", file=sys.stderr)
@@ -3150,43 +3522,53 @@ Examples:
     if not args.server:
         resolve_active_user()
 
-    if args.company:
-        # The server mode scraped and pushed as one step; the CLI has to do the
-        # same or the scan appears to work and saves nothing.
-        people = scrape_company(args.company, headless=args.headless)
-        if people:
-            print(f"\nSaving {len(people)} people from {args.company}...")
-            push_company(people, args.company)
-        print(f"Done. {len(people) if people else 0} found at {args.company}.")
-    elif args.auto_bridge:
-        results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
-                                  max_bridges=args.max_bridges,
-                                  tiers=args.tiers.split(",") if args.tiers else None,
-                                  order=args.order, max_pages=args.max_pages, deeper=args.deeper)
-        done = sum(1 for r in results if r.get("status") == "done")
-        print(f"\nDone. {done}/{len(results)} bridges mapped.")
-    elif args.search:
-        scrape_full(headless=args.headless)
-    elif args.full:
-        scrape_connections(headless=args.headless, full_walk=True)
-    elif args.refresh:
-        scrape_connections(headless=args.headless)
-    elif args.server:
-        run_server()
-    elif args.rescrape:
-        rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
-    elif args.bridge:
-        scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
-    else:
-        # Nothing collected yet means this is a first run, and the full scrape
-        # is the one that walks every search page and captures photos. Running
-        # the incremental refresh here is what made a fresh install look broken.
-        existing = read_connections(params={"degree": "eq.1", "limit": "1"})
-        if existing:
-            print("\nExisting connections found — checking for new ones only.")
-            print("Use --full to re-walk everything.\n")
-            scrape_connections(headless=args.headless)
-        else:
-            print("\nNo connections yet — walking your whole connections list.")
-            print("This takes a couple of minutes and captures photos.\n")
+    # A budget or a cooldown ending a run is the design working, not a failure:
+    # say why and exit 0, so the Scan page doesn't show it as a red error.
+    try:
+        if args.company:
+            # The server mode scraped and pushed as one step; the CLI has to do the
+            # same or the scan appears to work and saves nothing.
+            people = scrape_company(args.company, headless=args.headless)
+            if people:
+                print(f"\nSaving {len(people)} people from {args.company}...")
+                push_company(people, args.company)
+            print(f"Done. {len(people) if people else 0} found at {args.company}.")
+        elif args.auto_bridge:
+            results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
+                                      max_bridges=args.max_bridges,
+                                      tiers=args.tiers.split(",") if args.tiers else None,
+                                      order=args.order, max_pages=args.max_pages, deeper=args.deeper,
+                                      only_unfinished=args.only_unfinished)
+            done = sum(1 for r in results if r.get("status") == "done")
+            print(f"\nDone. {done}/{len(results)} bridges mapped.")
+        elif args.search:
+            scrape_full(headless=args.headless)
+        elif args.full:
             scrape_connections(headless=args.headless, full_walk=True)
+        elif args.refresh:
+            scrape_connections(headless=args.headless)
+        elif args.server:
+            run_server()
+        elif args.rescrape:
+            rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
+        elif args.bridge_url:
+            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=True,
+                          profile_url=args.bridge_url)
+        elif args.bridge:
+            scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
+        else:
+            # Nothing collected yet means this is a first run, and the full scrape
+            # is the one that walks every search page and captures photos. Running
+            # the incremental refresh here is what made a fresh install look broken.
+            existing = read_connections(params={"degree": "eq.1", "limit": "1"})
+            if existing:
+                print("\nExisting connections found — checking for new ones only.")
+                print("Use --full to re-walk everything.\n")
+                scrape_connections(headless=args.headless)
+            else:
+                print("\nNo connections yet — walking your whole connections list.")
+                print("This takes a couple of minutes and captures photos.\n")
+                scrape_connections(headless=args.headless, full_walk=True)
+    except (BudgetReached, CoolingDown) as exc:
+        print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)))
+        raise SystemExit(0)

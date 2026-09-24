@@ -92,8 +92,9 @@ tick an item in the same change that finishes it.
       the first push-back, a circuit breaker, a security check isn't "signed in", a blank
       page while carrying on isn't "finished". Checked against the simulated LinkedIn only;
       no live runs until the block lifts
-- [ ] Search budget (monthly and daily, per LinkedIn account), a cooldown lock the Scan page
-      shows, a Paused panel with Resume per person (by profile URL, not name) and Resume all
+- [x] 0.1.8 — search budget (daily and monthly, per LinkedIn account), a cooldown lock the
+      Scan page shows, and a Paused list with Resume per person (by profile URL) and Resume
+      all. Checked with the simulated LinkedIn and on a copy of real data; not run live
 - [ ] Search only 2nd degree (`network=["S"]`) instead of 1st+2nd+3rd: your own connections
       take up a quarter or more of every page and are thrown away on save. Needs one
       watched check once search works again
