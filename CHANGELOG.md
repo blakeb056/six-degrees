@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-24
+
+### Fixed
+- **2nd-degree scans failed on the first page of every person** with "Page.evaluate:
+  SyntaxError: Invalid or unexpected token", then moved on to the next — so no
+  connections were ever read and no pagination happened. The JavaScript that reads each
+  results page sat in a plain Python string, which turns the `\n` in `split('\n')` into a
+  real line break before the browser sees it. It is now a raw string, and a new test
+  parses every snippet the scraper injects on every pull request. Broken since 2026-09-09.
+- That same page reader, run against a mock results page for the first time, saved
+  LinkedIn's screen-reader line ("View … profile") as everyone's headline. It now takes
+  the first real line after the name.
+- After a scan, "N of them were 2nd-degree contacts you have now connected with" read as
+  N people added. It now says what happened: N were already in a bridge's circle and have
+  been merged into your connections, keeping who introduced you.
+
 ## [0.1.3] - 2026-09-24
 
 ### Fixed

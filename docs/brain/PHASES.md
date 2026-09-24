@@ -46,6 +46,8 @@ tick an item in the same change that finishes it.
       Verified in the installed app: a still hover went from ~250 rebuilds in 3 s to none
 - [x] 0.1.3 — the Mac app runs natively on Apple Silicon, so scanning works from it
       (TRAPS §30). Verified: launcher and server not translated, a Check for new ran clean
+- [x] 0.1.4 — 2nd-degree scans read past page 1 again: a JavaScript snippet in a plain
+      Python string was a syntax error (TRAPS §31). Every snippet is now parsed in CI
 
 ### Needs the maintainer
 

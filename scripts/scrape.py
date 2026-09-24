@@ -524,7 +524,10 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None):
         if promoted:
             # Someone you were introduced to has accepted. The bridge that
             # produced them is kept on their row, so the path stays visible.
-            print(f"  {promoted} of them were 2nd-degree contacts you have now connected with")
+            # Worded carefully: this read as "N new 2nd-degree people added" when it
+            # means the opposite — people already in a bridge's circle who are also
+            # your connections, now counted once, with who introduced you kept.
+            print(f"  {promoted} were already in a bridge's circle — merged into your connections, keeping who introduced you")
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
         inserted = 0
@@ -1191,8 +1194,15 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
         print(f"  Page {pg}... ", end="", flush=True)
         time.sleep(3)
 
-        # Extract from current page
-        page_results = page.evaluate("""
+        # Extract from current page.
+        #
+        # A raw string (r"""), like every snippet of JavaScript in this file must
+        # be. In a plain string Python turns the "\n" in split('\n') into a real
+        # line break before the browser sees it, and the whole function is a
+        # syntax error — "Invalid or unexpected token". That broke every
+        # 2nd-degree scan on page 1 from 2026-09-09 until it was noticed.
+        # tests/scraper-js.test.mjs now parses every snippet on every PR. TRAPS §31.
+        page_results = page.evaluate(r"""
         () => {
           // Build URL map from profile links
           // Anchor on the profile link, never on the anchor's text.
@@ -1233,21 +1243,26 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
             }
 
             // Headline lives beside the name in the result card, not inside the
-            // anchor — walk up to the card and take the line after the name.
+            // anchor — walk up to the card and take the first real line after
+            // the name. Not simply the next line: LinkedIn puts a screen-reader
+            // line ("View Jane Doe's profile") straight after the name, and taking
+            // that saved it as everybody's headline. Skip lines that are chrome.
+            const chrome = (l) => /^View\b.*profile$/i.test(l)
+              || /^(Connect|Follow|Message|Invite|Pending)$/i.test(l)
+              || /mutual connection/i.test(l)
+              || /followers$/i.test(l)
+              || /degree connection/i.test(l)
+              || /^(1st|2nd|3rd\+?)$/i.test(l)
+              || /^\u2022/.test(l);
             if (!rec.headline) {
               let card = a;
               for (let k = 0; k < 6 && card.parentElement; k++) {
                 card = card.parentElement;
                 const cardLines = (card.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
                 const idx = cardLines.findIndex((l) => clean(l) === rec.name);
-                if (idx >= 0 && cardLines[idx + 1]) {
-                  const cand = cardLines[idx + 1];
-                  if (!/^(Connect|Follow|Message|Invite)$/i.test(cand)
-                      && !/mutual connection/i.test(cand)
-                      && !/followers$/i.test(cand)
-                      && !/^\u2022/.test(cand)) {
-                    rec.headline = cand;
-                  }
+                if (idx >= 0) {
+                  const cand = cardLines.slice(idx + 1, idx + 5).find((l) => !chrome(l) && clean(l) !== rec.name);
+                  if (cand) rec.headline = cand;
                   break;
                 }
               }

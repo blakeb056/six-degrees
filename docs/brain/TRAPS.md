@@ -599,3 +599,26 @@ Two smaller lessons from the same bug:
 - **`uname -m` is not the hardware.** A Terminal under Rosetta reports `x86_64` on Apple
   Silicon. `install.sh` asks `sysctl hw.optional.arm64` before choosing a build.
 
+---
+
+## 31. JavaScript in a plain Python string is rewritten before the browser sees it
+
+`page.evaluate(""" ... .split('\n') ... """)` does not send `\n` to the browser. Python
+turns it into a real line break first, the string literal in the JavaScript is left
+unterminated, and the whole function fails to parse: `Page.evaluate: SyntaxError: Invalid
+or unexpected token`. That is what broke every 2nd-degree scan from 2026-09-09 (the commit
+that anchored results on profile links) until 0.1.4: each person failed on page 1, the
+batch moved on, nothing was read, and nothing paginated.
+
+- **Every snippet of JavaScript in `scrape.py` is a raw string, `r"""…"""`.** Escapes such
+  as `\u2019` and `\/` then reach JavaScript intact, which is where they mean something.
+- **`tests/scraper-js.test.mjs` enforces it.** It asks Python for each snippet exactly as it
+  would be sent — every `page.evaluate`/`wait_for_function` argument and every `*_JS`
+  constant used that way — and parses them with V8. It failed on the old file and passes
+  on the fixed one. No browser, no LinkedIn.
+- **Code that has never run is not tested code.** The rewritten page reader had never
+  executed once, because of this bug. Running it against a mock results page — with
+  LinkedIn's `visually-hidden` CSS, which changes what `innerText` returns — found a second
+  bug straight away: the screen-reader line "View … profile" saved as everyone's headline.
+  Build the mock with the real site's CSS, or the mock lies in the other direction.
+
