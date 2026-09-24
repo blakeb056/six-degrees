@@ -64,7 +64,7 @@ for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requi
   }
 }
 cpSync(path.join(ROOT, 'scripts', 'windows', 'launch.ps1'), path.join(STAGE, 'launch.ps1'));
-cpSync(path.join(ROOT, 'public', 'favicon.ico'), path.join(STAGE, 'six-degrees.ico'));
+cpSync(path.join(ROOT, 'app', 'favicon.ico'), path.join(STAGE, 'six-degrees.ico'));
 
 step(`Fetching Node ${NODE_VERSION} (win-${ARCH})`);
 const name = `node-${NODE_VERSION}-win-${ARCH}`;
