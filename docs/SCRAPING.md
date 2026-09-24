@@ -56,12 +56,14 @@ again. Once the id their connections are searched by is known, their profile isn
 opened again. Every page is a search on your account, and free accounts have a monthly
 search limit that whole lists use up quickly (LinkedIn publishes no number; reports put it
 around 250–350 searches a month, resetting on the 1st). So it reads slowly: 20 seconds
-before each page and another minute after every 10, about 50 minutes for a whole list.
+before each page and another minute after every 10, about 55 minutes for a whole list.
 **It stops at the first sign of LinkedIn pushing back**: a page that won't open, a warning
 about unusual activity or restricted viewing, the search limit, a security check, or a
 sign-in wall. It saves what it read, ends the batch, and keeps what the page showed in
-`~/.six-degrees/pushback/`. Two people in a row with nothing to show also end the batch.
-After any of these, leave it at least a day. For every result it keeps the profile link, name, photo and headline;
+`~/.six-degrees/pushback/`. Someone is marked hidden only when LinkedIn clearly showed their
+profile with no connections link; a profile that didn't render is left unmarked, and two
+of those in a row end the batch. After any of these, leave it at least a day. A security
+check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather
 than saved as the headline. People who are already your own connections — they appear

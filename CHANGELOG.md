@@ -13,25 +13,37 @@ LinkedIn blocked the account's search. Budgets and an easy resume come next. TRA
 
 ### Changed
 - **Slower reading.** 20 seconds before each page of results and another minute after
-  every 10. A whole list now takes up to about 50 minutes, not 10.
+  every 10. A whole list now takes about 55 minutes, not 10.
 - The pause after someone who came back with nothing is the full two minutes. It was 15
   seconds, so the scan went faster exactly when LinkedIn was pushing back.
 
 ### Fixed
 - **A scan stops at the first sign of LinkedIn pushing back** instead of carrying on to
-  the next person. That covers a page of results that won't open, LinkedIn's own
-  warnings ("unusual activity from your account", profile viewing restricted, the account
-  restricted, the monthly search limit coming up), a security check, and being signed out.
-  What the page showed is kept in `~/.six-degrees/pushback/` so the wording can be
-  recognised.
-- **Two people in a row with nothing to show stop the batch**, and anyone marked hidden
-  in that streak is un-marked. A block used to mark everyone after it as hidden, for good.
+  the next person. That covers a page of results that won't open, a search that won't open
+  for someone whose connections are visible, LinkedIn's own warnings ("unusual activity
+  from your account", profile viewing restricted, the account restricted, the monthly
+  search limit coming up or reached), and a security check or sign-in wall appearing while
+  you were signed in. What the page showed is kept in `~/.six-degrees/pushback/` so the
+  wording can be recognised, and the message says what to do for that case.
+- **Someone is only marked hidden when LinkedIn clearly showed their profile** with no
+  connections link. A profile that didn't render is "unclear": nothing is recorded, and
+  two unclear people in a row stop the batch. A block used to mark everyone after it as
+  hidden, for good.
 - **A security check no longer counts as signed in.** The session cookie survives one,
-  so a scan used to carry on past it. It now stops and asks you to finish the check by hand.
+  so a scan used to carry on past it. It now stops, and **Open LinkedIn** on the Scan page
+  (shown even when signed in now) opens a window to finish it by hand. Signing in from
+  scratch still waits through LinkedIn's own two-factor steps.
+- Closing the browser window during a read stops it, and never marks the list finished.
 - **Carrying on into a blank page no longer marks a list finished.** Only LinkedIn's "No
   results found" does. A search it is limiting can come back blank, and a wrong
   "finished" dropped the rest of that list for good.
 - The Scan page's note on how long a whole list takes read "15 minutesa person".
+- **A full scan could cut a mapped circle loose.** If one of your connections had also
+  been saved inside someone else's circle (before 0.1.5 kept your own connections out),
+  a full scan "promoted" that copy and deleted their real row. Everyone in their own
+  circle was then left pointing at a row that no longer existed, and they vanished from
+  every Degrees view. The same step gave long-standing connections a "you met them
+  through…" they never had. Their own row is now kept, with no origin added. TRAPS §36.
 
 ## [0.1.6] - 2026-09-24
 

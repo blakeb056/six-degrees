@@ -79,3 +79,33 @@ test('promoting twice changes nothing', async () => {
   assert.equal(data[0].degree, 1);
   assert.equal(data[0].unlocked_from_bridge_id, BRIDGE, 'origin survives a re-run');
 });
+
+// TRAPS §36. Someone who is already your connection, with a mapped circle of
+// their own, also turns up inside another bridge's circle (from before 0.1.5
+// kept your own connections out of circles). A full scan then "promoted" them:
+// it kept the 2nd-degree copy and deleted their real row, and everyone in their
+// circle was left pointing at a row that no longer existed.
+test('a bridge found in another circle keeps their own row, circle and all', async () => {
+  const { promoteToFirstDegree } = await import('../lib/promote.js');
+  const PAT = 'https://www.linkedin.com/in/pat/';
+  await db.from('linkedin_connections').insert([
+    { id: 'pat-d1', degree: 1, name: 'Pat', profile_url: PAT, user_id: USER, tier: 'A', power_score: 6 },
+    { id: 'pat-circle-1', degree: 2, name: 'In Pat\'s circle', profile_url: 'https://www.linkedin.com/in/c1/',
+      source_connection_id: 'pat-d1', user_id: USER, tier: 'B', power_score: 4 },
+    // Pat again, as a copy inside Jane's circle.
+    { id: 'pat-in-jane', degree: 2, name: 'Pat', profile_url: PAT, source_connection_id: BRIDGE,
+      user_id: USER, tier: 'A', power_score: 6 },
+  ]);
+
+  const res = await promoteToFirstDegree(db, { profileUrl: PAT, userId: USER, fields: { headline: 'Fresh' } });
+  assert.equal(res.promoted, false, 'they were already a connection');
+
+  const { data: pats } = await db.from('linkedin_connections').select('*').eq('profile_url', PAT);
+  assert.equal(pats.length, 1, 'the copy in Jane\'s circle is folded away');
+  assert.equal(pats[0].id, 'pat-d1', 'their own row survives, with its id');
+  assert.equal(pats[0].unlocked_from_bridge_id ?? null, null, 'no origin they never had');
+  assert.equal(pats[0].headline, 'Fresh');
+
+  const { data: circle } = await db.from('linkedin_connections').select('*').eq('id', 'pat-circle-1');
+  assert.equal(circle[0].source_connection_id, 'pat-d1', 'their circle still points at them');
+});

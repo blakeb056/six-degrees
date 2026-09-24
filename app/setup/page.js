@@ -223,11 +223,13 @@ function SetupInner() {
           title="Sign into LinkedIn"
           body={
             c.signedIn
-              ? 'Signed in on this machine. You won’t be asked again.'
+              ? 'Signed in on this machine. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
               : 'Opens a Chrome window. Sign in with your email and password — “Continue with Google” cannot work here, because Google blocks its sign-in inside automated browsers.'
           }
           action={
-            c.dependencies && !c.signedIn && (
+            // Shown after sign-in too: a security check survives the session
+            // cookie, so "signed in" can still need a person (TRAPS §35).
+            c.dependencies && (
               <Btn onClick={() => run('login')} disabled={busy || running}>
                 {running && s.action === 'login' ? 'Waiting for you…' : 'Open LinkedIn'}
               </Btn>
@@ -326,7 +328,7 @@ function SetupInner() {
               <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
                 Every page is a LinkedIn search, so it rests 20 seconds before each one and a
                 minute after every 10, and a long list can take
-                {' '}{pages >= 100 ? 'up to about 50 minutes a person' : `about ${Math.max(5, Math.round(pages * 0.52))} minutes a person`}.
+                {' '}{pages >= 100 ? 'about 55 minutes a person' : `about ${Math.max(5, Math.round(pages * 0.55))} minutes a person`}.
                 LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
                 have a monthly search limit: if LinkedIn says it has been reached, the scan saves
                 what it read and stops, and carries on from that page next time. Keep batches small.
