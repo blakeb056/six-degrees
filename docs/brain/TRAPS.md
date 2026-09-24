@@ -730,8 +730,9 @@ keeping the page text in `~/.six-degrees/pushback/`; a search that won't open fo
 whose list is visible is push-back, not "empty"; "hidden" only when their profile clearly
 rendered (name in the title or heading) without a connections link, otherwise "unclear",
 recorded nowhere, and two unclear in a row end the batch; "end of list" only from a live
-page that showed results; a closed window is a stop. Not yet: a search budget (monthly,
-not only daily), a cooldown lock, and resume by person.
+page that showed results; a closed window is a stop. 0.1.8 added the rest: a search
+budget (daily over the last 24 hours, and monthly on LinkedIn's own month), a cooldown lock
+the Scan page shows, and a Paused list with Resume by profile URL.
 
 A first version of the breaker recorded "hidden" and then un-recorded the streak when it
 tripped. Review showed two genuinely hidden people side by side then stalled every batch

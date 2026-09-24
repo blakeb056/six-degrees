@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape } from '../../lib/scraper-client';
+import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import UpdatePanel from '../components/UpdatePanel';
 
 // Everything here runs through /api/scraper. There is deliberately no second
@@ -20,6 +21,8 @@ const ACTION_LABELS = {
   refresh: 'Checking for new connections',
   'auto-bridge': 'Mapping 2nd-degree connections',
   'auto-bridge-retry': 'Mapping 2nd degree, hidden ones included',
+  resume: 'Carrying on with one paused list',
+  'resume-all': 'Carrying on with every paused list',
 };
 
 export default function SetupPage() {
@@ -101,6 +104,10 @@ function SetupInner() {
   const needsChrome = s && !c.chrome;
   const notFound = s && !c.scriptsFound;
   const canScrape = s?.ready && !running;
+  // Anything that searches LinkedIn waits out a cooldown (TRAPS §35).
+  const li = s?.linkedin;
+  const cooling = Boolean(li?.cooldown);
+  const canSearch = canScrape && !cooling;
   // By degree, because one total reads as "connections" and is not: the people
   // you know, then the people found through them, then company scans.
   const net = s?.network || { first: 0, second: 0, third: 0 };
@@ -279,6 +286,12 @@ function SetupInner() {
           }
           action={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <CooldownBanner
+                cooldown={li?.cooldown}
+                disabled={busy}
+                onLift={() => run('lift-cooldown')}
+              />
+              <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
               {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
                 {['S', 'A', 'B', 'C', 'D'].map((t) => {
@@ -334,7 +347,7 @@ function SetupInner() {
                 what it read and stops, and carries on from that page next time. Keep batches small.
               </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canScrape || (order === 'score' && !tiers.length)} primary>
+              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
                 {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
               </Btn>
               <select
@@ -348,10 +361,16 @@ function SetupInner() {
                 <option value={25}>25 people</option>
                 <option value={0}>everyone — not advised</option>
               </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canScrape || (order === 'score' && !tiers.length)}>
+              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
                 Retry hidden ones
               </Btn>
             </div>
+            <PausedList
+              paused={s?.paused || []}
+              disabled={!canSearch}
+              onResume={(p) => run('resume', { profileUrl: p.profileUrl })}
+              onResumeAll={() => run('resume-all', { maxBridges: batch })}
+            />
             </div>
           }
         />

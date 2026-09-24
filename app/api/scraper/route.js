@@ -4,6 +4,9 @@ import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress } from '../../../lib/scan-progress';
+import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
+import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
+import { getDb } from '../../../lib/db-client';
 
 // The app runs the scraper itself.
 //
@@ -176,14 +179,34 @@ async function machineChecks() {
   return value;
 }
 
+/** People whose list was only partly read, for the Scan page's Paused list. */
+function paused(userId) {
+  if (!userId) return [];
+  try {
+    const db = getDb();
+    const first = db.prepare(
+      `SELECT id, name, tier, profile_url, connected_date, created_at
+         FROM linkedin_connections WHERE user_id = ? AND degree = 1`,
+    ).all(userId);
+    const mapped = new Set(db.prepare(
+      `SELECT DISTINCT source_connection_id AS id FROM linkedin_connections
+        WHERE user_id = ? AND degree = 2 AND source_connection_id IS NOT NULL`,
+    ).all(userId).map((r) => r.id));
+    return pausedList(first, mapped, readProgress(dataDir(), userId), readUnclear(dataDir()));
+  } catch {
+    return [];
+  }
+}
+
 async function status() {
   const m = await machineChecks();
 
   // How much is already mapped, by degree, so the page can mark the scan step
   // done and offer the way to the galaxy instead of leaving someone on a form.
   let network = { first: 0, second: 0, third: 0 };
+  let me = null;
   try {
-    const me = resolveProfile({ create: false });
+    me = resolveProfile({ create: false });
     if (me) network = networkCounts(me.id);
   } catch {}
 
@@ -206,6 +229,8 @@ async function status() {
     progress: state.running ? scanProgress(state.log, state.action) : null,
     log: state.log.slice(-120),
     skips: bridgeSkips(),
+    linkedin: linkedinState(dataDir()),
+    paused: paused(me?.id),
   };
 }
 
@@ -226,9 +251,21 @@ const ACTIONS = {
   // the way back in without a terminal.
   'auto-bridge-retry': { flag: '--auto-bridge --retry-private', label: 'Mapping every bridge, hidden ones included' },
   bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
+  // Carry on with one person whose read was cut short. By profile URL, not name:
+  // two connections can share a name, and Resume must reach the one clicked.
+  resume:        { flag: '--bridge-url', needsUrl: true, label: 'Carrying on with', searches: true },
+  // Carry on with everyone whose read was cut short, and nobody new.
+  'resume-all':  { flag: '--auto-bridge --only-unfinished', label: 'Carrying on with every paused list', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
 };
+
+/** Only a plain linkedin.com/in/ profile URL becomes an argument. */
+function cleanProfileUrl(raw) {
+  const url = String(raw ?? '').trim();
+  if (url.length > 300) return null;
+  return /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%.]+\/?$/.test(url) ? url : null;
+}
 
 /** Names come from the page, so they are checked before becoming an argument. */
 function cleanName(raw) {
@@ -246,6 +283,16 @@ export async function POST(request) {
   if (action === 'cancel') {
     stopChild();
     return Response.json({ ok: true, cancelled: true });
+  }
+
+  // The two settings a person changes here. Neither starts anything.
+  if (action === 'set-limits') {
+    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly });
+    return Response.json({ ok: true, limits });
+  }
+  if (action === 'lift-cooldown') {
+    liftCooldown(dataDir());
+    return Response.json({ ok: true });
   }
 
   if (!Object.hasOwn(ACTIONS, action)) {
@@ -266,13 +313,25 @@ export async function POST(request) {
   // every page: LinkedIn's search goes no further, and most lists end sooner.
   const order = body.order === 'score' ? 'score' : 'newest';
   const maxPages = [10, 25, 50, 100].includes(body.maxPages) ? body.maxPages : 100;
-  const readsCircles = action.startsWith('auto-bridge') || action === 'bridge' || action === 'rescrape';
+  const readsCircles = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all'].includes(action);
   // Carry on with people already mapped, from the page each one stopped at.
   const deeper = body.deeper === true && (action.startsWith('auto-bridge') || action === 'bridge');
   let name = null;
   if (spec.needsName) {
     name = cleanName(body.name);
     if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
+  }
+  let profileUrl = null;
+  if (spec.needsUrl) {
+    profileUrl = cleanProfileUrl(body.profileUrl);
+    if (!profileUrl) return Response.json({ error: 'A LinkedIn profile URL is required.' }, { status: 400 });
+  }
+  // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
+  // too, this just says so before a process is spawned.
+  const searches = spec.searches || action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'company'].includes(action);
+  const cooldown = linkedinState(dataDir()).cooldown;
+  if (searches && cooldown) {
+    return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()} — ${cooldown.reason}.`, cooldown }, { status: 409 });
   }
   if (state.running) {
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
@@ -313,11 +372,13 @@ export async function POST(request) {
             path.join(root, 'scripts', 'scrape.py'),
             // `--flag=value` is one token on purpose: a name beginning with
             // "-" can then never be read as a flag of its own.
-            ...(name ? [`${spec.flag}=${name}`] : spec.flag.split(' ')),
-            ...(maxBridges && action.startsWith('auto-bridge') ? [`--max-bridges=${maxBridges}`] : []),
+            ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`${spec.flag}=${profileUrl}`] : spec.flag.split(' ')),
+            ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
             ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
             ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
-            ...(readsCircles ? [`--max-pages=${maxPages}`] : []),
+            // Resuming always reads to the end: a remembered "10 pages" would
+            // otherwise leave everyone paused at page 11 and do nothing.
+            ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
             ...(deeper ? ['--deeper'] : []),
           ],
         },
