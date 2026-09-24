@@ -60,9 +60,12 @@ tick an item in the same change that finishes it.
 
 - [x] The release workflow on GitHub's runners — it ran, and it showed the `.dmg` window
       step had been failing: 0.1.0 shipped a plain window. Fixed in 0.1.1 (TRAPS §28);
-      the fix was proven with a dry run of the workflow before tagging
-- [ ] The Updates panel's "Version X is available" state — checkable now: a 0.1.0 install
-      should offer 0.1.1
+      the fix was proven with a dry run of the workflow before tagging. 0.1.1's first
+      Intel build then hit an eject race ("Resource busy") and passed on a re-run; the
+      build now retries the eject, proven by another dry run
+- [x] The Updates panel's "Version X is available" state, and updating over a running
+      copy — 2026-09-24: an installed 0.1.0 offered 0.1.1; the one-liner stopped it,
+      installed 0.1.1 on the same port with no stray server, and 0.1.1 reports itself newest
 - [ ] The Intel `.dmg`: built and published, never opened on an Intel Mac
 - [ ] The progress bar during a real scan (seen against a stand-in scanner that prints
       the same lines)
