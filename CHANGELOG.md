@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-24
+
+### Fixed
+- The `.dmg` window opened as a plain list in 0.1.0, with no picture and no Open Anyway
+  step. A code comment had slipped inside the AppleScript that lays the window out,
+  which made it a syntax error, and the build only warned. The script is now compiled
+  before it runs, and a release build fails rather than publish a plain window.
+
+### Added
+- The release workflow can be dry-run: `gh workflow run release.yml --ref <branch> -f
+  dry_run=true` builds both `.dmg` files on GitHub's Macs and publishes nothing.
+
 ## [0.1.0] - 2026-09-24
 
 The first release: a Mac app on GitHub Releases, installed with one line. npm

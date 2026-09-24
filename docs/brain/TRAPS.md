@@ -526,6 +526,12 @@ build is the one that can carry somebody's personal file out of the folder.
   through a symlink, it would target the real `/Applications`.
 - **Icon names are black in light mode and white in dark mode, whatever the picture.**
   So the icons sit on a mid-grey tray where both read at about 4.5:1.
+- **The layout script is AppleScript inside a JavaScript string.** A `//` comment there
+  is a syntax error, and 0.1.0 shipped with a plain window because of exactly that: the
+  build caught the failure, printed a one-line warning, and carried on. It now compiles
+  the script with `osacompile` before running it, prints the real error from any Finder
+  step, and on CI refuses to finish without a `.DS_Store`. Dry-run the release workflow
+  (`-f dry_run=true`) after touching any of this.
 - **Headless Chrome writes a screenshot and then does not exit** on some macOS
   versions, and a fresh profile can stall on a keychain prompt. `make-dmg-background.mjs`
   uses a stand-in keychain, waits for the file, and ends Chrome itself.
