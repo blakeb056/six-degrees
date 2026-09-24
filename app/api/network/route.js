@@ -23,6 +23,9 @@ export async function GET(request) {
       return q;
     };
 
+    // Scores stored by an older scoring model are recomputed once, here.
+    try { await supabase.rpc('rescore_if_stale'); } catch { /* serve what's stored */ }
+
     const [d1, d2, d3] = await Promise.all([forDegree(1), forDegree(2), forDegree(3)]);
 
     const firstError = d1.error || d2.error || d3.error;

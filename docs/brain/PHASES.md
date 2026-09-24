@@ -98,6 +98,8 @@ tick an item in the same change that finishes it.
 - [x] 0.1.9 — Paths as a company & industry analyzer (InMaps-style map, industry cards,
       analyzer panel), Outlink as Circles (stages of five, next best moves, levels, new doors),
       and Orbit in Degrees. Checked on a copy of real data
+- [x] 0.1.10 — Scoring audit and rebuild: one model (title × company weight + capped bonuses),
+      company scores you can set (Paths → Scores), score explanations. Checked on a copy of real data
 - [ ] Search only 2nd degree (`network=["S"]`) instead of 1st+2nd+3rd: your own connections
       take up a quarter or more of every page and are thrown away on save. Needs one
       watched check once search works again

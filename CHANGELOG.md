@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-09-24
+
+### Changed
+- **Power scores rebuilt from an audit against your own network.** One model now scores
+  everyone (lib/scoring.js), where there were three that disagreed:
+  - **Seniority × company, not seniority + company.** power = title × company weight + bonus.
+    A title is worth more at a bigger company, so a VP at Google (9.0) outranks a founder of an
+    unknown startup (6.7), and an intern at Google (2.0) no longer scores like a director.
+  - **Titles are read properly.** The current role counts, former roles at 70%, and a person
+    scores as their strongest role. Fixed: "Vice President" read as President (73 people),
+    "Product Owner" as an owner, "International" as intern, club and fraternity chairs as
+    chairmen, and "CFO" missed entirely. Current students are capped.
+  - **Companies are found and named consistently.** Meta, Snap, Amazon/AWS and UCF variants
+    merge; plain "Meta" was missed before. Headline phrases like "at scale" are no longer
+    companies. About 130 well-known companies are scored, up from about 80.
+  - **Bonuses need whole words and real signals.** "psYChology", "comMITted" and "adVENTURE"
+    no longer earn +2. Self-reported claims from someone at an unknown company count half.
+  - **The circle boost is capped at +1 and recomputed each time.** It used to add up to +3 and
+    only ever go up, and 23 of 33 S-tier 1st-degree people were S only because of it.
+  - The recency bonus is gone: connecting recently doesn't make someone more powerful.
+  - Checked against mapped circles: a person's title now tracks how senior their own circle is
+    (correlation 0.30, up from 0.10).
+- Everyone is rescored after every import, and once automatically on the first load after updating.
+
+### Added
+- **Paths → Scores:** every company in your network with its score, where the score comes from
+  (known list, estimated from how many of your people work there, or yours) and a control to
+  set your own. Setting one rescores everyone. The company panel on the map has the same control.
+- **Why this score:** the person panel explains the number, e.g.
+  "VP / Partner / GM (9) · Snap (9/10) · +0.7 strong circle".
+
 ## [0.1.9] - 2026-09-24
 
 ### Added

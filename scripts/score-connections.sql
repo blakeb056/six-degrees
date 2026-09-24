@@ -1,3 +1,5 @@
+-- RETIRED: the hosted-era scoring model, kept for history. The app scores with
+-- lib/scoring.js (see its header for the model and why it changed).
 -- Power Scoring Algorithm
 -- Run this after importing connections to calculate scores and assign tiers
 
