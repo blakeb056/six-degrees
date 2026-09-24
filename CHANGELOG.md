@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-24
+
+### Fixed
+- **A 2nd-degree scan could read someone's connections and save none of them**:
+  "UNIQUE constraint failed", then "Done! 0 new". A person's results can name the same
+  profile twice — the same result on two pages, or the same mutual connection under many
+  results — and the database refused the whole batch. The scanner and the app now each
+  keep every profile once.
+- Your own connections were saved into other people's circles. They arrive as the
+  "mutual connections" links under each result; they are not people you have not met,
+  and they inflated every circle. They are now left out (and counted in the log).
+- A failed save printed one line and carried on to the next person, spending LinkedIn
+  views on people who could not be saved either. It now stops the batch and says why.
+- After a push the log said "N processed", counting everything sent. It now says how
+  many were new, and how many were already on file or already your connections.
+- Company scans saved their rows without your profile, so nothing they found could
+  appear. (Company scans are still experimental.)
+
+### Added
+- **Start with your newest connections.** The 2nd-degree step now works through your
+  most recently added connections first by default; "highest tier first" is still there.
+- **How deep to read each person:** 10 pages (the default, about 100 people), 25, 50 or
+  100, LinkedIn's limit. Deeper reads take longer and use your account's search allowance.
+
 ## [0.1.4] - 2026-09-24
 
 ### Fixed

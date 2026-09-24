@@ -1,6 +1,6 @@
 {
   "name": "six-degrees",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Map your professional network as a galaxy — leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
   "license": "MIT",
   "author": "Blake Burford",

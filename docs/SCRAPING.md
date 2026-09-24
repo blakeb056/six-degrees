@@ -38,13 +38,18 @@ The page has four steps: install, sign in, **1st degree** (the people you know) 
 second-degree step runs in batches of 5, 10 or 25 and has a **Stop** button; stopping
 closes the browser cleanly and keeps everything found so far.
 
-For each person it opens their profile, then a search of their connections, and reads
-the results a page at a time — up to 10 pages, about 100 people — waiting a few seconds
-between pages. For every result it keeps the profile link, name, photo and headline;
+**Who comes first.** Your newest connections first by default, or highest tier first;
+the tier chips still decide which tiers are included. **How deep.** For each person it
+opens their profile, then a search of their connections, and reads the results a page
+at a time — 10 pages (about 100 people) by default, or 25, 50 or 100 (LinkedIn's limit)
+— waiting a few seconds between pages. Every page is a search on your account, and free
+accounts have a monthly search limit, so deep reads use it up quickly. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather
-than saved as the headline. (Before 0.1.4 this step failed on the first page of every
-person — see TRAPS §31.)
+than saved as the headline. People who are already your own connections — they appear
+as the "mutual connections" under each result — are not saved into anyone's circle.
+(Before 0.1.4 this step failed on the first page of every person — see TRAPS §31; before
+0.1.5 a person whose results named anyone twice was read and not saved — §32.)
 
 **Go easy on the 2nd-degree step.** It opens one profile per person, and LinkedIn
 restricts accounts that view a lot of profiles in a short time — that happened during

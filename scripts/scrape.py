@@ -498,6 +498,15 @@ def delete_bridge_cluster(bridge_name):
     return bridge_id
 
 
+class SaveFailed(Exception):
+    """The app refused what was scraped.
+
+    It used to print a one-line "Push error" and carry on — "Done! 0 new
+    degree-2 connections added" — to the next person, spending more LinkedIn
+    views on people who could not be saved either. TRAPS §32.
+    """
+
+
 def push_connections(connections, degree=1, bridge_id=None, user_id=None):
     """Push connections via Vercel API route (which has write access).
     No local keys needed — the server handles auth."""
@@ -518,9 +527,18 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None):
 
     if resp.status_code == 200:
         result = resp.json()
-        inserted = result.get("processed", 0)
+        # "saved" is what was actually new; an older app only sends "processed",
+        # which counted everything sent and made nothing look like something.
+        inserted = result.get("saved", result.get("processed", 0))
         promoted = result.get("promoted", 0)
-        print(f"  Pushed {len(connections)} → {inserted} processed")
+        notes = []
+        if result.get("alreadyKnown"):
+            notes.append(f"{result['alreadyKnown']} already on file")
+        if result.get("alreadyConnected"):
+            notes.append(f"{result['alreadyConnected']} already your connections")
+        if result.get("duplicates"):
+            notes.append(f"{result['duplicates']} repeats")
+        print(f"  Sent {len(connections)} → {inserted} new" + (f" ({', '.join(notes)})" if notes else ""))
         if promoted:
             # Someone you were introduced to has accepted. The bridge that
             # produced them is kept on their row, so the path stays visible.
@@ -530,7 +548,7 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None):
             print(f"  {promoted} were already in a bridge's circle — merged into your connections, keeping who introduced you")
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
-        inserted = 0
+        raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
 
     # Batch update profile images separately (faster than inline)
     images_to_update = [
@@ -590,6 +608,7 @@ def push_company(people, company_name):
         "connections": connections,
         "type": "company",
         "companyName": company_name,
+        "userId": _active_user_id,
     }
 
     resp = requests.post(
@@ -604,7 +623,7 @@ def push_company(people, company_name):
         print(f"  Pushed {len(connections)} → {inserted} saved to database")
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
-        inserted = 0
+        raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
 
     # Update profile images
     images_to_update = [
@@ -745,7 +764,7 @@ def scrape_full(headless=False):
     # Push connections
     print(f"\nPushing {len(all_connections)} connections to the app...")
     inserted = push_connections(all_connections, degree=1)
-    print(f"Done! {inserted} processed.")
+    print(f"Done! {inserted} new.")
 
     return all_connections
 
@@ -1107,7 +1126,7 @@ def _find_connection_urn(page):
         return None
 
 
-def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
+def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=10):
     """
     Core bridge scraping logic. Takes an already-open Playwright page.
     Returns (connections_list, status_string).
@@ -1187,10 +1206,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
         print(f"  No search results found — may be private or empty.")
         return [], "empty"
 
-    # Step 6: Paginate and extract — 3s between pages, up to 10 pages
+    # Step 6: Paginate and extract — 3s between pages, up to max_pages (10 by
+    # default, about 100 people; LinkedIn stops at 100). Every page is a search.
     # Successful runs: 8-10 results per page, ~90 total across 10 pages
     connections = []
-    for pg in range(1, 11):
+    for pg in range(1, max_pages + 1):
         print(f"  Page {pg}... ", end="", flush=True)
         time.sleep(3)
 
@@ -1278,7 +1298,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
         connections.extend(page_results)
         print(f"{len(page_results)} found (total: {len(connections)})")
 
-        if pg < 10:
+        if pg < max_pages:
             # Playwright locator click — more reliable than JS click
             try:
                 next_btn = page.locator('button:has-text("Next")').first
@@ -1294,12 +1314,23 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url):
 
     # Filter out the bridge themselves
     connections = [c for c in connections if slug not in c.get("profileUrl", "")]
+
+    # The same person can turn up on more than one page, and a mutual connection
+    # repeats under many results. Keep each profile once: the app used to refuse a
+    # whole batch that named anyone twice (TRAPS §32).
+    seen, unique = set(), []
+    for c in connections:
+        url = c.get("profileUrl")
+        if url and url not in seen:
+            seen.add(url)
+            unique.append(c)
+    connections = unique
     print(f"  Total: {len(connections)} connections")
 
     return connections, "success"
 
 
-def scrape_bridge(bridge_name, headless=False):
+def scrape_bridge(bridge_name, headless=False, max_pages=10):
     """Scrape degree-2 connections for a single bridge (opens its own browser)."""
     from playwright.sync_api import sync_playwright
 
@@ -1340,7 +1371,7 @@ def scrape_bridge(bridge_name, headless=False):
             browser.close()
             return
 
-        connections, status = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url)
+        connections, status = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=max_pages)
         browser.close()
 
     if not connections:
@@ -1694,7 +1725,8 @@ def scrape_company(company_name, headless=False, log_fn=None):
     return all_people
 
 
-def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None):
+def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None,
+                    order="newest", max_pages=10):
     """Auto-bridge all unbridged connections, S-tier first then down.
     Picks up from where we left off — skips already-bridged people."""
 
@@ -1705,8 +1737,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 
     # Get all degree-1 connections (filtered by active user)
     D1_LIMIT = 20000
-    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url",
-                 "order": "power_score.desc", "limit": str(D1_LIMIT)}
+    newest = order != "score"
+    # "added" is the order rows were saved in: each scan saves LinkedIn's list
+    # top to bottom, and that list is "recently added" first.
+    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url,created_at",
+                 "order": "added" if newest else "power_score.desc", "limit": str(D1_LIMIT)}
     if _active_user_id:
         d1_params["user_id"] = f"eq.{_active_user_id}"
     all_d1 = read_connections(params=d1_params)
@@ -1743,7 +1778,18 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log(f"Limiting to {'/'.join(sorted(wanted, key=lambda t: tier_order.get(t, 9)))}-tier "
             f"({len(unbridged)} of {before} outstanding)")
 
-    unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
+    if newest:
+        # Your newest connections first — what someone expects after adding people.
+        # A scan saves everyone it finds with one timestamp, so within a scan keep
+        # the order they were saved in (LinkedIn's, newest first); sort() is
+        # stable, so reverse=True keeps that order among equal timestamps.
+        unbridged.sort(key=lambda c: c.get("created_at") or "", reverse=True)
+        log("Order: newest connections first")
+    else:
+        unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
+        log("Order: highest tier first")
+    if max_pages != 10:
+        log(f"Reading up to {max_pages} pages per person")
 
     log(f"Found {len(unbridged)} unbridged connections")
     log(f"Already bridged: {len(bridged_ids)}")
@@ -1782,7 +1828,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 
         scraped = False
         try:
-            result = scrape_bridge(name, headless=headless)
+            result = scrape_bridge(name, headless=headless, max_pages=max_pages)
             count = len(result) if result else 0
             if count > 0:
                 scraped = True
@@ -1796,6 +1842,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         except KeyboardInterrupt:
             log("Stopped.")
             raise
+        except SaveFailed as exc:
+            results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
+            log(f"  The app could not save these connections: {str(exc)[:120]}")
+            log("  Stopping the batch: anyone after this would cost LinkedIn views and not be saved either.")
+            break
         except BaseException as exc:
             # One bad profile must never end the run. BaseException rather than
             # Exception on purpose: a SystemExit raised deep in a helper would
@@ -1826,7 +1877,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     return results
 
 
-def rescrape_bridge(bridge_name, headless=False):
+def rescrape_bridge(bridge_name, headless=False, max_pages=10):
     """Delete all existing cluster data for a bridge and re-scrape from scratch."""
     print(f"\n=== Re-scraping {bridge_name} (delete + fresh scrape) ===\n")
 
@@ -1835,7 +1886,7 @@ def rescrape_bridge(bridge_name, headless=False):
     if bridge_id is None:
         return
 
-    scrape_bridge(bridge_name, headless=headless)
+    scrape_bridge(bridge_name, headless=headless, max_pages=max_pages)
 
 
 def run_server(port=5555):
@@ -2076,8 +2127,22 @@ Examples:
                         help="With --auto-bridge: stop after this many people (0 = no limit)")
     parser.add_argument("--tiers", type=str, default="",
                         help="With --auto-bridge: only these tiers, e.g. --tiers=S,A")
+    parser.add_argument("--order", choices=("newest", "score"), default="newest",
+                        help="With --auto-bridge: newest connections first (default), or highest tier first")
+    parser.add_argument("--max-pages", type=int, default=10,
+                        help="Result pages to read per person, 10 by default (about 100 people). "
+                             "LinkedIn stops at 100. Every page is a search on your account.")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
+    args.max_pages = max(1, min(100, args.max_pages))
+
+    # A failed save ends the run with its reason, not a traceback (TRAPS §32).
+    def _say_why(exc_type, exc, tb):
+        if issubclass(exc_type, SaveFailed):
+            print(f"\n  The app could not save what was scraped: {exc}\n", file=sys.stderr)
+        else:
+            sys.__excepthook__(exc_type, exc, tb)
+    sys.excepthook = _say_why
 
     install_stop_handler()
     _assert_local_target()
@@ -2103,7 +2168,8 @@ Examples:
     elif args.auto_bridge:
         results = auto_bridge_all(headless=args.headless, retry_private=args.retry_private,
                                   max_bridges=args.max_bridges,
-                                  tiers=args.tiers.split(",") if args.tiers else None)
+                                  tiers=args.tiers.split(",") if args.tiers else None,
+                                  order=args.order, max_pages=args.max_pages)
         done = sum(1 for r in results if r.get("status") == "done")
         print(f"\nDone. {done}/{len(results)} bridges mapped.")
     elif args.search:
@@ -2115,9 +2181,9 @@ Examples:
     elif args.server:
         run_server()
     elif args.rescrape:
-        rescrape_bridge(args.rescrape, headless=args.headless)
+        rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
     elif args.bridge:
-        scrape_bridge(args.bridge, headless=args.headless)
+        scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages)
     else:
         # Nothing collected yet means this is a first run, and the full scrape
         # is the one that walks every search page and captures photos. Running

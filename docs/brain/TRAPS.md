@@ -622,3 +622,27 @@ batch moved on, nothing was read, and nothing paginated.
   bug straight away: the screen-reader line "View … profile" saved as everyone's headline.
   Build the mock with the real site's CSS, or the mock lies in the other direction.
 
+---
+
+## 32. One repeated profile made a whole bridge's batch fail — and the run carried on
+
+A 2nd-degree run read 134 of someone's connections, then: `Push error: 500 UNIQUE
+constraint failed: index 'idx_connections_unique_per_user_bridge'` — `Done! 0 new`.
+
+- **Why duplicates.** A person's results name more than the results: each card links the
+  "mutual connections" too, and the same mutual connection turns up on many pages. The
+  extractor de-duplicates within a page, not across pages, and the app inserted the batch
+  as one statement — so one repeat failed the lot. Pages of 10 results were coming back as
+  11–18 "found"; the extras were those links.
+- **They were also the wrong people.** Mutual connections are your own connections. Stored
+  as 2nd-degree they inflated every circle and duplicated your network — the 190 rows a
+  full rescan later merged back (and gave some "introduced by" markers they did not earn).
+- **The failure did not stop anything.** `push_connections` printed the error and returned
+  0; the batch recorded the person as done and spent two more minutes, and more LinkedIn
+  views, on the next one.
+
+What holds it now: `lib/ingest.js` keeps each profile once and sets aside your own
+connections before a 2nd-degree or company insert (with tests); the scraper de-duplicates
+across pages before pushing; a non-200 save raises `SaveFailed`, which stops a batch with
+the reason; and the ingest response says what was new rather than what was sent.
+
