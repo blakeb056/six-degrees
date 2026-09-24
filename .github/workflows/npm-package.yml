@@ -2,18 +2,18 @@
 # checks that it starts and serves the app. Publishes nothing and needs no
 # secrets: the tarball is kept as a workflow artifact.
 #
-# It exists for the package's FIRST publish. npm can't set up trusted publishing
-# (release.yml's npm job) for a name that doesn't exist yet, so the first version
-# is published by hand, from this tarball:
+# release.yml runs this before every npm publish and publishes that exact
+# tarball. Run it by hand to check a tag without releasing:
 #
 #   gh workflow run npm-package.yml -f tag=v0.2.0
 #   gh run download <run id> -n npm-package      # six-degrees-0.2.0.tgz + .sha256
-#   npm login
-#   npm publish six-degrees-0.2.0.tgz --access public
+#
+# The package's first version (0.2.0) was published by hand from this tarball,
+# because npm's trusted publishing can only be set up for a package that exists.
 #
 # Built on Linux because the package bundles one native module (sharp, pulled in
 # by Next) for the machine that builds it, and npm is the Linux way in (Macs get
-# the app). release.yml publishes from Linux too.
+# the app).
 
 name: npm package
 
@@ -22,6 +22,11 @@ on:
     inputs:
       tag:
         description: 'Tag to build, e.g. v0.2.0'
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
         required: true
 
 permissions:
