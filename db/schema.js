@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   unlocked_from_name      TEXT,
   outreach_status         TEXT,
   scanned_company         TEXT,
+  score_why               TEXT,
   user_id                 TEXT,
   image_refreshed_at      TEXT,
   created_at              TEXT DEFAULT (datetime('now')),
@@ -119,6 +120,22 @@ CREATE TABLE IF NOT EXISTS queue_items (
   sent_at       TEXT,
   accepted_at   TEXT,
   scanned_at    TEXT
+);
+
+-- Company scores you set yourself (lib/scoring.js): they win over the curated
+-- list and over the network estimate. One row per canonical company name.
+CREATE TABLE IF NOT EXISTS company_scores (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE,
+  score       REAL NOT NULL,
+  updated_at  TEXT DEFAULT (datetime('now'))
+);
+
+-- Small key/value facts about this install, e.g. which scoring model the
+-- stored scores were computed with.
+CREATE TABLE IF NOT EXISTS app_meta (
+  key    TEXT PRIMARY KEY,
+  value  TEXT
 );
 
 -- Referenced by app/api/setup-profile but absent from the old cloud schema,

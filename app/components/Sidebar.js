@@ -139,10 +139,14 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
               {parseFloat(selected.power_score).toFixed(1)}
             </span>
           </div>
+          {/* Why: title × company weight + bonuses (lib/scoring.js) */}
+          {selected.score_why && (
+            <div style={{ fontSize: 11, color: '#aab7b7', lineHeight: 1.5, marginBottom: 10 }}>{selected.score_why}</div>
+          )}
           {/* Job Power bar */}
           <div style={{ marginBottom: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#888', marginBottom: 2 }}>
-              <span>Seniority</span><span>{selected.seniority_score || 0}/10</span>
+              <span>Title</span><span>{selected.seniority_score || 0}/10</span>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
               <div style={{ height: '100%', width: `${(selected.seniority_score || 0) * 10}%`, background: tierColors[selected.tier] || '#FFD700', borderRadius: 2 }} />
@@ -151,7 +155,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           {/* Status Power bar */}
           <div style={{ marginBottom: selected.circle_power > 0 ? 6 : 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#888', marginBottom: 2 }}>
-              <span>Company Prestige</span><span>{selected.company_prestige_score || 0}/10</span>
+              <span>Company</span><span>{selected.company_prestige_score || 0}/10</span>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
               <div style={{ height: '100%', width: `${(selected.company_prestige_score || 0) * 10}%`, background: '#3498DB', borderRadius: 2 }} />

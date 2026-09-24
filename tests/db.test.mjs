@@ -22,7 +22,7 @@ before(async () => {
 
 beforeEach(() => {
   const raw = getDb();
-  for (const t of ['linkedin_connections', 'notifications', 'queue_items', 'user_stats', 'users', 'user_profile']) {
+  for (const t of ['linkedin_connections', 'notifications', 'queue_items', 'user_stats', 'users', 'user_profile', 'company_scores', 'app_meta']) {
     raw.exec(`DELETE FROM ${t}`);
   }
 });
@@ -190,17 +190,31 @@ test('upsert with ignoreDuplicates does not fail on a conflict', async () => {
 });
 
 // ── RPC replacements ───────────────────────────────────────────────────────
-test('score_new_connections scores only unscored rows', async () => {
+test('score_new_connections rescores everyone with the current model, and says why', async () => {
   await db.from('linkedin_connections').insert([
-    person({ profile_url: 'https://linkedin.com/in/ceo', role: 'CEO', company: 'Anthropic', tier: null, power_score: null }),
-    person({ profile_url: 'https://linkedin.com/in/kept', tier: 'D', power_score: 1 }),
+    person({ profile_url: 'https://linkedin.com/in/ceo', role: 'CEO', headline: 'CEO at Anthropic', company: 'Anthropic', tier: null, power_score: null }),
+    person({ profile_url: 'https://linkedin.com/in/old', headline: 'VP Marketing at Google', company: 'Google', tier: 'D', power_score: 1 }),
   ]);
   const { error } = await db.rpc('score_new_connections');
   assert.equal(error, null);
   const ceo = await db.from('linkedin_connections').select('*').eq('role', 'CEO').single();
-  assert.equal(ceo.data.tier, 'S', 'CEO at a top-prestige company should land in S');
-  const kept = await db.from('linkedin_connections').select('*').eq('profile_url', 'https://linkedin.com/in/kept').single();
-  assert.equal(kept.data.tier, 'D', 'an already-scored row must not be rescored');
+  assert.equal(ceo.data.tier, 'S', 'CEO at a top company lands in S');
+  assert.match(ceo.data.score_why, /C-Suite/);
+  const old = await db.from('linkedin_connections').select('*').eq('profile_url', 'https://linkedin.com/in/old').single();
+  assert.equal(old.data.tier, 'S', 'a stale score is replaced, not kept');
+});
+
+test('a company score you set wins and rescoring applies it', async () => {
+  await db.from('linkedin_connections').insert([person({ profile_url: 'https://linkedin.com/in/d', headline: 'Director at Northwind', company: 'Northwind' })]);
+  await db.rpc('score_new_connections');
+  const before = (await db.from('linkedin_connections').select('*').eq('profile_url', 'https://linkedin.com/in/d').single()).data;
+  await db.from('company_scores').insert([{ name: 'Northwind', score: 10 }]);
+  await db.rpc('rescore_all');
+  const after = (await db.from('linkedin_connections').select('*').eq('profile_url', 'https://linkedin.com/in/d').single()).data;
+  assert.equal(before.company_prestige_score, 4);
+  assert.equal(after.company_prestige_score, 10);
+  assert.ok(after.power_score > before.power_score);
+  assert.match(after.score_why, /your score/);
 });
 
 test('exec_sql is refused', async () => {

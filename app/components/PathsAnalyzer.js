@@ -14,6 +14,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3';
+import { useCompanyScores, ScorePicker } from './CompanyScores';
 import {
   buildCompanyIndex, companyLinks, companyOf, getSeniority, industryOf, industryByKey,
   INDUSTRIES, UNKNOWN_INDUSTRY, waysInto, isSenior,
@@ -409,6 +410,7 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: `${industry.color}22`, color: industry.color }}>
         {industry.label}{isCompany ? ' · inferred' : ''}
       </span>
+      {isCompany && <CompanyScoreLine name={data.name} />}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, margin: '14px 0' }}>
         {[[d1n, 'you know', '#00ff88'], [d2n, 'reachable', '#FF6B35'], [people.filter((p) => isSenior(p.headline)).length, 'director+', '#FFD700']].map(([n, l, c]) => (
@@ -495,6 +497,21 @@ function Section({ title, children }) {
     <div style={{ marginTop: 14 }}>
       <div style={{ fontSize: 10.5, letterSpacing: 0.8, color: '#8b9a9a', fontWeight: 700, marginBottom: 6 }}>{title.toUpperCase()}</div>
       {children}
+    </div>
+  );
+}
+
+// The company's score in people's power, where it comes from, and a control
+// to set it (Paths → Scores has every company).
+function CompanyScoreLine({ name }) {
+  const { companies, setScore } = useCompanyScores();
+  const c = companies?.find((x) => x.name === name);
+  if (!c) return null;
+  const from = { yours: 'your score', known: 'known list', network: 'estimated', default: 'unknown company' }[c.source];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: '#aab7b7' }}>
+      Company score <b style={{ color: '#fff', fontSize: 15 }}>{c.score}</b>/10 · {from}
+      <span style={{ marginLeft: 'auto' }}><ScorePicker company={c} onSet={setScore} compact /></span>
     </div>
   );
 }

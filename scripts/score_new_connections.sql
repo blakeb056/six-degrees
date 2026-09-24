@@ -1,3 +1,5 @@
+-- RETIRED: the hosted-era scoring model, kept for history. The app scores with
+-- lib/scoring.js (see its header for the model and why it changed).
 -- CANONICAL SCORER — the scoring model this project's tiers are derived from.
 --
 -- This is the reference implementation: any other scorer in the codebase

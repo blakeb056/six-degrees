@@ -7,9 +7,10 @@ import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
+import CompanyScores from '../components/CompanyScores';
 import { useUser } from '../components/UserProvider';
 import Link from 'next/link';
-import { normalizeCompany, getSeniority, SENIORITY_LEVELS } from '../../lib/companies';
+import { companyOf, getSeniority } from '../../lib/companies';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -28,6 +29,8 @@ function PathsInner() {
   const [d3Data, setD3Data] = useState([]);
   // Map and Industries are the analyzer; Companies is the list it grew from.
   const [tab, setTab] = useState('map');
+  // Bumped when company scores change, so the network reloads with new tiers.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (IS_DEMO) return;
@@ -56,10 +59,8 @@ function PathsInner() {
         if (seenUrls.has(c.profile_url)) return;
         seenUrls.add(c.profile_url);
 
-        const hl = c.headline || '';
-        const companyFromHeadline = hl.split(/ at | @ /)?.[1]?.split(/[|,]/)?.[0]?.trim();
-        const co = normalizeCompany(c.scanned_company || c.company || companyFromHeadline);
-        if (!co || co.length < 2) return;
+        const co = companyOf(c);
+        if (!co) return;
         if (!companyMap[co]) companyMap[co] = { name: co, d1: 0, d2: 0, d3: 0, sCount: 0, aCount: 0, people: [] };
         if (c.degree === 1) companyMap[co].d1++;
         else if (c.degree === 2) companyMap[co].d2++;
@@ -76,7 +77,7 @@ function PathsInner() {
       setLoading(false);
     }
     load();
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   const [scanning, setScanning] = useState(false);
   const [scanLog, setScanLog] = useState([]);
@@ -225,7 +226,7 @@ function PathsInner() {
           }}>Paths</h1>
           {!selectedCompany && (
             <div style={{ display: 'flex', gap: 4, marginLeft: 8, padding: 3, borderRadius: 8, background: 'rgba(255,255,255,0.05)' }}>
-              {[['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies']].map(([k, label]) => (
+              {[['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies'], ['scores', 'Scores']].map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)} style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
                   background: tab === k ? 'linear-gradient(135deg, #00ff88, #3498DB)' : 'transparent', color: tab === k ? '#000' : '#aab',
@@ -263,7 +264,9 @@ function PathsInner() {
         </div>
       </header>
 
-      {!selectedCompany && tab !== 'companies' ? (
+      {!selectedCompany && tab === 'scores' ? (
+        <CompanyScores onRescored={() => setReloadKey((k) => k + 1)} />
+      ) : !selectedCompany && tab !== 'companies' ? (
         <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}
           onOpenCompany={(co) => selectCompany({ ...co, sCount: co.S, aCount: co.A })} />
       ) : (
