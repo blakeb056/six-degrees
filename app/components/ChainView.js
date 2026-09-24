@@ -14,12 +14,21 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const [isTouching, setIsTouching] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver(() => {
-      setDims({ w: containerRef.current.clientWidth, h: containerRef.current.clientHeight });
-    });
-    ro.observe(containerRef.current);
-    setDims({ w: containerRef.current.clientWidth, h: containerRef.current.clientHeight });
+    const el = containerRef.current;
+    if (!el) return undefined;
+    // Hold the element rather than reading the ref inside the callback. React
+    // clears the ref on unmount, and a ResizeObserver can still fire once
+    // afterwards, so reading containerRef.current there threw when leaving the
+    // Bridges view. Publishing only a changed size also stops a fresh object
+    // rebuilding the scene on every observation.
+    const measure = () => {
+      const w = Math.round(el.clientWidth);
+      const h = Math.round(el.clientHeight);
+      setDims((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
     return () => ro.disconnect();
   }, []);
 

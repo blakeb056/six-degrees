@@ -432,3 +432,27 @@ While writing it I reproduced TRAPS §20 exactly: `.trim()` on `git status --por
 strips the leading space from the first line, so `slice(3)` ate a character and the
 script reported `ackage.json`. **The same mistake, in the same session, in a second
 place** — which is the argument for the rule being written down rather than remembered.
+
+---
+
+## 24. A tracing exclude of `dist/**` can delete Next's own server runtime
+
+Reported from the second machine: `npm run build:app` produced an app whose pages
+rendered and whose every API route returned 500, with "Cannot find module" in the log.
+
+`outputFileTracingExcludes` was set to `'*': ['dist/**', ...]` to keep a previous
+packaging run out of the next bundle (TRAPS context: that bloat took a 70 MB image to
+361 MB). But Next matches those globs with picomatch in **contains** mode, so `dist/**`
+also matches `node_modules/next/dist/**` and can strip the server runtime the API routes
+need. The page still renders, because the client bundle is separate. Nothing says why.
+
+Now scoped to the artefacts by name: `dist/*.app/**`, `dist/*.dmg`, `dist/staging/**`.
+
+**Honesty about the evidence:** this was never reproduced on the first machine. Fresh
+builds there returned 200 on every route before the change and after it. The fix went in
+because the hazard is real and specific regardless of whether it currently fires, and
+because a glob that can silently delete a dependency is not worth keeping for brevity.
+If it reappears, the likely difference is the resolved Next version between machines.
+
+Smoke test after any change here: build the app, launch it, and curl every API route.
+A rendering page proves nothing about the routes.

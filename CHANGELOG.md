@@ -57,6 +57,11 @@ First release, not yet published to npm.
   to reset.
 
 ### Fixed
+- The packaged Mac app could ship without part of Next's server runtime, leaving every
+  page working and every API call failing. The rule that keeps build artefacts out of the
+  bundle was matching Next's own `dist` folder too.
+- Leaving the Bridges view no longer throws. A resize callback could run once after the
+  view had gone and read something that was no longer there.
 - Scan, Profile, Import and Outlink scroll again. A rule that exists so the map can fill
   the window was applied to the whole app, so on every other page anything below the
   fold was rendered but unreachable.
