@@ -5,32 +5,15 @@
   and find the shortest path to someone you haven't met.</em>
 </p>
 
+## Install it
+
 <p align="center">
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="https://img.shields.io/badge/Download-Apple%20Silicon%20(M1%20or%20newer)-2ea44f?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with Apple Silicon (M1 or newer)"></a>
   &nbsp;
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="https://img.shields.io/badge/Download-Intel%20Mac-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for a Mac with an Intel processor"></a>
 </p>
 
-<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="#install-it">how to install</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
-
-<p align="center">
-  <img src="docs/img/app-window.png" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="100%">
-</p>
-
-<p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
-
----
-
-Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
-know placed on rings by how much they can open up for you, the handful of people
-whose own circles reach the furthest, and the shortest chain from you to a stranger
-worth meeting.
-
-It's a Mac app. It runs on your computer, against your own data, with no account and
-no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
-Degrees**.)
-
-## Install it
+<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
@@ -73,6 +56,7 @@ touch it. Each new version also copies your data into its `backups` folder befor
 first opens it.
 
 **Linux:** run it from source (below); it's tested on Ubuntu.
+
 **Windows:** not yet. A Windows app is planned; nothing is released.
 
 <details>
@@ -92,6 +76,23 @@ To update later: stop it (Ctrl-C), then
 `git pull && npm ci && npm run build && npm run start:packaged`.
 Scanning LinkedIn also needs Python 3.9+ and Google Chrome (see below).
 </details>
+
+## What it is
+
+<p align="center">
+  <img src="docs/img/app-window.png" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="100%">
+</p>
+
+<p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
+
+Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
+know placed on rings by how much they can open up for you, the handful of people
+whose own circles reach the furthest, and the shortest chain from you to a stranger
+worth meeting.
+
+It's a Mac app. It runs on your computer, against your own data, with no account and
+no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
+Degrees**.)
 
 ## Before you scan LinkedIn
 
