@@ -118,6 +118,10 @@ python3 scripts/scrape.py --bridge "Jane Doe"
 # Delete and re-capture a bridge's circle from scratch
 python3 scripts/scrape.py --rescrape "Jane Doe"
 
+# Everyone visible at one company. EXPERIMENTAL: shipped in 0.1.0 without ever
+# having been run against live LinkedIn; the Paths page asks before the first one
+python3 scripts/scrape.py --company "Acme"
+
 # Run as a local server so the app's buttons can drive it
 python3 scripts/scrape.py --server
 ```

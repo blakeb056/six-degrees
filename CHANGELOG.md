@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-First release, not yet published to npm.
+## [0.1.0] - 2026-09-24
+
+The first release: a Mac app on GitHub Releases, installed with one line. npm
+publishing is wired up and waits only for a token.
 
 ### Added
 - **One-line install on a Mac**: `curl -fsSL …/install.sh | bash` fetches the newest
@@ -43,6 +46,9 @@ First release, not yet published to npm.
   circles" — instead of one total that read as connections and was not.
 - `Start 6 Degrees.command` is gone. It started the development server; install the
   app instead.
+- **Company scans are marked experimental.** They ship without ever having been run
+  against live LinkedIn; the Paths page labels the button and asks once before the
+  first scan.
 
 ### Fixed
 - A scan that failed printed only "Stopped (exit 1)". Its reason was on stderr, which

@@ -204,6 +204,20 @@ function PathsInner() {
   async function scanFullCompany() {
     if (IS_DEMO) return;
     if (!selectedCompany) return;
+    // Company scans shipped in 0.1.0 without ever having been run against live
+    // LinkedIn (docs/brain/PHASES.md). Say so once per browser before the first
+    // one, rather than let an untested path look like a finished one.
+    let warned = false;
+    try { warned = localStorage.getItem('six-degrees-company-scan-ok') === '1'; } catch {}
+    if (!warned) {
+      const ok = window.confirm(
+        'Company scans are experimental: they have not been tested against live LinkedIn yet, ' +
+        'so the results may be incomplete. Like any scan, it opens a Chrome window and counts ' +
+        'toward the profile views LinkedIn watches.\n\nRun it anyway?',
+      );
+      if (!ok) return;
+      try { localStorage.setItem('six-degrees-company-scan-ok', '1'); } catch {}
+    }
     setScanning(true);
     setScanLog(['Checking the scraper...']);
 
@@ -330,6 +344,13 @@ function PathsInner() {
                 }}>
                 {scanning ? 'Scanning...' : '+ Scan Full Company'}
               </button>
+              <span
+                title="Not yet tested against live LinkedIn. Results may be incomplete."
+                style={{
+                  fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, padding: '3px 7px',
+                  borderRadius: 20, border: '1px solid rgba(255,215,0,0.45)', color: '#FFD700',
+                }}
+              >EXPERIMENTAL</span>
             </>
           )}
         </div>

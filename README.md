@@ -163,7 +163,7 @@ python3 scripts/scrape.py --login               # sign in, then exit
 npm run scrape                                  # full the first time, new-only after
 npm run scrape:full                             # walk the whole list again
 python3 scripts/scrape.py --bridge "Jane Doe"   # one person's 2nd-degree circle
-python3 scripts/scrape.py --company "Acme"      # everyone visible at one company
+python3 scripts/scrape.py --company "Acme"      # everyone at one company (experimental)
 ```
 
 If `pip` refuses with `externally-managed-environment`, that is your system Python

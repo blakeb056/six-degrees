@@ -246,7 +246,7 @@ try {
   execFileSync('osascript', ['-e',
     `tell application "Finder" to make new alias file at (POSIX file "${mount}" as alias) ` +
     `to (POSIX file "/Applications" as alias) with properties {name:"Applications"}`],
-  { stdio: 'ignore' });
+  { stdio: 'ignore', timeout: 60000 });
 } catch { /* fall through to the symlink */ }
 const dropTarget = path.join(mount, 'Applications');
 if (!existsSync(dropTarget)) {
@@ -265,7 +265,7 @@ if (lstatSync(dropTarget).isFile()) {
       ObjC.import('AppKit');
       const ws = $.NSWorkspace.sharedWorkspace;
       ws.setIconForFileOptions(ws.iconForFile('/Applications'), ${JSON.stringify(dropTarget)}, 0);
-    `], { stdio: 'ignore' });
+    `], { stdio: 'ignore', timeout: 60000 });
   } catch {
     console.log('  (could not give the Applications alias its icon; it will draw as a dashed square)');
   }
@@ -296,7 +296,9 @@ try {
         close
       end tell
     end tell
-  `], { stdio: 'ignore' });
+  // A bound on every Finder step: on a build machine nobody is watching, a
+  // Finder that never answers must fail this step, not hold the release for hours.
+  `], { stdio: 'ignore', timeout: 120000 });
 } catch {
   console.log('  (could not style the window; the image still works)');
 }
