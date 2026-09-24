@@ -1,5 +1,5 @@
 import { db as supabase } from '../../../lib/db';
-import { uniqueByProfile, splitAlreadyConnected } from '../../../lib/ingest';
+import { uniqueByProfile, splitAlreadyConnected, toIsoDate } from '../../../lib/ingest';
 import { promoteToFirstDegree } from '../../../lib/promote';
 
 function parseHeadline(h) {
@@ -61,7 +61,7 @@ export async function POST(request) {
         role: role.substring(0, 100),
         profile_url: c.profileUrl?.trim(),
         profile_image_url: c.imageUrl || null,
-        connected_date: c.connectedDate ? new Date(c.connectedDate).toISOString().split('T')[0] : null,
+        connected_date: toIsoDate(c.connectedDate),
       };
       // Apply user-specific company prestige scoring
       if (prestigeConfig) {
@@ -196,6 +196,9 @@ export async function POST(request) {
         if (rec.company) updates.company = rec.company;
         if (rec.role) updates.role = rec.role;
         if (rec.profile_image_url) updates.profile_image_url = rec.profile_image_url;
+        // Fills in the date for people saved before it was captured, so one full
+        // scan dates everyone and "newest first" can go by it.
+        if (rec.connected_date) updates.connected_date = rec.connected_date;
         if (Object.keys(updates).length > 0) {
           await supabase
             .from('linkedin_connections')

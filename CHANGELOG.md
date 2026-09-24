@@ -24,9 +24,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Company scans saved their rows without your profile, so nothing they found could
   appear. (Company scans are still experimental.)
 
+- **LinkedIn's "Connected on" date is captured again.** The 1st-degree reader rewritten on
+  2026-09-09 stopped saving it, so the app had no idea when you connected with anyone —
+  and the scoring bonus for connections made in the last 30 days never applied. It is read
+  from each person's card again, and a full scan fills it in for everyone already saved.
+- A full scan's summary said "814 new" and then "Sent 814 → 0 new". It no longer claims
+  a count it cannot know; the app's line says what was new.
+
 ### Added
-- **Start with your newest connections.** The 2nd-degree step now works through your
-  most recently added connections first by default; "highest tier first" is still there.
+- **Start with your newest connections.** The 2nd-degree step now works through the people
+  you connected with most recently, by LinkedIn's "Connected on" date and across every
+  tier; "highest tier first", with the tier choice, is still there.
+- The progress bar says "Saving to your network and fetching photos" once reading is done,
+  instead of sitting at 99% looking stuck.
+- The Scan page remembers the order and depth you last chose.
 - **How deep to read each person:** 10 pages (the default, about 100 people), 25, 50 or
   100, LinkedIn's limit. Deeper reads take longer and use your account's search allowance.
 

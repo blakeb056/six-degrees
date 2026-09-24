@@ -819,6 +819,20 @@ CONNECTIONS_EXTRACT_JS = r"""
       if (!rec._named) { rec.name = clean(lines[0]); rec._named = true; }
       if (!rec.headline && lines[1] && !/^Connected on/i.test(lines[1])) rec.headline = lines[1];
     }
+    // "Connected on September 22, 2026" sits in the card, outside the link. It is
+    // what "newest first" goes by, and it went missing when this extractor was
+    // rewritten. Climb to the nearest block holding exactly ONE such line: more
+    // than one means we have reached the list itself and would take a neighbour's.
+    if (!rec.connectedDate) {
+      let el = a;
+      for (let k = 0; k < 8 && el.parentElement; k++) {
+        el = el.parentElement;
+        const hits = (el.innerText || '').match(/Connected on [A-Za-z]+\.? \d{1,2}, \d{4}/g);
+        if (!hits) continue;
+        if (hits.length === 1) rec.connectedDate = hits[0].replace(/^Connected on /, '');
+        break;
+      }
+    }
   });
   return [...byHref.values()].filter(r => r.name && r.name.length >= 2).map(({ _named, ...r }) => r);
 }
@@ -983,8 +997,15 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     found = list(collected.values())
     new_rows = [r for r in found if r["profileUrl"] not in existing_urls] if existing_urls else found
     with_photos = sum(1 for r in found if r.get("imageUrl"))
-    print(f"\nCollected {len(found)} connections ({with_photos} with photos); {len(new_rows)} new.")
-    say(f"Collected {len(found)} connections, {len(new_rows)} new")
+    if existing_urls:
+        print(f"\nCollected {len(found)} connections ({with_photos} with photos); {len(new_rows)} new.")
+        say(f"Collected {len(found)} connections, {len(new_rows)} new")
+    else:
+        # A full walk does not load what is already saved, so it cannot say what is
+        # new — it used to call all 814 "new", then the app said "0 new". The app's
+        # "Sent … → N new" line below is the one that knows.
+        print(f"\nCollected {len(found)} connections ({with_photos} with photos).")
+        say(f"Collected {len(found)} connections")
 
     # Only meaningful on a full walk: a refresh stops early on purpose.
     if full_walk and reported and len(found) < reported * 0.5:
@@ -1740,7 +1761,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     newest = order != "score"
     # "added" is the order rows were saved in: each scan saves LinkedIn's list
     # top to bottom, and that list is "recently added" first.
-    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url,created_at",
+    d1_params = {"degree": "eq.1", "select": "id,name,tier,power_score,profile_url,created_at,connected_date",
                  "order": "added" if newest else "power_score.desc", "limit": str(D1_LIMIT)}
     if _active_user_id:
         d1_params["user_id"] = f"eq.{_active_user_id}"
@@ -1771,7 +1792,12 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     # appears in it, sorted into their tier. What is worth choosing is how far
     # down the list to go — most people never want to map their D-tier circles,
     # and that choice is the one that costs rate limit.
-    if tiers:
+    # Newest-first goes strictly by the date you connected, across every tier —
+    # that is what "my most recent connection" means. Tiers choose who is included
+    # in highest-tier-first order.
+    if tiers and newest:
+        log("Going by the date you connected, so every tier is included")
+    if tiers and not newest:
         wanted = {t.strip().upper() for t in tiers if t and t.strip()}
         before = len(unbridged)
         unbridged = [c for c in unbridged if (c.get("tier") or "D").upper() in wanted]
@@ -1779,12 +1805,18 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             f"({len(unbridged)} of {before} outstanding)")
 
     if newest:
-        # Your newest connections first — what someone expects after adding people.
-        # A scan saves everyone it finds with one timestamp, so within a scan keep
-        # the order they were saved in (LinkedIn's, newest first); sort() is
-        # stable, so reverse=True keeps that order among equal timestamps.
-        unbridged.sort(key=lambda c: c.get("created_at") or "", reverse=True)
-        log("Order: newest connections first")
+        # Your newest connections first, by LinkedIn's "Connected on" date. People
+        # without one yet (saved before dates were captured; one full scan fills
+        # them in) come after, in the order they were saved — LinkedIn's own
+        # "recently added" order within a scan. sort() is stable, so reverse=True
+        # keeps that order among equal keys.
+        unbridged.sort(key=lambda c: (1 if c.get("connected_date") else 0,
+                                      c.get("connected_date") or c.get("created_at") or ""),
+                       reverse=True)
+        undated = sum(1 for c in unbridged if not c.get("connected_date"))
+        log("Order: newest connections first, by the date you connected")
+        if undated:
+            log(f"  {undated} have no connection date yet — run \"Scan my whole network\" once to fill them in")
     else:
         unbridged.sort(key=lambda c: (tier_order.get(c.get("tier", "D"), 4), -(float(c.get("power_score", 0)))))
         log("Order: highest tier first")

@@ -31,3 +31,19 @@ test('nothing is set aside when nobody is already connected', () => {
   assert.equal(keep.length, 2);
   assert.equal(alreadyConnected, 0);
 });
+
+import { toIsoDate } from '../lib/ingest.js';
+
+test('LinkedIn\'s "Connected on" dates become ISO dates, without a timezone shift', () => {
+  assert.equal(toIsoDate('September 22, 2026'), '2026-09-22');
+  assert.equal(toIsoDate('Sep 2, 2026'), '2026-09-02');
+  assert.equal(toIsoDate('January 1, 2025'), '2025-01-01');
+  assert.equal(toIsoDate('2026-09-22'), '2026-09-22');
+});
+
+test('text that is not a date gives null rather than throwing', () => {
+  assert.equal(toIsoDate(''), null);
+  assert.equal(toIsoDate(null), null);
+  assert.equal(toIsoDate('yesterday'), null);
+  assert.equal(toIsoDate('Smarch 3, 2026'), null);
+});

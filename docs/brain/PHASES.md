@@ -50,7 +50,8 @@ tick an item in the same change that finishes it.
       Python string was a syntax error (TRAPS §31). Every snippet is now parsed in CI
 - [x] 0.1.5 — 2nd-degree results are saved: a repeated profile no longer fails the batch,
       your own connections stay out of other circles, a failed save stops the batch
-      (TRAPS §32). Newest-connections-first order and pages-per-person added
+      (TRAPS §32). Newest-connections-first order (by the "Connected on" date, captured
+      again — §33) and pages-per-person added
 
 ### Needs the maintainer
 

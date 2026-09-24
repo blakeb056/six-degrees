@@ -38,8 +38,10 @@ The page has four steps: install, sign in, **1st degree** (the people you know) 
 second-degree step runs in batches of 5, 10 or 25 and has a **Stop** button; stopping
 closes the browser cleanly and keeps everything found so far.
 
-**Who comes first.** Your newest connections first by default, or highest tier first;
-the tier chips still decide which tiers are included. **How deep.** For each person it
+**Who comes first.** Your newest connections first by default — by LinkedIn's "Connected
+on" date, across every tier — or highest tier first, where the tier chips decide who is
+included. The date is read during the 1st-degree scan, so run **Check for new** first
+(and one **Scan my whole network** to date everyone saved before 0.1.5). **How deep.** For each person it
 opens their profile, then a search of their connections, and reads the results a page
 at a time — 10 pages (about 100 people) by default, or 25, 50 or 100 (LinkedIn's limit)
 — waiting a few seconds between pages. Every page is a search on your account, and free
