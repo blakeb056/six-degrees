@@ -46,8 +46,11 @@
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
 | `scripts/score_new_connections.sql`, `scripts/score-connections.sql` | **Retired** hosted-era scoring, kept for history. The model is `lib/scoring.js`. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |
-| `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`: bundles a Node runtime so the app has no prerequisites for the CSV path. Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). |
+| `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`, as the Electron app (`--shell=electron`) or the classic launcher (`--shell=classic`, the default for now). Both bundle the same Node runtime and server. Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). Fails if the app *inside the image* doesn't verify (TRAPS §37). |
 | `bin/six-degrees.mjs` | The `npx` launcher: Node guard, data dir, port probe from 6363. |
+| `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit. |
+| `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan), tested in `tests/desktop.test.mjs`. |
+| `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). |
 | `tests/*.test.mjs` | About 150 tests on `node --test`. No test framework dependency. |
 
 ## Data directory

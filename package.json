@@ -1,7 +1,7 @@
 {
   "name": "six-degrees",
-  "version": "0.1.11",
-  "description": "Map your professional network as a galaxy — leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
+  "version": "0.2.0-beta.1",
+  "description": "Map your professional network as a galaxy \u2014 leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
   "license": "MIT",
   "author": "Blake Burford",
   "repository": {
@@ -69,6 +69,8 @@
     "scrape:refresh": "python3 scripts/scrape.py --refresh",
     "audit:avatars": "node scripts/audit-avatars.mjs",
     "build:app": "node scripts/build-app.mjs",
+    "build:desktop": "node scripts/build-app.mjs --shell=electron",
+    "desktop": "electron desktop",
     "update": "node scripts/update.mjs"
   },
   "dependencies": {
@@ -78,6 +80,8 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.4.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.6"
   }

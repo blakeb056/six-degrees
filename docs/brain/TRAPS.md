@@ -769,3 +769,42 @@ The local database was repaired from the 09-23 backup: the 13 ids were re-linked
 circle stats restored, and the 150 false origins cleared, with a copy kept first in
 `~/.six-degrees/backups/pre-relink-2026-09-24.sqlite`.
 
+
+## 37. Node's `cpSync` rewrote the Electron app's links into paths on the build machine
+
+The first Electron build passed every check and ran perfectly here, and would not have
+opened on anyone else's Mac.
+
+- **Why.** Electron's framework is held together by relative symlinks
+  (`Electron Framework.framework/Resources → Versions/Current/Resources`). Copying the app
+  into the disk image with `cpSync(…, { recursive: true })` resolves each link's target to
+  an **absolute** path (Node's default, `verbatimSymlinks: false`). Installed from the image,
+  the links pointed at `/Users/blakeo/dev/six-degrees-app/dist/…`. On the build machine
+  that folder exists, so the app opened. Anywhere else it doesn't.
+- **Why nothing noticed.** The app in `dist/` was fine; only the copy *inside the image*
+  was wrong, and every check looked at `dist/`. The classic app had no symlinks, so the
+  same copy had always been harmless.
+
+What holds it now: the image is filled with `ditto`, which keeps links exactly.
+`build-app.mjs` then mounts the finished image and fails the build if the app inside
+doesn't pass `codesign --verify --deep --strict`, or has a link pointing outside itself.
+CI installs the app **from the image** with `install.sh` and runs that copy. Test what
+people get, not what you built.
+
+## 38. In Electron, SIGTERM is an ordinary Quit, and a question nobody sees holds it forever
+
+The first quit test (the installer's SIGTERM, with a job running) left the app running
+indefinitely.
+
+- **Why.** Chromium turns SIGTERM into a normal quit (`before-quit`), and Node's
+  `process.on('SIGTERM')` never fires in Electron's main process. So the installer's
+  signal took the Cmd-Q path, which asks "A scan is running. Quit anyway?", and the
+  dialog waited for a click on a screen nobody was watching.
+- **Second part.** When the installer stops the server, the app saw its server exit and
+  could put up a "Six Degrees stopped" error on its way out.
+
+What holds it now (`desktop/main.mjs`): it asks only when one of its windows has focus
+(someone is looking at it, so it's Cmd-Q); otherwise it stops the scan and quits.
+A server stopped by a *signal* means the whole app is going, so it quits quietly; only
+a crash (an exit code) is reported. Checked by quitting mid-job with another app in
+front: job, server and app gone in about 2 seconds. CI repeats that on every build.

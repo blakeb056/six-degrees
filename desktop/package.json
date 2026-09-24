@@ -1,0 +1,10 @@
+{
+  "name": "six-degrees-desktop",
+  "productName": "Six Degrees",
+  "version": "0.0.0",
+  "description": "The Six Degrees desktop app: the window, menu and lifecycle around the local server. The build stamps in the real version.",
+  "main": "main.mjs",
+  "type": "module",
+  "private": true,
+  "license": "MIT"
+}

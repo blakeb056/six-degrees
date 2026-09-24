@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Shown for the second or two before the app's server answers. Nothing here loads anything. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Six Degrees</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #0a0a1a; color: rgba(255, 255, 255, 0.72);
+      font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      -webkit-user-select: none; user-select: none; cursor: default;
+    }
+    .orbit { position: relative; width: 84px; height: 84px; }
+    .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(155, 89, 182, 0.55); }
+    .ring.outer { inset: -18px; border-color: rgba(52, 152, 219, 0.35); }
+    .you { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 18px rgba(255, 255, 255, 0.6); }
+    .node { position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #FFD700; }
+    .spin { position: absolute; inset: 0; animation: spin 2.4s linear infinite; }
+    .spin.slow { inset: -18px; animation-duration: 4s; animation-direction: reverse; }
+    .spin.slow .node { background: #3498DB; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h1 { margin: 12px 0 0; font-size: 17px; font-weight: 600; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="orbit" aria-hidden="true">
+    <div class="ring outer"></div>
+    <div class="ring"></div>
+    <div class="spin"><div class="node"></div></div>
+    <div class="spin slow"><div class="node"></div></div>
+    <div class="you"></div>
+  </div>
+  <h1>Starting Six Degrees…</h1>
+</body>
+</html>

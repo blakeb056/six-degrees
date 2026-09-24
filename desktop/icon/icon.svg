@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- PLACEHOLDER app icon (DESKTOP.md D0): you at the centre, your circles around
+       you in the tier colours. Blake chooses the real one. The app's old favicon
+       was Next.js's default Vercel triangle, which is Vercel's mark, not ours. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1b3a"/>
+      <stop offset="1" stop-color="#07071a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- macOS icon grid: an 824px rounded square inside the 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="185.5" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+  <!-- the circles -->
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#3498DB" stroke-opacity="0.55" stroke-width="10"/>
+  <circle cx="512" cy="512" r="205" fill="none" stroke="#9B59B6" stroke-opacity="0.8" stroke-width="12"/>
+  <circle cx="512" cy="512" r="112" fill="none" stroke="#FFD700" stroke-opacity="0.85" stroke-width="12"/>
+  <!-- people on them -->
+  <circle cx="591" cy="433" r="24" fill="#FFD700"/>
+  <circle cx="423" cy="586" r="20" fill="#FFD700"/>
+  <circle cx="512" cy="307" r="26" fill="#9B59B6"/>
+  <circle cx="689" cy="615" r="24" fill="#9B59B6"/>
+  <circle cx="335" cy="409" r="20" fill="#9B59B6"/>
+  <circle cx="512" cy="812" r="22" fill="#3498DB"/>
+  <circle cx="221" cy="585" r="20" fill="#3498DB"/>
+  <circle cx="783" cy="385" r="24" fill="#3498DB"/>
+  <circle cx="300" cy="300" r="16" fill="#3498DB" fill-opacity="0.8"/>
+  <!-- you -->
+  <circle cx="512" cy="512" r="120" fill="url(#glow)"/>
+  <circle cx="512" cy="512" r="44" fill="#ffffff"/>
+</svg>

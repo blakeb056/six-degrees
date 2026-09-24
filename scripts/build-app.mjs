@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 // Build "Six Degrees.app" and a .dmg you can hand to someone.
 //
+// Two shells, one server (docs/brain/DESKTOP.md):
+//   --shell=electron   the desktop app: an Electron window, menu and lifecycle
+//                      around the same server. Betas and, once promoted, releases.
+//   --shell=classic    the 0.1.x app: a bash launcher that opens a Chrome --app
+//                      window. The default until Electron is promoted, and kept
+//                      buildable for one release after that (rule 5).
+// Both bundle the same Node binary and the same standalone server, and share
+// the disk image step below.
+//
 // What this removes: installing Node, cloning, npm install, and typing a
 // command. The Node runtime is bundled, so the app has no prerequisites at all
 // for the CSV path — download, double-click, drop in your export.
@@ -16,7 +25,7 @@
 // separate "app is damaged" failure that unsigned arm64 binaries otherwise hit.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync, symlinkSync, lstatSync } from 'node:fs';
+import { mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync, symlinkSync, lstatSync, renameSync, readlinkSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -26,10 +35,20 @@ const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 const NODE_VERSION = process.env.BUNDLE_NODE || 'v24.21.0';
 const ARCH = process.env.BUNDLE_ARCH || (os.arch() === 'x64' ? 'x64' : 'arm64');
+const SHELL = (process.argv.find((a) => a.startsWith('--shell='))?.split('=')[1]) || process.env.BUNDLE_SHELL || 'classic';
+if (!['classic', 'electron'].includes(SHELL)) {
+  console.error(`\n  ✗ --shell must be classic or electron, not ${SHELL}\n`);
+  process.exit(1);
+}
 const APP_NAME = 'Six Degrees';
 const OUT = path.join(ROOT, 'dist');
 const APP = path.join(OUT, `${APP_NAME}.app`);
 const RES = path.join(APP, 'Contents', 'Resources');
+// Where the server and the runtime are assembled. The classic app holds them in
+// its own Resources; for Electron they are staged, then packed into its Resources.
+const STAGE = path.join(OUT, 'electron-stage');
+const SERVER_DIR = SHELL === 'electron' ? path.join(STAGE, 'server') : path.join(RES, 'app');
+const NODE_OUT = SHELL === 'electron' ? path.join(STAGE, 'node') : path.join(RES, 'node');
 const CACHE = path.join(os.homedir(), '.cache', 'six-degrees-build');
 
 const run = (cmd, args, opts = {}) =>
@@ -89,18 +108,18 @@ if (process.argv.includes('--fast') && existsSync(path.join(ROOT, '.next', 'stan
   run('npm', ['run', 'build'], { cwd: ROOT });
 }
 
-step('Assembling the bundle');
-mkdirSync(path.join(APP, 'Contents', 'MacOS'), { recursive: true });
-mkdirSync(RES, { recursive: true });
+step(`Assembling the bundle (${SHELL})`);
+if (SHELL === 'classic') mkdirSync(path.join(APP, 'Contents', 'MacOS'), { recursive: true });
+mkdirSync(path.dirname(NODE_OUT), { recursive: true });
 
-cpSync(path.join(ROOT, '.next', 'standalone'), path.join(RES, 'app'), { recursive: true });
+cpSync(path.join(ROOT, '.next', 'standalone'), SERVER_DIR, { recursive: true });
 
 // Next traces the whole project folder into the standalone output, so check
 // what came along. A .git inside the app would make the installed copy believe
 // it is a checkout (lib/paths.js isGitCheckout) and offer `git pull` against its
 // own bundle; next.config.mjs excludes it, and this makes sure.
-if (existsSync(path.join(RES, 'app', '.git'))) {
-  rmSync(path.join(RES, 'app', '.git'), { recursive: true, force: true });
+if (existsSync(path.join(SERVER_DIR, '.git'))) {
+  rmSync(path.join(SERVER_DIR, '.git'), { recursive: true, force: true });
   console.log('  removed a .git that was traced into the bundle — check next.config.mjs');
 }
 // Anything not committed is somebody's local file, and it is about to be handed
@@ -109,7 +128,7 @@ if (existsSync(path.join(RES, 'app', '.git'))) {
 try {
   const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--directory'], { cwd: ROOT })
     .toString().split('\n').map((l) => l.trim().replace(/\/$/, '')).filter(Boolean)
-    .filter((rel) => existsSync(path.join(RES, 'app', rel)));
+    .filter((rel) => existsSync(path.join(SERVER_DIR, rel)));
   if (untracked.length) {
     console.log('  ⚠ uncommitted files are inside this app — commit them or move them out if they should not ship:');
     for (const rel of untracked) console.log(`      ${rel}`);
@@ -120,8 +139,8 @@ for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requi
                    'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs']) {
   const from = path.join(ROOT, rel);
   if (existsSync(from)) {
-    mkdirSync(path.join(RES, 'app', path.dirname(rel)), { recursive: true });
-    cpSync(from, path.join(RES, 'app', rel));
+    mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
+    cpSync(from, path.join(SERVER_DIR, rel));
   }
 }
 
@@ -137,10 +156,13 @@ if (!existsSync(tarball)) {
   console.log('  using the cached download');
 }
 run('tar', ['-xzf', tarball, '-C', CACHE]);
-cpSync(path.join(CACHE, tarName, 'bin', 'node'), path.join(RES, 'node'));
-chmodSync(path.join(RES, 'node'), 0o755);
+cpSync(path.join(CACHE, tarName, 'bin', 'node'), NODE_OUT);
+chmodSync(NODE_OUT, 0o755);
 
 // ---- 3. how it launches ----------------------------------------------------
+if (SHELL === 'electron') {
+  await buildElectronShell();
+} else {
 step('Writing the launcher');
 writeFileSync(path.join(APP, 'Contents', 'MacOS', 'six-degrees'), `#!/bin/bash
 # Start the server, wait for it to answer, then open the browser.
@@ -248,13 +270,83 @@ try {
 } catch {
   console.log('  codesign failed; the app will still run after the one-time approval');
 }
+} // end of the classic shell
+
+// ---- the Electron shell (--shell=electron) -----------------------------------
+// @electron/packager makes the .app from desktop/ (main process, starting page)
+// and packs the staged server and Node binary into its Resources as extra
+// resources, where desktop/main.mjs looks for them. Same app name and bundle id
+// as the classic app, so installing it replaces the classic app in place.
+async function buildElectronShell() {
+  step('Building the Electron app');
+  const { packager } = await import('@electron/packager');
+  const electronVersion = JSON.parse(readFileSync(path.join(ROOT, 'node_modules', 'electron', 'package.json'), 'utf8')).version;
+
+  const src = path.join(STAGE, 'shell');
+  cpSync(path.join(ROOT, 'desktop'), src, { recursive: true, filter: (p) => !p.split(path.sep).includes('icon') });
+  const shellPkg = JSON.parse(readFileSync(path.join(src, 'package.json'), 'utf8'));
+  writeFileSync(path.join(src, 'package.json'), `${JSON.stringify({ ...shellPkg, version: pkg.version }, null, 2)}\n`);
+
+  const icon = await makeIcns(path.join(ROOT, 'desktop', 'icon', 'icon.svg'), path.join(STAGE, 'six-degrees.icns'));
+  const [built] = await packager({
+    dir: src,
+    out: path.join(STAGE, 'out'),
+    overwrite: true,
+    name: APP_NAME,
+    platform: 'darwin',
+    arch: ARCH,
+    electronVersion,
+    appBundleId: 'com.blakeburford.sixdegrees',
+    appVersion: pkg.version,
+    buildVersion: pkg.version,
+    appCategoryType: 'public.app-category.productivity',
+    icon,
+    asar: true,
+    prune: false,          // the shell has no dependencies
+    junk: true,
+    extraResource: [SERVER_DIR, NODE_OUT],
+    darwinDarkModeSupport: true,
+    osxSign: false,        // signed ad hoc below, after everything is in place
+  });
+  console.log(`  Electron ${electronVersion} (${ARCH})`);
+  rmSync(APP, { recursive: true, force: true });
+  renameSync(path.join(built, `${APP_NAME}.app`), APP);
+  rmSync(STAGE, { recursive: true, force: true });
+
+  step('Signing (ad-hoc)');
+  // Electron's framework and helpers must all carry the same kind of signature,
+  // or macOS refuses to load them; re-signing the whole bundle ad hoc does that.
+  run('codesign', ['--force', '--deep', '--sign', '-', APP]);
+  run('codesign', ['--verify', '--deep', '--strict', APP]);
+  console.log('  signed ad-hoc and verified — no Apple account needed, still unnotarised');
+}
+
+// The app icon, from an SVG: sharp (already here, Next depends on it) draws it
+// at 1024px, sips makes the sizes macOS wants, iconutil packs them.
+async function makeIcns(svg, out) {
+  const { default: sharp } = await import('sharp');
+  const set = path.join(STAGE, 'icon.iconset');
+  mkdirSync(set, { recursive: true });
+  const master = path.join(STAGE, 'icon-1024.png');
+  await sharp(svg, { density: 288 }).resize(1024, 1024).png().toFile(master);
+  for (const [size, name] of [[16, '16x16'], [32, '16x16@2x'], [32, '32x32'], [64, '32x32@2x'],
+    [128, '128x128'], [256, '128x128@2x'], [256, '256x256'], [512, '256x256@2x'], [512, '512x512'], [1024, '512x512@2x']]) {
+    execFileSync('sips', ['-z', String(size), String(size), master, '--out', path.join(set, `icon_${name}.png`)], { stdio: 'ignore' });
+  }
+  execFileSync('iconutil', ['-c', 'icns', set, '-o', out]);
+  return out;
+}
 
 // ---- 5. the disk image -----------------------------------------------------
 step('Building the disk image');
 const dmg = path.join(OUT, `${APP_NAME.replace(/ /g, '-')}-${pkg.version}-${ARCH}.dmg`);
 const staging = path.join(OUT, 'staging');
 mkdirSync(staging, { recursive: true });
-cpSync(APP, path.join(staging, `${APP_NAME}.app`), { recursive: true });
+// ditto, not cpSync: Node's copy rewrites relative symlinks into absolute paths
+// on the machine that built it. Electron's framework is held together by
+// relative links (Versions/Current/…), and copied that way the app opened only
+// on the build machine: anywhere else those paths do not exist (TRAPS §37).
+run('ditto', [APP, path.join(staging, `${APP_NAME}.app`)]);
 
 // The picture behind the window says what to do: drag across, then the one-time
 // Open Anyway step, since the app is unsigned. It replaces the READ ME text file
@@ -396,6 +488,44 @@ detach(mount, device);
 run('hdiutil', ['convert', rw, '-format', 'UDZO', '-imagekey', 'zlib-level=9', '-o', dmg, '-ov']);
 rmSync(rw, { force: true });
 rmSync(staging, { recursive: true, force: true });
+checkImage(dmg);
+
+// Check the app as people will get it: inside the finished image, not the copy
+// in dist/. Its signature must verify strictly, and no symlink may point
+// outside the app (a build-machine path works on the build machine and nowhere
+// else). Any failure fails the build.
+function checkImage(image) {
+  step('Checking the app inside the disk image');
+  const mnt = path.join(OUT, 'check-mnt');
+  mkdirSync(mnt, { recursive: true });
+  const lines = execFileSync('hdiutil', ['attach', image, '-nobrowse', '-readonly', '-mountpoint', mnt])
+    .toString().split('\n').map((l) => l.trim()).filter(Boolean);
+  const dev = (lines.map((l) => l.match(/^\/dev\/disk\d+/)).find(Boolean) || [null])[0];
+  let problem = null;
+  try {
+    const inside = path.join(mnt, `${APP_NAME}.app`);
+    try {
+      execFileSync('codesign', ['--verify', '--deep', '--strict', inside], { stdio: ['ignore', 'ignore', 'pipe'] });
+    } catch (err) {
+      problem = `its signature does not verify: ${(err.stderr || '').toString().trim().split('\n').slice(0, 2).join(' ')}`;
+    }
+    const escaping = execFileSync('find', [inside, '-type', 'l'])
+      .toString().split('\n').filter(Boolean)
+      .filter((link) => {
+        const target = readlinkSync(link);
+        return path.isAbsolute(target) || !path.resolve(path.dirname(link), target).startsWith(inside);
+      });
+    if (escaping.length) problem = `${escaping.length} symlink(s) point outside the app, e.g. ${path.relative(mnt, escaping[0])} → ${readlinkSync(escaping[0])}`;
+  } finally {
+    detach(mnt, dev);
+    rmSync(mnt, { recursive: true, force: true });
+  }
+  if (problem) {
+    console.error(`\n  ✗ The app inside ${path.basename(image)} is broken: ${problem}\n`);
+    process.exit(1);
+  }
+  console.log('  signature verifies, and every link stays inside the app');
+}
 
 const size = execFileSync('du', ['-h', dmg]).toString().split('\t')[0];
 console.log(`\n✓ ${dmg}  (${size})\n`);
