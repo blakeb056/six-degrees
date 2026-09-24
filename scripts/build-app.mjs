@@ -16,7 +16,7 @@
 // separate "app is damaged" failure that unsigned arm64 binaries otherwise hit.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync } from 'node:fs';
+import { mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync, symlinkSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +60,27 @@ mkdirSync(path.join(APP, 'Contents', 'MacOS'), { recursive: true });
 mkdirSync(RES, { recursive: true });
 
 cpSync(path.join(ROOT, '.next', 'standalone'), path.join(RES, 'app'), { recursive: true });
+
+// Next traces the whole project folder into the standalone output, so check
+// what came along. A .git inside the app would make the installed copy believe
+// it is a checkout (lib/paths.js isGitCheckout) and offer `git pull` against its
+// own bundle; next.config.mjs excludes it, and this makes sure.
+if (existsSync(path.join(RES, 'app', '.git'))) {
+  rmSync(path.join(RES, 'app', '.git'), { recursive: true, force: true });
+  console.log('  removed a .git that was traced into the bundle — check next.config.mjs');
+}
+// Anything not committed is somebody's local file, and it is about to be handed
+// to whoever gets this app. Releases build from a clean checkout; a local build
+// should at least say what it is shipping.
+try {
+  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--directory'], { cwd: ROOT })
+    .toString().split('\n').map((l) => l.trim().replace(/\/$/, '')).filter(Boolean)
+    .filter((rel) => existsSync(path.join(RES, 'app', rel)));
+  if (untracked.length) {
+    console.log('  ⚠ uncommitted files are inside this app — commit them or move them out if they should not ship:');
+    for (const rel of untracked) console.log(`      ${rel}`);
+  }
+} catch { /* not a git checkout: nothing to compare against */ }
 // The scraper is not part of the standalone output but the Scan page runs it.
 for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt',
                    'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs']) {
@@ -93,6 +114,7 @@ HERE="$(cd "$(dirname "$0")/../Resources" && pwd)"
 export SIX_DEGREES_BIND=127.0.0.1
 export NEXT_TELEMETRY_DISABLED=1
 export SIX_DEGREES_ROOT="$HERE/app"
+export SIX_DEGREES_INSTALL=mac-app
 export HOSTNAME=127.0.0.1
 
 # Walk up from 6363 so a second copy does not fight the first.
@@ -102,6 +124,12 @@ export PORT
 
 "$HERE/node" "$HERE/app/server.js" >"\${TMPDIR:-/tmp}/six-degrees.log" 2>&1 &
 SERVER=$!
+
+# The server goes when this launcher goes. Without this, stopping the launcher —
+# which is what an update does to a running copy — left the server serving the
+# old version, and the new copy opened on the next port beside it.
+trap 'kill $SERVER 2>/dev/null' EXIT
+trap 'exit 143' TERM INT HUP
 
 for _ in $(seq 1 60); do
   if curl -sf "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then break; fi
@@ -184,21 +212,21 @@ const dmg = path.join(OUT, `${APP_NAME.replace(/ /g, '-')}-${pkg.version}-${ARCH
 const staging = path.join(OUT, 'staging');
 mkdirSync(staging, { recursive: true });
 cpSync(APP, path.join(staging, `${APP_NAME}.app`), { recursive: true });
-run('ln', ['-s', '/Applications', path.join(staging, 'Applications')]);
-writeFileSync(path.join(staging, 'READ ME FIRST.txt'),
-`${APP_NAME} ${pkg.version}
 
-1. Drag ${APP_NAME} into Applications.
-2. The first time you open it, macOS will refuse — the app is not signed with a
-   paid Apple developer certificate. Open System Settings > Privacy & Security,
-   scroll down, and click "Open Anyway". You only do this once.
-3. It opens in your browser. Your data stays on this machine, in ~/.six-degrees.
+// The picture behind the window says what to do: drag across, then the one-time
+// Open Anyway step, since the app is unsigned. It replaces the READ ME text file
+// this image used to carry. Made by scripts/make-dmg-background.mjs from
+// scripts/dmg/background.html; its geometry and the positions below are one
+// layout, so change them together.
+const BACKGROUND = path.join(ROOT, 'scripts', 'dmg', 'background.tiff');
+const hasBackground = existsSync(BACKGROUND);
+if (hasBackground) {
+  mkdirSync(path.join(staging, '.background'), { recursive: true });
+  cpSync(BACKGROUND, path.join(staging, '.background', 'background.tiff'));
+} else {
+  console.log('  (no scripts/dmg/background.tiff — the window will have no instructions)');
+}
 
-Importing a LinkedIn CSV needs nothing else installed.
-
-Scanning LinkedIn directly also needs Python 3 and Google Chrome. The Scan page
-inside the app checks for both and sets up the rest itself.
-`);
 // Lay the window out the way every other Mac installer does: the app on the
 // left, the Applications folder on the right, drag across. Without this the
 // disk image opens as a plain file list and nobody knows what to do with it.
@@ -209,6 +237,40 @@ run('hdiutil', ['create', '-volname', APP_NAME, '-srcfolder', staging,
 const mount = execFileSync('hdiutil', ['attach', rw, '-nobrowse', '-readwrite'])
   .toString().split('\n').map((l) => l.trim()).filter(Boolean).pop().split('\t').pop().trim();
 
+// The drop target. A Finder alias, not a symlink: macOS 26 draws a symlink to
+// /Applications as a blank dashed square, which leaves the one thing the window
+// asks you to do with nowhere visible to do it. The symlink stays as a fallback
+// for machines where Finder cannot be scripted — it still works, it just shows
+// no folder icon.
+try {
+  execFileSync('osascript', ['-e',
+    `tell application "Finder" to make new alias file at (POSIX file "${mount}" as alias) ` +
+    `to (POSIX file "/Applications" as alias) with properties {name:"Applications"}`],
+  { stdio: 'ignore' });
+} catch { /* fall through to the symlink */ }
+const dropTarget = path.join(mount, 'Applications');
+if (!existsSync(dropTarget)) {
+  symlinkSync('/Applications', dropTarget);
+  console.log('  (could not make a Finder alias; using a plain link, which shows no folder icon)');
+}
+
+// ...and give the alias the folder's icon. Finder does not look through an alias
+// on a disk image to draw its target, so without an icon of its own it is still a
+// dashed square. Other installers ship exactly this: an alias carrying the
+// Applications folder icon. Only ever a regular file — setting an icon through a
+// symlink would try to change the real /Applications folder instead.
+if (lstatSync(dropTarget).isFile()) {
+  try {
+    execFileSync('osascript', ['-l', 'JavaScript', '-e', `
+      ObjC.import('AppKit');
+      const ws = $.NSWorkspace.sharedWorkspace;
+      ws.setIconForFileOptions(ws.iconForFile('/Applications'), ${JSON.stringify(dropTarget)}, 0);
+    `], { stdio: 'ignore' });
+  } catch {
+    console.log('  (could not give the Applications alias its icon; it will draw as a dashed square)');
+  }
+}
+
 try {
   execFileSync('osascript', ['-e', `
     tell application "Finder"
@@ -217,17 +279,21 @@ try {
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {200, 160, 800, 540}
+        -- 640 x 400 of content under a title bar of about 28.
+        set the bounds of container window to {200, 120, 840, 548}
         set theViewOptions to the icon view options of container window
         set arrangement of theViewOptions to not arranged
-        set icon size of theViewOptions to 116
-        set position of item "${APP_NAME}.app" of container window to {150, 175}
-        set position of item "Applications" of container window to {450, 175}
-        set position of item "READ ME FIRST.txt" of container window to {300, 320}
+        set icon size of theViewOptions to 100
+        set text size of theViewOptions to 13
+        ${hasBackground ? 'set background picture of theViewOptions to file ".background:background.tiff"' : ''}
+        set position of item "${APP_NAME}.app" of container window to {180, 150}
+        set position of item "Applications" of container window to {460, 150}
         close
         open
         update without registering applications
-        delay 1
+        delay 2
+        -- Closing is what writes the layout into the image's .DS_Store.
+        close
       end tell
     end tell
   `], { stdio: 'ignore' });

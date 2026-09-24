@@ -1,5 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { projectRoot, isGitCheckout } from '../../../lib/paths';
+import { repoSlug, compareVersions, installKind, updateCommand } from '../../../lib/release';
+import pkg from '../../../package.json';
 
 // Updating, when the app is a git checkout.
 //
@@ -79,13 +81,44 @@ async function localState(root) {
   return { sha: sha.out, subject: subject.out, branch: branch.out, dirty, onlyLockfile };
 }
 
+// An installed copy — the Mac app or the npm package — has no checkout to pull.
+// Its button asks GitHub for the newest release's version number instead and
+// compares it with the one baked into this build. One GET to GitHub, only when
+// the button is pressed, carrying nothing about the user: the spec's invariant 2
+// names exactly this as permitted. Never call it from anything that runs on its own.
+function installedInfo(root) {
+  const slug = repoSlug(pkg.repository);
+  const kind = installKind(process.env, root || '');
+  return {
+    supported: false,
+    installed: true,
+    kind,
+    version: pkg.version,
+    slug,
+    command: slug ? updateCommand(kind, slug) : null,
+  };
+}
+
+async function latestRelease(slug) {
+  const res = await fetch(`https://api.github.com/repos/${slug}/releases/latest`, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'six-degrees-update-check' },
+    signal: AbortSignal.timeout(10000),
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;           // nothing published yet
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+  const d = await res.json();
+  return {
+    version: String(d.tag_name || '').replace(/^v/i, ''),
+    url: d.html_url || null,
+  };
+}
+
 export async function GET() {
   const root = projectRoot();
   if (!isGitCheckout()) {
-    return Response.json({
-      supported: false,
-      reason: 'This copy was installed rather than cloned, so there is nothing to pull. Update it by installing a newer build over the top.',
-    });
+    // Local facts only — the network is touched by POST, on a click.
+    return Response.json(installedInfo(root));
   }
   const state = await localState(root);
   const boot = shaAtBoot(root);
@@ -101,13 +134,30 @@ export async function GET() {
 
 export async function POST(request) {
   const root = projectRoot();
-  if (!isGitCheckout()) {
-    return Response.json({ error: 'Not a git checkout.' }, { status: 400 });
-  }
 
   let body = {};
   try { body = await request.json(); } catch {}
   const action = String(body.action || '');
+
+  if (!isGitCheckout()) {
+    if (action !== 'check-release') {
+      return Response.json({ error: 'Not a git checkout.' }, { status: 400 });
+    }
+    const info = installedInfo(root);
+    if (!info.slug) {
+      return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
+    }
+    try {
+      const latest = await latestRelease(info.slug);
+      return Response.json({
+        ...info,
+        latest,
+        newer: Boolean(latest && compareVersions(latest.version, info.version) > 0),
+      });
+    } catch (e) {
+      return Response.json({ error: `Could not reach GitHub (${e.message}). Try again in a moment.` }, { status: 502 });
+    }
+  }
 
   if (action === 'check') {
     const fetched = await git(['fetch', '--quiet', 'origin'], root);

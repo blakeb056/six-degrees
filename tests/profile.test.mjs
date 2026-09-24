@@ -11,11 +11,11 @@ const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-profile-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
-let getDb, resolveProfile, listProfiles, DEFAULT_NAME;
+let getDb, resolveProfile, listProfiles, networkCounts, DEFAULT_NAME;
 
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
-  ({ resolveProfile, listProfiles, DEFAULT_NAME } = await import('../lib/profile.js'));
+  ({ resolveProfile, listProfiles, networkCounts, DEFAULT_NAME } = await import('../lib/profile.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
 
@@ -69,4 +69,14 @@ test('with no connections anywhere, the oldest profile is used', () => {
   addUser('b', 'Second', '2026-09-02 00:00:00');
   addUser('a', 'First', '2026-09-01 00:00:00');
   assert.equal(resolveProfile().id, 'a');
+});
+
+test('counts are split by degree, so a total is never passed off as connections', () => {
+  addUser('me', 'Me', '2026-09-01 00:00:00');
+  addConnections('me', 3);
+  const stmt = getDb().prepare(
+    'INSERT INTO linkedin_connections (id, degree, name, profile_url, user_id) VALUES (?, 2, ?, ?, ?)');
+  for (let i = 0; i < 5; i++) stmt.run(`d2-${i}`, `Friend ${i}`, `https://linkedin.com/in/d2-${i}`, 'me');
+  assert.deepEqual(networkCounts('me'), { first: 3, second: 5, third: 0 });
+  assert.deepEqual(networkCounts('nobody'), { first: 0, second: 0, third: 0 });
 });

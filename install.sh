@@ -80,6 +80,32 @@ fetch_release() {
   printf '%s' "$file"
 }
 
+# A copy that is still running would keep serving the old version, so stop it
+# first. Two processes: the launcher, found by its path, and the server, which
+# cannot be — Next renames its process to "next-server", so no path appears in
+# the process list. The server does sit in the app's folder, though, so find the
+# node processes whose working directory is inside this app. Only those.
+stop_running_copy() {
+  local target="$1" pids p i
+  pids="$(pgrep -f "$target/Contents/MacOS/" 2>/dev/null || true)"
+  pids="$pids $(lsof -a -d cwd -c node -Fpn 2>/dev/null | awk -v t="$target/Contents/" '
+    /^p/ { pid = substr($0, 2) }
+    /^n/ { if (index(substr($0, 2), t) == 1) print pid }' || true)"
+  pids="$(printf '%s\n' $pids | sort -u | grep -v '^$' || true)"
+  [ -n "$pids" ] || return 0
+
+  say "Stopping the running copy so it can be replaced…"
+  # shellcheck disable=SC2086  # a list of pids, split on purpose
+  kill $pids 2>/dev/null || true
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    for p in $pids; do kill -0 "$p" 2>/dev/null && break; p=""; done
+    [ -z "$p" ] && return 0
+    sleep 0.5
+  done
+  # shellcheck disable=SC2086
+  kill -9 $pids 2>/dev/null || true
+}
+
 main() {
   printf '\n  6 Degrees — installer\n\n'
 
@@ -126,13 +152,7 @@ main() {
     || fail "Could not open the disk image."
   [ -d "$tmp/mnt/$APP_NAME.app" ] || fail "The disk image does not contain $APP_NAME.app."
 
-  # A copy that is still running would keep serving the old version. Stop its
-  # server (the bundled node) and its launcher; the data is safe on disk.
-  if pgrep -f "$target/Contents/" >/dev/null 2>&1; then
-    say "Stopping the running copy so it can be replaced…"
-    pkill -f "$target/Contents/" >/dev/null 2>&1 || true
-    sleep 1
-  fi
+  stop_running_copy "$target"
 
   rm -rf "$target"
   ditto "$tmp/mnt/$APP_NAME.app" "$target" || fail "Could not copy the app into $dest."

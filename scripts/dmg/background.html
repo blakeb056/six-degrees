@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+  The picture behind the .dmg window. Rendered to background.tiff by
+  scripts/make-dmg-background.mjs; the build only copies the .tiff.
+
+  Geometry is shared with the Finder layout in scripts/build-app.mjs — change
+  one, change the other. The window shows 640 × 400 points; the image is 40
+  taller so a slightly taller title bar never uncovers a blank strip.
+    app icon          centre (180, 150), 100 pt
+    Applications      centre (460, 150), 100 pt
+
+  The tray is mid-grey on purpose. Finder draws the names under the icons in
+  black in light mode and white in dark mode, and a background picture cannot
+  change that. On this shade both read at about 4.5:1; on the dark page behind
+  it, black names would vanish.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 640px; height: 440px; overflow: hidden; position: relative;
+    background: radial-gradient(ellipse 90% 70% at 50% 0%, #1f1b42 0%, #0a0a1a 72%);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: #fff;
+  }
+  .heading {
+    position: absolute; top: 22px; left: 0; right: 0; text-align: center;
+    font-size: 13px; font-weight: 600; letter-spacing: 3px; color: #b9b9d9;
+  }
+  .tray {
+    position: absolute; left: 40px; top: 52px; width: 560px; height: 200px;
+    border-radius: 20px; background: linear-gradient(180deg, #7d7f96 0%, #717389 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 10px 30px rgba(0,0,0,0.35);
+  }
+  svg.arrow { position: absolute; left: 0; top: 0; }
+  .first {
+    position: absolute; top: 272px; left: 56px; right: 56px; text-align: center;
+  }
+  .first .h {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #FFD700;
+    margin-bottom: 8px;
+  }
+  .first .p { font-size: 12.5px; line-height: 1.6; color: rgba(255,255,255,0.78); }
+  .first .p b { color: #fff; font-weight: 650; }
+  .first .tip { margin-top: 10px; font-size: 11.5px; color: rgba(255,255,255,0.5); }
+</style>
+</head>
+<body>
+  <div class="heading">DRAG TO INSTALL</div>
+  <div class="tray"></div>
+
+  <svg class="arrow" width="640" height="440" viewBox="0 0 640 440" aria-hidden="true">
+    <path d="M 250 168 Q 320 118 390 168" fill="none" stroke="#ffffff" stroke-width="4"
+          stroke-linecap="round" opacity="0.95"/>
+    <!-- Head: ±30° either side of the curve's direction where it ends. -->
+    <path d="M 383.4 153.4 L 390 168 L 374.1 166.5" fill="none" stroke="#ffffff" stroke-width="4"
+          stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+  </svg>
+
+  <div class="first">
+    <div class="h">THE FIRST TIME YOU OPEN IT</div>
+    <div class="p">
+      macOS may say it can’t check the app — it isn’t signed with a paid Apple certificate.<br>
+      Open <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>. Only once.
+    </div>
+    <div class="tip">Installed with the one-line Terminal command? It opens straight away.</div>
+  </div>
+</body>
+</html>

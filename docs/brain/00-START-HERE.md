@@ -30,6 +30,7 @@ Six rules, each learned expensively. If a change violates one, the change is wro
 - Touching the scraper → [`SCRAPER.md`](SCRAPER.md), and **read [`TRAPS.md`](TRAPS.md) first**
 - Deciding whether something is allowed at all → [`../SIX-DEGREES-SPEC.md`](../SIX-DEGREES-SPEC.md)
 - Picking this up cold → [`HANDOFF.md`](HANDOFF.md)
+- What stands between this and a public launch → [`PHASES.md`](PHASES.md), the Phase 6 checklist
 
 ## Running it
 

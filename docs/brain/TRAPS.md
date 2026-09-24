@@ -484,3 +484,49 @@ Fixes, and the rules they leave:
   (`app/api/scraper/route.js`, `finish`). Filtering noise is fine while running; on
   failure the reason outranks tidiness.
 
+---
+
+## 26. A running Next server hides its own path
+
+Next renames its process to `next-server (v16.x)`. Anything that finds "the app's
+server" with `pgrep -f "<app path>"` finds nothing — the path is gone from the process
+list. `install.sh` did exactly that when updating a running Mac app: it stopped only
+the launcher, the old server kept serving the old version on 6363, and the new copy
+opened on 6364 beside it.
+
+Find the server by its **working directory** instead — the standalone `server.js`
+changes into its own folder, so `lsof -a -d cwd -c node` shows it inside the app. And
+the Mac launcher now traps its own exit and takes its server with it, so stopping the
+launcher is enough for any copy built from here on.
+
+---
+
+## 27. The whole project folder is traced into the bundle — `.git` included
+
+`lib/paths.js` looks around `process.cwd()` for the scraper, so Next's file tracing
+treats the project folder as a dependency and copies what sits in it into
+`.next/standalone`: the docs, the build logs, a stray clone — and `.git`. Inside the
+Mac app a `.git` makes `isGitCheckout()` true, so the installed copy's Updates panel
+would offer `git pull` against its own signed bundle.
+
+`next.config.mjs` names `.git/**`, `*.log` and `scripts/dmg/**` in
+`outputFileTracingExcludes` (specific names only — see §24 for why a loose glob is
+dangerous); `build-app.mjs` removes a `.git` that slips through anyway, and lists any
+uncommitted files it is about to ship. Releases build from a clean checkout; a local
+build is the one that can carry somebody's personal file out of the folder.
+
+---
+
+## 28. Three things about a `.dmg` window that are not obvious
+
+- **A symlink to `/Applications` draws as a blank dashed square on macOS 26.** An alias
+  works, but only if it carries the folder's icon itself — Finder will not look through
+  an alias on a disk image to draw its target. `build-app.mjs` makes the alias with
+  Finder and sets its icon with `NSWorkspace`, and only ever on a regular file: set
+  through a symlink, it would target the real `/Applications`.
+- **Icon names are black in light mode and white in dark mode, whatever the picture.**
+  So the icons sit on a mid-grey tray where both read at about 4.5:1.
+- **Headless Chrome writes a screenshot and then does not exit** on some macOS
+  versions, and a fresh profile can stall on a keychain prompt. `make-dmg-background.mjs`
+  uses a stand-in keychain, waits for the file, and ends Chrome itself.
+
