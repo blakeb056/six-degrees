@@ -532,6 +532,11 @@ build is the one that can carry somebody's personal file out of the folder.
   the script with `osacompile` before running it, prints the real error from any Finder
   step, and on CI refuses to finish without a `.DS_Store`. Dry-run the release workflow
   (`-f dry_run=true`) after touching any of this.
+- **Ejecting right after Finder has styled the window can fail with "Resource busy."**
+  Finder or Spotlight holds the fresh volume for a moment. It never showed while the
+  styling step was silently failing, since Finder never opened the disk, and it showed
+  the first time it worked: 0.1.1's first Intel release build died on it. `detach()` in
+  `build-app.mjs` retries, plainly and then with `-force`.
 - **Headless Chrome writes a screenshot and then does not exit** on some macOS
   versions, and a fresh profile can stall on a keychain prompt. `make-dmg-background.mjs`
   uses a stand-in keychain, waits for the file, and ends Chrome itself.
