@@ -19,7 +19,8 @@
 # Your data is never touched: it lives in ~/.six-degrees, not in the app, so
 # running this again later is also how you update.
 #
-# Options (environment variables):
+# Options (environment variables — put them after the pipe, where the installer
+# runs: `curl -fsSL …/install.sh | SIX_DEGREES_VERSION=0.2.0 bash`):
 #   SIX_DEGREES_VERSION=0.2.0   install a specific release instead of the newest
 #   SIX_DEGREES_DEST=~/Apps     install somewhere else
 #   SIX_DEGREES_NO_OPEN=1       do not open the app afterwards

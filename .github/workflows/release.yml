@@ -94,9 +94,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag || github.ref_name }}
+        # A tag with a hyphen (v0.2.0-beta.1) is a pre-release. install.sh and the
+        # app's Updates panel follow releases/latest, which never returns one, so a
+        # beta reaches only someone who asks for it by version (DESKTOP.md rule 4).
         run: |
+          pre=""
+          case "$TAG" in *-*) pre="--prerelease" ;; esac
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" out/* --clobber -R "$GITHUB_REPOSITORY"
+          elif [ -n "$pre" ]; then
+            gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --prerelease --title "$TAG (beta)" --notes "$(cat <<EOF
+          **Beta.** Not offered to anyone automatically: the one-line install and the app's Updates panel skip pre-releases.
+
+          To try it without touching your normal copy, install it to a separate folder:
+
+          \`\`\`
+          curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | SIX_DEGREES_VERSION=${TAG#v} SIX_DEGREES_DEST=~/Applications/Six-Degrees-Beta bash
+          \`\`\`
+
+          Your data is copied into ~/.six-degrees/backups/ before a new version first opens it.
+
+          What changed: see CHANGELOG.md.
+          EOF
+          )"
           else
             gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --title "$TAG" --notes "$(cat <<'EOF'
           **Install on a Mac** — paste into Terminal:
@@ -137,7 +157,12 @@ jobs:
             exit 0
           fi
           npm ci
-          npm publish --provenance --access public
+          # A pre-release goes out under "next", never "latest", so `npx six-degrees`
+          # keeps running the last full release.
+          case "${{ inputs.tag || github.ref_name }}" in
+            *-*) npm publish --provenance --access public --tag next ;;
+            *)   npm publish --provenance --access public ;;
+          esac
     permissions:
       contents: read
       id-token: write

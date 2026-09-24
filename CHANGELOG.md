@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A copy of your data before every new version touches it.** The first time a new version
+  opens your database, it copies it into `~/.six-degrees/backups/` first (the newest five
+  are kept; copies you made yourself are left alone). If the copy fails, for instance on a
+  full disk, it tries again at the next start.
+- Tags like `v0.2.0-beta.1` publish as **pre-releases**. The one-line install and the
+  Updates panel never pick them up, so a beta only reaches someone who asks for it.
+
+### Fixed
+- The installer's documented options go *after* the pipe
+  (`curl … | SIX_DEGREES_VERSION=… bash`). Before it, they reach `curl`, not the installer.
+
 ## [0.1.10] - 2026-09-24
 
 ### Changed

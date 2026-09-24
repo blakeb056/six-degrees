@@ -33,8 +33,11 @@ wrong, however good it looks.
 4. **Nothing becomes "latest" until it is proven.** Each desktop phase ships first as a
    GitHub **pre-release** (`v0.2.0-beta.1`). `install.sh`, `install.ps1` and the Updates
    panel follow only `releases/latest`, which skips pre-releases, so no user gets a beta
-   by accident. Blake installs one on purpose:
-   `SIX_DEGREES_VERSION=0.2.0-beta.1 curl -fsSL …/install.sh | bash`. It is tried against
+   by accident. Blake installs one on purpose, into its own folder so the normal copy
+   stays:
+   `curl -fsSL …/install.sh | SIX_DEGREES_VERSION=0.2.0-beta.1 SIX_DEGREES_DEST=~/Applications/Six-Degrees-Beta bash`.
+   (The settings go *after* the pipe: before it, they reach `curl`, not the installer.)
+   It is tried against
    a copy of the data first (`SIX_DEGREES_HOME=<copy>`), then promoted to a full release.
 5. **The current build stays buildable.** `scripts/build-app.mjs` (bash launcher + Chrome
    `--app` window) is kept until the Electron app has been the released default for one
@@ -56,11 +59,15 @@ wrong, however good it looks.
 
 - [ ] "Scraper" → "scanner" in every user-facing string: Scan page steps, errors,
       `docs/SCRAPING.md` and the README. Code names stay.
-- [ ] Back up the database on the first launch of each new version (rule 3). Every later
-      phase depends on it.
+- [x] Back up the database on the first launch of each new version (rule 3). Every later
+      phase depends on it. `backupOnNewVersion()` in `lib/db-client.js`: `VACUUM INTO`
+      `backups/auto-before-<version>-<time>.sqlite` before the schema step, keeping the
+      last five and never touching hand-made copies. Checked on a copy of real data (3,877
+      people copied)
 - [ ] A real app icon: 1024px artwork → `.icns` for the Mac and `.ico` for Windows. Today
       there is none on the Mac, and only a 32px favicon. Needs Blake's direction.
-- [ ] Mark tags with a hyphen (`v0.2.0-beta.1`) as pre-releases in `release.yml`.
+- [x] Mark tags with a hyphen (`v0.2.0-beta.1`) as pre-releases in `release.yml`, with
+      install-to-a-separate-folder notes; npm gets them under `next`, never `latest`
 
 ### D1 — Electron app for the Mac (Blake's priority: he uses a Mac)
 
@@ -181,7 +188,7 @@ reason first:
 
 | Phase | State |
 |---|---|
-| D0 Groundwork | not started |
+| D0 Groundwork | backups ✅ pre-releases ✅; "scanner" wording and the icon still to do |
 | D1 Electron, Mac | **next**: Blake's priority |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
