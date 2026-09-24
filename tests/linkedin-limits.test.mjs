@@ -41,7 +41,8 @@ for ms in [int(a) for a in sys.argv[2:]]:
     print(int(ns['month_start_pacific'](ms / 1000) * 1000), int(ns['next_month_start_pacific'](ms / 1000) * 1000))
 `;
   const instants = [Date.UTC(2026, 8, 24, 12), Date.UTC(2027, 0, 15), Date.UTC(2026, 9, 1, 3), Date.UTC(2026, 10, 1, 7, 30)];
-  const r = spawnSync('python3', ['-c', lift, SCRAPER, ...instants.map(String)], { encoding: 'utf8' });
+  // Windows has no python3 by default; its py launcher is the reliable name.
+  const r = spawnSync(process.platform === 'win32' ? 'py' : 'python3', ['-c', lift, SCRAPER, ...instants.map(String)], { encoding: 'utf8' });
   if (r.error) { t.skip('python3 is not available here'); return; }
   assert.equal(r.status, 0, r.stderr);
   const rows = r.stdout.trim().split('\n').map((l) => l.split(' ').map(Number));

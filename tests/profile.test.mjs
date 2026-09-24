@@ -16,7 +16,9 @@ let getDb, resolveProfile, listProfiles, networkCounts, DEFAULT_NAME;
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
   ({ resolveProfile, listProfiles, networkCounts, DEFAULT_NAME } = await import('../lib/profile.js'));
-  process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
+  // Windows cannot delete the folder while the database inside is open; the
+  // system's temp cleanup gets it there.
+  process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* see above */ } });
 });
 
 beforeEach(() => {

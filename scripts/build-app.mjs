@@ -48,7 +48,8 @@ function step(msg) { console.log(`\n▸ ${msg}`); }
 // Intel build gave up on exactly that. So once the mount point is gone, finish
 // the job on the device, and stop as soon as neither exists.
 function detach(mountPoint, device) {
-  const tries = [[], [], ['-force'], ['-force'], ['-force']];
+  // Intel build machines hold the image longest (0.1.1, 0.1.5, 0.1.11's dry run).
+  const tries = [[], [], ['-force'], ['-force'], ['-force'], ['-force'], ['-force'], ['-force']];
   let last;
   for (let i = 0; i < tries.length; i++) {
     const volumeGone = !existsSync(mountPoint);
@@ -64,7 +65,7 @@ function detach(mountPoint, device) {
     } catch (err) {
       last = err;
       console.log(`  (retrying the eject of ${target}: ${(err.stderr || '').toString().trim() || err.message})`);
-      execFileSync('sleep', [String(2 * (i + 1))]);
+      execFileSync('sleep', [String(3 * (i + 1))]);
     }
   }
   if (!existsSync(mountPoint) && (!device || !existsSync(device))) return;
