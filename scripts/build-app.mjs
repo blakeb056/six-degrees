@@ -41,20 +41,33 @@ function step(msg) { console.log(`\n▸ ${msg}`); }
 // or Spotlight can still hold the volume for a moment, and hdiutil fails with
 // "Resource busy" — 0.1.1's first Intel release build died exactly that way.
 // Retry plainly first, then with -force, before giving up.
-function detach(dev) {
+//
+// "Resource busy" can come after the volume has already unmounted, when only
+// ejecting the disk device failed. Retrying the mount point then fails with "No
+// such file or directory" — there is nothing left there — and 0.1.5's first
+// Intel build gave up on exactly that. So once the mount point is gone, finish
+// the job on the device, and stop as soon as neither exists.
+function detach(mountPoint, device) {
   const tries = [[], [], ['-force'], ['-force'], ['-force']];
   let last;
   for (let i = 0; i < tries.length; i++) {
+    const volumeGone = !existsSync(mountPoint);
+    if (volumeGone && (!device || !existsSync(device))) {
+      if (i > 0) console.log('  (ejected)');
+      return;
+    }
+    const target = volumeGone ? device : mountPoint;
     try {
-      execFileSync('hdiutil', ['detach', dev, ...tries[i]], { stdio: ['ignore', 'ignore', 'pipe'] });
+      execFileSync('hdiutil', ['detach', target, ...tries[i]], { stdio: ['ignore', 'ignore', 'pipe'] });
       if (i > 0) console.log(`  (ejected on attempt ${i + 1})`);
       return;
     } catch (err) {
       last = err;
-      console.log(`  (disk busy, retrying the eject: ${(err.stderr || '').toString().trim() || err.message})`);
+      console.log(`  (retrying the eject of ${target}: ${(err.stderr || '').toString().trim() || err.message})`);
       execFileSync('sleep', [String(2 * (i + 1))]);
     }
   }
+  if (!existsSync(mountPoint) && (!device || !existsSync(device))) return;
   throw last;
 }
 
@@ -264,8 +277,13 @@ const rw = path.join(OUT, 'rw.dmg');
 run('hdiutil', ['create', '-volname', APP_NAME, '-srcfolder', staging,
   '-ov', '-format', 'UDRW', rw]);
 
-const mount = execFileSync('hdiutil', ['attach', rw, '-nobrowse', '-readwrite'])
-  .toString().split('\n').map((l) => l.trim()).filter(Boolean).pop().split('\t').pop().trim();
+// hdiutil prints one line per device it creates — the whole disk (/dev/diskN)
+// first, the mounted volume last — but it can print progress lines before them,
+// so find the lines rather than count them. Keep both: see detach().
+const attachLines = execFileSync('hdiutil', ['attach', rw, '-nobrowse', '-readwrite'])
+  .toString().split('\n').map((l) => l.trim()).filter(Boolean);
+const mount = attachLines.filter((l) => l.includes('/Volumes/')).pop().split('\t').pop().trim();
+const device = (attachLines.map((l) => l.match(/^\/dev\/disk\d+/)).find(Boolean) || [null])[0];
 
 // Why a Finder step failed, in one line, for the build log.
 const osaReason = (err) =>
@@ -344,7 +362,7 @@ try {
     { stdio: ['ignore', 'ignore', 'pipe'] });
   rmSync(path.join(OUT, 'style.scpt'), { force: true });
 } catch (err) {
-  try { detach(mount); } catch { /* the error below is the one that matters */ }
+  try { detach(mount, device); } catch { /* the error below is the one that matters */ }
   console.error(`\n  ✗ The window-layout AppleScript does not compile: ${osaReason(err)}\n`);
   process.exit(1);
 }
@@ -356,7 +374,7 @@ try {
   // Locally that is a warning — the image still installs. On a release build it
   // is a failure: a window with no instructions must never ship quietly again.
   if (process.env.CI) {
-    try { detach(mount); } catch { /* the error below is the one that matters */ }
+    try { detach(mount, device); } catch { /* the error below is the one that matters */ }
     console.error('\n  ✗ The disk image window could not be laid out. Refusing to publish a plain one.\n');
     process.exit(1);
   }
@@ -367,14 +385,14 @@ try {
 if (!existsSync(path.join(mount, '.DS_Store'))) {
   console.log('  (the window layout was not saved — the image will open as a plain list)');
   if (process.env.CI) {
-    try { detach(mount); } catch { /* the error below is the one that matters */ }
+    try { detach(mount, device); } catch { /* the error below is the one that matters */ }
     console.error('\n  ✗ No .DS_Store in the disk image. Refusing to publish a plain window.\n');
     process.exit(1);
   }
 }
 
 execFileSync('sync');
-detach(mount);
+detach(mount, device);
 run('hdiutil', ['convert', rw, '-format', 'UDZO', '-imagekey', 'zlib-level=9', '-o', dmg, '-ov']);
 rmSync(rw, { force: true });
 rmSync(staging, { recursive: true, force: true });

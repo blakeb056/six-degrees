@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Release builds could still fail at the eject: "Resource busy" sometimes arrives after
+  the volume has already unmounted, when only ejecting the disk device failed, and the
+  retry kept aiming at a mount point that no longer existed. It now finishes on the
+  device and stops as soon as nothing is left attached. Build process only.
+
 ## [0.1.5] - 2026-09-24
 
 ### Fixed
