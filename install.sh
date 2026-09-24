@@ -122,6 +122,16 @@ main() {
   esac
   say "Mac:      $arch"
 
+  # The app needs macOS 13 or later since 0.2.0 (Electron). An older Mac gets
+  # 0.1.11, the last version that runs there, unless it asked for a version.
+  local macos major
+  macos="$(sw_vers -productVersion 2>/dev/null || echo 0)"
+  major="${macos%%.*}"
+  if [ -z "${SIX_DEGREES_VERSION:-}" ] && [ "$major" -gt 0 ] 2>/dev/null && [ "$major" -lt 13 ]; then
+    SIX_DEGREES_VERSION=0.1.11
+    say "macOS:    $macos — the current app needs 13 or later, so installing 0.1.11, the last version for this Mac"
+  fi
+
   local tmp
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064  # expand now: tmp is local and gone by exit time
