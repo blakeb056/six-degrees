@@ -63,9 +63,19 @@ if (-not $port) {
   $env:SIX_DEGREES_INSTALL = 'win-app'
 
   $log = Join-Path $env:TEMP 'six-degrees.log'
-  $server = Start-Process -FilePath $node -ArgumentList ('"' + (Join-Path $here 'app\server.js') + '"') `
-    -WorkingDirectory (Join-Path $here 'app') -WindowStyle Hidden -PassThru `
-    -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+  # Through cmd.exe, with the redirect done by cmd rather than -RedirectStandard*.
+  # Asking Start-Process to redirect makes Windows hand the server every
+  # inheritable handle this launcher has, including whatever pipe is reading the
+  # launcher's output, so a caller waiting for that output waits for the
+  # server to exit, which is never. Without -Redirect*, Start-Process uses the
+  # shell and nothing is inherited. $server is the cmd.exe, alive while node is.
+  $serverJs = Join-Path $here 'app\server.js'
+  $cmdLine = '/d /c ""' + $node + '" "' + $serverJs + '" 1>"' + $log + '" 2>"' + "$log.err" + '""'
+  # cmd.exe works from TEMP: a process whose working folder is inside the app
+  # would lock that folder against the next update. (The server moves into its
+  # own folder by itself.)
+  $server = Start-Process -FilePath $env:ComSpec -ArgumentList $cmdLine `
+    -WorkingDirectory $env:TEMP -WindowStyle Hidden -PassThru
 
   $up = $false
   for ($i = 0; $i -lt 90; $i++) {

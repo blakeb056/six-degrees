@@ -81,6 +81,8 @@ jobs:
   windows:
     name: Windows app
     runs-on: windows-latest
+    # A hang must fail the build in minutes, not hold the release for six hours.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,6 +113,7 @@ jobs:
       # PC has. Then start it, reach it, update over the running copy, stop it.
       - name: Install, start, update and stop it
         shell: powershell
+        timeout-minutes: 10
         run: |
           $ErrorActionPreference = 'Stop'
           $env:SIX_DEGREES_ZIP = (Get-ChildItem dist\*-win-x64.zip).FullName
