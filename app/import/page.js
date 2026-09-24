@@ -153,7 +153,7 @@ export default function ImportPage() {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: 2, marginBottom: 10 }}>HONEST CAVEAT</div>
           <p style={{ margin: '0 0 12px', color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.7 }}>
             LinkedIn&rsquo;s export contains no profile photos, so everyone renders as initials on a tier-colored circle.
-            It also only covers people you are <em>already</em> connected to — so <strong style={{ color: '#fff' }}>Bridges</strong> and
+            It also only covers people you are <em>already</em> connected to — so <strong style={{ color: '#fff' }}>Degrees</strong> and
             the <strong style={{ color: '#fff' }}>Outlink queue</strong> stay empty, because those map the people you
             haven&rsquo;t met yet.
           </p>

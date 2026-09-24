@@ -262,7 +262,7 @@ function SetupInner() {
           title="2nd degree — the people they know"
           body={
             <>
-              This is what fills <b>Bridges</b> and <b>Outlink</b>: it opens each of your
+              This is what fills <b>Degrees</b> and <b>Outlink</b>: it opens each of your
               connections in turn and reads who <i>they</i> know. Most people hide their
               connections — those are noted and never tried again.
               <br /><br />

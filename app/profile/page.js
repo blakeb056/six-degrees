@@ -107,7 +107,7 @@ function ProfileInner() {
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
-        <p style={{ margin: 0, fontSize: 13 }}>The public demo includes the Network Circle and Bridges views only.</p>
+        <p style={{ margin: 0, fontSize: 13 }}>The public demo includes the Network Circle and Degrees views only.</p>
         <Link href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );

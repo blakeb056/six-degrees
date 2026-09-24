@@ -298,7 +298,7 @@ function PathsInner() {
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#fff' }}>Not part of the demo</h1>
-        <p style={{ fontSize: 13, margin: 0 }}>The public demo includes the Network Circle and Bridges views only.</p>
+        <p style={{ fontSize: 13, margin: 0 }}>The public demo includes the Network Circle and Degrees views only.</p>
         <Link href="/" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );

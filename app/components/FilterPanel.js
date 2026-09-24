@@ -106,8 +106,11 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
 
         {/* Tier Filters */}
         <div style={{ marginBottom: 18 }}>
+          {/* In Degrees these chips filter by the tier of the connection who
+              introduces you, not the person reached — Separation has its own
+              "Their tier" chips for that, so the two must not read alike. */}
           <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
-            Filter
+            {isDegreesMode ? 'Filter by bridge tier' : 'Filter'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* All button */}
