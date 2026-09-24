@@ -287,7 +287,12 @@ def _off_the_wall(context):
         pages = [pg for pg in context.pages if not pg.is_closed()]
         linkedin = [pg for pg in pages
                     if (urlparse(pg.url or "").hostname or "").endswith("linkedin.com")]
-        return any(_page_wall(pg) is None for pg in linkedin)
+        walls = [_page_wall(pg) for pg in linkedin]
+        # A security check still open anywhere isn't finished, whatever else
+        # is open; a stale sign-in page in another tab is.
+        if "checkpoint" in walls:
+            return False
+        return any(w is None for w in walls)
     except Exception:
         return False
 
@@ -318,7 +323,8 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     time.sleep(2)
 
     wall = _page_wall(page)
-    if stop_on_checkpoint and had_session and wall:
+    signed_out = had_session and (wall or not _has_session_cookie(context) or _looks_logged_out(page))
+    if stop_on_checkpoint and signed_out:
         reason = "a security check" if wall == "checkpoint" else "being signed out"
         _keep_pushback_evidence(page, reason)
         raise LinkedInPushedBack(0, reason)
@@ -327,6 +333,18 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         return True
 
     say = log_fn or (lambda m: None)
+    if had_session and wall == "checkpoint":
+        print()
+        print("  LinkedIn wants a security check. Finish it in the browser window;")
+        print("  this closes by itself once it's done. Then leave scanning for a day.")
+        print()
+        say("Waiting for you to finish LinkedIn's security check...")
+    else:
+        _print_sign_in_banner(say)
+    return _wait_for_sign_in(page, context, timeout_s, say)
+
+
+def _print_sign_in_banner(say):
     say("Waiting for you to sign into LinkedIn in the browser window...")
     print()
     print("  ==================================================================")
@@ -343,6 +361,8 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     print("  ==================================================================")
     print()
 
+
+def _wait_for_sign_in(page, context, timeout_s, say):
     waited = 0
     while waited < timeout_s:
         time.sleep(LOGIN_POLL_SECONDS)
@@ -364,11 +384,9 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         # LinkedIn page is past the security check or sign-in wall.
         if _has_session_cookie(context) and _off_the_wall(context):
             print()
-            print("  ==================================================================")
-            print("  Signed in. Starting the scrape now.")
-            print("  ==================================================================")
+            print("  Signed in — LinkedIn is clear.")
             print()
-            say("Signed in. Starting the scrape.")
+            say("Signed in.")
             return True
 
         if waited % 15 == 0:
@@ -409,8 +427,7 @@ def open_login_window():
         # the feed, returns at once if all is well, and otherwise waits for you.
         ok = ensure_logged_in(page)
         if ok:
-            print("  Sign-in saved to this machine. You will not be asked again.")
-            print("  Now run: python3 scripts/scrape.py --full\n")
+            print("  LinkedIn is signed in on this machine and clear to use.\n")
         browser.close()
         return ok
 
@@ -1478,8 +1495,8 @@ SEARCH_LIMIT_JS = r"""
   // Reached, not approaching: "approaching the commercial use limit" is a
   // warning (PUSHBACK_JS), and reporting it as the limit sent people off to
   // wait for next month.
-  return t.includes('reached the commercial use limit')
-      || t.includes('commercial use limit reached')
+  const approaching = t.includes('approaching the commercial use limit');
+  return (t.includes('commercial use limit') && !approaching)
       || t.includes('reached the monthly limit')
       || t.includes('reached your monthly limit');
 }
@@ -1509,11 +1526,18 @@ PUSHBACK_JS = r"""
 # is them hiding their list, not a page that failed to load (TRAPS §35).
 PROFILE_SHOWN_JS = r"""
 (name) => {
-  const first = String(name || '').trim().split(/\s+/)[0].toLowerCase();
-  const title = (document.title || '').toLowerCase();
+  // Whole words only, and never against " | LinkedIn": every tab is titled
+  // LinkedIn, and "li", "lin" or "ed" are inside it — a blank page counted as
+  // Li Wei's profile.
+  const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const first = norm(name).split(' ')[0];
+  if (!first || first.length < 2) return false;
+  const esc = first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const word = new RegExp('(^|[^\\p{L}])' + esc + '([^\\p{L}]|$)', 'u');
+  const title = norm(document.title).replace(/^\(\d+\)\s*/, '').replace(/\s*\|\s*linkedin\s*$/, '');
   const h1 = document.querySelector('main h1, h1');
-  const heading = ((h1 && h1.innerText) || '').toLowerCase();
-  return !!first && (title.includes(first) || heading.includes(first));
+  const heading = norm(h1 && h1.innerText);
+  return word.test(heading) || (title !== 'linkedin' && word.test(title));
 }
 """
 
@@ -2091,11 +2115,9 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
                 page.set_default_timeout(120000)
                 page.set_default_navigation_timeout(120000)
 
-                # Check login
-                try:
-                    page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
-                except Exception:
-                    pass
+                # No page load before this: ensure_logged_in has to see whether
+                # the session cookie was there *before* LinkedIn answered, or a
+                # sign-out between people looks like a first sign-in.
                 if not ensure_logged_in(page, stop_on_checkpoint=True):
                     raise NotSignedIn()
 
