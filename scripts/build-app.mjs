@@ -37,6 +37,27 @@ const run = (cmd, args, opts = {}) =>
 
 function step(msg) { console.log(`\n▸ ${msg}`); }
 
+// Eject a mounted image, patiently. Right after Finder lays out the window, it
+// or Spotlight can still hold the volume for a moment, and hdiutil fails with
+// "Resource busy" — 0.1.1's first Intel release build died exactly that way.
+// Retry plainly first, then with -force, before giving up.
+function detach(dev) {
+  const tries = [[], [], ['-force'], ['-force'], ['-force']];
+  let last;
+  for (let i = 0; i < tries.length; i++) {
+    try {
+      execFileSync('hdiutil', ['detach', dev, ...tries[i]], { stdio: ['ignore', 'ignore', 'pipe'] });
+      if (i > 0) console.log(`  (ejected on attempt ${i + 1})`);
+      return;
+    } catch (err) {
+      last = err;
+      console.log(`  (disk busy, retrying the eject: ${(err.stderr || '').toString().trim() || err.message})`);
+      execFileSync('sleep', [String(2 * (i + 1))]);
+    }
+  }
+  throw last;
+}
+
 // ---- 1. the app itself -----------------------------------------------------
 // Always rebuild. Reusing whatever happened to be in .next means that after a
 // `git pull` you package the previous commit and cannot tell from the outside —
@@ -314,7 +335,7 @@ try {
     { stdio: ['ignore', 'ignore', 'pipe'] });
   rmSync(path.join(OUT, 'style.scpt'), { force: true });
 } catch (err) {
-  execFileSync('hdiutil', ['detach', mount, '-force']);
+  try { detach(mount); } catch { /* the error below is the one that matters */ }
   console.error(`\n  ✗ The window-layout AppleScript does not compile: ${osaReason(err)}\n`);
   process.exit(1);
 }
@@ -326,7 +347,7 @@ try {
   // Locally that is a warning — the image still installs. On a release build it
   // is a failure: a window with no instructions must never ship quietly again.
   if (process.env.CI) {
-    execFileSync('hdiutil', ['detach', mount, '-force']);
+    try { detach(mount); } catch { /* the error below is the one that matters */ }
     console.error('\n  ✗ The disk image window could not be laid out. Refusing to publish a plain one.\n');
     process.exit(1);
   }
@@ -337,14 +358,14 @@ try {
 if (!existsSync(path.join(mount, '.DS_Store'))) {
   console.log('  (the window layout was not saved — the image will open as a plain list)');
   if (process.env.CI) {
-    execFileSync('hdiutil', ['detach', mount, '-force']);
+    try { detach(mount); } catch { /* the error below is the one that matters */ }
     console.error('\n  ✗ No .DS_Store in the disk image. Refusing to publish a plain window.\n');
     process.exit(1);
   }
 }
 
 execFileSync('sync');
-run('hdiutil', ['detach', mount, '-force']);
+detach(mount);
 run('hdiutil', ['convert', rw, '-format', 'UDZO', '-imagekey', 'zlib-level=9', '-o', dmg, '-ov']);
 rmSync(rw, { force: true });
 rmSync(staging, { recursive: true, force: true });

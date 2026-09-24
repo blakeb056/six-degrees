@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A release build could fail at the very end with "Resource busy": right after Finder
+  lays out the disk image's window, Finder or Spotlight can still hold the volume. The
+  build now retries the eject, and says when it had to. Nothing changes in the app.
+
 ## [0.1.1] - 2026-09-24
 
 ### Fixed
