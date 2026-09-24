@@ -120,7 +120,7 @@ function PathsInner() {
       try { localStorage.setItem('six-degrees-company-scan-ok', '1'); } catch {}
     }
     setScanning(true);
-    setScanLog(['Checking the scraper...']);
+    setScanLog(['Checking the scanner...']);
 
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
     if (blocked) {

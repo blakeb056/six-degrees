@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`npx six-degrees` on Linux.** The npm package is published (0.2.0 was the first). The
+  README, the website and the installer's message now point Linux users to it, with how to
+  update it and where it keeps your data.
+
+### Changed
+- The app says **scanner** and **scan** everywhere you read it (the Scan page, the side
+  panel, the profile page, the import page); the code names are unchanged.
+- Releases publish to npm through npm's trusted publishing: GitHub vouches for the release
+  workflow, so no npm token is stored anywhere. Each release builds the package on Linux,
+  installs it, checks it serves the app, and publishes that exact file.
+- The README: macOS 15's second button is **Open Anyway**; the LinkedIn warning's link no
+  longer shows a file name; the release notes link the changelog.
+- SECURITY.md lists all six gated routes (it said four).
+
 ## [0.2.0] - 2026-09-24
 
 ### Changed

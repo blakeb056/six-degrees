@@ -309,7 +309,7 @@ function HomeInner() {
                 const status = await scraperStatus();
                 const blocked = notReadyMessage(status);
                 if (blocked) { alert(blocked); return; }
-                if (status.running) { alert('The scraper is already busy.'); return; }
+                if (status.running) { alert('The scanner is already busy.'); return; }
                 await startScrape('refresh');
                 alert('Checking for new connections — watch it on the Scan page.');
               } catch (e) {
@@ -393,7 +393,7 @@ function HomeInner() {
                     LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.
                   </p>
                   <p style={{ color: '#666', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                    The local scraper maps those circles (and captures real photos).{' '}
+                    The local scanner maps those circles (and captures real photos).{' '}
                     <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Set up scanning &rarr;</Link>
                   </p>
                 </div>

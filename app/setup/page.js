@@ -15,7 +15,7 @@ const BG = '#0a0a1a';
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
 const ACTION_LABELS = {
-  install: 'Installing the scraper',
+  install: 'Installing the scanner',
   login: 'Waiting for you to sign in',
   full: 'Scanning your whole network',
   refresh: 'Checking for new connections',
@@ -183,7 +183,7 @@ function SetupInner() {
 
         {notFound && (
           <Box tone="bad">
-            <b>Can’t find the scraper files.</b><br />
+            <b>Can’t find the scanner files.</b><br />
             <span style={{ color: '#9aa' }}>
               Expected <code style={code}>scripts/scrape.py</code> next to the app. If you
               downloaded a zip, run the app from inside the project folder.
@@ -195,7 +195,7 @@ function SetupInner() {
           <Box tone="bad">
             <b>Google Chrome isn’t installed.</b><br />
             <span style={{ color: '#9aa' }}>
-              The scraper drives your real Chrome. Install it from{' '}
+              The scanner drives your real Chrome. Install it from{' '}
               <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer"
                  style={{ color: '#3498DB' }}>google.com/chrome</a>, then reload this page.
             </span>
@@ -206,7 +206,7 @@ function SetupInner() {
         <Step
           n={1}
           done={!!c.dependencies}
-          title="Install what the scraper needs"
+          title="Install what the scanner needs"
           body={
             c.dependencies
               ? 'Installed.'

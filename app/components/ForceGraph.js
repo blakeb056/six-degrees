@@ -1006,7 +1006,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
         overlay.append('text').attr('x', ox).attr('y', oy-68).text('Connect to Unlock')
           .attr('fill', '#000').attr('font-size', 10).attr('font-weight', 700).attr('text-anchor', 'middle').style('pointer-events', 'none');
       } else {
-        overlay.append('text').attr('x', ox).attr('y', oy-82).text('Run scraper to check')
+        overlay.append('text').attr('x', ox).attr('y', oy-82).text('Run a scan to check')
           .attr('fill', '#888').attr('font-size', 9).attr('text-anchor', 'middle');
       }
       event.stopPropagation();

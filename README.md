@@ -33,8 +33,8 @@ paid Apple certificate yet:
    malware. Close that message with **Done** (on macOS 13 or 14 it may say **OK** or
    **Cancel**). Anything except *Move to Trash*.
 3. Open **System Settings → Privacy & Security**, scroll down to *"Six Degrees" was
-   blocked*, and click **Open Anyway**. Confirm with **Open** (and your password if
-   asked).
+   blocked*, and click **Open Anyway**. Confirm with **Open Anyway** again (on macOS
+   13 or 14 the button says **Open**), and enter your password if asked.
 
 That's once per download; after that it opens like any app.
 
@@ -60,12 +60,22 @@ Your network isn't stored in the app. It's in a hidden folder in your home folde
 touch it. Each new version also copies your data into its `backups` folder before it
 first opens it.
 
-**Linux:** run it from source (below); it's tested on Ubuntu.
+**Linux:** with **Node 22.13 or later**, run:
+
+```bash
+npx six-degrees
+```
+
+It opens http://127.0.0.1:6363 in your browser, keeps your data in `~/.six-degrees`
+(it prints the folder when it starts), and stops with Ctrl-C. To update, stop it and run
+`npx six-degrees@latest`; the Updates panel at the bottom of the Scan page shows the same
+line. Scanning LinkedIn also needs Python 3.9+ and Google Chrome. It's tested on Ubuntu,
+and works on a Mac too if you'd rather not install the app.
 
 **Windows:** not yet. A Windows app is planned; nothing is released.
 
 <details>
-<summary>Run it from source (Linux, or a Mac without the app)</summary>
+<summary>Run it from source (contributors)</summary>
 
 Needs **Node 22.13 or later** and git.
 
@@ -95,7 +105,7 @@ know placed on rings by how much they can open up for you, the handful of people
 whose own circles reach the furthest, and the shortest chain from you to a stranger
 worth meeting.
 
-It's a Mac app. It runs on your computer, against your own data, with no account and
+It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
 no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
 Degrees**.)
 
@@ -114,7 +124,7 @@ Degrees**.)
 > stops at the first sign of push-back. The risk is still yours.
 >
 > **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
-> [`docs/SCRAPING.md`](docs/SCRAPING.md).
+> [how scanning works and what it risks](docs/SCRAPING.md).
 
 ## First run
 
@@ -257,7 +267,7 @@ Nothing to configure. Two optional environment variables exist:
 
 | Variable | Purpose |
 |---|---|
-| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies when you run from source, not when the Mac app is opened from the Dock or Finder. |
+| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. |
 | `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the six routes that delete data, run the scanner or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
 ## Contributing

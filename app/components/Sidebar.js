@@ -304,7 +304,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             </div>
             <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
               {selected.unlock_status === 'pending'
-                ? `Waiting for ${selected.name} to accept. Run the scraper to check.`
+                ? `Waiting for ${selected.name} to accept. Run a scan to check.`
                 : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
               }
             </div>
@@ -949,7 +949,7 @@ function CreateClusterCard({ selected, degree2 }) {
 
   async function startScrape() {
     setStatus('checking');
-    setLog(['Checking the scraper...']);
+    setLog(['Checking the scanner...']);
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
     if (blocked) {
       setStatus('offline');
@@ -970,7 +970,7 @@ function CreateClusterCard({ selected, degree2 }) {
       }
     } catch {
       setStatus('error');
-      setLog(['Failed to start scrape']);
+      setLog(['Failed to start the scan']);
     }
   }
 
@@ -983,7 +983,7 @@ function CreateClusterCard({ selected, degree2 }) {
         CREATE CLUSTER
       </div>
       <div style={{ fontSize: 12, color: '#ccc', marginBottom: 12, textAlign: 'center' }}>
-        Scrape {selected.name}&apos;s connections to map their network
+        Scan {selected.name}&apos;s connections to map their network
       </div>
 
       {status === 'idle' && (
@@ -1002,10 +1002,10 @@ function CreateClusterCard({ selected, degree2 }) {
       {status === 'offline' && (
         <>
           <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
-            Scraper server offline
+            Scanner offline
           </div>
           <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Open the <strong>Scan</strong> page to finish setting the scraper up
+            Open the <strong>Scan</strong> page to finish setting the scanner up
           </div>
           <button onClick={() => { setStatus('idle'); }} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -1045,7 +1045,7 @@ function CreateClusterCard({ selected, degree2 }) {
       {status === 'error' && (
         <>
           <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
-            Scrape failed — connections may be private
+            Scan failed — connections may be private
           </div>
           <button onClick={() => { setStatus('idle'); setLog([]); }} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -1348,7 +1348,7 @@ function AutoBridgeButton({ connections, degree2 }) {
       {status === 'offline' && (
         <>
           <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(255,80,80,0.1)', color: '#ff5050', fontSize: 11, marginBottom: 6, textAlign: 'center' }}>
-            Scraper offline
+            Scanner offline
           </div>
           <button onClick={() => setStatus('idle')} style={{
             width: '100%', padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',

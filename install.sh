@@ -110,7 +110,7 @@ stop_running_copy() {
 main() {
   printf '\n  6 Degrees — installer\n\n'
 
-  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run it from source (see the README). Windows isn't supported yet."
+  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run: npx six-degrees (needs Node 22.13 or later). Windows isn't supported yet."
 
   local arch
   # A Terminal running under Rosetta reports x86_64 even on Apple Silicon, and

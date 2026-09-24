@@ -158,7 +158,7 @@ export default function ImportPage() {
             haven&rsquo;t met yet.
           </p>
           <p style={{ margin: 0, color: '#666', fontSize: 13, lineHeight: 1.7 }}>
-            Want those? Run the local scraper — it captures 2nd-degree circles and real photos.{' '}
+            Want those? Run the local scanner — it captures 2nd-degree circles and real photos.{' '}
             <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>See setup →</Link>
           </p>
         </div>
