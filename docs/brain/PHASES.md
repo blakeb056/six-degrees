@@ -76,6 +76,9 @@ tick an item in the same change that finishes it.
       requirements
 - [ ] An app icon: the app and its `.dmg` use the generic one
 - [ ] A one-click update from inside the Mac app, instead of a line to paste
+- [ ] Opening the sidebar resizes the Galaxy and rebuilds it once (its layout restarts).
+      Re-centring the existing scene on a resize, instead of rebuilding it, would make
+      that smooth too
 - [ ] Next.js deprecation warnings in the build: `middleware` → `proxy`, and `viewport`
       moved out of `metadata`
 - [ ] GitHub Actions warns that `checkout`, `setup-node` and the artifact actions at v4
