@@ -256,15 +256,27 @@ const fakeIndustryOf = (company, headline) => {
 // ── your sector, from the sector directory ─────────────────────────────────
 // The directory's matches are injected (lib/sector-directory.js), so these
 // pin the rule: a directory pick matches the company's `sectors`, a broad
-// industry its one `industry`, and however many match, the lean is added once.
+// industry its one `industry` or any industry its sectors sit under
+// (`sectorIndustries`), and however many match, the lean is added once.
 
 test('a sector from the directory leans a company that matches it, once, and says which', () => {
   assert.deepEqual(companyScore('Smith Family Practice', { sectors: ['dental'], focus: lean('dental') }),
     { score: 5, source: 'default', base: 4, sector: 'dental', sectorBonus: 1 });
   assert.deepEqual(companyScore('Quillon', { sectors: ['software'], focus: lean('dental') }), { score: 4, source: 'default' });
   assert.deepEqual(companyScore('Quillon', { focus: lean('dental') }), { score: 4, source: 'default' });
-  // A broad industry still goes by the one industry, not by the directory.
+  // A broad industry includes its sectors: a practice only the directory calls dental is in health.
+  assert.deepEqual(companyScore('Smith Family Practice', { industry: 'unknown', sectors: ['dental'], sectorIndustries: ['health'], focus: lean('health') }),
+    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+  // Told nothing about where its sectors sit, it goes by the one industry alone.
   assert.deepEqual(companyScore('Smith Family Practice', { industry: 'unknown', sectors: ['dental'], focus: lean('health') }), { score: 4, source: 'default' });
+  // In the industry both ways, or in two picked industries: still once.
+  assert.deepEqual(companyScore('Smith Family Practice', { industry: 'health', sectors: ['dental'], sectorIndustries: ['health'], focus: strong('health') }),
+    { score: 6, source: 'default', base: 4, sector: 'health', sectorBonus: 2 });
+  assert.deepEqual(companyScore('Quillon', { industry: 'tech', sectors: ['dental'], sectorIndustries: ['health'], focus: lean('health', 'tech') }),
+    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+  // A narrower pick stays narrow: Dental doesn't take in the rest of health.
+  assert.deepEqual(companyScore('Northwind Clinic', { industry: 'health', sectors: ['hospitals'], sectorIndustries: ['health'], focus: lean('dental') }),
+    { score: 4, source: 'default' });
   // Several picks match (the industry and two sectors): +2 once, named by a directory sector.
   assert.deepEqual(companyScore('Smith Family Practice', { industry: 'health', sectors: ['hospitals', 'dental'], focus: strong('health', 'hospitals', 'dental') }),
     { score: 6, source: 'default', base: 4, sector: 'hospitals', sectorBonus: 2 });
@@ -305,6 +317,27 @@ test('a network read with the directory carries each company\'s sectors to its s
   assert.equal(readNetwork(rows, { industryOf: fakeIndustryOf }).companies.get('Smith Family Practice').sectors, undefined);
   assert.deepEqual(networkCompanies(rows, { industryOf: fakeIndustryOf, sectorsOf }).sectors.get('Smith Family Practice'), ['dental']);
   assert.equal(networkCompanies(rows, { industryOf: fakeIndustryOf }).sectors.size, 0);
+});
+
+test('a read with the directory\'s groups carries the industries a company\'s sectors sit under, so a broad pick includes them', () => {
+  const rows = [
+    { id: 'n', profile_url: '/in/n', degree: 1, headline: 'Owner at Smith Family Practice' },
+    { id: 'x', profile_url: '/in/x', degree: 1, headline: 'Consultant | Ex-Director at Bright Smiles' },
+    { id: 'e', profile_url: '/in/e', degree: 1, headline: 'Engineer at Quillon' },
+  ];
+  const sectorsOf = (name) => (/smith|bright/i.test(name) ? ['dental', 'hospitals'] : []);
+  const groupOf = (key) => ({ dental: 'health', hospitals: 'health' })[key];
+  const read = readNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf });
+  // Each industry once, a former employer's too.
+  assert.deepEqual(read.companies.get('Smith Family Practice'), { headcount: 1, industry: 'unknown', sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
+  assert.deepEqual(read.companies.get('Bright Smiles'), { headcount: 0, industry: 'unknown', sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
+  assert.deepEqual(read.companies.get('Quillon'), { headcount: 1, industry: 'tech', sectors: [], sectorIndustries: [] });
+  assert.deepEqual(networkCompanies(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf }).sectorIndustries.get('Smith Family Practice'), ['health']);
+  // Picking health lifts both, and not Quillon; the same scored straight from the rows.
+  const leaned = scoreNetwork(rows, { read, focus: lean('health') });
+  assert.deepEqual(['Smith Family Practice', 'Bright Smiles', 'Quillon'].map((n) => leaned.companyScores.get(n).score), [5, 5, 4]);
+  assert.equal(leaned.companyScores.get('Smith Family Practice').sector, 'health');
+  assert.deepEqual(scoreNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf, focus: lean('health') }).scores, leaned.scores);
 });
 
 test('one industry per company: the curated list, then the name, then most of its people', () => {

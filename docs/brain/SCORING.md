@@ -6,7 +6,7 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and its sectors from the directory |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry, its sectors from the directory and the industries those sit under |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
@@ -200,11 +200,13 @@ Where Paths' colour can still differ from the industry scoring uses:
 Up to three picks and a strength, saved in `app_meta` 'settings' as
 `sectorFocus: {sectors, strength}` (`lib/sector-focus.js` validates it). A pick is one of
 the twelve broad `INDUSTRIES` keys or a sector from the directory (below); a choice of
-industries saved before the directory existed reads, scores and stamps exactly as it did.
-In `companyScore()`, a company gets **+1 (lean) or +2 (strong), capped at 10**, when a
-picked industry is its one industry or a picked directory sector is among the sectors it
-matches (`sectors`, passed in). However many picks match, it is added once, and `sector`
-names the pick that matched, a directory sector before an industry. Never on a score you
+industries saved before the directory existed reads as it did. In `companyScore()`, a
+company gets **+1 (lean) or +2 (strong), capped at 10**, when a picked directory sector is
+among the sectors it matches (`sectors`, passed in), or a picked industry is its one
+industry or the industry one of those sectors sits under (`sectorIndustries`): **an industry
+includes its sectors**, so *Healthcare & Biotech* takes in a practice only the directory
+calls dental. However many picks match, it is added once, and `sector` names the pick that
+matched, a directory sector before an industry. Never on a score you
 set: `yours` is returned before the lean. The result keeps its source (`known`, `network`,
 `default`) and adds `{base, sector, sectorBonus}` only when the score actually moved, so
 everything reading `{score, source}` is unchanged. The working names the pick:
@@ -225,10 +227,11 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   turning it off gives back exactly the scores from before. `rescoreAll()` reads the focus
   itself, so imports, company-score changes and a stale model all apply it.
 - **Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_focus' with the focus's
-  fingerprint (`lean:media,tech`, `lean:health,dental@<version>` when a pick comes from the
-  directory, or `none`). `rescoreIfStale()` rescores when it no longer matches the saved
-  focus: a database restored or brought from another computer, a save whose rescore failed,
-  or an update that changed the directory's words (its version is in the fingerprint).
+  fingerprint (`lean:health,dental@<version>`, the directory's version, or `none`).
+  `rescoreIfStale()` rescores when it no longer matches the saved focus: a database restored
+  or brought from another computer, a save whose rescore failed, or an update that changed
+  the directory's words. Every pick carries the version, an industry too, since it includes
+  its sectors; a focus of industries stamped before that (`lean:media,tech`) is redone once.
 - **Saving** goes through `POST /api/settings`; `lib/settings-effects.js` sees the focus's
   fingerprint changed and runs `rescoreAll({compareWith: the focus it replaced})`. That
   scores the same read of the rows with the old focus too, in memory, and counts who changed
@@ -286,9 +289,13 @@ suggestions all read through it, so they agree. A company matches a sector when:
    `words` in their headline. For a one-person company, that person decides. A function
    sector's `roles` don't count here.
 
-A company can match several sectors; the lean is still added once. The twelve industries
-still match by the company's one industry, as they always did: picking *Healthcare &
-Biotech* doesn't pick up a practice that only the directory calls dental.
+A company can match several sectors; the lean is still added once. An industry includes its
+sectors: picking *Healthcare & Biotech* counts a company whose one industry is health, and
+any company the directory places in Hospitals & Clinics, Dental, Pharma & Biotech, Medical
+Devices, Mental Health or Fitness & Wellness (`readForScoring()` passes `sectorGroup` as
+`groupOf`, so each company's read carries the industries its sectors sit under). A practice
+whose name and people say only "Dentist" has no industry of its own, but it is Dental, so
+it's in health.
 
 Words are whole words, any case, compared after accents, apostrophes and punctuation are
 set aside: "incidental" isn't dental, "Banksy" isn't banking, "Lawson" isn't legal, "DSO"
@@ -349,10 +356,9 @@ startup Tech).
 
 **The version.** `DIRECTORY_VERSION` is a hash of the list (and of `MATCHING`, which is
 bumped by hand when the matching code changes), so any edit changes it and nobody has to
-remember to. A focus with a directory pick carries it in its fingerprint; after an update
-that changed the words, the next load rescores. A focus of industries alone doesn't use the
-directory and keeps the fingerprint it always had. A word-list edit doesn't change
-`SCORING_VERSION`.
+remember to. Every focus carries it in its fingerprint, since an industry includes its
+sectors; after an update that changed the words, the next load rescores. A word-list edit
+doesn't change `SCORING_VERSION`.
 
 **Suggestions.** `suggestSectors(rows, read)` gives the five directory sectors with the most
 people (each once) working now at a company that matches, with how many such companies:

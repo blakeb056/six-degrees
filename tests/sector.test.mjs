@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { scoreNetwork } from '../lib/scoring.js';
+import { scoreNetwork, companyScore } from '../lib/scoring.js';
 import { industryKeyOf } from '../lib/companies.js';
 import {
   parseSectorFocus, focusFingerprint, sameFocus, previewSectorFocus, tierMoves, NO_FOCUS, MAX_SECTORS,
@@ -71,8 +71,8 @@ test('Settings declares it, with nothing chosen by default', () => {
 test('the fingerprint is the same for the same choice, whatever order it was sent in', () => {
   assert.equal(focusFingerprint(NO_FOCUS), 'none');
   assert.equal(focusFingerprint(strong()), 'none');                     // no sectors: strength is moot
-  assert.equal(focusFingerprint(lean('tech', 'media')), 'lean:media,tech');
-  assert.equal(focusFingerprint(lean('media', 'tech')), 'lean:media,tech');
+  assert.equal(focusFingerprint(lean('tech', 'media')), `lean:media,tech@${DIRECTORY_VERSION}`);
+  assert.equal(focusFingerprint(lean('media', 'tech')), `lean:media,tech@${DIRECTORY_VERSION}`);
   assert.notEqual(focusFingerprint(lean('tech')), focusFingerprint(strong('tech')));
   assert.equal(focusFingerprint({ sectors: ['nope'] }), 'none');       // unreadable counts as nothing chosen
   assert.ok(sameFocus(lean(), strong()));
@@ -181,7 +181,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
   assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing, Media & Creator\)/);
   assert.equal(meta('scoring_version'), '3');
-  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
 });
 
 test('turning it off gives back exactly the scores from before: nothing ratchets', () => {
@@ -216,7 +216,7 @@ test('stored scores from another sector focus are stale, and are redone once', (
   assert.equal(row('s').tier, 'A');
   assert.deepEqual(rescoreIfStale(), { scored: 7 });
   assert.equal(row('s').tier, 'S');
-  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
   assert.deepEqual(rescoreIfStale(), { scored: 0 });
   // Scores from the previous model are stale too, whatever the focus.
   getDb().prepare("UPDATE app_meta SET value = '2' WHERE key = 'scoring_version'").run();
@@ -268,7 +268,7 @@ test('the preview and the save agree when the stored scores are stale', () => {
   const effects = save(db, lean('media'));
   assert.deepEqual(effects.sectorFocus, { scored: 7, people: 6, moved: 3, up: preview.up, down: preview.down });
   assert.deepEqual([row('s').tier, row('f').tier, row('a').tier], ['S', 'A', 'A']);
-  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
 });
 
 test('a save whose rescore fails is still saved, says so, and is redone on a later load', () => {
@@ -293,7 +293,7 @@ test('a save whose rescore fails is still saved, says so, and is redone on a lat
   // Once it clears, the next load redoes it with the saved choice.
   assert.deepEqual(rescoreIfStale(), { scored: 7 });
   assert.deepEqual([row('s').company_prestige_score, row('s').tier], [10, 'S']);
-  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
 });
 
 test('a strength with no sectors picked scores like nothing picked, so it saves without a rescore', () => {
@@ -351,19 +351,25 @@ test('a pick can be a broad industry or a sector from the directory, stored in o
     { sectors: ['real-estate'], strength: 'strong' });
 });
 
-test('a choice saved before the directory, of the twelve industries, reads and stamps exactly as before', () => {
+test('a choice of industries saved before they included their sectors reads as it did, and its scores are redone once', () => {
+  insert(network());
   getDb().prepare("INSERT INTO app_meta (key, value) VALUES ('settings', ?)").run(JSON.stringify({ sectorFocus: { sectors: ['tech', 'media'], strength: 'strong' } }));
   assert.deepEqual(readSettings(getDb()).sectorFocus, { sectors: ['media', 'tech'], strength: 'strong' });
-  assert.equal(focusFingerprint(readSettings(getDb()).sectorFocus), 'strong:media,tech');
+  rescoreAll();
+  // Scores stamped the way they were then: an industry pick didn't use the directory.
+  getDb().prepare("UPDATE app_meta SET value = 'strong:media,tech' WHERE key = 'scoring_focus'").run();
+  assert.deepEqual(rescoreIfStale(), { scored: 7 });
+  assert.equal(meta('scoring_focus'), `strong:media,tech@${DIRECTORY_VERSION}`);
+  assert.deepEqual(rescoreIfStale(), { scored: 0 });
 });
 
-test('the fingerprint carries the directory\'s version when a pick comes from it', () => {
+test('the fingerprint carries the directory\'s version, for an industry too: it includes its sectors', () => {
   assert.equal(focusFingerprint(lean('dental')), `lean:dental@${DIRECTORY_VERSION}`);
   assert.equal(focusFingerprint(lean('dental', 'health')), `lean:health,dental@${DIRECTORY_VERSION}`);
-  // Another version of the word lists is another fingerprint…
+  // Another version of the word lists is another fingerprint, whatever the picks.
   assert.notEqual(focusFingerprint(lean('dental'), { version: 'aaaa0000' }), focusFingerprint(lean('dental'), { version: 'bbbb1111' }));
-  // …but industries alone don't use the directory, so theirs never changes with it.
-  assert.equal(focusFingerprint(lean('media', 'tech'), { version: 'aaaa0000' }), 'lean:media,tech');
+  assert.equal(focusFingerprint(lean('media', 'tech'), { version: 'aaaa0000' }), 'lean:media,tech@aaaa0000');
+  assert.notEqual(focusFingerprint(lean('health'), { version: 'aaaa0000' }), focusFingerprint(lean('health'), { version: 'bbbb1111' }));
   assert.ok(!sameFocus(lean('dental'), lean('health')));
 });
 
@@ -394,12 +400,39 @@ test('a sector from the directory leans the companies it places, and the working
   assert.match(row('nia').score_why, /Smith Family Practice \(5\/10: 4 \+ 1 your sector: Dental\)/);
   assert.match(row('rae').score_why, /Quillon \(4\/10\)/);
   assert.equal(meta('scoring_focus'), `lean:dental@${DIRECTORY_VERSION}`);
-  // The broad industry still goes by each company's one industry, as it always did:
-  // only Smith Family Dental says health.
+  // The broad industry includes its sectors. Only Smith Family Dental's one industry
+  // is health, but the directory places all three practices in Dental, so all three
+  // count, once each; Quillon doesn't.
   writeSettings(getDb(), { sectorFocus: lean('health') });
   rescoreAll();
-  assert.deepEqual(['nia', 'omar', 'quinn'].map((id) => row(id).company_prestige_score), [4, 4, 5]);
+  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [5, 5, 5, 5, 4]);
+  assert.match(row('nia').score_why, /Smith Family Practice \(5\/10: 4 \+ 1 your sector: Healthcare & Biotech\)/);
   assert.match(row('quinn').score_why, /Smith Family Dental \(5\/10: 4 \+ 1 your sector: Healthcare & Biotech\)/);
+  assert.equal(meta('scoring_focus'), `lean:health@${DIRECTORY_VERSION}`);
+});
+
+test('a broad industry that includes its sectors: the preview, the save and Paths → Scores agree', () => {
+  insert(dentalNetwork());
+  rescoreAll();
+  const db = getDb();
+  const preview = previewAsRoute(db, lean('health'));
+  // Smith Family Practice, Bright Smiles and Smith Family Dental each 4 → 5; Nia moves B → A.
+  assert.deepEqual([preview.companies, preview.companiesUp, preview.up, preview.down], [3, 3, 1, 0]);
+  assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]),
+    [['Bright Smiles', 4, 5, 'health'], ['Smith Family Dental', 4, 5, 'health'], ['Smith Family Practice', 4, 5, 'health']]);
+  assert.deepEqual(save(db, lean('health')).sectorFocus, { scored: 5, people: 5, moved: 1, up: preview.up, down: preview.down });
+  // Paths → Scores scores each company from the same read (app/api/company-scores).
+  const rows = scoringRows(db);
+  const read = readForScoring(rows);
+  for (const r of rows) {
+    const name = read.people.get(r).roles.find((x) => !x.former)?.company;
+    const facts = read.companies.get(name);
+    const listed = companyScore(name, {
+      overrides: companyOverrides(db), headcount: facts.headcount, industry: facts.industry, sectors: facts.sectors,
+      sectorIndustries: facts.sectorIndustries, focus: sectorFocusOf(db),
+    });
+    assert.equal(listed.score, row(r.id).company_prestige_score, name);
+  }
 });
 
 test('several picks that match one company lean it once', () => {
@@ -441,10 +474,12 @@ test('an edited word list makes stored scores stale, and they are redone once', 
   assert.deepEqual(rescoreIfStale(), { scored: 5 });
   assert.equal(meta('scoring_focus'), `lean:dental@${DIRECTORY_VERSION}`);
   assert.deepEqual(rescoreIfStale(), { scored: 0 });
-  // Industries alone don't depend on the directory, so their old stamp stays fresh.
-  writeSettings(getDb(), { sectorFocus: lean('media') });
+  // An industry includes its sectors, so its scores depend on the words too.
+  writeSettings(getDb(), { sectorFocus: lean('health') });
   rescoreAll();
-  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.equal(meta('scoring_focus'), `lean:health@${DIRECTORY_VERSION}`);
+  getDb().prepare("UPDATE app_meta SET value = 'lean:health@00000000' WHERE key = 'scoring_focus'").run();
+  assert.deepEqual(rescoreIfStale(), { scored: 5 });
   assert.deepEqual(rescoreIfStale(), { scored: 0 });
 });
 

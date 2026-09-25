@@ -268,7 +268,7 @@ export default function SectorSection() {
                 return (
                   <div key={g.key} style={{ borderTop: LINE, padding: '8px 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                      {chip(g.key, g.label, { title: 'Every company whose one industry is this' })}
+                      {chip(g.key, g.label, { title: 'The whole industry: every company in it, and in any of its sectors' })}
                       <button type="button" aria-expanded={isOpen} aria-controls={`sectors-${g.key}`} onClick={() => flip(g.key)}
                         style={{
                           padding: '4px 6px', fontSize: 12.5, color: inside ? '#9fd3ff' : '#8b9a9a', background: 'none', border: 'none',
@@ -323,7 +323,11 @@ export default function SectorSection() {
             <li>Tiers rank how reachable someone is through your network, not the people themselves.</li>
             <li>A company score you set on <Link href="/paths?tab=scores" style={{ color: '#3498DB' }}>Paths → Scores</Link> always wins. Your sector never changes it.</li>
             <li>If you scan highest tier first, people in your sectors come up sooner. Scanning newest first, the default, doesn&rsquo;t go by tier.</li>
-            <li>A broad industry counts a company by its one industry: from the app&rsquo;s list of well-known companies, else its name, else what most of its people&rsquo;s headlines say.</li>
+            <li>
+              An industry includes its sectors. It counts a company whose one industry it is (from the app&rsquo;s list of
+              well-known companies, else its name, else what most of its people&rsquo;s headlines say) and any company in one
+              of its sectors, so Healthcare &amp; Biotech takes in a practice only the list calls Dental.
+            </li>
             <li>
               A narrower sector counts a company when its name says so (Smith Family Dental), it&rsquo;s a well-known company in
               that sector, or at least half of the people you know there say so in their headlines (dentist, DDS, orthodontist).

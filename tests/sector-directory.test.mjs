@@ -11,7 +11,7 @@ import { industryKeyOf } from '../lib/companies.js';
 import { readNetwork } from '../lib/scoring.js';
 import {
   DIRECTORY, DIRECTORY_VERSION, SECTOR_KEYS, wordsOf, sectorsInName, sectorsInHeadline, sectorMatcher, suggestSectors,
-  sectorByKey, sectorLabel, isDirectoryKey,
+  sectorByKey, sectorLabel, isDirectoryKey, sectorGroup,
 } from '../lib/sector-directory.js';
 
 const GROUP_KEYS = INDUSTRIES.map((g) => g.key);
@@ -106,6 +106,11 @@ test('picks are the twelve industries, each followed by its sectors, and each ha
   assert.equal(sectorLabel('real-estate'), 'Real Estate');
   assert.equal(sectorLabel('nope'), undefined);
   assert.ok(isDirectoryKey('dental') && !isDirectoryKey('health') && !isDirectoryKey('nope'));
+  // Where a sector sits, for a broad pick to include it; an industry sits under nothing.
+  for (const d of DIRECTORY) assert.equal(sectorGroup(d.key), d.group, d.key);
+  assert.equal(sectorGroup('dental'), 'health');
+  assert.equal(sectorGroup('health'), undefined);
+  assert.equal(sectorGroup('nope'), undefined);
 });
 
 // ── examples: every sector matches some and not others ─────────────────────
