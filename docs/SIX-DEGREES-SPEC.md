@@ -28,8 +28,10 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    release's version number. In the Mac app, a **second, separate press** ("Install and
    restart", offered only after that answer) may then download that release's disk image
    and its `SHA256SUMS` from the same GitHub release, and replace the app with it once
-   both check out. That is always `releases/latest` (never a pre-release, never a version
-   the page names), never the data folder, and nothing is downloaded before the press.
+   both check out. That is always `releases/latest`, and only the version that answer
+   named: if a newer one has come out since, nothing is installed and a new check is
+   asked for. Never a pre-release, never a version the page names, never the data folder,
+   and nothing is downloaded before the press.
    Otherwise the user runs the update themselves. Either way it sends nothing about them
    beyond the requests, runs only on a click, and is what they would do by hand. Anything
    that checks, downloads or installs on a timer, on launch, or in the background is the

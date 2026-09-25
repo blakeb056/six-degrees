@@ -850,7 +850,42 @@ Chosen: the server ends with its own exit code, **76** (`UPDATE_HANDOFF_EXIT_COD
 depend on Next's numbers. It does so only after the helper has started, has stayed up
 for a moment, and no scan is running (a scan would be cut off: `app.exit` skips the
 quit path that stops it). The classic launcher needs nothing: its `wait` returns
-whatever the code. Not 75: the data-import work proposed that for "restart the server".
-The helper (`scripts/apply-update.sh`) waits for the app, its server and anything else
-running from the bundle to exit before it touches anything. Not yet seen on a real Mac
-(2026-09-25): the whole quit, swap and reopen; the manual test is in DESKTOP.md D4.
+whatever the code. Not 75: that is `RESTART_EXIT_CODE`, the data import's "start the
+server again"; `serverExitAction` reads both. The helper (`scripts/apply-update.sh`)
+waits for the app, its server and every other process whose executable is inside the app
+to exit before it touches anything (§40). Not yet seen on a real Mac (2026-09-25): the
+whole quit, swap and reopen; the manual test is in DESKTOP.md D4.
+
+## 40. A process *in* the app's folder isn't the app, and without a locale a path that isn't ASCII matches nothing
+
+The in-app updater's helper first recognised the old app's processes the way `install.sh`
+finds its server: anything whose working folder or command line was inside the app. After
+30 seconds it stopped whatever was left, SIGTERM, then SIGKILL.
+
+- **What that also caught.** A Terminal, an editor or a Claude Code session opened inside
+  the app's folder, and `tail -f` of a file in it. Reproduced in review: a shell in
+  `Contents/Resources/server` that ignored SIGTERM got SIGKILLed, and `tail -f
+  …/Contents/Info.plist` got SIGTERMed. (`install.sh` reaches as far for `node`
+  processes, but on a click in Terminal; the helper runs unseen.)
+- **What is the app.** A process whose *executable* is inside the app: the first `txt`
+  entry `lsof -d txt` lists for it. That finds Electron's main and helper processes, and
+  the server, whose executable is the app's own `Contents/Resources/node` whatever Next
+  renames its process to (§26). A command line or a working folder only says what a
+  process mentions, and any program can mention the app. `ps -o comm` won't do either:
+  it is argv[0], which Next rewrites ("next-server (v16"). Besides those, only the pids
+  the server names (the app and itself), checked to be the same processes by their start
+  time. The helper stops nothing else, and waits for nothing else.
+- **The locale.** The server starts the helper with a clean environment. With no `LANG`,
+  `ps` and `lsof` print a path like "Programmes Été" with escapes, nothing matched, and
+  the helper swapped the app while it still ran (reproduced). `helperEnv()` sets
+  `en_US.UTF-8`, and so does the script itself.
+- **Another user's copy.** `lsof` shows a user only their own processes, and one user
+  can't stop another's anyway. So the server refuses to hand over while `ps` shows the app
+  running for another user, before the download and again before the hand-over.
+
+What holds it: `tests/apply-update.test.mjs` runs the helper with the server's exact
+environment against pretend apps, with real processes whose executables are clones of
+Node inside them: a shell in the app's folder and a `tail -f` survive, the app's own
+programs are stopped, a folder named "Programmes Été" works, and one that keeps coming
+back leaves the app as it was and reopens it. (A copy of a system program can't stand
+in: macOS kills a copy of `/bin/sleep` that runs from anywhere else.)
