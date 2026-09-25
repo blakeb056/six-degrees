@@ -66,7 +66,8 @@ Downloading the new `.dmg` works too; you'll repeat step 3 once for it.
 Your network isn't stored in the app. It's in a hidden folder in your home folder,
 `.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
 touch it. Each new version also copies your data into its `backups` folder before it
-first opens it.
+first opens it. To take it to another computer, see
+[Moving to a new computer](#moving-to-a-new-computer).
 
 **Linux:** install **Node 22.13 or later** (from nodejs.org or nvm; Ubuntu's own
 `nodejs` package is too old), then run:
@@ -246,6 +247,11 @@ It estimates **network position**, not what anyone is worth as a person.
     that version and the file of checksums that proves it's the one published.
   
   Nothing about you is sent, and nothing checks on its own.
+- A **copy of your network** that you save (Settings → Your data) is a file you keep
+  wherever you choose; the app never uploads it. It holds the names, headlines and profile
+  links of the people in your network, their photos unless you leave them out, your
+  settings, and the scanner's progress and LinkedIn budget. Your LinkedIn sign-in is never
+  in it. Keep it private, and delete it once it's imported.
 - The web framework's own anonymous usage stats are turned off.
 
 See [SECURITY.md](SECURITY.md) for the threat model.
@@ -254,14 +260,79 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 
 ```
 .six-degrees/               in your home folder (hidden)
-├── six-degrees.sqlite      your network: connections, scores, tiers, queue
-├── backups/                a copy of the database before each new version touches it
+├── six-degrees.sqlite      your network: connections, scores, tiers, queue, settings
+├── backups/                copies of the database from before each new version, and
+│                           before an import, touched it
 ├── avatars/                profile photos, if you scan
 ├── chrome-profile/         the scanner's Chrome sign-in, if you scan (see below)
 ├── venv/                   the scanner's Python add-ons, if you set it up
 ├── pushback/               what LinkedIn's page said if it ever pushed back
 └── *.json                  the scanner's budget, cooldown, progress and skip lists
 ```
+
+**Settings → Your data** shows where this folder is (with *Copy the path* and *Show in
+Finder*), what each part takes up, and the backups in it.
+
+### Moving to a new computer
+
+1. On the old computer, open **Settings → Your data** and click **Save a copy of my
+   network**. You get one file, `Six Degrees backup <date>.sixdegrees`, with your network,
+   your settings, the scanner's progress, skip lists and LinkedIn budget, and the profile
+   photos of the people in it (untick them to leave them out; they come back as you scan
+   again).
+2. Move that file to the new computer yourself (a USB stick, AirDrop). It holds other
+   people's names and photos, so don't post it or share it.
+3. On the new computer, install Six Degrees, open **Settings → Your data**, choose the
+   file and click **Import**. It's checked first, and nothing changes if it isn't a whole
+   and undamaged Six Degrees copy. If that computer already has a network, you're asked to
+   confirm that the import replaces it. The two networks are never merged. Your LinkedIn
+   search budget is the one thing that is: it belongs to your LinkedIn account, not to a
+   computer, so searches made on either computer still count, a pause on scanning set on
+   either stays until it ends, and budget limits already set on that computer stay.
+4. The import finishes the next time Six Degrees starts. The Mac app does that with
+   **Restart now**; with `npx six-degrees`, press Ctrl-C and start it again. If another
+   copy of Six Degrees has the same folder open (one started from the Terminal, say), the
+   import waits, and Settings says so. What was there before is kept in `backups/`
+   (`before-import-…`), and those copies are never deleted automatically: see
+   [Undo an import](#undo-an-import).
+5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
+   into a copy. A network opened from a LinkedIn CSV isn't in the copy either: it lives in
+   its browser tab, so import the CSV again there.
+
+### Undo an import
+
+An import keeps what it replaced in the data folder's `backups/`, named with the time it
+finished (Settings → Your data shows the exact name):
+
+- `before-import-<time>.sqlite`: your network as it was.
+- `before-import-<time>-files/`: its profile photos (`avatars/`), the scanner's notes about
+  it (`bridge-progress.json`, `bridge-skips.json`, `bridge-unclear.json`), and a copy of
+  your LinkedIn budget files as they were.
+
+To put it back (there's no button for this yet):
+
+1. Quit Six Degrees (⌘Q in the Mac app, Ctrl-C for `npx six-degrees`). Do the rest while
+   it's closed.
+2. Open the data folder (Settings → Your data → *Show in Finder*, or `~/.six-degrees`).
+   Move these out of it, to the Trash or somewhere safe if you might want the imported
+   network again: `six-degrees.sqlite`, and `six-degrees.sqlite-wal` and
+   `six-degrees.sqlite-shm` if they're there (a `-wal` left beside a different database
+   is replayed into it and damages it), then `avatars/` and the three `bridge-*.json`
+   files.
+3. Copy `backups/before-import-<time>.sqlite` into the data folder and rename the copy
+   `six-degrees.sqlite`. If `before-import-<time>.sqlite-wal` and `-shm` files are beside
+   it, copy them too, renamed to match (`six-degrees.sqlite-wal`,
+   `six-degrees.sqlite-shm`).
+4. Copy `avatars/` and the three `bridge-*.json` files from
+   `backups/before-import-<time>-files/` back into the data folder.
+5. Leave `linkedin-activity.json`, `linkedin-cooldown.json` and `scan-limits.json` as they
+   are. They're your LinkedIn account's budget, which the import kept (it only added the
+   other computer's searches), so they're right whichever network you use.
+6. Open Six Degrees again.
+
+Don't put the live folder in iCloud Drive or Dropbox to share it between computers
+instead. A sync service that copies the database while it's open can damage it, and it
+would also sync your LinkedIn sign-in.
 
 **To remove everything:** quit the app and drag **Six Degrees** from Applications to the
 Trash. Then in Finder choose **Go → Go to Folder…** (⇧⌘G), paste `~/.six-degrees` and
@@ -280,8 +351,8 @@ Nothing to configure. Two optional environment variables exist:
 
 | Variable | Purpose |
 |---|---|
-| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. |
-| `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the six routes that delete data, run the scanner or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
+| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. A relative folder is taken from the folder you run the command in. |
+| `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the ten routes that delete, replace or hand over your data, run the scanner, open the data folder or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
 ## Contributing
 

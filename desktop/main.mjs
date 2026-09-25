@@ -18,6 +18,9 @@
 //           with a code that means "quit quietly" (lib.mjs serverExitAction).
 //           The helper swaps the app once this one has gone and opens the new
 //           one with --after-update, which opens Settings to show how it went
+//   restart the server can ask to be started again (exit code 75, to finish
+//           an import from Settings → Your data): the window shows the
+//           "starting" page meanwhile and comes back to Settings
 //
 // For CI: SIX_DEGREES_SMOKE=1 prints "SIX_DEGREES_READY <address>" once the app
 // has drawn, and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
@@ -30,7 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  serverExitAction, bundlePathFromExe, startPathArg,
+  RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +41,8 @@ const REPO = path.resolve(HERE, '..'); // only meaningful when run from a checko
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(REPO, '.next', 'standalone');
 const NODE = app.isPackaged ? path.join(process.resourcesPath, 'node') : (process.env.SIX_DEGREES_NODE || 'node');
 const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/scrape.py
-const DATA_DIR = dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees');
+// Absolute before it reaches the server, which runs from its own folder.
+const DATA_DIR = path.resolve(dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees'));
 const LOG = path.join(os.tmpdir(), 'six-degrees.log');
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const SMOKE = process.env.SIX_DEGREES_SMOKE === '1';
@@ -78,11 +82,15 @@ async function start() {
     copyright: 'Runs on this computer only. MIT licence.',
   });
   showWindow(); // the "starting" page, until the server answers
+  await startServer(await findFreePort(), { logMode: 'w' });
+}
 
-  const port = await findFreePort();
+// The server on `port`. Also how it is started again when it asks to: an
+// import (Settings → Your data) is finished as the server starts.
+async function startServer(port, { logMode }) {
   origin = `http://127.0.0.1:${port}`;
-  const log = openSync(LOG, 'w');
-  server = spawn(NODE, [path.join(SERVER_DIR, 'server.js')], {
+  const log = openSync(LOG, logMode);
+  const child = spawn(NODE, [path.join(SERVER_DIR, 'server.js')], {
     cwd: SERVER_DIR,
     env: {
       ...process.env,
@@ -92,32 +100,58 @@ async function start() {
       NEXT_TELEMETRY_DISABLED: '1',
       SIX_DEGREES_ROOT: ROOT,
       SIX_DEGREES_HOME: DATA_DIR,
+      // Tells the server this shell starts it again when it exits with this
+      // code, so Settings can offer "Restart now".
+      SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE),
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
       ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
     },
     stdio: ['ignore', log, log],
   });
   closeSync(log);
-  server.on('exit', (code, signal) => {
-    // Stopped from outside (the installer replacing this copy, or the system),
-    // or handed over to the updater: the whole app is going, so go quietly. A
-    // crash is worth saying out loud. Which is which: lib.mjs serverExitAction.
-    const action = serverExitAction({ code, signal, quitting });
+  server = child;
+  let answered = false; // this server has answered at least once
+  child.on('exit', (code, signal) => {
+    // What to do is decided in lib.mjs (tested): stopped from outside quits
+    // quietly, the restart code starts it again (unless this server never
+    // answered: then it can't stay up), any other exit is a crash and is said
+    // out loud.
+    const action = serverExitAction({ code, signal, quitting, answered });
     if (action === 'ignore') return;
     if (action === 'quit') {
       quitting = true;
       app.exit(0);
       return;
     }
-    // 'restart' is the data import's (RESTART_EXIT_CODE). Nothing in this build
-    // asks for it, so here it is a crash like any other exit.
+    if (action === 'restart') {
+      restartServer(port);
+      return;
+    }
     fail('Six Degrees stopped', new Error(`Its server exited (code ${code}).`));
   });
 
-  await waitForServer(origin, { isAlive: () => server.exitCode === null && server.signalCode === null });
+  await waitForServer(origin, { isAlive: () => child.exitCode === null && child.signalCode === null });
+  answered = true;
   ready = true;
   if (win) win.loadURL(origin + (pendingPath || ''));
   pendingPath = null;
+}
+
+// The server asked to be started again. The same port if it is still free, so
+// the page's own storage (kept per address) carries on. Meanwhile the window
+// shows the starting page, and then comes back to Settings → Your data, where
+// the finished import is reported.
+async function restartServer(port) {
+  ready = false;
+  pendingPath = '/settings#data';
+  if (win) win.loadFile(path.join(HERE, 'starting.html'));
+  try {
+    const again = await findFreePort(port, port).catch(() => findFreePort());
+    if (quitting) return; // quit while the port was being found: start nothing
+    await startServer(again, { logMode: 'a' });
+  } catch (err) {
+    fail('Six Degrees could not restart', err);
+  }
 }
 
 function showWindow() {

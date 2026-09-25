@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { dataDir } from '../../../lib/db-client';
+import { AVATAR_FILE } from '../../../lib/data-folder';
 
 // Avatars are captured by the scraper and live in the user's data directory,
 // never inside the app package — an installed copy must not write into its own
@@ -10,8 +11,9 @@ import { dataDir } from '../../../lib/db-client';
 export async function GET(_request, { params }) {
   const { file } = await params;
 
-  // Serve only a plain filename from that one directory.
-  if (!/^[A-Za-z0-9_-]+\.(webp|jpg|jpeg|png)$/.test(file)) {
+  // Serve only a plain filename from that one directory. An export carries
+  // and an import accepts exactly the same names (lib/data-folder.js).
+  if (!AVATAR_FILE.test(file)) {
     return new Response('Not found', { status: 404 });
   }
 
