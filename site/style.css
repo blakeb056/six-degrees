@@ -98,6 +98,12 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 }
 .cmd button:hover { background: rgba(255, 255, 255, 0.14); }
 
+/* the tutorial videos (silent: the captions are in the picture) */
+.watch { margin: 8px 0 0; }
+.video { max-width: 960px; margin: 0 auto 32px; }
+.video video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #05040f; }
+.ways .video { margin: 32px auto 0; }
+
 /* what it does */
 .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
 .features article, .cards article { padding: 18px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); }

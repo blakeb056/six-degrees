@@ -35,7 +35,7 @@
 
       <p class="not-mac" id="not-mac" role="status" hidden>
         Six Degrees is a Mac app. On Linux, run <code>npx six-degrees</code> (Node 22.13 or later;
-        <a href="https://github.com/blakeb056/six-degrees#install-it">details</a>).
+        <a href="#linux">details</a>).
         Windows isn't supported yet.
       </p>
 
@@ -51,6 +51,7 @@
       </div>
       <p class="fine" id="version-line">macOS 13.5 or later · about 185–190 MB · free and open source</p>
       <p class="guess" id="chip-guess" hidden></p>
+      <p class="fine watch"><a href="#install">New here? Watch how to install it (about a minute)</a></p>
 
       <img class="shot" src="img/app-window.png" srcset="img/app-window-1200.png 1200w, img/app-window.png 3136w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="3136" height="2118">
       <p class="caption">Every person shown on this page is invented.</p>
@@ -58,6 +59,13 @@
 
     <section class="install" id="install">
       <h2>Install it in a minute</h2>
+      <figure class="video">
+        <video controls muted playsinline preload="metadata" poster="video/install-mac-poster.jpg" width="1920" height="1080" aria-label="Video: installing Six Degrees on a Mac">
+          <source src="video/install-mac.mp4" type="video/mp4">
+        </video>
+        <figcaption><strong>Installing on a Mac, step by step</strong> (about a minute): the download, the one-time macOS
+          warning and Open Anyway, or the one-line Terminal install, then a first look.</figcaption>
+      </figure>
       <div class="which">
         <strong>Which download?</strong> Apple menu → <strong>About This Mac</strong>.
         "Chip: Apple M…" means <strong>Apple Silicon</strong>. "Processor: …Intel…" means <strong>Intel</strong>.
@@ -94,6 +102,26 @@
         <p class="fine">It downloads the right version for your Mac, checks the file is exactly the one published,
           puts Six Degrees in Applications and opens it. Running it again updates the app.
           <a href="https://github.com/blakeb056/six-degrees/blob/main/install.sh">Read the script</a>.</p>
+      </div>
+    </section>
+
+    <section class="linux" id="linux">
+      <h2>On Linux</h2>
+      <figure class="video">
+        <video controls muted playsinline preload="metadata" poster="video/linux-poster.jpg" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
+          <source src="video/linux.mp4" type="video/mp4">
+        </video>
+        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
+      </figure>
+      <div class="terminal">
+        <h3>One command</h3>
+        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
+          too old), then run:</p>
+        <div class="cmd"><code>npx six-degrees</code></div>
+        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
+          <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
+          also needs Google Chrome (not Chromium) and Python 3.9 or later with venv (on Ubuntu:
+          <code>sudo apt install python3-venv</code>). Windows isn't supported yet.</p>
       </div>
     </section>
 
@@ -152,6 +180,13 @@
         automate it.</strong> Automating LinkedIn may break its User Agreement. It happened twice while building this
         app. The scanner now reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.
         The sample and the CSV import carry no LinkedIn risk at all.</p>
+      <figure class="video" id="scanning">
+        <video controls muted playsinline preload="metadata" poster="video/scan-poster.jpg" width="1920" height="1080" aria-label="Video: how scanning works">
+          <source src="video/scan.mp4" type="video/mp4">
+        </video>
+        <figcaption><strong>How scanning works</strong> (under a minute): install what it needs, sign into LinkedIn in the Chrome
+          window it opens, scan the people you know, then map who they know a few at a time.</figcaption>
+      </figure>
     </section>
 
     <section class="privacy" id="privacy">
