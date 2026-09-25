@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.3.1] (to be): Python inside the app
+
+For 0.3.1, which follows 0.3.0. When 0.3.0 is tagged, everything after this part moves
+under [0.3.0], and this part stays here until 0.3.1 is.
+
+#### Changed
+- **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
+  2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
+  install. Only ready-built files (wheels), so nothing is built from source on your
+  computer, and pip refuses any file that isn't the one pinned. They need Python 3.10 or
+  newer, as the newest Playwright does; a Python that already has the scanner's packages
+  keeps working as it is.
+
 ### Added
 - **Settings.** A new page, from the ⚙ button beside the bell or *Six Degrees → Settings…*
   (⌘,). It's the new home for **Updates**, and it shows which version this is and where
