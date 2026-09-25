@@ -314,6 +314,32 @@ test('REGRESSION (M1): stops only what runs the app\'s own executables; a Termin
   assert.equal(versionAt(w.target), '2.0.0');
 });
 
+test('the scanner\'s Python inside the app is the app\'s, and so is Playwright\'s driver on the app\'s Node; the Chrome it drives is not', { skip }, async (t) => {
+  // DESKTOP.md D2. The server refuses to update while the scanner runs, so this
+  // is a last resort: whatever of the app's Python is still running (a check the
+  // server started a moment before it quit) is waited for, then stopped.
+  const w = world(t);
+  makeApp(w.target, '1.0.0');
+  makeApp(w.staged, '2.0.0');
+  const python = startExeInside(t, w.target, 'Contents/Resources/python/bin/python3.12', ENDS_ON_TERM);
+  // The driver's `node` is a link to the app's own (build-app.mjs shareDriverNode):
+  // started by the link's path, its executable is the app's node.
+  nodeInside(w.target, 'Contents/Resources/node');
+  const driverDir = path.join(w.target, 'Contents/Resources/python/lib/python3.12/site-packages/playwright/driver');
+  fs.mkdirSync(driverDir, { recursive: true });
+  fs.symlinkSync('../../../../../../node', path.join(driverDir, 'node'));
+  const driver = track(t, spawn(path.join(driverDir, 'node'), ['-e', ENDS_ON_TERM], { stdio: 'ignore' }));
+  // The user's own browser, which the scanner drives: never the app's to stop.
+  const chrome = track(t, spawn('/bin/sleep', ['30'], { stdio: 'ignore' }));
+  await sleep(400);
+  const r = await runHelper(w, [...baseArgs(w, '1.0.0', '2.0.0', { keep: false }), '--wait', '1', '--grace', '2']);
+  assert.equal(r.code, 0, r.out);
+  assert.equal((await python.ended).signal, 'SIGTERM');
+  assert.equal((await driver.ended).signal, 'SIGTERM');
+  assert.ok(running(chrome), 'the browser still runs');
+  assert.equal(versionAt(w.target), '2.0.0');
+});
+
 test('stops a process the server named that won\'t go after --wait: SIGTERM first, then SIGKILL', { skip }, async (t) => {
   const w = world(t);
   makeApp(w.target, '1.0.0');

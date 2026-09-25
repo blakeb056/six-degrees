@@ -92,9 +92,10 @@ jobs:
           BUNDLE_ARCH: ${{ matrix.arch }}
       # The Electron app as people get it: installed from its own disk image by
       # install.sh, not the copy in dist/ (a link that only resolves on the build
-      # machine passes there and fails everywhere else, TRAPS §37). Then open
-      # it, reach it, refuse a second copy, quit it mid-job, and check that
-      # nothing is left running.
+      # machine passes there and fails everywhere else, TRAPS §37). Then check
+      # the scanner's Python inside it, open it, reach it, refuse a second copy,
+      # quit it; open it again without that Python, quit it mid-job, and check
+      # that nothing is left running.
       - name: Install it from the disk image, open, reach, quit, and check nothing is left
         if: env.APP_SHELL == 'electron'
         run: |
@@ -105,44 +106,77 @@ jobs:
           codesign --verify --deep --strict "$app"
           if find "$app" -type l -exec readlink {} \; | grep -q '^/'; then echo "::error::The installed app has absolute symlinks"; exit 1; fi
 
+          # The scanner's Python, inside the app (DESKTOP.md D2): it runs, as this
+          # chip, and its packages load, compiled parts included (TRAPS §30).
+          py="$app/Contents/Resources/python/bin/python3"
+          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; from importlib.metadata import version as v; print("Python", sys.version.split()[0], platform.machine(), "· Playwright", v("playwright"), "· requests", v("requests"), "· Pillow", v("pillow"))'
+          want=$([ "${{ matrix.arch }}" = x64 ] && echo x86_64 || echo arm64)
+          got=$(PYTHONNOUSERSITE=1 "$py" -c 'import platform; print(platform.machine())')
+          [ "$got" = "$want" ] || { echo "::error::The app's Python runs as $got, not $want"; exit 1; }
+          # scrape.py's pure functions on it: the same checks npm test runs on python3.
+          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$py" node --test \
+            tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
+            tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+
           export SIX_DEGREES_HOME="$RUNNER_TEMP/six-degrees-home" SIX_DEGREES_SMOKE=1
           export SIX_DEGREES_SMOKE_SHOT="$RUNNER_TEMP/window-${{ matrix.arch }}.png"
-          "$app/Contents/MacOS/Six Degrees" > "$RUNNER_TEMP/app.log" 2>&1 &
-          app_pid=$!
-          url=""
-          for i in $(seq 1 120); do
-            url=$(grep -o 'SIX_DEGREES_READY http://[0-9.:]*' "$RUNNER_TEMP/app.log" | awk '{print $2}' | tail -1)
-            [ -n "$url" ] && break
-            kill -0 $app_pid 2>/dev/null || { echo "::error::The app exited while starting"; cat "$RUNNER_TEMP/app.log"; exit 1; }
-            sleep 1
-          done
-          [ -n "$url" ] || { echo "::error::The app never became ready"; cat "$RUNNER_TEMP/app.log"; exit 1; }
-          echo "Running at $url"
+          start_app() {   # log file; sets app_pid and url
+            "$app/Contents/MacOS/Six Degrees" > "$1" 2>&1 &
+            app_pid=$!
+            url=""
+            for i in $(seq 1 120); do
+              url=$(grep -o 'SIX_DEGREES_READY http://[0-9.:]*' "$1" | awk '{print $2}' | tail -1)
+              [ -n "$url" ] && break
+              kill -0 $app_pid 2>/dev/null || { echo "::error::The app exited while starting"; cat "$1"; exit 1; }
+              sleep 1
+            done
+            [ -n "$url" ] || { echo "::error::The app never became ready"; cat "$1"; exit 1; }
+            echo "Running at $url"
+          }
+          quit_app() {   # jobs to check; quits the app and checks nothing of it is left
+            kill -TERM $app_pid
+            for i in $(seq 1 40); do kill -0 $app_pid 2>/dev/null || break; sleep 1; done
+            if kill -0 $app_pid 2>/dev/null; then echo "::error::The app did not quit"; exit 1; fi
+            sleep 2
+            for j in $1; do if kill -0 "$j" 2>/dev/null; then echo "::error::Job $j was left running"; exit 1; fi; done
+            if lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN; then echo "::error::The server was left running"; exit 1; fi
+            if ps -axo command | grep -F "$app/Contents/" | grep -v grep; then echo "::error::App processes were left running"; exit 1; fi
+          }
+
+          start_app "$RUNNER_TEMP/app.log"
           for p in "" paths queue setup settings api/network api/company-scores api/scraper api/settings; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url/$p"); echo "  /$p $code"
             [ "$code" = 200 ] || exit 1
           done
+          # The scanner runs on the app's own Python: nothing to install.
+          curl -s "$url/api/scraper" | APP="$app" node -e '
+            const c = JSON.parse(require("fs").readFileSync(0, "utf8")).checks;
+            console.log("  scanner:", c.pythonSource, c.pythonVersion, c.pythonPath);
+            if (c.pythonSource !== "bundled" || !c.dependencies || !c.pythonPath.startsWith(process.env.APP + "/")) process.exit(1);
+          ' || { echo "::error::The scanner isn't using the Python inside the app"; exit 1; }
 
           "$app/Contents/MacOS/Six Degrees" > "$RUNNER_TEMP/second.log" 2>&1 &
           second=$!
           for i in $(seq 1 20); do kill -0 $second 2>/dev/null || break; sleep 1; done
           if kill -0 $second 2>/dev/null; then echo "::error::A second copy kept running"; exit 1; fi
           echo "A second launch handed over and exited"
+          quit_app ""
+          # The app ran its Python (the checks above), and must not have written into itself.
+          if find "$app/Contents/Resources/python" -name __pycache__ | grep -q .; then echo "::error::Something wrote bytecode into the app's Python"; exit 1; fi
 
-          # A job to stop: the scanner's setup (pip, no LinkedIn), uncached so it runs a while.
+          # Again with the app's Python turned off (an empty SIX_DEGREES_PYTHON):
+          # the fallback that npm and source copies use, and a job to stop. The
+          # scanner's setup (pip, no LinkedIn), uncached so it runs a while.
+          SIX_DEGREES_PYTHON= start_app "$RUNNER_TEMP/app-fallback.log"
           server=$(lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN | awk 'NR==2{print $2}')
-          curl -s -X POST -H 'Content-Type: application/json' -d '{"action":"install"}' "$url/api/scraper"; echo
+          answer=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"action":"install"}' "$url/api/scraper"); echo "$answer"
+          echo "$answer" | grep -q '"ok":true' || { echo "::error::The scanner's setup didn't start"; exit 1; }
           sleep 3
-          jobs=$(pgrep -P "$server" | tr '\n' ' ')
+          jobs=$(pgrep -P "$server" | tr '\n' ' ' || true)
           echo "job processes: ${jobs:-none}"
-          kill -TERM $app_pid
-          for i in $(seq 1 40); do kill -0 $app_pid 2>/dev/null || break; sleep 1; done
-          if kill -0 $app_pid 2>/dev/null; then echo "::error::The app did not quit"; exit 1; fi
-          sleep 2
-          for j in $jobs; do if kill -0 "$j" 2>/dev/null; then echo "::error::Job $j was left running"; exit 1; fi; done
-          if lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN; then echo "::error::The server was left running"; exit 1; fi
-          if ps -axo command | grep -F "$app/Contents/" | grep -v grep; then echo "::error::App processes were left running"; exit 1; fi
-          echo "Installed from the image, opened, reached, refused a second copy, quit mid-job, left nothing."
+          [ -n "$jobs" ] || { echo "::error::No job was running to stop"; exit 1; }
+          quit_app "$jobs"
+          echo "Installed from the image, its Python works, opened, reached, refused a second copy, quit mid-job, left nothing."
         env:
           PIP_NO_CACHE_DIR: '1'
       - uses: actions/upload-artifact@v4

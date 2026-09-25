@@ -54,6 +54,16 @@ jobs:
             echo "::error::The package contains a file that must never be published (listed above)."
             exit 1
           fi
+      # Only the Mac app carries a Python (docs/brain/DESKTOP.md D2). `npx
+      # six-degrees` uses the computer's own, or downloads one when asked to on
+      # the Scan page, so none may ride along in the package.
+      - name: No Python inside
+        run: |
+          if tar -tzf *.tgz | grep -E '(^|/)(bin/python3[.0-9]*|site-packages/|lib-dynload/|libpython3[.0-9]*\.dylib)'; then
+            echo "::error::The package contains a Python (listed above). It belongs only inside the Mac app."
+            exit 1
+          fi
+          echo "No Python in the package ($(tar -tzf *.tgz | wc -l | tr -d ' ') files)."
       - name: Installs from the tarball and serves the app
         run: |
           PREFIX="$RUNNER_TEMP/prefix"

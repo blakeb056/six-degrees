@@ -12,12 +12,14 @@
 //
 // What this removes: installing Node, cloning, npm install, and typing a
 // command. The Node runtime is bundled, so the app has no prerequisites at all
-// for the CSV path — download, double-click, drop in your export.
+// for the CSV path — download, double-click, drop in your export. The Electron
+// app also carries the scanner's own Python with its packages installed
+// (bundlePython, DESKTOP.md D2), so scanning needs no install step either.
 //
-// What it does NOT remove: Python and Google Chrome, which the scraper needs.
-// Those stay runtime prerequisites and the Scan page already detects both.
-// Bundling a Chromium instead would make the scraper MORE detectable, not less,
-// which defeats the point of driving the user's real browser.
+// What it does NOT remove: Google Chrome, which the scanner drives. It stays a
+// runtime prerequisite and the Scan page already detects it. Bundling a
+// Chromium instead would make the scanner MORE detectable, not less, which
+// defeats the point of driving the user's real browser.
 //
 // Unsigned, because notarisation needs a paid Apple Developer account. macOS
 // will refuse the first launch; the user allows it once in System Settings.
@@ -25,13 +27,24 @@
 // separate "app is damaged" failure that unsigned arm64 binaries otherwise hit.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync, symlinkSync, lstatSync, renameSync, readlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  mkdirSync, rmSync, cpSync, writeFileSync, existsSync, chmodSync, readFileSync, symlinkSync, lstatSync, renameSync,
+  readlinkSync, readdirSync, openSync, readSync, closeSync, realpathSync,
+} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import {
+  standaloneBuild, downloadVerified, machoSlices, machoSlice, megabytes, IMPORTS,
+} from '../lib/scanner-python.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+// The oldest macOS the app runs on: the bundled Node 24 needs 13.5 (Electron
+// itself needs 13). Written into Info.plist, and every program in the bundled
+// Python is checked against it (checkPython).
+const MACOS_MIN = '13.5';
 
 const NODE_VERSION = process.env.BUNDLE_NODE || 'v24.21.0';
 const ARCH = process.env.BUNDLE_ARCH || (os.arch() === 'x64' ? 'x64' : 'arm64');
@@ -315,7 +328,7 @@ async function buildElectronShell() {
     darwinDarkModeSupport: true,
     // The bundled Node 24 needs macOS 13.5 (Electron itself needs 13), so say
     // so, and macOS explains it instead of the app failing to start.
-    extendInfo: { LSMinimumSystemVersion: '13.5' },
+    extendInfo: { LSMinimumSystemVersion: MACOS_MIN },
     osxSign: false,        // signed ad hoc below, after everything is in place
   });
   console.log(`  Electron ${electronVersion} (${ARCH})`);
@@ -323,12 +336,235 @@ async function buildElectronShell() {
   renameSync(path.join(built, `${APP_NAME}.app`), APP);
   rmSync(STAGE, { recursive: true, force: true });
 
+  // Put straight into the finished app, so its links are made where they stay
+  // and nothing copies them again (TRAPS §37).
+  await bundlePython(path.join(APP, 'Contents', 'Resources'));
+
   step('Signing (ad-hoc)');
   // Electron's framework and helpers must all carry the same kind of signature,
   // or macOS refuses to load them; re-signing the whole bundle ad hoc does that.
+  // --deep reaches nested bundles, not loose programs and libraries in
+  // Resources: the Python's were signed one by one first (signPython), and this
+  // seals them into the app's signature with everything else.
   run('codesign', ['--force', '--deep', '--sign', '-', APP]);
   run('codesign', ['--verify', '--deep', '--strict', APP]);
   console.log('  signed ad-hoc and verified — no Apple account needed, still unnotarised');
+}
+
+// ---- the scanner's Python (Electron app only; DESKTOP.md D2) ------------------
+// A standalone CPython from python-build-standalone, with the scanner's packages
+// installed, at Contents/Resources/python. desktop/main.mjs names it to the
+// server (SIX_DEGREES_PYTHON), which runs the scanner on it before any other
+// Python: no install step, and scanning works offline.
+//
+// Pinned twice: the Python by the release and SHA-256 in lib/scanner-python.js,
+// the packages by the hash of every file in scripts/requirements.txt. Downloads
+// are cached in ~/.cache/six-degrees-build like Node's, and checked every build.
+// Built on a Mac with the same chip (release.yml has one job per chip): pip runs
+// this Python to install into it.
+async function bundlePython(resources) {
+  const build = standaloneBuild(`darwin-${ARCH}`);
+  const xy = build.version.split('.').slice(0, 2).join('.');
+  const py = path.join(resources, 'python');
+  const lib = path.join(py, 'lib', `python${xy}`);
+
+  step(`Fetching Python ${build.version} (${ARCH})`);
+  const archive = path.join(CACHE, build.file);
+  if (existsSync(archive) && sha256File(archive) === build.sha256) {
+    console.log('  using the cached download (its SHA-256 matches the pinned one)');
+  } else {
+    rmSync(archive, { force: true });
+    await downloadVerified(build.url, archive, { sha256: build.sha256, size: build.size, idleMs: 60000 });
+    console.log(`  downloaded ${megabytes(build.size)} MB; its SHA-256 matches the pinned one`);
+  }
+  rmSync(py, { recursive: true, force: true });
+  run('tar', ['-xzf', archive, '-C', resources]);
+  const python = path.join(py, 'bin', 'python3');
+  // Only this Python's own packages and settings: nothing from the build
+  // machine's user site-packages, PYTHONPATH or pip configuration.
+  const env = {
+    HOME: os.homedir(), TMPDIR: os.tmpdir(), PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8',
+    PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1',
+  };
+  try {
+    execFileSync(python, ['-c', 'pass'], { env, stdio: 'ignore' });
+  } catch {
+    console.error(`\n  ✗ The ${ARCH} Python can't run on this Mac. Build on a Mac with that chip (release.yml does), or install Rosetta for an Intel build.\n`);
+    process.exit(1);
+  }
+
+  step('Installing the scanner\'s packages into it');
+  run(python, ['-s', '-m', 'pip', '--isolated', 'install', '--disable-pip-version-check', '--no-input',
+    '--no-warn-script-location', '--no-compile', '--index-url', 'https://pypi.org/simple',
+    '--cache-dir', path.join(CACHE, 'pip'), '--require-hashes', '--only-binary', ':all:',
+    '-r', path.join(ROOT, 'scripts', 'requirements.txt')], { env });
+  run(python, ['-s', '-m', 'pip', '--isolated', 'check', '--disable-pip-version-check'], { env });
+
+  const full = duKb(py);
+  trimPython(py, lib, xy);
+  const trimmed = duKb(py);
+  const shared = shareDriverNode(lib, resources);
+  signPython(py);
+  checkPython(py, lib, env);
+  console.log(`  Python ${build.version} and the scanner's packages: ${Math.round(full / 1024)} MB installed, `
+    + `${Math.round(trimmed / 1024)} MB after trimming, ${Math.round(duKb(py) / 1024)} MB in the app`
+    + (shared ? ' (Playwright runs on the app\'s own Node)' : ''));
+}
+
+function sha256File(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+function duKb(dir) {
+  return Number.parseInt(execFileSync('du', ['-sk', dir]).toString(), 10) || 0;
+}
+
+// Every file under `dir`, not following links.
+function* walk(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const at = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walk(at);
+    else yield { at, entry };
+  }
+}
+
+// The Mach-O programs and libraries under `dir`, as { file, slices, head }.
+function machoFiles(dir) {
+  const found = [];
+  for (const { at, entry } of walk(dir)) {
+    if (!entry.isFile()) continue;
+    const head = readAt(at, 0, 65536);
+    const slices = machoSlices(head);
+    if (slices.length) found.push({ file: at, slices });
+  }
+  return found;
+}
+
+function readAt(file, offset, length) {
+  const fd = openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(length);
+    const n = readSync(fd, buf, 0, length, offset);
+    return buf.subarray(0, n);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// What the scanner never uses, taken out to keep the download small. None of
+// it is imported by scrape.py or its packages (checkPython proves the imports
+// still load, and CI runs the scanner's pure functions on this Python):
+//   - bin/ keeps only the interpreter. pip's console scripts (idna, normalizer,
+//     playwright) name the build machine's path in their first line, and pip
+//     itself goes below: nothing installs into the app once it is built.
+//   - IDLE, tkinter and Tcl/Tk, turtle, lib2to3, ensurepip, the C headers and
+//     build files, man pages, test suites, and bytecode: without
+//     __pycache__ a module is compiled as it is imported (about 0.3 s for the
+//     scanner's), and ownPythonEnv never lets it write any into the app.
+//   - libpython's shared library: the interpreter has Python built in, so it is
+//     kept only if something inside links to it.
+function trimPython(py, lib, xy) {
+  step('Trimming what the scanner never uses');
+  const keepInBin = new Set([`python${xy}`, 'python3', 'python']);
+  for (const name of readdirSync(path.join(py, 'bin'))) {
+    if (!keepInBin.has(name)) rmSync(path.join(py, 'bin', name), { recursive: true, force: true });
+  }
+  const remove = [
+    'include', 'share', 'lib/pkgconfig',
+    ...readdirSync(path.join(py, 'lib')).filter((n) => /^(libtcl|libtk|tcl|tk|itcl|thread)/.test(n)).map((n) => `lib/${n}`),
+    ...['idlelib', 'tkinter', 'turtledemo', 'turtle.py', 'lib2to3', 'ensurepip', 'test', 'idle_test', `config-${xy}-darwin`]
+      .map((n) => path.relative(py, path.join(lib, n))),
+    ...readdirSync(path.join(lib, 'lib-dynload')).filter((n) => n.startsWith('_tkinter.')).map((n) => path.relative(py, path.join(lib, 'lib-dynload', n))),
+    ...readdirSync(path.join(lib, 'site-packages')).filter((n) => n === 'pip' || /^pip-.*\.dist-info$/.test(n))
+      .map((n) => path.relative(py, path.join(lib, 'site-packages', n))),
+  ];
+  for (const rel of remove) rmSync(path.join(py, rel), { recursive: true, force: true });
+  for (const dir of [...findDirs(py, (n) => n === '__pycache__'), ...findDirs(path.join(lib, 'site-packages'), (n) => n === 'tests')]) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  const libpython = path.join(py, 'lib', `libpython${xy}.dylib`);
+  if (existsSync(libpython)) {
+    const users = machoFiles(py).filter((m) => m.file !== libpython
+      && m.slices.some((s) => (machoSlice(readAt(m.file, s.offset, 65536)) || { dylibs: [] }).dylibs.some((d) => d.endsWith(`/libpython${xy}.dylib`))));
+    if (users.length) console.log(`  keeping libpython${xy}.dylib: ${path.relative(py, users[0].file)} links to it`);
+    else rmSync(libpython);
+  }
+}
+
+function findDirs(dir, match) {
+  const found = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const at = path.join(dir, entry.name);
+    if (match(entry.name)) found.push(at);
+    else found.push(...findDirs(at, match));
+  }
+  return found;
+}
+
+// Playwright's driver carries its own Node (about 120 MB). When that is byte
+// for byte the Node the app already bundles for its server (Playwright 1.63
+// ships Node 24.21.0, the version build-app pins), the driver's becomes a link
+// to the app's: the same program, about 40 MB less to download. When they
+// differ, the driver keeps its own. Resolves whether it shared.
+function shareDriverNode(lib, resources) {
+  const driverNode = path.join(lib, 'site-packages', 'playwright', 'driver', 'node');
+  const appNode = path.join(resources, 'node');
+  if (!existsSync(driverNode) || !existsSync(appNode)) return false;
+  if (sha256File(driverNode) !== sha256File(appNode)) {
+    console.log('  Playwright\'s Node differs from the app\'s, so the driver keeps its own');
+    return false;
+  }
+  rmSync(driverNode);
+  symlinkSync(path.relative(path.dirname(driverNode), appNode), driverNode);
+  if (realpathSync(driverNode) !== realpathSync(appNode)) throw new Error('The driver\'s link to the app\'s Node is wrong.');
+  return true;
+}
+
+// Every program and library in the Python, signed ad hoc like the rest of the
+// app. On Apple Silicon unsigned code isn't allowed to run at all.
+function signPython(py) {
+  const files = machoFiles(py).map((m) => m.file);
+  for (let i = 0; i < files.length; i += 64) {
+    // Its only chatter is "replacing existing signature", once a file.
+    mustRun('codesign', ['--force', '--sign', '-', ...files.slice(i, i + 64)], process.env, 'Signing the app\'s Python failed');
+  }
+  console.log(`  signed ${files.length} programs and libraries ad hoc`);
+}
+
+// The Python as the app will run it: every program is for this chip and this
+// app's oldest macOS, the imports load (the compiled parts too: TRAPS §30), and
+// Playwright's driver starts. Any failure fails the build.
+function checkPython(py, lib, env) {
+  step('Checking the Python inside the app');
+  const newer = (v) => {
+    const [a, b] = [String(v).split('.').map(Number), MACOS_MIN.split('.').map(Number)];
+    return (a[0] - b[0] || (a[1] || 0) - (b[1] || 0)) > 0;
+  };
+  for (const m of machoFiles(py)) {
+    const slice = m.slices.find((s) => s.arch === ARCH);
+    const rel = path.relative(py, m.file);
+    if (!slice) throw new Error(`${rel} isn't built for ${ARCH}.`);
+    const info = machoSlice(readAt(m.file, slice.offset, 65536));
+    if (info?.minos && newer(info.minos)) throw new Error(`${rel} needs macOS ${info.minos}; the app promises ${MACOS_MIN}.`);
+  }
+  const python = path.join(py, 'bin', 'python3');
+  console.log(`  ${mustRun(python, ['-s', '-c', `${IMPORTS}; import sys; from importlib.metadata import version as v; `
+    + 'print("Python", sys.version.split()[0], "· Playwright", v("playwright"), "· requests", v("requests"), "· Pillow", v("pillow"))'],
+  env, 'The scanner\'s packages don\'t load in the app\'s Python')}`);
+  const driver = path.join(lib, 'site-packages', 'playwright', 'driver');
+  console.log(`  Playwright's driver starts: ${mustRun(path.join(driver, 'node'), [path.join(driver, 'package', 'cli.js'), '--version'],
+    env, 'Playwright\'s driver doesn\'t start')}`);
+}
+
+// What a check printed, or the build stops with what went wrong.
+function mustRun(file, args, env, what) {
+  try {
+    return execFileSync(file, args, { env, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
+  } catch (err) {
+    console.error(`\n  ✗ ${what}:\n${String(err.stderr || err.message).trim().split('\n').slice(-8).map((l) => `      ${l}`).join('\n')}\n`);
+    process.exit(1);
+  }
 }
 
 // The app icon, from an SVG: sharp (already here, Next depends on it) draws it

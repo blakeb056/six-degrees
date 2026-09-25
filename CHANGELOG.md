@@ -12,6 +12,13 @@ For 0.3.1, which follows 0.3.0. When 0.3.0 is tagged, everything after this part
 under [0.3.0], and this part stays here until 0.3.1 is.
 
 #### Added
+- **The Mac app scans with nothing to install.** It carries its own Python (3.12) with the
+  scanner's packages already inside it, so the Scan page's first step is ticked from the
+  start: nothing to install, nothing to click, and setting up needs no internet. Scanning
+  still needs Google Chrome. The download grows by about 22 MB, to about 220 MB.
+  Playwright's own copy of Node isn't duplicated: it runs on the one the app already has.
+  The Python inside is signed like the rest of the app, uses only its own packages, and
+  never writes into the app.
 - **Set up the scanner** (`npx six-degrees`, or from source). On a computer with no Python
   the scanner can use (none at all, one older than 3.10, or Ubuntu's without
   `python3-venv`), the Scan page no longer ends at "install it from python.org". One

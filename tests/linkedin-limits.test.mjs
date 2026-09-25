@@ -13,6 +13,7 @@ import {
   readCooldown, liftCooldown, linkedinState, DEFAULT_LIMITS,
   budgetFileProblem, mergeTimes, mergeBudgetFiles,
 } from '../lib/linkedin-limits.js';
+import { PYTHON, noPython } from './python.mjs';
 
 const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixdeg-limits-'));
@@ -42,8 +43,8 @@ for ms in [int(a) for a in sys.argv[2:]]:
     print(int(ns['month_start_pacific'](ms / 1000) * 1000), int(ns['next_month_start_pacific'](ms / 1000) * 1000))
 `;
   const instants = [Date.UTC(2026, 8, 24, 12), Date.UTC(2027, 0, 15), Date.UTC(2026, 9, 1, 3), Date.UTC(2026, 10, 1, 7, 30)];
-  const r = spawnSync('python3', ['-c', lift, SCRAPER, ...instants.map(String)], { encoding: 'utf8' });
-  if (r.error) { t.skip('python3 is not available here'); return; }
+  const r = spawnSync(PYTHON, ['-c', lift, SCRAPER, ...instants.map(String)], { encoding: 'utf8' });
+  if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   const rows = r.stdout.trim().split('\n').map((l) => l.split(' ').map(Number));
   instants.forEach((ms, i) => {
@@ -115,8 +116,8 @@ ns = {'json': json, 'os': os, 'Path': Path}
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
 print(json.dumps(ns['search_limits']()))
 `;
-  const r = spawnSync('python3', ['-c', lift, SCRAPER], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: dir } });
-  if (r.error) { t.skip('python3 is not available here'); return; }
+  const r = spawnSync(PYTHON, ['-c', lift, SCRAPER], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: dir } });
+  if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout), { daily: 25, monthly: 500 });
   assert.deepEqual(JSON.parse(readFileSync(path.join(dir, 'scan-limits.json'), 'utf8')), { daily: 25, monthly: 500 });
@@ -244,8 +245,8 @@ ns = {'json': json, 'os': os, 'Path': Path, 'time': time, 'datetime': datetime}
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
 print(json.dumps(ns['linkedin_usage'](float(sys.argv[2]))))
 `;
-  const r = spawnSync('python3', ['-c', lift, SCRAPER, String(sec)], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: here } });
-  if (r.error) { t.skip('python3 is not available here'); return; }
+  const r = spawnSync(PYTHON, ['-c', lift, SCRAPER, String(sec)], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: here } });
+  if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   const py = JSON.parse(r.stdout);
   const js = usage(here, now);
