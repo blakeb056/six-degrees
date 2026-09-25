@@ -28,6 +28,10 @@
 | Path | Role |
 |---|---|
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
+| `lib/db-client.js` | The one database handle (`getDb()`), the data folder, the schema step, and the backup before a new version. At the start, before it opens anything, `getDb()` finishes an import staged in `import-pending/` (`lib/data-import.js`), once per server process. |
+| `lib/data-folder.js` | The data folder: what the Settings page shows about it (sizes from `lstat` only; `chrome-profile/` as there or not), the allow-list of what travels (`TRAVELLING_FILES`, `AVATAR_FILE`, shared with the `/avatars` route), and opening it in Finder. |
+| `lib/data-export.js` | Builds the `.sixdegrees` file: `VACUUM INTO`, then the manifest and the allow-listed files with their SHA-256 ([`SCHEMA.md`](SCHEMA.md)). |
+| `lib/data-import.js` | Checks an uploaded export (untrusted: SECURITY.md), rebuilds it into this version's schema in `import-pending/`, and swaps it in at the next start, step by step, after keeping what was there in `backups/`. Also what the page says about restarting. |
 | `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
 | `lib/scoring.js` | **The scoring model: the only one.** Titles, companies, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
 | `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` writes `lib/scoring.js`'s results back to every row. |
@@ -68,7 +72,16 @@
 six-degrees.sqlite        the database (WAL mode)
 avatars/                  permanent WebP copies of profile photos
 chrome-profile/           the scraper's browser profile — holds a live session
+backups/                  auto-before-<version>-*.sqlite (newest five kept) and
+                          before-import-<time>.sqlite + -files/ (never pruned)
+import-pending/           an import waiting for the next start (READY, data.sqlite, files/)
+*.json                    the scanner's progress, skip lists, budget and cooldown
+venv/ pushback/           the scanner's Python add-ons; LinkedIn page dumps
 ```
+
+What an export carries is an allow-list (`lib/data-folder.js`): the database, `avatars/`
+and the six scanner files. Never `chrome-profile/`, `venv/`, `backups/`, `pushback/`,
+`app-version` or anything temporary.
 
 **`chrome-profile/` grants access to the user's LinkedIn account.** Treat it like a
 password. It is the one artifact here worth protecting.
