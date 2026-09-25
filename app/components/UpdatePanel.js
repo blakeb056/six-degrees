@@ -135,7 +135,9 @@ function GitUpdates({ local }) {
 // The Mac app and the npm package update by installing the newer release over
 // the top. "Check for updates" asks GitHub for the newest version number, on a
 // click only. The Mac app can then install it itself, on a second click; when
-// it can't (or for npm), this hands over the exact line to run instead.
+// it can't (or for npm), this hands over the exact line to run instead, saying
+// what that line would do for this copy. Where it would do harm (a network
+// kept inside the app, which the line deletes with it), it isn't offered.
 
 const ACTIVE = ['checking', 'downloading', 'verifying', 'preparing', 'restarting'];
 
@@ -149,6 +151,8 @@ function InstalledUpdates({ local }) {
   const [job, setJob] = useState(local.job || null);   // an install, while it runs
   const [starting, setStarting] = useState(false);
   const [refused, setRefused] = useState(null);         // why an install couldn't start
+  const [refusedCode, setRefusedCode] = useState(null);
+  const [refusedFallback, setRefusedFallback] = useState(undefined); // the Terminal line then (see fallbackText)
   const [gone, setGone] = useState(0);                   // polls that found no server: it is restarting
   const [slow, setSlow] = useState(false);
 
@@ -209,6 +213,8 @@ function InstalledUpdates({ local }) {
     setError(null);
     // A new check is a new start: an earlier attempt's failure no longer applies.
     setRefused(null);
+    setRefusedCode(null);
+    setRefusedFallback(undefined);
     setJob((j) => (j && ACTIVE.includes(j.phase) ? j : null));
     try {
       const { ok, d } = await post({ action: 'check-release' });
@@ -224,12 +230,18 @@ function InstalledUpdates({ local }) {
   async function install() {
     setStarting(true);
     setRefused(null);
+    setRefusedCode(null);
+    setRefusedFallback(undefined);
     setGone(0);
     setSlow(false);
     try {
       const { ok, d } = await post({ action: 'install-release' });
       if (d.job) setJob(d.job);
-      if (!ok) setRefused(d.error || 'The update could not start.');
+      if (!ok) {
+        setRefused(d.error || 'The update could not start.');
+        setRefusedCode(d.refusal || null);
+        if ('fallback' in d) setRefusedFallback(d.fallback);
+      }
     } catch (e) {
       setRefused(e.message);
     } finally {
@@ -256,16 +268,19 @@ function InstalledUpdates({ local }) {
 
   const failed = job?.phase === 'failed';
   const canInstall = mac && result?.install?.possible;
+  // The install offered a version, and a newer one has come out since, or it
+  // was never offered one on this server: the answer is a new check, not "Try again".
+  const needsCheck = (failed && job.code === 'stale-check') || refusedCode === 'not-checked';
+  // What the Terminal line would do here (lib/updater.js terminalFallback);
+  // null for the Mac app where it must not be offered.
+  const fallback = refusedFallback !== undefined ? refusedFallback : result?.fallback;
   // The Terminal line: always for npm and source copies, and for the Mac app
   // whenever it can't install the update itself, or the last time it tried
-  // didn't work (so a second try that fails the same way isn't the only way).
-  const showLine = result?.newer && (!canInstall || failed || refused || local.lastUpdate?.tone === 'bad');
-
-  const how = mac
-    ? `${canInstall ? 'Or paste this into Terminal.' : 'Paste this into Terminal instead.'} It closes this app, puts the new version in its place and opens it. Your network stays where it is.`
-    : local.kind === 'source'
-      ? 'A copy built from the source code updates by fetching the code and building it again, which it can\'t do while it runs. Stop it (Ctrl-C), then run this in the six-degrees folder. Your network stays where it is.'
-      : 'This copy runs inside the terminal that started it, so it can\'t replace itself while it runs. Stop it first (Ctrl-C), then run this to start the newest version. Your network stays where it is.';
+  // didn't work (so a second try that fails the same way isn't the only way),
+  // except where the line would do harm.
+  const showLine = result?.newer && (!mac || fallback)
+    && (!canInstall || failed || refused || local.lastUpdate?.tone === 'bad');
+  const how = fallbackText({ mac, kind: local.kind, canInstall, fallback });
 
   return (
     <Section id="updates" title="Updates">
@@ -301,24 +316,37 @@ function InstalledUpdates({ local }) {
                     backup of it is made first.
                   </Body>
                   <Row>
-                    <Btn onClick={install} disabled={starting} primary>
-                      {starting ? 'Starting…' : failed || refused ? 'Try again' : 'Install and restart'}
-                    </Btn>
+                    {needsCheck ? (
+                      <Btn onClick={check} disabled={busy} primary>{busy ? 'Checking…' : 'Check again'}</Btn>
+                    ) : (
+                      <Btn onClick={install} disabled={starting} primary>
+                        {starting ? 'Starting…' : failed || refused ? 'Try again' : 'Install and restart'}
+                      </Btn>
+                    )}
                     <WhatChanged url={result.latest.url} />
                   </Row>
                 </>
               )}
+              {mac && !canInstall && result.install?.reason && <Body>{result.install.reason}</Body>}
               {showLine && (
                 <>
-                  {mac && !canInstall && result.install?.reason && <Body>{result.install.reason}</Body>}
                   <Body>{how}</Body>
-                  <pre style={pre}>{local.command}</pre>
-                  <Row>
-                    <Btn onClick={copy} primary={!canInstall}>{copied ? 'Copied' : 'Copy'}</Btn>
-                    {!canInstall && <WhatChanged url={result.latest.url} />}
-                  </Row>
+                  {local.testReleases ? (
+                    // The line installs the real release from GitHub, not the
+                    // test one, into Applications: over the copy someone uses.
+                    <pre style={pre}>Not shown in test mode: it would install the real release from GitHub into Applications.</pre>
+                  ) : (
+                    <>
+                      <pre style={pre}>{local.command}</pre>
+                      <Row>
+                        <Btn onClick={copy} primary={!canInstall}>{copied ? 'Copied' : 'Copy'}</Btn>
+                        {!canInstall && <WhatChanged url={result.latest.url} />}
+                      </Row>
+                    </>
+                  )}
                 </>
               )}
+              {!canInstall && !showLine && <Row><WhatChanged url={result.latest.url} /></Row>}
             </>
           )}
 
@@ -347,6 +375,26 @@ function InstalledUpdates({ local }) {
 }
 
 const megabytes = (bytes) => Math.max(1, Math.round(bytes / 1e6));
+
+// What the Terminal line does, for this copy. For the Mac app that depends on
+// where it is (lib/updater.js terminalFallback): install.sh replaces the app in
+// Applications, and anywhere else it installs a second copy there, which only
+// opens once this one has quit (one copy runs at a time).
+function fallbackText({ mac, kind, canInstall, fallback }) {
+  if (!mac) {
+    return kind === 'source'
+      ? 'A copy built from the source code updates by fetching the code and building it again, which it can\'t do while it runs. Stop it (Ctrl-C), then run this in the six-degrees folder. Your network stays where it is.'
+      : 'This copy runs inside the terminal that started it, so it can\'t replace itself while it runs. Stop it first (Ctrl-C), then run this to start the newest version. Your network stays where it is.';
+  }
+  if (!fallback) return null;
+  const data = fallback.dataDir
+    ? ` It opens the new version on the usual data folder, not on ${fallback.dataDir}: to use that one, quit it and open it again with --data-dir, as you opened this one.`
+    : '';
+  if (fallback.mode === 'replace') {
+    return `${canInstall ? 'Or paste this into Terminal.' : 'Paste this into Terminal instead.'} It closes this app, puts the new version in its place and opens it. Your network stays where it is.${data}`;
+  }
+  return `${canInstall ? 'Or copy' : 'Copy'} this line, quit Six Degrees, then paste it into Terminal. It installs the new version at ${fallback.installsTo}, not where this copy is, and opens it: use that one from then on. Your network stays where it is.${data}`;
+}
 
 function Progress({ job, restarting, slow, onCancel }) {
   const pct = job.total ? Math.min(100, Math.round((job.received / job.total) * 100)) : null;

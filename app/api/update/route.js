@@ -1,14 +1,16 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { accessSync, constants, existsSync } from 'node:fs';
 import { projectRoot, isGitCheckout, dataDir } from '../../../lib/paths';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { repoSlug, compareVersions, installKind, updateCommand } from '../../../lib/release';
 import {
-  bundleRefusal, dataRefusal, lastUpdateReport, planFromRelease, releaseSource, runningBundle,
+  bundleRefusal, dataRefusal, installerTarget, lastUpdateReport, planFromRelease, releaseSource, runningBundle,
+  terminalFallback,
 } from '../../../lib/updater';
 import {
-  bundleFacts, cancelUpdate, currentUpdate, macFacts, readStatusFile, startUpdate, updatePaths,
+  bundleFacts, cancelUpdate, checkedVersion, cleanLeftovers, confirmStarted, currentUpdate, macFacts,
+  othersRunningApp, readStatusFile, rememberCheck, startUpdate, updateActive, updatePaths,
 } from '../../../lib/updater-job';
 import { scanIsRunning } from '../../../lib/scan-state';
 import pkg from '../../../package.json';
@@ -123,8 +125,12 @@ function installedInfo(root) {
   if (kind === 'mac-app') {
     // How the last in-app update went (written by scripts/apply-update.sh),
     // and one in progress, so the page can pick it up again. Local files and
-    // memory only: this GET runs on every page (StaleServerBanner).
-    info.lastUpdate = lastUpdateReport(readStatusFile(updatePaths().statusFile), { runningVersion: pkg.version });
+    // memory only: this GET runs on every page (StaleServerBanner). The first
+    // one after an update also tells the helper this version has started, so
+    // it can let go of the previous one (lib/updater-job.js confirmStarted).
+    const paths = updatePaths();
+    confirmStarted(paths, pkg.version);
+    info.lastUpdate = lastUpdateReport(readStatusFile(paths.statusFile), { runningVersion: pkg.version });
     info.job = currentUpdate();
   }
   // A test's release server in place of GitHub is said out loud, never silent.
@@ -163,9 +169,34 @@ function macInstall(root) {
   }
   const bundle = runningBundle({ app: process.env.SIX_DEGREES_APP, root });
   const refusal = bundleRefusal(bundle, bundleFacts(bundle))
-    || dataRefusal({ dataDir: dataDir(), bundle })
+    || dataRefusal({ dataDir: dataDir(), bundle, dbFile: process.env.SIX_DEGREES_DB || null })
     || (helperPath(root) ? null : { code: 'no-helper', message: "This copy doesn't include the update helper, so it can't replace itself." });
   return { bundle, refusal };
+}
+
+// What the Terminal line would do for this copy, so the page can say it
+// accurately, or null where it mustn't be offered (lib/updater.js
+// terminalFallback). install.sh installs into /Applications, or ~/Applications
+// when this user can't change /Applications; only a look, nothing is written.
+function fallbackFor(bundle, refusal) {
+  let applicationsWritable = true;
+  try { accessSync('/Applications', constants.W_OK); } catch { applicationsWritable = false; }
+  return terminalFallback({
+    bundle,
+    refusalCode: refusal?.code || null,
+    installsTo: installerTarget({ applicationsWritable, home: homedir() }),
+    dataDir: customDataDir(),
+  });
+}
+
+// What an update cut off half-way left behind (lib/updater-job.js
+// cleanLeftovers), at the next check or install. Never while one runs, and
+// never at the cost of the click that asked.
+function tidyUp(bundle) {
+  if (!bundle || updateActive()) return;
+  try {
+    cleanLeftovers({ bundle, tmpRoot: tmpdir(), ...updatePaths() });
+  } catch { /* next time */ }
 }
 
 // Updating an installed copy: the Mac app or the npm package.
@@ -174,7 +205,8 @@ function macInstall(root) {
 //                   permitted click). For the Mac app it also says whether that
 //                   release can be installed from here, and if not, why not.
 //   install-release the second click, Mac app only: download, check and stage
-//                   it in the background (lib/updater-job.js), then restart
+//                   the version the check offered, in the background
+//                   (lib/updater-job.js), then restart
 //   update-status   how that is going (local, no network)
 //   cancel-install  stop it, until it restarts
 async function installedPost(action, root) {
@@ -189,23 +221,30 @@ async function installedPost(action, root) {
     if (!info.slug) {
       return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
     }
+    const mac = info.kind === 'mac-app' ? macInstall(root) : null;
+    if (mac) tidyUp(mac.bundle);
     try {
       const latest = await latestRelease(info.slug, source.apiBase);
       const newer = Boolean(latest && compareVersions(latest.version, info.version) > 0);
       let install = null;
-      if (newer && info.kind === 'mac-app') {
-        const { refusal } = macInstall(root);
-        const planned = refusal ? null : planFromRelease(latest.release, {
+      let fallback = null;
+      if (newer && mac) {
+        const planned = mac.refusal ? null : planFromRelease(latest.release, {
           currentVersion: info.version, chip: macFacts().chip, slug: info.slug, downloadBase: source.downloadBase,
         });
-        const reason = refusal?.message || planned?.refusal?.message || null;
-        install = reason ? { possible: false, reason } : { possible: true, size: planned.plan.dmg.size };
+        const why = mac.refusal || planned?.refusal || null;
+        install = why ? { possible: false, reason: why.message, code: why.code } : { possible: true, size: planned.plan.dmg.size };
+        fallback = fallbackFor(mac.bundle, mac.refusal);
       }
+      // Install installs the version this check offered and no other
+      // (lib/updater-job.js rememberCheck); none, when it offered none.
+      if (mac) rememberCheck(newer ? latest.version : null);
       return Response.json({
         ...info,
         latest: latest && { version: latest.version, url: latest.url },
         newer,
         install,
+        fallback,
       });
     } catch (e) {
       return Response.json({ error: `Could not reach GitHub (${e.message}). Try again in a moment.` }, { status: 502 });
@@ -223,31 +262,42 @@ async function installedPost(action, root) {
       return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
     }
     const { bundle, refusal } = macInstall(root);
+    const fallback = fallbackFor(bundle, refusal);
     if (refusal) {
-      return Response.json({ error: refusal.message, refusal: refusal.code, command: info.command }, { status: 409 });
+      return Response.json({ error: refusal.message, refusal: refusal.code, fallback, command: info.command }, { status: 409 });
     }
     // Quitting mid-scan would stop it half-way; the job looks again just before it restarts.
     if (scanIsRunning()) {
       return Response.json(
-        { error: 'A scan is running. Let it finish or stop it, then install the update.', command: info.command },
+        { error: 'A scan is running. Let it finish or stop it, then install the update.', fallback, command: info.command },
         { status: 409 },
       );
     }
+    // Only the version a check on this server offered (the page names none).
+    const expectVersion = checkedVersion();
+    if (!expectVersion) {
+      return Response.json(
+        { error: 'Check for updates first, then install.', refusal: 'not-checked', fallback, command: info.command },
+        { status: 409 },
+      );
+    }
+    tidyUp(bundle);
     const mac = macFacts();
     const started = startUpdate({
       slug: info.slug,
       currentVersion: info.version,
+      expectVersion,
       chip: mac.chip,
       macosVersion: mac.macosVersion,
       bundle,
       dataDir: dataDir(),
-      defaultDataDir: path.join(homedir(), '.six-degrees'),
       helper: helperPath(root),
       tmpRoot: tmpdir(),
       ...updatePaths(),
       apiBase: source.apiBase,
       downloadBase: source.downloadBase,
       scanRunning: scanIsRunning,
+      othersRunning: () => othersRunningApp(bundle),
     });
     if (started.error) return Response.json({ error: started.error, job: started.job }, { status: 409 });
     return Response.json({ job: started.job }, { status: 202 });
