@@ -599,13 +599,14 @@ function TechSection() {
             background: GRADIENT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             marginBottom: 32,
           }}>
-            P = (S &times; 0.5) + (C &times; 0.3) + B
+            P = T &times; (0.45 + 0.055 &times; C) + R + B
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
             {[
-              { sym: 'S', label: 'Seniority', desc: 'VP = 8, Director = 6, Manager = 4', weight: '50%', color: TIER.S },
-              { sym: 'C', label: 'Company Prestige', desc: 'FAANG = 9, Fortune 500 = 7', weight: '30%', color: TIER.A },
-              { sym: 'B', label: 'Circle Bonus', desc: 'Inner circle proximity boost', weight: '20%', color: TIER.B },
+              // The model in lib/scoring.js: a product, so a title counts for more at a bigger company.
+              { sym: 'T', label: 'Title', desc: 'C-suite 10, VP 9, Director 7.5, Manager 6.5', note: 'Multiplied by the company', color: TIER.S },
+              { sym: 'C', label: 'Company', desc: 'Well-known 7–10, else estimated from your network', note: 'Weight 0.5 to 1.0', color: TIER.A },
+              { sym: 'R + B', label: 'Reach & bridge', desc: 'Investor, YC, an audience in the millions; a strong circle', note: 'Up to +1.5 and +1', color: TIER.B },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: 16, borderRadius: 12, background: `${item.color}08`,
@@ -615,7 +616,7 @@ function TechSection() {
                 <div style={{ fontSize: 28, fontWeight: 900, color: item.color }}>{item.sym}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 4 }}>{item.label}</div>
                 <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>{item.desc}</div>
-                <div style={{ fontSize: 10, color: item.color, fontWeight: 700, marginTop: 8 }}>Weight: {item.weight}</div>
+                <div style={{ fontSize: 10, color: item.color, fontWeight: 700, marginTop: 8 }}>{item.note}</div>
               </div>
             ))}
           </div>
@@ -627,7 +628,7 @@ function TechSection() {
           opacity: inView ? 1 : 0, transition: 'opacity 1s ease 0.6s',
         }}>
           {[
-            { t: 'S', min: 7, color: TIER.S },
+            { t: 'S', min: 7.5, color: TIER.S },
             { t: 'A', min: 5.5, color: TIER.A },
             { t: 'B', min: 4, color: TIER.B },
             { t: 'C', min: 2.5, color: TIER.C },
