@@ -240,6 +240,19 @@ function HomeInner() {
               Scan
             </Link>}
           </div>
+          {/* Settings — also in CSV/sample mode and on phones, so updates stay reachable */}
+          {!IS_DEMO && <Link
+            href="/settings"
+            title="Settings"
+            aria-label="Settings"
+            style={{
+              width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: isMobile ? 4 : 8,
+            }}
+          >
+            {'\u2699\uFE0E'}
+          </Link>}
           {/* Notification bell */}
           {!IS_DEMO && !csvMode && <div style={{ position: 'relative', marginLeft: isMobile ? 4 : 8 }}>
             <button

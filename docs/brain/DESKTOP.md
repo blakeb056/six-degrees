@@ -101,7 +101,7 @@ Contents/Resources/python/      from D2
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,
       and only clipboard-write and full-screen permissions.
-- [x] A native menu: About, Check for Updates… (opens the Scan page's Updates panel), Edit,
+- [x] A native menu: About, Check for Updates… (opens Settings → Updates and runs the check), Settings… (⌘,), Edit,
       View, Window, and Help (GitHub, what changed, the data folder, the log).
 - [x] Packaging: `@electron/packager` (Electron 44.4.5) per chip, then the existing `.dmg`
       step, filled with `ditto` (TRAPS §37), with the app inside the image checked on every
