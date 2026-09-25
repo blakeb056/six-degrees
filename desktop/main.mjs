@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  serverExitAction,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -86,11 +87,12 @@ async function start() {
   });
   closeSync(log);
   server.on('exit', (code, signal) => {
-    if (quitting) return;
-    // Stopped by a signal from outside (the installer replacing this copy, or
-    // the system): the whole app is going, so go quietly. A crash (an exit
-    // code) is worth saying out loud.
-    if (signal) {
+    // Stopped from outside (the installer replacing this copy, or the system):
+    // the whole app is going, so go quietly. A crash is worth saying out loud.
+    // Which is which: lib.mjs serverExitAction (Next exits 143 on SIGTERM).
+    const action = serverExitAction({ code, signal, quitting });
+    if (action === 'ignore') return;
+    if (action === 'quit') {
       quitting = true;
       app.exit(0);
       return;

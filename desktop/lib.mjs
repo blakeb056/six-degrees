@@ -138,3 +138,23 @@ export function dataDirArg(argv = []) {
   }
   return null;
 }
+
+/**
+ * What the app does when its server process ends:
+ *   'ignore'  the app is quitting and stopped it itself
+ *   'quit'    it was stopped from outside (the installer, logging out): the
+ *             whole app is going, so go quietly
+ *   'report'  it crashed: say so, with the log
+ *
+ * Next catches SIGTERM and SIGINT and exits with 143 or 130 instead of dying
+ * of the signal (next/dist/server/lib/start-server.js), so a stop from outside
+ * arrives as one of those codes, not as a signal (TRAPS §39). Only a signal
+ * Next doesn't catch, like SIGKILL, arrives as a signal. Before this, a 143
+ * that came before the app had started quitting showed "Six Degrees stopped".
+ */
+export function serverExitAction({ code, signal, quitting }) {
+  if (quitting) return 'ignore';
+  if (signal) return 'quit';
+  if (code === 143 || code === 130) return 'quit';
+  return 'report';
+}

@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
 
+### Fixed
+- **No "Six Degrees stopped" error when something else closes the app.** When the
+  installer (or logging out) stops a running copy, the app's server ends with code 143
+  rather than by the signal, and the Mac app took any exit code for a crash. It now quits
+  quietly; a real crash is still reported.
+
 ### Security
 - **Pages on other local ports can no longer send the app commands.** The check that refuses
   writes from other websites trusted the browser's "same-site" label. A site ignores the

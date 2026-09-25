@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
-import { routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg } from '../desktop/lib.mjs';
+import {
+  routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  serverExitAction,
+} from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
 const noSleep = async () => {};
@@ -78,4 +81,26 @@ test('--data-dir lets a beta run against a copy of the data', () => {
   assert.equal(dataDirArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--data-dir', '/tmp/copy']), '/tmp/copy');
   assert.equal(dataDirArg(['x', '--data-dir=/tmp/copy']), '/tmp/copy');
   assert.equal(dataDirArg(['x', '-psn_0_12345']), null);
+});
+
+// When the server ends, the app either says nothing (it is quitting anyway),
+// quits quietly, or reports a crash. TRAPS §39: Next turns a SIGTERM into exit
+// code 143, so "stopped from outside" mostly arrives as a code, not a signal.
+test('the server ending while the app quits is expected: nothing to do', () => {
+  assert.equal(serverExitAction({ code: 143, signal: null, quitting: true }), 'ignore');
+  assert.equal(serverExitAction({ code: 1, signal: null, quitting: true }), 'ignore');
+});
+
+test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) or a signal', () => {
+  // install.sh, or logging out, sends SIGTERM to the server too. Next catches it
+  // and exits 143, which used to reach the "Six Degrees stopped" dialog whenever
+  // the app hadn't started quitting first (a focused window waiting on a question).
+  assert.equal(serverExitAction({ code: 143, signal: null, quitting: false }), 'quit');
+  assert.equal(serverExitAction({ code: 130, signal: null, quitting: false }), 'quit');
+  assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: false }), 'quit');
+});
+
+test('a server that crashes is reported', () => {
+  assert.equal(serverExitAction({ code: 1, signal: null, quitting: false }), 'report');
+  assert.equal(serverExitAction({ code: 0, signal: null, quitting: false }), 'report', 'a server has no reason to end by itself');
 });

@@ -805,6 +805,30 @@ indefinitely.
 
 What holds it now (`desktop/main.mjs`): it asks only when one of its windows has focus
 (someone is looking at it, so it's Cmd-Q); otherwise it stops the scan and quits.
-A server stopped by a *signal* means the whole app is going, so it quits quietly; only
-a crash (an exit code) is reported. Checked by quitting mid-job with another app in
-front: job, server and app gone in about 2 seconds. CI repeats that on every build.
+A server stopped from outside means the whole app is going, so it quits quietly; only
+a crash is reported. Checked by quitting mid-job with another app in front: job, server
+and app gone in about 2 seconds. CI repeats that on every build. (This said "stopped by
+a *signal*" until §39: Next turns the signal into an exit code.)
+
+## 39. Next turns SIGTERM into exit code 143, so "stopped from outside" looked like a crash
+
+The in-app updater's first design had the server end itself with a SIGTERM, trusting
+§38's "a server stopped by a signal quits quietly". Every update would have ended on the
+"Six Degrees stopped" error.
+
+- **Why.** The bundled server is Next's standalone `server.js`. It catches SIGTERM and
+  SIGINT, closes its connections, then calls `process.exit(143)` or `process.exit(130)`
+  (`node_modules/next/dist/server/lib/start-server.js`). The app sees an exit *code*, not
+  a signal, and `desktop/main.mjs` took every exit code for a crash. Only a signal Next
+  doesn't catch, like SIGKILL, arrived as a signal. `NEXT_MANUAL_SIG_HANDLE` turns Next's
+  handling off; nothing sets it.
+- **Where it could already bite.** `install.sh` stops a running copy by sending SIGTERM
+  to the app and its server at once. From Terminal no window has focus, so the app
+  usually starts quitting first and ignores the server's exit. With a window in focus,
+  `requestQuit` first asks the server whether a scan is running, and a 143 arriving in
+  that gap showed the error. CI never saw it: it sends SIGTERM to the app only.
+
+What holds it now: `desktop/lib.mjs` `serverExitAction()` decides, and
+`tests/desktop.test.mjs` pins it. While the app is quitting, its server's exit is
+expected. Otherwise 143, 130 and a signal mean "stopped from outside", and the app quits
+quietly; only any other code is reported as a crash.
