@@ -1,0 +1,35 @@
+import { getDb } from '../../../../lib/db-client';
+import { companyOverrides, scoringRows, sectorFocusOf } from '../../../../lib/rpc';
+import { parseSectorFocus, previewSectorFocus } from '../../../../lib/sector-focus';
+import { industryKeyOf } from '../../../../lib/companies';
+
+// Settings → Your sector, before you save: what a sector focus would change,
+// against the one saved now. It scores the network twice in memory with the
+// same inputs rescoreAll() uses and writes nothing. A POST because it takes a
+// body; the cross-site guard in middleware.js covers it like every write.
+
+export async function POST(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Send the sector focus as JSON.' }, { status: 400 });
+  }
+  let to;
+  try {
+    to = parseSectorFocus(body?.sectorFocus);
+  } catch (err) {
+    return Response.json({ error: err.message }, { status: 400 });
+  }
+  try {
+    const db = getDb();
+    return Response.json(previewSectorFocus(scoringRows(db, { withPeople: true }), {
+      overrides: companyOverrides(db),
+      industryOf: industryKeyOf,
+      from: sectorFocusOf(db),
+      to,
+    }));
+  } catch (err) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}

@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   your network is kept. What you choose there is saved with your network, so it travels
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
+- **Your sector (Settings).** Pick up to three sectors you work in and how much to lean
+  toward them. Companies in them get +1 ("lean") or +2 ("strong") on their score, never
+  above 10 and never on a score you set on Paths → Scores, so the people there rank
+  higher. Before you save, it shows how many companies and people would move, with
+  examples; saving rescores everyone, and turning it off gives back exactly the scores from
+  before. It applies to networks you've scanned: a CSV import and the sample network aren't
+  re-weighted, and the page says so when one is open. Tiers still rank how reachable
+  someone is, not people. The profile's *Your Sectors* now shows what you picked (it was
+  always empty), and Paths → Scores marks the companies your sector lifted.
 
 ### Changed
 - **Each company has one industry, used everywhere.** The curated list of 164 companies
