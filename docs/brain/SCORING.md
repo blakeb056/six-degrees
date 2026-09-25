@@ -258,7 +258,11 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   moves 120 of its 748 people up a tier and S grows from 118 to 199 of 873 rows; strong
   tech moves 220 people. Networks are often concentrated in their owner's own sector, so
   expect a broad lift more than a reshuffle. "S is the top ~3–4%" no longer holds with a
-  lean on.
+  lean on. An industry including its sectors changes this only where the directory places
+  a company outside its one industry: lean finance now also lifts Orchard Pay (tech by its
+  people's headlines, Fintech & Payments by its name), 20 people up instead of 9, S 118 →
+  132. On the synthetic network in the timing check, lean tech and finance also lift the
+  Big Four (Accounting & Tax) and UnitedHealth (Insurance).
 - `users.sectors` (free text, never written by the app) is a different thing: the
   Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
   *Your Sectors* shows the Settings choice.
@@ -416,6 +420,15 @@ points, so the title-to-circle correlation is unchanged by construction, and the
 network doesn't move (0 of 873 scores: its companies are invented, each scored for it).
 `SCORING_VERSION` stays 3 because 3 is unreleased: a 0.2.x database rescores once anyway,
 and the list stamp catches a database the unreleased build scored with the old list.
+
+**Schools read alike, functions, and industries with their sectors (still
+`SCORING_VERSION` 3):** the school rules change title points only for school-club roles
+and "major @ school" headlines (0 of the sample's 873 titles change), and the rest changes
+company scores under a sector focus only, never title points. Re-run the title-to-circle
+check on a real network with school clubs in it. A database the unreleased build scored
+keeps its old school readings until its next rescore (any import, company score or
+Settings save); a focus stamped before industries included their sectors is redone on the
+next load. The Queue and the person panel read the stored scores, so they change with them.
 
 ## Bridges
 

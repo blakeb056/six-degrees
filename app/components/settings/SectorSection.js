@@ -326,7 +326,7 @@ export default function SectorSection() {
             <li>
               An industry includes its sectors. It counts a company whose one industry it is (from the app&rsquo;s list of
               well-known companies, else its name, else what most of its people&rsquo;s headlines say) and any company in one
-              of its sectors, so Healthcare &amp; Biotech takes in a practice only the list calls Dental.
+              of its sectors: Healthcare &amp; Biotech also counts a practice that is only in Dental.
             </li>
             <li>
               A narrower sector counts a company when its name says so (Smith Family Dental), it&rsquo;s a well-known company in
