@@ -20,8 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("Dental: 42 people at 17 companies"). An industry goes by each company's one industry. A
   directory sector goes by a fixed list of words, as whole words, in the company's name or
   in the headlines of at least half of the people you know there; for a one-person company,
-  that person decides. There's no AI and nothing is sent anywhere: the same words give the
-  same answer on every computer, and anyone can add to the list. Companies in your sectors
+  that person decides. Nine sectors are work every kind of company has (HR & Recruiting,
+  Marketing & Advertising, PR & Communications, Accounting & Tax, Legal, Management
+  Consulting, Software & SaaS, AI & Data, Cybersecurity): for those a job title in a headline
+  doesn't count, so "Recruiter at Acme Widgets" doesn't make Acme a recruiting firm and
+  "Software Engineer at Chase" doesn't make a bank a software company; the company's name
+  ("Acme Staffing", "Smith CPA") or a kind of firm ("staffing agency", "law firm", "SaaS")
+  does. There's no AI and nothing is sent anywhere: the same words give the same answer on
+  every computer, and anyone can add to the list. Companies in your sectors
   get +1 ("lean") or +2 ("strong") on their score, once however many of your picks they're
   in, never above 10 and never on a score you set on Paths → Scores, so the people there
   rank higher; the working names the sector ("4 + 1 your sector: Dental"). It lifts

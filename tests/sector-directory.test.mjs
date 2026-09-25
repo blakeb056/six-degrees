@@ -42,13 +42,31 @@ test('the directory: about forty sectors, each under one of the twelve industrie
   }
   // Every industry has at least one narrower sector to expand to.
   for (const g of GROUP_KEYS) assert.ok(DIRECTORY.some((s) => s.group === g), g);
-  assert.ok(Object.isFrozen(DIRECTORY) && DIRECTORY.every((s) => Object.isFrozen(s) && Object.isFrozen(s.words)), 'nobody can change it at run time');
+  assert.ok(Object.isFrozen(DIRECTORY) && DIRECTORY.every((s) => Object.isFrozen(s) && Object.isFrozen(s.words) && (!s.roles || Object.isFrozen(s.roles))),
+    'nobody can change it at run time');
+});
+
+test('each sector is an industry or a function, and a function sector keeps its jobs apart from its kinds of firm', () => {
+  // Work every kind of company has people for: a recruiter, a marketer, an
+  // accountant, a lawyer, a consultant, an engineer or a data scientist works
+  // at a firm in that line and at Acme Widgets alike.
+  const functions = ['software', 'ai-data', 'cybersecurity', 'accounting', 'marketing-advertising', 'pr-comms', 'legal',
+    'management-consulting', 'hr-recruiting'];
+  assert.deepEqual(DIRECTORY.filter((s) => s.kind === 'function').map((s) => s.key).sort(), [...functions].sort());
+  for (const s of DIRECTORY) {
+    assert.ok(['industry', 'function'].includes(s.kind), `${s.key}: kind is industry or function`);
+    // An industry sector keeps its job titles in words: a dentist works in dental.
+    if (s.kind === 'industry') assert.equal(s.roles, undefined, `${s.key} lists its jobs in words`);
+    else assert.ok(s.words.length && s.roles.length, `${s.key} has kinds of firm and jobs`);
+  }
+  assert.equal(sectorByKey('hr-recruiting').kind, 'function');
+  assert.equal(sectorByKey('dental').kind, 'industry');
 });
 
 test('the directory: every word is a real whole-word phrase, and none is a word every field uses', () => {
   for (const s of DIRECTORY) {
     const seen = new Set();
-    for (const [field, list] of [['words', s.words], ['names', s.names || []], ['not', s.not || []]]) {
+    for (const [field, list] of [['words', s.words], ['roles', s.roles || []], ['names', s.names || []], ['not', s.not || []]]) {
       for (const w of list) {
         assert.ok(!/[()]/.test(w.replace(/\(s\)$/, '')), `${s.key}.${field}: "(s)" goes at the end only: ${w}`);
         assert.ok(!w.includes('$'), `${s.key}.${field}: "$" is for companies: ${w}`);
@@ -64,7 +82,7 @@ test('the directory: every word is a real whole-word phrase, and none is a word 
       }
     }
     // A sector that cancelled its own word could never match it.
-    const words = new Set(s.words.flatMap((w) => (w.endsWith('(s)') ? [w.slice(0, -3), `${w.slice(0, -3)}s`] : [w])).map((w) => wordsOf(w).join(' ')));
+    const words = new Set([...s.words, ...(s.roles || [])].flatMap((w) => (w.endsWith('(s)') ? [w.slice(0, -3), `${w.slice(0, -3)}s`] : [w])).map((w) => wordsOf(w).join(' ')));
     for (const n of s.not || []) assert.ok(!words.has(wordsOf(n.replace(/\(s\)$/, '')).join(' ')), `${s.key} cancels its own word "${n}"`);
     for (const c of s.companies) {
       assert.ok(!/\$./.test(c), `${s.key}.companies: "$" goes at the end only: ${c}`);
@@ -82,7 +100,7 @@ test('picks are the twelve industries, each followed by its sectors, and each ha
   assert.deepEqual(SECTOR_KEYS.filter((k) => GROUP_KEYS.includes(k)), GROUP_KEYS);
   assert.deepEqual(SECTOR_KEYS.slice(SECTOR_KEYS.indexOf('health'), SECTOR_KEYS.indexOf('health') + 3), ['health', 'hospitals', 'dental']);
   const health = INDUSTRIES.find((g) => g.key === 'health');
-  assert.deepEqual(sectorByKey('dental'), { key: 'dental', label: 'Dental', color: health.color, group: 'health', kind: 'sector' });
+  assert.deepEqual(sectorByKey('dental'), { key: 'dental', label: 'Dental', color: health.color, group: 'health', kind: 'industry' });
   assert.deepEqual(sectorByKey('health'), { key: 'health', label: health.label, color: health.color, group: 'health', kind: 'industry' });
   assert.equal(sectorByKey('astrology').label, 'Unclear');
   assert.equal(sectorLabel('real-estate'), 'Real Estate');
@@ -96,16 +114,20 @@ test('picks are the twelve industries, each followed by its sectors, and each ha
 // pair is [headline, the company it's read for].
 const EXAMPLES = {
   software: {
-    yes: ['Senior Software Engineer at Quillon', 'Full-stack developer', 'company: Quillon Software', 'company: Atlassian'],
-    no: ['Real estate developer', 'Nail tech at Quillon Salon', 'company: Boxwood Designs', 'company: Apple Hospitality REIT'],
+    yes: ['B2B SaaS founder', 'Founder at a software startup', 'company: Quillon Software', 'company: Quillon DevOps', 'company: Atlassian'],
+    no: ['Senior Software Engineer at Quillon', 'Full-stack developer', ['Software Engineer at Chase', 'JPMorgan Chase'], 'Real estate developer',
+      'Nail tech at Quillon Salon', 'company: Boxwood Designs', 'company: Apple Hospitality REIT'],
   },
   'ai-data': {
-    yes: ['Machine Learning Engineer', 'Data Scientist at Quillon', 'company: Quillon AI', 'company: Anthropic'],
-    no: ['Marketing Director | AI enthusiast', 'NLP Practitioner and life coach', 'Attorney | LLM in Taxation', 'company: Snowflake Bakery'],
+    yes: ['Founder of an AI startup', 'Research scientist at an AI lab', 'company: Quillon AI', 'company: Quillon Machine Learning',
+      'company: Anthropic'],
+    no: ['Machine Learning Engineer', 'Data Scientist at Quillon', ['Data Analyst at Pinecrest Foods', 'Pinecrest Foods'],
+      'Marketing Director | AI enthusiast', 'NLP Practitioner and life coach', 'Attorney | LLM in Taxation', 'company: Snowflake Bakery'],
   },
   cybersecurity: {
-    yes: ['SOC Analyst', 'Penetration Tester at Quillon', 'CISSP | Security Engineer', 'company: CrowdStrike'],
-    no: ['Security Guard at Quillon Mall', 'Cyber Monday deals lead'],
+    yes: ['Founder, cybersecurity startup', 'MSSP owner', 'company: Quillon Cyber', 'company: CrowdStrike'],
+    no: ['SOC Analyst', 'CISSP | Security Engineer', ['Penetration Tester at Chase', 'JPMorgan Chase'], 'Security Guard at Quillon Mall',
+      'Cyber Monday deals lead'],
   },
   telecom: {
     yes: ['RF Engineer at Quillon Wireless', '5G network planner', 'company: Verizon', 'company: AT&T'],
@@ -132,8 +154,9 @@ const EXAMPLES = {
     no: ["company: Nationwide Children's Hospital", 'Mortgage Underwriter'],
   },
   accounting: {
-    yes: ['CPA | Tax Manager at Quillon & Co', 'Staff Accountant', 'Bookkeeper', 'company: Grant Thornton'],
-    no: ['Taxi driver', 'Air Traffic Controller'],
+    yes: ['Audit Senior | Big 4', 'Partner at a CPA firm', 'company: Smith CPA', 'company: Quillon Accounting', 'company: Grant Thornton'],
+    no: ['Staff Accountant', 'CPA | Tax Manager at Quillon & Co', 'Bookkeeper', ['Accountant at Pinecrest Foods', 'Pinecrest Foods'],
+      'Taxi driver', 'Air Traffic Controller'],
   },
   crypto: {
     yes: ['Blockchain Developer', 'Web3 founder', 'DeFi researcher', 'company: Coinbase'],
@@ -173,12 +196,15 @@ const EXAMPLES = {
     no: ['company: University Federal Credit Union', 'company: College Park Realty', 'company: Purdue Pharma'],
   },
   'marketing-advertising': {
-    yes: ['Digital Marketing Manager', 'SEO Specialist', 'company: Quillon Marketing Agency', 'company: Ogilvy'],
-    no: ['Account Executive at Quillon', 'Brand ambassador', 'company: McCann Construction'],
+    yes: ['Account Director at a creative agency', 'Founder | Digital marketing agency', 'company: Quillon Marketing Agency',
+      'company: Quillon SEO', 'company: Ogilvy'],
+    no: ['Digital Marketing Manager', 'SEO Specialist', ['Marketing Manager at Bright Smiles Dental', 'Bright Smiles Dental'],
+      'Account Executive at Quillon', 'Brand ambassador', 'company: McCann Construction'],
   },
   'pr-comms': {
-    yes: ['Public Relations Manager', 'Director of Communications', 'company: Quillon PR', 'company: Edelman'],
-    no: ['company: Charter Communications', 'Unified Communications Engineer', 'company: Edelman Financial Engines'],
+    yes: ['Founder of a boutique PR firm', 'Account Director at a PR agency', 'company: Quillon PR', 'company: Quillon Comms', 'company: Edelman'],
+    no: ['Public Relations Manager', 'Director of Communications', 'company: Charter Communications', 'Unified Communications Engineer',
+      'company: Edelman Financial Engines'],
   },
   'media-publishing': {
     yes: ['Journalist at the Orlando Sentinel', 'Managing Editor', 'company: Quillon Publishing', 'company: The New York Times'],
@@ -245,16 +271,21 @@ const EXAMPLES = {
     no: ['company: State of Mind Media', 'company: City of Hope', 'Student Government President'],
   },
   legal: {
-    yes: ['Attorney at Smith & Jones', 'Paralegal', 'company: Quillon Law Group', 'company: Kirkland & Ellis'],
-    no: ['company: Lawson Group', ['General Counsel at Quillon', 'Quillon'], 'Law Enforcement Officer'],
+    yes: [['Attorney | Partner at Jones Law Group', 'Jones Law Group'], 'Associate at a law firm', 'company: Quillon Law Group',
+      'company: Smith Legal', 'company: Kirkland & Ellis'],
+    no: ['Attorney at Smith & Jones', 'Paralegal', 'company: Lawson Group', ['General Counsel at Quillon', 'Quillon'], 'Law Enforcement Officer'],
   },
   'management-consulting': {
-    yes: ['Management Consultant', 'Strategy Consultant at Quillon Advisors', 'company: McKinsey & Company', 'company: Bain & Company'],
-    no: ['company: Bain Capital', 'IT Consultant', 'Customer Engagement Manager'],
+    yes: ['Associate | Management Consulting', 'Strategy consulting at Quillon Advisors', 'company: McKinsey & Company',
+      'company: Bain & Company'],
+    no: ['Management Consultant', 'Strategy Consultant at Quillon Advisors', 'company: Bain Capital', 'IT Consultant',
+      'Customer Engagement Manager'],
   },
   'hr-recruiting': {
-    yes: ['Technical Recruiter', 'HR Business Partner', 'company: Quillon Staffing', 'company: Robert Half'],
-    no: ['company: 24 Hr Fitness Club', 'Talent show host'],
+    yes: ['Owner of a staffing agency', 'Executive Search Partner', 'company: Quillon Staffing', 'company: Acme Recruiting',
+      'company: Robert Half'],
+    no: ['Technical Recruiter', 'HR Business Partner', ['Recruiter at Acme Widgets', 'Acme Widgets'], 'company: 24 Hr Fitness Club',
+      'Talent show host'],
   },
   'real-estate': {
     yes: ['Realtor at Keller Williams', 'Property Manager', 'company: Smith Real Estate Group', 'company: Quillon Properties'],
@@ -340,13 +371,13 @@ test('a headline counts what it says now, and not who someone serves', () => {
   assert.deepEqual(sectorsInHeadline('Engineer at Quillon | Ex-Dentist'), []);
   assert.deepEqual(sectorsInHeadline('Former Realtor | Barista'), ['restaurants']);
   // After "for", "helping", "serving": who they work for, not what they do.
-  assert.deepEqual(sectorsInHeadline('Marketing for dentists'), ['marketing-advertising']);
+  assert.deepEqual(sectorsInHeadline('Mortgage lender for dentists'), ['banking']);
   assert.deepEqual(sectorsInHeadline('Helping dentists grow with SEO'), []);
   assert.deepEqual(sectorsInHeadline('SaaS for restaurants'), ['software']);
   assert.deepEqual(sectorsInHeadline('Director at a not-for-profit'), ['charities']);   // the phrase itself has "for"
   // A phrase that cancels a sector cancels it for the text it's in.
   assert.deepEqual(sectorsInHeadline('Volunteer at the Food Bank'), ['charities']);
-  assert.deepEqual(sectorsInHeadline('Criminal Defense Attorney'), ['legal']);
+  assert.deepEqual(sectorsInHeadline('Criminal Defense Law Firm'), ['legal']);
 });
 
 test('a part of a headline that names a company counts for that company; side notes don\'t count', () => {
@@ -356,7 +387,7 @@ test('a part of a headline that names a company counts for that company; side no
   // The parts before the first company describe that role…
   assert.deepEqual(sectorsInHeadline('Dentist | Owner at Smith Family Practice', 'Smith Family Practice'), ['dental']);
   // …and what comes after it is a side note.
-  assert.deepEqual(sectorsInHeadline('Marketing Director at Quillon | Soccer mom | Podcaster', 'Quillon'), ['marketing-advertising']);
+  assert.deepEqual(sectorsInHeadline('Dental Hygienist at Quillon | Soccer mom | Podcaster', 'Quillon'), ['dental']);
   assert.deepEqual(sectorsInHeadline('Orthodontist at Bright Smiles | Founder at SmileTech', 'SmileTech'), []);
   // A company the headline doesn't name (a company scan) gets the leading parts.
   assert.deepEqual(sectorsInHeadline('Registered Nurse | Volunteer at Second Harvest', 'Orlando Health'), ['hospitals']);
@@ -380,13 +411,35 @@ test('a company matches when at least half of its people say so, and a one-perso
   assert.deepEqual(m('Northwind', at('Northwind', 'Dentist', 'Dental Hygienist', 'Designer')), ['dental']);
   // Someone with no headline is still one of its people.
   assert.deepEqual(m('Northwind', [...at('Northwind', 'Dentist'), '', null]), []);
-  // The name decides on its own, whatever the people say; one accountant of three isn't half.
-  assert.deepEqual(m('Smith Family Dental', at('Smith Family Dental', 'Engineer', 'Designer', 'Accountant')), ['dental']);
+  // The name decides on its own, whatever the people say; one realtor of three isn't half.
+  assert.deepEqual(m('Smith Family Dental', at('Smith Family Dental', 'Engineer', 'Designer', 'Realtor')), ['dental']);
   // Nobody at all: only the name.
   assert.deepEqual(m('Smith Family Dental', []), ['dental']);
   assert.deepEqual(m('Northwind', []), []);
   // A company can match several sectors.
   assert.deepEqual(m('Quillon', at('Quillon', 'Oral Surgeon | Hospital attending')), ['hospitals', 'dental']);
+});
+
+test('a job never places a company in a function sector; its name, or a kind of firm, does', () => {
+  const m = sectorMatcher();
+  // One person each. A job every kind of company has says what they do, not what the company is.
+  assert.deepEqual(m('Acme Widgets', ['Recruiter at Acme Widgets']), []);
+  assert.deepEqual(m('Bright Smiles Dental', ['Marketing Manager at Bright Smiles Dental']), ['dental']);
+  assert.deepEqual(m('JPMorgan Chase', ['Software Engineer at Chase']), ['banking']);
+  assert.deepEqual(m('Pinecrest Foods', ['Accountant at Pinecrest Foods']), []);
+  // A company's name may use a job or a kind of firm: "Recruiter at Acme Staffing"
+  // matches by the name, since the headline alone says only what the person does.
+  assert.deepEqual(m('Acme Staffing', ['Recruiter at Acme Staffing']), ['hr-recruiting']);
+  assert.deepEqual(sectorsInHeadline('Recruiter at Acme Staffing', 'Acme Staffing'), []);
+  assert.deepEqual(m('Smith CPA', ['Accountant at Smith CPA']), ['accounting']);
+  assert.deepEqual(m('Jones Law Group', ['Attorney | Partner at Jones Law Group']), ['legal']);
+  // A kind of firm in a headline counts, like an industry's words.
+  assert.deepEqual(m('Quillon', ['Staffing agency owner at Quillon']), ['hr-recruiting']);
+  assert.deepEqual(m('Quillon', ['Founder at Quillon | B2B SaaS']), []);        // a side note after the company
+  assert.deepEqual(m('Quillon', ['B2B SaaS | Founder at Quillon']), ['software']);
+  // An industry sector keeps its jobs: a dentist works in dental, a realtor in real estate.
+  assert.deepEqual(m('Smith Family Practice', ['Dentist | Owner at Smith Family Practice']), ['dental']);
+  assert.deepEqual(m('Quillon Homes', ['Realtor at Quillon Homes']), ['real-estate']);
 });
 
 test('the same headline is read once however many companies ask', () => {
@@ -410,7 +463,7 @@ test('suggestions: the sectors most of your people work in, each person once, wi
     p('i', 'Dental Hygienist at Bright Smiles Co'),                      // 2 of Bright Smiles' 4 say dental
     p('e', 'Realtor at Keller Williams'),
     p('f', 'Realtor at Coldwell Banker'),
-    p('g', 'Software Engineer at Quillon'),
+    p('g', 'Software Engineer at Quillon'),                              // a job, so Quillon isn't software
     p('h', 'Designer | Ex-Hygienist at Smith Dental Studio'),            // a former employer isn't counted
   ];
   const read = readNetwork(rows, { industryOf: industryKeyOf, sectorsOf: sectorMatcher() });
@@ -418,7 +471,6 @@ test('suggestions: the sectors most of your people work in, each person once, wi
   assert.deepEqual(top.map((s) => [s.key, s.people, s.companies]), [
     ['dental', 5, 3],          // a, b, c, d, i at Smith Family Practice, Bright Smiles, Smith Family Dental
     ['real-estate', 2, 2],     // Coldwell Banker is real estate, not banking
-    ['software', 1, 1],
   ]);
   assert.deepEqual(top[0], { key: 'dental', label: 'Dental', group: 'health', people: 5, companies: 3 });
   assert.deepEqual(suggestSectors(rows, read, { limit: 1 }).map((s) => s.key), ['dental']);

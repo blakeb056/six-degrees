@@ -31,13 +31,19 @@ const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? 
 // Each industry's narrower sectors, in the directory's order.
 const SECTORS_OF = new Map(INDUSTRIES.map((g) => [g.key, DIRECTORY.filter((s) => s.group === g.key)]));
 const GROUP_OF = new Map(DIRECTORY.map((s) => [s.key, s.group]));
-// What the search box looks through: each sector's name, its words and its
-// companies, as they read (without the list's "(s)" and "$" marks).
+// What the search box looks through: each sector's name, its words, jobs and
+// companies, as they read (without the list's "(s)" and "$" marks), so
+// "recruiter" finds HR & Recruiting.
 const SEARCHABLE = DIRECTORY.map((s) => ({
   sector: s,
   label: s.label.toLowerCase(),
-  words: [...s.words, ...(s.names || []), ...s.companies].map((w) => ` ${w.replace(/\(s\)$|\$$/, '').toLowerCase()}`),
+  words: [...s.words, ...(s.roles || []), ...(s.names || []), ...s.companies].map((w) => ` ${w.replace(/\(s\)$|\$$/, '').toLowerCase()}`),
 }));
+// A sector of work every company has (HR & Recruiting, Legal…) counts firms in
+// that line, not every company that employs someone doing it.
+const FUNCTION_TITLE = 'Counts firms in this line of work, not every company with someone in the job';
+const FUNCTIONS = DIRECTORY.filter((s) => s.kind === 'function').map((s) => s.label);
+const listed = (labels) => (labels.length > 1 ? `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}` : labels.join(''));
 
 /** Sectors (and whole industries) whose name has the query, or a word or company that starts with it. */
 function searchSectors(query) {
@@ -249,7 +255,7 @@ export default function SectorSection() {
               ) : (
                 <div role="group" aria-label="Sectors that match your search" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {results.industries.map((g) => chip(g.key, g.label, { note: ' · the whole industry' }))}
-                  {results.sectors.map((s) => chip(s.key, s.label, { title: `In ${sectorByKey(s.group).label}` }))}
+                  {results.sectors.map((s) => chip(s.key, s.label, { title: s.kind === 'function' ? FUNCTION_TITLE : `In ${sectorByKey(s.group).label}` }))}
                 </div>
               )}
             </div>
@@ -274,7 +280,7 @@ export default function SectorSection() {
                     {isOpen && (
                       <div id={`sectors-${g.key}`} role="group" aria-label={`Sectors in ${g.label}`}
                         style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '8px 0 2px 14px' }}>
-                        {sectors.map((s) => chip(s.key, s.label))}
+                        {sectors.map((s) => chip(s.key, s.label, s.kind === 'function' ? { title: FUNCTION_TITLE } : undefined))}
                       </div>
                     )}
                   </div>
@@ -322,6 +328,11 @@ export default function SectorSection() {
               A narrower sector counts a company when its name says so (Smith Family Dental), it&rsquo;s a well-known company in
               that sector, or at least half of the people you know there say so in their headlines (dentist, DDS, orthodontist).
               The words are a fixed list that comes with the app, the same on every computer. Nothing is sent anywhere.
+            </li>
+            <li>
+              Some sectors are work every kind of company has: {listed(FUNCTIONS)}. For those a job title doesn&rsquo;t count,
+              since a recruiter at Acme Widgets doesn&rsquo;t make it a recruiting firm. The company&rsquo;s name does (Acme
+              Staffing, Smith CPA), and so does a kind of firm in a headline (staffing agency, law firm, SaaS).
             </li>
             {onScreen && (
               <li style={{ color: '#FFD700' }}>

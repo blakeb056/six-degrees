@@ -268,9 +268,10 @@ sent anywhere, the same answer on every computer every time. Settings → Your s
 each industry with its sectors, searches them by name, word or company, and suggests the
 ones your network is in.
 
-A sector is `{key, label, group, words, names?, companies, not?}`. `key` is saved in
-people's settings. `group` is the industry it sits under, and gives it that industry's
-colour: Paths' colours don't change.
+A sector is `{key, label, group, kind, words, roles?, names?, companies, not?}`. `key` is
+saved in people's settings. `group` is the industry it sits under, and gives it that
+industry's colour: Paths' colours don't change. `kind` is `industry` or `function`
+([below](#industries-and-functions)).
 
 ### How a company matches
 
@@ -279,10 +280,11 @@ Worked out once per read of the network: `lib/rpc.js` `readForScoring()` passes
 matches ride along to `companyScore()`. Rescoring, the preview, Paths → Scores and the
 suggestions all read through it, so they agree. A company matches a sector when:
 
-1. **its name** has one of the sector's `words` (or `names`), or is one of its `companies`;
-   or
+1. **its name** has one of the sector's `words` (or `names`, or a function sector's
+   `roles`), or is one of its `companies`; or
 2. **at least half of its people in your network**, and at least one, say one of the
-   `words` in their headline. For a one-person company, that person decides.
+   `words` in their headline. For a one-person company, that person decides. A function
+   sector's `roles` don't count here.
 
 A company can match several sectors; the lean is still added once. The twelve industries
 still match by the company's one industry, as they always did: picking *Healthcare &
@@ -302,7 +304,7 @@ What a headline counts, for precision:
 
 - **What someone does now.** "Ex-", "Former" and "Retired" parts are where they were.
 - **Not who they serve.** Words after "for", "helping", "serving", "supporting" or
-  "empowering" don't count: "Marketing for dentists" is marketing, not dental.
+  "empowering" don't count: "Mortgage lender for dentists" is banking, not dental.
 - **Each part for its own company.** A part that names a company ("Host at The Growth
   Podcast") counts for that company only. The parts before the first company describe that
   role ("Dentist | Owner at Smith Family Practice"); the parts after it are side notes and
@@ -312,10 +314,38 @@ What a headline counts, for precision:
   bank" isn't banking, "travel nurse" isn't travel, "Army veteran" isn't serving now,
   "general counsel" (an in-house lawyer) doesn't make the company a law firm.
 
-The price of the one-person rule is that a word for a job every industry has (recruiter,
-accountant, marketer, software engineer) can place a small company by its one person. The
-rule is deliberate: a dentist's own practice is usually one person in your network. The
-majority keeps bigger companies honest.
+### Industries and functions
+
+The one-person rule is deliberate: a dentist's own practice is usually one person in your
+network, and the majority keeps bigger companies honest. But it used to let a job every kind
+of company has place a company by its one person: "Recruiter at Acme Widgets" made Acme HR &
+Recruiting, "Marketing Manager at Bright Smiles Dental" pulled a dental practice into
+marketing, and enough "Software Engineer at Chase" pulled a bank into software. So each
+sector has a `kind`:
+
+- **An industry sector** is a kind of business whose people's jobs say where they work: a
+  dentist works at a dental practice, a realtor at a real estate firm, a nurse at a hospital.
+  Its job titles are `words` and count everywhere. 35 of the 44.
+- **A function sector** is work every kind of company has people for: HR & Recruiting,
+  Marketing & Advertising, PR & Communications, Accounting & Tax, Legal, Management
+  Consulting, and Software & SaaS, AI & Data and Cybersecurity. Its `words` are kinds of firm
+  only (staffing agency, law firm, CPA firm, marketing agency, SaaS, AI startup, MSSP), and
+  count everywhere. Its jobs, titles and the names of the work (recruiter, recruiting,
+  attorney, accountant, tax, software engineer, JavaScript), are `roles`: they count in a
+  company's name ("Acme Recruiting", "Smith CPA", "Jones Law Group") and never in a headline.
+  So "Recruiter at Acme Staffing" matches by the name, "Attorney | Partner at Jones Law Group"
+  is Legal, and a lone "Accountant at Pinecrest Foods" is not Accounting.
+
+Software & SaaS, AI & Data and Cybersecurity are functions because banks, shops and hospitals
+all employ software engineers, data scientists and security teams (and "AI" is in every other
+headline): a company is in software when it sells software. "Software", "cybersecurity" and
+"machine learning" still say so in a company's name.
+
+The price is recall: a law firm named only for its partners ("Smith & Jones") whose people
+write "Attorney", or a startup whose engineers never write "SaaS", isn't placed in the
+function sector. Picking the broad industry still counts it by its one industry, which reads
+jobs as it always did (an attorney's firm is Consulting, Legal & Services, an engineer's
+startup Tech).
 
 **The version.** `DIRECTORY_VERSION` is a hash of the list (and of `MATCHING`, which is
 bumped by hand when the matching code changes), so any edit changes it and nobody has to
@@ -340,9 +370,11 @@ Anyone can improve the list. Precision over recall: a word that means something 
 another field lifts the wrong people, while a missing word only means no lean.
 
 1. Edit `DIRECTORY` in `lib/sector-directory.js`. Add words to a sector, or a new sector
-   under the industry it belongs to (`group`). Prefer job titles, credentials and kinds of
-   business that only this sector uses. Never a word every field uses on its own: manager,
-   director, engineer, analyst, sales, associate, partner, agent, broker, producer,
+   under the industry it belongs to (`group`) with its `kind`: a function when every kind of
+   company employs people for that work, else an industry. Prefer job titles, credentials
+   and kinds of business that only this sector uses; in a function sector, jobs go in
+   `roles` and only kinds of firm in `words`. Never a word every field uses on its own:
+   manager, director, engineer, analyst, sales, associate, partner, agent, broker, producer,
    consultant and the like (the tests refuse them). Phrases that contain one are fine
    ("oral surgeon", "wealth manager").
 2. A word that's right in a company's name but a buzzword in a headline goes in `names`.
