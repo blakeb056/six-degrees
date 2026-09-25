@@ -60,24 +60,39 @@ logged-in LinkedIn session. Never copy, sync, or commit it.
 ### Moving your data (Settings → Your data)
 
 - **An export** is one `.sixdegrees` file the user saves and carries. It is
-  built from an allow-list (the database, `avatars/`, and the scanner's six
-  progress and budget files), never from the folder minus a few things, so
-  `chrome-profile/`, `venv/`, `backups/` and `pushback/` never travel, and
-  links are never followed out of the folder. The app never uploads it. It
-  holds other people's names, headlines and photos, and the page says so.
+  built from an allow-list (the database, the photos its rows still point at,
+  and the scanner's six progress and budget files), never from the folder minus
+  a few things, so `chrome-profile/`, `venv/`, `backups/` and `pushback/` never
+  travel, and links are never followed out of the folder (a link standing in
+  for `avatars/` itself included). The app never uploads it. It holds other
+  people's names, headlines and photos, and the page says so.
 - **An import is untrusted input**: the file came from somewhere else. Before
   anything in the data folder changes, it must pass SQLite's own integrity
   check (read with `trusted_schema` off), hold only the app's own ordinary
   tables and indexes (no views, triggers, virtual tables or extra columns),
   come from this version or an older one, match its own manifest, and carry
   only allow-listed files whose names can't leave the data folder, each
-  matching its SHA-256. The network is then rebuilt into this version's own
-  schema, so only rows travel, never table definitions. It is refused while a
-  scan runs, and replacing a network that has people needs a confirmation that
-  names how many.
-- **It is applied at the next start**, never under the open database: what was
-  there is kept first in `backups/before-import-<time>.sqlite` (and its photos
-  and files beside it), and those copies are never deleted automatically.
+  matching its SHA-256. The LinkedIn budget files must also follow the rules
+  the app writes them by: limits only from the Scan page's own menu (the
+  scanner reads a daily limit of 0 as no limit at all). The network is then
+  rebuilt into this version's own schema, so only rows travel, never table
+  definitions. It is refused while a scan runs, and replacing a network that
+  has people needs a confirmation that names how many.
+- **The upload never sits in memory.** Next copies the body of every request
+  `middleware.js` sees into memory before middleware decides anything, so the
+  import route is left out of it and makes the same checks itself
+  (`lib/gate.js requestRefusal`: rebinding, cross-site, the gate) before it
+  reads a byte. The body is then written to disk as it arrives, at most
+  256 MB, and must match the size the page declared. Every other route keeps
+  Next's 10 MB limit.
+- **It is applied at the next start**, never under the open database, and never
+  while another process has it open (a second copy of Six Degrees on the same
+  folder). What was there is kept first in `backups/before-import-<time>.sqlite`
+  (and its photos and files beside it), synced to the disk and checked (SQLite's
+  quick check, and every table's row count against the original) before the
+  original is replaced; those copies are never deleted automatically. The
+  LinkedIn budget files are merged with this computer's, not replaced: they
+  belong to the account.
 
 Never commit `public/avatars/` or any exported CSV — they contain real people.
 `public/demo-data.json` is committed, but only ever as the generated synthetic

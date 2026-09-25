@@ -23,7 +23,7 @@
 | `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
-| `middleware.js` | Refuses cross-site writes on all of `/api`, then applies the destructive-route gate. |
+| `middleware.js` | Refuses requests addressed to another name, then cross-site writes, on all of `/api` and `/avatars`, then applies the destructive-route gate (`lib/gate.js requestRefusal`). Leaves out exactly `/api/data/import`, whose handlers make the same checks themselves before reading the upload (ENDPOINTS.md, "Request bodies over 10 MB"). |
 
 ## Library
 
@@ -31,10 +31,12 @@
 |---|---|
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
 | `lib/db-client.js` | The one database handle (`getDb()`), the data folder, the schema step, and the backup before a new version. At the start, before it opens anything, `getDb()` finishes an import staged in `import-pending/` (`lib/data-import.js`), once per server process. |
-| `lib/data-folder.js` | The data folder: what the Settings page shows about it (sizes from `lstat` only; `chrome-profile/` as there or not), the allow-list of what travels (`TRAVELLING_FILES`, `AVATAR_FILE`, shared with the `/avatars` route), and opening it in Finder. |
-| `lib/data-export.js` | Builds the `.sixdegrees` file: `VACUUM INTO`, then the manifest and the allow-listed files with their SHA-256 ([`SCHEMA.md`](SCHEMA.md)). |
-| `lib/data-import.js` | Checks an uploaded export (untrusted: SECURITY.md), rebuilds it into this version's schema in `import-pending/`, and swaps it in at the next start, step by step, after keeping what was there in `backups/`. Also what the page says about restarting. |
-| `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
+| `lib/data-folder.js` | The data folder: what the Settings page shows about it (sizes from `lstat` only; `chrome-profile/` as there or not), the allow-list of what travels (`TRAVELLING_FILES` = `NETWORK_FILES`, replaced by an import, + `BUDGET_FILES`, merged; `AVATAR_FILE`, shared with the `/avatars` route), and opening it in Finder. Never follows a link, even one standing in for `avatars/`. |
+| `lib/data-export.js` | Builds the `.sixdegrees` file: `VACUUM INTO`, then the manifest and the allow-listed files with their SHA-256 ([`SCHEMA.md`](SCHEMA.md)). Only the photos a row still points at. |
+| `lib/data-import.js` | Checks an upload before reading it (`admitImport`) and the file after (untrusted: SECURITY.md), rebuilds it into this version's schema in `import-pending/`, and swaps it in at the next start, step by step (a journal on the disk), after keeping what was there in `backups/`: never while another process has the database open, and only once the kept copy is synced and checks out. `RETIRED` lists names older exports may still have. Also what the page says about restarting. |
+| `lib/durable.js` | Writes that must be on the disk before the next step counts on them: sync a file, sync a folder (so a rename is), write a file whole or not at all. Node's fsync is F_FULLFSYNC on a Mac. |
+| `lib/linkedin-limits.js` | The LinkedIn search budget and cooldown, read with the scanner's rules; the Scan page's two edits; and an import's budget files, checked (`budgetFileProblem`) and merged (`mergeBudgetFiles`), since they belong to the account. |
+| `lib/gate.js` | Pure, testable auth decisions — `isRebound()`, `isCrossSiteWrite()`, `gateDecision()`, and `requestRefusal()`, all three in order: what `middleware.js` and the import route both call. |
 | `lib/scoring.js` | **The scoring model: the only one.** Titles, companies, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
 | `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` writes `lib/scoring.js`'s results back to every row. |
 | `lib/companies.js` | Companies and industries for Paths: the company index, inferred industries, company-to-company links, ways in. Reads titles and companies through `lib/scoring.js`. |
@@ -64,7 +66,7 @@
 | `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit, and starts the server again when it exits with 75 (to finish an import). |
 | `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan, `--data-dir`, what a server exit means), tested in `tests/desktop.test.mjs`. |
 | `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). Used by `build-app.mjs` (the `.icns`), `pages.yml` (the website), the README header, and `scripts/readme_buttons.py` (saved into the button pictures, so rerun it after a change). |
-| `tests/*.test.mjs` | About 230 tests on `node --test`. No test framework dependency. |
+| `tests/*.test.mjs` | About 260 tests on `node --test`. No test framework dependency. |
 
 ## Data directory
 

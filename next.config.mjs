@@ -33,16 +33,13 @@ const nextConfig = {
   // to be required at runtime.
   serverExternalPackages: ['node:sqlite'],
 
-  experimental: {
-    // middleware.js makes Next buffer every /api request body so both it and the
-    // route can read it, and past 10 MB it keeps only the first 10 MB, with a
-    // console warning and no error. An import (Settings → Your data) is one
-    // file of about 5-25 MB, so it would arrive cut short. This is the most an
-    // import accepts (MAX_IMPORT_BYTES in lib/data-import.js); the route also
-    // compares what arrived with the size the page declared. Only a body this
-    // big costs this much memory; everything else is a few KB.
-    proxyClientMaxBodySize: '512mb',
-  },
+  // experimental.proxyClientMaxBodySize stays at Next's 10 MB on purpose. Next
+  // copies the body of every request middleware.js sees into memory, up to that
+  // size, before middleware decides anything, so raising it for the one big
+  // upload (an import) would let any request, a refused cross-site one
+  // included, make the server hold that much. The import route is left out of
+  // middleware.js instead, and writes its body to disk as it arrives
+  // (docs/brain/ENDPOINTS.md, "Request bodies over 10 MB").
 };
 
 export default nextConfig;
