@@ -34,8 +34,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 //   refuseToOpen  `open` fails on it
 //   closeEarly    it opens, and closes before saying it has started
 //   stay          it keeps running for a few seconds without saying so
+//   stayByName    the same, as a program that isn't the app's but was started
+//                 by a path inside it (argv[0]), which lsof's executable misses
 // Its bundle id is a test one: nothing here ever looks like the real app.
-function makeApp(dir, version, { layout = 'electron', refuseToOpen = false, closeEarly = false, stay = false } = {}) {
+function makeApp(dir, version, {
+  layout = 'electron', refuseToOpen = false, closeEarly = false, stay = false, stayByName = false,
+} = {}) {
   const exe = layout === 'classic' ? 'six-degrees' : 'Six Degrees';
   fs.mkdirSync(path.join(dir, 'Contents', 'MacOS'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'Contents', 'Resources', layout === 'classic' ? 'app' : 'server'), { recursive: true });
@@ -54,6 +58,7 @@ function makeApp(dir, version, { layout = 'electron', refuseToOpen = false, clos
     fs.writeFileSync(path.join(dir, 'Contents', 'Resources', 'STAY'), '');
     nodeInside(dir, path.join('Contents', 'Resources', 'node'));
   }
+  if (stayByName) fs.writeFileSync(path.join(dir, 'Contents', 'Resources', 'STAY_BY_NAME'), '');
   const script = path.join(dir, 'Contents', 'MacOS', exe);
   fs.writeFileSync(script, `#!/bin/bash
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -61,6 +66,7 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 mv "$MARKERS/launched.tmp" "$MARKERS/launched"
 [ -f "$here/Resources/CLOSE_EARLY" ] && exit 0
 if [ -f "$here/Resources/STAY" ]; then exec "$here/Resources/node" -e 'setTimeout(() => {}, 7000)'; fi
+if [ -f "$here/Resources/STAY_BY_NAME" ]; then exec -a "$here/MacOS/Six Degrees" /bin/sleep 6; fi
 if [ -n "\${CONFIRM:-}" ]; then
   mkdir -p "$(dirname "$CONFIRM")"
   printf '{"version":"%s","pid":%s}\\n' "$(cat "$here/Resources/VERSION")" "$$" > "$CONFIRM"
@@ -477,6 +483,17 @@ test('a new version that runs but never says it has started is left running once
   assert.equal(s.previous, path.join(w.keep, 'Six Degrees 1.0.0.zip'), 'the old version is kept, the way back');
   assert.equal(versionAt(unzipKept(w, s.previous).app), '1.0.0');
   assert.deepEqual(leftovers(w), []);
+});
+
+test('a new version that runs is never taken for closed: a look by its path counts too, so no rollback while it runs', { skip }, async (t) => {
+  const w = world(t);
+  makeApp(w.target, '1.0.0');
+  makeApp(w.staged, '2.0.0', { stayByName: true });
+  const r = await runHelper(w, [...baseArgs(w, '1.0.0', '2.0.0', { confirmWait: 4 }), '--', '--after-update']);
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /closed before it finished starting/);
+  assert.equal(readStatus(w).outcome, 'installed');
+  assert.equal(versionAt(w.target), '2.0.0');
 });
 
 test('REGRESSION: an earlier update\'s leftovers beside the app are never used as names, or touched', { skip }, async (t) => {

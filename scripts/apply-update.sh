@@ -252,6 +252,7 @@ put_back() {   # reason
   wait_for_exit 3 2 || log "Something of the new version is still running."
   if [ -e "$target" ] || [ -L "$target" ]; then
     if ! failed="$(unused_beside failed)" || [ -e "$failed" ] || ! err="$(mv "$target" "$failed" 2>&1)"; then
+      trap - TERM INT HUP
       kept="$aside"
       write_status failed "$reason; the new version couldn't be moved out of the way (${err:-no free name for it})"
       return
@@ -275,13 +276,22 @@ put_back() {   # reason
 # (nothing runs from it, three looks in a row). 2: it still runs after
 # --confirm-wait seconds without saying so, and is left be.
 said_started() { [ -f "$confirm" ] && grep -qF "\"version\":$(json_string "$to")" "$confirm" 2>/dev/null; }
+# Anything still running from the app, for deciding it has closed. A rollback
+# must never come from a look that missed it, so a process started by its path
+# inside the app counts too (ps shows argv[0]: the Electron app and its
+# helpers are started that way). Only for this look; nothing is stopped on it.
+runs_from_app() {
+  [ -n "$(from_app)" ] && return 0
+  ps -axo comm= 2>/dev/null | A="$inside" B="$inside_real" awk '
+    index($0, ENVIRON["A"]) == 1 || index($0, ENVIRON["B"]) == 1 { found = 1 } END { exit !found }'
+}
 await_start() {
   local deadline gone=0
   deadline=$((SECONDS + confirm_wait))
   while :; do
     sleep 1
     said_started && return 0
-    if [ -z "$(from_app)" ]; then
+    if ! runs_from_app; then
       gone=$((gone + 1))
       if [ "$gone" -ge 3 ]; then
         said_started && return 0
