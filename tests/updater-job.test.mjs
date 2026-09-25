@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   startUpdate, cancelUpdate, currentUpdate, _resetUpdateForTesting, readStatusFile, launchHelper, updatePaths,
+  helperEnv, confirmStarted, cleanLeftovers, rememberCheck, checkedVersion,
 } from '../lib/updater-job.js';
 import { startTestReleaseServer } from '../scripts/test-release-server.mjs';
 
@@ -125,6 +126,7 @@ function world(t) {
   return {
     root, apps, bundle, tmpRoot, cacheDir,
     statusFile: path.join(cacheDir, 'last-update.json'),
+    confirmFile: path.join(cacheDir, 'update-confirmed.json'),
     logFile: path.join(root, 'six-degrees-update.log'),
     staged: path.join(apps, '.Six Degrees.app.incoming'),
     dataDir: path.join(root, 'my data'),
@@ -140,11 +142,11 @@ function context(w, over = {}) {
     macosVersion: '15.0',
     bundle: w.bundle,
     dataDir: w.dataDir,
-    defaultDataDir: path.join(w.root, '.six-degrees'),
     helper: HELPER,
     tmpRoot: w.tmpRoot,
     cacheDir: w.cacheDir,
     statusFile: w.statusFile,
+    confirmFile: w.confirmFile,
     logFile: w.logFile,
     apiBase: server.origin,
     downloadBase: server.origin,
@@ -231,6 +233,8 @@ test('HAPPY PATH: checks, downloads, verifies, stages beside the app, then hands
   assert.equal(at('--to'), NEW);
   assert.equal(at('--pid'), '424242');
   assert.equal(at('--work'), path.join(w.tmpRoot, work));
+  assert.equal(at('--confirm'), w.confirmFile, 'the old version is kept until the new one says it started');
+  assert.equal(at('--confirm-wait'), '600');
   assert.deepEqual(args.slice(args.indexOf('--') + 1), ['--after-update', '--data-dir', w.dataDir],
     'reopened on the same data folder, and on Settings');
 
@@ -416,7 +420,11 @@ mv "$1.tmp" "$1"
   assert.equal(value('pgid'), value('pid'), 'its own process group, so it outlives the app');
   assert.equal(value('cwd'), fs.realpathSync(w.tmpRoot));
   assert.equal(value('PATH'), '/usr/bin:/bin:/usr/sbin:/sbin');
+  // A UTF-8 locale, or ps and lsof write a non-ASCII path as escapes (TRAPS §40).
+  assert.equal(value('LANG'), 'en_US.UTF-8');
+  assert.equal(value('LC_ALL'), 'en_US.UTF-8');
   assert.deepEqual(lines.filter((l) => /^SIX_DEGREES_|^NODE_|^npm_/.test(l)), [], 'a clean environment');
+  assert.deepEqual(Object.keys(helperEnv()).sort(), ['HOME', 'LANG', 'LC_ALL', 'PATH', 'TMPDIR', ...(process.env.USER ? ['LOGNAME', 'USER'] : [])].sort());
 });
 
 test('a download that stops arriving is given up after the idle time, not a fixed total', { skip }, async (t) => {
@@ -481,6 +489,166 @@ test('QUIT MID-UPDATE: the app quitting while the image is mounted leaves nothin
   assert.equal(mountedUnder(w.root), false, 'the image was unmounted on the way out');
   assert.deepEqual(workDirs(w), [], 'the download folder is gone');
   assert.equal(fs.existsSync(w.staged), false, 'no half-copied app beside the real one');
+});
+
+test('PINNED: a release newer than the one the check offered is not installed; nothing is downloaded', { skip }, async (t) => {
+  const w = world(t);
+  // The page was shown 0.0.9; 0.0.10 came out before the click.
+  server.setRelease({ version: '0.0.10', assets: [{ name: 'Six-Degrees-0.0.10-arm64.dmg', file: dmg.good }] });
+  const { c, calls } = context(w, { expectVersion: NEW });
+  const job = await run(c);
+  assert.equal(job.phase, 'failed');
+  assert.equal(job.code, 'stale-check', 'the page offers a new check, not "Try again"');
+  assert.match(job.error, /Version 0\.0\.10 has come out since you checked, and you were offered 0\.0\.9\. Check again/);
+  assert.deepEqual(requested(), [`/repos/${SLUG}/releases/latest`]);
+  assertUntouched(w, calls, job);
+});
+
+test('PINNED: the version the check offered is installed', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release());
+  const { c, calls } = context(w, { expectVersion: NEW });
+  const job = await run(c);
+  assert.equal(job.phase, 'restarting', job.error);
+  assert.equal(calls.exit, 1);
+});
+
+test('the version a check offered is remembered by the server, never taken from the page', () => {
+  _resetUpdateForTesting();
+  assert.equal(checkedVersion(), null);
+  rememberCheck('0.2.2');
+  assert.equal(checkedVersion(), '0.2.2');
+  rememberCheck(null);
+  assert.equal(checkedVersion(), null, 'a check that offered nothing offers nothing to install');
+});
+
+test('ANOTHER USER has the app open: refused before anything is downloaded', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release());
+  const { c, calls } = context(w, { othersRunning: () => [4242] });
+  const job = await run(c);
+  assert.equal(job.phase, 'failed');
+  assert.match(job.error, /Another user of this Mac has Six Degrees open/);
+  assert.deepEqual(requested(), [`/repos/${SLUG}/releases/latest`]);
+  assertUntouched(w, calls, job);
+});
+
+test('ANOTHER USER opens it while the update downloads: refused before the hand-over, nothing changed', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release());
+  let asked = 0;
+  const { c, calls } = context(w, { othersRunning: () => (++asked > 1 ? [4242] : []) });
+  const job = await run(c);
+  assert.equal(job.phase, 'failed');
+  assert.match(job.error, /Another user of this Mac has Six Degrees open/);
+  assert.equal(asked, 2, 'asked before the download and again before the hand-over');
+  assertUntouched(w, calls, job);
+});
+
+test('the new version says it has started: only for the update to exactly its version, and once', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-confirm-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const paths = { statusFile: path.join(root, 'last-update.json'), confirmFile: path.join(root, 'update-confirmed.json') };
+  const setStatus = (v) => fs.writeFileSync(paths.statusFile, JSON.stringify(v));
+  assert.equal(confirmStarted(paths, '0.2.2'), false, 'no update at all');
+  setStatus({ outcome: 'started', from: '0.2.1', to: '0.2.2', at: new Date().toISOString() });
+  assert.equal(confirmStarted(paths, '0.2.1'), false, 'the old version, reopened: not the one being waited for');
+  assert.equal(fs.existsSync(paths.confirmFile), false);
+  assert.equal(confirmStarted(paths, '0.2.2'), true);
+  const said = readStatusFile(paths.confirmFile);
+  assert.equal(said.version, '0.2.2');
+  assert.equal(said.pid, process.pid);
+  // What the helper looks for (scripts/apply-update.sh said_started).
+  assert.ok(fs.readFileSync(paths.confirmFile, 'utf8').includes('"version":"0.2.2"'));
+  assert.equal(confirmStarted(paths, '0.2.2'), false, 'every page asks; it is written once');
+  for (const outcome of ['installed', 'rolled-back', 'not-applied', 'failed']) {
+    fs.rmSync(paths.confirmFile, { force: true });
+    setStatus({ outcome, from: '0.2.1', to: '0.2.2', at: new Date().toISOString() });
+    assert.equal(confirmStarted(paths, '0.2.2'), false, `${outcome}: the helper has finished`);
+  }
+});
+
+test('LEFTOVERS of an update cut off half-way are removed, and only those, only once nothing can use them', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-leftovers-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const apps = path.join(root, 'Applications');
+  const bundle = path.join(apps, 'Six Degrees.app');
+  const cacheDir = path.join(root, 'Caches', 'Six Degrees');
+  const tmpRoot = path.join(root, 'tmp');
+  const statusFile = path.join(cacheDir, 'last-update.json');
+  const mk = (p, file = false) => {
+    fs.mkdirSync(file ? path.dirname(p) : p, { recursive: true });
+    if (file) fs.writeFileSync(p, 'x');
+    return p;
+  };
+  mk(path.join(bundle, 'Contents'));
+  const dead = 999998;   // no helper runs with this pid (isAlive says so below)
+  const live = 999997;
+  const stale = {
+    previous: mk(path.join(apps, `.Six Degrees.app.previous-${dead}`)),
+    previous2: mk(path.join(apps, `.Six Degrees.app.previous-${dead}-2`)),
+    failed: mk(path.join(apps, `.Six Degrees.app.failed-${dead}`)),
+    incoming: mk(path.join(apps, '.Six Degrees.app.incoming')),
+    box: mk(path.join(cacheDir, '.previous-AbC123')),
+    part: mk(path.join(cacheDir, 'Six Degrees 0.2.1.zip.part'), true),
+    tmpStatus: mk(path.join(cacheDir, 'last-update.json.4242.tmp'), true),
+    work: mk(path.join(tmpRoot, 'six-degrees-update-XyZ789')),
+  };
+  const kept = {
+    helperStillRunning: mk(path.join(apps, `.Six Degrees.app.previous-${live}`)),
+    anotherApp: mk(path.join(apps, `.Other.app.previous-${dead}`)),
+    notOurs: mk(path.join(apps, 'Notes')),
+    keptZip: mk(path.join(cacheDir, 'Six Degrees 0.2.1.zip'), true),
+    status: mk(statusFile, true),
+    otherTmp: mk(path.join(tmpRoot, 'something-else')),
+  };
+  const isAlive = (pid) => pid === live;
+  const everything = () => [...Object.values(stale), ...Object.values(kept)].filter((p) => fs.existsSync(p));
+
+  // Just now: too recent for any of it, so nothing is touched.
+  assert.deepEqual(cleanLeftovers({ bundle, cacheDir, tmpRoot, statusFile, isAlive }), []);
+  assert.equal(everything().length, Object.keys(stale).length + Object.keys(kept).length);
+
+  // Twenty minutes on: what beside the app belonged to a helper that has ended; the rest waits for an hour.
+  const in20m = Date.now() + 20 * 60000;
+  assert.deepEqual(cleanLeftovers({ bundle, cacheDir, tmpRoot, statusFile, isAlive, now: in20m }).sort(),
+    [stale.failed, stale.previous, stale.previous2].sort());
+
+  // Two hours on: the rest of the leftovers, and still nothing else.
+  const in2h = Date.now() + 2 * 3600000;
+  const removed = cleanLeftovers({ bundle, cacheDir, tmpRoot, statusFile, isAlive, now: in2h });
+  assert.deepEqual(removed.sort(), [stale.incoming, stale.box, stale.part, stale.tmpStatus, stale.work].sort());
+  for (const p of Object.values(kept)) assert.ok(fs.existsSync(p), p);
+  assert.ok(fs.existsSync(bundle), 'the app itself');
+});
+
+test('LEFTOVERS: the previous version a failed update couldn\'t put back is never removed', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-leftovers-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bundle = path.join(root, 'Applications', 'Six Degrees.app');
+  const previous = path.join(root, 'Applications', '.Six Degrees.app.previous-999996');
+  fs.mkdirSync(path.join(bundle, 'Contents'), { recursive: true });
+  fs.mkdirSync(previous);
+  const statusFile = path.join(root, 'last-update.json');
+  fs.writeFileSync(statusFile, JSON.stringify({ outcome: 'failed', from: '0.2.1', to: '0.2.2', at: new Date().toISOString(), previous }));
+  assert.deepEqual(cleanLeftovers({ bundle, statusFile, isAlive: () => false, now: Date.now() + 86400000 }), []);
+  assert.ok(fs.existsSync(previous));
+});
+
+test('LEFTOVERS: a download folder whose image is still mounted is unmounted first, then removed', { skip }, async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-leftovers-'));
+  const work = path.join(root, 'six-degrees-update-MnT123');
+  const mnt = path.join(work, 'mnt');
+  fs.mkdirSync(mnt, { recursive: true });
+  t.after(() => {
+    try { execFileSync('/usr/bin/hdiutil', ['detach', mnt, '-force'], { stdio: 'ignore' }); } catch { /* not mounted */ }
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  execFileSync('/usr/bin/hdiutil', ['attach', dmg.good, '-nobrowse', '-readonly', '-noautoopen', '-mountpoint', mnt], { stdio: 'ignore' });
+  assert.equal(mountedUnder(root), true);
+  const removed = cleanLeftovers({ tmpRoot: root, now: Date.now() + 2 * 3600000 });
+  assert.deepEqual(removed, [work]);
+  assert.equal(mountedUnder(root), false, 'unmounted, never deleted into');
 });
 
 test('the updater\'s own files: the cache and TMPDIR, never the data folder', () => {

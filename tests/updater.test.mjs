@@ -9,9 +9,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import {
   chipOf, dmgName, planFromRelease, parseSha256Sums, digestsMatch, runningBundle, bundleRefusal,
   dataRefusal, stagingPath, relaunchArgs, helperArgs, versionAtLeast, machoArchs, lastUpdateReport,
-  releaseSource, UPDATE_HANDOFF_EXIT_CODE, MAX_DMG_BYTES, BUNDLE_ID, SUMS_NAME, GITHUB,
+  releaseSource, installerTarget, terminalFallback, foreignAppProcesses, leftoversBeside,
+  UPDATE_HANDOFF_EXIT_CODE, MAX_DMG_BYTES, BUNDLE_ID, SUMS_NAME, GITHUB,
 } from '../lib/updater.js';
-import { UPDATE_HANDOFF_EXIT_CODE as SHELL_EXIT_CODE, serverExitAction } from '../desktop/lib.mjs';
+import { UPDATE_HANDOFF_EXIT_CODE as SHELL_EXIT_CODE, RESTART_EXIT_CODE, serverExitAction } from '../desktop/lib.mjs';
 import { isDestructive } from '../lib/gate.js';
 
 const repoFile = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
@@ -42,17 +43,18 @@ test('the shell and the server agree on the exit code that means "quit quietly, 
   assert.equal(UPDATE_HANDOFF_EXIT_CODE, SHELL_EXIT_CODE);
   assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, quitting: false }), 'quit');
   // Next's own codes for a caught SIGTERM/SIGINT, Node's own exit codes (1-14),
-  // and 75, the data-import work's proposed "restart the server", must never collide with it.
-  assert.ok(![0, 75, 128, 130, 143].includes(UPDATE_HANDOFF_EXIT_CODE) && UPDATE_HANDOFF_EXIT_CODE > 14);
+  // and 75, the data import's "start the server again", must never collide with it.
+  assert.ok(![0, RESTART_EXIT_CODE, 128, 130, 143].includes(UPDATE_HANDOFF_EXIT_CODE) && UPDATE_HANDOFF_EXIT_CODE > 14);
 });
 
-test('releases come from GitHub, or in a test only from this computer', () => {
+test('releases come from GitHub, or in a test only from 127.0.0.1 on this computer', () => {
   assert.deepEqual(releaseSource({}), { ...GITHUB, test: false });
   assert.deepEqual(releaseSource({ SIX_DEGREES_TEST_RELEASES: 'http://127.0.0.1:3303' }),
     { apiBase: 'http://127.0.0.1:3303', downloadBase: 'http://127.0.0.1:3303', test: true });
-  assert.equal(releaseSource({ SIX_DEGREES_TEST_RELEASES: 'http://[::1]:3303/' }).apiBase, 'http://[::1]:3303');
   // Anything that could reach another machine, or smuggle a path, is ignored: GitHub it is.
+  // [::1] too: the docs and the pretend release server say 127.0.0.1, and only that is honoured.
   for (const bad of ['https://evil.example', 'http://192.168.1.5:3303', 'http://localhost:3303', 'http://127.0.0.1',
+    'http://[::1]:3303/',
     'http://127.0.0.1:3303/repos', 'http://user:pw@127.0.0.1:3303', 'file:///tmp/x', 'http://127.0.0.1.evil.example:80', 'nonsense']) {
     assert.deepEqual(releaseSource({ SIX_DEGREES_TEST_RELEASES: bad }), { ...GITHUB, test: false }, bad);
   }
@@ -211,24 +213,101 @@ test('refusals: a disk image, a translocated copy, an unwritable folder, another
 
 test('a data folder inside the app is refused: replacing the app would carry it away', () => {
   const app = '/Applications/Six Degrees.app';
-  assert.equal(dataRefusal({ dataDir: `${app}/Contents/Resources/server/data`, bundle: app }).code, 'data-inside-app');
+  const inside = dataRefusal({ dataDir: `${app}/Contents/Resources/server/data`, bundle: app });
+  assert.equal(inside.code, 'data-inside-app');
+  // It names the folder and says what to do, since no Terminal line is offered for it.
+  assert.match(inside.message, /Contents\/Resources\/server\/data/);
+  assert.match(inside.message, /move that folder out of the app/);
+  assert.match(inside.message, /--data-dir/);
   assert.equal(dataRefusal({ dataDir: '/Users/me/.six-degrees', bundle: app }), null);
   assert.equal(dataRefusal({ dataDir: '/Applications/Six Degrees.app-data', bundle: app }), null, 'a sibling is not inside');
+});
+
+test('a database kept outside the data folder (SIX_DEGREES_DB) is refused: the reopened app couldn\'t find it', () => {
+  const app = '/Applications/Six Degrees.app';
+  const dataDir = '/Users/me/.six-degrees';
+  assert.equal(dataRefusal({ dataDir, bundle: app, dbFile: '/tmp/other.sqlite' }).code, 'database-elsewhere');
+  assert.equal(dataRefusal({ dataDir, bundle: app, dbFile: `${dataDir}/six-degrees.sqlite` }), null, 'the usual place is fine');
+  assert.equal(dataRefusal({ dataDir, bundle: app, dbFile: null }), null);
+});
+
+test('the Terminal line is described as what install.sh would do for this copy, or not offered', () => {
+  const apps = installerTarget({ applicationsWritable: true, home: '/Users/me' });
+  const mine = installerTarget({ applicationsWritable: false, home: '/Users/me' });
+  assert.equal(apps, '/Applications/Six Degrees.app');
+  assert.equal(mine, '/Users/me/Applications/Six Degrees.app', 'no write access to /Applications: install.sh uses ~/Applications');
+  // The copy in Applications: install.sh stops it and replaces it.
+  assert.deepEqual(terminalFallback({ bundle: apps, installsTo: apps }), { mode: 'replace' });
+  // Anywhere else (the disk image, a translocated copy, a folder of its own, a
+  // copy in /Applications this user can't change): it installs a second copy
+  // and leaves this one running, so quit this one first.
+  for (const [bundle, code, to] of [
+    ['/Volumes/Six Degrees/Six Degrees.app', 'disk-image', apps],
+    ['/private/var/folders/x/T/AppTranslocation/1/d/Six Degrees.app', 'translocated', apps],
+    [apps, 'not-writable', mine],
+    ['/Users/me/Six-Degrees-Update-Test/Six Degrees.app', null, apps],
+  ]) {
+    assert.deepEqual(terminalFallback({ bundle, refusalCode: code, installsTo: to }), { mode: 'elsewhere', installsTo: to }, bundle);
+  }
+  // Never where it would delete a network kept inside the app, or can't carry the database.
+  assert.equal(terminalFallback({ bundle: apps, refusalCode: 'data-inside-app', installsTo: apps }), null);
+  assert.equal(terminalFallback({ bundle: '/elsewhere/Six Degrees.app', refusalCode: 'data-inside-app', installsTo: apps }), null);
+  assert.equal(terminalFallback({ bundle: apps, refusalCode: 'database-elsewhere', installsTo: apps }), null);
+  // Another user's app where install.sh would put it: it can't delete that. In ~/Applications it can install one of your own.
+  assert.equal(terminalFallback({ bundle: apps, refusalCode: 'not-owner', installsTo: apps }), null);
+  assert.deepEqual(terminalFallback({ bundle: apps, refusalCode: 'not-owner', installsTo: mine }), { mode: 'elsewhere', installsTo: mine });
+  // A data folder of its own: install.sh reopens the new version without it, so the page says so.
+  assert.deepEqual(terminalFallback({ bundle: apps, installsTo: apps, dataDir: '/Volumes/Work/data' }), { mode: 'replace', dataDir: '/Volumes/Work/data' });
+});
+
+test('other users\' copies of the app are found from ps, and nobody else\'s processes are', () => {
+  const ps = [
+    '  501   100 /Applications/Six Degrees.app/Contents/MacOS/Six Degrees',
+    '  502   200 /Applications/Six Degrees.app/Contents/MacOS/Six Degrees',
+    '  502   201 /Applications/Six Degrees.app/Contents/Frameworks/Six Degrees Helper (Renderer).app/Contents/MacOS/Six Degrees Helper (Renderer)',
+    '  502   202 next-server (v16.3.6)',
+    '  502   203 /bin/zsh',
+    '  502   204 /Users/other/Applications/Six Degrees.app/Contents/MacOS/Six Degrees',
+    '    0   205 /Applications/Six Degrees.app-old/Contents/MacOS/Six Degrees',
+    'garbage',
+  ].join('\n');
+  assert.deepEqual(foreignAppProcesses(ps, { bundles: ['/Applications/Six Degrees.app'], uid: 501 }), [200, 201]);
+  assert.deepEqual(foreignAppProcesses(ps, { bundles: ['/Applications/Six Degrees.app'], uid: 502 }), [100]);
+  assert.deepEqual(foreignAppProcesses(ps, { bundles: [], uid: 501 }), []);
+  assert.deepEqual(foreignAppProcesses(ps, { bundles: ['/Applications/Six Degrees.app'], uid: undefined }), []);
+});
+
+test('leftovers beside the app are recognised by this app\'s own names only', () => {
+  const names = [
+    'Six Degrees.app', '.Six Degrees.app.previous-4321', '.Six Degrees.app.previous-4321-2', '.Six Degrees.app.failed-77',
+    '.Six Degrees.app.incoming', '.Six Degrees.app.previous-', '.Six Degrees.app.previous-12x', '.Other.app.previous-1',
+    'Six Degrees.app.previous-5', '.Six Degrees (1).app.previous-9', 'Notes', '.DS_Store',
+  ];
+  assert.deepEqual(leftoversBeside(names, 'Six Degrees.app'), [
+    { name: '.Six Degrees.app.previous-4321', kind: 'previous', pid: 4321 },
+    { name: '.Six Degrees.app.previous-4321-2', kind: 'previous', pid: 4321 },
+    { name: '.Six Degrees.app.failed-77', kind: 'failed', pid: 77 },
+    { name: '.Six Degrees.app.incoming', kind: 'incoming', pid: null },
+  ]);
+  assert.deepEqual(leftoversBeside(names, 'Six Degrees (1).app').map((l) => l.name), ['.Six Degrees (1).app.previous-9']);
 });
 
 test('the new version waits beside the old one, hidden, in the same folder', () => {
   assert.equal(stagingPath('/Applications/Six Degrees.app'), '/Applications/.Six Degrees.app.incoming');
 });
 
-test('the new version reopens on the same data: --data-dir only when it is not the default', () => {
-  const home = '/Users/me/.six-degrees';
-  assert.deepEqual(relaunchArgs({ dataDir: home, defaultDataDir: home }), ['--after-update']);
-  assert.deepEqual(relaunchArgs({ dataDir: '/Users/me/.six-degrees/', defaultDataDir: home }), ['--after-update']);
+test('the new version reopens on the data this copy used, always named: the default folder too', () => {
+  // open passes no environment, so a copy started with SIX_DEGREES_HOME (or
+  // launchctl setenv) must be told its folder again, and so must the default:
+  // whatever launchd hands the next app is not necessarily it.
+  assert.deepEqual(relaunchArgs({ dataDir: '/Users/me/.six-degrees' }), ['--after-update', '--data-dir', '/Users/me/.six-degrees']);
+  assert.deepEqual(relaunchArgs({ dataDir: '/Users/me/.six-degrees/' }), ['--after-update', '--data-dir', '/Users/me/.six-degrees']);
   assert.deepEqual(
-    relaunchArgs({ dataDir: '/Volumes/Work/six degrees copy', defaultDataDir: home }),
+    relaunchArgs({ dataDir: '/Volumes/Work/six degrees copy' }),
     ['--after-update', '--data-dir', '/Volumes/Work/six degrees copy'],
     'one argument, spaces and all',
   );
+  assert.deepEqual(relaunchArgs({}), ['--after-update']);
 });
 
 test('the helper\'s command line carries every value, and the new app\'s arguments after "--"', () => {
@@ -237,10 +316,13 @@ test('the helper\'s command line carries every value, and the new app\'s argumen
     keepDir: '/Users/me/Library/Caches/Six Degrees', statusFile: '/Users/me/Library/Caches/Six Degrees/last-update.json',
     from: '0.2.1', to: '0.2.2', pids: [4321, 4322, 1, undefined], waitSeconds: 30,
     logFile: '/tmp/six-degrees-update.log', work: '/tmp/six-degrees-update-abc',
+    confirmFile: '/Users/me/Library/Caches/Six Degrees/update-confirmed.json', confirmWaitSeconds: 600,
     relaunch: ['--after-update', '--data-dir', '/x y'],
   });
   const at = (flag) => args[args.indexOf(flag) + 1];
   assert.equal(at('--target'), '/Applications/Six Degrees.app');
+  assert.equal(at('--confirm'), '/Users/me/Library/Caches/Six Degrees/update-confirmed.json');
+  assert.equal(at('--confirm-wait'), '600');
   assert.equal(at('--from'), '0.2.1');
   assert.equal(at('--to'), '0.2.2');
   assert.deepEqual(args.filter((_, i) => args[i - 1] === '--pid'), ['4321', '4322'], 'never launchd (1), never nothing');
@@ -300,7 +382,32 @@ test('after an update that changed nothing, or could not even put the old versio
     /didn't finish: the old version didn't close\. Nothing was changed\.$/);
   const failed = report(status({ outcome: 'failed', reason: 'x', previous: '/Applications/.Six Degrees.app.previous-99' }), '0.2.1');
   assert.equal(failed.tone, 'bad');
-  assert.match(failed.text, /Your previous version is at \/Applications\/\.Six Degrees\.app\.previous-99\./);
+  // Says the folder is hidden and how to see it, and points at a button that is there
+  // (not at a Terminal line, which only a check shows).
+  assert.match(failed.text, /in a hidden folder: \/Applications\/\.Six Degrees\.app\.previous-99\./);
+  assert.match(failed.text, /Shift-Command-\. shows hidden files/);
+  assert.match(failed.text, /Check for updates, below/);
+  assert.doesNotMatch(failed.text, /line below/);
+});
+
+test('REGRESSION: a failed update is not reported once this copy is that version or newer (the Terminal line worked)', () => {
+  // The update to 0.2.2 fails here, then the Terminal line installs 0.2.2: the
+  // failure is old news, and "your previous version was put back" is false.
+  for (const outcome of ['not-applied', 'rolled-back', 'failed']) {
+    const s = status({ outcome, reason: 'x', previous: '/Applications/.Six Degrees.app.previous-9' });
+    assert.equal(report(s, '0.2.2'), null, `${outcome}, now at 0.2.2`);
+    assert.equal(report(s, '0.2.3'), null, `${outcome}, now past it`);
+    assert.equal(report(s, '0.2.1').tone, 'bad', `${outcome}, still before it`);
+  }
+  // A hand-over whose helper never answered, when this copy is past it.
+  assert.equal(report(status({ outcome: 'started' }), '0.2.3'), null);
+});
+
+test('REGRESSION: an update that worked is not re-reported as a problem once a later one is installed', () => {
+  // 0.2.2 is installed here, then 0.2.3 with the Terminal line: "0.2.2 was
+  // installed, but this copy is 0.2.3, two copies?" would be wrong.
+  assert.equal(report(status({ outcome: 'installed' }), '0.2.3'), null);
+  assert.equal(report(status({ outcome: 'installed' }), '0.2.2').text, 'Updated to 0.2.2.');
 });
 
 test('a hand-over whose helper never answered: the running version says how it went', () => {
