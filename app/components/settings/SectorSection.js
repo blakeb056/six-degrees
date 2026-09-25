@@ -268,7 +268,7 @@ export default function SectorSection() {
                 return (
                   <div key={g.key} style={{ borderTop: LINE, padding: '8px 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                      {chip(g.key, g.label, { title: 'The whole industry: every company in it, and in any of its sectors' })}
+                      {chip(g.key, g.label, { title: 'The whole industry: companies its sectors place, or whose name or the well-known list says so' })}
                       <button type="button" aria-expanded={isOpen} aria-controls={`sectors-${g.key}`} onClick={() => flip(g.key)}
                         style={{
                           padding: '4px 6px', fontSize: 12.5, color: inside ? '#9fd3ff' : '#8b9a9a', background: 'none', border: 'none',
@@ -324,9 +324,10 @@ export default function SectorSection() {
             <li>A company score you set on <Link href="/paths?tab=scores" style={{ color: '#3498DB' }}>Paths → Scores</Link> always wins. Your sector never changes it.</li>
             <li>If you scan highest tier first, people in your sectors come up sooner. Scanning newest first, the default, doesn&rsquo;t go by tier.</li>
             <li>
-              An industry includes its sectors. It counts a company whose one industry it is (from the app&rsquo;s list of
-              well-known companies, else its name, else what most of its people&rsquo;s headlines say) and any company in one
-              of its sectors: Healthcare &amp; Biotech also counts a practice that is only in Dental.
+              An industry includes its sectors. It counts a company in any of its sectors (Healthcare &amp; Biotech counts a
+              practice that is only in Dental), and a company whose industry the app&rsquo;s list of well-known companies or
+              the company&rsquo;s own name gives (Meridian Health). Not one known only from its people&rsquo;s job titles: a
+              recruiter at Acme Widgets doesn&rsquo;t make Acme a consulting firm.
             </li>
             <li>
               A narrower sector counts a company when its name says so (Smith Family Dental), it&rsquo;s a well-known company in

@@ -1,6 +1,6 @@
 import { getDb } from '../../../lib/db-client';
 import { rescoreAll, companyOverrides, sectorFocusOf, setCompanyScores, readForScoring } from '../../../lib/rpc';
-import { companyScore, KNOWN_COMPANIES } from '../../../lib/scoring';
+import { companyScoreIn, KNOWN_COMPANIES } from '../../../lib/scoring';
 import { industryByKey } from '../../../lib/companies';
 
 // Every company in your network with the score it gets and where that score
@@ -38,11 +38,10 @@ export async function GET() {
       }
     }
     const companies = [...byName.values()].map((c) => {
-      const facts = read.companies.get(c.name);
-      const industry = industryByKey(facts?.industry);
-      const { score, source, sectorBonus = 0 } = companyScore(c.name, {
-        overrides, headcount: c.people, industry: industry.key, sectors: facts?.sectors, sectorIndustries: facts?.sectorIndustries, focus,
-      });
+      const industry = industryByKey(read.companies.get(c.name)?.industry);
+      // Scored as rescoring scores it (lib/scoring.js companyScoreIn): its
+      // headcount, industry, where that came from, and its sectors.
+      const { score, source, sectorBonus = 0 } = companyScoreIn(read, c.name, { overrides, focus });
       const known = KNOWN_COMPANIES.find(([n]) => n === c.name);
       return { ...c, score, source, sectorBonus, suggested: known ? known[1] : null, industry: { key: industry.key, label: industry.label, color: industry.color } };
     }).sort((a, b) => b.people - a.people || b.score - a.score);
