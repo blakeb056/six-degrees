@@ -24,7 +24,9 @@ This app is designed to run **on your own machine, against your own network**.
 - A localhost-bound service is still reachable by any web page you visit — the
   binding keeps other machines out, not your own browser. Every mutating API
   request is therefore refused when the browser reports it came from another
-  site (`Sec-Fetch-Site`, with `Origin` as a fallback). Command-line callers
+  site (`Sec-Fetch-Site`, with `Origin` as a fallback). That includes other
+  ports on this same machine: a page from another local app or dev server is
+  refused unless its `Origin` is exactly this app's address. Command-line callers
   such as the scanner send neither header and are unaffected.
 - Values stored in the database are treated as untrusted text and escaped
   before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)

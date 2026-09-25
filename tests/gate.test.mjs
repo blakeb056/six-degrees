@@ -94,6 +94,26 @@ test('an unparseable Origin is treated as hostile', () => {
   assert.equal(isCrossSiteWrite({ method: 'POST', origin: 'not a url', host: 'localhost:3000' }), true);
 });
 
+test('REGRESSION: a page on another port of this machine is refused', () => {
+  // A site ignores the port, so the browser calls a page at 127.0.0.1:4000
+  // 'same-site' with the app at 127.0.0.1:3000. Its Origin gives the port away.
+  assert.equal(
+    isCrossSiteWrite({ method: 'POST', secFetchSite: 'same-site', origin: 'http://127.0.0.1:4000', host: '127.0.0.1:3000' }),
+    true,
+  );
+});
+
+test('same-site with no Origin to check is refused', () => {
+  assert.equal(isCrossSiteWrite({ method: 'POST', secFetchSite: 'same-site', host: '127.0.0.1:3000' }), true);
+});
+
+test('same-site whose Origin is exactly this host and port is allowed', () => {
+  assert.equal(
+    isCrossSiteWrite({ method: 'POST', secFetchSite: 'same-site', origin: 'http://127.0.0.1:3000', host: '127.0.0.1:3000' }),
+    false,
+  );
+});
+
 test('reads are never blocked by the cross-site check', () => {
   assert.equal(isCrossSiteWrite({ method: 'GET', secFetchSite: 'cross-site', host: 'localhost:3000' }), false);
 });

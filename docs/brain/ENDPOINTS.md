@@ -42,8 +42,10 @@ that matters — a misconfigured deployment must not become a wipe vector.
 `isCrossSiteWrite()` in `lib/gate.js`, applied to every `/api` write:
 
 1. Not a write (`GET`/`HEAD`) → allowed. Reads are never blocked.
-2. `Sec-Fetch-Site` present → allow only `same-origin`, `same-site`, `none`. The browser
-   sets this and a page cannot forge it.
+2. `Sec-Fetch-Site` present → allow `same-origin` and `none`. `same-site` is allowed only
+   when `Origin` is exactly this host and port: a site ignores the port, so a page on any
+   other `127.0.0.1` port is "same-site" with the app. Anything else is refused. The
+   browser sets this header and a page cannot forge it.
 3. No `Sec-Fetch-Site`, but `Origin` present → compare hosts; an unparseable `Origin` is
    treated as hostile.
 4. Neither header → **not a browser** (curl, the Python scraper). Allowed; the loopback

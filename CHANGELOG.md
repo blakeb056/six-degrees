@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Pages on other local ports can no longer send the app commands.** The check that refuses
+  writes from other websites trusted the browser's "same-site" label. A site ignores the
+  port, so a page served by any other app or dev server on `127.0.0.1` counted as the same
+  site and could POST to `/api/update` and `/api/scraper`. A same-site write must now carry
+  an `Origin` that is exactly this app's host and port. The app's own pages are unaffected.
+
 ## [0.2.1] - 2026-09-25
 
 ### Added
