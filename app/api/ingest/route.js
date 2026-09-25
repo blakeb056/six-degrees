@@ -1,5 +1,5 @@
 import { db as supabase } from '../../../lib/db';
-import { uniqueByProfile, splitAlreadyConnected, toIsoDate } from '../../../lib/ingest';
+import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications } from '../../../lib/ingest';
 import { promoteToFirstDegree } from '../../../lib/promote';
 
 function parseHeadline(h) {
@@ -258,55 +258,23 @@ export async function POST(request) {
       } catch (e) { /* auto-detect is optional */ }
     }
 
-    // Create notifications for new connections on refresh
+    // Notifications for a refresh of your own connections: how many are new,
+    // and each new person the model scored S or A (lib/ingest.js
+    // refreshNotifications). New is what this request inserted (newRecords);
+    // their tiers are the ones the rescore above just stored.
     if (degree === 1 && records.length > 0) {
       try {
-        // Check which are actually new (not already in DB)
-        const urls = records.map(r => r.profile_url).filter(Boolean);
-        const { data: existing } = await supabase
-          .from('linkedin_connections')
-          .select('profile_url')
-          .in('profile_url', urls.slice(0, 100));
-        const existingUrls = new Set((existing || []).map(e => e.profile_url));
-        const brandNew = records.filter(r => !existingUrls.has(r.profile_url));
-
-        if (brandNew.length > 0) {
-          // Summary notification
-          await supabase.from('notifications').insert([{
-            user_id: userId || null,
-            type: 'refresh_summary',
-            title: `${brandNew.length} new connection${brandNew.length > 1 ? 's' : ''} found!`,
-            message: brandNew.slice(0, 3).map(r => r.name).join(', ') + (brandNew.length > 3 ? ` +${brandNew.length - 3} more` : ''),
-            icon: '🔄',
-          }]);
-
-          // Individual notifications for S/A tier new connections
-          const eliteNew = brandNew.filter(r => {
-            const hl = (r.headline || '').toLowerCase();
-            return hl.match(/ceo|chief|founder|president|vp|vice president|director|head of/i)
-              || hl.match(/snap|google|meta|apple|amazon|microsoft|blackrock|stripe|palantir/i);
-          });
-          if (eliteNew.length > 0) {
-            await supabase.from('notifications').insert(
-              eliteNew.slice(0, 5).map(r => ({
-                user_id: userId || null,
-                type: 'new_elite_connection',
-                title: `High-value connection: ${r.name}`,
-                message: r.headline?.substring(0, 60),
-                icon: '👑',
-              }))
-            );
-          }
-        } else {
-          // No new connections found
-          await supabase.from('notifications').insert([{
-            user_id: userId || null,
-            type: 'refresh_summary',
-            title: 'Network up to date',
-            message: `Checked ${records.length} connections — no new additions`,
-            icon: '✓',
-          }]);
+        const tiers = new Map();
+        const added = newRecords.map(r => r.profile_url);
+        for (let i = 0; i < added.length; i += 100) {
+          let q = supabase.from('linkedin_connections').select('profile_url, tier')
+            .in('profile_url', added.slice(i, i + 100)).eq('degree', 1);
+          if (userId) q = q.eq('user_id', userId);
+          const { data } = await q;
+          (data || []).forEach(r => tiers.set(r.profile_url, r.tier));
         }
+        const rows = refreshNotifications({ added: newRecords, checked: records.length, tierOf: (url) => tiers.get(url), userId });
+        await supabase.from('notifications').insert(rows);
       } catch (e) { /* notifications are optional */ }
     }
 

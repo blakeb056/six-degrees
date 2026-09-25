@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uniqueByProfile, splitAlreadyConnected } from '../lib/ingest.js';
+import { uniqueByProfile, splitAlreadyConnected, refreshNotifications } from '../lib/ingest.js';
 
 const rec = (url, name = 'Someone') => ({ profile_url: url, name });
 
@@ -46,4 +46,31 @@ test('text that is not a date gives null rather than throwing', () => {
   assert.equal(toIsoDate(null), null);
   assert.equal(toIsoDate('yesterday'), null);
   assert.equal(toIsoDate('Smarch 3, 2026'), null);
+});
+
+test('a refresh says how many are new, and names each new person the model scored S or A', () => {
+  const added = [
+    { name: 'Ada', profile_url: '/in/a', headline: 'VP Sales at Hooli' },
+    { name: 'Bo', profile_url: '/in/b', headline: 'Metadata Engineer at Initech' },
+    { name: 'Cy', profile_url: '/in/c', headline: 'CEO at Northwind' },
+    { name: 'Di', profile_url: '/in/d', headline: 'Engineer at Snap-on' },
+  ];
+  const tiers = { '/in/a': 'A', '/in/b': 'C', '/in/c': 'S', '/in/d': 'C' };
+  const out = refreshNotifications({ added, checked: 10, tierOf: (url) => tiers[url], userId: 'me' });
+  assert.deepEqual(out.map((n) => [n.type, n.title, n.message]), [
+    ['refresh_summary', '4 new connections found!', 'Ada, Bo, Cy +1 more'],
+    ['new_elite_connection', 'High-value connection: Ada', 'VP Sales at Hooli'],
+    ['new_elite_connection', 'High-value connection: Cy', 'CEO at Northwind'],
+  ]);
+  assert.ok(out.every((n) => n.user_id === 'me'));
+  // Titles and famous names in a headline don't decide it; the tier does.
+  assert.deepEqual(refreshNotifications({ added: [added[1]], tierOf: () => 'C' }).map((n) => n.type), ['refresh_summary']);
+  // At most five of those.
+  const many = Array.from({ length: 8 }, (_, i) => ({ name: `P${i}`, profile_url: `/in/${i}`, headline: 'Founder' }));
+  assert.equal(refreshNotifications({ added: many, tierOf: () => 'S' }).length, 6);
+});
+
+test('a refresh that added nobody says the network is up to date', () => {
+  assert.deepEqual(refreshNotifications({ added: [], checked: 110 }).map((n) => [n.title, n.message]),
+    [['Network up to date', 'Checked 110 connections — no new additions']]);
 });
