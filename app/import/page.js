@@ -82,7 +82,7 @@ export default function ImportPage() {
 
           <Link href="/" style={primaryBtn}>See your galaxy →</Link>
           <p style={{ color: '#555', fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
-            This stays in this browser tab only — nothing was uploaded or saved. Close the tab and it is gone.
+            Nothing was uploaded or saved: this lives only in this window (or browser tab), and closing it clears it.
           </p>
         </div>
       </div>

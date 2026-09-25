@@ -174,7 +174,7 @@ function buildMenu() {
       label: 'Six Degrees',
       submenu: [
         { role: 'about', label: 'About Six Degrees' },
-        { label: 'Check for Updates…', click: () => openInApp('/setup') },
+        { label: 'Check for Updates…', click: () => openInApp('/setup?check=updates') },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },

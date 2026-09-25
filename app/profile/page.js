@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
@@ -33,10 +32,6 @@ function ProfileInner() {
   const [notifications, setNotifications] = useState([]);
   const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
-  const [setupStatus, setSetupStatus] = useState('idle');
-  const [setupLog, setSetupLog] = useState([]);
-  const [bridgeStatus, setBridgeStatus] = useState('idle');
-  const [bridgeLog, setBridgeLog] = useState([]);
 
   useEffect(() => {
     if (IS_DEMO) return;
@@ -205,104 +200,6 @@ function ProfileInner() {
               Network Power: {s.networkPower.toLocaleString()}
             </div>
           </div>
-        </div>
-
-        {/* === SET UP ACCOUNT === */}
-        <SetupScrapeCard status={setupStatus} log={setupLog} onStart={async () => {
-          setSetupStatus('running');
-          setSetupLog(['Checking the scanner...']);
-          const blocked = notReadyMessage(await scraperStatus().catch(() => null));
-          if (blocked) {
-            setSetupStatus('offline');
-            setSetupLog([blocked]);
-            return;
-          }
-          try {
-            const final = await runScrape('full', { onLog: setSetupLog });
-            setSetupStatus(final.exitCode === 0 ? 'done' : 'error');
-          } catch { setSetupStatus('error'); }
-        }} onRetry={() => { setSetupStatus('idle'); setSetupLog([]); }} />
-
-        {/* === AUTO-BRIDGE ALL === */}
-        <div style={{
-          background: 'rgba(155,89,182,0.06)', borderRadius: 12, padding: 20, marginBottom: 24,
-          border: '1px solid rgba(155,89,182,0.2)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#9B59B6' }}>Auto-Bridge All</h3>
-            {bridgeStatus === 'done' && <span style={{ fontSize: 10, color: '#00ff88', fontWeight: 600 }}>Complete</span>}
-          </div>
-          <p style={{ fontSize: 11, color: '#888', margin: '0 0 12px' }}>
-            Scan every connection&apos;s network. S-tier first → D-tier last. 2 min cooldown between each.
-          </p>
-
-          {bridgeStatus === 'idle' && (
-            <button onClick={async () => {
-              setBridgeStatus('running');
-              setBridgeLog(['Checking the scanner...']);
-              const blocked = notReadyMessage(await scraperStatus().catch(() => null));
-              if (blocked) {
-                setBridgeStatus('offline');
-                setBridgeLog([blocked]);
-                return;
-              }
-              try {
-                const final = await runScrape('auto-bridge', { onLog: setBridgeLog });
-                setBridgeStatus(final.exitCode === 0 ? 'done' : 'error');
-              } catch { setBridgeStatus('error'); }
-            }} style={{
-              width: '100%', padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #9B59B6, #FF6B35)',
-              color: '#fff', fontWeight: 700, fontSize: 14,
-            }}>
-              Auto-Bridge All Connections
-            </button>
-          )}
-
-          {bridgeStatus === 'offline' && (
-            <div>
-              <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
-                Scanner offline — start it first
-              </div>
-              <button onClick={() => setBridgeStatus('idle')} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
-              }}>Retry</button>
-            </div>
-          )}
-
-          {bridgeStatus === 'running' && (
-            <div style={{
-              padding: '10px', borderRadius: 8, background: 'rgba(155,89,182,0.1)',
-              border: '1px solid rgba(155,89,182,0.3)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#9B59B6', animation: 'pulse 1s infinite' }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#9B59B6' }}>Bridging...</span>
-              </div>
-              <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#777', maxHeight: 150, overflow: 'auto' }}>
-                {bridgeLog.map((l, i) => <div key={i}>{l}</div>)}
-              </div>
-            </div>
-          )}
-
-          {bridgeStatus === 'done' && (
-            <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-              All bridges mapped! Refresh the app.
-            </div>
-          )}
-
-          {bridgeStatus === 'error' && (
-            <div>
-              <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
-                Something went wrong
-              </div>
-              <button onClick={() => { setBridgeStatus('idle'); setBridgeLog([]); }} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
-              }}>Try Again</button>
-            </div>
-          )}
         </div>
 
         {/* === 2ND-DEGREE MAPPING PROGRESS === */}
@@ -492,81 +389,6 @@ function StatCard({ label, value, color }) {
     }}>
       <div style={{ fontSize: 22, fontWeight: 700, color: color || '#fff' }}>{value}</div>
       <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{label}</div>
-    </div>
-  );
-}
-
-function SetupScrapeCard({ status, log, onStart, onRetry }) {
-  return (
-    <div style={{
-      background: 'rgba(52,152,219,0.06)', borderRadius: 12, padding: 20, marginBottom: 24,
-      border: '1px solid rgba(52,152,219,0.2)',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#3498DB' }}>Account Setup</h3>
-        {status === 'done' && <span style={{ fontSize: 10, color: '#00ff88', fontWeight: 600 }}>Complete</span>}
-      </div>
-      <p style={{ fontSize: 11, color: '#888', margin: '0 0 12px' }}>
-        Full scan of all your LinkedIn connections with profile photos. Takes 3-5 minutes.
-      </p>
-
-      {status === 'idle' && (
-        <button onClick={onStart} style={{
-          width: '100%', padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #3498DB, #9B59B6)',
-          color: '#fff', fontWeight: 700, fontSize: 14,
-        }}>
-          Set Up Account — Full Scan
-        </button>
-      )}
-
-      {status === 'offline' && (
-        <div>
-          <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
-            Scanner offline
-          </div>
-          <p style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Open the <strong>Scan</strong> page to finish setting the scanner up
-          </p>
-          <button onClick={onRetry} style={{
-            width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
-          }}>Retry</button>
-        </div>
-      )}
-
-      {status === 'running' && (
-        <div style={{
-          padding: '10px', borderRadius: 8, background: 'rgba(52,152,219,0.1)',
-          border: '1px solid rgba(52,152,219,0.3)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3498DB', animation: 'pulse 1s infinite' }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#3498DB' }}>Scanning all connections...</span>
-          </div>
-          <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#888', maxHeight: 120, overflow: 'auto' }}>
-            {log.map((l, i) => <div key={i}>{l}</div>)}
-          </div>
-        </div>
-      )}
-
-      {status === 'done' && (
-        <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-          All connections scanned with images! Refresh the app to see your network.
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div>
-          <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
-            Something went wrong
-          </div>
-          <button onClick={onRetry} style={{
-            width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
-          }}>Try Again</button>
-        </div>
-      )}
     </div>
   );
 }

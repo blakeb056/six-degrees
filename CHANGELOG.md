@@ -6,12 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-25
+
 ### Added
+- **Tutorial videos on the download website:** installing on a Mac, running it on Linux, and
+  how scanning works. They're short and silent, with the steps as captions.
 - **`npx six-degrees` on Linux.** The npm package is published (0.2.0 was the first). The
   README, the website and the installer's message now point Linux users to it, with how to
   update it and where it keeps your data.
 
 ### Fixed
+- **Check for updates says what it found.** An up-to-date copy showed only a faint line, so
+  the button seemed to do nothing. The answer is now a clear status ("You're up to date: 0.2.1
+  is the newest version", with the time). The Mac app's **Check for Updates…** menu item opens
+  the Updates panel and runs the check, instead of just opening the top of the Scan page.
+- **The profile page no longer starts scans.** Its "Set Up Account — Full Scan" and "Auto-Bridge
+  All Connections" cards are gone. The second mapped every connection in one go, with none of
+  the batch size, budget or warnings of the Scan page, where scanning lives.
+- The window title is **Six Degrees** (it was "6 Degrees of Separation — LinkedIn Network
+  Research"), and the page description no longer claims to be a research project.
+- The import page's "close the tab" note is true in the Mac app too.
 - **Big LinkedIn exports import.** An export over about 9,000 connections was refused ("too large to hold in this browser tab"). The tab now keeps only what the export says about each person and scores it again on load, so exports up to LinkedIn's 30,000 maximum fit. Checked in a browser: 10,000 connections import and draw in about 4 seconds, 30,000 in about 25. It still never touches the database.
 - **`npx six-degrees` downloads about 22 MB instead of about 235 MB.** The package already
   carries its built server; Next, React and d3 are now build-time only.
