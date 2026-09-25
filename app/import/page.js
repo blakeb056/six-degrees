@@ -27,7 +27,7 @@ export default function ImportPage() {
     try {
       const { connections, skipped } = parseConnectionsCsv(text);
       if (!saveCsvNetwork(connections)) {
-        setError('That network is too large to hold in this browser tab. Try the local version for big exports.');
+        setError('That network is too large to hold in this window. LinkedIn allows up to 30,000 connections and this app holds that many, so please report it with your connection count: github.com/blakeb056/six-degrees/issues');
         setBusy(false);
         return;
       }
