@@ -451,7 +451,7 @@ test('views read the company score a row was scored with, or the list\'s for a r
   assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { headcount: 20, industry: 'tech', focus: strong('tech') }))), 8);
   // A famous name inside another word or another company's name is not that company.
   assert.equal(rowCompanyScore(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 4);
-  assert.equal(rowCompanyScore(asStored({ headline: "Director at Applebee's" })), 4);
+  assert.equal(rowCompanyScore(asStored({ headline: 'Director at Applewood Bakery' })), 4);
 });
 
 test('the company a score is built on: its strongest role\'s, current or former, found by the stored title points', () => {
@@ -475,7 +475,7 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   assert.deepEqual(tops('Stealth | Ex-Google'), { now: null, before: { name: 'Google', score: 10 } });
   assert.deepEqual(tops('Founder at Quillon | Ex-Director at Snap'), { now: null, before: { name: 'Snap', score: 8 } });
   assert.deepEqual(tops('VP at Google | Ex-Manager at Google'), { now: { name: 'Google', score: 10 }, before: null });
-  assert.deepEqual(tops('Designer at Quillon | Ex-Director at Discord'), { now: null, before: null });    // 7 isn't top
+  assert.deepEqual(tops('Designer at Quillon | Ex-Director at Northwind'), { now: null, before: null });
   // What the lists got wrong: a name inside another word, and a company that isn't famous but is top to you.
   assert.deepEqual(tops('Snapdragon Engineer at Qualcomm'), { now: { name: 'Qualcomm', score: 8 }, before: null });
   assert.deepEqual(tops('Metadata Analyst at Pinecrest Foods'), { now: null, before: null });
