@@ -18,14 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moved from the app, and the page says why.
 - **Move your network to another computer.** *Save a copy of my network* makes one
   `.sixdegrees` file: your network, your settings, the scanner's progress, skip lists and
-  LinkedIn budget, and your profile photos unless you untick them. Your LinkedIn sign-in is
-  never in it; you sign in again on the new computer. There, *Import* checks the file first
-  and changes nothing if it isn't a whole, untouched copy from this version or an older
-  one. It replaces the network there (nothing is merged, and a network that has people
-  asks you to confirm how many it replaces) the next time Six Degrees starts, after keeping
-  a copy of what was there in `backups/`. The Mac app does that with *Restart now*; with
-  `npx six-degrees`, stop it and start it again. Refused while a scan runs, and scans wait
-  until the import is finished.
+  LinkedIn budget, and the profile photos of the people in it unless you untick them. Your
+  LinkedIn sign-in is never in it; you sign in again on the new computer. There, *Import*
+  checks the file first and changes nothing if it isn't whole and undamaged, from this
+  version or an older one. It replaces the network there (the two are never merged, and a
+  network that has people asks you to confirm how many it replaces) the next time Six
+  Degrees starts, after keeping a copy of what was there in `backups/`; the README says how
+  to put it back. The LinkedIn search budget belongs to the account, so that computer keeps
+  its own: searches made on either computer still count, and a pause on scanning stays. The
+  Mac app finishes with *Restart now*; with `npx six-degrees`, stop it and start it again.
+  Refused while a scan runs, scans wait until the import is finished, and the import waits
+  while another copy of Six Degrees has the same folder open.
 
 ### Fixed
 - **A relative `--data-dir` stays where you meant it.** `npx six-degrees --data-dir

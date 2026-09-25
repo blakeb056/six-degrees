@@ -73,6 +73,14 @@ export default function EmptyState() {
         {error && (
           <div style={{ color: '#ff6b6b', fontSize: 13, marginTop: 18 }}>{error}</div>
         )}
+
+        {/* The new-computer case: a network saved on the old one is brought in from Settings. */}
+        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, lineHeight: 1.6, margin: '18px 0 0' }}>
+          Moving from another computer?{' '}
+          <a href="/settings#data" style={{ color: 'rgba(255,255,255,0.75)' }}>
+            Import your saved copy in Settings → Your data.
+          </a>
+        </p>
       </div>
     </div>
   );

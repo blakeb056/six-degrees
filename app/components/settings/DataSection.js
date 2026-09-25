@@ -32,6 +32,10 @@ function when(value, withTime = true) {
   return d.toLocaleString(undefined, withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' });
 }
 
+// The README's steps for putting back what an import replaced. A link the
+// person clicks (it opens in their browser), never a request the page makes.
+const UNDO_HELP = 'https://github.com/blakeb056/six-degrees#undo-an-import';
+
 const BACKUP_KIND = {
   auto: 'before a new version',
   import: 'before an import',
@@ -56,6 +60,14 @@ function Fact({ label, children }) {
       <span style={{ color: '#8b9a9a' }}>{label}</span>
       <span style={{ color: '#e8e8ee', textAlign: 'right' }}>{children}</span>
     </div>
+  );
+}
+
+function UndoLink() {
+  return (
+    <a href={UNDO_HELP} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+      Undo an import
+    </a>
   );
 }
 
@@ -240,6 +252,8 @@ export default function DataSection() {
   }
 
   const pending = info.pending;
+  // The photos a copy would carry: only those of people still in the network.
+  const inCopy = info.photosInCopy || info.photos;
   const backups = info.backups || [];
   const backupBytes = backups.reduce((n, b) => n + (b.bytes || 0), 0);
   const tooBig = Boolean(file && file.size > info.maxImportBytes);
@@ -306,7 +320,7 @@ export default function DataSection() {
         <input type="checkbox" checked={photos} onChange={(e) => setPhotos(e.target.checked)} style={{ marginTop: 3 }} />
         <span>
           Include profile photos
-          {info.photos.count ? ` (${count(info.photos.count)}, ${size(info.photos.bytes)})` : ''}.
+          {inCopy.count ? ` (${count(inCopy.count)}, ${size(inCopy.bytes)})` : ''}.
           They can’t be downloaded again without a new scan.
         </span>
       </label>
@@ -332,12 +346,13 @@ export default function DataSection() {
             {' '}({people(pending.people)}{pending.photos ? `, ${plural(pending.photos, 'photo')}` : ''}
             {pending.fromVersion ? `, from Six Degrees ${pending.fromVersion}` : ''})
             {pending.replacedPeople > 0
-              ? ` replaces the ${people(pending.replacedPeople)} here the next time Six Degrees starts. A copy of what’s here now is kept in backups first.`
+              ? ` replaces the ${people(pending.replacedPeople)} here the next time Six Degrees starts. A copy of what’s here now is kept in backups first, so the import can be undone.`
               : ' becomes the network here the next time Six Degrees starts.'}
+            {' '}Your LinkedIn search budget and any pause on scanning are kept.
           </div>
           {pending.error && (
             <div style={{ color: '#ff7676', marginTop: 6 }}>
-              The last try stopped: {pending.error}. It tries again the next time Six Degrees starts.
+              The last try stopped: {pending.error.replace(/\.$/, '')}. It tries again the next time Six Degrees starts.
             </div>
           )}
           {restarting ? (
@@ -364,8 +379,9 @@ export default function DataSection() {
       ) : (
         <>
           <Body>
-            Pick the copy you saved on the other computer (a .sixdegrees file). It replaces the network here;
-            nothing is merged.
+            Pick the copy you saved on the other computer (a .sixdegrees file). It replaces the network here; the
+            two networks are never merged. Your LinkedIn search budget and any pause on scanning are kept, with the
+            other computer’s searches added.
           </Body>
           <input ref={picker} type="file" accept=".sixdegrees" onChange={choose} style={{ display: 'none' }} />
           <div style={row}>
@@ -382,7 +398,7 @@ export default function DataSection() {
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Replace the {people(info.people)} in this copy’s network with the network in this file. A copy of
-                what’s here is kept in backups first.
+                what’s here is kept in backups first. Your search budget and any pause on scanning are kept too.
               </span>
             </label>
           )}
@@ -405,13 +421,14 @@ export default function DataSection() {
                 {' '}What was here before is kept in <Mono>{last.keptDatabase}</Mono>
                 {last.keptFiles ? ', with its photos and files beside it' : ''}.
                 {last.keptAsIs && ' It couldn’t be read, so it was kept exactly as it was.'}
+                {' '}To go back to it, see <UndoLink />.
               </>
             )}
           </Status>
         ) : (
           <Body style={small}>
             Last import: {when(last.appliedAt)} ({people(last.people)}).
-            {last.keptDatabase && <> What was here before is kept in <Mono>{last.keptDatabase}</Mono>.</>}
+            {last.keptDatabase && <> What was here before is kept in <Mono>{last.keptDatabase}</Mono> (<UndoLink />).</>}
           </Body>
         )
       )}

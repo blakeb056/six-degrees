@@ -268,21 +268,58 @@ Finder*), what each part takes up, and the backups in it.
 
 1. On the old computer, open **Settings → Your data** and click **Save a copy of my
    network**. You get one file, `Six Degrees backup <date>.sixdegrees`, with your network,
-   your settings, the scanner's progress, skip lists and LinkedIn budget, and your profile
-   photos (untick them to leave them out; they come back as you scan again).
+   your settings, the scanner's progress, skip lists and LinkedIn budget, and the profile
+   photos of the people in it (untick them to leave them out; they come back as you scan
+   again).
 2. Move that file to the new computer yourself (a USB stick, AirDrop). It holds other
    people's names and photos, so don't post it or share it.
 3. On the new computer, install Six Degrees, open **Settings → Your data**, choose the
-   file and click **Import**. It's checked first, and nothing changes if it isn't a whole,
-   untouched Six Degrees copy. If that computer already has a network, you're asked to
-   confirm that the import replaces it. Nothing is merged.
+   file and click **Import**. It's checked first, and nothing changes if it isn't a whole
+   and undamaged Six Degrees copy. If that computer already has a network, you're asked to
+   confirm that the import replaces it. The two networks are never merged. Your LinkedIn
+   search budget is the one thing that is: it belongs to your LinkedIn account, not to a
+   computer, so searches made on either computer still count, a pause on scanning set on
+   either stays until it ends, and budget limits already set on that computer stay.
 4. The import finishes the next time Six Degrees starts. The Mac app does that with
-   **Restart now**; with `npx six-degrees`, press Ctrl-C and start it again. What was there
-   before is kept in `backups/` (`before-import-…`), and those copies are never deleted
-   automatically.
+   **Restart now**; with `npx six-degrees`, press Ctrl-C and start it again. If another
+   copy of Six Degrees has the same folder open (one started from the Terminal, say), the
+   import waits, and Settings says so. What was there before is kept in `backups/`
+   (`before-import-…`), and those copies are never deleted automatically: see
+   [Undo an import](#undo-an-import).
 5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
    into a copy. A network opened from a LinkedIn CSV isn't in the copy either: it lives in
    its browser tab, so import the CSV again there.
+
+### Undo an import
+
+An import keeps what it replaced in the data folder's `backups/`, named with the time it
+finished (Settings → Your data shows the exact name):
+
+- `before-import-<time>.sqlite`: your network as it was.
+- `before-import-<time>-files/`: its profile photos (`avatars/`), the scanner's notes about
+  it (`bridge-progress.json`, `bridge-skips.json`, `bridge-unclear.json`), and a copy of
+  your LinkedIn budget files as they were.
+
+To put it back (there's no button for this yet):
+
+1. Quit Six Degrees (⌘Q in the Mac app, Ctrl-C for `npx six-degrees`). Do the rest while
+   it's closed.
+2. Open the data folder (Settings → Your data → *Show in Finder*, or `~/.six-degrees`).
+   Move these out of it, to the Trash or somewhere safe if you might want the imported
+   network again: `six-degrees.sqlite`, and `six-degrees.sqlite-wal` and
+   `six-degrees.sqlite-shm` if they're there (a `-wal` left beside a different database
+   is replayed into it and damages it), then `avatars/` and the three `bridge-*.json`
+   files.
+3. Copy `backups/before-import-<time>.sqlite` into the data folder and rename the copy
+   `six-degrees.sqlite`. If `before-import-<time>.sqlite-wal` and `-shm` files are beside
+   it, copy them too, renamed to match (`six-degrees.sqlite-wal`,
+   `six-degrees.sqlite-shm`).
+4. Copy `avatars/` and the three `bridge-*.json` files from
+   `backups/before-import-<time>-files/` back into the data folder.
+5. Leave `linkedin-activity.json`, `linkedin-cooldown.json` and `scan-limits.json` as they
+   are. They're your LinkedIn account's budget, which the import kept (it only added the
+   other computer's searches), so they're right whichever network you use.
+6. Open Six Degrees again.
 
 Don't put the live folder in iCloud Drive or Dropbox to share it between computers
 instead. A sync service that copies the database while it's open can damage it, and it
