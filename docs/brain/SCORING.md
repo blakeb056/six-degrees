@@ -6,10 +6,12 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION` or the sector focus they were computed with no longer matches; both stamped in `app_meta`) |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry, its sectors from the directory and the industries those sit under |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
-| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
+| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
+| `lib/legacy-offer.js` `legacyOffer()` | Paths → Scores' one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
+| `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Snap (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
 
 Until 0.1.10 there were three scorers that disagreed. `scripts/*.sql` are the retired
 hosted-era model, kept for history and marked as such. Do not transcribe the model
@@ -39,12 +41,26 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - A fraternity chair is not a chairman.
 - "International" is not "intern".
 
+Schools are read alike; the rules name none. A major at a school is a student ("CS @ UCF",
+"Economics at University of Utah"), and so is a leading title in a school club ("President,
+UCF Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at UCF"): a
+club, chapter, society or association named with a school's words (university, college,
+school, student) or its short name. A short name is two to four capitals that start or end
+with the U of University (UCF, USC, NYU, UCLA, BYU), so no list of schools favours the ones on
+it; not a country or union (US, USA, UK, EU, UN), a US national body (USGA, USTA, USAA) or the
+AAU. An alumni club or a parents' association is for grown-ups, and a company's own club
+(Sam's Club, AAA Club Alliance) or a professional society (CFA Society, IEEE Computer
+Society, an EO chapter) is not a school's. The price: a company whose short name looks like a
+school's (UBS, UPS) could make "Finance @ UBS" read as a student. Until September 2026 the
+rules named UCF and UF, so their students and clubs were caught and other schools' weren't.
+
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
-`company_scores`), then the curated `KNOWN_COMPANIES` list (165 companies). Otherwise it's
-an estimate from how many of your people work there: 5 at 5+, 6 at 15+, but never for
-schools (a company whose one industry, below, is education). Unknown is 4, and no company
-found is 3, so the company weight runs from 0.615 (no company) to 1.0; 0.505 is the floor,
-for a company you score 1. Names are cleaned first, so "Snap Inc.", "Snapchat 👻" and
+`company_scores`), then the curated `KNOWN_COMPANIES` list (245 companies, on it by the
+rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people
+work there: 5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
+is education). Unknown is 4, and no company found is 3, so the company weight runs from
+0.615 (no company) to 1.0; 0.505 is the floor, for a company you score 1. Names are cleaned
+first, so "Snap Inc.", "Snapchat 👻" and
 "Snap" are one company. Phrases like "at scale" are not companies. The list's aliases match
 from the start of a name, so a name that says school, college or university only matches a
 school on the list: "Kellogg School of Management" is not Kellanova, "Warner University" not
@@ -62,8 +78,203 @@ unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed eac
 never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
-"VP / Partner / GM (9) · Snap (9/10) · +0.7 strong circle", or with a sector lean
-"Director / Head (7.5) · Snap (10/10: 9 + 1 your sector)".
+"VP / Partner / GM (9) · Snap (8/10) · +0.7 strong circle", or with a sector lean
+"Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector: Dental)".
+
+## The curated list
+
+`KNOWN_COMPANIES` is everyone's default, so a written rule decides who is on it, not anyone's
+own ties to a company. **A company is on the list only if most US professionals would
+recognise it:**
+
+- a household-name brand;
+- a Fortune 500 company, or a public company as large;
+- a top global VC, private equity, consulting, law or accounting firm;
+- a frontier AI lab;
+- a top national university.
+
+**Scores follow one scale:** 10 the largest tech platforms and the frontier AI labs, 9 elite
+(the most sought-after employers in tech, finance, consulting, investing and consumer
+brands), 8 major, 7 well-known. Nothing on the list is below 7. Regional picks, picks from
+one person's career or network, and small startups are not on it: they're estimated from
+the network like any other company, and anyone can score them on Paths → Scores. **When in
+doubt, a company stays off**: the estimate is the neutral default. No comment in the list
+speaks for one person (it used to say "home turf" and "local institutions"); a test checks.
+
+Applying the rule (September 2026, after 0.2.1) changed 34 of the 165 entries:
+
+- **Snap 9 → 8**, like its peers Pinterest, Reddit and X, and **MrBeast 8 → 7**: a household
+  name, but a company of a few hundred people.
+- **Removed, 32:** the "notable" 6s and the one "local institution", drawn from one network
+  and one region (Grindr, Genius Sports, Later, Hard Rock Digital, Vanta, Kaseya, Havas,
+  VaynerMedia, AdventHealth, University of Florida, The Athletic, UCF); private companies
+  that are neither household names nor that size, and startups (Anduril, Polymarket,
+  Kalshi, Databricks, Figma, Scale AI, Whatnot, Whop, Hims & Hers, Riot Games, Notion,
+  Vercel, Plaid, Brex, Ramp, Mercury, Chime); two executive search firms (Egon Zehnder,
+  Heidrick & Struggles); and the U.S. Space Force, the only military branch on the list.
+
+The other 131 kept their score, alias and industry. `lib/legacy-scores.js` holds the old rows
+(name, score, alias, industry) for the offer below and nothing else; `lib/scoring.js` imports
+nothing, so the model can't read them.
+
+**Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_list' with a fingerprint of the
+whole list (every name, score, alias and industry; `KNOWN_LIST_STAMP` in `lib/rpc.js`), and
+`rescoreIfStale()` rescores when it no longer matches. Editing the list refreshes stored
+scores with no `SCORING_VERSION` bump to remember.
+
+### Where the list comes from
+
+The list was narrower than its rule: it leaned to tech, finance, consulting and media, so a
+nurse, a lawyer or someone in retail found little of their world on it. The rule is now
+applied from named sources, the same way in every field, so anyone can check the list or
+extend it. Everything added in September 2026 came from these:
+
+1. **The Fortune 500 (2025), its top 100.** Every company in it was considered, and the
+   household names were added, whatever their field. Left off: the companies known inside
+   their trade rather than by the public (below).
+2. **Beyond the Fortune 100, in the fields the list had few or none of** (health care and
+   drugmakers, retail and grocery, food and restaurants, hotels, autos, airlines, rail and
+   shipping, telecoms, energy, news and TV): the one or two largest household names in each,
+   by revenue, where the Fortune 100 has few or none. Restaurants: McDonald's and Chipotle,
+   after Starbucks. Packaged food: Kraft Heinz and General Mills. Hotels: Marriott and
+   Hilton. Airlines: Southwest, the fourth largest. Rail: Union Pacific, the largest.
+   Discount stores: Dollar General and Dollar Tree, among the largest US employers. TV: Fox.
+3. **Companies based outside the US, in those fields, as large as the Fortune 100** (over
+   about $45 billion a year) **and household names here**: Nestlé, Anheuser-Busch (AB
+   InBev), IKEA, Aldi, 7-Eleven, AstraZeneca, Bayer, Volkswagen, Mercedes-Benz, BMW, Honda,
+   Hyundai, Kia, Nissan, Shell, BP, DHL.
+4. **Household names in those fields that the Fortune 500 can't include**, nonprofits and
+   private companies that publish no accounts: Kaiser Permanente (the largest nonprofit
+   health system, as large as a Fortune 50 company), Mayo Clinic, Cleveland Clinic and Johns
+   Hopkins Medicine; Mars; and in news, The New York Times and Bloomberg. Two parts of larger
+   companies that people name on their own, Aetna (CVS Health) and GEICO (Berkshire
+   Hathaway), have entries of their own.
+5. **The Am Law 100 (2025)**, the ten largest US law firms by revenue: Kirkland & Ellis,
+   Latham & Watkins, DLA Piper, Baker McKenzie, Skadden, Gibson Dunn, Sidley Austin, White &
+   Case, Ropes & Gray. The tenth is left off until the ranking is checked.
+6. **The private equity firms in the Fortune 500 (2025)**: Blackstone, KKR, Apollo Global
+   Management (Bain Capital was already on).
+7. **U.S. News & World Report's Best National Universities, 2025 edition, the top 20.** The
+   five already on the list are all in it (Stanford, Harvard and MIT in its top five, Duke
+   and UC Berkeley below). The other 15 were added: Princeton, Yale, Caltech, Johns Hopkins,
+   Northwestern, Penn, Cornell, Chicago, Brown, Columbia, Dartmouth, UCLA, Rice, Notre Dame
+   and Vanderbilt.
+
+This pass was made without the published tables to hand, so a company whose rank sits near
+a cutoff was left off rather than guessed. Check a source's current edition before adding
+from it.
+
+### How an addition is scored
+
+- **8 at the size of the Fortune 100** (over about $45 billion a year), for a company based
+  in the US or elsewhere. That is how the list already scored the Fortune 100 companies on it
+  below 9: all at 8 (Walmart, UnitedHealth, the big banks, PepsiCo, Johnson & Johnson,
+  Pfizer, the defense companies, IBM, Cisco, Oracle, Nike…) but Target and Intel, at 7. Those
+  two keep their score: changing it would be a rescore, not an addition.
+- **7 below that size**: Mayo Clinic, Chipotle, Marriott, GEICO, The New York Times…
+- **Peers, where the list already scores that kind of firm otherwise**: private equity at 9
+  with Bain Capital and BlackRock; the largest law firms at 8 with the Big Four, the largest
+  accounting firms; McDonald's at 8 with Starbucks; universities by rank, as the list had
+  them: the top five at 8 (Harvard, Stanford and MIT; now Princeton and Yale), ranks 6 to 20
+  at 7 (Duke and UC Berkeley; now the other 13).
+- **One industry each**, as for every entry: airlines, hotels, restaurants and grocers are
+  consumer (hospitality and retail); railroads and shippers industry (logistics); telecoms
+  tech; health insurers health, like UnitedHealth; other insurers and mortgage finance
+  finance; law firms consulting (Consulting, Legal & Services); Fox entertainment, like
+  NBCUniversal and Paramount.
+
+### Aliases, kept narrow
+
+Aliases match from the start of a name, so a short or shared first word would sweep in other
+companies. The additions match only in the forms their companies use:
+
+- "GM" is a general manager, "Delta" also Delta Dental, "Apollo" also Apollo Hospitals and
+  Apollo.io, "Columbia" also Columbia Sportswear, "Kirkland" also Kirkland's, "Penn State"
+  isn't Penn, and "Northwestern Mutual" isn't Northwestern. None of them match; the full
+  names do.
+- Automakers and hotel companies by their own names only: "Honda of …" and "Hilton Garden
+  Inn" are dealerships and franchised hotels with staff of their own.
+- A brand's name on a venue isn't the brand: "State Farm Arena" and "AT&T Stadium" aren't
+  State Farm or AT&T (`sponsor()` in `lib/scoring.js`).
+- Companies run apart keep their own names: Hewlett Packard Enterprise, Merck KGaA, Berkshire
+  Hathaway HomeServices (franchised brokerages), Hilton Grand Vacations, Lowes Foods and
+  Chevron Phillips Chemical aren't HP, Merck, Berkshire Hathaway, Hilton, Lowe's or Chevron.
+- A university takes in the schools that start with its name (Yale School of Management,
+  Columbia Business School), as Harvard and Stanford did. A school named apart from it
+  (Wharton, Kellogg, Booth) keeps its own name, as MIT Sloan did, and so do health systems
+  named apart (UCLA Health, Yale New Haven Health, Johns Hopkins Medicine).
+- "Home Depot" was never read as a company: the rule that drops "at home" dropped it too. It
+  now reads as The Home Depot.
+
+`tests/known-companies.test.mjs` checks each addition's spellings, that no two entries claim
+one name, and a list of names that must stay their own.
+
+### What broadening changed
+
+112 companies were added, 133 → 245: 3 at 9, 80 at 8, 29 at 7. By industry: 26 consumer, 20
+industry, 17 finance, 16 health, 15 education, 9 consulting (law), 6 tech, 2 media, 1
+entertainment. Nothing already on the list changed score, alias or industry, so there are no
+old rows to keep and no offer; stored scores are recomputed once because the list's
+fingerprint changed (Staleness, above).
+
+Left off, and why:
+
+- **Fortune 100 companies known inside their trade more than by the public**: McKesson,
+  Cencora, Cardinal Health, Centene, Sysco, Archer Daniels Midland, StoneX, TD Synnex, Ingram
+  Micro, Performance Food Group, Energy Transfer, Enterprise Products, Plains, Broadcom,
+  TIAA; the refiners Phillips 66, Marathon Petroleum and Valero, known by regional
+  gas-station brands; Charter Communications, known as Spectrum. And Publix, a regional
+  grocer.
+- **Near a cutoff**: the tenth law firm (Paul, Weiss or Morgan Lewis); Best Buy, at the
+  Fortune 100 line; Carlyle and TPG, top private equity firms outside the Fortune 500.
+- **As large, but not household names here**: Roche, Novartis and Sanofi; Stellantis and
+  Ahold Delhaize, whose brands are (Jeep, Food Lion) but whose names aren't; Cargill and Koch,
+  the largest private US companies.
+- **Named like something else**: Circle K, also a college service club; Blue Cross Blue
+  Shield, a federation of 33 companies rather than one.
+- **Fields this pass didn't sweep beyond the Fortune 100**, for a later one: tech and
+  aerospace, already well covered (Panasonic, LG, Lenovo, Airbus); manufacturing, chemicals
+  and household goods (Honeywell, 3M, Bosch, Dow, Colgate-Palmolive, Kimberly-Clark); more
+  food and drink (Hershey, Keurig Dr Pepper, Molson Coors); stores and brands (Macy's, Ross,
+  Nordstrom, Estée Lauder); cruises and casinos (Carnival, MGM Resorts);
+  homebuilders (D.R. Horton, Lennar); payroll (ADP); finance (Schwab, Vanguard); hospitals
+  known within medicine or one region (Mass General, Cedars-Sinai, NYU Langone, MD
+  Anderson); news beyond the Times and Bloomberg (The Washington Post, AP, Reuters, NPR).
+- **Not decided**: government employers (the armed forces, the Postal Service), and whether
+  xAI and Mistral are frontier AI labs (10).
+
+### Keeping the old scores: a one-time offer
+
+A list change shouldn't take anyone's view away silently. Scores computed with the old list
+carry no 'scoring_list' stamp; the first time `rescoreAll()` replaces them (and some row was
+already scored, so the database isn't new), it opens an offer: `app_meta`
+'legacy_scores_offer' = `open`. Paths → Scores then shows one card at the top: "Built-in
+scores changed in this version: Snap 9 → 8, UCF 5 → estimated. Keep any of the old ones as
+your own?", with *Keep all*, *Choose…* and *No thanks* (`app/components/LegacyScoresCard.js`,
+`/api/company-scores/legacy`).
+
+- **What it lists** (`lib/legacy-offer.js` `legacyOffer()`): each old entry that someone in
+  this network works at now, whose built-in score is different now (the list or the
+  estimate, before any sector lean), and that you haven't scored yourself. Current
+  employers only, because those are what Paths → Scores lists: a kept score shows there as
+  yours and *Auto* can hand it back. (A company only in former roles would get a score
+  nothing lists; a former role counts at 70%, so it moves people little.) A removed entry
+  no longer canonicalises ("University of Central Florida" isn't "UCF" any more), so its
+  names are found with its old alias, read the way `cleanCompany()` read it then.
+- **Keep** writes the old score to `company_scores` under every name scoring uses for those
+  rows (UCF's covers "UCF" and "University of Central Florida"), with the same
+  `setCompanyScores()` that Paths → Scores uses, then rescores everyone once for the whole
+  batch. A kept score is yours like any other: *Auto* hands it back.
+- **Once:** *Keep* or *No thanks* sets the offer to `kept` or `declined`, and nothing
+  reopens it.
+- **Never** for a fresh database (nothing was scored with the old list), and never while a
+  CSV import or the sample is on screen: those are scored in the browser, not the server.
+- If the rescore after a keep fails, the scores and the answer are saved, the answer says
+  so, and the next map load rescores (the model stamp is cleared).
+
+The offer covers this one change, from lists that stamped nothing. A later edit to the list
+changes the stamp and rescores, but offers nothing unless it brings its own old rows and
+its own trigger.
 
 ## One industry per company
 
@@ -72,7 +283,7 @@ but each **company** gets exactly one, used everywhere: its colour in Paths, its
 Scores, the school rule above, and the sector lean. `companyIndustry()` decides, in order:
 
 1. **The curated list's own industry**, the last field of each `KNOWN_COMPANIES` entry.
-   93 of the 165 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
+   159 of the 245 names carry no industry word (Adobe, Pfizer, MIT, Costco…), so without it
    they took whatever their people's headlines said. Where a name does say something, the
    field agrees with it (a test in `tests/companies.test.mjs` checks both). Aliases count:
    "BNY Mellon" is BNY, finance.
@@ -104,17 +315,27 @@ Where Paths' colour can still differ from the industry scoring uses:
 
 ## Your sector (Settings)
 
-Up to three `INDUSTRIES` keys and a strength, saved in `app_meta` 'settings' as
-`sectorFocus: {sectors, strength}` (`lib/sector-focus.js` validates it). In
-`companyScore()`, a company whose one industry is chosen gets **+1 (lean) or +2 (strong),
-capped at 10**. Never on a score you set: `yours` is returned before the lean. The result
-keeps its source (`known`, `network`, `default`) and adds `{base, sector, sectorBonus}` only
-when the score actually moved, so everything reading `{score, source}` is unchanged.
+Up to three picks and a strength, saved in `app_meta` 'settings' as
+`sectorFocus: {sectors, strength}` (`lib/sector-focus.js` validates it). A pick is one of
+the twelve broad `INDUSTRIES` keys or a sector from the directory (below); a choice of
+industries saved before the directory existed reads as it did. In `companyScore()`, a
+company gets **+1 (lean) or +2 (strong), capped at 10**, when a picked directory sector is
+among the sectors it matches (`sectors`, passed in), or a picked industry is its one
+industry or the industry one of those sectors sits under (`sectorIndustries`): **an industry
+includes its sectors**, so *Healthcare & Biotech* takes in a practice only the directory
+calls dental. However many picks match, it is added once, and `sector` names the pick that
+matched, a directory sector before an industry. Never on a score you
+set: `yours` is returned before the lean. The result keeps its source (`known`, `network`,
+`default`) and adds `{base, sector, sectorBonus}` only when the score actually moved, so
+everything reading `{score, source}` is unchanged. The working names the pick:
+`explainScore(s, boost, {sectorLabel})` gets the labels from `lib/rpc.js`, because
+`lib/scoring.js` imports nothing ("5/10: 4 + 1 your sector: Dental"); without them it says
+"your sector" alone.
 
 - A point of company score is worth `0.055 × title points`: +0.55 for a founder, +0.50 for
   a VP, +0.41 for a director, +0.22 for an IC. So +1 moves a VP at a 6 (7.0, A) to S (7.5),
-  a director at Snap from 7.1 (A) to 7.5 (S), and a founder at an unknown company from 6.7
-  to 7.3 (7.8, S, at +2).
+  a director at YouTube (9) from 7.1 (A) to 7.5 (S), and a founder at an unknown company
+  from 6.7 to 7.3 (7.8, S, at +2).
 - **The lean lifts the company, not the headline's claims.** The reach bonus is halved by
   the company's score *before* the lean, so a founder at an unknown company who says "Angel
   investor" goes 7.2 → 7.8 on lean, not 7.2 → 8.3: liking a sector says nothing about whether
@@ -124,9 +345,11 @@ when the score actually moved, so everything reading `{score, source}` is unchan
   turning it off gives back exactly the scores from before. `rescoreAll()` reads the focus
   itself, so imports, company-score changes and a stale model all apply it.
 - **Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_focus' with the focus's
-  fingerprint (`lean:media,tech`, or `none`). `rescoreIfStale()` rescores when it no longer
-  matches the saved focus: a database restored or brought from another computer, or a save
-  whose rescore failed.
+  fingerprint (`lean:health,dental@<version>`, the directory's version, or `none`).
+  `rescoreIfStale()` rescores when it no longer matches the saved focus: a database restored
+  or brought from another computer, a save whose rescore failed, or an update that changed
+  the directory's words. Every pick carries the version, an industry too, since it includes
+  its sectors; a focus of industries stamped before that (`lean:media,tech`) is redone once.
 - **Saving** goes through `POST /api/settings`; `lib/settings-effects.js` sees the focus's
   fingerprint changed and runs `rescoreAll({compareWith: the focus it replaced})`. That
   scores the same read of the rows with the old focus too, in memory, and counts who changed
@@ -152,10 +375,147 @@ when the score actually moved, so everything reading `{score, source}` is unchan
   moves 120 of its 748 people up a tier and S grows from 118 to 199 of 873 rows; strong
   tech moves 220 people. Networks are often concentrated in their owner's own sector, so
   expect a broad lift more than a reshuffle. "S is the top ~3–4%" no longer holds with a
-  lean on.
+  lean on. An industry including its sectors changes this only where the directory places
+  a company outside its one industry: lean finance now also lifts Orchard Pay (tech by its
+  people's headlines, Fintech & Payments by its name), 20 people up instead of 9, S 118 →
+  132. On the synthetic network in the timing check, lean tech and finance also lift the
+  Big Four (Accounting & Tax) and UnitedHealth (Insurance).
 - `users.sectors` (free text, never written by the app) is a different thing: the
   Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
   *Your Sectors* shows the Settings choice.
+
+## The sector directory
+
+`lib/sector-directory.js` is a fixed list of the most common sectors people work in, 44 of
+them (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education…), each under one of
+the twelve industries and each with its words. It is a list, not a model: no AI, nothing
+sent anywhere, the same answer on every computer every time. Settings → Your sector shows
+each industry with its sectors, searches them by name, word or company, and suggests the
+ones your network is in.
+
+A sector is `{key, label, group, kind, words, roles?, names?, companies, not?}`. `key` is
+saved in people's settings. `group` is the industry it sits under, and gives it that
+industry's colour: Paths' colours don't change. `kind` is `industry` or `function`
+([below](#industries-and-functions)).
+
+### How a company matches
+
+Worked out once per read of the network: `lib/rpc.js` `readForScoring()` passes
+`sectorMatcher()` to `readNetwork()` as `sectorsOf`, beside `industryOf`, and each company's
+matches ride along to `companyScore()`. Rescoring, the preview, Paths → Scores and the
+suggestions all read through it, so they agree. A company matches a sector when:
+
+1. **its name** has one of the sector's `words` (or `names`, or a function sector's
+   `roles`), or is one of its `companies`; or
+2. **at least half of its people in your network**, and at least one, say one of the
+   `words` in their headline. For a one-person company, that person decides. A function
+   sector's `roles` don't count here.
+
+A company can match several sectors; the lean is still added once. An industry includes its
+sectors: picking *Healthcare & Biotech* counts a company whose one industry is health, and
+any company the directory places in Hospitals & Clinics, Dental, Pharma & Biotech, Medical
+Devices, Mental Health or Fitness & Wellness (`readForScoring()` passes `sectorGroup` as
+`groupOf`, so each company's read carries the industries its sectors sit under). A practice
+whose name and people say only "Dentist" has no industry of its own, but it is Dental, so
+it's in health.
+
+Words are whole words, any case, compared after accents, apostrophes and punctuation are
+set aside: "incidental" isn't dental, "Banksy" isn't banking, "Lawson" isn't legal, "DSO"
+matches only on its own, and "Oil & Gas" is "oil and gas". `dentist(s)` in the list means
+dentist and dentists. `names` count in a company's name only: "AI" in "Quillon AI" says what
+the company is, where in a headline it is as often a buzzword. `companies` match from the
+start of the name as whole words (`aspen dental` is Aspen Dental Management), or the whole
+name when they end with `$` (`box$` is Box, not Box Hill Hospital). A name that says school,
+college or university only matches an education sector's companies ("Chase College of Law"
+isn't Chase the bank), though its words still count.
+
+What a headline counts, for precision:
+
+- **What someone does now.** "Ex-", "Former" and "Retired" parts are where they were.
+- **Not who they serve.** Words after "for", "helping", "serving", "supporting" or
+  "empowering" don't count: "Mortgage lender for dentists" is banking, not dental.
+- **Each part for its own company.** A part that names a company ("Host at The Growth
+  Podcast") counts for that company only. The parts before the first company describe that
+  role ("Dentist | Owner at Smith Family Practice"); the parts after it are side notes and
+  don't count ("… at Quillon | Soccer mom | Podcaster"). A headline that names no company
+  (a company scan) counts all its current parts.
+- **`not` cancels.** A `not` phrase cancels its sector's words in the text being read: "food
+  bank" isn't banking, "travel nurse" isn't travel, "Army veteran" isn't serving now,
+  "general counsel" (an in-house lawyer) doesn't make the company a law firm.
+
+### Industries and functions
+
+The one-person rule is deliberate: a dentist's own practice is usually one person in your
+network, and the majority keeps bigger companies honest. But it used to let a job every kind
+of company has place a company by its one person: "Recruiter at Acme Widgets" made Acme HR &
+Recruiting, "Marketing Manager at Bright Smiles Dental" pulled a dental practice into
+marketing, and enough "Software Engineer at Chase" pulled a bank into software. So each
+sector has a `kind`:
+
+- **An industry sector** is a kind of business whose people's jobs say where they work: a
+  dentist works at a dental practice, a realtor at a real estate firm, a nurse at a hospital.
+  Its job titles are `words` and count everywhere. 35 of the 44.
+- **A function sector** is work every kind of company has people for: HR & Recruiting,
+  Marketing & Advertising, PR & Communications, Accounting & Tax, Legal, Management
+  Consulting, and Software & SaaS, AI & Data and Cybersecurity. Its `words` are kinds of firm
+  only (staffing agency, law firm, CPA firm, marketing agency, SaaS, AI startup, MSSP), and
+  count everywhere. Its jobs, titles and the names of the work (recruiter, recruiting,
+  attorney, accountant, tax, software engineer, JavaScript), are `roles`: they count in a
+  company's name ("Acme Recruiting", "Smith CPA", "Jones Law Group") and never in a headline.
+  So "Recruiter at Acme Staffing" matches by the name, "Attorney | Partner at Jones Law Group"
+  is Legal, and a lone "Accountant at Pinecrest Foods" is not Accounting.
+
+Software & SaaS, AI & Data and Cybersecurity are functions because banks, shops and hospitals
+all employ software engineers, data scientists and security teams (and "AI" is in every other
+headline): a company is in software when it sells software. "Software", "cybersecurity" and
+"machine learning" still say so in a company's name.
+
+The price is recall: a law firm named only for its partners ("Smith & Jones") whose people
+write "Attorney", or a startup whose engineers never write "SaaS", isn't placed in the
+function sector. Picking the broad industry still counts it by its one industry, which reads
+jobs as it always did (an attorney's firm is Consulting, Legal & Services, an engineer's
+startup Tech).
+
+**The version.** `DIRECTORY_VERSION` is a hash of the list (and of `MATCHING`, which is
+bumped by hand when the matching code changes), so any edit changes it and nobody has to
+remember to. Every focus carries it in its fingerprint, since an industry includes its
+sectors; after an update that changed the words, the next load rescores. A word-list edit
+doesn't change `SCORING_VERSION`.
+
+**Suggestions.** `suggestSectors(rows, read)` gives the five directory sectors with the most
+people (each once) working now at a company that matches, with how many such companies:
+"Dental: 42 people at 17 companies". `GET /api/settings/sector-suggestions`. Only a network
+you've scanned: a CSV import or the sample isn't in the database.
+
+**Cost.** Matching is a dictionary lookup per word, with every headline read once per read
+of the network. On the synthetic network in the preview's timing check it added about 15% at
+10,000 rows (120 → 138 ms) and 8% at 30,000 (336 → 364 ms); with every headline different,
+13% and 9%. A pick from the directory scores as fast as an industry.
+
+### How to add or fix a sector
+
+Anyone can improve the list. Precision over recall: a word that means something else in
+another field lifts the wrong people, while a missing word only means no lean.
+
+1. Edit `DIRECTORY` in `lib/sector-directory.js`. Add words to a sector, or a new sector
+   under the industry it belongs to (`group`) with its `kind`: a function when every kind of
+   company employs people for that work, else an industry. Prefer job titles, credentials
+   and kinds of business that only this sector uses; in a function sector, jobs go in
+   `roles` and only kinds of firm in `words`. Never a word every field uses on its own:
+   manager, director, engineer, analyst, sales, associate, partner, agent, broker, producer,
+   consultant and the like (the tests refuse them). Phrases that contain one are fine
+   ("oral surgeon", "wealth manager").
+2. A word that's right in a company's name but a buzzword in a headline goes in `names`.
+3. Add a company only when its name carries none of the words. End it with `$` when its
+   name is also a common word or the start of other companies' names (`box$`, `target$`).
+4. When a word means something else inside some phrase, add the phrase to `not`.
+5. Never rename or remove a `key`: it is saved in people's settings. Fix the label, words
+   and companies instead. A new key must not be one of the twelve industries' keys.
+6. Add examples to `EXAMPLES` in `tests/sector-directory.test.mjs`: at least one text the
+   sector must match and one it must not (a headline, `company: Name`, or `[headline,
+   company]`). Run `npm test`.
+7. Add a CHANGELOG line. There's nothing to bump: the version follows the list, and scores
+   picked from the directory refresh on their next load.
 
 ## How it was checked
 
@@ -172,6 +532,26 @@ titles): there, r(bridge title, circle's mean title) = −0.18 with or without a
 r(bridge power, circle's mean title) = 0.15 with none, 0.20 lean tech, 0.01 strong tech.
 Re-run the real check on a real network.
 
+**The broader list (still `SCORING_VERSION` 3):** company scores only, so the
+title-to-circle correlation is unchanged by construction. The sample network doesn't move (0
+of 873 scores, with its own company scores or as if scanned): none of its invented companies
+reads as a listed one, which a test checks.
+
+**The neutral list (still `SCORING_VERSION` 3):** it changes company scores, never title
+points, so the title-to-circle correlation is unchanged by construction, and the sample
+network doesn't move (0 of 873 scores: its companies are invented, each scored for it).
+`SCORING_VERSION` stays 3 because 3 is unreleased: a 0.2.x database rescores once anyway,
+and the list stamp catches a database the unreleased build scored with the old list.
+
+**Schools read alike, functions, and industries with their sectors (still
+`SCORING_VERSION` 3):** the school rules change title points only for school-club roles
+and "major @ school" headlines (0 of the sample's 873 titles change), and the rest changes
+company scores under a sector focus only, never title points. Re-run the title-to-circle
+check on a real network with school clubs in it. A database the unreleased build scored
+keeps its old school readings until its next rescore (any import, company score or
+Settings save); a focus stamped before industries included their sectors is redone on the
+next load. The Queue and the person panel read the stored scores, so they change with them.
+
 ## Bridges
 
 Being high-scoring makes someone worth *knowing*. Being a **bridge** is about the circle
@@ -183,8 +563,12 @@ not adopted.
 
 ## The honest caveat
 
-The company list and the title ladder are a hand-written opinion, tuned against one real
-network. Company scores are editable for exactly that reason. The model is
-**domain-shaped**: a network of academics or tradespeople would score oddly against a
-list built from tech and finance brands. And the tier is a statement about **network
-position, not human worth**, SPEC invariant 6. Say so plainly in any UI that shows a tier.
+The title ladder is a hand-written opinion, tuned against one real network, and the company
+list, though it now follows a written rule, is a judgement about which names most
+professionals know. Company scores are editable for exactly that reason. The model is
+**domain-shaped**: the list now reaches health care, retail, autos, energy, law and the top
+universities, but it is still a list of big names. Tradespeople, small and local businesses,
+most schools and hospitals, and the public sector are estimated from the network, so a
+network made mostly of them scores lower across the board than one full of large employers.
+And the tier is a statement about **network position, not human worth**, SPEC invariant 6.
+Say so plainly in any UI that shows a tier.
