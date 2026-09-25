@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  serverExitAction, bundlePathFromExe, startPathArg, UPDATE_HANDOFF_EXIT_CODE, RESTART_EXIT_CODE,
+  serverExitAction, bundlePathFromExe, startPathArg, dataDirArg, UPDATE_HANDOFF_EXIT_CODE, RESTART_EXIT_CODE,
 } from '../desktop/lib.mjs';
 
 // When the server ends, the app says nothing (it is quitting anyway), quits
@@ -57,4 +57,17 @@ test('after an update the app opens on Settings, where the outcome is shown', ()
   assert.equal(startPathArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--after-update']), '/settings#updates');
   assert.equal(startPathArg(['x', '--after-update', '--data-dir', '/tmp/copy']), '/settings#updates');
   assert.equal(startPathArg(['x', '--data-dir', '/tmp/copy']), null);
+});
+
+// dataDirArg is the data branch's (a relative --data-dir made absolute), kept
+// word for word so the two branches merge into one copy. What the updater
+// needs of it: the folder it reopens the new version with (always absolute,
+// lib/updater.js relaunchArgs) arrives exactly as it was sent.
+test('the data folder the updater reopens the app with arrives as it was sent', () => {
+  const dir = '/Users/someone/Six Degrees data/it\'s here';
+  assert.equal(dataDirArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--after-update', '--data-dir', dir], { cwd: '/', home: '/Users/someone' }), dir);
+  // A relative one typed by hand is taken from where the app was started, or
+  // from the home folder when that is / (as with `open`), never from inside the app.
+  assert.equal(dataDirArg(['x', '--data-dir', 'copy'], { cwd: '/', home: '/Users/someone' }), '/Users/someone/copy');
+  assert.equal(dataDirArg(['x', '--data-dir=copy'], { cwd: '/Users/someone/work', home: '/Users/someone' }), '/Users/someone/work/copy');
 });
