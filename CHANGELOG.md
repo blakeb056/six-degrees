@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   update it and where it keeps your data.
 
 ### Fixed
+- **Big LinkedIn exports import.** An export over about 9,000 connections was refused ("too large to hold in this browser tab"). The tab now keeps only what the export says about each person and scores it again on load, so exports up to LinkedIn's 30,000 maximum fit. Checked in a browser: 10,000 connections import and draw in about 4 seconds, 30,000 in about 25. It still never touches the database.
 - **`npx six-degrees` downloads about 22 MB instead of about 235 MB.** The package already
   carries its built server; Next, React and d3 are now build-time only.
 - On Windows, npm now refuses the package with a clear "not supported" message instead of
