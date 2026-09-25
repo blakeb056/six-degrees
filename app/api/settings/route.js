@@ -47,11 +47,12 @@ export async function POST(request) {
   }
   // What the change sets in motion (lib/settings-effects.js): a new sector
   // focus rescores everyone. The save has landed either way, so a failure
-  // here is reported with the saved settings rather than hidden.
+  // here is reported with the saved settings (and whatever work did finish)
+  // rather than hidden.
   try {
     const effects = afterSettingsChange(getDb(), before, settings);
     return Response.json(effects ? { settings, effects } : { settings });
   } catch (err) {
-    return Response.json({ settings, error: err.message }, { status: 500 });
+    return Response.json({ settings, ...(err.effects ? { effects: err.effects } : {}), error: err.message }, { status: 500 });
   }
 }

@@ -4,9 +4,11 @@ import { parseSectorFocus, previewSectorFocus } from '../../../../lib/sector-foc
 import { industryKeyOf } from '../../../../lib/companies';
 
 // Settings → Your sector, before you save: what a sector focus would change,
-// against the one saved now. It scores the network twice in memory with the
-// same inputs rescoreAll() uses and writes nothing. A POST because it takes a
-// body; the cross-site guard in middleware.js covers it like every write.
+// against the one saved now. It reads the network once and scores it twice in
+// memory, with the inputs rescoreAll() uses, and writes nothing. A save counts
+// its changes with the same function (rescoreAll's compareWith), so the two
+// agree. A POST because it takes a body; the cross-site guard in
+// middleware.js covers it like every write.
 
 export async function POST(request) {
   let body;

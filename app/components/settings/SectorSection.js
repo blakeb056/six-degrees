@@ -19,6 +19,8 @@ import { TIER_COLORS_CLASSIC } from '../../../lib/tiers';
 import { csvNetworkSource } from '../../../lib/csv';
 
 const STRENGTH_LABEL = { lean: 'Lean', strong: 'Strong' };
+// What says the reader has taken over the page (see the jump to #sector).
+const READER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
 const DEGREE = { 1: '1st', 2: '2nd', 3: '3rd' };
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
@@ -44,6 +46,7 @@ export default function SectorSection() {
   const [onScreen] = useState(() => (typeof window === 'undefined' ? null : csvNetworkSource()));
   const timer = useRef(null);
   const ticket = useRef(0);
+  const jumped = useRef(false);
 
   useEffect(() => {
     let off = false;
@@ -58,6 +61,31 @@ export default function SectorSection() {
       .catch((e) => { if (!off) setLoadError(e.message); });
     return () => { off = true; clearTimeout(timer.current); };
   }, []);
+
+  // Links to /settings#sector (the profile's card, Paths → Scores) arrive
+  // before this section has loaded, so the browser's own jump to it finds
+  // nothing. Jump once it's here, then keep it in place while what loads above
+  // it (Updates) pushes it down: the browser only holds steady what's already
+  // on screen, and that is the page's header. Following stops as soon as the
+  // reader scrolls, clicks or types, and after two seconds regardless.
+  useEffect(() => {
+    if (jumped.current || (!draft && !loadError)) return;
+    jumped.current = true;
+    const el = document.getElementById('sector');
+    if (window.location.hash !== '#sector' || !el) return;
+    const jump = () => el.scrollIntoView({ block: 'start' });
+    jump();
+    const follow = new ResizeObserver(jump);
+    follow.observe(document.body);
+    const stop = () => {
+      follow.disconnect();
+      clearTimeout(done);
+      for (const e of READER_INPUT) window.removeEventListener(e, stop, true);
+    };
+    const done = setTimeout(stop, 2000);
+    for (const e of READER_INPUT) window.addEventListener(e, stop, { capture: true, passive: true });
+    return stop;
+  }, [draft, loadError]);
 
   // Every change asks for a fresh dry run, a moment after the last click.
   // Only the newest answer is kept.
@@ -174,9 +202,9 @@ export default function SectorSection() {
 
           <ul style={{ margin: '16px 0 0', paddingLeft: 18, fontSize: 12.5, color: '#778', lineHeight: 1.7 }}>
             <li>Tiers rank how reachable someone is through your network, not the people themselves.</li>
-            <li>A company score you set on <Link href="/paths" style={{ color: '#3498DB' }}>Paths → Scores</Link> always wins. Your sector never changes it.</li>
-            <li>Tiers also decide which circles the scanner reads first, so people in your sectors get scanned sooner.</li>
-            <li>A company&rsquo;s sector is inferred from its name, else from its people&rsquo;s headlines. Where that&rsquo;s unclear, the company doesn&rsquo;t change.</li>
+            <li>A company score you set on <Link href="/paths?tab=scores" style={{ color: '#3498DB' }}>Paths → Scores</Link> always wins. Your sector never changes it.</li>
+            <li>If you scan highest tier first, people in your sectors come up sooner. Scanning newest first, the default, doesn&rsquo;t go by tier.</li>
+            <li>A company&rsquo;s sector comes from the app&rsquo;s list of well-known companies, else its name, else what most of its people&rsquo;s headlines say. Where that&rsquo;s unclear, the company doesn&rsquo;t change.</li>
             {onScreen && (
               <li style={{ color: '#FFD700' }}>
                 {onScreen === 'sample' ? 'The sample network' : 'The CSV import'} open in this window isn&rsquo;t changed by this.
@@ -190,14 +218,18 @@ export default function SectorSection() {
   );
 }
 
-/** "Saved: …. Rescored N people: …" */
+/** "Saved: …. Rescored your network (N people). …" */
 function savedLine(focus, effect) {
+  // The labels have commas of their own ("Finance, VC & Crypto"), so a dot
+  // separates them.
   const what = focus.sectors.length
-    ? `Saved: ${focus.sectors.map((k) => industryByKey(k).label).join(', ')} (${STRENGTH_LABEL[focus.strength].toLowerCase()}).`
+    ? `Saved: ${focus.sectors.map((k) => industryByKey(k).label).join(' · ')} (${STRENGTH_LABEL[focus.strength].toLowerCase()}).`
     : 'Saved: no sector.';
   if (!effect) return what;
   if (!effect.scored) return `${what} There's no scanned network yet; it will apply when you scan.`;
-  return `${what} Rescored ${plural(effect.scored, 'person', 'people')}. ${tierLine(effect.up, effect.down, true)}`;
+  // People, once each, as the tier moves count them: someone in two circles is
+  // two rows but one person.
+  return `${what} Rescored your network (${plural(effect.people ?? effect.scored, 'person', 'people')}). ${tierLine(effect.up, effect.down, true)}`;
 }
 
 function Preview({ preview, draft }) {

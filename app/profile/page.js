@@ -35,7 +35,8 @@ function ProfileInner() {
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
   // "Your Sectors" is what you picked in Settings → Your sector. (users.sectors,
   // which this card used to show, is never written by anything; the Sidebar
-  // and Outlink still read it as free text.)
+  // and Outlink still read it as free text.) null while it loads; a load that
+  // fails says so rather than showing "none picked" (TRAPS §7).
   const [sectorFocus, setSectorFocus] = useState(null);
 
   useEffect(() => {
@@ -43,9 +44,9 @@ function ProfileInner() {
     if (!userId) return;
     async function load() {
       fetch('/api/settings')
-        .then((r) => r.json())
-        .then((d) => setSectorFocus(d.settings?.sectorFocus || null))
-        .catch(() => setSectorFocus(null));
+        .then((r) => r.json().then((d) => (r.ok && d.settings ? d : Promise.reject(new Error(d.error)))))
+        .then((d) => setSectorFocus(d.settings.sectorFocus || { sectors: [], strength: 'lean' }))
+        .catch(() => setSectorFocus({ failed: true }));
       const net = await loadNetwork(userId);
       const d1 = net.degree1;
       const d2 = net.degree2;
@@ -376,10 +377,16 @@ function ProfileInner() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Your Sectors</h3>
             <Link href="/settings#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
-              {sectorFocus?.sectors?.length ? 'Change' : 'Pick in Settings'} &rarr;
+              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick in Settings' : 'Settings'} &rarr;
             </Link>
           </div>
-          {sectorFocus?.sectors?.length ? (
+          {!sectorFocus ? (
+            <div style={{ fontSize: 12, color: '#888' }}>Loading…</div>
+          ) : sectorFocus.failed ? (
+            <div style={{ fontSize: 12, color: '#ff7676' }}>
+              Couldn&rsquo;t load your sectors. Reload this page, or open Settings to see them.
+            </div>
+          ) : sectorFocus.sectors?.length ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
               {sectorFocus.sectors.map((key) => {
                 const ind = industryByKey(key);

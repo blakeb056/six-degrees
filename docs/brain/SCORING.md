@@ -9,7 +9,7 @@ pinning it down. Everything scores through it:
 | `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION` or the sector focus they were computed with no longer matches; both stamped in `app_meta`) |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
-| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: scores the network twice in memory (saved focus, new focus) and counts what moves. Writes nothing |
+| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
 
 Until 0.1.10 there were three scorers that disagreed. `scripts/*.sql` are the retired
 hosted-era model, kept for history and marked as such. Do not transcribe the model
@@ -40,17 +40,22 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - "International" is not "intern".
 
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
-`company_scores`), then the curated `KNOWN_COMPANIES` list (164 companies). Otherwise it's
+`company_scores`), then the curated `KNOWN_COMPANIES` list (165 companies). Otherwise it's
 an estimate from how many of your people work there: 5 at 5+, 6 at 15+, but never for
 schools (a company whose one industry, below, is education). Unknown is 4, and no company
 found is 3, so the company weight runs from 0.615 (no company) to 1.0; 0.505 is the floor,
 for a company you score 1. Names are cleaned first, so "Snap Inc.", "Snapchat 👻" and
-"Snap" are one company. Phrases like "at scale" are not companies. If you picked sectors
-in Settings, a company in one of them gets +1 or +2 on top (below).
+"Snap" are one company. Phrases like "at scale" are not companies. The list's aliases match
+from the start of a name, so a name that says school, college or university only matches a
+school on the list: "Kellogg School of Management" is not Kellanova, "Warner University" not
+Warner Bros., "Chase College of Law" not JPMorgan Chase. Bain Capital (private equity) has
+its own entry, apart from Bain & Company. If you picked sectors in Settings, a company in one
+of them gets +1 or +2 on top (below).
 
 **Reach bonus (≤1.5)** needs whole-word signals: investor, YC, 30 under 30, an audience or
 revenue in the millions, keynote/TEDx/patents/awards. It's halved for someone at a company
-scored 4 or less, because headlines are self-written.
+scored 4 or less, because headlines are self-written. That's judged by the company's score
+before any sector lean (a score you set counts as the company's own).
 
 **Bridge boost (≤1)** goes to a 1st-degree person whose mapped circle (20+ people) is
 unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed each time and
@@ -67,7 +72,7 @@ but each **company** gets exactly one, used everywhere: its colour in Paths, its
 Scores, the school rule above, and the sector lean. `companyIndustry()` decides, in order:
 
 1. **The curated list's own industry**, the last field of each `KNOWN_COMPANIES` entry.
-   93 of the 164 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
+   93 of the 165 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
    they took whatever their people's headlines said. Where a name does say something, the
    field agrees with it (a test in `tests/companies.test.mjs` checks both). Aliases count:
    "BNY Mellon" is BNY, finance.
@@ -82,6 +87,21 @@ Scores, the school rule above, and the sector lean. `companyIndustry()` decides,
 `rescoreAll()` always did. Before `SCORING_VERSION` 3 each *person's* headline decided
 their company's industry, so two people at one company could get different estimates.
 
+`readNetwork(rows, {industryOf})` reads every headline once (roles, student, reach signals)
+and finds every company anyone names, a former employer included, with its headcount and
+industry. `scoreNetwork(rows, {read})` then scores that read with no parsing, so the
+preview and a save score one read twice for about the price of once.
+
+Where Paths' colour can still differ from the industry scoring uses:
+
+- **Two profiles in one database.** The server votes over every row it holds; Paths only
+  sees the profile on screen. A company whose people mostly belong to the other profile can
+  vote differently.
+- **Names Paths merges and scoring doesn't** (`normalizeCompany`: "BNY Mellon" and "BNY",
+  or a loose rule that folds two companies into one). Paths looks the merged name up as
+  scoring would write it, which usually lands on the same answer, but a wrong merge shows
+  the other company's industry.
+
 ## Your sector (Settings)
 
 Up to three `INDUSTRIES` keys and a strength, saved in `app_meta` 'settings' as
@@ -94,8 +114,12 @@ when the score actually moved, so everything reading `{score, source}` is unchan
 - A point of company score is worth `0.055 × title points`: +0.55 for a founder, +0.50 for
   a VP, +0.41 for a director, +0.22 for an IC. So +1 moves a VP at a 6 (7.0, A) to S (7.5),
   a director at Snap from 7.1 (A) to 7.5 (S), and a founder at an unknown company from 6.7
-  to 7.3 (7.8, S, at +2). +1 on an unknown company (4 → 5) also stops its reach bonus
-  being halved.
+  to 7.3 (7.8, S, at +2).
+- **The lean lifts the company, not the headline's claims.** The reach bonus is halved by
+  the company's score *before* the lean, so a founder at an unknown company who says "Angel
+  investor" goes 7.2 → 7.8 on lean, not 7.2 → 8.3: liking a sector says nothing about whether
+  a self-written claim is true. (A score you set is your judgement of the company, so it
+  decides.)
 - **Recomputed from scratch on every rescore, never written into `company_scores`**, so
   turning it off gives back exactly the scores from before. `rescoreAll()` reads the focus
   itself, so imports, company-score changes and a stale model all apply it.
@@ -103,16 +127,21 @@ when the score actually moved, so everything reading `{score, source}` is unchan
   fingerprint (`lean:media,tech`, or `none`). `rescoreIfStale()` rescores when it no longer
   matches the saved focus: a database restored or brought from another computer, or a save
   whose rescore failed.
-- **Saving** goes through `POST /api/settings`; `lib/settings-effects.js` sees the focus
-  changed and runs `rescoreAll()`, then counts who changed tier (people once, at their
-  closest degree, the way the preview counts). No promotion notifications fire: those
-  belong to scans (`/api/ingest`).
+- **Saving** goes through `POST /api/settings`; `lib/settings-effects.js` sees the focus's
+  fingerprint changed and runs `rescoreAll({compareWith: the focus it replaced})`. That
+  scores the same read of the rows with the old focus too, in memory, and counts who changed
+  tier with `previewSectorFocus()` itself (people once, at their closest degree), so the save
+  says what the preview said, even when the stored tiers were stale. A strength change with
+  no sectors picked scores like nothing picked, so it saves without a rescore. If the
+  rescore fails, the choice is still saved, the answer says so, and the old stamp makes the
+  next map load retry. No promotion notifications fire: those belong to scans
+  (`/api/ingest`).
 - **The ripple:** more people at A/S raises circles' elite share, so bridge boosts and
-  catalyst flags can change. The scanner reads bridges' circles highest stored tier first
-  (unless you scan newest first) and its tier filter uses stored tiers (`scrape.py`, the
-  bridge order), Outlink's priority multiplies by tier, and the profile's Network Power and
-  milestones count tiers. All of that follows the new tiers. The Settings page says the
-  scanner part plainly.
+  catalyst flags can change. Outlink's priority multiplies by tier, and the profile's Network
+  Power and milestones count tiers. All of that follows the new tiers. The scanner's default
+  order, newest connections first, doesn't look at tiers; only when you pick *Highest tier
+  first* on the Scan page does it read bridges' circles by stored tier and apply its tier
+  filter (`scrape.py`, the bridge order; `app/setup/page.js`). The Settings page says so.
 - **A CSV import and the sample network are not re-weighted.** They're scored in the
   browser without the database's company scores or settings (`lib/csv.js`), and the
   sample's scores are baked into `public/demo-data.json`. Settings says so when one is open.

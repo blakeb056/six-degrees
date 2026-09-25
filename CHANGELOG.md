@@ -15,15 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Your sector (Settings).** Pick up to three sectors you work in and how much to lean
   toward them. Companies in them get +1 ("lean") or +2 ("strong") on their score, never
   above 10 and never on a score you set on Paths → Scores, so the people there rank
-  higher. Before you save, it shows how many companies and people would move, with
-  examples; saving rescores everyone, and turning it off gives back exactly the scores from
-  before. It applies to networks you've scanned: a CSV import and the sample network aren't
-  re-weighted, and the page says so when one is open. Tiers still rank how reachable
-  someone is, not people. The profile's *Your Sectors* now shows what you picked (it was
-  always empty), and Paths → Scores marks the companies your sector lifted.
+  higher. It lifts companies, not what people claim: a reach bonus at an unknown company
+  stays halved. Before you save, it shows how many companies and people would move, with
+  examples; saving rescores everyone and reports the same count, and turning it off gives
+  back exactly the scores from before. It applies to networks you've scanned: a CSV import
+  and the sample network aren't re-weighted, and the page says so when one is open. Tiers
+  still rank how reachable someone is, not people. The profile's *Your Sectors* now shows
+  what you picked (it was always empty), and Paths → Scores marks the companies your sector
+  lifted. `/paths?tab=scores` opens Paths on its Scores tab.
 
 ### Changed
-- **Each company has one industry, used everywhere.** The curated list of 164 companies
+- **Each company has one industry, used everywhere.** The curated list of 165 companies
   now names each one's industry, so Adobe, Pfizer or MIT (no industry word in the name) no
   longer take whatever their people's headlines say. Otherwise the name decides, else what
   most of the people there say; a tie stays unclear. Paths' colours, the Scores list and
@@ -34,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
   found, not 0.56, up to 1.0 for a company scored 10.
+- **Schools named like a company on the curated list were scored as that company.**
+  "Kellogg School of Management" counted as Kellanova (7), "Warner University" as Warner
+  Bros. Discovery (8), "Campbell University" as Campbell's (7) and "Chase College of Law" as
+  JPMorgan Chase (9). A name that says school, college or university now only matches a
+  school on the list. Bain Capital, a private equity firm, has its own entry (finance, still
+  9) instead of being read as Bain & Company (consulting).
 
 ### Security
 - **Pages on other local ports can no longer send the app commands.** The check that refuses

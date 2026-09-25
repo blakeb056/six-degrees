@@ -104,7 +104,8 @@ function network() {
 test('the preview counts companies and people that would move, against what is saved', () => {
   const rows = network();
   const p = previewSectorFocus(rows, { industryOf: industryKeyOf, from: NO_FOCUS, to: strong('tech') });
-  assert.equal(p.scored, 7);
+  assert.equal(p.scored, 7);                                             // rows…
+  assert.equal(p.people, 6);                                             // …and people: Esme is two rows
   // Quillon 4 → 6 and Adobe 8 → 10; Google is already 10, Snap is media.
   assert.equal(p.companies, 2);
   assert.deepEqual([p.companiesUp, p.companiesDown], [2, 0]);
@@ -133,6 +134,17 @@ test('the preview agrees with scoring the network for real', () => {
   assert.deepEqual(p.examples.map((e) => [e.name, e.from, e.to]), [['Dev Moreau', 'A', 'S']]);
 });
 
+test('a company only in someone\'s former roles counts among the companies that move', () => {
+  // Discord is nobody's employer now, but its score moves with the lean like
+  // any other, and it is Ari's strongest role. The preview used to say "No
+  // company changes score. 1 person moves up a tier."
+  const rows = [{ id: 'x', degree: 1, name: 'Ari Lund', profile_url: '/in/x', headline: 'Consultant | Ex-Manager at Discord' }];
+  const p = previewSectorFocus(rows, { industryOf: industryKeyOf, to: lean('tech') });
+  assert.deepEqual([p.companies, p.companiesUp, p.companiesDown], [1, 1, 0]);
+  assert.deepEqual(p.companyExamples, [{ name: 'Discord', from: 7, to: 8, sector: 'tech' }]);
+  assert.deepEqual(p.examples.map((e) => [e.name, e.company, e.from, e.to]), [['Ari Lund', 'Discord', 'C', 'B']]);
+});
+
 test('people are counted once, at the closest degree, and both directions show', () => {
   const rows = [
     { id: '1', degree: 2, profile_url: '/in/x', name: 'X far' },
@@ -143,6 +155,7 @@ test('people are counted once, at the closest degree, and both directions show',
   const before = { 1: 'D', 2: 'B', 3: 'A', 4: 'C' };
   const after = { 1: 'S', 2: 'A', 3: 'B', 4: 'C' };
   const m = tierMoves(rows, (r) => before[r.id], (r) => after[r.id]);
+  assert.equal(m.people, 3);                                             // four rows, three people
   assert.deepEqual([m.up, m.down], [1, 1]);                              // X near B → A (not X far), Y A → B
   assert.deepEqual(m.examples.map((e) => [e.name, e.from, e.to]), [['X near', 'B', 'A'], ['Y', 'A', 'B']]);
   assert.deepEqual(tierMoves(rows, (r) => before[r.id], (r) => after[r.id], { examples: 0 }).examples, []);
@@ -212,21 +225,107 @@ test('stored scores from another sector focus are stale, and are redone once', (
   assert.deepEqual(rescoreIfStale(), { scored: 7 });
 });
 
+// What the page does: the preview route's call, then a save through the settings route's path.
+const previewAsRoute = (db, to) => previewSectorFocus(scoringRows(db, { withPeople: true }), {
+  overrides: companyOverrides(db), industryOf: industryKeyOf, from: sectorFocusOf(db), to,
+});
+const save = (db, focus) => {
+  const before = readSettings(db);
+  return afterSettingsChange(db, before, writeSettings(db, { sectorFocus: focus }));
+};
+
 test('saving a new focus rescores everyone and says who moved; the preview said the same', () => {
   insert(network());
   rescoreAll();
   const db = getDb();
-  const preview = previewSectorFocus(scoringRows(db, { withPeople: true }), {
-    overrides: companyOverrides(db), industryOf: industryKeyOf, from: sectorFocusOf(db), to: strong('tech'),
-  });
+  const preview = previewAsRoute(db, strong('tech'));
   const beforeSave = readSettings(db);
   const saved = writeSettings(db, { sectorFocus: strong('tech') });
   const effects = afterSettingsChange(db, beforeSave, saved);
-  assert.deepEqual(effects, { sectorFocus: { scored: 7, moved: preview.up + preview.down, up: preview.up, down: preview.down } });
+  assert.deepEqual(effects, { sectorFocus: { scored: 7, people: 6, moved: preview.up + preview.down, up: preview.up, down: preview.down } });
   assert.deepEqual([effects.sectorFocus.up, effects.sectorFocus.down], [2, 0]);
+  assert.equal(effects.sectorFocus.people, preview.people);
   assert.equal(row('f').tier, 'S');
   // The same choice again sets nothing in motion.
   assert.equal(afterSettingsChange(db, saved, writeSettings(db, { sectorFocus: strong('tech') })), null);
+});
+
+test('the preview and the save agree when the stored scores are stale', () => {
+  // Stored scores from one focus, a different focus saved: a save whose rescore
+  // failed, or a database brought from another computer. The save used to
+  // count from the stored tiers (1 up, 0 down) while the preview counted from
+  // the saved focus (1 up, 2 down).
+  insert(network());
+  rescoreAll();                                                          // stamped 'none'
+  const db = getDb();
+  writeSettings(db, { sectorFocus: strong('tech') });                   // saved, never rescored
+  assert.deepEqual([row('f').tier, row('a').tier], ['A', 'A']);
+  const preview = previewAsRoute(db, lean('media'));
+  // Strong tech had Ada (Quillon) and Esme (Adobe) at S; lean media lifts Dev (Snap) instead.
+  assert.deepEqual([preview.up, preview.down], [1, 2]);
+  const effects = save(db, lean('media'));
+  assert.deepEqual(effects.sectorFocus, { scored: 7, people: 6, moved: 3, up: preview.up, down: preview.down });
+  assert.deepEqual([row('s').tier, row('f').tier, row('a').tier], ['S', 'A', 'A']);
+  assert.equal(meta('scoring_focus'), 'lean:media');
+});
+
+test('a save whose rescore fails is still saved, says so, and is redone on a later load', () => {
+  insert(network());
+  rescoreAll();
+  const db = getDb();
+  db.exec("CREATE TRIGGER fail_rescore BEFORE UPDATE OF tier ON linkedin_connections BEGIN SELECT RAISE(ABORT, 'disk full (simulated)'); END");
+  try {
+    let error;
+    try { save(db, lean('media')); } catch (err) { error = err; }
+    assert.equal(error?.message, 'Saved, but rescoring your network failed (disk full (simulated)). It will try again the next time the map loads.');
+    assert.equal(error.effects, null);
+    // The choice is saved; the scores and their stamp are the old ones, all or nothing.
+    assert.deepEqual(sectorFocusOf(db), lean('media'));
+    assert.equal(meta('scoring_focus'), 'none');
+    assert.deepEqual([row('s').company_prestige_score, row('s').tier], [9, 'A']);
+    // While the fault lasts, the map's retry fails too (and it serves what's stored).
+    assert.throws(() => rescoreIfStale(), /disk full/);
+  } finally {
+    db.exec('DROP TRIGGER IF EXISTS fail_rescore');
+  }
+  // Once it clears, the next load redoes it with the saved choice.
+  assert.deepEqual(rescoreIfStale(), { scored: 7 });
+  assert.deepEqual([row('s').company_prestige_score, row('s').tier], [10, 'S']);
+  assert.equal(meta('scoring_focus'), 'lean:media');
+});
+
+test('a strength with no sectors picked scores like nothing picked, so it saves without a rescore', () => {
+  insert(network());
+  rescoreAll();
+  const db = getDb();
+  // A rescore would put this back to A.
+  db.prepare("UPDATE linkedin_connections SET tier = 'D' WHERE id = 's'").run();
+  const before = readSettings(db);
+  const saved = writeSettings(db, { sectorFocus: strong() });
+  assert.deepEqual(saved.sectorFocus, { sectors: [], strength: 'strong' });
+  assert.equal(afterSettingsChange(db, before, saved), null);
+  assert.equal(row('s').tier, 'D');
+  assert.deepEqual(rescoreIfStale(), { scored: 0 });                     // 'none' either way
+});
+
+test('every changed setting\'s work runs, even after another\'s fails, and every failure is named', () => {
+  const ran = [];
+  const effects = {
+    first: { run: () => { ran.push('first'); throw new Error('First failed.'); } },
+    second: { run: (db, after, before) => { ran.push('second'); return { from: before, to: after }; } },
+    third: { run: () => { ran.push('third'); throw new Error('Third failed.'); } },
+    unchanged: { run: () => { ran.push('unchanged'); } },
+    judged: { changed: () => false, run: () => { ran.push('judged'); } },
+  };
+  const before = { first: 1, second: 1, third: 1, unchanged: 1, judged: 1 };
+  const after = { first: 2, second: 2, third: 2, unchanged: 1, judged: 2 };
+  let error;
+  try { afterSettingsChange(getDb(), before, after, effects); } catch (err) { error = err; }
+  assert.deepEqual(ran, ['first', 'second', 'third']);
+  assert.equal(error?.message, 'First failed. Third failed.');
+  assert.deepEqual(error.effects, { second: { from: 1, to: 2 } });
+  // With nothing failing, the results come back as before.
+  assert.deepEqual(afterSettingsChange(getDb(), before, after, { second: effects.second }), { second: { from: 1, to: 2 } });
 });
 
 test('the preview writes nothing', () => {

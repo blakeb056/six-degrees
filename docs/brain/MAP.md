@@ -12,14 +12,14 @@
 | `app/components/ChainView.js` | The rotary-dial bridge view. |
 | `app/components/SeparationView.js` | Separation: every 2nd-degree person ranked, one row each with every way in, under a small map of the top of the list. Windowed, so it is never capped. |
 | `app/components/PathsAnalyzer.js` | Paths → Map and Industries: an InMaps-style company map by inferred industry, industry cards, and the analyzer panel for a company or industry. |
-| `app/components/CompanyScores.js` | Paths → Scores: every company with its score, where the score comes from, and the control to set your own. |
+| `app/components/CompanyScores.js` | Paths → Scores: every company with its score, where the score comes from, and the control to set your own. `/paths?tab=scores` opens Paths on it. |
 | `app/components/OutlinkQuest.js` | Outlink → Circles: working through each mapped circle five people at a time (rules in `lib/quest.js`). |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
 | `app/settings/page.js` | Settings: Updates (`UpdatePanel`), Your sector, About this copy, and a `<Section>` per feature that adds a setting. Reached from the ⚙ button and *Six Degrees → Settings…* (⌘,). |
 | `app/components/settings/SectorSection.js` | Settings → Your sector: up to three industries and lean/strong, a dry run of what would change (`/api/settings/sector-preview`), and Save, which rescores everyone. Says when a CSV or the sample is open, since those aren't re-weighted. |
 | `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
 | `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. A save rewrites only the keys it changes, so an older copy never erases a newer one's settings. |
-| `lib/settings-effects.js` | What saving a setting sets in motion (a new sector focus rescores everyone). Kept apart from the store because rescoring reads the settings: the store importing it would go in a circle. |
+| `lib/settings-effects.js` | What saving a setting sets in motion (a new sector focus rescores everyone and counts who moved, as the preview does). Each changed setting's work runs even if another's fails. Kept apart from the store because rescoring reads the settings: the store importing it would go in a circle. |
 | `app/api/*` | 20 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
@@ -32,9 +32,9 @@
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
 | `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
 | `lib/scoring.js` | **The scoring model: the only one.** Titles, companies (each with one industry), the sector lean, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
-| `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` reads your company scores and sector focus and writes `lib/scoring.js`'s results back to every row; `rescoreIfStale()` redoes it when the model or the focus changed. |
+| `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` reads your company scores and sector focus and writes `lib/scoring.js`'s results back to every row (with `compareWith`, it also says who changed tier against another focus, as the preview counts); `rescoreIfStale()` redoes it when the model or the focus changed. |
 | `lib/companies.js` | Companies and industries for Paths: the company index, inferred industries, company-to-company links, ways in. Reads titles, companies and each company's one industry through `lib/scoring.js`. |
-| `lib/sector-focus.js` | Settings → Your sector around the model: what a valid choice is, the fingerprint stored scores are stamped with, and the dry run (`previewSectorFocus`). |
+| `lib/sector-focus.js` | Settings → Your sector around the model: what a valid choice is, the fingerprint stored scores are stamped with, and the dry run (`previewSectorFocus`), which a save also reports. |
 | `lib/quest.js` | Outlink's game rules: stages of five, next best moves, levels, new doors. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
 | `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |
