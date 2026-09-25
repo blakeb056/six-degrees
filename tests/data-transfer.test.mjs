@@ -4,7 +4,7 @@
 // all that the LinkedIn sign-in never leaves the computer and that nothing is
 // replaced before a copy of it is kept. Every person here is invented.
 
-import { test, before } from 'node:test';
+import { test, before, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, existsSync, readdirSync,
@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { spawn } from 'node:child_process';
 import { SCHEMA_SQL } from '../db/schema.js';
 
 // Nothing here touches the real data folder, whatever the environment says.
@@ -24,15 +25,19 @@ let applySchema, backupOnNewVersion;
 let buildExport, exportFileName, countPeople, appTables;
 let validateImport, stageImport, applyPendingImport, pendingImport, cancelPendingImport;
 let importPreflight, receiveUpload, ImportError, restartCodeFrom, restartAdvice, lastImport, recordImport;
+let admitImport, keptCopyMatches, vacuumCopy, MAX_IMPORT_BYTES, travellingFiles, referencedPhotos, linkedinState, durable;
 let folderReport, sweepLeftovers, revealFolder, folderOpener, UPLOAD_WORK_PREFIX, EXPORT_WORK_PREFIX;
 
 before(async () => {
   ({ applySchema, backupOnNewVersion } = await import('../lib/db-client.js'));
-  ({ buildExport, exportFileName, countPeople, appTables } = await import('../lib/data-export.js'));
+  ({ buildExport, exportFileName, countPeople, appTables, travellingFiles, referencedPhotos } = await import('../lib/data-export.js'));
   ({
     validateImport, stageImport, applyPendingImport, pendingImport, cancelPendingImport,
     importPreflight, receiveUpload, ImportError, restartCodeFrom, restartAdvice, lastImport, recordImport,
+    admitImport, keptCopyMatches, vacuumCopy, MAX_IMPORT_BYTES,
   } = await import('../lib/data-import.js'));
+  ({ linkedinState } = await import('../lib/linkedin-limits.js'));
+  ({ durable } = await import('../lib/durable.js'));
   ({
     folderReport, sweepLeftovers, revealFolder, folderOpener, UPLOAD_WORK_PREFIX, EXPORT_WORK_PREFIX,
   } = await import('../lib/data-folder.js'));
@@ -435,9 +440,9 @@ test('an import is refused during a scan, beside another import, too big, or wit
   assert.equal(importPreflight({ ...ok, pending: { people: 3 } }).status, 409);
   assert.equal(importPreflight({ ...ok, declared: Number.NaN }).status, 400);
   assert.equal(importPreflight({ ...ok, declared: 0 }).status, 400);
-  const big = importPreflight({ ...ok, declared: 600 * 1024 * 1024 });
+  const big = importPreflight({ ...ok, declared: 300 * 1024 * 1024 });
   assert.equal(big.status, 413);
-  assert.match(big.message, /600 MB\. This copy can import files up to 512 MB/);
+  assert.match(big.message, /300 MB\. This copy can import files up to 256 MB/);
 
   const unconfirmed = importPreflight({ ...ok, currentPeople: 1234, confirmedPeople: Number.NaN });
   assert.equal(unconfirmed.status, 409);
@@ -514,12 +519,16 @@ test('an import is checked and staged without changing anything, then swapped in
   assert.deepEqual(namesIn(path.join(here, done.keptDatabase)), ['a-0', 'a-1', 'a-2', 'a-wal']);
   const keptFiles = path.join(here, done.keptFiles);
   assert.ok(existsSync(path.join(keptFiles, 'avatars', 'a0photo.webp')));
-  assert.equal(JSON.parse(readFileSync(path.join(keptFiles, 'scan-limits.json'), 'utf8')).tag, 'a');
+  assert.ok(existsSync(path.join(keptFiles, 'bridge-progress.json')));
+  assert.equal(JSON.parse(readFileSync(path.join(keptFiles, 'scan-limits.json'), 'utf8')).tag, 'a', 'a copy of the budget as it was');
 
-  // The photos and files that came with it are in place.
+  // The photos and the network's own files that came with it are in place.
   assert.deepEqual(readdirSync(path.join(here, 'avatars')).sort(), ['b0photo.webp', 'b1photo.webp']);
-  assert.equal(JSON.parse(readFileSync(path.join(here, 'scan-limits.json'), 'utf8')).tag, 'b');
   assert.equal(readFileSync(path.join(here, 'avatars', 'b1photo.webp'), 'utf8'), 'RIFF-b-1-webp-bytes');
+  assert.ok(readFileSync(path.join(here, 'bridge-progress.json'), 'utf8').includes('b-me'), 'the scanner’s notes about the new network');
+  assert.ok(readFileSync(path.join(here, 'bridge-skips.json'), 'utf8').includes('hidden-b'));
+  // The LinkedIn budget belongs to the account: this computer's limits stay.
+  assert.equal(JSON.parse(readFileSync(path.join(here, 'scan-limits.json'), 'utf8')).tag, 'a');
 
   // What belongs to this computer is exactly where it was.
   assert.equal(readFileSync(path.join(here, 'chrome-profile', 'Default', 'Cookies'), 'utf8'), 'MARKER-CHROME-PROFILE-SESSION');
@@ -619,6 +628,10 @@ test('a start that stopped part-way carries on from its last step, and can no lo
   placed.close();
   assert.equal(done.keptDatabase, `backups/before-import-${stamp}.sqlite`);
   assert.deepEqual(readdirSync(path.join(here, 'backups')), [`before-import-${stamp}.sqlite`], 'no second copy was made');
+  // What the start that died kept can't be trusted (it never checked it, and
+  // it may not have reached the disk), so it was made again from the network
+  // still in place before that was replaced.
+  assert.deepEqual(namesIn(path.join(here, done.keptDatabase)), ['j-0', 'j-1', 'j-wal']);
 });
 
 test('a network here that can’t be read is kept exactly as it was, and the import still finishes', () => {
@@ -698,7 +711,18 @@ test('a network moves whole: export on one computer, import on another, export a
     const x = new DatabaseSync(file, { readOnly: true });
     try { return x.prepare('SELECT path, sha256 FROM sd_export_files ORDER BY path').all().map((r) => ({ ...r })); } finally { x.close(); }
   };
-  assert.deepEqual(filesOf(second), filesOf(first));
+  const budget = new Set(['scan-limits.json', 'linkedin-activity.json', 'linkedin-cooldown.json']);
+  const byteForByte = (file) => filesOf(file).filter((f) => !budget.has(f.path));
+  assert.deepEqual(byteForByte(second), byteForByte(first));
+  assert.deepEqual(filesOf(second).map((f) => f.path), filesOf(first).map((f) => f.path));
+  // The budget files are merged into the new computer's (none there), so they
+  // are written again: the same budget, in the app's own layout.
+  const fileIn = (file, rel) => {
+    const x = new DatabaseSync(file, { readOnly: true });
+    try { return JSON.parse(Buffer.from(x.prepare('SELECT bytes FROM sd_export_files WHERE path = ?').get(rel).bytes).toString('utf8')); } finally { x.close(); }
+  };
+  assert.deepEqual(fileIn(second, 'scan-limits.json'), { daily: 25, monthly: 100 });
+  assert.deepEqual(fileIn(second, 'linkedin-activity.json'), fileIn(first, 'linkedin-activity.json'));
   const counts = (file) => JSON.parse(manifestOf(file).counts);
   assert.deepEqual(counts(second), counts(first));
   const reopened = new DatabaseSync(second, { readOnly: true });
@@ -785,7 +809,11 @@ test('only a launcher that set a restart code can restart; the rest are told how
   assert.equal(restartCodeFrom({ SIX_DEGREES_RESTART_CODE: '75' }), 75);
   for (const bad of [undefined, '', '0', '1', 'x', '143', '7.5']) assert.equal(restartCodeFrom({ SIX_DEGREES_RESTART_CODE: bad }), null, String(bad));
 
-  assert.equal(restartAdvice({ kind: 'mac-app', code: 75 }).canRestart, true);
+  const mac = restartAdvice({ kind: 'mac-app', code: 75 });
+  assert.equal(mac.canRestart, true);
+  // Shown before anyone has clicked: it must not say a restart is under way.
+  assert.match(mac.how, /^Click Restart now/);
+  assert.doesNotMatch(mac.how, /^Six Degrees restarts/);
   const classic = restartAdvice({ kind: 'mac-app', code: null });
   assert.equal(classic.canRestart, false);
   assert.match(classic.how, /Quit Six Degrees \(⌘Q\) and open it again/);
@@ -795,4 +823,401 @@ test('only a launcher that set a restart code can restart; the rest are told how
   assert.equal(restartAdvice({ kind: 'npm', code: null }).command, 'npx six-degrees');
   assert.equal(restartAdvice({ kind: 'source', code: null }).command, 'npm run start:packaged');
   assert.equal(restartAdvice({ kind: 'git', code: null }).canRestart, false);
+});
+
+// ── what the photos and files in an export are ───────────────────────────────
+
+test('only the photos of people still in the network travel', () => {
+  // A deleted circle takes its rows but leaves their photos in avatars/: those
+  // people aren't in the copy, so their faces have no reason to be (review).
+  const dir = folder('orphans');
+  const db = seedNetwork(dir, { people: 2, tag: 'o' });
+  seedFiles(dir, { tag: 'o', photos: 2 });
+  for (let i = 0; i < 3; i++) writeFileSync(path.join(dir, 'avatars', `gone${i}.webp`), 'RIFF-DELETED-PERSON');
+  const { out, made } = exportOf(dir, db);
+  db.close();
+  assert.deepEqual(pathsIn(out).filter((p) => p.startsWith('avatars/')), ['avatars/o0photo.webp', 'avatars/o1photo.webp']);
+  assert.equal(made.photos, 2);
+  assert.equal(manifestOf(out).photos, '2');
+  assert.equal(readFileSync(out).includes('RIFF-DELETED-PERSON'), false);
+  assert.equal(validateImport(out, checks).photos, 2, 'and the file still checks out');
+  // What the Settings page says a copy would carry, beside what the folder holds.
+  const x = new DatabaseSync(dbIn(dir), { readOnly: true });
+  const report = folderReport({ dir, dbFile: dbIn(dir), inNetwork: referencedPhotos(x) });
+  x.close();
+  assert.equal(report.photos.count, 5);
+  assert.equal(report.photosInCopy.count, 2);
+});
+
+test('REGRESSION: an avatars folder that is a link to somewhere else is not followed', () => {
+  // SECURITY.md: links are never followed out of the data folder. That held for
+  // each file, but a link standing in for avatars/ itself was read through (review R8).
+  const dir = folder('linked-avatars');
+  const db = seedNetwork(dir, { people: 1, tag: 'l' });
+  const elsewhere = folder('elsewhere');
+  writeFileSync(path.join(elsewhere, 'l0photo.webp'), 'MARKER-OUTSIDE-FOLDER');
+  symlinkSync(elsewhere, path.join(dir, 'avatars'));
+  assert.deepEqual(travellingFiles(dir).map((f) => f.rel), []);
+  const { out } = exportOf(dir, db);
+  db.close();
+  assert.equal(readFileSync(out).includes('MARKER-OUTSIDE-FOLDER'), false);
+  assert.deepEqual(folderReport({ dir, dbFile: dbIn(dir) }).photos, { count: 0, bytes: 0 }, 'nor counted as this folder\'s');
+});
+
+// ── the LinkedIn budget travels, and an import keeps this computer's ────────
+
+test('REGRESSION: importing onto a computer that has scanned keeps its LinkedIn budget and its pause', () => {
+  // The other computer never scanned: its copy carries no budget files. This
+  // one searched 40 times today and LinkedIn pushed back. The import used to
+  // move this computer's files aside, so the searches were forgotten and the
+  // pause lifted without anyone choosing to (review R1).
+  const other = folder('never-scanned');
+  const odb = seedNetwork(other, { people: 2, tag: 'v' });
+  const { out: file } = exportOf(other, odb);
+  odb.close();
+  assert.equal(pathsIn(file).some((p) => p.startsWith('linkedin-')), false);
+
+  const here = folder('scanned-here');
+  seedNetwork(here, { people: 3, tag: 'w' }).close();
+  const now = Date.now();
+  const sec = Math.floor(now / 1000);
+  writeFileSync(path.join(here, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 40 }, (_, i) => sec - 60 * i), profiles: [] }));
+  writeFileSync(path.join(here, 'linkedin-cooldown.json'), JSON.stringify({ until: sec + 86400, reason: 'LinkedIn pushed back', set_at: sec }));
+  writeFileSync(path.join(here, 'scan-limits.json'), JSON.stringify({ daily: 25, monthly: 100 }));
+
+  stageImport(uploadInto(here, file), { dir: here, ...checks, replacedPeople: 3 });
+  const done = applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  const after = linkedinState(here, now);
+  assert.equal(after.searchesToday, 40);
+  assert.ok(after.cooldown, 'still paused');
+  assert.deepEqual(after.limits, { daily: 25, monthly: 100 });
+  assert.deepEqual(namesIn(dbIn(here)), ['v-0', 'v-1'], 'while the network itself was replaced');
+  // A copy of the budget as it was is kept with the rest, for an undo.
+  assert.equal(JSON.parse(readFileSync(path.join(here, done.keptFiles, 'linkedin-activity.json'), 'utf8')).searches.length, 40);
+});
+
+test('REGRESSION: a copy whose scan limits the app never offers is refused', async () => {
+  // The scanner reads a daily limit of 0 as no limit at all (review R2). The
+  // menu offers 25-500 a day; anything else in a file from elsewhere is refused.
+  const { sha256 } = await import('../lib/data-export.js');
+  const forged = (rel, value) => tampered(goodExport(), null, (db) => {
+    const bytes = Buffer.from(JSON.stringify(value));
+    db.prepare('DELETE FROM sd_export_files WHERE path = ?').run(rel);
+    db.prepare('INSERT INTO sd_export_files (path, bytes, sha256) VALUES (?, ?, ?)').run(rel, bytes, sha256(bytes));
+    recount(db);
+  });
+  assert.throws(() => validateImport(forged('scan-limits.json', { daily: 0, monthly: 0 }), checks),
+    refusedWith(/“scan-limits\.json” inside this file can't be used \(its daily limit \(0\) is not one Six Degrees offers\)/));
+  assert.throws(() => validateImport(forged('linkedin-activity.json', { searches: ['soon'] }), checks),
+    refusedWith(/“linkedin-activity\.json” inside this file can't be used/));
+  assert.throws(() => validateImport(forged('linkedin-cooldown.json', { reason: 'no end' }), checks),
+    refusedWith(/“linkedin-cooldown\.json” inside this file can't be used/));
+  assert.equal(validateImport(forged('scan-limits.json', { daily: 500, monthly: 0 }), checks).files, 4, 'the menu\'s own choices pass');
+});
+
+// ── nothing replaced before a whole copy of it is on the disk ────────────────
+
+test('a copy that is empty, or missing rows, is not a copy of the network', () => {
+  const dir = folder('copies');
+  seedNetwork(dir, { people: 4, tag: 'c' }).close();
+  const whole = path.join(dir, 'whole.sqlite');
+  vacuumCopy(dbIn(dir), whole);
+  assert.equal(keptCopyMatches(dbIn(dir), whole), true);
+  assert.equal(existsSync(`${whole}.partial`), false);
+
+  const empty = path.join(dir, 'empty.sqlite');
+  writeFileSync(empty, '');
+  assert.equal(keptCopyMatches(dbIn(dir), empty), false, 'an empty file passes quick_check as an empty database');
+  const short = path.join(dir, 'short.sqlite');
+  copyFileSync(whole, short);
+  const s = new DatabaseSync(short);
+  s.exec("DELETE FROM linkedin_connections WHERE id = 'c-3'");
+  s.close();
+  assert.equal(keptCopyMatches(dbIn(dir), short), false);
+  assert.equal(keptCopyMatches(dbIn(dir), path.join(dir, 'missing.sqlite')), false);
+  assert.equal(existsSync(`${dbIn(dir)}-wal`), false, 'checking leaves nothing beside the database');
+});
+
+test('REGRESSION: a start that finds a kept copy it can\'t trust makes it again before replacing anything', () => {
+  // A power cut after step 1 can leave the kept copy's name on the disk and
+  // not its bytes, with the journal saying "database-kept". The next start
+  // trusted it and replaced the intact original: the only copy of the old
+  // network was an empty file (review R4).
+  const here = folder('untrusted-copy');
+  seedNetwork(here, { people: 5, tag: 'old' }).close();
+  stageImport(uploadInto(here, goodExport('nu', 2)), { dir: here, ...checks });
+  const stamp = '2026-09-25T12-00-00-000Z';
+  mkdirSync(path.join(here, 'backups'));
+  const kept = path.join(here, 'backups', `before-import-${stamp}.sqlite`);
+  writeFileSync(kept, '');
+  writeFileSync(path.join(here, 'import-pending', 'APPLYING'), JSON.stringify({ stamp, phase: 'database-kept' }));
+
+  const done = applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  assert.equal(done.keptDatabase, `backups/before-import-${stamp}.sqlite`);
+  assert.deepEqual(namesIn(kept), ['old-0', 'old-1', 'old-2', 'old-3', 'old-4'], 'the old network, copied again');
+  assert.deepEqual(namesIn(dbIn(here)), ['nu-0', 'nu-1']);
+});
+
+test('if no whole copy of the network here can be made, it is not replaced, and the next start tries again', () => {
+  const here = folder('bad-copies');
+  seedNetwork(here, { people: 3, tag: 'keep' }).close();
+  stageImport(uploadInto(here, goodExport('never', 2)), { dir: here, ...checks });
+  // A copy that "succeeds" but comes out empty, every time.
+  const emptyCopy = (_from, to) => writeFileSync(to, '');
+
+  assert.throws(() => applyPendingImport({ dir: here, dbFile: dbIn(here), copyDatabase: emptyCopy }), /couldn't be checked, so it wasn't replaced/);
+  assert.deepEqual(namesIn(dbIn(here)), ['keep-0', 'keep-1', 'keep-2'], 'the network here is untouched');
+  const waiting = pendingImport(here);
+  assert.match(waiting.error, /couldn't be checked/);
+  assert.equal(waiting.started, true, 'its photos have moved aside: forward is the only way now');
+
+  const done = applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  assert.deepEqual(namesIn(path.join(here, done.keptDatabase)), ['keep-0', 'keep-1', 'keep-2']);
+  assert.deepEqual(namesIn(dbIn(here)), ['never-0', 'never-1']);
+});
+
+test('the kept copy, and each step, is on the disk before the step after it counts on it', () => {
+  // A rename is atomic but not durable, and SQLite doesn't sync what VACUUM
+  // INTO writes. So: the copy is synced, renamed, its folder synced, and only
+  // then does the journal say "database-kept" (itself written durably). Before
+  // this nothing in the apply synced at all (review R5).
+  const here = hardStoppedNetwork('dur', 2);
+  seedFiles(here, { tag: 'dur' });
+  stageImport(uploadInto(here, goodExport('dx', 2)), { dir: here, ...checks });
+  const events = [];
+  const journalPhase = (data) => { try { return JSON.parse(data).phase; } catch { return '?'; } };
+  const spies = [
+    mock.method(durable, 'syncFile', function syncFile(file) { events.push(['file', path.basename(file)]); }),
+    mock.method(durable, 'syncFolder', function syncFolder(dir) { events.push(['folder', path.basename(dir)]); }),
+    mock.method(durable, 'writeFileDurably', function writeFileDurably(file, data) {
+      writeFileSync(file, data);
+      events.push(['journal', path.basename(file) === 'APPLYING' ? journalPhase(data) : path.basename(file)]);
+    }),
+    mock.method(durable, 'writeJsonDurably', function writeJsonDurably(file, value) {
+      writeFileSync(file, JSON.stringify(value));
+      events.push(['budget', path.basename(file)]);
+    }),
+  ];
+  try {
+    applyPendingImport({ dir: here, dbFile: dbIn(here), now: new Date('2026-09-26T09:00:00Z') });
+  } finally {
+    for (const spy of spies) spy.mock.restore();
+  }
+  const at = (...event) => events.findIndex((e) => e[0] === event[0] && e[1] === event[1]);
+  const partial = 'before-import-2026-09-26T09-00-00-000Z.sqlite.partial';
+  assert.ok(at('file', partial) >= 0, 'the copy is synced');
+  assert.ok(at('file', partial) < at('folder', 'backups'), 'then the rename, by syncing its folder');
+  assert.ok(at('folder', 'backups') < at('journal', 'database-kept'), 'then the journal');
+  assert.ok(at('journal', 'start') < at('file', partial), 'every journal entry goes through the durable writer');
+  assert.ok(at('journal', 'files-kept') < at('journal', 'database-placed'));
+  assert.ok(at('budget', 'linkedin-activity.json') < at('journal', 'done'), 'the budget is merged before the last step is recorded');
+});
+
+test('a staged import damaged since it was staged is refused before anything moves, and can be cancelled', () => {
+  const here = folder('damaged-staging');
+  seedNetwork(here, { people: 2, tag: 'ds' }).close();
+  stageImport(uploadInto(here, goodExport('dz', 2)), { dir: here, ...checks });
+  writeFileSync(path.join(here, 'import-pending', 'data.sqlite'), '');   // what a power cut can leave
+  assert.throws(() => applyPendingImport({ dir: here, dbFile: dbIn(here) }), /damaged\. Cancel the import and import the file again/);
+  assert.deepEqual(namesIn(dbIn(here)), ['ds-0', 'ds-1']);
+  assert.equal(existsSync(path.join(here, 'backups')), false, 'nothing kept, because nothing moved');
+  assert.equal(pendingImport(here).started, false);
+  assert.deepEqual(cancelPendingImport(here), { cancelled: true });
+});
+
+// ── one copy of Six Degrees at a time ────────────────────────────────────────
+
+/** Another process with this database open, the way a second server has it: read, and kept open. */
+function anotherProcess(file) {
+  const src = `
+    import { DatabaseSync } from 'node:sqlite';
+    const db = new DatabaseSync(${JSON.stringify(file)});
+    db.prepare("INSERT INTO linkedin_connections (id, degree, name, profile_url, user_id) VALUES ('child-1', 1, 'Invented C1', 'https://www.linkedin.com/in/invented-c1', 'p-me')").run();
+    process.stdout.write('ready\\n');
+    process.stdin.once('data', () => {
+      db.prepare("INSERT INTO linkedin_connections (id, degree, name, profile_url, user_id) VALUES ('child-2', 1, 'Invented C2', 'https://www.linkedin.com/in/invented-c2', 'p-me')").run();
+      db.close();
+      process.exit(0);
+    });`;
+  const child = spawn(process.execPath, ['--no-warnings', '--input-type=module', '-e', src], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const ready = new Promise((resolve, reject) => {
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; if (out.includes('ready')) resolve(); });
+    child.on('exit', (code) => reject(new Error(`the other process ended first (${code})`)));
+  });
+  const finish = () => new Promise((resolve) => { child.once('exit', resolve); child.stdin.write('go\n'); });
+  return { ready, finish, kill: () => child.kill('SIGKILL') };
+}
+
+test('REGRESSION: an import doesn\'t start while another copy of Six Degrees has the network open', async () => {
+  // `npm run dev` or `npx six-degrees` on the same folder while the Mac app
+  // runs: the swap went ahead under the other process, whose writes then
+  // landed in neither database (review R3).
+  const here = folder('two-servers');
+  seedNetwork(here, { people: 2, tag: 'p' }).close();
+  stageImport(uploadInto(here, goodExport('q2', 2)), { dir: here, ...checks });
+  const other = anotherProcess(dbIn(here));
+  try {
+    await other.ready;
+    assert.throws(() => applyPendingImport({ dir: here, dbFile: dbIn(here) }),
+      /another copy of Six Degrees has this network open .*Quit that copy, then restart this one/);
+    const waiting = pendingImport(here);
+    assert.match(waiting.error, /another copy of Six Degrees has this network open/);
+    assert.equal(waiting.started, false, 'nothing moved: it can still be cancelled');
+    assert.equal(existsSync(path.join(here, 'backups')), false);
+    await other.finish();
+  } finally {
+    other.kill();
+  }
+  // Its writes went where it expected, and the next start takes them along.
+  const done = applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  assert.deepEqual(namesIn(path.join(here, done.keptDatabase)), ['child-1', 'child-2', 'p-0', 'p-1']);
+  assert.deepEqual(namesIn(dbIn(here)), ['q2-0', 'q2-1']);
+});
+
+// ── keeping a damaged database as it is ──────────────────────────────────────
+
+test('keeping the database as it is is recorded before anything moves, and ends the chance to cancel', () => {
+  // The move can stop half-way (its -wal moved, the database not). Recorded
+  // first, the next start finishes it; not recorded, the page offered Cancel
+  // with the database already gone from its place (review).
+  const here = folder('as-is-journal');
+  writeFileSync(dbIn(here), 'not a database');
+  writeFileSync(`${dbIn(here)}-wal`, 'its wal');
+  stageImport(uploadInto(here, goodExport('ai', 2)), { dir: here, ...checks });
+  let atDecision = null;
+  const real = durable.writeFileDurably;
+  const spy = mock.method(durable, 'writeFileDurably', function writeFileDurably(file, data) {
+    real(file, data);
+    if (!atDecision && path.basename(file) === 'APPLYING' && JSON.parse(data).keptAsIs) {
+      atDecision = {
+        database: existsSync(dbIn(here)),
+        wal: existsSync(`${dbIn(here)}-wal`),
+        started: pendingImport(here).started,
+      };
+    }
+  });
+  let done;
+  try {
+    done = applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  } finally {
+    spy.mock.restore();
+  }
+  assert.deepEqual(atDecision, { database: true, wal: true, started: true },
+    'on the disk while both files were still in place, and from then on it can\'t be cancelled');
+  assert.equal(readFileSync(path.join(here, done.keptDatabase), 'utf8'), 'not a database');
+  assert.equal(readFileSync(path.join(here, `${done.keptDatabase}-wal`), 'utf8'), 'its wal', 'the pair kept together');
+  assert.deepEqual(namesIn(dbIn(here)), ['ai-0', 'ai-1']);
+});
+
+test('a start that stopped half-way through keeping the database as it is finishes the move', () => {
+  const here = folder('as-is-resume');
+  writeFileSync(dbIn(here), 'not a database');
+  stageImport(uploadInto(here, goodExport('ar', 2)), { dir: here, ...checks });
+  const stamp = '2026-09-27T09-00-00-000Z';
+  mkdirSync(path.join(here, 'backups'));
+  // The -wal went, the database didn't: what the start that died left.
+  writeFileSync(path.join(here, 'backups', `before-import-${stamp}.sqlite-wal`), 'its wal');
+  writeFileSync(path.join(here, 'import-pending', 'APPLYING'), JSON.stringify({ stamp, phase: 'start', keptAsIs: 'it is not a SQLite database' }));
+  assert.equal(pendingImport(here).started, true, 'no Cancel once the files may have moved');
+
+  applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  assert.equal(readFileSync(path.join(here, 'backups', `before-import-${stamp}.sqlite`), 'utf8'), 'not a database');
+  assert.deepEqual(namesIn(dbIn(here)), ['ar-0', 'ar-1']);
+});
+
+// ── an export from before a table or column was dropped ─────────────────────
+
+test('a name this version retired is accepted and left behind; an unknown one is still refused', () => {
+  // Dropping or renaming a table or column later must not turn away the
+  // exports people already have (review R9): its old name goes in RETIRED.
+  const file = tampered(goodExport('rt', 2), `
+    CREATE TABLE retired_table (id TEXT PRIMARY KEY);
+    INSERT INTO retired_table VALUES ('x');
+    ALTER TABLE linkedin_connections ADD COLUMN old_column TEXT;
+    UPDATE linkedin_connections SET old_column = 'old value';
+    CREATE INDEX idx_retired ON linkedin_connections (old_column);`, recount);
+  assert.throws(() => validateImport(file, checks), refusedWith(/the table “retired_table”/));
+  const retired = { tables: ['retired_table'], indexes: ['idx_retired'], columns: { linkedin_connections: ['old_column'] } };
+  assert.equal(validateImport(file, { ...checks, retired }).people, 2);
+
+  const here = folder('retired');
+  stageImport(uploadInto(here, file), { dir: here, ...checks, retired });
+  applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  const db = new DatabaseSync(dbIn(here), { readOnly: true });
+  const names = db.prepare("SELECT name FROM sqlite_master WHERE name IN ('retired_table', 'idx_retired')").all();
+  const cols = db.prepare('PRAGMA table_info(linkedin_connections)').all().map((c) => c.name);
+  db.close();
+  assert.deepEqual(names, []);
+  assert.equal(cols.includes('old_column'), false);
+  assert.deepEqual(namesIn(dbIn(here)), ['rt-0', 'rt-1']);
+});
+
+// ── the import route, before it reads a byte ─────────────────────────────────
+
+/** A request whose body can't be read without the test noticing. */
+function fakeRequest(headers, method = 'POST') {
+  const touched = { body: false };
+  return {
+    touched,
+    request: {
+      method,
+      headers: new Headers(headers),
+      get body() { touched.body = true; return null; },
+    },
+  };
+}
+
+test('the import route refuses a cross-site, rebound, ungated or oversized upload without reading it', () => {
+  // middleware.js leaves this route alone so Next doesn't copy the upload into
+  // memory before refusing it (a 300 MB cross-site POST grew the server by
+  // ~300 MB); so the route refuses these itself, before touching the body.
+  const asked = [];
+  const facts = {
+    env: { SIX_DEGREES_BIND: '127.0.0.1' },
+    scanRunning: () => { asked.push('scan'); return false; },
+    pending: () => { asked.push('pending'); return null; },
+    currentPeople: () => { asked.push('people'); return 0; },
+  };
+  const big = String(300 * 1024 * 1024);
+  const cases = [
+    [{ host: '127.0.0.1:6363', 'sec-fetch-site': 'cross-site', 'x-six-degrees-size': '1000' }, facts, 403],
+    [{ host: 'rebind.attacker.test:6363', 'x-six-degrees-size': '1000' }, facts, 421],
+    [{ host: 'box.lan:6363', 'x-six-degrees-size': '1000' }, { ...facts, env: { SIX_DEGREES_BIND: '0.0.0.0' } }, 503],
+  ];
+  for (const [headers, ctx, status] of cases) {
+    const { request, touched } = fakeRequest(headers);
+    const out = admitImport(request, ctx);
+    assert.equal(out.refused?.status, status, JSON.stringify(headers));
+    assert.equal(touched.body, false, 'the body is never read');
+  }
+  assert.deepEqual(asked, [], 'a request the gate refuses costs nothing: not even a look at the database');
+
+  const { request, touched } = fakeRequest({ host: '127.0.0.1:6363', 'sec-fetch-site': 'same-origin', 'x-six-degrees-size': big });
+  const oversized = admitImport(request, facts);
+  assert.equal(oversized.refused.status, 413);
+  assert.match(oversized.refused.error, /This copy can import files up to 256 MB/);
+  assert.equal(touched.body, false);
+  assert.equal(MAX_IMPORT_BYTES, 256 * 1024 * 1024);
+
+  const ok = fakeRequest({ host: '127.0.0.1:6363', 'sec-fetch-site': 'same-origin', 'x-six-degrees-size': '5000' });
+  assert.deepEqual(admitImport(ok.request, facts), { declared: 5000, currentPeople: 0 });
+  assert.equal(ok.touched.body, false, 'admitting it reads nothing either: receiveUpload does, onto the disk');
+
+  const unconfirmed = fakeRequest({ host: '127.0.0.1:6363', 'x-six-degrees-size': '5000' });
+  const needsYes = admitImport(unconfirmed.request, { ...facts, currentPeople: () => 12 });
+  assert.deepEqual(needsYes.refused, {
+    status: 409, error: 'This copy already has 12 people. Confirm that the import replaces them.', needsConfirm: true, people: 12,
+  });
+});
+
+test('an upload is written to disk as it arrives and stopped as soon as it is bigger than it said', async () => {
+  const dir = folder('stream');
+  let pulled = 0;
+  const chunk = new Uint8Array(64 * 1024).fill(1);
+  // A body that would go on for ever: nothing may wait for its end.
+  const endless = new ReadableStream({ pull(c) { pulled++; c.enqueue(chunk); } });
+  await assert.rejects(receiveUpload(endless, path.join(dir, 'endless'), { declared: 200 * 1024 }),
+    refusedWith(/bigger than the size it was sent with/));
+  assert.ok(pulled < 10, `stopped after ${pulled} chunks`);
 });

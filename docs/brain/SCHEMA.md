@@ -101,6 +101,14 @@ without a default are required. So adding a column or a table never turns away t
 exports people already have. Change the layout of the file itself only with a new
 `format`, and keep reading format 1.
 
+**Dropping or renaming a table, column or index:** add its old name to `RETIRED` in
+`lib/data-import.js` in the same change. Otherwise every export made before the change is
+refused as holding "something an export never does". A retired name is accepted and left
+behind: its rows or values don't come across (a renamed column's values need copying
+across by hand in `stageImport`). `tests/data-transfer.test.mjs` shows the mechanism.
+
 `import-pending/` is the other half of that contract: `READY` (JSON), `data.sqlite` (the
-rebuilt network), `files/` and, once the swap has begun, `APPLYING` (the last step done).
+rebuilt network), `files/` and, once the swap has begun, `APPLYING` (the last step done,
+and `keptAsIs` once the database here is to be kept as it is rather than copied: recorded
+before anything moves, and from then on the import can't be cancelled).
 A newer version may finish an import an older one staged, so keep reading this layout too.

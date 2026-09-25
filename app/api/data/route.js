@@ -2,7 +2,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { getDb, dataDir, dbFile, AUTO_BACKUP_PREFIX } from '../../../lib/db-client';
 import { folderReport } from '../../../lib/data-folder';
-import { countPeople } from '../../../lib/data-export';
+import { countPeople, referencedPhotos } from '../../../lib/data-export';
 import {
   pendingImport, lastImport, restartCodeFrom, restartAdvice, MAX_IMPORT_BYTES,
 } from '../../../lib/data-import';
@@ -23,7 +23,7 @@ export async function GET() {
     const kind = isGitCheckout() ? 'git' : installKind(process.env, projectRoot());
     const custom = dir !== path.join(homedir(), '.six-degrees');
     return Response.json({
-      ...folderReport({ dir, dbFile: path.resolve(dbFile()), autoPrefix: AUTO_BACKUP_PREFIX }),
+      ...folderReport({ dir, dbFile: path.resolve(dbFile()), autoPrefix: AUTO_BACKUP_PREFIX, inNetwork: referencedPhotos(db) }),
       people: countPeople(db),
       platform: process.platform,
       kind,

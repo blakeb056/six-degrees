@@ -42,6 +42,8 @@ before(async () => {
   const other = new DatabaseSync(path.join(src, 'six-degrees.sqlite'));
   applySchema(other);
   network(other, 'new', 4);
+  // An export carries only the photos a row points at.
+  other.prepare("UPDATE linkedin_connections SET profile_image_url = '/avatars/p0.webp' WHERE id = 'new-0'").run();
   const file = path.join(scratch, 'Six Degrees backup.sixdegrees');
   buildExport(other, { dir: src, outFile: file, appVersion: '0.2.1', schemaSql: SCHEMA_SQL });
   other.close();
