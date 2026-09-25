@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape } from '../../lib/scraper-client';
+import { setupStep } from '../../lib/scanner-setup';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 
 // Everything here runs through /api/scraper. There is deliberately no second
@@ -15,6 +16,7 @@ const LINE = '1px solid rgba(255,255,255,0.1)';
 
 const ACTION_LABELS = {
   install: 'Installing the scanner',
+  setup: 'Setting up the scanner',
   login: 'Waiting for you to sign in',
   full: 'Scanning your whole network',
   refresh: 'Checking for new connections',
@@ -105,6 +107,9 @@ function SetupInner() {
 
   const c = s?.checks || {};
   const running = s?.running;
+  // Step 1 (lib/scanner-setup.js): ready (the Mac app's own Python, or one
+  // installed), Install, Set up the scanner (download a Python first), or neither.
+  const step1 = setupStep(s);
   const needsDeps = s && !c.dependencies;
   const needsChrome = s && !c.chrome;
   const notFound = s && !c.scriptsFound;
@@ -207,22 +212,16 @@ function SetupInner() {
           </Box>
         )}
 
-        {/* ---- step 1 : dependencies ---- */}
+        {/* ---- step 1 : the scanner itself ---- */}
         <Step
           n={1}
-          done={!!c.dependencies}
-          title="Install what the scanner needs"
-          body={
-            c.dependencies
-              ? 'Installed.'
-              : c.python
-                ? 'One-time, about a minute. Downloads the browser-automation packages.'
-                : 'Python 3 was not found on this machine. Install it from python.org, then reload.'
-          }
+          done={step1.done}
+          title="Set up the scanner"
+          body={s ? step1.text : ''}
           action={
-            !c.dependencies && c.python && (
-              <Btn onClick={() => run('install')} disabled={busy || running}>
-                {running && s.action === 'install' ? 'Installing…' : 'Install'}
+            s && step1.button && (
+              <Btn onClick={() => run(step1.button.action)} disabled={busy || running}>
+                {step1.button.label}
               </Btn>
             )
           }
@@ -531,7 +530,8 @@ function Progress({ p, action }) {
   }
   const pct = Math.max(0, Math.min(100, Math.round((p.done / p.total) * 100)));
   let text;
-  if (p.kind === 'batch') text = `Person ${p.current} of ${p.total}`;
+  if (p.kind === 'download') text = `Downloading Python: ${p.done.toFixed(1)} of ${p.total.toFixed(1)} MB · ${pct}%`;
+  else if (p.kind === 'batch') text = `Person ${p.current} of ${p.total}`;
   else if (action === 'refresh') text = `Looked at ${p.done.toLocaleString()} so far — stops once it reaches people already saved`;
   else text = `${p.done.toLocaleString()} of ${p.total.toLocaleString()} connections · ${pct}%`;
 

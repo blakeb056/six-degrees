@@ -80,6 +80,9 @@ function seedFiles(dir, { tag = 'a', photos = 2 } = {}) {
   writeFileSync(path.join(dir, 'chrome-profile', 'Default', 'Cookies'), 'MARKER-CHROME-PROFILE-SESSION');
   mkdirSync(path.join(dir, 'venv', 'bin'), { recursive: true });
   writeFileSync(path.join(dir, 'venv', 'bin', 'python'), 'MARKER-VENV');
+  // The Python "Set up the scanner" downloads: built for this computer, like venv/.
+  mkdirSync(path.join(dir, 'python', 'bin'), { recursive: true });
+  writeFileSync(path.join(dir, 'python', 'bin', 'python3'), 'MARKER-OWN-PYTHON');
   mkdirSync(path.join(dir, 'backups'), { recursive: true });
   writeFileSync(path.join(dir, 'backups', 'mine.sqlite'), 'MARKER-BACKUP');
   mkdirSync(path.join(dir, 'pushback'), { recursive: true });
@@ -158,7 +161,7 @@ test('an export carries the network, its photos and the scanner’s files, and n
   ]);
   // Not a name in a table, not a byte anywhere in the file.
   const raw = readFileSync(out);
-  for (const marker of ['MARKER-CHROME-PROFILE-SESSION', 'MARKER-VENV', 'MARKER-BACKUP', 'MARKER-PUSHBACK',
+  for (const marker of ['MARKER-CHROME-PROFILE-SESSION', 'MARKER-VENV', 'MARKER-OWN-PYTHON', 'MARKER-BACKUP', 'MARKER-PUSHBACK',
     'MARKER-LOCK', 'MARKER-TMP', 'MARKER-CORRUPT', 'MARKER-STRAY', 'MARKER-NOT-A-PHOTO']) {
     assert.equal(raw.includes(marker), false, `${marker} must never be in an export`);
   }
@@ -533,6 +536,7 @@ test('an import is checked and staged without changing anything, then swapped in
   // What belongs to this computer is exactly where it was.
   assert.equal(readFileSync(path.join(here, 'chrome-profile', 'Default', 'Cookies'), 'utf8'), 'MARKER-CHROME-PROFILE-SESSION');
   assert.equal(readFileSync(path.join(here, 'venv', 'bin', 'python'), 'utf8'), 'MARKER-VENV');
+  assert.equal(readFileSync(path.join(here, 'python', 'bin', 'python3'), 'utf8'), 'MARKER-OWN-PYTHON');
   assert.equal(readFileSync(path.join(here, 'app-version'), 'utf8'), `${VERSION}\n`);
   assert.ok(existsSync(path.join(here, 'backups', 'mine.sqlite')));
 

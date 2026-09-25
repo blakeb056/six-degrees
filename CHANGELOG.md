@@ -11,7 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 For 0.3.1, which follows 0.3.0. When 0.3.0 is tagged, everything after this part moves
 under [0.3.0], and this part stays here until 0.3.1 is.
 
+#### Added
+- **Set up the scanner** (`npx six-degrees`, or from source). On a computer with no Python
+  the scanner can use (none at all, one older than 3.10, or Ubuntu's without
+  `python3-venv`), the Scan page no longer ends at "install it from python.org". One
+  button downloads a private copy of Python 3.12 from GitHub (python-build-standalone,
+  24 to 33 MB) into your data folder, checks it against a checksum built into Six Degrees
+  before unpacking anything, and installs the scanner's packages into it, with the
+  download's progress on the page. Only when you click it, and Stop stops it. Nothing
+  outside your data folder changes, and neither the Python nor the packages ever go into
+  a copy of your network. A stopped setup carries on from the Python already downloaded.
+  With Python 3.10 to 3.14 installed, Install works as before.
+
 #### Changed
+- The Scan page's first step is now **Set up the scanner**. When it can't use this
+  computer's Python, it says which one it found and why. Install no longer updates pip
+  first: everything it downloads is a pinned file.
 - **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
   2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
   install. Only ready-built files (wheels), so nothing is built from source on your

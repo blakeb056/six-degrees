@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
@@ -9,6 +9,10 @@ import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
+import {
+  choosePython, thisHostKey, ownPythonEnv, venvDir, venvPython, downloadedPython, downloadVerified,
+  placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
+} from '../../../lib/scanner-python';
 
 // The app runs the scraper itself.
 //
@@ -32,6 +36,7 @@ const state = registerScanState({
   startedAt: null,
   exitCode: null,
   child: null,
+  abort: null,     // a step that runs inside this server (the Python download): its AbortController
   stopping: false,
   stderrTail: [],
   failure: null,   // the last lines of stderr from a run that failed — its reason
@@ -43,9 +48,16 @@ const state = registerScanState({
  *  signals Chrome too — killing only the Python process would leave a browser
  *  window open with a live LinkedIn session in it. SIGTERM first, because the
  *  scraper catches it and closes the browser itself; SIGKILL only if that is
- *  ignored.
+ *  ignored. A step running inside this server (the Python download) stops at
+ *  once, and nothing it fetched is kept.
  */
 function stopChild() {
+  if (state.abort) {
+    state.stopping = true;
+    push('Stopping…');
+    state.abort.abort(new ScannerSetupError('Stopped.'));
+    return;
+  }
   const child = state.child;
   if (!child) return;
   state.stopping = true;
@@ -72,68 +84,25 @@ function push(line) {
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
 }
 
-/** Run something short and tell me only whether it worked. */
-function probe(cmd, args, timeoutMs = 6000) {
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
-    try {
-      const c = spawn(cmd, args, { stdio: 'ignore' });
-      const t = setTimeout(() => { try { c.kill(); } catch {} finish(false); }, timeoutMs);
-      c.on('error', () => { clearTimeout(t); finish(false); });
-      c.on('close', (code) => { clearTimeout(t); finish(code === 0); });
-    } catch {
-      finish(false);
-    }
-  });
-}
-
-// Load the compiled parts, not just the package names. `import PIL` succeeds even
-// when its C extension is built for the other chip; `from PIL import Image` is
-// what fails. The old check said "installed" and the scan then died on import —
-// which is how a Rosetta-launched app showed up (TRAPS §30).
-const IMPORTS = 'import requests; from PIL import Image; from playwright.sync_api import sync_playwright';
-
-/** The interpreter we install into and run from: our own, inside the data dir.
- *
- *  Two traps make "just use python3" wrong, and between them they are why a
- *  hand-run install could appear to succeed and still leave nothing working:
- *
- *  1. `python3` on PATH is often Homebrew's, while the interpreter that already
- *     has Playwright is /usr/bin/python3. Installing into one and running the
- *     other looks identical to a broken install.
- *  2. Homebrew and system Pythons are "externally managed" (PEP 668) and refuse
- *     `pip install` outright, with an error most people read as a dead end.
- *
- *  A virtualenv in the data directory has neither problem, is thrown away with
- *  the rest of the folder, and never touches the machine's Python.
- */
-function venvPython() {
-  const base = path.join(dataDir(), 'venv');
-  return process.platform === 'win32'
-    ? path.join(base, 'Scripts', 'python.exe')
-    : path.join(base, 'bin', 'python');
-}
-
-/** A Python that can actually run the scraper right now, or null. */
-async function findUsablePython() {
-  const venv = venvPython();
-  if (existsSync(venv) && await probe(venv, ['-c', IMPORTS], 8000)) return venv;
-  // Respect an existing working install rather than forcing a venv on someone
-  // who already did this by hand.
-  for (const c of ['/usr/bin/python3', 'python3', 'python']) {
-    if (await probe(c, ['-c', IMPORTS], 8000)) return c;
-  }
-  return null;
-}
-
-/** Any Python at all — used to build the venv. */
-async function findAnyPython() {
-  for (const c of ['python3', '/usr/bin/python3', 'python']) {
-    if (await probe(c, ['--version'], 4000)) return c;
-  }
-  return null;
-}
+// Which Python runs the scanner is decided in lib/scanner-python.js
+// (choosePython): the Mac app's own first (SIX_DEGREES_PYTHON, from the app),
+// then the scanner's environment in the data folder, then a Python on this
+// computer that already has the packages.
+//
+// The environment is what Install builds, never the machine's own Python, for
+// two reasons that between them are why a hand-run install could appear to
+// succeed and still leave nothing working (TRAPS §14):
+//
+//  1. `python3` on PATH is often Homebrew's, while the interpreter that already
+//     has Playwright is /usr/bin/python3. Installing into one and running the
+//     other looks identical to a broken install.
+//  2. Homebrew and system Pythons are "externally managed" (PEP 668) and refuse
+//     `pip install` outright, with an error most people read as a dead end.
+//
+// A virtualenv in the data directory has neither problem, is thrown away with
+// the rest of the folder, and never touches the machine's Python. When the
+// computer has no Python to build it from, "Set up the scanner" first downloads
+// a standalone one into the data folder (a click, never by itself).
 
 /** Who the scraper found to be private, so the app can report honestly.
  *
@@ -158,17 +127,56 @@ function bridgeSkips() {
 }
 
 // The machine checks (Python, Chrome, signed in) spawn processes, so they are
-// cached for a few seconds. Everything about the running job — its log, how far
-// it has got — and the counts are read fresh on every call: the page polls
-// every 1.5 s, and a progress bar that moves every 4 s looks stuck.
+// cached for a few seconds, and callers that arrive while a look is under way
+// share it rather than each starting their own Pythons. Everything about the
+// running job — its log, how far it has got — and the counts are read fresh on
+// every call: the page polls every 1.5 s, and a progress bar that moves every
+// 4 s looks stuck.
 let cached = { at: 0, value: null };
+let looking = null;
+let lookGeneration = 0;
 
-async function machineChecks() {
-  if (Date.now() - cached.at < 4000 && cached.value) return cached.value;
+/** Forget the last look, after something that changes its answer (a job starting or ending). */
+function forgetChecks() {
+  lookGeneration++;
+  cached = { at: 0, value: null };
+  looking = null;
+}
 
+// The Python the app ships can't change while this server runs, so once it has
+// been seen to work it isn't started again to ask: each look costs a Python
+// start, and the page asks every 1.5 seconds. One that failed is asked again a
+// minute later, not every look: a first start can take up to 20 seconds to
+// give up (lib/scanner-python.js choosePython), and every look would wait on it.
+let ownPythonWorks = null;
+let ownPythonFailed = null;   // { path, at, own }
+
+let host;
+function hostOnce() {
+  if (host === undefined) host = thisHostKey();
+  return host;
+}
+
+async function lookForPython(named) {
+  if (ownPythonWorks && ownPythonWorks.path === named) {
+    return { run: ownPythonWorks, own: null, base: null, systemFound: null, download: null };
+  }
+  const failedLately = Boolean(named) && ownPythonFailed?.path === named && Date.now() - ownPythonFailed.at < 60000;
+  const python = await choosePython({
+    bundled: failedLately ? '' : named,
+    app: process.env.SIX_DEGREES_APP || '',
+    dataDir: dataDir(),
+    host: hostOnce(),
+  });
+  if (failedLately) return { ...python, own: ownPythonFailed.own };
+  if (named && python.run?.path === named) ownPythonWorks = python.run;
+  else if (named && python.own) ownPythonFailed = { path: named, at: Date.now(), own: python.own };
+  return python;
+}
+
+async function look() {
   const root = projectRoot();
-  const usable = await findUsablePython();
-  const anyPython = usable || await findAnyPython();
+  const python = await lookForPython(process.env.SIX_DEGREES_PYTHON || '');
 
   // Where Playwright's "chrome" channel looks for Google Chrome (Chromium doesn't count).
   const chrome =
@@ -178,9 +186,22 @@ async function machineChecks() {
 
   const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
 
-  const value = { root, usable, anyPython, chrome, signedIn };
-  cached = { at: Date.now(), value };
-  return value;
+  return { root, python, chrome, signedIn };
+}
+
+function machineChecks() {
+  if (Date.now() - cached.at < 4000 && cached.value) return Promise.resolve(cached.value);
+  if (looking) return looking;
+  const generation = lookGeneration;
+  const current = look().then((value) => {
+    // A job that started or ended meanwhile makes this look stale: don't keep it.
+    if (generation === lookGeneration) cached = { at: Date.now(), value };
+    return value;
+  }).finally(() => {
+    if (looking === current) looking = null;
+  });
+  looking = current;
+  return current;
 }
 
 /** People whose list was only partly read, for the Scan page's Paused list. */
@@ -214,13 +235,27 @@ async function status() {
     if (me) network = networkCounts(me.id);
   } catch {}
 
+  const py = m.python;
   return {
-    ready: Boolean(m.root && m.usable && m.chrome),
+    ready: Boolean(m.root && py.run && m.chrome),
     checks: {
       scriptsFound: Boolean(m.root),
-      python: Boolean(m.anyPython),
-      pythonPath: m.usable || m.anyPython,
-      dependencies: Boolean(m.usable),
+      // A Python that runs the scanner, or one Install can build its environment from.
+      python: Boolean(py.run || py.base),
+      pythonPath: py.run?.path || py.base?.path || null,
+      pythonVersion: py.run?.version || py.base?.version || null,
+      // Where the one that runs it comes from: 'bundled' (the Mac app's own),
+      // 'custom' (named in SIX_DEGREES_PYTHON), 'venv' or 'system'.
+      pythonSource: py.run?.source || null,
+      dependencies: Boolean(py.run),
+      // The named Python, when it didn't work: { source, problem }.
+      ownPython: py.own,
+      // What Install would build the scanner's environment from: { source: 'system'|'downloaded', version }.
+      installFrom: py.base ? { source: py.base.source, version: py.base.version } : null,
+      // A Python this computer has that won't do, when there is no other: { version, venv }.
+      systemPython: py.systemFound,
+      // What "Set up the scanner" would download, when there is nothing to install from.
+      download: py.download ? { version: py.download.version, size: py.download.size, from: 'github.com' } : null,
       chrome: m.chrome,
       signedIn: m.signedIn,
     },
@@ -246,7 +281,10 @@ export async function GET() {
 // so a name that begins with "-" can never be read as a flag of its own — and
 // spawn takes an array, so there is no shell for it to escape into either.
 const ACTIONS = {
-  install:       { label: 'Installing the scraper’s Python packages' },
+  install:       { label: 'Installing the scanner’s Python packages' },
+  // Only when this computer has no Python to install into: downloads the one
+  // pinned for it (lib/scanner-python.js), then installs as above.
+  setup:         { label: 'Setting up the scanner' },
   login:         { flag: '--login',       label: 'Opening LinkedIn so you can sign in' },
   full:          { flag: '--full',        label: 'Scanning your whole network' },
   refresh:       { flag: '--refresh',     label: 'Checking for new connections' },
@@ -279,6 +317,91 @@ function cleanName(raw) {
   if (!name || name.length > 120) return null;
   if (/[\u0000-\u001f]/.test(name)) return null;
   return name;
+}
+
+/**
+ * Install, and "Set up the scanner", as steps: { plan, cleanup }, or why not:
+ * { error, status }. `found` is choosePython()'s answer. Every step is a fixed
+ * command, or a `run` done inside this server; nothing comes from the request.
+ *
+ *   install  build the scanner's environment from `found.base` (this
+ *            computer's Python, or the one a setup downloaded) and install the
+ *            pinned packages into it
+ *   setup    when there is nothing to build from: download the standalone
+ *            Python pinned for this computer, check its SHA-256, unpack it into
+ *            the data folder, then install as above. The download is checked
+ *            before anything is unpacked: downloadVerified only names the file
+ *            once it matches, and deletes it otherwise.
+ */
+function setupPlan(action, found, { root, data, say }) {
+  if (found.run) {
+    return {
+      status: 409,
+      error: found.run.source === 'bundled'
+        ? 'The scanner is already set up: its Python comes with the app.'
+        : 'The scanner is already set up.',
+    };
+  }
+  const base = found.base;
+  if (action === 'install' && !base) {
+    return found.download
+      ? { status: 409, error: 'This computer has no Python the scanner can use. Use Set up the scanner instead.' }
+      : { status: 500, error: 'Python 3.10 or newer is not installed, or not on this app’s PATH.' };
+  }
+  if (action === 'setup' && base?.source === 'system') {
+    return { status: 409, error: `This computer already has Python ${base.version}, so nothing needs downloading. Use Install instead.` };
+  }
+  if (action === 'setup' && !base && !found.download) {
+    return { status: 409, error: 'There is no Python download for this computer. Install Python 3.10 or newer, then reload.' };
+  }
+
+  const reqs = path.join(root, 'scripts', 'requirements.txt');
+  const install = (python) => [
+    // --clear: Install runs only when the environment doesn't work, so what is there goes.
+    { cmd: python, args: ['-m', 'venv', '--clear', venvDir(data)], note: 'Creating the scanner’s own Python environment' },
+    // Every file pinned by its hash, wheels only (scripts/requirements.txt says so itself).
+    {
+      cmd: venvPython(data),
+      args: ['-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '-r', reqs],
+      note: 'Installing Playwright, requests and Pillow',
+    },
+  ];
+  // A setup that already got as far as the download (it was stopped, or the
+  // packages failed) carries on from its Python rather than fetching it again.
+  if (base) return { plan: install(base.path), cleanup: null };
+
+  const dl = found.download;
+  mkdirSync(data, { recursive: true });
+  sweepSetupLeftovers(data);
+  const work = mkdtempSync(path.join(data, SETUP_WORK_PREFIX));
+  const archive = path.join(work, dl.file);
+  let tenths = -1;
+  return {
+    plan: [
+      {
+        note: `Downloading Python ${dl.version} from GitHub (${megabytes(dl.size)} MB)`,
+        run: async ({ signal }) => {
+          await downloadVerified(dl.url, archive, {
+            sha256: dl.sha256,
+            size: dl.size,
+            signal,
+            onProgress: (got, total) => {
+              const t = Math.floor((got / total) * 10);
+              if (t > tenths) {
+                tenths = t;
+                say(`Downloading Python ${dl.version}: ${megabytes(got)} of ${megabytes(total)} MB`);
+              }
+            },
+          });
+          say('Its checksum matches the one Six Degrees has for it.');
+        },
+      },
+      { cmd: 'tar', args: ['-xzf', archive, '-C', work], note: 'Unpacking it' },
+      { run: () => placeDownloadedPython(work, data, work) },
+      ...install(downloadedPython(data)),
+    ],
+    cleanup: () => rmSync(work, { recursive: true, force: true }),
+  };
 }
 
 export async function POST(request) {
@@ -346,8 +469,9 @@ export async function POST(request) {
   const searches = spec.searches || action.startsWith('auto-bridge')
     || ['bridge', 'rescrape', 'company', 'full', 'refresh'].includes(action);
   // A staged import replaces the network at the next start, so anything scanned
-  // now would land in the copy that is about to be set aside.
-  if (!['install', 'login'].includes(action) && pendingImport(dataDir())) {
+  // now would land in the copy that is about to be set aside. Setting the
+  // scanner up touches no network data.
+  if (!['install', 'setup', 'login'].includes(action) && pendingImport(dataDir())) {
     return Response.json({ error: 'An import is waiting to finish. Restart Six Degrees first (Settings → Your data), then scan.' }, { status: 409 });
   }
   const cooldown = linkedinState(dataDir()).cooldown;
@@ -362,33 +486,31 @@ export async function POST(request) {
   if (!root) {
     return Response.json({ error: 'Could not find scripts/scrape.py next to the app.' }, { status: 500 });
   }
-  let python;
-  if (action === 'install') {
-    python = await findAnyPython();
-    if (!python) {
-      return Response.json({ error: 'Python 3 is not installed, or not on this app’s PATH.' }, { status: 500 });
-    }
-  } else {
-    python = await findUsablePython();
-    if (!python) {
-      return Response.json({ error: 'The scraper’s packages are not installed yet. Do step 1 first.' }, { status: 409 });
-    }
-  }
 
-  const venvDir = path.join(dataDir(), 'venv');
-  const reqs = path.join(root, 'scripts', 'requirements.txt');
+  // Which Python, looked at afresh: what the page saw may be seconds old.
+  forgetChecks();
+  const found = (await machineChecks()).python;
+  if (state.running) {
+    return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
+  }
 
   // Installing is several commands, so it runs as a small sequential plan
   // rather than a shell string — nothing here is ever concatenated from input.
-  const plan = action === 'install'
-    ? [
-        { cmd: python, args: ['-m', 'venv', venvDir], note: 'Creating a private Python environment' },
-        { cmd: venvPython(), args: ['-m', 'pip', 'install', '--upgrade', 'pip'], note: 'Updating pip', tolerant: true },
-        { cmd: venvPython(), args: ['-m', 'pip', 'install', '-r', reqs], note: 'Installing Playwright, requests and Pillow' },
-      ]
-    : [
+  let plan;
+  let cleanup = null;
+  if (action === 'install' || action === 'setup') {
+    const made = setupPlan(action, found, { root, data: dataDir(), say: push });
+    if (made.error) return Response.json({ error: made.error }, { status: made.status });
+    ({ plan, cleanup } = made);
+  } else {
+    if (!found.run) {
+      return Response.json({ error: 'The scanner’s packages are not installed yet. Do step 1 first.' }, { status: 409 });
+    }
+    plan = [
         {
-          cmd: python,
+          cmd: found.run.path,
+          // The app's own Python runs on its own packages only (lib/scanner-python.js ownPythonEnv).
+          own: found.run.source === 'bundled' || found.run.source === 'custom',
           args: [
             path.join(root, 'scripts', 'scrape.py'),
             // `--flag=value` is one token on purpose: a name beginning with
@@ -404,11 +526,12 @@ export async function POST(request) {
           ],
         },
       ];
+  }
 
   // The scraper writes back through this very app, so point it at the port we
   // are actually being served on rather than guessing 3000.
-  const host = request.headers.get('host') || '127.0.0.1:3000';
-  const port = host.includes(':') ? host.split(':').pop() : '80';
+  const hostHeader = request.headers.get('host') || '127.0.0.1:3000';
+  const port = hostHeader.includes(':') ? hostHeader.split(':').pop() : '80';
 
   state.running = true;
   state.stopping = false;
@@ -418,7 +541,7 @@ export async function POST(request) {
   state.log = [spec.label + (name ? ` ${name}…` : '…')];
   state.stderrTail = [];
   state.failure = null;
-  cached = { at: 0, value: null };
+  forgetChecks();
 
   // Name the profile outright. The scraper would otherwise ask the app which one
   // to use; passing it means the page and the scrape cannot disagree.
@@ -454,8 +577,13 @@ export async function POST(request) {
     state.stopping = false;
     state.running = false;
     state.child = null;
+    state.abort = null;
     state.exitCode = code;
-    cached = { at: 0, value: null };
+    // A setup's private folder (the download and what was unpacked from it).
+    if (cleanup) {
+      try { cleanup(); } catch { /* swept at the next setup (sweepSetupLeftovers) */ }
+    }
+    forgetChecks();
   }
 
   function runStep(i) {
@@ -463,10 +591,31 @@ export async function POST(request) {
     const step = plan[i];
     if (step.note) push(step.note + '…');
 
+    // A step done inside this server: the download, and moving what it unpacked
+    // into place. Stop aborts it (stopChild).
+    if (step.run) {
+      const ctrl = new AbortController();
+      state.abort = ctrl;
+      Promise.resolve()
+        .then(() => step.run({ signal: ctrl.signal }))
+        .then(() => {
+          state.abort = null;
+          if (state.stopping) return finish(0);
+          runStep(i + 1);
+        }, (err) => {
+          state.abort = null;
+          if (state.stopping) return finish(0);
+          // Kept where finish() looks for a failure's reason, for the page's red box.
+          state.stderrTail.push(err instanceof ScannerSetupError ? err.message : `Could not finish: ${err.message}`);
+          finish(1);
+        });
+      return;
+    }
+
     let child;
     try {
       // Its own process group, so cancelling reaches the browser as well.
-      child = spawn(step.cmd, step.args, { cwd: root, env: childEnv, detached: true });
+      child = spawn(step.cmd, step.args, { cwd: root, env: step.own ? ownPythonEnv(childEnv) : childEnv, detached: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);
