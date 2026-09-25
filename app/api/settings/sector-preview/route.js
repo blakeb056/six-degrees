@@ -1,13 +1,13 @@
 import { getDb } from '../../../../lib/db-client';
-import { companyOverrides, scoringRows, sectorFocusOf } from '../../../../lib/rpc';
+import { companyOverrides, readForScoring, scoringRows, sectorFocusOf } from '../../../../lib/rpc';
 import { parseSectorFocus, previewSectorFocus } from '../../../../lib/sector-focus';
-import { industryKeyOf } from '../../../../lib/companies';
 
 // Settings → Your sector, before you save: what a sector focus would change,
 // against the one saved now. It reads the network once and scores it twice in
-// memory, with the inputs rescoreAll() uses, and writes nothing. A save counts
-// its changes with the same function (rescoreAll's compareWith), so the two
-// agree. A POST because it takes a body; the cross-site guard in
+// memory, with the inputs rescoreAll() uses (readForScoring: each company's
+// industry and its sectors from the directory), and writes nothing. A save
+// counts its changes with the same function (rescoreAll's compareWith), so the
+// two agree. A POST because it takes a body; the cross-site guard in
 // middleware.js covers it like every write.
 
 export async function POST(request) {
@@ -25,9 +25,10 @@ export async function POST(request) {
   }
   try {
     const db = getDb();
-    return Response.json(previewSectorFocus(scoringRows(db, { withPeople: true }), {
+    const rows = scoringRows(db, { withPeople: true });
+    return Response.json(previewSectorFocus(rows, {
       overrides: companyOverrides(db),
-      industryOf: industryKeyOf,
+      read: readForScoring(rows),
       from: sectorFocusOf(db),
       to,
     }));

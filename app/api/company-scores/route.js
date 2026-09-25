@@ -1,13 +1,14 @@
-import { getDb, newId, nowIso } from '../../../lib/db-client';
-import { rescoreAll, companyOverrides, sectorFocusOf } from '../../../lib/rpc';
-import { rolesWithCompanies, companyScore, networkCompanies, KNOWN_COMPANIES } from '../../../lib/scoring';
-import { industryByKey, industryKeyOf } from '../../../lib/companies';
+import { getDb } from '../../../lib/db-client';
+import { rescoreAll, companyOverrides, sectorFocusOf, setCompanyScores, readForScoring } from '../../../lib/rpc';
+import { companyScore, KNOWN_COMPANIES } from '../../../lib/scoring';
+import { industryByKey } from '../../../lib/companies';
 
 // Every company in your network with the score it gets and where that score
 // comes from — and the one place to set your own. Setting or clearing a score
 // rescores everyone, since a person's power depends on their company's.
 // Industries and the sector lean (Settings → Your sector) come from the same
-// functions rescoring uses, so a score here is the one people carry.
+// read rescoring uses (lib/rpc.js readForScoring), so a score here is the one
+// people carry.
 
 export async function GET() {
   try {
@@ -15,11 +16,14 @@ export async function GET() {
     const rows = db.prepare('SELECT id, degree, headline, role, company, scanned_company, profile_url, tier FROM linkedin_connections').all();
     const overrides = companyOverrides(db);
     const focus = sectorFocusOf(db);
-    const { industries } = networkCompanies(rows, { industryOf: industryKeyOf });
+    // The same read rescoring uses: each company's industry, its directory
+    // sectors and the industries those sit under, so a sector lean shown here
+    // is the one people carry. Each headline is read once, here too.
+    const read = readForScoring(rows);
     const byName = new Map();
     const seen = new Set();
     for (const r of rows) {
-      for (const role of rolesWithCompanies(r)) {
+      for (const role of read.people.get(r).roles) {
         if (!role.company || role.former) continue;
         const key = `${role.company}|${r.profile_url || r.id}`;
         if (seen.has(key)) continue;
@@ -34,8 +38,11 @@ export async function GET() {
       }
     }
     const companies = [...byName.values()].map((c) => {
-      const industry = industryByKey(industries.get(c.name));
-      const { score, source, sectorBonus = 0 } = companyScore(c.name, { overrides, headcount: c.people, industry: industry.key, focus });
+      const facts = read.companies.get(c.name);
+      const industry = industryByKey(facts?.industry);
+      const { score, source, sectorBonus = 0 } = companyScore(c.name, {
+        overrides, headcount: c.people, industry: industry.key, sectors: facts?.sectors, sectorIndustries: facts?.sectorIndustries, focus,
+      });
       const known = KNOWN_COMPANIES.find(([n]) => n === c.name);
       return { ...c, score, source, sectorBonus, suggested: known ? known[1] : null, industry: { key: industry.key, label: industry.label, color: industry.color } };
     }).sort((a, b) => b.people - a.people || b.score - a.score);
@@ -55,8 +62,7 @@ export async function POST(request) {
     } else {
       const n = Number(score);
       if (!Number.isFinite(n) || n < 1 || n > 10) return Response.json({ error: 'score must be 1–10' }, { status: 400 });
-      db.prepare(`INSERT INTO company_scores (id, name, score, updated_at) VALUES (?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`).run(newId(), name, n, nowIso());
+      setCompanyScores(db, [[name, n]]);
     }
     const result = rescoreAll();
     return Response.json({ success: true, ...result });

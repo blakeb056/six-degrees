@@ -13,16 +13,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
 - **Your sector (Settings).** Pick up to three sectors you work in and how much to lean
-  toward them. Companies in them get +1 ("lean") or +2 ("strong") on their score, never
-  above 10 and never on a score you set on Paths → Scores, so the people there rank
-  higher. It lifts companies, not what people claim: a reach bonus at an unknown company
-  stays halved. Before you save, it shows how many companies and people would move, with
-  examples; saving rescores everyone and reports the same count, and turning it off gives
-  back exactly the scores from before. It applies to networks you've scanned: a CSV import
-  and the sample network aren't re-weighted, and the page says so when one is open. Tiers
-  still rank how reachable someone is, not people. The profile's *Your Sectors* now shows
-  what you picked (it was always empty), and Paths → Scores marks the companies your sector
-  lifted. `/paths?tab=scores` opens Paths on its Scores tab.
+  toward them. A pick is one of twelve broad industries or one of 44 narrower sectors from a
+  built-in directory (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education…):
+  open an industry to see its sectors, search by a job, a kind of business or a company
+  ("dentist", "bakery", "Stripe"), or take a sector suggested from your own network
+  ("Dental: 42 people at 17 companies"). An industry includes its sectors: it counts each
+  company whose one industry it is and any company in one of its sectors, so Healthcare &
+  Biotech takes in a practice only the directory calls dental. A directory sector goes by a
+  fixed list of words, as whole words, in the company's name or in the headlines of at least
+  half of the people you know there; for a one-person company, that person decides. Nine
+  sectors are work every kind of company has (HR & Recruiting, Marketing & Advertising, PR &
+  Communications, Accounting & Tax, Legal, Management Consulting, Software & SaaS, AI &
+  Data, Cybersecurity): for those a job title in a headline doesn't count, so "Recruiter at
+  Acme Widgets" doesn't make Acme a recruiting firm and "Software Engineer at Chase" doesn't
+  make a bank a software company; the company's name ("Acme Staffing", "Smith CPA") or a
+  kind of firm ("staffing agency", "law firm", "SaaS") does. There's no AI and nothing is
+  sent anywhere: the same words give the same answer on every computer, and anyone can add
+  to the list. Companies in your sectors get +1 ("lean") or +2 ("strong") on their score,
+  once however many of your picks they're in, never above 10 and never on a score you set on
+  Paths → Scores, so the people there rank higher; the working names the sector ("4 + 1 your
+  sector: Dental"). It lifts companies, not what people claim: a reach bonus at an unknown
+  company stays halved. Before you save, it shows how many companies and people would move,
+  with examples; saving rescores everyone and reports the same count, and turning it off
+  gives back exactly the scores from before. When an update changes the directory's words,
+  scores that use it are redone on the next load. It applies to networks you've scanned: a
+  CSV import and the sample network aren't re-weighted or counted in the suggestions, and
+  the page says so when one is open. Tiers still rank how reachable someone is, not people.
+  The profile's *Your Sectors* now shows what you picked (it was always empty), and Paths →
+  Scores marks the companies your sector lifted. `/paths?tab=scores` opens Paths on its
+  Scores tab.
 - **Settings → Your data.** Where your network is kept, with *Copy the path* and *Show in
   Finder*; what it takes up (your network, profile photos, backups); every backup with its
   date and why it was made; and whether a LinkedIn sign-in is kept here. The folder can't be
@@ -66,15 +85,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     once more.
 
 ### Changed
-- **Each company has one industry, used everywhere.** The curated list of 165 companies
-  now names each one's industry, so Adobe, Pfizer or MIT (no industry word in the name) no
-  longer take whatever their people's headlines say. Otherwise the name decides, else what
+- **The Queue and the person panel go by company scores, not a list of names.** Both kept
+  their own list of one person's favourite companies (Snap, Polymarket, Whatnot…), matched
+  anywhere in a headline: "Metadata Analyst" counted as Meta, "Snapdragon" as Snap, and an
+  ex-Googler as someone at Google. Now the Queue adds its +1 when the company someone's
+  score is built on scores 8 or more, once, and the panel's "top-tier company" and "former"
+  notes name a company that scores 8 or more, with its score. That's the curated list's
+  major companies and up, or any company you score that high on Paths → Scores or lift there
+  with *Your sector*.
+- **Built-in company scores are the same for everyone.** The built-in list of well-known
+  companies, which every network's scores start from, held some personal and regional
+  picks: Snap at 9 as "home turf", UCF at 5 as a "local institution", and a group of 6s
+  from one network and one region. One written rule now decides who is on it: companies most US
+  professionals would recognise (household names, Fortune 500-sized companies, top
+  investment, consulting, law and accounting firms, frontier AI labs, top national
+  universities), scored on one scale from 7 to 10. Snap goes from 9 to 8, like Pinterest,
+  Reddit and X, and MrBeast from 8 to 7. 32 companies leave the list, among them UCF, the
+  University of Florida, AdventHealth, Polymarket, Kalshi and Anduril; they're estimated from
+  your network like any other company, and you can score any of them on Paths → Scores. If
+  your scanned network had people at a company whose score changed, Paths → Scores offers
+  once to keep the old scores as your own: keep all, choose, or no thanks. Not for a new
+  database, a CSV import or the sample. Your network is rescored once, automatically, on the
+  first load after updating.
+- **The built-in company list reaches well beyond tech and finance.** 112 companies most US
+  professionals would recognise join it, taken from named sources so anyone can check the
+  choice: the household names of the Fortune 100 (CVS Health, Costco, Ford, UPS, State Farm,
+  Verizon, ExxonMobil…); the largest household names in health care, retail, food, hotels,
+  autos, airlines, telecoms, energy, shipping and news (Kaiser Permanente, Mayo Clinic,
+  McDonald's, Marriott, Honda, Delta, DHL, The New York Times…); nine of the ten largest US
+  law firms (Kirkland & Ellis, Latham & Watkins…); the largest private equity firms
+  (Blackstone, KKR, Apollo); and the top 20 national universities (Princeton, Yale, Johns
+  Hopkins…). They're scored on the same 7 to 10 scale as the companies already on it.
+  Nothing already on the list changes, so there's nothing to keep; your network is rescored
+  once, automatically, on the first load after updating. "Home Depot" now counts as a
+  company: it used to be dropped along with phrases like "at home".
+- **Each company has one industry, used everywhere.** The curated list now names each
+  company's industry, so Adobe, Pfizer or MIT (no industry word in the name) no longer
+  take whatever their people's headlines say. Otherwise the name decides, else what
   most of the people there say; a tie stays unclear. Paths' colours, the Scores list and
   the "not for schools" rule in the company estimate now agree, where before each person's
   own headline could put the same company in a different industry. Your network is
   rescored once, automatically, on the first load after updating.
 
 ### Fixed
+- **Students and school clubs read the same at every school.** The title rules named two
+  schools, UCF and UF: "President, UCF Marketing Club" counted as a student's club role and
+  "CS @ UCF" as a student, while "VP, NYU Finance Society" counted as a VP and "CS @ NYU" as
+  someone working at NYU. A school's short name in capitals (UCF, NYU, USC, BYU…) now counts
+  for every school, and an alumni club or a parents' association is no longer taken for a
+  student club.
 - **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
   found, not 0.56, up to 1.0 for a company scored 10.
 - **Schools named like a company on the curated list were scored as that company.**

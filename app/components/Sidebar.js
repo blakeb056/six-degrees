@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
+import { topCompanies } from '../../lib/scoring';
 import Avatar from './Avatar';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending }) {
@@ -1217,17 +1218,17 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
     insights.push({ icon: '📊', text: `${person.role} — Mid-senior, operational influence`, color: '#3498DB' });
   }
 
-  // 2. Company prestige
-  const prestigeCompanies = ['snap', 'google', 'meta', 'apple', 'amazon', 'microsoft', 'netflix', 'tesla', 'spotify', 'tiktok', 'bytedance', 'coca-cola', 'nike', 'disney', 'palantir', 'stripe', 'coinbase', 'polymarket', 'pinterest', 'whatnot', 'blackrock'];
-  const atPrestige = prestigeCompanies.find(c => company.includes(c) || headline.includes(c));
-  if (atPrestige) {
-    insights.push({ icon: '🏢', text: `At ${atPrestige.charAt(0).toUpperCase() + atPrestige.slice(1)} — top-tier company network access`, color: '#9B59B6' });
+  // 2–3. A top company now, and one before, by the model's own company scores
+  // (lib/scoring.js topCompanies): the one this person's score is built on
+  // carries its stored score, your own score and sector included. These used
+  // to be lists of one person's favourite names matched anywhere in the
+  // headline, so "Snapdragon" read as Snap and an ex-Googler as at Google.
+  const { now, before } = topCompanies(person);
+  if (now) {
+    insights.push({ icon: '🏢', text: `At ${now.name} (${now.score}/10) — top-tier company network access`, color: '#9B59B6' });
   }
-
-  // 3. Former prestige companies in headline
-  const formerMatch = headline.match(/(?:former|ex|prev)[- ]?(snap|google|meta|apple|amazon|microsoft|blackrock|goldman|mckinsey|stripe|palantir)/i);
-  if (formerMatch) {
-    insights.push({ icon: '📜', text: `Former ${formerMatch[1]} — carries network from previous role`, color: '#95A5A6' });
+  if (before) {
+    insights.push({ icon: '📜', text: `Former ${before.name} (${before.score}/10) — carries network from previous role`, color: '#95A5A6' });
   }
 
   // 4. Sector overlap with user
