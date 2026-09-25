@@ -59,12 +59,46 @@ test('student clubs: a school\'s words or its short name, at any school, and no 
   }
 });
 
+test('student clubs: a union local, a company\'s club and a university\'s staff are not a school club', () => {
+  // A short name marks a school club only with "club" or "society" (or an
+  // association named for a field of study), never "chapter", and never when
+  // the short name is a company's or a union's.
+  for (const [h, want, tier] of [
+    ['President, UAW Local 600 Chapter', 'csuite', 'A'],
+    ['VP, SEIU Healthcare Chapter', 'vp', 'A'],
+    ['President, UFCW Local 7 Chapter', 'csuite', 'A'],
+    ['Chapter Leader, UFT', 'manager', 'B'],
+    ['President, UPS Toastmasters Club', 'csuite', 'A'],             // UPS is on the curated list
+    ['President, UBS Toastmasters Club', 'csuite', 'A'],
+    ['Vice President, KU Endowment Association', 'vp', 'A'],          // the university's staff
+    ['President, UCF Chapter of IEEE', 'csuite', 'A'],                // the price: a chapter alone never counts
+  ]) {
+    assert.equal(key(h), want, h);
+    assert.equal(scorePerson({ headline: h }).tier, tier, h);
+  }
+  // Still read at every school alike.
+  for (const h of ['President, UCF Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President, UT Engineering Association', 'President, Rotary Club of UCF', 'President, UCF Chapter of the American Marketing Association',
+    'Chair, IEEE UCF Student Chapter']) {
+    assert.equal(key(h), 'student', h);
+  }
+});
+
 test('students: a major at any school, by its name or its short name', () => {
-  for (const h of ['CS @ UCF', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UF', 'Biology at University of Utah']) {
+  for (const h of ['CS @ UCF', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UF', 'Biology at University of Utah', 'Marketing @ NYU']) {
     assert.equal(key(h), 'student', h);
   }
   // A company's short name isn't a school's, and a short name is written in capitals.
   for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ uf']) assert.notEqual(key(h), 'student', h);
+  // Companies, a league and unions whose short names look like a school's, or
+  // that the curated list knows (UPS): a major there is someone's department.
+  for (const h of ['Finance @ UBS', 'Finance at UBS', 'Engineering @ UPS', 'Accounting @ UPS', 'Information Technology at UPS',
+    'Marketing @ UFC', 'Business @ UFC', 'Engineering at UPMC', 'Engineering @ ULA', 'Engineering at UTC', 'Finance @ UHG',
+    'Marketing @ UHC', 'Marketing @ UA', 'Engineering @ UL']) {
+    assert.equal(key(h), 'ic', h);
+    assert.equal(isStudent(h), false, h);
+    assert.equal(scorePerson({ headline: h }).tier, 'C', h);
+  }
 });
 
 test('companies: one clean name per company, junk dropped', () => {
