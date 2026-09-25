@@ -7,6 +7,7 @@ import { scanProgress } from '../../../lib/scan-progress';
 import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
+import { registerScanState } from '../../../lib/scan-state';
 
 // The app runs the scraper itself.
 //
@@ -22,7 +23,8 @@ import { getDb } from '../../../lib/db-client';
 
 const MAX_LOG = 500;
 
-const state = {
+// Registered in lib/scan-state.js so other routes can see whether a job runs.
+const state = registerScanState({
   running: false,
   action: null,
   log: [],
@@ -32,7 +34,7 @@ const state = {
   stopping: false,
   stderrTail: [],
   failure: null,   // the last lines of stderr from a run that failed — its reason
-};
+});
 
 /** Stop the running job without orphaning the browser it opened.
  *
