@@ -829,7 +829,8 @@ The in-app updater's first design had the server end itself with a SIGTERM, trus
   that gap showed the error. CI never saw it: it sends SIGTERM to the app only.
 
 What holds it now: `desktop/lib.mjs` `serverExitAction()` decides, and
-`tests/desktop.test.mjs` pins it. While the app is quitting, its server's exit is
+`tests/desktop-updater.test.mjs` pins it (the data import's branch pins its own
+side, 75, in `tests/desktop.test.mjs`; the function is the same text on both). While the app is quitting, its server's exit is
 expected. Otherwise 143, 130 and a signal mean "stopped from outside", and the app quits
 quietly; only any other code is reported as a crash.
 

@@ -3,10 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
-import {
-  routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  serverExitAction, bundlePathFromExe, startPathArg, UPDATE_HANDOFF_EXIT_CODE, RESTART_EXIT_CODE,
-} from '../desktop/lib.mjs';
+import { routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg } from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
 const noSleep = async () => {};
@@ -81,61 +78,4 @@ test('--data-dir lets a beta run against a copy of the data', () => {
   assert.equal(dataDirArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--data-dir', '/tmp/copy']), '/tmp/copy');
   assert.equal(dataDirArg(['x', '--data-dir=/tmp/copy']), '/tmp/copy');
   assert.equal(dataDirArg(['x', '-psn_0_12345']), null);
-});
-
-// When the server ends, the app says nothing (it is quitting anyway), quits
-// quietly, starts it again, or reports a crash. TRAPS §39: Next turns a
-// SIGTERM into exit code 143, so "stopped from outside" mostly arrives as a
-// code, not a signal. The data import (75) and the updater (76) each have a
-// code of their own; this one decision covers both.
-test('the two reserved codes: 75 starts the server again, 76 quits quietly for the update', () => {
-  assert.equal(RESTART_EXIT_CODE, 75);
-  assert.equal(UPDATE_HANDOFF_EXIT_CODE, 76);
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, now: 100000 }), 'restart');
-  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, now: 100000 }), 'quit');
-});
-
-test('a server that asks to restart again straight after a restart is a crash, not a loop', () => {
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 105000 }), 'crash');
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 114999 }), 'crash');
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 115000 }), 'restart');
-  // The updater's code is never held back by a recent restart.
-  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 100001 }), 'quit');
-});
-
-test('the server ending while the app quits is expected: nothing to do, whatever the code', () => {
-  for (const code of [0, 1, 75, 76, 130, 143]) {
-    assert.equal(serverExitAction({ code, signal: null, quitting: true }), 'ignore', String(code));
-  }
-  assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: true }), 'ignore');
-});
-
-test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) or a signal', () => {
-  // install.sh, or logging out, sends SIGTERM to the server too. Next catches it
-  // and exits 143 (130 for SIGINT), which used to reach the "Six Degrees
-  // stopped" dialog whenever the app hadn't started quitting first.
-  assert.equal(serverExitAction({ code: 143, signal: null, quitting: false }), 'quit');
-  assert.equal(serverExitAction({ code: 130, signal: null, quitting: false }), 'quit');
-  assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: false }), 'quit');
-  assert.equal(serverExitAction({ code: null, signal: 'SIGTERM', quitting: false }), 'quit');
-  assert.notEqual(serverExitAction({ code: 143, signal: null, now: 100000 }), 'restart', 'a stop is never a restart');
-});
-
-test('any other exit is a crash, and is reported', () => {
-  for (const code of [0, 1, 2, 74, 77, 137, 255]) {
-    assert.equal(serverExitAction({ code, signal: null, quitting: false }), 'crash', String(code));
-  }
-});
-
-test('the app bundle, from Electron\'s own executable path', () => {
-  assert.equal(bundlePathFromExe('/Applications/Six Degrees.app/Contents/MacOS/Six Degrees'), '/Applications/Six Degrees.app');
-  assert.equal(bundlePathFromExe('/Users/me/Apps/Six Degrees (beta).app/Contents/MacOS/Six Degrees'), '/Users/me/Apps/Six Degrees (beta).app');
-  assert.equal(bundlePathFromExe('/usr/local/bin/electron'), null, 'run from a checkout: no bundle');
-  assert.equal(bundlePathFromExe(undefined), null);
-});
-
-test('after an update the app opens on Settings, where the outcome is shown', () => {
-  assert.equal(startPathArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--after-update']), '/settings#updates');
-  assert.equal(startPathArg(['x', '--after-update', '--data-dir', '/tmp/copy']), '/settings#updates');
-  assert.equal(startPathArg(['x', '--data-dir', '/tmp/copy']), null);
 });

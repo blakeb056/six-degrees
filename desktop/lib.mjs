@@ -126,63 +126,6 @@ export function stopProcess(child, { graceMs = 5000 } = {}) {
 }
 
 /**
- * A data folder asked for on the command line: `--data-dir PATH` or
- * `--data-dir=PATH`. It lets a beta run against a copy of the data:
- *   open "Six Degrees.app" --args --data-dir ~/six-degrees-copy
- */
-export function dataDirArg(argv = []) {
-  for (let i = 0; i < argv.length; i++) {
-    const arg = String(argv[i]);
-    if (arg.startsWith('--data-dir=')) return arg.slice('--data-dir='.length) || null;
-    if (arg === '--data-dir' && argv[i + 1]) return String(argv[i + 1]);
-  }
-  return null;
-}
-
-/**
- * The exit code with which the server asks to be started again, to finish an
- * import (Settings → Your data). 75 is EX_TEMPFAIL: "try again". Next ends
- * with 143 on SIGTERM, so a signal can never be mistaken for it. Decided here
- * so that the shell that restarts the server and the one that quits for an
- * update read every code the same way.
- */
-export const RESTART_EXIT_CODE = 75;
-
-/**
- * The exit code the server ends with once the in-app updater's helper has
- * started (lib/updater-job.js). It means "quit quietly, the update takes it
- * from here". lib/updater.js has the same number; the shell can't import it
- * because desktop/ is packed apart from the server. tests/updater.test.mjs
- * checks that the two agree.
- */
-export const UPDATE_HANDOFF_EXIT_CODE = 76;
-
-/**
- * What the shell does when its server ends:
- *   'ignore'   the app is quitting anyway, and stopped it itself
- *   'quit'     stopped from outside (the installer replacing this copy, or
- *              logging out), or handed over to the updater (76): the whole app
- *              is going, so go quietly
- *   'restart'  it asked to be started again (RESTART_EXIT_CODE)
- *   'crash'    any other exit: say so out loud, with the log
- * Asking again within `minGapMs` of the last restart counts as a crash, so a
- * server that can't stay up is reported rather than started forever.
- *
- * Next catches SIGTERM and SIGINT and exits with 143 or 130 instead of dying
- * of the signal (next/dist/server/lib/start-server.js), so a stop from outside
- * arrives as one of those codes, not as a signal (TRAPS §39). Only a signal
- * Next doesn't catch, like SIGKILL, arrives as a signal. Before this, a 143
- * that came before the app had started quitting showed "Six Degrees stopped".
- */
-export function serverExitAction({ code, signal, quitting = false, lastRestartAt = 0, now = Date.now(), minGapMs = 15000 }) {
-  if (quitting) return 'ignore';
-  if (signal) return 'quit';
-  if (code === UPDATE_HANDOFF_EXIT_CODE || code === 143 || code === 130) return 'quit';
-  if (code === RESTART_EXIT_CODE) return now - lastRestartAt < minGapMs ? 'crash' : 'restart';
-  return 'crash';
-}
-
-/**
  * The app bundle, from the path of its own executable (process.execPath in
  * Electron's main process):
  * "/Applications/Six Degrees.app/Contents/MacOS/Six Degrees" → "/Applications/Six Degrees.app".
@@ -200,4 +143,67 @@ export function bundlePathFromExe(exe) {
  */
 export function startPathArg(argv = []) {
   return argv.includes('--after-update') ? '/settings#updates' : null;
+}
+
+/**
+ * A data folder asked for on the command line: `--data-dir PATH` or
+ * `--data-dir=PATH`. It lets a beta run against a copy of the data:
+ *   open "Six Degrees.app" --args --data-dir ~/six-degrees-copy
+ */
+export function dataDirArg(argv = []) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = String(argv[i]);
+    if (arg.startsWith('--data-dir=')) return arg.slice('--data-dir='.length) || null;
+    if (arg === '--data-dir' && argv[i + 1]) return String(argv[i + 1]);
+  }
+  return null;
+}
+
+/**
+ * The exit code with which the server asks to be started again, to finish an
+ * import (Settings → Your data). main.mjs hands it to the server as
+ * SIX_DEGREES_RESTART_CODE, so only a shell that knows it offers the button.
+ * 75 is EX_TEMPFAIL: "try again". Next ends with 143 on SIGTERM, so a signal
+ * can never be mistaken for it.
+ */
+export const RESTART_EXIT_CODE = 75;
+
+/**
+ * The exit code with which the server hands over to the in-app updater
+ * (Settings → Updates → Install and restart): its helper takes it from there,
+ * and the app quits quietly. Reserved here with the updater's own number, so
+ * the shell reads every code the same way whichever feature is in.
+ */
+export const UPDATE_HANDOFF_EXIT_CODE = 76;
+
+/**
+ * Next's server catches SIGTERM and SIGINT and ends with 143 or 130
+ * (next/dist/server/lib/start-server.js). So a server stopped from outside
+ * (the installer replacing this copy, logging out) arrives as one of these
+ * codes, not as a signal; only a signal Next doesn't catch (SIGKILL) arrives
+ * as one.
+ */
+const STOPPED_FROM_OUTSIDE = [143, 130];
+
+/**
+ * What the shell does when its server ends:
+ *   'ignore'   the app is quitting anyway
+ *   'quit'     stopped from outside (a signal, or Next's 143 or 130), or handed
+ *              over to the updater (76): the whole app is going, so go quietly
+ *   'restart'  it asked to be started again (75), to finish an import
+ *   'report'   any other exit: a crash, said out loud
+ *
+ * `answered` says whether that server ever answered the shell. Restart now is
+ * a click on a page the server served, so a server that asks to be restarted
+ * before it has answered once can't be doing it for a person: it can't stay
+ * up, and is reported rather than started forever. One that answered is
+ * restarted however soon after the last restart, so trying again after an
+ * import that stopped (the page says why) is never a crash.
+ */
+export function serverExitAction({ code, signal, quitting = false, answered = true }) {
+  if (quitting) return 'ignore';
+  if (signal) return 'quit';
+  if (code === UPDATE_HANDOFF_EXIT_CODE || STOPPED_FROM_OUTSIDE.includes(code)) return 'quit';
+  if (code === RESTART_EXIT_CODE) return answered ? 'restart' : 'report';
+  return 'report';
 }

@@ -59,7 +59,7 @@
 | `.github/workflows/npm-package.yml` | Builds the npm package for a tag on Linux, installs it from the tarball and checks that it serves the app. Publishes nothing. Used for the package's **first** publish, which has to be done by hand, because npm's trusted publishing (release.yml) needs the package to exist. |
 | `site/` | The download website, https://blakeb056.github.io/six-degrees/ (plain HTML, CSS and JS, no build). `.github/workflows/pages.yml` publishes it with the README's screenshots, 1200px copies of them, and the app icon. Its claims must match the README; it was reviewed against it. |
 | `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit. |
-| `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan, what the server's exit means: TRAPS §39), tested in `tests/desktop.test.mjs`. |
+| `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan, what the server's exit means: TRAPS §39), tested in `tests/desktop.test.mjs` and, for what the updater relies on, `tests/desktop-updater.test.mjs`. |
 | `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). Used by `build-app.mjs` (the `.icns`), `pages.yml` (the website), the README header, and `scripts/readme_buttons.py` (saved into the button pictures, so rerun it after a change). |
 | `tests/*.test.mjs` | About 150 tests on `node --test`. No test framework dependency. |
 
