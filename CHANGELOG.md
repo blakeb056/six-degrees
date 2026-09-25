@@ -60,6 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rescored once, automatically, on the first load after updating.
 
 ### Fixed
+- **Students and school clubs read the same at every school.** The title rules named two
+  schools, UCF and UF: "President, UCF Marketing Club" counted as a student's club role and
+  "CS @ UCF" as a student, while "VP, NYU Finance Society" counted as a VP and "CS @ NYU" as
+  someone working at NYU. A school's short name in capitals (UCF, NYU, USC, BYU…) now counts
+  for every school, and an alumni club or a parents' association is no longer taken for a
+  student club.
 - **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
   found, not 0.56, up to 1.0 for a company scored 10.
 - **Schools named like a company on the curated list were scored as that company.**

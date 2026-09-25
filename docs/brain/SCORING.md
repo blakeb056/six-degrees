@@ -40,6 +40,19 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - A fraternity chair is not a chairman.
 - "International" is not "intern".
 
+Schools are read alike; the rules name none. A major at a school is a student ("CS @ UCF",
+"Economics at University of Utah"), and so is a leading title in a school club ("President,
+UCF Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at UCF"): a
+club, chapter, society or association named with a school's words (university, college,
+school, student) or its short name. A short name is two to four capitals that start or end
+with the U of University (UCF, USC, NYU, UCLA, BYU), so no list of schools favours the ones on
+it; not a country or union (US, USA, UK, EU, UN), a US national body (USGA, USTA, USAA) or the
+AAU. An alumni club or a parents' association is for grown-ups, and a company's own club
+(Sam's Club, AAA Club Alliance) or a professional society (CFA Society, IEEE Computer
+Society, an EO chapter) is not a school's. The price: a company whose short name looks like a
+school's (UBS, UPS) could make "Finance @ UBS" read as a student. Until September 2026 the
+rules named UCF and UF, so their students and clubs were caught and other schools' weren't.
+
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
 `company_scores`), then the curated `KNOWN_COMPANIES` list (133 companies, on it by the
 rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people

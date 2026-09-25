@@ -30,6 +30,42 @@ test('titles: the current role decides, not a former one or a student club', () 
   assert.equal(key('Building cool things'), 'unknown');
 });
 
+test('student clubs: a school\'s words or its short name, at any school, and no school by name', () => {
+  // A role in a school club is a student's, not an officer's, at every school alike.
+  for (const h of ['President, UCF Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President of the Marketing Club at UCF', 'Vice President, BYU Consulting Club', 'Director of Events, ASU Entrepreneurship Club',
+    'President, University Consulting Club', 'President of the Finance Society at the University of Utah']) {
+    assert.equal(key(h), 'student', h);
+  }
+  // Companies with a club, society or association in their name, grown-ups' clubs
+  // and national bodies are not school clubs.
+  for (const [h, want] of [
+    ["Store Manager at Sam's Club", 'manager'],
+    ["General Manager at BJ's Wholesale Club", 'vp'],
+    ['Director of Operations, AAA Club Alliance', 'director'],
+    ['Executive Director, IEEE Computer Society', 'director'],
+    ['President, CFA Society Orlando', 'csuite'],
+    ['President, EO Orlando Chapter', 'csuite'],
+    ['Chief Executive Officer, American Cancer Society', 'csuite'],
+    ['Director of Operations, NFL Players Association', 'director'],
+    ['Executive Director at the United States Tennis Association (USTA)', 'director'],
+    ['Director, AAU Basketball Club', 'director'],
+    ['President, UCF Alumni Association', 'csuite'],
+    ['President, UF Alumni Club of Orlando', 'csuite'],
+    ['President, Parent Teacher Association at Lincoln Elementary School', 'csuite'],
+  ]) {
+    assert.equal(key(h), want, h);
+  }
+});
+
+test('students: a major at any school, by its name or its short name', () => {
+  for (const h of ['CS @ UCF', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UF', 'Biology at University of Utah']) {
+    assert.equal(key(h), 'student', h);
+  }
+  // A company's short name isn't a school's, and a short name is written in capitals.
+  for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ uf']) assert.notEqual(key(h), 'student', h);
+});
+
 test('companies: one clean name per company, junk dropped', () => {
   assert.equal(cleanCompany('Snap Inc.'), 'Snap');
   assert.equal(cleanCompany('Snapchat 👻'), 'Snap');
