@@ -296,9 +296,9 @@ Three rules for the whole test:
 - Never paste a Terminal line from a test copy. It would install the real release into
   Applications, over your copy. (Test mode doesn't show it.)
 
-1. Build the old version and the new one, from this branch:
+1. Build the old version and the new one, from a checkout of this branch (`~/dev/sd-wt-updater` below; use yours):
    ```
-   cd /Users/blakeo/dev/sd-wt-updater
+   cd ~/dev/sd-wt-updater
    mkdir -p ~/Six-Degrees-Update-Test/release ~/Six-Degrees-Update-Test/data
    SIX_DEGREES_HOME=~/Six-Degrees-Update-Test/data npm run build:desktop
    ditto "dist/Six Degrees.app" ~/Six-Degrees-Update-Test/old.app
@@ -333,7 +333,7 @@ Three rules for the whole test:
 6. **A rollback** (one more build, about as long as step 1's): a new version whose server
    can't start.
    ```
-   cd /Users/blakeo/dev/sd-wt-updater
+   cd ~/dev/sd-wt-updater
    sed -i '' "s/'server.js'/'no-such-server.js'/" desktop/main.mjs
    npm pkg set version=0.2.3
    SIX_DEGREES_HOME=~/Six-Degrees-Update-Test/data npm run build:desktop
@@ -347,7 +347,7 @@ Three rules for the whole test:
 7. Clean up: stop step 2's server (Ctrl-C), then
    ```
    rm -rf ~/Six-Degrees-Update-Test "$HOME/Library/Caches/Six Degrees"
-   cd /Users/blakeo/dev/sd-wt-updater && git checkout package.json desktop/main.mjs
+   cd ~/dev/sd-wt-updater && git checkout package.json desktop/main.mjs
    ```
    (`~/Library/Caches/Six Degrees` holds only the updater's files: it didn't exist before
    this, and 0.2.1 doesn't use it.) Then open your real Six Degrees from Applications, as
