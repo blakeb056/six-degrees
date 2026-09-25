@@ -218,12 +218,12 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 - **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
   in them get +1 ("lean") or +2 ("strong") on that score, once, never above 10 and never on
   a score you set. A pick is one of twelve broad industries or a narrower sector from a
-  built-in list of about forty (Dental, Real Estate, Software & SaaS…). A sector matches by a
+  built-in list of about fifty (Dental, Real Estate, Software & SaaS…). A sector matches by a
   fixed list of words: in the company's name, or in the headlines of at least half of the
   people you know there, where a job every kind of company has (recruiter, accountant,
-  software engineer) doesn't count. An industry includes its sectors, and each company's one
-  industry (the known list's, else what its name says, else what most of its people's
-  headlines say). Settings suggests the sectors your network is in and shows what would
+  software engineer) doesn't count. An industry includes its sectors, and a company's one
+  industry when the known list or the company's name gives it, not when only its people's
+  job titles do. Settings suggests the sectors your network is in and shows what would
   change before you save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 6.7.
