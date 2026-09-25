@@ -29,9 +29,9 @@
 |---|---|
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
 | `lib/gate.js` | Pure, testable auth decisions — `isCrossSiteWrite()`, `gateDecision()`. |
-| `lib/scoring.js` | **The scoring model: the only one.** Titles, companies, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
+| `lib/scoring.js` | **The scoring model: the only one.** Titles, companies (each with one industry), bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |
 | `lib/rpc.js` | The local stand-ins for hosted stored procedures. `rescoreAll()` writes `lib/scoring.js`'s results back to every row. |
-| `lib/companies.js` | Companies and industries for Paths: the company index, inferred industries, company-to-company links, ways in. Reads titles and companies through `lib/scoring.js`. |
+| `lib/companies.js` | Companies and industries for Paths: the company index, inferred industries, company-to-company links, ways in. Reads titles, companies and each company's one industry through `lib/scoring.js`. |
 | `lib/quest.js` | Outlink's game rules: stages of five, next best moves, levels, new doors. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
 | `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |

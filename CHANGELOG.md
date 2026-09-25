@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
 
+### Changed
+- **Each company has one industry, used everywhere.** The curated list of 164 companies
+  now names each one's industry, so Adobe, Pfizer or MIT (no industry word in the name) no
+  longer take whatever their people's headlines say. Otherwise the name decides, else what
+  most of the people there say; a tie stays unclear. Paths' colours, the Scores list and
+  the "not for schools" rule in the company estimate now agree, where before each person's
+  own headline could put the same company in a different industry. Your network is
+  rescored once, automatically, on the first load after updating.
+
+### Fixed
+- **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
+  found, not 0.56, up to 1.0 for a company scored 10.
+
 ### Security
 - **Pages on other local ports can no longer send the app commands.** The check that refuses
   writes from other websites trusted the browser's "same-site" label. A site ignores the

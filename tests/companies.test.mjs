@@ -3,7 +3,8 @@
 // company, never a person from a real network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { companyOf, industryOf, buildCompanyIndex, companyLinks, waysInto, UNKNOWN_INDUSTRY } from '../lib/companies.js';
+import { companyOf, industryOf, industryKeyOf, buildCompanyIndex, companyLinks, waysInto, INDUSTRIES, UNKNOWN_INDUSTRY } from '../lib/companies.js';
+import { KNOWN_COMPANIES, networkCompanies } from '../lib/scoring.js';
 
 const p = (id, degree, extra = {}) => ({ id, degree, profile_url: `/in/${id}`, tier: 'B', ...extra });
 
@@ -61,4 +62,41 @@ test('ways in: people who work there, then connections who know the most people 
   const w = waysInto('Globex', d1, d2);
   assert.deepEqual(w.direct.map((c) => c.id), ['jane']);
   assert.deepEqual(w.bridges.map((b) => [b.bridge.id, b.n]), [['li', 2], ['omar', 1]]);
+});
+
+// ── one industry per company (lib/scoring.js companyIndustry) ─────────────────
+
+test('every curated company has an industry the app knows, and agrees with its name', () => {
+  const keys = new Set(INDUSTRIES.map((i) => i.key));
+  for (const [name, , , industry] of KNOWN_COMPANIES) {
+    assert.ok(keys.has(industry), `${name}: '${industry}' is not an industry key`);
+    // Where the name already says something, the list says the same, so adding
+    // the field changed no colour anyone had seen in Paths.
+    const byName = industryOf(name, null).key;
+    if (byName !== 'unknown') assert.equal(industry, byName, `${name}: list says ${industry}, name says ${byName}`);
+  }
+});
+
+test('Paths colours a company with the industry scoring uses', () => {
+  const rows = [
+    p('a', 1, { headline: 'Engineer at Quillon' }),
+    p('b', 2, { headline: 'Nurse at Quillon' }),
+    p('c', 2, { headline: 'Backend developer at Quillon' }),
+    p('d', 1, { headline: 'Analyst', company: 'BNY Mellon' }),
+    p('e', 1, { headline: 'Designer at Adobe' }),
+    p('f', 1, { headline: 'Restaurant manager at Tavola' }),
+    p('g', 1, { headline: 'Nurse at Tavola' }),
+  ];
+  const { industries } = networkCompanies(rows, { industryOf: industryKeyOf });
+  const index = buildCompanyIndex(rows);
+  assert.equal(index.get('Quillon').industry.key, industries.get('Quillon'));
+  assert.equal(index.get('Quillon').industry.key, 'tech');
+  // Paths calls it "BNY Mellon", scoring "BNY"; both say finance.
+  assert.equal(industries.get('BNY'), 'finance');
+  assert.equal(index.get('BNY Mellon').industry.key, 'finance');
+  // No industry word in "Adobe": the list says tech (it used to be its people's guess).
+  assert.equal(index.get('Adobe').industry.key, 'tech');
+  // One vote each way stays unclear, in both.
+  assert.equal(industries.get('Tavola'), 'unknown');
+  assert.equal(index.get('Tavola').industry, UNKNOWN_INDUSTRY);
 });
