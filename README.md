@@ -216,10 +216,13 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   earlier version, Paths → Scores offers once to keep its old scores for the companies in
   your network whose score changed.
 - **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
-  in them get +1 ("lean") or +2 ("strong") on that score, never above 10 and never on a
-  score you set. Each company has one sector: the known list's, else what its name says,
-  else what most of its people's headlines say. Settings shows what would change before you
-  save.
+  in them get +1 ("lean") or +2 ("strong") on that score, once, never above 10 and never on
+  a score you set. A pick is one of twelve broad industries, which go by each company's one
+  industry (the known list's, else what its name says, else what most of its people's
+  headlines say), or a narrower sector from a built-in list of about forty (Dental, Real
+  Estate, Software & SaaS…). Those match by a fixed list of words: in the company's name, or
+  in the headlines of at least half of the people you know there. Settings suggests the ones
+  your network is in and shows what would change before you save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 6.7.
 - **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions. It counts half

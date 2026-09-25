@@ -6,10 +6,10 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches; all three stamped in `app_meta`) |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and its sectors from the directory |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
-| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
+| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
 | `lib/legacy-offer.js` `legacyOffer()` | Paths → Scores' one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
 
 Until 0.1.10 there were three scorers that disagreed. `scripts/*.sql` are the retired
@@ -65,7 +65,7 @@ never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
 "VP / Partner / GM (9) · Snap (8/10) · +0.7 strong circle", or with a sector lean
-"Director / Head (7.5) · Snap (9/10: 8 + 1 your sector)".
+"Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector: Dental)".
 
 ## The curated list
 
@@ -184,12 +184,20 @@ Where Paths' colour can still differ from the industry scoring uses:
 
 ## Your sector (Settings)
 
-Up to three `INDUSTRIES` keys and a strength, saved in `app_meta` 'settings' as
-`sectorFocus: {sectors, strength}` (`lib/sector-focus.js` validates it). In
-`companyScore()`, a company whose one industry is chosen gets **+1 (lean) or +2 (strong),
-capped at 10**. Never on a score you set: `yours` is returned before the lean. The result
-keeps its source (`known`, `network`, `default`) and adds `{base, sector, sectorBonus}` only
-when the score actually moved, so everything reading `{score, source}` is unchanged.
+Up to three picks and a strength, saved in `app_meta` 'settings' as
+`sectorFocus: {sectors, strength}` (`lib/sector-focus.js` validates it). A pick is one of
+the twelve broad `INDUSTRIES` keys or a sector from the directory (below); a choice of
+industries saved before the directory existed reads, scores and stamps exactly as it did.
+In `companyScore()`, a company gets **+1 (lean) or +2 (strong), capped at 10**, when a
+picked industry is its one industry or a picked directory sector is among the sectors it
+matches (`sectors`, passed in). However many picks match, it is added once, and `sector`
+names the pick that matched, a directory sector before an industry. Never on a score you
+set: `yours` is returned before the lean. The result keeps its source (`known`, `network`,
+`default`) and adds `{base, sector, sectorBonus}` only when the score actually moved, so
+everything reading `{score, source}` is unchanged. The working names the pick:
+`explainScore(s, boost, {sectorLabel})` gets the labels from `lib/rpc.js`, because
+`lib/scoring.js` imports nothing ("5/10: 4 + 1 your sector: Dental"); without them it says
+"your sector" alone.
 
 - A point of company score is worth `0.055 × title points`: +0.55 for a founder, +0.50 for
   a VP, +0.41 for a director, +0.22 for an IC. So +1 moves a VP at a 6 (7.0, A) to S (7.5),
@@ -204,9 +212,10 @@ when the score actually moved, so everything reading `{score, source}` is unchan
   turning it off gives back exactly the scores from before. `rescoreAll()` reads the focus
   itself, so imports, company-score changes and a stale model all apply it.
 - **Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_focus' with the focus's
-  fingerprint (`lean:media,tech`, or `none`). `rescoreIfStale()` rescores when it no longer
-  matches the saved focus: a database restored or brought from another computer, or a save
-  whose rescore failed.
+  fingerprint (`lean:media,tech`, `lean:health,dental@<version>` when a pick comes from the
+  directory, or `none`). `rescoreIfStale()` rescores when it no longer matches the saved
+  focus: a database restored or brought from another computer, a save whose rescore failed,
+  or an update that changed the directory's words (its version is in the fingerprint).
 - **Saving** goes through `POST /api/settings`; `lib/settings-effects.js` sees the focus's
   fingerprint changed and runs `rescoreAll({compareWith: the focus it replaced})`. That
   scores the same read of the rows with the old focus too, in memory, and counts who changed
@@ -236,6 +245,104 @@ when the score actually moved, so everything reading `{score, source}` is unchan
 - `users.sectors` (free text, never written by the app) is a different thing: the
   Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
   *Your Sectors* shows the Settings choice.
+
+## The sector directory
+
+`lib/sector-directory.js` is a fixed list of the most common sectors people work in, 44 of
+them (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education…), each under one of
+the twelve industries and each with its words. It is a list, not a model: no AI, nothing
+sent anywhere, the same answer on every computer every time. Settings → Your sector shows
+each industry with its sectors, searches them by name, word or company, and suggests the
+ones your network is in.
+
+A sector is `{key, label, group, words, names?, companies, not?}`. `key` is saved in
+people's settings. `group` is the industry it sits under, and gives it that industry's
+colour: Paths' colours don't change.
+
+### How a company matches
+
+Worked out once per read of the network: `lib/rpc.js` `readForScoring()` passes
+`sectorMatcher()` to `readNetwork()` as `sectorsOf`, beside `industryOf`, and each company's
+matches ride along to `companyScore()`. Rescoring, the preview, Paths → Scores and the
+suggestions all read through it, so they agree. A company matches a sector when:
+
+1. **its name** has one of the sector's `words` (or `names`), or is one of its `companies`;
+   or
+2. **at least half of its people in your network**, and at least one, say one of the
+   `words` in their headline. For a one-person company, that person decides.
+
+A company can match several sectors; the lean is still added once. The twelve industries
+still match by the company's one industry, as they always did: picking *Healthcare &
+Biotech* doesn't pick up a practice that only the directory calls dental.
+
+Words are whole words, any case, compared after accents, apostrophes and punctuation are
+set aside: "incidental" isn't dental, "Banksy" isn't banking, "Lawson" isn't legal, "DSO"
+matches only on its own, and "Oil & Gas" is "oil and gas". `dentist(s)` in the list means
+dentist and dentists. `names` count in a company's name only: "AI" in "Quillon AI" says what
+the company is, where in a headline it is as often a buzzword. `companies` match from the
+start of the name as whole words (`aspen dental` is Aspen Dental Management), or the whole
+name when they end with `$` (`box$` is Box, not Box Hill Hospital). A name that says school,
+college or university only matches an education sector's companies ("Chase College of Law"
+isn't Chase the bank), though its words still count.
+
+What a headline counts, for precision:
+
+- **What someone does now.** "Ex-", "Former" and "Retired" parts are where they were.
+- **Not who they serve.** Words after "for", "helping", "serving", "supporting" or
+  "empowering" don't count: "Marketing for dentists" is marketing, not dental.
+- **Each part for its own company.** A part that names a company ("Host at The Growth
+  Podcast") counts for that company only. The parts before the first company describe that
+  role ("Dentist | Owner at Smith Family Practice"); the parts after it are side notes and
+  don't count ("… at Quillon | Soccer mom | Podcaster"). A headline that names no company
+  (a company scan) counts all its current parts.
+- **`not` cancels.** A `not` phrase cancels its sector's words in the text being read: "food
+  bank" isn't banking, "travel nurse" isn't travel, "Army veteran" isn't serving now,
+  "general counsel" (an in-house lawyer) doesn't make the company a law firm.
+
+The price of the one-person rule is that a word for a job every industry has (recruiter,
+accountant, marketer, software engineer) can place a small company by its one person. The
+rule is deliberate: a dentist's own practice is usually one person in your network. The
+majority keeps bigger companies honest.
+
+**The version.** `DIRECTORY_VERSION` is a hash of the list (and of `MATCHING`, which is
+bumped by hand when the matching code changes), so any edit changes it and nobody has to
+remember to. A focus with a directory pick carries it in its fingerprint; after an update
+that changed the words, the next load rescores. A focus of industries alone doesn't use the
+directory and keeps the fingerprint it always had. A word-list edit doesn't change
+`SCORING_VERSION`.
+
+**Suggestions.** `suggestSectors(rows, read)` gives the five directory sectors with the most
+people (each once) working now at a company that matches, with how many such companies:
+"Dental: 42 people at 17 companies". `GET /api/settings/sector-suggestions`. Only a network
+you've scanned: a CSV import or the sample isn't in the database.
+
+**Cost.** Matching is a dictionary lookup per word, with every headline read once per read
+of the network. On the synthetic network in the preview's timing check it added about 15% at
+10,000 rows (120 → 138 ms) and 8% at 30,000 (336 → 364 ms); with every headline different,
+13% and 9%. A pick from the directory scores as fast as an industry.
+
+### How to add or fix a sector
+
+Anyone can improve the list. Precision over recall: a word that means something else in
+another field lifts the wrong people, while a missing word only means no lean.
+
+1. Edit `DIRECTORY` in `lib/sector-directory.js`. Add words to a sector, or a new sector
+   under the industry it belongs to (`group`). Prefer job titles, credentials and kinds of
+   business that only this sector uses. Never a word every field uses on its own: manager,
+   director, engineer, analyst, sales, associate, partner, agent, broker, producer,
+   consultant and the like (the tests refuse them). Phrases that contain one are fine
+   ("oral surgeon", "wealth manager").
+2. A word that's right in a company's name but a buzzword in a headline goes in `names`.
+3. Add a company only when its name carries none of the words. End it with `$` when its
+   name is also a common word or the start of other companies' names (`box$`, `target$`).
+4. When a word means something else inside some phrase, add the phrase to `not`.
+5. Never rename or remove a `key`: it is saved in people's settings. Fix the label, words
+   and companies instead. A new key must not be one of the twelve industries' keys.
+6. Add examples to `EXAMPLES` in `tests/sector-directory.test.mjs`: at least one text the
+   sector must match and one it must not (a headline, `company: Name`, or `[headline,
+   company]`). Run `npm test`.
+7. Add a CHANGELOG line. There's nothing to bump: the version follows the list, and scores
+   picked from the directory refresh on their next load.
 
 ## How it was checked
 
