@@ -118,7 +118,7 @@ jobs:
           done
           [ -n "$url" ] || { echo "::error::The app never became ready"; cat "$RUNNER_TEMP/app.log"; exit 1; }
           echo "Running at $url"
-          for p in "" paths queue setup api/network api/company-scores api/scraper; do
+          for p in "" paths queue setup settings api/network api/company-scores api/scraper api/settings; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url/$p"); echo "  /$p $code"
             [ "$code" = 200 ] || exit 1
           done

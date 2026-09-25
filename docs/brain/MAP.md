@@ -15,7 +15,10 @@
 | `app/components/CompanyScores.js` | Paths → Scores: every company with its score, where the score comes from, and the control to set your own. |
 | `app/components/OutlinkQuest.js` | Outlink → Circles: working through each mapped circle five people at a time (rules in `lib/quest.js`). |
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
-| `app/api/*` | 18 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/settings/page.js` | Settings: Updates (`UpdatePanel`), About this copy, and a `<Section>` per feature that adds a setting. Reached from the ⚙ button and *Six Degrees → Settings…* (⌘,). |
+| `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
+| `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. |
+| `app/api/*` | 19 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
 | `middleware.js` | Refuses cross-site writes on all of `/api`, then applies the destructive-route gate. |

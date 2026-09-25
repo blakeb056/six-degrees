@@ -42,6 +42,7 @@ let origin = null;   // http://127.0.0.1:<port>, once chosen
 let ready = false;   // the server has answered
 let win = null;
 let quitting = false;
+let pendingPath = null; // a menu choice made before the server answered
 
 app.setName('Six Degrees');
 app.enableSandbox();
@@ -99,7 +100,8 @@ async function start() {
 
   await waitForServer(origin, { isAlive: () => server.exitCode === null && server.signalCode === null });
   ready = true;
-  if (win) win.loadURL(origin);
+  if (win) win.loadURL(origin + (pendingPath || ''));
+  pendingPath = null;
 }
 
 function showWindow() {
@@ -166,6 +168,7 @@ function lockDownSession() {
 function openInApp(pathname) {
   showWindow();
   if (ready) win.loadURL(origin + pathname);
+  else pendingPath = pathname; // opened once the server answers, instead of the map
 }
 
 function buildMenu() {
@@ -174,7 +177,8 @@ function buildMenu() {
       label: 'Six Degrees',
       submenu: [
         { role: 'about', label: 'About Six Degrees' },
-        { label: 'Check for Updates…', click: () => openInApp('/setup?check=updates') },
+        { label: 'Check for Updates…', click: () => openInApp('/settings?check=updates') },
+        { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => openInApp('/settings') },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },

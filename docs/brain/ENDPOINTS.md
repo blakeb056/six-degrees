@@ -26,6 +26,7 @@ that matters — a misconfigured deployment must not become a wipe vector.
 |---|---|
 | `GET/POST /api/connections` | Read connections. The scraper's read path. |
 | `POST /api/ingest` | The write path. Parses headlines and upserts, then rescores everyone (`lib/scoring.js`, via `rpc('score_new_connections')`). |
+| `GET/POST /api/settings` | `GET` returns `{settings, about}`: the saved settings with defaults (`lib/settings.js`), and `about` = `{version, kind, dataDir, customDataDir}`. Local only, no network. `POST {settings: {…}}` saves a partial change; an undeclared key or a bad value is a 400 with a message fit to show, and nothing is written. |
 | `GET/POST /api/company-scores` | Every company in the network with its score and where it comes from (yours, known list, estimate). `POST {name, score}` sets a score (1–10), and `score: null` returns it to automatic. Either way, everyone is rescored. |
 | `POST /api/update-images` | Batch-attaches local avatar paths (100 per call). |
 | `GET/POST /api/users` | List, look up, or create a local profile. `?me=1` returns the profile this machine uses, creating it on first run (`lib/profile.js`). |
