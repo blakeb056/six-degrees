@@ -208,8 +208,13 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 - **Title (1–10)** comes from someone's current role in their headline, with former
   roles at 70%; current students are capped.
 - **Company score (1–10)** is the one you set (Paths → Scores) if there is one. Otherwise
-  it comes from a list of well-known companies, or from how many of your people work
-  there.
+  it comes from a built-in list of well-known companies, or from how many of your people
+  work there. The built-in list is the same for everyone and follows one rule: only
+  companies most US professionals would recognise (household names, the largest companies,
+  top investment, consulting, law and accounting firms, frontier AI labs, top universities),
+  scored 7 to 10. Anything else is estimated from your network. If you scanned with an
+  earlier version, Paths → Scores offers once to keep its old scores for the companies in
+  your network whose score changed.
 - **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
   in them get +1 ("lean") or +2 ("strong") on that score, never above 10 and never on a
   score you set. Each company has one sector: the known list's, else what its name says,
@@ -222,7 +227,7 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
 
-Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (9/10) · +0.7
+Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (8/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
 rather than your own scores or sectors; the sample network keeps its own. The model is
 [`lib/scoring.js`](lib/scoring.js), explained in

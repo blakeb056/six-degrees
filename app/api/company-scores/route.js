@@ -1,5 +1,5 @@
-import { getDb, newId, nowIso } from '../../../lib/db-client';
-import { rescoreAll, companyOverrides, sectorFocusOf } from '../../../lib/rpc';
+import { getDb } from '../../../lib/db-client';
+import { rescoreAll, companyOverrides, sectorFocusOf, setCompanyScores } from '../../../lib/rpc';
 import { rolesWithCompanies, companyScore, networkCompanies, KNOWN_COMPANIES } from '../../../lib/scoring';
 import { industryByKey, industryKeyOf } from '../../../lib/companies';
 
@@ -55,8 +55,7 @@ export async function POST(request) {
     } else {
       const n = Number(score);
       if (!Number.isFinite(n) || n < 1 || n > 10) return Response.json({ error: 'score must be 1–10' }, { status: 400 });
-      db.prepare(`INSERT INTO company_scores (id, name, score, updated_at) VALUES (?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`).run(newId(), name, n, nowIso());
+      setCompanyScores(db, [[name, n]]);
     }
     const result = rescoreAll();
     return Response.json({ success: true, ...result });

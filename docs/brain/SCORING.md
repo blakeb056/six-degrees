@@ -6,10 +6,11 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION` or the sector focus they were computed with no longer matches; both stamped in `app_meta`) |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list or the sector focus they were computed with no longer matches; all three stamped in `app_meta`) |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
+| `lib/legacy-offer.js` `legacyOffer()` | Paths → Scores' one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
 
 Until 0.1.10 there were three scorers that disagreed. `scripts/*.sql` are the retired
 hosted-era model, kept for history and marked as such. Do not transcribe the model
@@ -40,11 +41,12 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - "International" is not "intern".
 
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
-`company_scores`), then the curated `KNOWN_COMPANIES` list (165 companies). Otherwise it's
-an estimate from how many of your people work there: 5 at 5+, 6 at 15+, but never for
-schools (a company whose one industry, below, is education). Unknown is 4, and no company
-found is 3, so the company weight runs from 0.615 (no company) to 1.0; 0.505 is the floor,
-for a company you score 1. Names are cleaned first, so "Snap Inc.", "Snapchat 👻" and
+`company_scores`), then the curated `KNOWN_COMPANIES` list (133 companies, on it by the
+rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people
+work there: 5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
+is education). Unknown is 4, and no company found is 3, so the company weight runs from
+0.615 (no company) to 1.0; 0.505 is the floor, for a company you score 1. Names are cleaned
+first, so "Snap Inc.", "Snapchat 👻" and
 "Snap" are one company. Phrases like "at scale" are not companies. The list's aliases match
 from the start of a name, so a name that says school, college or university only matches a
 school on the list: "Kellogg School of Management" is not Kellanova, "Warner University" not
@@ -62,8 +64,86 @@ unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed eac
 never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
-"VP / Partner / GM (9) · Snap (9/10) · +0.7 strong circle", or with a sector lean
-"Director / Head (7.5) · Snap (10/10: 9 + 1 your sector)".
+"VP / Partner / GM (9) · Snap (8/10) · +0.7 strong circle", or with a sector lean
+"Director / Head (7.5) · Snap (9/10: 8 + 1 your sector)".
+
+## The curated list
+
+`KNOWN_COMPANIES` is everyone's default, so a written rule decides who is on it, not anyone's
+own ties to a company. **A company is on the list only if most US professionals would
+recognise it:**
+
+- a household-name brand;
+- a Fortune 500 company, or a public company as large;
+- a top global VC, private equity, consulting, law or accounting firm;
+- a frontier AI lab;
+- a top national university.
+
+**Scores follow one scale:** 10 the largest tech platforms and the frontier AI labs, 9 elite
+(the most sought-after employers in tech, finance, consulting, investing and consumer
+brands), 8 major, 7 well-known. Nothing on the list is below 7. Regional picks, picks from
+one person's career or network, and small startups are not on it: they're estimated from
+the network like any other company, and anyone can score them on Paths → Scores. **When in
+doubt, a company stays off**: the estimate is the neutral default. No comment in the list
+speaks for one person (it used to say "home turf" and "local institutions"); a test checks.
+
+Applying the rule (September 2026, after 0.2.1) changed 34 of the 165 entries:
+
+- **Snap 9 → 8**, like its peers Pinterest, Reddit and X, and **MrBeast 8 → 7**: a household
+  name, but a company of a few hundred people.
+- **Removed, 32:** the "notable" 6s and the one "local institution", drawn from one network
+  and one region (Grindr, Genius Sports, Later, Hard Rock Digital, Vanta, Kaseya, Havas,
+  VaynerMedia, AdventHealth, University of Florida, The Athletic, UCF); private companies
+  that are neither household names nor that size, and startups (Anduril, Polymarket,
+  Kalshi, Databricks, Figma, Scale AI, Whatnot, Whop, Hims & Hers, Riot Games, Notion,
+  Vercel, Plaid, Brex, Ramp, Mercury, Chime); two executive search firms (Egon Zehnder,
+  Heidrick & Struggles); and the U.S. Space Force, the only military branch on the list.
+
+The other 131 kept their score, alias and industry. `lib/legacy-scores.js` holds the old rows
+(name, score, alias, industry) for the offer below and nothing else; `lib/scoring.js` imports
+nothing, so the model can't read them.
+
+The list is still narrower than its rule: it leans to tech, finance, consulting and media,
+and many names the rule admits aren't on it (McDonald's, Ford, Costco, Eli Lilly, Yale,
+Kirkland & Ellis…). Adding them is a separate change, made the same way.
+
+**Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_list' with a fingerprint of the
+whole list (every name, score, alias and industry; `KNOWN_LIST_STAMP` in `lib/rpc.js`), and
+`rescoreIfStale()` rescores when it no longer matches. Editing the list refreshes stored
+scores with no `SCORING_VERSION` bump to remember.
+
+### Keeping the old scores: a one-time offer
+
+A list change shouldn't take anyone's view away silently. Scores computed with the old list
+carry no 'scoring_list' stamp; the first time `rescoreAll()` replaces them (and some row was
+already scored, so the database isn't new), it opens an offer: `app_meta`
+'legacy_scores_offer' = `open`. Paths → Scores then shows one card at the top: "Built-in
+scores changed in this version: Snap 9 → 8, UCF 5 → estimated. Keep any of the old ones as
+your own?", with *Keep all*, *Choose…* and *No thanks* (`app/components/LegacyScoresCard.js`,
+`/api/company-scores/legacy`).
+
+- **What it lists** (`lib/legacy-offer.js` `legacyOffer()`): each old entry that someone in
+  this network works at now, whose built-in score is different now (the list or the
+  estimate, before any sector lean), and that you haven't scored yourself. Current
+  employers only, because those are what Paths → Scores lists: a kept score shows there as
+  yours and *Auto* can hand it back. (A company only in former roles would get a score
+  nothing lists; a former role counts at 70%, so it moves people little.) A removed entry
+  no longer canonicalises ("University of Central Florida" isn't "UCF" any more), so its
+  names are found with its old alias, read the way `cleanCompany()` read it then.
+- **Keep** writes the old score to `company_scores` under every name scoring uses for those
+  rows (UCF's covers "UCF" and "University of Central Florida"), with the same
+  `setCompanyScores()` that Paths → Scores uses, then rescores everyone once for the whole
+  batch. A kept score is yours like any other: *Auto* hands it back.
+- **Once:** *Keep* or *No thanks* sets the offer to `kept` or `declined`, and nothing
+  reopens it.
+- **Never** for a fresh database (nothing was scored with the old list), and never while a
+  CSV import or the sample is on screen: those are scored in the browser, not the server.
+- If the rescore after a keep fails, the scores and the answer are saved, the answer says
+  so, and the next map load rescores (the model stamp is cleared).
+
+The offer covers this one change, from lists that stamped nothing. A later edit to the list
+changes the stamp and rescores, but offers nothing unless it brings its own old rows and
+its own trigger.
 
 ## One industry per company
 
@@ -72,7 +152,7 @@ but each **company** gets exactly one, used everywhere: its colour in Paths, its
 Scores, the school rule above, and the sector lean. `companyIndustry()` decides, in order:
 
 1. **The curated list's own industry**, the last field of each `KNOWN_COMPANIES` entry.
-   93 of the 165 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
+   69 of the 133 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
    they took whatever their people's headlines said. Where a name does say something, the
    field agrees with it (a test in `tests/companies.test.mjs` checks both). Aliases count:
    "BNY Mellon" is BNY, finance.
@@ -113,8 +193,8 @@ when the score actually moved, so everything reading `{score, source}` is unchan
 
 - A point of company score is worth `0.055 × title points`: +0.55 for a founder, +0.50 for
   a VP, +0.41 for a director, +0.22 for an IC. So +1 moves a VP at a 6 (7.0, A) to S (7.5),
-  a director at Snap from 7.1 (A) to 7.5 (S), and a founder at an unknown company from 6.7
-  to 7.3 (7.8, S, at +2).
+  a director at YouTube (9) from 7.1 (A) to 7.5 (S), and a founder at an unknown company
+  from 6.7 to 7.3 (7.8, S, at +2).
 - **The lean lifts the company, not the headline's claims.** The reach bonus is halved by
   the company's score *before* the lean, so a founder at an unknown company who says "Angel
   investor" goes 7.2 → 7.8 on lean, not 7.2 → 8.3: liking a sector says nothing about whether
@@ -172,6 +252,12 @@ titles): there, r(bridge title, circle's mean title) = −0.18 with or without a
 r(bridge power, circle's mean title) = 0.15 with none, 0.20 lean tech, 0.01 strong tech.
 Re-run the real check on a real network.
 
+**The neutral list (still `SCORING_VERSION` 3):** it changes company scores, never title
+points, so the title-to-circle correlation is unchanged by construction, and the sample
+network doesn't move (0 of 873 scores: its companies are invented, each scored for it).
+`SCORING_VERSION` stays 3 because 3 is unreleased: a 0.2.x database rescores once anyway,
+and the list stamp catches a database the unreleased build scored with the old list.
+
 ## Bridges
 
 Being high-scoring makes someone worth *knowing*. Being a **bridge** is about the circle
@@ -183,8 +269,9 @@ not adopted.
 
 ## The honest caveat
 
-The company list and the title ladder are a hand-written opinion, tuned against one real
-network. Company scores are editable for exactly that reason. The model is
+The title ladder is a hand-written opinion, tuned against one real network, and the company
+list, though it now follows a written rule, is a judgement about which names most
+professionals know. Company scores are editable for exactly that reason. The model is
 **domain-shaped**: a network of academics or tradespeople would score oddly against a
-list built from tech and finance brands. And the tier is a statement about **network
+list that leans to tech and finance brands. And the tier is a statement about **network
 position, not human worth**, SPEC invariant 6. Say so plainly in any UI that shows a tier.

@@ -25,9 +25,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lifted. `/paths?tab=scores` opens Paths on its Scores tab.
 
 ### Changed
-- **Each company has one industry, used everywhere.** The curated list of 165 companies
-  now names each one's industry, so Adobe, Pfizer or MIT (no industry word in the name) no
-  longer take whatever their people's headlines say. Otherwise the name decides, else what
+- **Built-in company scores are the same for everyone.** The built-in list of well-known
+  companies, which every network's scores start from, held some personal and regional
+  picks: Snap at 9 as "home turf", UCF at 5 as a "local institution", and a group of 6s
+  from one network and one region. One written rule now decides who is on it: companies most US
+  professionals would recognise (household names, Fortune 500-sized companies, top
+  investment, consulting, law and accounting firms, frontier AI labs, top national
+  universities), scored on one scale from 7 to 10. Snap goes from 9 to 8, like Pinterest,
+  Reddit and X, and MrBeast from 8 to 7. 32 companies leave the list, among them UCF, the
+  University of Florida, AdventHealth, Polymarket, Kalshi and Anduril; they're estimated from
+  your network like any other company, and you can score any of them on Paths → Scores. If
+  your scanned network had people at a company whose score changed, Paths → Scores offers
+  once to keep the old scores as your own: keep all, choose, or no thanks. Not for a new
+  database, a CSV import or the sample. Your network is rescored once, automatically, on the
+  first load after updating.
+- **Each company has one industry, used everywhere.** The curated list now names each
+  company's industry, so Adobe, Pfizer or MIT (no industry word in the name) no longer
+  take whatever their people's headlines say. Otherwise the name decides, else what
   most of the people there say; a tie stays unclear. Paths' colours, the Scores list and
   the "not for schools" rule in the company estimate now agree, where before each person's
   own headline could put the same company in a different industry. Your network is

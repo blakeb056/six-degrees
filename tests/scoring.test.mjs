@@ -36,7 +36,7 @@ test('companies: one clean name per company, junk dropped', () => {
   assert.equal(cleanCompany('Meta'), 'Meta');                          // the old rule missed plain "Meta"
   assert.equal(cleanCompany('Meta (Facebook)'), 'Meta');
   assert.equal(cleanCompany('AWS'), 'Amazon');
-  assert.equal(cleanCompany('the University of Central Florida'), 'UCF');
+  assert.equal(cleanCompany('Massachusetts Institute of Technology'), 'MIT');
   assert.equal(cleanCompany('Northwind Labs, LLC'), 'Northwind Labs');
   assert.equal(cleanCompany('Online Society! $3.4M+ in client results'), 'Online Society');
   assert.equal(cleanCompany('intersection of media, tech & consumer trends. Proven in leading teams'), null);
@@ -58,7 +58,7 @@ test('companies: a school is not the company its name starts like, and Bain Capi
   assert.equal(cleanCompany('Chase'), 'JPMorgan Chase');
   assert.equal(cleanCompany('Warner Bros. Discovery'), 'Warner Bros. Discovery');
   assert.equal(cleanCompany('Harvard Business School'), 'Harvard University');
-  assert.equal(cleanCompany('the University of Central Florida'), 'UCF');
+  assert.equal(cleanCompany('Stanford Graduate School of Business'), 'Stanford University');
   // A private equity firm, not the consultancy: its own industry, at the 9 it
   // had as an alias of Bain. "Bain Capital Ventures" was never on the list.
   assert.equal(cleanCompany('Bain Capital'), 'Bain Capital');
@@ -143,8 +143,8 @@ test('your sector: +1 lean, +2 strong, never above 10, and it says what it added
   assert.deepEqual(SECTOR_BONUS, { lean: 1, strong: 2 });
   assert.deepEqual(companyScore('Adobe', { focus: lean('tech') }), { score: 9, source: 'known', base: 8, sector: 'tech', sectorBonus: 1 });
   assert.deepEqual(companyScore('Adobe', { focus: strong('tech') }), { score: 10, source: 'known', base: 8, sector: 'tech', sectorBonus: 2 });
-  // Capped: Snap is 9, so strong adds only 1.
-  assert.deepEqual(companyScore('Snap', { focus: strong('media') }), { score: 10, source: 'known', base: 9, sector: 'media', sectorBonus: 1 });
+  // Capped: YouTube is 9, so strong adds only 1.
+  assert.deepEqual(companyScore('YouTube', { focus: strong('media') }), { score: 10, source: 'known', base: 9, sector: 'media', sectorBonus: 1 });
   // Unknown companies move too, by the company's one industry.
   assert.deepEqual(companyScore('Northwind', { industry: 'tech', focus: lean('tech') }), { score: 5, source: 'default', base: 4, sector: 'tech', sectorBonus: 1 });
   assert.deepEqual(companyScore('Northwind', { industry: 'tech', headcount: 6, focus: strong('tech') }), { score: 7, source: 'network', base: 5, sector: 'tech', sectorBonus: 2 });
@@ -166,19 +166,19 @@ test('your sector never touches a score you set', () => {
 });
 
 test('your sector shows in the working, and can lift a tier', () => {
-  const plain = scorePerson({ headline: 'Director of Partnerships at Snap' });
-  const leaned = scorePerson({ headline: 'Director of Partnerships at Snap' }, (n) => companyScore(n, { focus: lean('media') }));
+  const plain = scorePerson({ headline: 'Director of Partnerships at YouTube' });
+  const leaned = scorePerson({ headline: 'Director of Partnerships at YouTube' }, (n) => companyScore(n, { focus: lean('media') }));
   assert.equal(plain.power, 7.1);
   assert.equal(plain.tier, 'A');
   assert.equal(leaned.power, 7.5);
   assert.equal(leaned.tier, 'S');
   assert.equal(plain.companySector, undefined);
   assert.deepEqual(leaned.companySector, { key: 'media', base: 9, bonus: 1 });
-  assert.equal(explainScore(plain), 'Director / Head (7.5) · Snap (9/10)');
-  assert.equal(explainScore(leaned), 'Director / Head (7.5) · Snap (10/10: 9 + 1 your sector)');
+  assert.equal(explainScore(plain), 'Director / Head (7.5) · YouTube (9/10)');
+  assert.equal(explainScore(leaned), 'Director / Head (7.5) · YouTube (10/10: 9 + 1 your sector)');
   // A score you set still reads as yours.
-  const yours = scorePerson({ headline: 'Director at Snap' }, (n) => companyScore(n, { overrides: new Map([['Snap', 8]]), focus: lean('media') }));
-  assert.equal(explainScore(yours), 'Director / Head (7.5) · Snap (8/10, your score)');
+  const yours = scorePerson({ headline: 'Director at YouTube' }, (n) => companyScore(n, { overrides: new Map([['YouTube', 8]]), focus: lean('media') }));
+  assert.equal(explainScore(yours), 'Director / Head (7.5) · YouTube (8/10, your score)');
 });
 
 test('your sector lifts the company, not the headline\'s claims: a reach bonus is halved by the score before the lean', () => {

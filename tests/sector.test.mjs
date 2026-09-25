@@ -81,11 +81,11 @@ test('the fingerprint is the same for the same choice, whatever order it was sen
 // ── the dry run ─────────────────────────────────────────────────────────────
 
 // A small invented network: an unknown startup whose people are engineers
-// (Quillon, so tech), a media company from the curated list (Snap, 9), a tech
+// (Quillon, so tech), a media company from the curated list (YouTube, 9), a tech
 // one (Adobe, 8), and Google (10, which has nowhere to go).
 //   founder at Quillon       4 → 6 at strong tech:  6.7 (A) → 7.8 (S)
 //   director at Adobe        8 → 10 at strong tech: 6.7 (A) → 7.5 (S)
-//   director at Snap         9 → 10 at lean media:  7.1 (A) → 7.5 (S)
+//   director at YouTube      9 → 10 at lean media:  7.1 (A) → 7.5 (S)
 //   engineers at Quillon     2.7 → 3.1, C either way
 function network() {
   const p = (id, degree, name, headline, extra = {}) => ({ id, degree, name, headline, profile_url: `/in/${id}`, source_connection_id: null, ...extra });
@@ -93,7 +93,7 @@ function network() {
     p('f', 1, 'Ada Farrow', 'Founder at Quillon'),
     p('e1', 1, 'Bo Nyberg', 'Engineer at Quillon'),
     p('e2', 2, 'Cleo Varga', 'Backend developer at Quillon', { source_connection_id: 'f' }),
-    p('s', 1, 'Dev Moreau', 'Director of Partnerships at Snap'),
+    p('s', 1, 'Dev Moreau', 'Director of Partnerships at YouTube'),
     p('a', 1, 'Esme Ibarra', 'Director of Design at Adobe'),
     // The same person again, in Ada's circle: one person, counted at 1st degree.
     p('a2', 2, 'Esme Ibarra', 'Director of Design at Adobe', { source_connection_id: 'f', profile_url: '/in/a' }),
@@ -106,7 +106,7 @@ test('the preview counts companies and people that would move, against what is s
   const p = previewSectorFocus(rows, { industryOf: industryKeyOf, from: NO_FOCUS, to: strong('tech') });
   assert.equal(p.scored, 7);                                             // rows…
   assert.equal(p.people, 6);                                             // …and people: Esme is two rows
-  // Quillon 4 → 6 and Adobe 8 → 10; Google is already 10, Snap is media.
+  // Quillon 4 → 6 and Adobe 8 → 10; Google is already 10, YouTube is media.
   assert.equal(p.companies, 2);
   assert.deepEqual([p.companiesUp, p.companiesDown], [2, 0]);
   assert.deepEqual(p.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]).sort(), [['Adobe', 8, 10, 'tech'], ['Quillon', 4, 6, 'tech']]);
@@ -128,7 +128,7 @@ test('the preview agrees with scoring the network for real', () => {
   const p = previewSectorFocus(rows, { industryOf: industryKeyOf, from: NO_FOCUS, to: lean('media') });
   const before = scoreNetwork(rows, { industryOf: industryKeyOf }).scores;
   const after = scoreNetwork(rows, { industryOf: industryKeyOf, focus: lean('media') }).scores;
-  // Snap 9 → 10 lifts its director from 7.1 (A) to 7.5 (S), and nobody else.
+  // YouTube 9 → 10 lifts its director from 7.1 (A) to 7.5 (S), and nobody else.
   assert.deepEqual([before.get('s').tier, after.get('s').tier, after.get('s').power], ['A', 'S', 7.5]);
   assert.deepEqual([p.companies, p.up, p.down], [1, 1, 0]);
   assert.deepEqual(p.examples.map((e) => [e.name, e.from, e.to]), [['Dev Moreau', 'A', 'S']]);
@@ -178,7 +178,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   // The import path (score_new_connections) is rescoreAll too: nothing passes the focus in.
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
-  assert.match(row('s').score_why, /Snap \(10\/10: 9 \+ 1 your sector\)/);
+  assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector\)/);
   assert.equal(meta('scoring_version'), '3');
   assert.equal(meta('scoring_focus'), 'lean:media');
 });
@@ -261,7 +261,7 @@ test('the preview and the save agree when the stored scores are stale', () => {
   writeSettings(db, { sectorFocus: strong('tech') });                   // saved, never rescored
   assert.deepEqual([row('f').tier, row('a').tier], ['A', 'A']);
   const preview = previewAsRoute(db, lean('media'));
-  // Strong tech had Ada (Quillon) and Esme (Adobe) at S; lean media lifts Dev (Snap) instead.
+  // Strong tech had Ada (Quillon) and Esme (Adobe) at S; lean media lifts Dev (YouTube) instead.
   assert.deepEqual([preview.up, preview.down], [1, 2]);
   const effects = save(db, lean('media'));
   assert.deepEqual(effects.sectorFocus, { scored: 7, people: 6, moved: 3, up: preview.up, down: preview.down });
