@@ -108,12 +108,16 @@ Contents/Resources/python/      from D2
 - [ ] Restart to finish an import (Settings → Your data): the server exits with 75
       (`SIX_DEGREES_RESTART_CODE`, which only this shell sets; Next's own exit on SIGTERM
       is 143, so a signal can't pass for it). The shell shows the starting page, starts the
-      server again on the same port if it's free, and returns to Settings → Your data.
-      Asking again within 15 seconds counts as a crash, so a server that can't stay up is
-      reported instead of restarted forever. The decision is `serverExitAction` (tested);
-      the server's side was checked with the standalone build. **Tick once it has been
-      clicked through in the real app**, then check the Save dialog for *Save a copy*
-      (there is no `will-download` handler, so Electron asks where to save).
+      server again on the same port if it's free, and returns to Settings → Your data. A
+      server that asks to be restarted before it has ever answered is reported as a crash
+      (it can't stay up); one that answered is restarted however soon after the last, so
+      clicking Restart now again after an import that stopped is never "Six Degrees
+      stopped". 76 (the in-app updater's hand-off), 143 and 130 (Next stopped from outside)
+      and a signal quit quietly; any other code is a crash. The decision is
+      `serverExitAction` (tested, every code); the server's side was checked with the
+      standalone build. **Tick once it has been clicked through in the real app**, then
+      check the Save dialog for *Save a copy* (there is no `will-download` handler, so
+      Electron asks where to save).
 - [x] Links: anything not on the app's own address opens in the default browser (rule 7);
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,

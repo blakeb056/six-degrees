@@ -5,7 +5,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import {
   routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  RESTART_EXIT_CODE, serverExitAction,
+  RESTART_EXIT_CODE, UPDATE_HANDOFF_EXIT_CODE, serverExitAction,
 } from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
@@ -107,18 +107,53 @@ test('a leading ~ in --data-dir is the home folder, even after = where the shell
   assert.equal(dataDirArg(['x', '--data-dir=~other'], { cwd: '/Users/someone/work', home }), '/Users/someone/work/~other');
 });
 
-test('when the server ends: a signal quits quietly, the restart code starts it again, anything else is a crash', () => {
-  assert.equal(serverExitAction({ code: null, signal: 'SIGTERM' }), 'quit');
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, now: 100000 }), 'restart');
-  assert.equal(serverExitAction({ code: 1, signal: null }), 'crash');
-  // Next ends with 143 when the server itself gets SIGTERM: never a restart.
-  assert.notEqual(serverExitAction({ code: 143, signal: null, now: 100000 }), 'restart');
-  // Quitting anyway: nothing to report, nothing to restart.
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, quitting: true }), 'ignore');
-  assert.equal(serverExitAction({ code: 1, signal: null, quitting: true }), 'ignore');
-  // Asking again straight after a restart means it can't stay up: say so.
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, lastRestartAt: 100000, now: 105000 }), 'crash');
-  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, lastRestartAt: 100000, now: 200000 }), 'restart');
+// When the server ends, the app says nothing (it is quitting anyway), quits
+// quietly, starts the server again, or reports a crash. The codes are shared
+// with the in-app updater (settings-updater), which reads them the same way.
+test('the server ending while the app quits is expected, whatever the code: nothing to do', () => {
+  for (const code of [RESTART_EXIT_CODE, UPDATE_HANDOFF_EXIT_CODE, 143, 130, 1, 0, null]) {
+    assert.equal(serverExitAction({ code, signal: null, quitting: true }), 'ignore', String(code));
+  }
+  assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: true }), 'ignore');
+});
+
+test('75 starts the server again, to finish an import', () => {
+  assert.equal(RESTART_EXIT_CODE, 75);
+  assert.equal(serverExitAction({ code: 75, signal: null, quitting: false, answered: true }), 'restart');
+});
+
+test('REGRESSION: Restart now again soon after a restart is a restart, not "Six Degrees stopped"', () => {
+  // An import that stopped (another copy had the network open, say) says why on
+  // the page, and the person fixes it and clicks Restart now again at once. The
+  // first guard counted any restart within 15 s of the last as a crash.
+  // lastRestartAt and now are what the first guard was given: 2 s after the last restart.
+  const now = 1_000_000;
+  for (let i = 0; i < 3; i++) {
+    const exit = { code: 75, signal: null, quitting: false, answered: true, lastRestartAt: now - 2000, now };
+    assert.equal(serverExitAction(exit), 'restart', `restart ${i + 1}`);
+  }
+});
+
+test('a server that asks to be restarted before it ever answered is reported: it can\'t stay up', () => {
+  // Restart now is a click on a page that server served. Asking without having
+  // answered once can only be the server failing as it starts: restarting it
+  // would loop forever.
+  assert.equal(serverExitAction({ code: 75, signal: null, quitting: false, answered: false }), 'report');
+});
+
+test('76 (the updater has taken over), 143 and 130 (Next stopped from outside) and a signal quit quietly', () => {
+  assert.equal(UPDATE_HANDOFF_EXIT_CODE, 76);
+  for (const code of [76, 143, 130]) {
+    assert.equal(serverExitAction({ code, signal: null, quitting: false }), 'quit', String(code));
+    assert.equal(serverExitAction({ code, signal: null, quitting: false, answered: false }), 'quit', `${code}, never answered`);
+  }
+  for (const signal of ['SIGKILL', 'SIGTERM']) assert.equal(serverExitAction({ code: null, signal, quitting: false }), 'quit', signal);
+});
+
+test('any other exit is a crash, said out loud', () => {
+  for (const code of [1, 0, 2, 74, 77, 124, 137, 255]) {
+    assert.equal(serverExitAction({ code, signal: null, quitting: false }), 'report', String(code));
+  }
 });
 
 test('the restart code the shell hands its server is one the server accepts', async () => {

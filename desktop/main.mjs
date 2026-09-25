@@ -48,7 +48,6 @@ let ready = false;   // the server has answered
 let win = null;
 let quitting = false;
 let pendingPath = null; // a menu choice made before the server answered
-let lastRestartAt = 0;  // when the server last asked to be started again
 
 app.setName('Six Degrees');
 app.enableSandbox();
@@ -99,11 +98,13 @@ async function startServer(port, { logMode }) {
   });
   closeSync(log);
   server = child;
+  let answered = false; // this server has answered at least once
   child.on('exit', (code, signal) => {
-    // What to do is decided in lib.mjs (tested): a signal from outside quits
-    // quietly, the restart code starts it again, any other exit is a crash
-    // and is said out loud.
-    const action = serverExitAction({ code, signal, quitting, lastRestartAt, now: Date.now() });
+    // What to do is decided in lib.mjs (tested): stopped from outside quits
+    // quietly, the restart code starts it again (unless this server never
+    // answered: then it can't stay up), any other exit is a crash and is said
+    // out loud.
+    const action = serverExitAction({ code, signal, quitting, answered });
     if (action === 'ignore') return;
     if (action === 'quit') {
       quitting = true;
@@ -118,6 +119,7 @@ async function startServer(port, { logMode }) {
   });
 
   await waitForServer(origin, { isAlive: () => child.exitCode === null && child.signalCode === null });
+  answered = true;
   ready = true;
   if (win) win.loadURL(origin + (pendingPath || ''));
   pendingPath = null;
@@ -128,7 +130,6 @@ async function startServer(port, { logMode }) {
 // shows the starting page, and then comes back to Settings → Your data, where
 // the finished import is reported.
 async function restartServer(port) {
-  lastRestartAt = Date.now();
   ready = false;
   pendingPath = '/settings#data';
   if (win) win.loadFile(path.join(HERE, 'starting.html'));

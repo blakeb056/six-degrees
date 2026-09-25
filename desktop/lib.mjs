@@ -167,18 +167,41 @@ export function dataDirArg(argv = [], { cwd = process.cwd(), home = os.homedir()
 export const RESTART_EXIT_CODE = 75;
 
 /**
+ * The exit code with which the server hands over to the in-app updater
+ * (Settings → Updates → Install and restart): its helper takes it from there,
+ * and the app quits quietly. Reserved here with the updater's own number, so
+ * the shell reads every code the same way whichever feature is in.
+ */
+export const UPDATE_HANDOFF_EXIT_CODE = 76;
+
+/**
+ * Next's server catches SIGTERM and SIGINT and ends with 143 or 130
+ * (next/dist/server/lib/start-server.js). So a server stopped from outside
+ * (the installer replacing this copy, logging out) arrives as one of these
+ * codes, not as a signal; only a signal Next doesn't catch (SIGKILL) arrives
+ * as one.
+ */
+const STOPPED_FROM_OUTSIDE = [143, 130];
+
+/**
  * What the shell does when its server ends:
  *   'ignore'   the app is quitting anyway
- *   'quit'     stopped by a signal from outside (the installer replacing this
- *              copy, or the system): the whole app is going, so go quietly
- *   'restart'  it asked to be started again (RESTART_EXIT_CODE)
- *   'crash'    any other exit: say so out loud
- * Asking again within `minGapMs` of the last restart counts as a crash, so a
- * server that can't stay up is reported rather than started forever.
+ *   'quit'     stopped from outside (a signal, or Next's 143 or 130), or handed
+ *              over to the updater (76): the whole app is going, so go quietly
+ *   'restart'  it asked to be started again (75), to finish an import
+ *   'report'   any other exit: a crash, said out loud
+ *
+ * `answered` says whether that server ever answered the shell. Restart now is
+ * a click on a page the server served, so a server that asks to be restarted
+ * before it has answered once can't be doing it for a person: it can't stay
+ * up, and is reported rather than started forever. One that answered is
+ * restarted however soon after the last restart, so trying again after an
+ * import that stopped (the page says why) is never a crash.
  */
-export function serverExitAction({ code, signal, quitting = false, lastRestartAt = 0, now = Date.now(), minGapMs = 15000 }) {
+export function serverExitAction({ code, signal, quitting = false, answered = true }) {
   if (quitting) return 'ignore';
   if (signal) return 'quit';
-  if (code === RESTART_EXIT_CODE) return now - lastRestartAt < minGapMs ? 'crash' : 'restart';
-  return 'crash';
+  if (code === UPDATE_HANDOFF_EXIT_CODE || STOPPED_FROM_OUTSIDE.includes(code)) return 'quit';
+  if (code === RESTART_EXIT_CODE) return answered ? 'restart' : 'report';
+  return 'report';
 }
