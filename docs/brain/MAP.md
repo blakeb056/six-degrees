@@ -17,7 +17,7 @@
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
 | `app/settings/page.js` | Settings: Updates (`UpdatePanel`), About this copy, and a `<Section>` per feature that adds a setting. Reached from the ⚙ button and *Six Degrees → Settings…* (⌘,). |
 | `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
-| `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. |
+| `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. A save rewrites only the keys it changes, so an older copy never erases a newer one's settings. |
 | `app/api/*` | 19 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
