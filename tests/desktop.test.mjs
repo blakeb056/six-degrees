@@ -5,7 +5,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import {
   routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  serverExitAction, bundlePathFromExe, startPathArg, UPDATE_HANDOFF_EXIT_CODE,
+  serverExitAction, bundlePathFromExe, startPathArg, UPDATE_HANDOFF_EXIT_CODE, RESTART_EXIT_CODE,
 } from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
@@ -83,30 +83,48 @@ test('--data-dir lets a beta run against a copy of the data', () => {
   assert.equal(dataDirArg(['x', '-psn_0_12345']), null);
 });
 
-// When the server ends, the app either says nothing (it is quitting anyway),
-// quits quietly, or reports a crash. TRAPS §39: Next turns a SIGTERM into exit
-// code 143, so "stopped from outside" mostly arrives as a code, not a signal.
-test('the server ending while the app quits is expected: nothing to do', () => {
-  assert.equal(serverExitAction({ code: 143, signal: null, quitting: true }), 'ignore');
-  assert.equal(serverExitAction({ code: 1, signal: null, quitting: true }), 'ignore');
+// When the server ends, the app says nothing (it is quitting anyway), quits
+// quietly, starts it again, or reports a crash. TRAPS §39: Next turns a
+// SIGTERM into exit code 143, so "stopped from outside" mostly arrives as a
+// code, not a signal. The data import (75) and the updater (76) each have a
+// code of their own; this one decision covers both.
+test('the two reserved codes: 75 starts the server again, 76 quits quietly for the update', () => {
+  assert.equal(RESTART_EXIT_CODE, 75);
+  assert.equal(UPDATE_HANDOFF_EXIT_CODE, 76);
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, now: 100000 }), 'restart');
+  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, now: 100000 }), 'quit');
 });
 
-test('the server handing over to the updater quits the app quietly, with no "stopped" dialog', () => {
-  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, quitting: false }), 'quit');
+test('a server that asks to restart again straight after a restart is a crash, not a loop', () => {
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 105000 }), 'crash');
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 114999 }), 'crash');
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 115000 }), 'restart');
+  // The updater's code is never held back by a recent restart.
+  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, lastRestartAt: 100000, now: 100001 }), 'quit');
+});
+
+test('the server ending while the app quits is expected: nothing to do, whatever the code', () => {
+  for (const code of [0, 1, 75, 76, 130, 143]) {
+    assert.equal(serverExitAction({ code, signal: null, quitting: true }), 'ignore', String(code));
+  }
+  assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: true }), 'ignore');
 });
 
 test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) or a signal', () => {
   // install.sh, or logging out, sends SIGTERM to the server too. Next catches it
-  // and exits 143, which used to reach the "Six Degrees stopped" dialog whenever
-  // the app hadn't started quitting first (a focused window waiting on a question).
+  // and exits 143 (130 for SIGINT), which used to reach the "Six Degrees
+  // stopped" dialog whenever the app hadn't started quitting first.
   assert.equal(serverExitAction({ code: 143, signal: null, quitting: false }), 'quit');
   assert.equal(serverExitAction({ code: 130, signal: null, quitting: false }), 'quit');
   assert.equal(serverExitAction({ code: null, signal: 'SIGKILL', quitting: false }), 'quit');
+  assert.equal(serverExitAction({ code: null, signal: 'SIGTERM', quitting: false }), 'quit');
+  assert.notEqual(serverExitAction({ code: 143, signal: null, now: 100000 }), 'restart', 'a stop is never a restart');
 });
 
-test('a server that crashes is reported', () => {
-  assert.equal(serverExitAction({ code: 1, signal: null, quitting: false }), 'report');
-  assert.equal(serverExitAction({ code: 0, signal: null, quitting: false }), 'report', 'a server has no reason to end by itself');
+test('any other exit is a crash, and is reported', () => {
+  for (const code of [0, 1, 2, 74, 77, 137, 255]) {
+    assert.equal(serverExitAction({ code, signal: null, quitting: false }), 'crash', String(code));
+  }
 });
 
 test('the app bundle, from Electron\'s own executable path', () => {

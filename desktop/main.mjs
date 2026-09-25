@@ -109,6 +109,8 @@ async function start() {
       app.exit(0);
       return;
     }
+    // 'restart' is the data import's (RESTART_EXIT_CODE). Nothing in this build
+    // asks for it, so here it is a crash like any other exit.
     fail('Six Degrees stopped', new Error(`Its server exited (code ${code}).`));
   });
 

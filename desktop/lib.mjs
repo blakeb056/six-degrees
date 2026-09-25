@@ -140,6 +140,15 @@ export function dataDirArg(argv = []) {
 }
 
 /**
+ * The exit code with which the server asks to be started again, to finish an
+ * import (Settings → Your data). 75 is EX_TEMPFAIL: "try again". Next ends
+ * with 143 on SIGTERM, so a signal can never be mistaken for it. Decided here
+ * so that the shell that restarts the server and the one that quits for an
+ * update read every code the same way.
+ */
+export const RESTART_EXIT_CODE = 75;
+
+/**
  * The exit code the server ends with once the in-app updater's helper has
  * started (lib/updater-job.js). It means "quit quietly, the update takes it
  * from here". lib/updater.js has the same number; the shell can't import it
@@ -149,11 +158,15 @@ export function dataDirArg(argv = []) {
 export const UPDATE_HANDOFF_EXIT_CODE = 76;
 
 /**
- * What the app does when its server process ends:
- *   'ignore'  the app is quitting and stopped it itself
- *   'quit'    it was stopped from outside (the installer, logging out) or it
- *             handed over to the updater: the whole app is going, so go quietly
- *   'report'  it crashed: say so, with the log
+ * What the shell does when its server ends:
+ *   'ignore'   the app is quitting anyway, and stopped it itself
+ *   'quit'     stopped from outside (the installer replacing this copy, or
+ *              logging out), or handed over to the updater (76): the whole app
+ *              is going, so go quietly
+ *   'restart'  it asked to be started again (RESTART_EXIT_CODE)
+ *   'crash'    any other exit: say so out loud, with the log
+ * Asking again within `minGapMs` of the last restart counts as a crash, so a
+ * server that can't stay up is reported rather than started forever.
  *
  * Next catches SIGTERM and SIGINT and exits with 143 or 130 instead of dying
  * of the signal (next/dist/server/lib/start-server.js), so a stop from outside
@@ -161,11 +174,12 @@ export const UPDATE_HANDOFF_EXIT_CODE = 76;
  * Next doesn't catch, like SIGKILL, arrives as a signal. Before this, a 143
  * that came before the app had started quitting showed "Six Degrees stopped".
  */
-export function serverExitAction({ code, signal, quitting }) {
+export function serverExitAction({ code, signal, quitting = false, lastRestartAt = 0, now = Date.now(), minGapMs = 15000 }) {
   if (quitting) return 'ignore';
   if (signal) return 'quit';
   if (code === UPDATE_HANDOFF_EXIT_CODE || code === 143 || code === 130) return 'quit';
-  return 'report';
+  if (code === RESTART_EXIT_CODE) return now - lastRestartAt < minGapMs ? 'crash' : 'restart';
+  return 'crash';
 }
 
 /**
