@@ -49,7 +49,7 @@
           <span class="dl-sub">Intel</span>
         </a>
       </div>
-      <p class="fine" id="version-line">macOS 13.5 or later · about 185–190 MB · free and open source</p>
+      <p class="fine" id="version-line">macOS 13.5 or later · about 220 MB · free and open source</p>
       <p class="guess" id="chip-guess" hidden></p>
       <p class="fine watch"><a href="#install">New here? Watch how to install it (about a minute)</a></p>
 
@@ -120,8 +120,9 @@
         <div class="cmd"><code>npx six-degrees</code></div>
         <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
           <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
-          also needs Google Chrome (not Chromium) and Python 3.9 or later with venv (on Ubuntu:
-          <code>sudo apt install python3-venv</code>). Windows isn't supported yet.</p>
+          also needs Google Chrome (not Chromium), and Python 3.10 or later with venv, or the Scan page's
+          <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
+          yet.</p>
       </div>
     </section>
 
@@ -173,7 +174,7 @@
           <h3>Scan your LinkedIn</h3>
           <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
             own, you sign into LinkedIn there yourself, and it reads slowly with daily limits. Needs Google Chrome (in
-            Applications) and Python 3.9 or later.</p>
+            Applications); the scanner's Python comes with the app.</p>
         </article>
       </div>
       <figure class="video" id="export">
@@ -204,8 +205,8 @@
           <code>~/Library/Application Support/Six Degrees</code>.</li>
         <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
         <li><strong>It only goes online when you act:</strong> LinkedIn while you scan (and for profile photos
-          until they're saved on your Mac), PyPI once to set up the scanner, and GitHub when you check for updates
-          (and to download one, if you click Install).</li>
+          until they're saved on your Mac), and GitHub when you check for updates (and to download one, if you click
+          Install). The scanner and its Python come inside the app, so setting it up downloads nothing.</li>
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
           under the MIT licence.</li>
       </ul>

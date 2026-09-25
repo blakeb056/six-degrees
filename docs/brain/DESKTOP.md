@@ -2,7 +2,7 @@
 
 The plan for turning Six Degrees into an app people download and open. No Terminal, no
 Python, no setup step before a scan. Adopted 2026-09-24. **D1 shipped: the Electron app is the
-main download from 0.2.0.** Next: D2.
+main download from 0.2.0.** D2 (Python inside the app) is built for 0.3.1.
 
 Tick items in the same change that finishes them, and keep the status table at the bottom
 current. When this note and the spec disagree, the spec wins; fix this note.
@@ -149,21 +149,91 @@ from about 54 MB to about 180 MB.
 
 ### D2 — Python inside the app (removes the install step)
 
-- [ ] At build time, per chip: a standalone CPython 3.12 (`python-build-standalone`)
-      with `scripts/requirements.txt` already installed (Playwright with its own driver,
-      Pillow, requests). No `playwright install` is needed, because the scanner uses
-      the installed Chrome (`channel="chrome"`).
-- [ ] `/api/scraper` uses the bundled Python first, pointed to by an environment variable
-      the shell sets. The "Installing the scanner's packages" step is then skipped. The
-      private-environment path stays as the fallback for npm and command-line installs.
-- [ ] `scrape.py` is not edited. Its pure functions are run under the bundled Python in
-      CI, the same checks that run today (`tests/linkedin-limits.test.mjs`).
-- [ ] Every binary inside (Python, its libraries, Playwright's driver) gets the same ad-hoc
-      signature as the rest of the app, and real signing in D4.
+Built on branch `python-inside` (2026-09-25) for **0.3.1**, after 0.3.0 is tagged. Not
+released. Blake's decision the same day: the Mac app carries its own Python, and
+`npx six-degrees` gets a button that downloads one when the computer has none.
+
+- [x] At build time, per chip (`scripts/build-app.mjs` `bundlePython`, Electron app
+      only): python-build-standalone's CPython **3.12.14** (release `20260814`,
+      `install_only`), pinned by SHA-256 and size in `lib/scanner-python.js` and checked
+      before it is unpacked, cached in `~/.cache/six-degrees-build` like Node. Into it,
+      `scripts/requirements.txt`: an exact version and the SHA-256 of every file pip may
+      install, wheels only, every dependency listed (`scripts/pin-python-packages.mjs`
+      writes the hashes from PyPI). Playwright 1.63.0 with its own driver, requests
+      2.34.2, Pillow 12.3.0. No `playwright install`: the scanner uses the installed
+      Chrome (`channel="chrome"`). It lives at `Contents/Resources/python/`.
+- [x] Trimmed to what the scanner uses: pip and its console scripts (they name the build
+      machine's path), IDLE, tkinter and Tcl/Tk, lib2to3, ensurepip, headers, build
+      files, test suites, bytecode, and `libpython3.12.dylib` (the interpreter has Python
+      built in, and the build checks nothing links to it). 216 MB installed, 177 MB
+      trimmed. **Playwright's driver runs on the app's own Node**: its 120 MB `node` is
+      byte for byte the Node the app bundles for its server (both 24.21.0 from nodejs.org),
+      so the build makes it a link to `Contents/Resources/node` when the two hashes match,
+      and leaves it alone when they don't. 61 MB in the app.
+- [x] The build fails unless every program in it is for this chip and macOS 13.5 or older
+      (read from the Mach-O load commands), the imports load, compiled parts included,
+      and Playwright's driver starts.
+- [x] `/api/scraper` uses it first: `desktop/main.mjs` names it in `SIX_DEGREES_PYTHON`
+      (an inherited value wins, an empty one turns it off). `lib/scanner-python.js
+      choosePython` decides: the app's own, then `venv/`, then a Python on the computer
+      that already has the packages. The Scan page's first step says it's ready, with
+      nothing to install. The app's Python runs with no user site-packages, `PYTHONPATH`
+      or `PYTHONHOME`, and writes no bytecode (that would be writing into the signed app;
+      it compiles as it imports instead, about 0.3 s). Once seen to work it isn't
+      started again to ask. If it ever fails to start, the page says why and offers what
+      an npm copy gets.
+- [x] `scrape.py` is not edited. Its pure functions run under the bundled Python in CI:
+      the five test files that run them on `python3` today, pointed at it with
+      `SIX_DEGREES_TEST_PYTHON` (`tests/python.mjs`). Checked here on the built app: 35
+      of 35.
+- [x] Every program and library in it (32 on arm64) is signed ad hoc one by one
+      (`codesign --deep` doesn't reach loose Mach-O files in Resources), then sealed into
+      the app's own signature. `codesign --verify --deep --strict` passes on the built
+      app and inside its disk image. Real signing is D4.
+- [x] `npx six-degrees` and source copies keep the fallback, and gain **Set up the
+      scanner** where the page used to end with "install it from python.org": when the
+      computer has no Python 3.10–3.14 that can make an environment, the Scan page
+      offers one button. It downloads the python-build-standalone file pinned for this
+      computer (Linux x64 or arm64: `install_only_stripped`, 33 or 28 MB; macOS Apple
+      Silicon or Intel: 24 MB) from GitHub into the data folder's `python/`, checks its
+      size and SHA-256 before anything is unpacked, then builds `venv/` from it and
+      installs the pinned packages from PyPI, with the download's progress on the page.
+      Only on the click, only those two hosts, cancellable like Install. A Python 3.10+
+      on the computer is still used as before. Checked end to end on this Mac (arm64,
+      against a server that could see only macOS's Python 3.9): the download, its
+      checksum, the environment and the packages, then ready. And a stop part-way
+      (during the environment step): its working folder, download included, was gone,
+      and the next press carried on from the Python already downloaded. A stop during
+      the download itself is covered by `tests/scanner-python.test.mjs`.
+- [x] The updater: its size cap (1 GB) and download fallback already allow the bigger
+      image; the space check for the staged copy measures the new app. A process whose
+      executable is the app's Python (or the app's Node, through the driver's link) is
+      the app's, so the helper waits for it and stops it only as the last resort for a
+      check the server started just before quitting (`tests/apply-update.test.mjs`);
+      the user's Chrome never is. The update itself is refused while the scanner or its
+      setup runs, before the download and again before the hand-over.
+- [x] CI (release.yml): each chip's job fetches its own Python on its own runner. The
+      smoke test runs the installed app's Python (right chip, the imports, the five
+      test files), checks that the running app reports `pythonSource: "bundled"` and
+      wrote no bytecode into itself, then opens it again with `SIX_DEGREES_PYTHON=` to
+      exercise the fallback and have a job (Install) to stop while quitting.
+      `npm-package.yml` fails if a Python ever rides along in the npm package.
+- [ ] **Not yet seen:** the Intel build (CI's `macos-15-intel` job; whether its
+      Playwright wheel's Node matches the app's is logged by the build), and Set up the
+      scanner on Linux (`npm-package.yml` doesn't run it: it needs GitHub and PyPI).
+- [ ] **Before release**, on a real Mac: install from a browser-downloaded, quarantined
+      `.dmg`, use Open Anyway, and check the Scan page says the scanner is ready. The
+      Python inside is signed ad hoc like the app; whether macOS lets an approved app run
+      a quarantined, ad hoc-signed program from its Resources is untested. If it doesn't,
+      the page falls back to Install/Set up and says why ("The Python inside the app
+      didn't work"), and the fix is D4's signing, or clearing the quarantine on the
+      app's own `python/` at first launch.
 
 Scanning still needs **Google Chrome**. That's deliberate: the scanner drives the user's
-real browser, and the Scan page already checks for it. The download grows by about 70 MB,
-to about 250 MB.
+real browser, and the Scan page already checks for it. The download grows by about 22 MB
+(arm64, measured: the same app packed the same way, with and without it), to about 220 MB
+for the `.dmg` (220,305,162 bytes built here). Without sharing the driver's Node it would
+have grown by about 62 MB.
 
 ### D3 — Windows
 
@@ -356,9 +426,9 @@ Three rules for the whole test:
 ### D5 — Optional: the scanner in JavaScript
 
 **Not needed for any goal above:** D2 already removes the Python install. What it would
-still buy: about 60 MB less download and one language instead of two. The spec keeps
-rejecting it, for reasons that still hold. If it is ever attempted, it must answer each
-reason first:
+still buy: about 22 MB less download (what the Python inside the app measured) and one
+language instead of two. The spec keeps rejecting it, for reasons that still hold. If it
+is ever attempted, it must answer each reason first:
 
 - [ ] **"No test coverage."** Characterisation tests for the Python scanner, run on saved
       LinkedIn pages. Real captures stay on the machine and are never committed (spec
@@ -389,7 +459,7 @@ reason first:
 |---|---|
 | D0 Groundwork | backups ✅ pre-releases ✅ "scanner" wording ✅; the icon still to do |
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
-| D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
+| D2 Python inside | ✅ built on branch `python-inside` for 0.3.1 (Blake confirmed 2026-09-25); the x64 build and a quarantined install still to see |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
 | D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
 | D5 Scanner in JS | optional; spec still rejects it |

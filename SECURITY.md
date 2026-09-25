@@ -61,6 +61,36 @@ This app is designed to run **on your own machine, against your own network**.
   folder of the app open (a Terminal in its folder, an editor). It never
   replaces an app another user of the Mac has open. `SIX_DEGREES_TEST_RELEASES`
   (for tests) is honoured only for a `127.0.0.1` address.
+- **The scanner's Python.** The Mac app carries its own: CPython 3.12.14 from
+  python-build-standalone (release 20260814), which the build checks against a
+  SHA-256 pinned in `lib/scanner-python.js` before unpacking it, with the
+  scanner's packages installed from PyPI when the app is built. Those packages
+  are pinned in `scripts/requirements.txt`: an exact version and the SHA-256 of
+  every file pip may install, wheels only, so pip refuses any other file and
+  nothing is built from source. The Python is signed ad hoc like the rest of the
+  app and sealed into its signature, which `codesign --verify --deep --strict`
+  checks (in CI, and before the in-app updater uses a download). It runs with
+  no user site-packages, `PYTHONPATH` or `PYTHONHOME`, so nothing of the user's
+  can stand in for its packages, and it writes no bytecode into the app.
+- **Set up the scanner** (the Scan page, for `npx six-degrees` and source copies
+  on a computer with no Python 3.10–3.14 it can use) downloads only when that
+  button is pressed, and only from two places:
+  - **GitHub's release download** for python-build-standalone (`github.com`,
+    which hands the file over from GitHub's own download server): the one file
+    pinned for this operating system and chip (`lib/scanner-python.js`: Linux
+    x64 and arm64, macOS Apple Silicon and Intel). Its size and SHA-256 must
+    match before it is even named, let alone unpacked; a file that doesn't is
+    deleted.
+  - **PyPI** (`pypi.org`, `files.pythonhosted.org`) for the scanner's packages,
+    every file checked against `scripts/requirements.txt`. (pip follows your
+    own pip settings for which index to ask, if you have any; the hashes still
+    have to match.)
+
+  The Python lands in the data folder's `python/`, the packages in `venv/`;
+  nothing outside the data folder changes, and neither is ever exported. The
+  checksums come from this repository, not from the servers, so a swapped or
+  corrupted download is refused; a release that was compromised before its
+  checksums were taken would not be.
 - Values stored in the database are treated as untrusted text and escaped
   before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)
   for anything data-bearing.
@@ -83,8 +113,8 @@ logged-in LinkedIn session. Never copy, sync, or commit it.
 - **An export** is one `.sixdegrees` file the user saves and carries. It is
   built from an allow-list (the database, the photos its rows still point at,
   and the scanner's six progress and budget files), never from the folder minus
-  a few things, so `chrome-profile/`, `venv/`, `backups/` and `pushback/` never
-  travel, and links are never followed out of the folder (a link standing in
+  a few things, so `chrome-profile/`, `venv/`, `python/`, `backups/` and
+  `pushback/` never travel, and links are never followed out of the folder (a link standing in
   for `avatars/` itself included). The app never uploads it. It holds other
   people's names, headlines and photos, and the page says so.
 - **An import is untrusted input**: the file came from somewhere else. Before

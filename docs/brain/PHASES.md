@@ -9,7 +9,7 @@
 | 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
 | 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixed the `.dmg` window 0.1.0 shipped without; v0.1.2 fixed the Galaxy rebuilding itself on hover. The checklist below holds what is left. |
-| 7 — Desktop app | 🟡 **Planned 2026-09-24** in [`DESKTOP.md`](DESKTOP.md): Electron on the Mac first, then Python inside the app, then Windows, then signing. Not started. |
+| 7 — Desktop app | 🟡 **Planned 2026-09-24** in [`DESKTOP.md`](DESKTOP.md): Electron on the Mac first (**shipped in 0.2.0**), then Python inside the app (**built for 0.3.1**, not released), then Windows, then signing. |
 
 ## What "verified live" means for phase 5
 

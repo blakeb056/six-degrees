@@ -24,7 +24,7 @@
 | `lib/settings-effects.js` | What saving a setting sets in motion (a new sector focus rescores everyone and counts who moved, as the preview does). Each changed setting's work runs even if another's fails. Kept apart from the store because rescoring reads the settings: the store importing it would go in a circle. |
 | `app/api/*` | 27 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
-| `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
+| `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. Runs it on the Python `lib/scanner-python.js` picks (the Mac app's own first), and sets the scanner up: Install, or Set up the scanner (download a pinned Python first). |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
 | `middleware.js` | Refuses requests addressed to another name, then cross-site writes, on all of `/api` and `/avatars`, then applies the destructive-route gate (`lib/gate.js requestRefusal`). Leaves out exactly `/api/data/import`, whose handlers make the same checks themselves before reading the upload (ENDPOINTS.md, "Request bodies over 10 MB"). |
 
@@ -54,6 +54,8 @@
 | `lib/user.js` | Identity/context provider. |
 | `lib/demo.js` | The static demo-mode short circuit, inherited from v1. |
 | `lib/updater.js` | The Mac app's one-click update, its decisions only (no side effects): which release asset, `SHA256SUMS`, where the running app is and whether it may replace itself, what the Terminal line would do instead, the helper's arguments, what the next start says. The exit code 76 that means "quit quietly, an update follows". |
+| `lib/scanner-python.js` | Which Python the scanner runs on (`choosePython`: the Mac app's own, named in `SIX_DEGREES_PYTHON`; then `venv/`; then one on the computer that already has the packages), what Install builds from (a Python 3.10–3.14 here, or the one Set up downloaded), and **Set up the scanner**'s download: the python-build-standalone file pinned per OS and chip (`STANDALONE_PYTHON`, also what `build-app.mjs` bundles), checked by size and SHA-256 before it is unpacked (`downloadVerified`). The environment the app's own Python runs with (`ownPythonEnv`), and the Mach-O reading the build checks it with. DESKTOP.md D2. |
+| `lib/scanner-setup.js` | The Scan page's first step from `/api/scraper`'s checks (`setupStep`): ready, Install, Set up the scanner, or install Python by hand. No Node imports: the page runs it. |
 | `lib/updater-job.js` | The update's work, as one background job the Settings page polls: download, verify, mount, check and stage the new app beside the old one while it runs, then start the helper and end the server. Also the new version's word that it has started, and removing what an interrupted update left. DESKTOP.md D4. |
 
 ## Data + scripts
@@ -67,17 +69,19 @@
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
 | `scripts/score_new_connections.sql`, `scripts/score-connections.sql` | **Retired** hosted-era scoring, kept for history. The model is `lib/scoring.js`. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |
-| `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`, as the Electron app (`--shell=electron`) or the classic launcher (`--shell=classic`, the default for now). Both bundle the same Node runtime and server. Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). Fails if the app *inside the image* doesn't verify (TRAPS §37). |
+| `scripts/build-app.mjs` | Builds `Six Degrees.app` and a `.dmg`, as the Electron app (`--shell=electron`) or the classic launcher (`--shell=classic`, the default for now). Both bundle the same Node runtime and server; the Electron app also the scanner's own Python with its packages (`bundlePython`: fetched and checked by SHA-256, installed from `requirements.txt`, trimmed, Playwright's driver pointed at the app's Node when they are the same file, every program checked for the chip and macOS 13.5 and signed). Ad-hoc signed; unnotarised on purpose (that needs a paid Apple account). Fails if the app *inside the image* doesn't verify (TRAPS §37). |
+| `scripts/requirements.txt` | The scanner's Python packages: exact versions and the SHA-256 of every file pip may install, wheels only, every dependency listed. The same file for the Mac app's Python and for the environment the Scan page sets up. |
+| `scripts/pin-python-packages.mjs` | Rewrites those hashes from PyPI after a version in `requirements.txt` changes, keeping only wheels for where Six Degrees runs (CPython 3.10–3.14; macOS 13 or older; Linux glibc). A developer's tool; not in the app's logic. |
 | `scripts/apply-update.sh` | Ships inside the Mac app. After the app quits for an update, waits for the app's own processes to end (and stops only those, TRAPS §40), swaps the new version in by renames, reopens it, waits for it to say it has started, and puts the old one back if anything fails before that. Tested against pretend apps in `tests/apply-update.test.mjs`. |
 | `scripts/test-release-server.mjs` | A pretend GitHub release on 127.0.0.1, for testing the update without GitHub (`SIX_DEGREES_TEST_RELEASES`). Tests, browser checks and CI only; not in the app's logic. |
 | `bin/six-degrees.mjs` | The `npx` launcher: Node guard, data dir, port probe from 6363. |
 | `bin/args.mjs` | Its command line, testable on its own. `--data-dir` is made absolute (and `~` expanded) here, before the launcher moves into the package's folder. |
 | `.github/workflows/npm-package.yml` | Builds the npm package for a tag on Linux, installs it from the tarball and checks that it serves the app. Publishes nothing. Used for the package's **first** publish, which has to be done by hand, because npm's trusted publishing (release.yml) needs the package to exist. |
 | `site/` | The download website, https://blakeb056.github.io/six-degrees/ (plain HTML, CSS and JS, no build). `.github/workflows/pages.yml` publishes it with the README's screenshots, 1200px copies of them, and the app icon. Its claims must match the README; it was reviewed against it. |
-| `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit, and starts the server again when it exits with 75 (to finish an import). |
+| `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit, and starts the server again when it exits with 75 (to finish an import). Names the app's own Python to the server (`SIX_DEGREES_PYTHON`, DESKTOP.md D2). |
 | `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan, `--data-dir`, what a server exit means: TRAPS §39), tested in `tests/desktop.test.mjs` and, for what the updater relies on, `tests/desktop-updater.test.mjs`. |
 | `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). Used by `build-app.mjs` (the `.icns`), `pages.yml` (the website), the README header, and `scripts/readme_buttons.py` (saved into the button pictures, so rerun it after a change). |
-| `tests/*.test.mjs` | About 450 tests on `node --test`. No test framework dependency. `tests/sector-directory.test.mjs` holds every sector's must-match and must-not examples. |
+| `tests/*.test.mjs` | About 500 tests on `node --test`. No test framework dependency. `tests/sector-directory.test.mjs` holds every sector's must-match and must-not examples. The ones that run `scrape.py`'s pure functions use `python3`, or the Python named in `SIX_DEGREES_TEST_PYTHON` (`tests/python.mjs`): CI names the one inside the built Mac app. |
 
 ## Data directory
 
@@ -92,10 +96,11 @@ backups/                  auto-before-<version>-*.sqlite (newest five kept) and
 import-pending/           an import waiting for the next start (READY, data.sqlite, files/)
 *.json                    the scanner's progress, skip lists, budget and cooldown
 venv/ pushback/           the scanner's Python add-ons; LinkedIn page dumps
+python/                   a Python for them that Set up the scanner downloaded (not in the Mac app, which carries its own)
 ```
 
 What an export carries is an allow-list (`lib/data-folder.js`): the database, `avatars/`
-and the six scanner files. Never `chrome-profile/`, `venv/`, `backups/`, `pushback/`,
+and the six scanner files. Never `chrome-profile/`, `venv/`, `python/`, `backups/`, `pushback/`,
 `app-version` or anything temporary.
 
 **`chrome-profile/` grants access to the user's LinkedIn account.** Treat it like a
