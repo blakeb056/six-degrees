@@ -41,7 +41,7 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - "International" is not "intern".
 
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
-`company_scores`), then the curated `KNOWN_COMPANIES` list (133 companies, on it by the
+`company_scores`), then the curated `KNOWN_COMPANIES` list (245 companies, on it by the
 rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people
 work there: 5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
 is education). Unknown is 4, and no company found is 3, so the company weight runs from
@@ -103,14 +103,131 @@ The other 131 kept their score, alias and industry. `lib/legacy-scores.js` holds
 (name, score, alias, industry) for the offer below and nothing else; `lib/scoring.js` imports
 nothing, so the model can't read them.
 
-The list is still narrower than its rule: it leans to tech, finance, consulting and media,
-and many names the rule admits aren't on it (McDonald's, Ford, Costco, Eli Lilly, Yale,
-Kirkland & Ellis…). Adding them is a separate change, made the same way.
-
 **Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_list' with a fingerprint of the
 whole list (every name, score, alias and industry; `KNOWN_LIST_STAMP` in `lib/rpc.js`), and
 `rescoreIfStale()` rescores when it no longer matches. Editing the list refreshes stored
 scores with no `SCORING_VERSION` bump to remember.
+
+### Where the list comes from
+
+The list was narrower than its rule: it leaned to tech, finance, consulting and media, so a
+nurse, a lawyer or someone in retail found little of their world on it. The rule is now
+applied from named sources, the same way in every field, so anyone can check the list or
+extend it. Everything added in September 2026 came from these:
+
+1. **The Fortune 500 (2025), its top 100.** Every company in it was considered, and the
+   household names were added, whatever their field. Left off: the companies known inside
+   their trade rather than by the public (below).
+2. **Beyond the Fortune 100, in the fields the list had few or none of** (health care and
+   drugmakers, retail and grocery, food and restaurants, hotels, autos, airlines, rail and
+   shipping, telecoms, energy, news and TV): the one or two largest household names in each,
+   by revenue, where the Fortune 100 has few or none. Restaurants: McDonald's and Chipotle,
+   after Starbucks. Packaged food: Kraft Heinz and General Mills. Hotels: Marriott and
+   Hilton. Airlines: Southwest, the fourth largest. Rail: Union Pacific, the largest.
+   Discount stores: Dollar General and Dollar Tree, among the largest US employers. TV: Fox.
+3. **Companies based outside the US, in those fields, as large as the Fortune 100** (over
+   about $45 billion a year) **and household names here**: Nestlé, Anheuser-Busch (AB
+   InBev), IKEA, Aldi, 7-Eleven, AstraZeneca, Bayer, Volkswagen, Mercedes-Benz, BMW, Honda,
+   Hyundai, Kia, Nissan, Shell, BP, DHL.
+4. **Household names in those fields that the Fortune 500 can't include**, nonprofits and
+   private companies that publish no accounts: Kaiser Permanente (the largest nonprofit
+   health system, as large as a Fortune 50 company), Mayo Clinic, Cleveland Clinic and Johns
+   Hopkins Medicine; Mars; and in news, The New York Times and Bloomberg. Two parts of larger
+   companies that people name on their own, Aetna (CVS Health) and GEICO (Berkshire
+   Hathaway), have entries of their own.
+5. **The Am Law 100 (2025)**, the ten largest US law firms by revenue: Kirkland & Ellis,
+   Latham & Watkins, DLA Piper, Baker McKenzie, Skadden, Gibson Dunn, Sidley Austin, White &
+   Case, Ropes & Gray. The tenth is left off until the ranking is checked.
+6. **The private equity firms in the Fortune 500 (2025)**: Blackstone, KKR, Apollo Global
+   Management (Bain Capital was already on).
+7. **U.S. News & World Report's Best National Universities, 2025 edition, the top 20.** The
+   five already on the list are all in it (Stanford, Harvard and MIT in its top five, Duke
+   and UC Berkeley below). The other 15 were added: Princeton, Yale, Caltech, Johns Hopkins,
+   Northwestern, Penn, Cornell, Chicago, Brown, Columbia, Dartmouth, UCLA, Rice, Notre Dame
+   and Vanderbilt.
+
+This pass was made without the published tables to hand, so a company whose rank sits near
+a cutoff was left off rather than guessed. Check a source's current edition before adding
+from it.
+
+### How an addition is scored
+
+- **8 at the size of the Fortune 100** (over about $45 billion a year), for a company based
+  in the US or elsewhere. That is how the list already scored the Fortune 100 companies on it
+  below 9: all at 8 (Walmart, UnitedHealth, the big banks, PepsiCo, Johnson & Johnson,
+  Pfizer, the defense companies, IBM, Cisco, Oracle, Nike…) but Target and Intel, at 7. Those
+  two keep their score: changing it would be a rescore, not an addition.
+- **7 below that size**: Mayo Clinic, Chipotle, Marriott, GEICO, The New York Times…
+- **Peers, where the list already scores that kind of firm otherwise**: private equity at 9
+  with Bain Capital and BlackRock; the largest law firms at 8 with the Big Four, the largest
+  accounting firms; McDonald's at 8 with Starbucks; universities by rank, as the list had
+  them: the top five at 8 (Harvard, Stanford and MIT; now Princeton and Yale), ranks 6 to 20
+  at 7 (Duke and UC Berkeley; now the other 13).
+- **One industry each**, as for every entry: airlines, hotels, restaurants and grocers are
+  consumer (hospitality and retail); railroads and shippers industry (logistics); telecoms
+  tech; health insurers health, like UnitedHealth; other insurers and mortgage finance
+  finance; law firms consulting (Consulting, Legal & Services); Fox entertainment, like
+  NBCUniversal and Paramount.
+
+### Aliases, kept narrow
+
+Aliases match from the start of a name, so a short or shared first word would sweep in other
+companies. The additions match only in the forms their companies use:
+
+- "GM" is a general manager, "Delta" also Delta Dental, "Apollo" also Apollo Hospitals and
+  Apollo.io, "Columbia" also Columbia Sportswear, "Kirkland" also Kirkland's, "Penn State"
+  isn't Penn, and "Northwestern Mutual" isn't Northwestern. None of them match; the full
+  names do.
+- Automakers and hotel companies by their own names only: "Honda of …" and "Hilton Garden
+  Inn" are dealerships and franchised hotels with staff of their own.
+- A brand's name on a venue isn't the brand: "State Farm Arena" and "AT&T Stadium" aren't
+  State Farm or AT&T (`sponsor()` in `lib/scoring.js`).
+- Companies run apart keep their own names: Hewlett Packard Enterprise, Merck KGaA, Berkshire
+  Hathaway HomeServices (franchised brokerages), Hilton Grand Vacations, Lowes Foods and
+  Chevron Phillips Chemical aren't HP, Merck, Berkshire Hathaway, Hilton, Lowe's or Chevron.
+- A university takes in the schools that start with its name (Yale School of Management,
+  Columbia Business School), as Harvard and Stanford did. A school named apart from it
+  (Wharton, Kellogg, Booth) keeps its own name, as MIT Sloan did, and so do health systems
+  named apart (UCLA Health, Yale New Haven Health, Johns Hopkins Medicine).
+- "Home Depot" was never read as a company: the rule that drops "at home" dropped it too. It
+  now reads as The Home Depot.
+
+`tests/known-companies.test.mjs` checks each addition's spellings, that no two entries claim
+one name, and a list of names that must stay their own.
+
+### What broadening changed
+
+112 companies were added, 133 → 245: 3 at 9, 80 at 8, 29 at 7. By industry: 26 consumer, 20
+industry, 17 finance, 16 health, 15 education, 9 consulting (law), 6 tech, 2 media, 1
+entertainment. Nothing already on the list changed score, alias or industry, so there are no
+old rows to keep and no offer; stored scores are recomputed once because the list's
+fingerprint changed (Staleness, above).
+
+Left off, and why:
+
+- **Fortune 100 companies known inside their trade more than by the public**: McKesson,
+  Cencora, Cardinal Health, Centene, Sysco, Archer Daniels Midland, StoneX, TD Synnex, Ingram
+  Micro, Performance Food Group, Energy Transfer, Enterprise Products, Plains, Broadcom,
+  TIAA; the refiners Phillips 66, Marathon Petroleum and Valero, known by regional
+  gas-station brands; Charter Communications, known as Spectrum. And Publix, a regional
+  grocer.
+- **Near a cutoff**: the tenth law firm (Paul, Weiss or Morgan Lewis); Best Buy, at the
+  Fortune 100 line; Carlyle and TPG, top private equity firms outside the Fortune 500.
+- **As large, but not household names here**: Roche, Novartis and Sanofi; Stellantis and
+  Ahold Delhaize, whose brands are (Jeep, Food Lion) but whose names aren't; Cargill and Koch,
+  the largest private US companies.
+- **Named like something else**: Circle K, also a college service club; Blue Cross Blue
+  Shield, a federation of 33 companies rather than one.
+- **Fields this pass didn't sweep beyond the Fortune 100**, for a later one: tech and
+  aerospace, already well covered (Panasonic, LG, Lenovo, Airbus); manufacturing, chemicals
+  and household goods (Honeywell, 3M, Bosch, Dow, Colgate-Palmolive, Kimberly-Clark); more
+  food and drink (Hershey, Keurig Dr Pepper, Molson Coors); stores and brands (Macy's, Ross,
+  Nordstrom, Estée Lauder); cruises and casinos (Carnival, MGM Resorts);
+  homebuilders (D.R. Horton, Lennar); payroll (ADP); finance (Schwab, Vanguard); hospitals
+  known within medicine or one region (Mass General, Cedars-Sinai, NYU Langone, MD
+  Anderson); news beyond the Times and Bloomberg (The Washington Post, AP, Reuters, NPR).
+- **Not decided**: government employers (the armed forces, the Postal Service), and whether
+  xAI and Mistral are frontier AI labs (10).
 
 ### Keeping the old scores: a one-time offer
 
@@ -152,7 +269,7 @@ but each **company** gets exactly one, used everywhere: its colour in Paths, its
 Scores, the school rule above, and the sector lean. `companyIndustry()` decides, in order:
 
 1. **The curated list's own industry**, the last field of each `KNOWN_COMPANIES` entry.
-   69 of the 133 names carry no industry word (Adobe, Pfizer, MIT, Uber…), so without it
+   159 of the 245 names carry no industry word (Adobe, Pfizer, MIT, Costco…), so without it
    they took whatever their people's headlines said. Where a name does say something, the
    field agrees with it (a test in `tests/companies.test.mjs` checks both). Aliases count:
    "BNY Mellon" is BNY, finance.
@@ -359,6 +476,11 @@ titles): there, r(bridge title, circle's mean title) = −0.18 with or without a
 r(bridge power, circle's mean title) = 0.15 with none, 0.20 lean tech, 0.01 strong tech.
 Re-run the real check on a real network.
 
+**The broader list (still `SCORING_VERSION` 3):** company scores only, so the
+title-to-circle correlation is unchanged by construction. The sample network doesn't move (0
+of 873 scores, with its own company scores or as if scanned): none of its invented companies
+reads as a listed one, which a test checks.
+
 **The neutral list (still `SCORING_VERSION` 3):** it changes company scores, never title
 points, so the title-to-circle correlation is unchanged by construction, and the sample
 network doesn't move (0 of 873 scores: its companies are invented, each scored for it).
@@ -379,6 +501,9 @@ not adopted.
 The title ladder is a hand-written opinion, tuned against one real network, and the company
 list, though it now follows a written rule, is a judgement about which names most
 professionals know. Company scores are editable for exactly that reason. The model is
-**domain-shaped**: a network of academics or tradespeople would score oddly against a
-list that leans to tech and finance brands. And the tier is a statement about **network
-position, not human worth**, SPEC invariant 6. Say so plainly in any UI that shows a tier.
+**domain-shaped**: the list now reaches health care, retail, autos, energy, law and the top
+universities, but it is still a list of big names. Tradespeople, small and local businesses,
+most schools and hospitals, and the public sector are estimated from the network, so a
+network made mostly of them scores lower across the board than one full of large employers.
+And the tier is a statement about **network position, not human worth**, SPEC invariant 6.
+Say so plainly in any UI that shows a tier.
