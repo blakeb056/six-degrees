@@ -6,7 +6,7 @@ import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
-import { industryByKey } from '../../lib/companies';
+import { sectorByKey } from '../../lib/sector-directory';
 import Link from 'next/link';
 
 const LEVEL_NAMES = {
@@ -389,7 +389,7 @@ function ProfileInner() {
           ) : sectorFocus.sectors?.length ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
               {sectorFocus.sectors.map((key) => {
-                const ind = industryByKey(key);
+                const ind = sectorByKey(key);
                 return (
                   <span key={key} style={{
                     padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,

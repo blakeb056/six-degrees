@@ -16,7 +16,7 @@ installed rather than run from a checkout. TRAPS §4.
 | `queue_items` | The outreach queue. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
 | `company_scores` | A company score **you** set (Paths → Scores): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
-| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, and `scoring_focus` which sector focus (`lean:media,tech`, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`). |
+| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, and `scoring_focus` which sector focus (`lean:media,tech`, `lean:dental@<version>` when a pick comes from the sector directory, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`). |
 
 ## `linkedin_connections` — the fields that carry meaning
 

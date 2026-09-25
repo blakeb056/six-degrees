@@ -14,17 +14,18 @@ import { industryKeyOf } from '../lib/companies.js';
 import {
   parseSectorFocus, focusFingerprint, sameFocus, previewSectorFocus, tierMoves, NO_FOCUS, MAX_SECTORS,
 } from '../lib/sector-focus.js';
+import { DIRECTORY_VERSION, suggestSectors } from '../lib/sector-directory.js';
 
 const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-sector-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
-let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, afterSettingsChange;
+let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, afterSettingsChange;
 
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
   ({ readSettings, writeSettings, SETTINGS, SettingsError } = await import('../lib/settings.js'));
-  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf } = await import('../lib/rpc.js'));
+  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring } = await import('../lib/rpc.js'));
   ({ afterSettingsChange } = await import('../lib/settings-effects.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
@@ -61,8 +62,8 @@ test('Settings declares it, with nothing chosen by default', () => {
   assert.ok(SETTINGS.sectorFocus);
   assert.deepEqual(readSettings(getDb()).sectorFocus, { sectors: [], strength: 'lean' });
   assert.deepEqual(writeSettings(getDb(), { sectorFocus: { sectors: ['tech', 'media'] } }).sectorFocus, { sectors: ['media', 'tech'], strength: 'lean' });
-  assert.throws(() => writeSettings(getDb(), { sectorFocus: { sectors: ['crypto'] } }),
-    (err) => err instanceof SettingsError && /no sector called 'crypto'/.test(err.message));
+  assert.throws(() => writeSettings(getDb(), { sectorFocus: { sectors: ['astrology'] } }),
+    (err) => err instanceof SettingsError && /no sector called 'astrology'/.test(err.message));
   assert.deepEqual(readSettings(getDb()).sectorFocus, { sectors: ['media', 'tech'], strength: 'lean' });
   assert.ok(Object.isFrozen(NO_FOCUS) && Object.isFrozen(NO_FOCUS.sectors), 'the shared default cannot be changed by a reader');
 });
@@ -178,7 +179,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   // The import path (score_new_connections) is rescoreAll too: nothing passes the focus in.
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
-  assert.match(row('s').score_why, /Snap \(10\/10: 9 \+ 1 your sector\)/);
+  assert.match(row('s').score_why, /Snap \(10\/10: 9 \+ 1 your sector: Marketing, Media & Creator\)/);
   assert.equal(meta('scoring_version'), '3');
   assert.equal(meta('scoring_focus'), 'lean:media');
 });
@@ -226,9 +227,10 @@ test('stored scores from another sector focus are stale, and are redone once', (
 });
 
 // What the page does: the preview route's call, then a save through the settings route's path.
-const previewAsRoute = (db, to) => previewSectorFocus(scoringRows(db, { withPeople: true }), {
-  overrides: companyOverrides(db), industryOf: industryKeyOf, from: sectorFocusOf(db), to,
-});
+const previewAsRoute = (db, to) => {
+  const rows = scoringRows(db, { withPeople: true });
+  return previewSectorFocus(rows, { overrides: companyOverrides(db), read: readForScoring(rows), from: sectorFocusOf(db), to });
+};
 const save = (db, focus) => {
   const before = readSettings(db);
   return afterSettingsChange(db, before, writeSettings(db, { sectorFocus: focus }));
@@ -336,4 +338,120 @@ test('the preview writes nothing', () => {
   const was = snapshot();
   previewSectorFocus(scoringRows(db, { withPeople: true }), { overrides: companyOverrides(db), industryOf: industryKeyOf, from: sectorFocusOf(db), to: strong('tech', 'media', 'finance') });
   assert.equal(snapshot(), was);
+});
+
+// ── picks from the sector directory ─────────────────────────────────────────
+
+test('a pick can be a broad industry or a sector from the directory, stored in one order, at most three', () => {
+  // Each industry, then its sectors: health, dental, …, tech, software.
+  assert.deepEqual(parseSectorFocus({ sectors: ['software', 'dental', 'health'] }), { sectors: ['health', 'dental', 'software'], strength: 'lean' });
+  assert.throws(() => parseSectorFocus({ sectors: ['dental', 'software', 'legal', 'tech'] }), /up to 3 sectors/);
+  assert.throws(() => parseSectorFocus({ sectors: ['Dental'] }), /no sector called 'Dental'/);   // keys, not labels
+  assert.deepEqual(writeSettings(getDb(), { sectorFocus: { sectors: ['real-estate'], strength: 'strong' } }).sectorFocus,
+    { sectors: ['real-estate'], strength: 'strong' });
+});
+
+test('a choice saved before the directory, of the twelve industries, reads and stamps exactly as before', () => {
+  getDb().prepare("INSERT INTO app_meta (key, value) VALUES ('settings', ?)").run(JSON.stringify({ sectorFocus: { sectors: ['tech', 'media'], strength: 'strong' } }));
+  assert.deepEqual(readSettings(getDb()).sectorFocus, { sectors: ['media', 'tech'], strength: 'strong' });
+  assert.equal(focusFingerprint(readSettings(getDb()).sectorFocus), 'strong:media,tech');
+});
+
+test('the fingerprint carries the directory\'s version when a pick comes from it', () => {
+  assert.equal(focusFingerprint(lean('dental')), `lean:dental@${DIRECTORY_VERSION}`);
+  assert.equal(focusFingerprint(lean('dental', 'health')), `lean:health,dental@${DIRECTORY_VERSION}`);
+  // Another version of the word lists is another fingerprint…
+  assert.notEqual(focusFingerprint(lean('dental'), { version: 'aaaa0000' }), focusFingerprint(lean('dental'), { version: 'bbbb1111' }));
+  // …but industries alone don't use the directory, so theirs never changes with it.
+  assert.equal(focusFingerprint(lean('media', 'tech'), { version: 'aaaa0000' }), 'lean:media,tech');
+  assert.ok(!sameFocus(lean('dental'), lean('health')));
+});
+
+// An invented network around dental practices (industry by the regexes, sectors by the directory):
+//   Nia    Owner at Smith Family Practice   its one person says "Dentist": dental. Industry unclear.
+//   Omar   Orthodontist at Bright Smiles    with Pia, half of Bright Smiles says dental.
+//   Pia    Office Manager at Bright Smiles
+//   Quinn  Founder at Smith Family Dental   its name says dental (and so health).
+//   Rae    Engineer at Quillon              not dental.
+//   Nia    5.4 (B) → 5.8 (A) at lean, 6.2 at strong; Quinn 6.7 (A) → 7.3 (A) at lean, 7.8 (S) at strong.
+function dentalNetwork() {
+  const p = (id, degree, name, headline, extra = {}) => ({ id, degree, name, headline, profile_url: `/in/${id}`, source_connection_id: null, ...extra });
+  return [
+    p('nia', 1, 'Nia Okafor', 'Dentist | Owner at Smith Family Practice'),
+    p('omar', 1, 'Omar Reyes', 'Orthodontist at Bright Smiles Co'),
+    p('pia', 2, 'Pia Lund', 'Office Manager at Bright Smiles Co', { source_connection_id: 'nia' }),
+    p('quinn', 1, 'Quinn Tate', 'Founder at Smith Family Dental'),
+    p('rae', 1, 'Rae Ito', 'Engineer at Quillon'),
+  ];
+}
+
+test('a sector from the directory leans the companies it places, and the working names it', () => {
+  insert(dentalNetwork());
+  writeSettings(getDb(), { sectorFocus: lean('dental') });
+  rescoreAll();
+  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [5, 5, 5, 5, 4]);
+  assert.deepEqual([row('nia').power_score, row('nia').tier], [5.8, 'A']);
+  assert.match(row('nia').score_why, /Smith Family Practice \(5\/10: 4 \+ 1 your sector: Dental\)/);
+  assert.match(row('rae').score_why, /Quillon \(4\/10\)/);
+  assert.equal(meta('scoring_focus'), `lean:dental@${DIRECTORY_VERSION}`);
+  // The broad industry still goes by each company's one industry, as it always did:
+  // only Smith Family Dental says health.
+  writeSettings(getDb(), { sectorFocus: lean('health') });
+  rescoreAll();
+  assert.deepEqual(['nia', 'omar', 'quinn'].map((id) => row(id).company_prestige_score), [4, 4, 5]);
+  assert.match(row('quinn').score_why, /Smith Family Dental \(5\/10: 4 \+ 1 your sector: Healthcare & Biotech\)/);
+});
+
+test('several picks that match one company lean it once', () => {
+  insert(dentalNetwork());
+  // Smith Family Dental is health by its industry and dental by the directory.
+  writeSettings(getDb(), { sectorFocus: strong('health', 'hospitals', 'dental') });
+  rescoreAll();
+  assert.equal(row('quinn').company_prestige_score, 6);                  // 4 + 2, once
+  assert.match(row('quinn').score_why, /\(6\/10: 4 \+ 2 your sector: Dental\)/);
+  assert.equal(row('nia').company_prestige_score, 6);
+});
+
+test('the preview and the save agree for a pick from the directory', () => {
+  insert(dentalNetwork());
+  rescoreAll();
+  const db = getDb();
+  const preview = previewAsRoute(db, lean('dental'));
+  assert.deepEqual([preview.companies, preview.companiesUp, preview.up, preview.down], [3, 3, 1, 0]);
+  assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]),
+    [['Bright Smiles', 4, 5, 'dental'], ['Smith Family Dental', 4, 5, 'dental'], ['Smith Family Practice', 4, 5, 'dental']]);
+  assert.deepEqual(preview.examples.map((e) => [e.name, e.from, e.to]), [['Nia Okafor', 'B', 'A']]);
+  const effects = save(db, lean('dental'));
+  assert.deepEqual(effects.sectorFocus, { scored: 5, people: 5, moved: 1, up: preview.up, down: preview.down });
+  // From lean on to strong: Nia is already A, and Quinn reaches S.
+  const harder = previewAsRoute(db, strong('dental'));
+  assert.deepEqual([harder.up, harder.down], [1, 0]);
+  assert.deepEqual(harder.examples.map((e) => [e.name, e.from, e.to]), [['Quinn Tate', 'A', 'S']]);
+  assert.deepEqual(save(db, strong('dental')).sectorFocus, { scored: 5, people: 5, moved: 1, up: 1, down: 0 });
+  assert.deepEqual([row('nia').tier, row('quinn').tier], ['A', 'S']);
+});
+
+test('an edited word list makes stored scores stale, and they are redone once', () => {
+  insert(dentalNetwork());
+  writeSettings(getDb(), { sectorFocus: lean('dental') });
+  rescoreAll();
+  assert.deepEqual(rescoreIfStale(), { scored: 0 });
+  // Scores stamped by an older directory: an update that changed its words.
+  getDb().prepare("UPDATE app_meta SET value = 'lean:dental@00000000' WHERE key = 'scoring_focus'").run();
+  assert.deepEqual(rescoreIfStale(), { scored: 5 });
+  assert.equal(meta('scoring_focus'), `lean:dental@${DIRECTORY_VERSION}`);
+  assert.deepEqual(rescoreIfStale(), { scored: 0 });
+  // Industries alone don't depend on the directory, so their old stamp stays fresh.
+  writeSettings(getDb(), { sectorFocus: lean('media') });
+  rescoreAll();
+  assert.equal(meta('scoring_focus'), 'lean:media');
+  assert.deepEqual(rescoreIfStale(), { scored: 0 });
+});
+
+test('suggestions count your scanned people by the sector their company is in', () => {
+  insert(dentalNetwork());
+  const rows = scoringRows(getDb());
+  // Nia, Omar, Pia and Quinn work at the three dental companies; Rae's "Engineer" says nothing.
+  assert.deepEqual(suggestSectors(rows, readForScoring(rows)), [{ key: 'dental', label: 'Dental', group: 'health', people: 4, companies: 3 }]);
+  assert.deepEqual(suggestSectors([], readForScoring([])), []);
 });

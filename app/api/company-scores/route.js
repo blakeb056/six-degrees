@@ -2,6 +2,7 @@ import { getDb, newId, nowIso } from '../../../lib/db-client';
 import { rescoreAll, companyOverrides, sectorFocusOf } from '../../../lib/rpc';
 import { rolesWithCompanies, companyScore, networkCompanies, KNOWN_COMPANIES } from '../../../lib/scoring';
 import { industryByKey, industryKeyOf } from '../../../lib/companies';
+import { sectorMatcher } from '../../../lib/sector-directory';
 
 // Every company in your network with the score it gets and where that score
 // comes from — and the one place to set your own. Setting or clearing a score
@@ -15,7 +16,8 @@ export async function GET() {
     const rows = db.prepare('SELECT id, degree, headline, role, company, scanned_company, profile_url, tier FROM linkedin_connections').all();
     const overrides = companyOverrides(db);
     const focus = sectorFocusOf(db);
-    const { industries } = networkCompanies(rows, { industryOf: industryKeyOf });
+    // The same industries and directory sectors rescoring uses, so a sector lean shown here is the one people carry.
+    const { industries, sectors } = networkCompanies(rows, { industryOf: industryKeyOf, sectorsOf: sectorMatcher() });
     const byName = new Map();
     const seen = new Set();
     for (const r of rows) {
@@ -35,7 +37,9 @@ export async function GET() {
     }
     const companies = [...byName.values()].map((c) => {
       const industry = industryByKey(industries.get(c.name));
-      const { score, source, sectorBonus = 0 } = companyScore(c.name, { overrides, headcount: c.people, industry: industry.key, focus });
+      const { score, source, sectorBonus = 0 } = companyScore(c.name, {
+        overrides, headcount: c.people, industry: industry.key, sectors: sectors.get(c.name), focus,
+      });
       const known = KNOWN_COMPANIES.find(([n]) => n === c.name);
       return { ...c, score, source, sectorBonus, suggested: known ? known[1] : null, industry: { key: industry.key, label: industry.label, color: industry.color } };
     }).sort((a, b) => b.people - a.people || b.score - a.score);
