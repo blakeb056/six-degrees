@@ -28,6 +28,12 @@ This app is designed to run **on your own machine, against your own network**.
   ports on this same machine: a page from another local app or dev server is
   refused unless its `Origin` is exactly this app's address. Command-line callers
   such as the scanner send neither header and are unaffected.
+- A website can also make its own domain point at `127.0.0.1` (DNS rebinding).
+  The browser then treats the app as that site's own origin, which would let
+  the page read the network and send writes. While the app is bound to
+  loopback, every request to `/api` and `/avatars` must be addressed to
+  `127.0.0.1`, `localhost` or `[::1]` (the `Host` header); any other name gets
+  a 421.
 - Values stored in the database are treated as untrusted text and escaped
   before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)
   for anything data-bearing.

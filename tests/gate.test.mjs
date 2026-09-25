@@ -133,3 +133,34 @@ test('the scraper route is gated like the destructive ones', () => {
   assert.equal(gateDecision({ bind: '127.0.0.1' }).allow, true);
   assert.equal(gateDecision({ bind: '0.0.0.0', token: undefined }).status, 503);
 });
+
+// ── DNS rebinding ────────────────────────────────────────────────────────────
+// A website can point its own domain at 127.0.0.1. The browser then calls the
+// app that site's own origin, so only the Host header gives it away.
+
+import { isRebound } from '../lib/gate.js';
+
+test('REGRESSION: a rebound name is refused when the server is bound to loopback', () => {
+  assert.equal(isRebound({ bind: '127.0.0.1', host: 'evil.example:3000' }), true);
+  assert.equal(isRebound({ bind: '127.0.0.1', host: 'rebind.attacker.test' }), true);
+  // services that resolve any name to 127.0.0.1 are the classic rebinding tool
+  assert.equal(isRebound({ bind: '127.0.0.1', host: '127.0.0.1.nip.io:3000' }), true);
+});
+
+test('the loopback names every real caller uses are allowed, with any port', () => {
+  for (const host of ['127.0.0.1:3000', '127.0.0.1:6363', 'localhost:3000', 'LOCALHOST:6363', '[::1]:3000', '127.0.0.1', '0.0.0.0:3000']) {
+    assert.equal(isRebound({ bind: '127.0.0.1', host }), false, host);
+  }
+});
+
+test('an unparseable Host is refused', () => {
+  assert.equal(isRebound({ bind: '127.0.0.1', host: 'a b:c' }), true);
+});
+
+test('a server bound elsewhere is left to its ADMIN_TOKEN', () => {
+  assert.equal(isRebound({ bind: '0.0.0.0', host: 'my-server.lan:3000' }), false);
+});
+
+test('a client that sends no Host is not judged', () => {
+  assert.equal(isRebound({ bind: '127.0.0.1', host: null }), false);
+});

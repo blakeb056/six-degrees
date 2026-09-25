@@ -37,6 +37,15 @@ that matters — a misconfigured deployment must not become a wipe vector.
 | `POST /api/bulk-import` | CSV path. |
 | `GET /api/avatars/[file]` | Serves captured avatars from the data directory. |
 
+## The rebinding rule
+
+`isRebound()` in `lib/gate.js`, applied first to every `/api` and `/avatars` request,
+reads included: when the server is bound to loopback, a `Host` that isn't `127.0.0.1`,
+`localhost`, `[::1]` or `0.0.0.0` is refused with 421. A DNS-rebinding page makes the
+browser call the app by the attacker's domain; to the browser that is same-origin, so
+the cross-site rule below can't see it, but the `Host` header gives it away. Bound
+anywhere else, the rule stands aside and `ADMIN_TOKEN` guards the destructive routes.
+
 ## The cross-site rule
 
 `isCrossSiteWrite()` in `lib/gate.js`, applied to every `/api` write:
