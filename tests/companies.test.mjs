@@ -100,3 +100,21 @@ test('Paths colours a company with the industry scoring uses', () => {
   assert.equal(industries.get('Tavola'), 'unknown');
   assert.equal(index.get('Tavola').industry, UNKNOWN_INDUSTRY);
 });
+
+test('Bain Capital and a business school keep their own industry, in scoring and in Paths', () => {
+  const rows = [
+    p('a', 1, { headline: 'Principal at Bain Capital' }),
+    p('b', 1, { headline: 'Manager at Bain & Company' }),
+    p('c', 1, { headline: 'MBA Candidate at Kellogg School of Management' }),
+    p('d', 2, { headline: 'Brand Manager at Kellogg\'s' }),
+  ];
+  const { industries } = networkCompanies(rows, { industryOf: industryKeyOf });
+  assert.deepEqual([...industries], [
+    ['Bain Capital', 'finance'], ['Bain', 'consulting'], ['Kellogg School of Management', 'education'], ['Kellanova', 'consumer'],
+  ]);
+  // Paths groups by its own names (normalizeCompany) and colours the same way.
+  const index = buildCompanyIndex(rows);
+  assert.equal(index.get('Bain Capital').industry.key, 'finance');
+  assert.equal(index.get('Bain & Company').industry.key, 'consulting');
+  assert.equal(index.get('Kellogg School of Management').industry.key, 'education');
+});

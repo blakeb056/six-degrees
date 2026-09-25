@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   readTitle, cleanCompany, currentCompany, companyScore, reachBonus, scorePerson, scoreNetwork, bridgeBoost, tierFor,
-  explainScore, companyIndustry, networkCompanies, knownIndustry, SECTOR_BONUS,
+  explainScore, companyIndustry, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
 } from '../lib/scoring.js';
 
 const key = (h) => readTitle(h).key;
@@ -43,6 +43,29 @@ test('companies: one clean name per company, junk dropped', () => {
   assert.equal(cleanCompany('Self-employed'), null);
   assert.equal(cleanCompany('scale'), null);                           // "…brands at scale"
   assert.equal(cleanCompany('Scale AI'), 'Scale AI');
+});
+
+test('companies: a school is not the company its name starts like, and Bain Capital is not Bain', () => {
+  // The list's aliases match from the start of a name, so these used to read
+  // as Kellanova, Warner Bros., Campbell's and JPMorgan Chase.
+  for (const school of ['Kellogg School of Management', 'Kellogg College', 'Warner University', 'Campbell University', 'Chase College of Law']) {
+    assert.equal(cleanCompany(school), school);
+    assert.equal(knownIndustry(school), null);
+    assert.deepEqual(companyScore(cleanCompany(school)), { score: 4, source: 'default' });
+  }
+  // The companies themselves still match, and so do schools on the list.
+  assert.equal(cleanCompany("Kellogg's"), 'Kellanova');
+  assert.equal(cleanCompany('Chase'), 'JPMorgan Chase');
+  assert.equal(cleanCompany('Warner Bros. Discovery'), 'Warner Bros. Discovery');
+  assert.equal(cleanCompany('Harvard Business School'), 'Harvard University');
+  assert.equal(cleanCompany('the University of Central Florida'), 'UCF');
+  // A private equity firm, not the consultancy: its own industry, at the 9 it
+  // had as an alias of Bain. "Bain Capital Ventures" was never on the list.
+  assert.equal(cleanCompany('Bain Capital'), 'Bain Capital');
+  assert.equal(cleanCompany('Bain & Company'), 'Bain');
+  assert.equal(cleanCompany('Bain Capital Ventures'), 'Bain Capital Ventures');
+  assert.deepEqual(companyScore('Bain Capital'), { score: 9, source: 'known' });
+  assert.deepEqual([knownIndustry('Bain Capital'), knownIndustry('Bain & Company')], ['finance', 'consulting']);
 });
 
 test('the company is where they work now', () => {
@@ -158,6 +181,33 @@ test('your sector shows in the working, and can lift a tier', () => {
   assert.equal(explainScore(yours), 'Director / Head (7.5) · Snap (8/10, your score)');
 });
 
+test('your sector lifts the company, not the headline\'s claims: a reach bonus is halved by the score before the lean', () => {
+  // A founder at an unknown company who says "Angel investor": the claim counts
+  // half at a 4. Leaning toward tech makes the company a 5 or 6 for scoring,
+  // but liking a sector says nothing about whether the claim is true, so it
+  // stays halved: lean adds one company point (+0.55 for a founder), not the
+  // +1.1 it gave when the lean also un-halved the bonus (7.2 → 8.3).
+  const h = 'Founder at Quillon | Angel investor';
+  const at = (focus, overrides) => scorePerson({ headline: h }, (n) => companyScore(n, { overrides, industry: 'tech', focus }));
+  const [plain, leaned, hard] = [undefined, lean('tech'), strong('tech')].map((f) => at(f));
+  assert.deepEqual([plain.power, plain.tier], [7.2, 'A']);
+  assert.deepEqual([leaned.power, leaned.tier], [7.8, 'S']);
+  assert.deepEqual([hard.power, hard.tier], [8.3, 'S']);
+  for (const s of [plain, leaned, hard]) assert.deepEqual(s.bonus, { points: 0.5, reasons: ['investor', 'halved: unknown company'] });
+  assert.equal(explainScore(leaned), 'C-Suite / Founder (10) · Quillon (5/10: 4 + 1 your sector) · +0.5 investor, halved: unknown company');
+  // A score you set is your judgement of the company, so it decides.
+  assert.deepEqual(at(lean('tech'), new Map([['Quillon', 5]])).bonus, { points: 1, reasons: ['investor'] });
+  // The same in a whole network, where Quillon is tech by its people's headlines.
+  const rows = [
+    { id: 'f', profile_url: '/in/f', degree: 1, headline: h },
+    { id: 'e1', profile_url: '/in/e1', degree: 1, headline: 'Engineer at Quillon' },
+    { id: 'e2', profile_url: '/in/e2', degree: 1, headline: 'Developer at Quillon' },
+  ];
+  const techPeople = (company, headline) => (!company && /engineer|developer/i.test(headline || '') ? 'tech' : 'unknown');
+  const f = scoreNetwork(rows, { industryOf: techPeople, focus: lean('tech') }).scores.get('f');
+  assert.deepEqual([f.companyScore, f.bonus.points, f.power, f.tier], [5, 0.5, 7.8, 'S']);
+});
+
 // A stand-in for lib/companies.js's inference, so these cases pin the order of
 // the rules rather than the regexes (tests/sector.test.mjs runs the real one).
 const fakeIndustryOf = (company, headline) => {
@@ -229,4 +279,29 @@ test('the company estimate skips schools by the company\'s industry, the same fo
   const rows = ['Teacher', 'Teacher', 'Professor', 'Teacher', 'Engineer'].map((t, i) => ({ id: `t${i}`, profile_url: `/in/t${i}`, headline: `${t} at Westbrook` }));
   const { scores } = scoreNetwork(rows, { industryOf: edu });
   assert.deepEqual(rows.map((r) => scores.get(r.id).companySource), ['default', 'default', 'default', 'default', 'default']);
+});
+
+test('a network read once scores exactly like one read afresh, however many ways it is scored', () => {
+  // Settings' preview and save read every headline once and score the read
+  // with two sector focuses. That must change nothing but the time it takes.
+  const titles = ['Founder', 'VP Engineering', 'Director of Design', 'Engineer', 'Nurse', 'Marketing Intern', 'CS student'];
+  const companies = ['Quillon', 'Adobe', 'Snap', 'Meridian Health', 'Harvard University'];
+  const rows = Array.from({ length: 60 }, (_, i) => {
+    let headline = `${titles[i % titles.length]} at ${companies[i % companies.length]}`;
+    if (i % 4 === 0) headline += ` | Ex-Director at ${companies[(i + 2) % companies.length]}`;
+    if (i % 9 === 0) headline += ' | Angel investor';
+    return { id: `p${i}`, profile_url: `/in/p${i}`, degree: i < 2 ? 1 : 2, source_connection_id: i < 2 ? null : `p${i % 2}`, headline };
+  });
+  rows.push({ id: 'x', profile_url: '/in/x', degree: 1, headline: 'Consultant | Ex-VP at Discord' });
+  const read = readNetwork(rows, { industryOf: fakeIndustryOf });
+  // Every company anyone names, a former employer included, with its facts.
+  assert.deepEqual(read.companies.get('Discord'), { headcount: 0, industry: 'tech' });
+  assert.deepEqual(read.companies.get('Meridian Health'), { headcount: read.headcount.get('Meridian Health'), industry: 'health' });
+  for (const focus of [undefined, lean('tech'), strong('tech', 'health'), lean('media')]) {
+    const fresh = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus });
+    const reused = scoreNetwork(rows, { focus, read });
+    assert.deepEqual(reused.scores, fresh.scores, focus?.sectors.join() || 'no focus');
+    assert.deepEqual(reused.companyScores, fresh.companyScores);
+  }
+  assert.ok([...scoreNetwork(rows, { read }).scores.values()].some((s) => s.boost > 0), 'the circles are big enough to boost');
 });
