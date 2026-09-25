@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
@@ -13,9 +14,12 @@ import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TABS = [['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies'], ['scores', 'Scores']];
 
 export default function PathsPage() {
-  return <OnboardingGate><PathsInner /></OnboardingGate>;
+  // Suspense because PathsInner reads the address's ?tab= (useSearchParams),
+  // which Next requires to sit inside one for the page to build.
+  return <OnboardingGate><Suspense><PathsInner /></Suspense></OnboardingGate>;
 }
 
 function PathsInner() {
@@ -28,7 +32,11 @@ function PathsInner() {
   const [d2Data, setD2Data] = useState([]);
   const [d3Data, setD3Data] = useState([]);
   // Map and Industries are the analyzer; Companies is the list it grew from.
-  const [tab, setTab] = useState('map');
+  // A link can open a tab (/paths?tab=scores, from Settings → Your sector).
+  // The router's search params rather than window.location: on a click from
+  // another page the address bar only changes after this page has rendered.
+  const asked = useSearchParams().get('tab');
+  const [tab, setTab] = useState(() => (TABS.some(([k]) => k === asked) ? asked : 'map'));
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -229,7 +237,7 @@ function PathsInner() {
           }}>Paths</h1>
           {!selectedCompany && (
             <div style={{ display: 'flex', gap: 4, marginLeft: 8, padding: 3, borderRadius: 8, background: 'rgba(255,255,255,0.05)' }}>
-              {[['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies'], ['scores', 'Scores']].map(([k, label]) => (
+              {TABS.map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)} style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
                   background: tab === k ? 'linear-gradient(135deg, #00ff88, #3498DB)' : 'transparent', color: tab === k ? '#000' : '#aab',

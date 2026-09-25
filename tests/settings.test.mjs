@@ -94,3 +94,24 @@ test('stored keys a newer version wrote are ignored by an older schema, not cras
   getDb().prepare("INSERT INTO app_meta (key, value) VALUES ('settings', ?)").run(JSON.stringify({ size: 1, futureThing: 'x' }));
   assert.deepEqual(readSettings(getDb(), SCHEMA), { colour: 'gold', size: 1 });
 });
+
+const stored = () => JSON.parse(getDb().prepare("SELECT value FROM app_meta WHERE key = 'settings'").get().value);
+
+test('saving keeps what a newer version wrote, so an older copy cannot erase it', () => {
+  // A beta sharing the data folder saved a setting this version doesn't know,
+  // and a value for 'colour' this version can't read.
+  getDb().prepare("INSERT INTO app_meta (key, value) VALUES ('settings', ?)")
+    .run(JSON.stringify({ size: 1, colour: 'teal', futureThing: { on: true } }));
+  const after = writeSettings(getDb(), { size: 4 }, SCHEMA);
+  assert.deepEqual(after, { colour: 'gold', size: 4 }, 'this version still reads what it knows');
+  assert.deepEqual(stored(), { size: 4, colour: 'teal', futureThing: { on: true } },
+    'only the changed setting was rewritten');
+});
+
+test('a name every object inherits is not a setting', () => {
+  for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+    const patch = JSON.parse(`{"${name}": 1}`);
+    assert.throws(() => writeSettings(getDb(), patch, SCHEMA),
+      (err) => err instanceof SettingsError && err.message === `There is no setting called '${name}'.`);
+  }
+});

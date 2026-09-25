@@ -1,17 +1,21 @@
 import { getDb, newId, nowIso } from '../../../lib/db-client';
-import { rescoreAll, companyOverrides } from '../../../lib/rpc';
-import { rolesWithCompanies, companyScore, KNOWN_COMPANIES } from '../../../lib/scoring';
-import { industryOf } from '../../../lib/companies';
+import { rescoreAll, companyOverrides, sectorFocusOf } from '../../../lib/rpc';
+import { rolesWithCompanies, companyScore, networkCompanies, KNOWN_COMPANIES } from '../../../lib/scoring';
+import { industryByKey, industryKeyOf } from '../../../lib/companies';
 
 // Every company in your network with the score it gets and where that score
 // comes from — and the one place to set your own. Setting or clearing a score
 // rescores everyone, since a person's power depends on their company's.
+// Industries and the sector lean (Settings → Your sector) come from the same
+// functions rescoring uses, so a score here is the one people carry.
 
 export async function GET() {
   try {
     const db = getDb();
     const rows = db.prepare('SELECT id, degree, headline, role, company, scanned_company, profile_url, tier FROM linkedin_connections').all();
     const overrides = companyOverrides(db);
+    const focus = sectorFocusOf(db);
+    const { industries } = networkCompanies(rows, { industryOf: industryKeyOf });
     const byName = new Map();
     const seen = new Set();
     for (const r of rows) {
@@ -20,7 +24,7 @@ export async function GET() {
         const key = `${role.company}|${r.profile_url || r.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const c = byName.get(role.company) || { name: role.company, people: 0, d1: 0, senior: 0, S: 0, A: 0, headline: r.headline };
+        const c = byName.get(role.company) || { name: role.company, people: 0, d1: 0, senior: 0, S: 0, A: 0 };
         c.people++;
         if (r.degree === 1) c.d1++;
         if (role.title.level >= 4) c.senior++;
@@ -30,10 +34,10 @@ export async function GET() {
       }
     }
     const companies = [...byName.values()].map((c) => {
-      const industry = industryOf(c.name, c.headline);
-      const { score, source } = companyScore(c.name, { overrides, headcount: c.people, industry: industry.key });
+      const industry = industryByKey(industries.get(c.name));
+      const { score, source, sectorBonus = 0 } = companyScore(c.name, { overrides, headcount: c.people, industry: industry.key, focus });
       const known = KNOWN_COMPANIES.find(([n]) => n === c.name);
-      return { ...c, headline: undefined, score, source, suggested: known ? known[1] : null, industry: { key: industry.key, label: industry.label, color: industry.color } };
+      return { ...c, score, source, sectorBonus, suggested: known ? known[1] : null, industry: { key: industry.key, label: industry.label, color: industry.color } };
     }).sort((a, b) => b.people - a.people || b.score - a.score);
     return Response.json({ companies });
   } catch (err) {

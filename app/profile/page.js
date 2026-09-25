@@ -6,6 +6,7 @@ import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
+import { industryByKey } from '../../lib/companies';
 import Link from 'next/link';
 
 const LEVEL_NAMES = {
@@ -32,11 +33,20 @@ function ProfileInner() {
   const [notifications, setNotifications] = useState([]);
   const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
+  // "Your Sectors" is what you picked in Settings → Your sector. (users.sectors,
+  // which this card used to show, is never written by anything; the Sidebar
+  // and Outlink still read it as free text.) null while it loads; a load that
+  // fails says so rather than showing "none picked" (TRAPS §7).
+  const [sectorFocus, setSectorFocus] = useState(null);
 
   useEffect(() => {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
+      fetch('/api/settings')
+        .then((r) => r.json().then((d) => (r.ok && d.settings ? d : Promise.reject(new Error(d.error)))))
+        .then((d) => setSectorFocus(d.settings.sectorFocus || { sectors: [], strength: 'lean' }))
+        .catch(() => setSectorFocus({ failed: true }));
       const net = await loadNetwork(userId);
       const d1 = net.degree1;
       const d2 = net.degree2;
@@ -364,15 +374,38 @@ function ProfileInner() {
           background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 20,
           border: '1px solid rgba(255,255,255,0.08)',
         }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>Your Sectors</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {profile.sectors.map((s, i) => (
-              <span key={i} style={{
-                padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                background: 'rgba(52,152,219,0.15)', border: '1px solid rgba(52,152,219,0.3)', color: '#3498DB',
-              }}>{s}</span>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Your Sectors</h3>
+            <Link href="/settings#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
+              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick in Settings' : 'Settings'} &rarr;
+            </Link>
           </div>
+          {!sectorFocus ? (
+            <div style={{ fontSize: 12, color: '#888' }}>Loading…</div>
+          ) : sectorFocus.failed ? (
+            <div style={{ fontSize: 12, color: '#ff7676' }}>
+              Couldn&rsquo;t load your sectors. Reload this page, or open Settings to see them.
+            </div>
+          ) : sectorFocus.sectors?.length ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {sectorFocus.sectors.map((key) => {
+                const ind = industryByKey(key);
+                return (
+                  <span key={key} style={{
+                    padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    background: `${ind.color}26`, border: `1px solid ${ind.color}66`, color: ind.color,
+                  }}>{ind.label}</span>
+                );
+              })}
+              <span style={{ fontSize: 11, color: '#888' }}>
+                {sectorFocus.strength === 'strong' ? 'Strong' : 'Lean'}: companies here count for more in your scores.
+              </span>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: '#888' }}>
+              None picked. Pick up to three in Settings and companies in them count for more in your scores.
+            </div>
+          )}
         </div>
 
       </div>

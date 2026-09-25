@@ -5,6 +5,7 @@
 // Setting a score rescores everyone (app/api/company-scores → lib/scoring.js).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 const LINE = '1px solid rgba(255,255,255,0.1)';
 const SOURCE = {
@@ -87,13 +88,14 @@ export default function CompanyScores({ onRescored }) {
         <div style={{ padding: 14, borderRadius: 10, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#cfd8d8', lineHeight: 1.6 }}>
           <b style={{ color: '#fff' }}>How a power score works.</b> power = <b>title</b> × <b>company weight</b> + bonus.
           The title (student 1 … founder or C-suite 10) comes from someone&rsquo;s current role, with former roles at 70%.
-          The company weight runs from 0.56 (no company found) to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
+          The company weight runs from 0.615 (no company found) to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
           The bonus is at most +1.5, for investor, YC or an audience in the millions, and counts half at an unknown company.
           A 1st-degree person whose circle is unusually strong gets up to +1 more.
           S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
           <div style={{ marginTop: 6, color: '#8b9a9a' }}>
             So a VP at a 10 scores 9.0, a founder at an unknown company 6.7, a director at an unknown company 5.0, and an intern at a 10 scores 2.0.
             Set a company&rsquo;s score below and everyone there is rescored.
+            Companies in the sectors you pick in <Link href="/settings#sector" style={{ color: '#3498DB' }}>Settings</Link> get +1 or +2; a score you set is never changed.
           </div>
         </div>
 
@@ -123,7 +125,10 @@ export default function CompanyScores({ onRescored }) {
               <span style={{ textAlign: 'right', color: c.d1 ? '#00ff88' : '#556' }}>{c.d1}</span>
               <span style={{ textAlign: 'right', color: c.senior ? '#FFD700' : '#556' }}>{c.senior}</span>
               <b style={{ textAlign: 'right', fontSize: 15 }}>{c.score}</b>
-              <span style={{ fontSize: 11, color: SOURCE[c.source]?.color }}>{SOURCE[c.source]?.label}</span>
+              <span style={{ fontSize: 11, color: SOURCE[c.source]?.color }}>
+                {SOURCE[c.source]?.label}
+                {c.sectorBonus > 0 && <span style={{ color: '#00ff88' }}> + {c.sectorBonus} your sector</span>}
+              </span>
               <ScorePicker company={c} onSet={set} compact />
             </div>
           ))}

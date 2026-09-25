@@ -219,16 +219,23 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 - **Company score (1–10)** is the one you set (Paths → Scores) if there is one. Otherwise
   it comes from a list of well-known companies, or from how many of your people work
   there.
+- **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
+  in them get +1 ("lean") or +2 ("strong") on that score, never above 10 and never on a
+  score you set. Each company has one sector: the known list's, else what its name says,
+  else what most of its people's headlines say. Settings shows what would change before you
+  save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 6.7.
 - **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions. It counts half
-  at an unknown company, because headlines are self-written.
+  at an unknown company, because headlines are self-written (your sector doesn't change
+  that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
 
 Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (9/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
-rather than your own scores. The model is [`lib/scoring.js`](lib/scoring.js), explained
-in [`docs/brain/SCORING.md`](docs/brain/SCORING.md).
+rather than your own scores or sectors; the sample network keeps its own. The model is
+[`lib/scoring.js`](lib/scoring.js), explained in
+[`docs/brain/SCORING.md`](docs/brain/SCORING.md).
 
 It estimates **network position**, not what anyone is worth as a person.
 
