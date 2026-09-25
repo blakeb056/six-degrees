@@ -140,10 +140,19 @@ export function dataDirArg(argv = []) {
 }
 
 /**
+ * The exit code the server ends with once the in-app updater's helper has
+ * started (lib/updater-job.js). It means "quit quietly, the update takes it
+ * from here". lib/updater.js has the same number; the shell can't import it
+ * because desktop/ is packed apart from the server. tests/updater.test.mjs
+ * checks that the two agree.
+ */
+export const UPDATE_HANDOFF_EXIT_CODE = 76;
+
+/**
  * What the app does when its server process ends:
  *   'ignore'  the app is quitting and stopped it itself
- *   'quit'    it was stopped from outside (the installer, logging out): the
- *             whole app is going, so go quietly
+ *   'quit'    it was stopped from outside (the installer, logging out) or it
+ *             handed over to the updater: the whole app is going, so go quietly
  *   'report'  it crashed: say so, with the log
  *
  * Next catches SIGTERM and SIGINT and exits with 143 or 130 instead of dying
@@ -155,6 +164,26 @@ export function dataDirArg(argv = []) {
 export function serverExitAction({ code, signal, quitting }) {
   if (quitting) return 'ignore';
   if (signal) return 'quit';
-  if (code === 143 || code === 130) return 'quit';
+  if (code === UPDATE_HANDOFF_EXIT_CODE || code === 143 || code === 130) return 'quit';
   return 'report';
+}
+
+/**
+ * The app bundle, from the path of its own executable (process.execPath in
+ * Electron's main process):
+ * "/Applications/Six Degrees.app/Contents/MacOS/Six Degrees" → "/Applications/Six Degrees.app".
+ * null when it isn't running from a bundle (npm run desktop, from a checkout).
+ */
+export function bundlePathFromExe(exe) {
+  const m = String(exe || '').match(/^(\/.+\.app)\/Contents\/MacOS\/[^/]+$/);
+  return m ? m[1] : null;
+}
+
+/**
+ * The page to open first. After an update the new version (or the old one,
+ * put back) is opened with --after-update, and opens Settings, where the
+ * outcome is shown, rather than the map.
+ */
+export function startPathArg(argv = []) {
+  return argv.includes('--after-update') ? '/settings#updates' : null;
 }

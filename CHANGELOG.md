@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   your network is kept. What you choose there is saved with your network, so it travels
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
+- **Install and restart, in the Mac app: updating without Terminal.** When *Check for
+  Updates…* finds a newer version, one more click installs it. The app downloads that
+  release from GitHub (about 190 MB), checks it against the release's published checksums
+  and its signature, and gets it ready while you keep working. Then it closes, puts the new
+  version in its place and opens it on Settings, which says how it went ("Updated to
+  0.2.2"). Your network isn't touched, and the new version backs it up before it opens it.
+  - Nothing is downloaded until you click Install, and it never happens by itself.
+  - If the new version can't be put in place or won't open, your previous version is put
+    back and reopened, and Settings says why. After an update that worked, the previous
+    version is kept, zipped, in `~/Library/Caches/Six Degrees` until the next update.
+  - When the app can't replace itself (it's running from the disk image, from a folder your
+    user can't change, or it was installed by another user), it says why and gives you the
+    Terminal line instead. The npm and source copies keep their Terminal lines.
+  - Copies of 0.2.1 and older don't have the button: update them with the Terminal line
+    once more.
 
 ### Fixed
 - **No "Six Degrees stopped" error when something else closes the app.** When the

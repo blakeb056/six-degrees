@@ -1,8 +1,8 @@
 'use client';
 
-// Small shared pieces for the Settings page and anything that joins it later.
-// The Scan page and UpdatePanel still keep their own private copies; new
-// screens should use these rather than adding a third.
+// Small shared pieces for the Settings page and anything that joins it later
+// (UpdatePanel uses them). The Scan page still keeps its own private copies;
+// new screens should use these rather than adding another.
 
 export const LINE = '1px solid rgba(255,255,255,0.1)';
 export const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';

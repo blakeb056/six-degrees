@@ -130,7 +130,8 @@ tick an item in the same change that finishes it.
       The port is D5 there, optional and gated
 - [ ] An app icon: the app and its `.dmg` use the generic one → [`DESKTOP.md`](DESKTOP.md) D0
 - [ ] A one-click update from inside the Mac app, instead of a line to paste →
-      [`DESKTOP.md`](DESKTOP.md) D4
+      [`DESKTOP.md`](DESKTOP.md) D4. Built on the draft branch `settings-updater`: waiting
+      on Blake's approval of the spec change and a test on a real Mac
 - [ ] Opening the sidebar resizes the Galaxy and rebuilds it once (its layout restarts).
       Re-centring the existing scene on a resize, instead of rebuilding it, would make
       that smooth too

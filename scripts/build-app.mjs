@@ -134,9 +134,14 @@ try {
     for (const rel of untracked) console.log(`      ${rel}`);
   }
 } catch { /* not a git checkout: nothing to compare against */ }
-// The scraper is not part of the standalone output but the Scan page runs it.
+// The files the app runs from scripts/, copied by name so the app never
+// depends on what Next's tracing happens to bring along (TRAPS §27): the
+// scanner the Scan page runs, and apply-update.sh, the in-app updater's helper.
+// The helper ships inside the app, so the version that swaps the app is the one
+// the user is running, never a script fetched from the main branch.
 for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt',
-                   'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs']) {
+                   'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs',
+                   'scripts/apply-update.sh']) {
   const from = path.join(ROOT, rel);
   if (existsSync(from)) {
     mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
@@ -171,6 +176,8 @@ export SIX_DEGREES_BIND=127.0.0.1
 export NEXT_TELEMETRY_DISABLED=1
 export SIX_DEGREES_ROOT="$HERE/app"
 export SIX_DEGREES_INSTALL=mac-app
+# This app's own bundle, for the in-app updater (lib/updater.js runningBundle).
+export SIX_DEGREES_APP="$(cd "$HERE/../.." && pwd)"
 export HOSTNAME=127.0.0.1
 
 # Walk up from 6363 so a second copy does not fight the first.

@@ -84,9 +84,12 @@ The layout inside `Six Degrees.app`:
 ```
 Contents/MacOS/Six Degrees      Electron: the window, the menu, the lifecycle
 Contents/Resources/node         the same Node binary 0.1.x bundles
-Contents/Resources/app/         the same standalone server (+ scanner files)
+Contents/Resources/server/      the same standalone server (+ scanner files, apply-update.sh)
 Contents/Resources/python/      from D2
 ```
+
+(The classic app keeps the server in `Contents/Resources/app/` and its executable is a
+bash script, `Contents/MacOS/six-degrees`.)
 
 - [x] Main process (`desktop/main.mjs`): start `server.js` on the bundled Node with the
       same settings as the old launcher (127.0.0.1, ports walked up from 6363,
@@ -166,8 +169,85 @@ to about 250 MB.
       warning.
 - [ ] Until then, **one-click updates without signing:** the app downloads the new build,
       checks its SHA-256 against `SHA256SUMS`, swaps itself and relaunches. This is
-      `install.sh`'s logic inside the app. It works unsigned because files an app
-      downloads itself are not quarantined.
+      `install.sh`'s logic inside the app, with a rollback `install.sh` doesn't have.
+      Built on the draft branch `settings-updater` (2026-09-25); not released.
+  - [x] The spec allows it: invariant 2 now permits a second, separate press
+        ("Install and restart") to download and install the release. **Blake approves
+        this before it merges.**
+  - [x] Settings → Updates: *Install and restart* after a check finds a newer version,
+        progress (download %, checking, preparing), "Restarting…", and on the next start
+        how it went. The Terminal line stays as the fallback whenever the app can't
+        update itself, and says why. Mac app only: an npm or source copy runs inside its
+        own terminal, so it can't replace itself.
+  - [x] The work, while the old version keeps running (`lib/updater-job.js`, decisions
+        in `lib/updater.js`): `releases/latest` again (never a pre-release, never a
+        version from the page), this chip's `.dmg` by its exact name (the chip from
+        `sysctl hw.optional.arm64`, TRAPS §30), `SHA256SUMS` required (unlike
+        `install.sh`), free space, `hdiutil attach -nobrowse -readonly`,
+        `codesign --verify --deep --strict`, bundle id, version and macOS minimum from
+        `Info.plist`, the chip from the executable's Mach-O header (not `lipo`, the
+        developer-tools stub), no link pointing outside the app (TRAPS §37). Then `ditto`
+        into `.Six Degrees.app.incoming` beside the running app (same disk, so the swap is
+        a rename; not named `.app`, so macOS doesn't see a second app), checked again.
+  - [x] The hand-over (TRAPS §39): the helper starts detached, from a copy outside the
+        app, with a clean environment; the server ends with exit code 76, which the app
+        reads as "quit quietly". Refused while a scan runs.
+  - [x] The helper, `scripts/apply-update.sh` (shipped inside the app): waits for the
+        app, its server and anything running from the bundle (found by working folder
+        too, TRAPS §26), then stops what's left; renames the old app aside (never deletes
+        first), renames the new one in (`ditto` if it can't), clears quarantine, and
+        opens it with `--after-update` and `--data-dir` when the data folder isn't the
+        default. Any failure after the move puts the old app back and reopens it. The
+        outcome goes to `~/Library/Caches/Six Degrees/last-update.json`, its log to
+        `$TMPDIR/six-degrees-update.log`. Handles the classic layout too (it moves whole
+        bundles).
+  - [x] The previous version is kept, **zipped**, in `~/Library/Caches/Six Degrees`
+        (one copy, replaced by the next update). Not as an app: a second
+        `Six Degrees.app` there could turn up in Spotlight and be opened by mistake, and a
+        Finder alias or Dock icon may follow the moved folder instead of the path (not
+        seen, but deleting the old folder is what `install.sh` does and has always
+        worked). Unzip it and drag it to Applications to go back.
+  - [x] Tests: the decisions (`tests/updater.test.mjs`), the helper against pretend apps
+        (`tests/apply-update.test.mjs`), and the whole job against a pretend release on
+        127.0.0.1 with real disk images (`tests/updater-job.test.mjs`,
+        `scripts/test-release-server.mjs`). `SIX_DEGREES_TEST_RELEASES` points the app at
+        such a server; it is honoured only for a 127.0.0.1 address, and the app never
+        sets it.
+  - [ ] **Blake, on a real Mac** (it can't be tested without quitting a real copy, and
+        a second copy of the app can't run while the first does). Quit the normal copy
+        first; everything below stays in `~/Six-Degrees-Update-Test`.
+        1. On this branch: `npm run build:desktop`, then
+           `ditto "dist/Six Degrees.app" ~/Six-Degrees-Update-Test/old.app`. Bump
+           `package.json` to the next patch version (don't commit it), build again, and
+           copy `dist/Six-Degrees-<new>-<chip>.dmg` into `~/Six-Degrees-Update-Test/release/`.
+        2. `node scripts/test-release-server.mjs --dir ~/Six-Degrees-Update-Test/release --port 3303`
+        3. In another Terminal:
+           `cd ~/Six-Degrees-Update-Test && rm -rf "Six Degrees.app" && ditto old.app "Six Degrees.app"`, then
+           `SIX_DEGREES_TEST_RELEASES=http://127.0.0.1:3303 "Six Degrees.app/Contents/MacOS/Six Degrees" --data-dir ~/Six-Degrees-Update-Test/data`
+        4. Right-click its Dock icon → Options → Keep in Dock. Then Settings → Check for
+           updates → Install and restart. Expect: progress, the window closes, the new
+           version opens by itself on Settings, saying "Updated to <new>", on the same
+           test data. `~/Library/Caches/Six Degrees/` holds the zip and
+           `last-update.json`; `$TMPDIR/six-degrees-update.log` reads sensibly;
+           `ps -axo command | grep -F Six-Degrees-Update-Test` shows only the new copy.
+           Quit it and click the Dock icon kept from the old version: the *new* version
+           must open. (Then take it out of the Dock.)
+        5. The rollback: repeat step 3, then `chflags uchg ~/Six-Degrees-Update-Test/"Six Degrees.app"`
+           and Install again. Expect the old version to reopen on Settings with "didn't
+           finish: macOS didn't let Six Degrees move its old version aside … Nothing was
+           changed." Then `chflags nouchg` it.
+        6. Clean up: `rm -rf ~/Six-Degrees-Update-Test "$HOME/Library/Caches/Six Degrees"`
+           (that folder holds only the updater's files) and put `package.json` back.
+        7. Before release, once on a copy first installed from a browser-downloaded
+           `.dmg` (quarantined, then allowed with Open Anyway), to see whether macOS's
+           App Management asks or refuses. If it refuses, the update ends in step 5's
+           message and the Terminal line still works. macOS 13, 14, 15 and 26 if possible.
+  - [ ] CI (rule 6, extended): after the smoke test, install the previous release (N-1,
+        once it has this button) from its `.dmg`, serve the `.dmg` just built with
+        `scripts/test-release-server.mjs`, start N-1 with `SIX_DEGREES_TEST_RELEASES`
+        pointing at it, `POST /api/update {action:'install-release'}`, wait for
+        `last-update.json` to say `installed`, then check the installed app is version N,
+        verifies with `codesign`, answers, and that nothing of N-1 is left running.
 
 ### D5 — Optional: the scanner in JavaScript
 
@@ -207,5 +287,5 @@ reason first:
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
-| D4 Signing | when Blake decides to pay |
+| D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
 | D5 Scanner in JS | optional; spec still rejects it |

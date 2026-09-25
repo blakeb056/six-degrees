@@ -5,7 +5,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import {
   routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  serverExitAction,
+  serverExitAction, bundlePathFromExe, startPathArg, UPDATE_HANDOFF_EXIT_CODE,
 } from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
@@ -91,6 +91,10 @@ test('the server ending while the app quits is expected: nothing to do', () => {
   assert.equal(serverExitAction({ code: 1, signal: null, quitting: true }), 'ignore');
 });
 
+test('the server handing over to the updater quits the app quietly, with no "stopped" dialog', () => {
+  assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, quitting: false }), 'quit');
+});
+
 test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) or a signal', () => {
   // install.sh, or logging out, sends SIGTERM to the server too. Next catches it
   // and exits 143, which used to reach the "Six Degrees stopped" dialog whenever
@@ -103,4 +107,17 @@ test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) 
 test('a server that crashes is reported', () => {
   assert.equal(serverExitAction({ code: 1, signal: null, quitting: false }), 'report');
   assert.equal(serverExitAction({ code: 0, signal: null, quitting: false }), 'report', 'a server has no reason to end by itself');
+});
+
+test('the app bundle, from Electron\'s own executable path', () => {
+  assert.equal(bundlePathFromExe('/Applications/Six Degrees.app/Contents/MacOS/Six Degrees'), '/Applications/Six Degrees.app');
+  assert.equal(bundlePathFromExe('/Users/me/Apps/Six Degrees (beta).app/Contents/MacOS/Six Degrees'), '/Users/me/Apps/Six Degrees (beta).app');
+  assert.equal(bundlePathFromExe('/usr/local/bin/electron'), null, 'run from a checkout: no bundle');
+  assert.equal(bundlePathFromExe(undefined), null);
+});
+
+test('after an update the app opens on Settings, where the outcome is shown', () => {
+  assert.equal(startPathArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--after-update']), '/settings#updates');
+  assert.equal(startPathArg(['x', '--after-update', '--data-dir', '/tmp/copy']), '/settings#updates');
+  assert.equal(startPathArg(['x', '--data-dir', '/tmp/copy']), null);
 });

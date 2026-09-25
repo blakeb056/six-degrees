@@ -832,3 +832,25 @@ What holds it now: `desktop/lib.mjs` `serverExitAction()` decides, and
 `tests/desktop.test.mjs` pins it. While the app is quitting, its server's exit is
 expected. Otherwise 143, 130 and a signal mean "stopped from outside", and the app quits
 quietly; only any other code is reported as a crash.
+
+**How the in-app update quits, because of this.** The server, not Electron, runs the
+update (the page has no bridge to Electron), so the server has to make the whole app quit
+without a dialog. Three ways were weighed:
+
+- *SIGTERM to the app* (the server's parent). It takes the Cmd-Q path, and the user has
+  just clicked Install, so a window has focus: if a scan started meanwhile, the app asks
+  "A scan is running" and waits, while the helper waits for the app.
+- *`install.sh`'s way*, SIGTERM to the app and the server at once. Same question, plus the
+  race above. (`install.sh` isn't inside the app either.)
+- *`NEXT_MANUAL_SIG_HANDLE`*. It would change how every quit shuts the server down.
+
+Chosen: the server ends with its own exit code, **76** (`UPDATE_HANDOFF_EXIT_CODE`, in
+`lib/updater.js` and `desktop/lib.mjs`, pinned equal by `tests/updater.test.mjs`), which
+`serverExitAction` reads as "quit quietly". Nothing waits on a question, and it doesn't
+depend on Next's numbers. It does so only after the helper has started, has stayed up
+for a moment, and no scan is running (a scan would be cut off: `app.exit` skips the
+quit path that stops it). The classic launcher needs nothing: its `wait` returns
+whatever the code. Not 75: the data-import work proposed that for "restart the server".
+The helper (`scripts/apply-update.sh`) waits for the app, its server and anything else
+running from the bundle to exit before it touches anything. Not yet seen on a real Mac
+(2026-09-25): the whole quit, swap and reopen; the manual test is in DESKTOP.md D4.

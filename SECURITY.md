@@ -34,6 +34,22 @@ This app is designed to run **on your own machine, against your own network**.
   loopback, every request to `/api` and `/avatars` must be addressed to
   `127.0.0.1`, `localhost` or `[::1]` (the `Host` header); any other name gets
   a 421.
+- The Mac app's **Install and restart** (behind the `update` route's gate)
+  downloads only what GitHub's `releases/latest` names for this repository:
+  this Mac's `.dmg` by its exact file name, from that release's own download
+  address, never a pre-release and never a version or address sent by the page.
+  Nothing replaces the app unless the image matches the release's `SHA256SUMS`
+  (a release without one is refused), the app inside passes
+  `codesign --verify --deep --strict`, is Six Degrees (its bundle id) at exactly
+  that version, runs on this macOS and chip, and has no link pointing outside
+  itself. The checksums come from the same release, so they catch a corrupted,
+  truncated or swapped download, not a compromised GitHub account; that is the
+  same trust as the Terminal installer. The app is only signed ad hoc, so
+  there is no developer signature to check. The swap is done by a script
+  shipped inside the app (`scripts/apply-update.sh`), started with a clean
+  environment, and it moves only the app: the data folder is never read,
+  moved or written. `SIX_DEGREES_TEST_RELEASES` (for tests) is honoured only
+  for a `127.0.0.1` address.
 - Values stored in the database are treated as untrusted text and escaped
   before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)
   for anything data-bearing.

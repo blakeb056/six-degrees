@@ -13,6 +13,11 @@
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
 //   again   opening the app while it runs brings its window forward
+//   update  Settings → Updates → Install and restart: the server downloads and
+//           checks the new version, starts scripts/apply-update.sh and ends
+//           with a code that means "quit quietly" (lib.mjs serverExitAction).
+//           The helper swaps the app once this one has gone and opens the new
+//           one with --after-update, which opens Settings to show how it went
 //
 // For CI: SIX_DEGREES_SMOKE=1 prints "SIX_DEGREES_READY <address>" once the app
 // has drawn, and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
@@ -25,7 +30,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  serverExitAction,
+  serverExitAction, bundlePathFromExe, startPathArg,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -37,13 +42,19 @@ const DATA_DIR = dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || pat
 const LOG = path.join(os.tmpdir(), 'six-degrees.log');
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const SMOKE = process.env.SIX_DEGREES_SMOKE === '1';
+// This app's own bundle, for the in-app updater, which replaces it. The shell
+// knows it for certain; the server would otherwise have to guess from its folder.
+// process.execPath, not app.getPath('exe'): the same path, and it can't throw
+// here, before the app is ready.
+const APP_BUNDLE = app.isPackaged ? bundlePathFromExe(process.execPath) : null;
 
 let server = null;   // the Node server process
 let origin = null;   // http://127.0.0.1:<port>, once chosen
 let ready = false;   // the server has answered
 let win = null;
 let quitting = false;
-let pendingPath = null; // a menu choice made before the server answered
+// A menu choice made before the server answered, or Settings when opened after an update.
+let pendingPath = startPathArg(process.argv);
 
 app.setName('Six Degrees');
 app.enableSandbox();
@@ -82,14 +93,15 @@ async function start() {
       SIX_DEGREES_ROOT: ROOT,
       SIX_DEGREES_HOME: DATA_DIR,
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
+      ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
     },
     stdio: ['ignore', log, log],
   });
   closeSync(log);
   server.on('exit', (code, signal) => {
-    // Stopped from outside (the installer replacing this copy, or the system):
-    // the whole app is going, so go quietly. A crash is worth saying out loud.
-    // Which is which: lib.mjs serverExitAction (Next exits 143 on SIGTERM).
+    // Stopped from outside (the installer replacing this copy, or the system),
+    // or handed over to the updater: the whole app is going, so go quietly. A
+    // crash is worth saying out loud. Which is which: lib.mjs serverExitAction.
     const action = serverExitAction({ code, signal, quitting });
     if (action === 'ignore') return;
     if (action === 'quit') {

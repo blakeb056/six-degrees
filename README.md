@@ -51,9 +51,15 @@ published here, puts **Six Degrees** in Applications and opens it.
 
 **Updating.** Choose *Six Degrees → Check for Updates…* (or open **Settings** with the ⚙
 button or ⌘,). It opens the Updates section and checks. Nothing checks by
-itself. If there's a newer version, it gives you the Terminal line to paste, which
-replaces the app even while it's running. Downloading the new `.dmg` works too; you'll
-repeat step 3 once for it.
+itself. If there's a newer version, click **Install and restart**: the app downloads it
+from GitHub, checks it against the release's published checksums, closes, puts the new
+version in its place and opens it again. If the new version can't be put in place or
+won't open, your old one is put back. The version you had is kept, zipped, in
+`~/Library/Caches/Six Degrees` until the next update. When the app can't update itself
+(for example, it's running from the disk image), it says why and gives you a Terminal line
+to paste instead, which replaces the app even while it's running. Copies of 0.2.1 and
+older don't have the button yet, so they take the Terminal line once more. Downloading
+the new `.dmg` works too; you'll repeat step 3 once for it.
 
 Your network isn't stored in the app. It's in a hidden folder in your home folder,
 `.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
@@ -234,7 +240,8 @@ It estimates **network position**, not what anyone is worth as a person.
     computer, the app shows it straight from LinkedIn's image server.
   - **PyPI** (the Python package library), once, to download the scanner's add-ons.
   - **GitHub**, only when you click *Check for updates*, to read the newest version
-    number.
+    number. In the Mac app, also when you then click *Install and restart*, to download
+    that version and the file of checksums that proves it's the one published.
   
   Nothing about you is sent, and nothing checks on its own.
 - The web framework's own anonymous usage stats are turned off.

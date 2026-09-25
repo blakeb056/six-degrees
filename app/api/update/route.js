@@ -1,8 +1,16 @@
 import { spawn, execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { projectRoot, isGitCheckout, dataDir } from '../../../lib/paths';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { repoSlug, compareVersions, installKind, updateCommand } from '../../../lib/release';
+import {
+  bundleRefusal, dataRefusal, lastUpdateReport, planFromRelease, releaseSource, runningBundle,
+} from '../../../lib/updater';
+import {
+  bundleFacts, cancelUpdate, currentUpdate, macFacts, readStatusFile, startUpdate, updatePaths,
+} from '../../../lib/updater-job';
+import { scanIsRunning } from '../../../lib/scan-state';
 import pkg from '../../../package.json';
 
 // Updating, when the app is a git checkout.
@@ -13,6 +21,9 @@ import pkg from '../../../package.json';
 // the whole thing is `git fetch` and `git pull` against the remote the checkout
 // already has. It exists because "run git pull first" is a step people forget,
 // and then they hit bugs that were fixed weeks ago.
+//
+// The Mac app can also install a release itself, on a second click
+// (installedPost below, lib/updater-job.js).
 //
 // Gated with the destructive routes: it changes the code that will run next.
 
@@ -88,6 +99,10 @@ async function localState(root) {
 // compares it with the one baked into this build. One GET to GitHub, only when
 // the button is pressed, carrying nothing about the user: the spec's invariant 2
 // names exactly this as permitted. Never call it from anything that runs on its own.
+// In the Mac app a second, separate press ("Install and restart") may then
+// download that release's disk image and SHA256SUMS and install it (invariant 2
+// again). Nothing is downloaded before that press.
+
 // The folder this copy keeps its network in, when it isn't the default one.
 function customDataDir() {
   const dir = dataDir();
@@ -97,7 +112,7 @@ function customDataDir() {
 function installedInfo(root) {
   const slug = repoSlug(pkg.repository);
   const kind = installKind(process.env, root || '');
-  return {
+  const info = {
     supported: false,
     installed: true,
     kind,
@@ -105,10 +120,21 @@ function installedInfo(root) {
     slug,
     command: slug ? updateCommand(kind, slug, { dataDir: customDataDir() }) : null,
   };
+  if (kind === 'mac-app') {
+    // How the last in-app update went (written by scripts/apply-update.sh),
+    // and one in progress, so the page can pick it up again. Local files and
+    // memory only: this GET runs on every page (StaleServerBanner).
+    info.lastUpdate = lastUpdateReport(readStatusFile(updatePaths().statusFile), { runningVersion: pkg.version });
+    info.job = currentUpdate();
+  }
+  // A test's release server in place of GitHub is said out loud, never silent.
+  const source = releaseSource(process.env);
+  if (source.test) info.testReleases = source.apiBase;
+  return info;
 }
 
-async function latestRelease(slug) {
-  const res = await fetch(`https://api.github.com/repos/${slug}/releases/latest`, {
+async function latestRelease(slug, apiBase) {
+  const res = await fetch(`${apiBase}/repos/${slug}/releases/latest`, {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'six-degrees-update-check' },
     signal: AbortSignal.timeout(10000),
     cache: 'no-store',
@@ -119,7 +145,115 @@ async function latestRelease(slug) {
   return {
     version: String(d.tag_name || '').replace(/^v/i, ''),
     url: d.html_url || null,
+    release: d,                                  // for the Mac app's install check; not sent to the page
   };
+}
+
+// The Mac app's update helper, shipped inside the app (scripts/build-app.mjs).
+function helperPath(root) {
+  const file = root ? path.join(root, 'scripts', 'apply-update.sh') : null;
+  return file && existsSync(file) ? file : null;
+}
+
+// Can the Mac app replace itself where it is? Every fact is read here, on the
+// server; the page sends only which action it wants.
+function macInstall(root) {
+  if (process.platform !== 'darwin') {
+    return { refusal: { code: 'not-mac', message: 'Installing an update from here works only in the Mac app.' } };
+  }
+  const bundle = runningBundle({ app: process.env.SIX_DEGREES_APP, root });
+  const refusal = bundleRefusal(bundle, bundleFacts(bundle))
+    || dataRefusal({ dataDir: dataDir(), bundle })
+    || (helperPath(root) ? null : { code: 'no-helper', message: "This copy doesn't include the update helper, so it can't replace itself." });
+  return { bundle, refusal };
+}
+
+// Updating an installed copy: the Mac app or the npm package.
+//
+//   check-release   one GET to GitHub for the newest release (the spec's
+//                   permitted click). For the Mac app it also says whether that
+//                   release can be installed from here, and if not, why not.
+//   install-release the second click, Mac app only: download, check and stage
+//                   it in the background (lib/updater-job.js), then restart
+//   update-status   how that is going (local, no network)
+//   cancel-install  stop it, until it restarts
+async function installedPost(action, root) {
+  const info = installedInfo(root);
+  // GitHub, or a test's server on 127.0.0.1 (lib/updater.js releaseSource).
+  const source = releaseSource(process.env);
+
+  if (action === 'update-status') return Response.json({ job: currentUpdate() });
+  if (action === 'cancel-install') return Response.json({ job: cancelUpdate() });
+
+  if (action === 'check-release') {
+    if (!info.slug) {
+      return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
+    }
+    try {
+      const latest = await latestRelease(info.slug, source.apiBase);
+      const newer = Boolean(latest && compareVersions(latest.version, info.version) > 0);
+      let install = null;
+      if (newer && info.kind === 'mac-app') {
+        const { refusal } = macInstall(root);
+        const planned = refusal ? null : planFromRelease(latest.release, {
+          currentVersion: info.version, chip: macFacts().chip, slug: info.slug, downloadBase: source.downloadBase,
+        });
+        const reason = refusal?.message || planned?.refusal?.message || null;
+        install = reason ? { possible: false, reason } : { possible: true, size: planned.plan.dmg.size };
+      }
+      return Response.json({
+        ...info,
+        latest: latest && { version: latest.version, url: latest.url },
+        newer,
+        install,
+      });
+    } catch (e) {
+      return Response.json({ error: `Could not reach GitHub (${e.message}). Try again in a moment.` }, { status: 502 });
+    }
+  }
+
+  if (action === 'install-release') {
+    if (info.kind !== 'mac-app') {
+      return Response.json(
+        { error: 'Only the Mac app can install an update itself. Use the line below instead.', command: info.command },
+        { status: 400 },
+      );
+    }
+    if (!info.slug) {
+      return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
+    }
+    const { bundle, refusal } = macInstall(root);
+    if (refusal) {
+      return Response.json({ error: refusal.message, refusal: refusal.code, command: info.command }, { status: 409 });
+    }
+    // Quitting mid-scan would stop it half-way; the job looks again just before it restarts.
+    if (scanIsRunning()) {
+      return Response.json(
+        { error: 'A scan is running. Let it finish or stop it, then install the update.', command: info.command },
+        { status: 409 },
+      );
+    }
+    const mac = macFacts();
+    const started = startUpdate({
+      slug: info.slug,
+      currentVersion: info.version,
+      chip: mac.chip,
+      macosVersion: mac.macosVersion,
+      bundle,
+      dataDir: dataDir(),
+      defaultDataDir: path.join(homedir(), '.six-degrees'),
+      helper: helperPath(root),
+      tmpRoot: tmpdir(),
+      ...updatePaths(),
+      apiBase: source.apiBase,
+      downloadBase: source.downloadBase,
+      scanRunning: scanIsRunning,
+    });
+    if (started.error) return Response.json({ error: started.error, job: started.job }, { status: 409 });
+    return Response.json({ job: started.job }, { status: 202 });
+  }
+
+  return Response.json({ error: 'Not a git checkout.' }, { status: 400 });
 }
 
 export async function GET() {
@@ -147,25 +281,7 @@ export async function POST(request) {
   try { body = await request.json(); } catch {}
   const action = String(body.action || '');
 
-  if (!isGitCheckout()) {
-    if (action !== 'check-release') {
-      return Response.json({ error: 'Not a git checkout.' }, { status: 400 });
-    }
-    const info = installedInfo(root);
-    if (!info.slug) {
-      return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });
-    }
-    try {
-      const latest = await latestRelease(info.slug);
-      return Response.json({
-        ...info,
-        latest,
-        newer: Boolean(latest && compareVersions(latest.version, info.version) > 0),
-      });
-    } catch (e) {
-      return Response.json({ error: `Could not reach GitHub (${e.message}). Try again in a moment.` }, { status: 502 });
-    }
-  }
+  if (!isGitCheckout()) return installedPost(action, root);
 
   if (action === 'check') {
     const fetched = await git(['fetch', '--quiet', 'origin'], root);
