@@ -66,6 +66,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once to keep the old scores as your own: keep all, choose, or no thanks. Not for a new
   database, a CSV import or the sample. Your network is rescored once, automatically, on the
   first load after updating.
+- **The built-in company list reaches well beyond tech and finance.** 112 companies most US
+  professionals would recognise join it, taken from named sources so anyone can check the
+  choice: the household names of the Fortune 100 (CVS Health, Costco, Ford, UPS, State Farm,
+  Verizon, ExxonMobil…); the largest household names in health care, retail, food, hotels,
+  autos, airlines, telecoms, energy, shipping and news (Kaiser Permanente, Mayo Clinic,
+  McDonald's, Marriott, Honda, Delta, DHL, The New York Times…); nine of the ten largest US
+  law firms (Kirkland & Ellis, Latham & Watkins…); the largest private equity firms
+  (Blackstone, KKR, Apollo); and the top 20 national universities (Princeton, Yale, Johns
+  Hopkins…). They're scored on the same 7 to 10 scale as the companies already on it.
+  Nothing already on the list changes, so there's nothing to keep; your network is rescored
+  once, automatically, on the first load after updating. "Home Depot" now counts as a
+  company: it used to be dropped along with phrases like "at home".
 - **Each company has one industry, used everywhere.** The curated list now names each
   company's industry, so Adobe, Pfizer or MIT (no industry word in the name) no longer
   take whatever their people's headlines say. Otherwise the name decides, else what
