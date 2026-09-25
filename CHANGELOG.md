@@ -44,6 +44,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Scores tab.
 
 ### Changed
+- **The Queue and the person panel go by company scores, not a list of names.** Both kept
+  their own list of one person's favourite companies (Snap, Polymarket, Whatnot…), matched
+  anywhere in a headline: "Metadata Analyst" counted as Meta, "Snapdragon" as Snap, and an
+  ex-Googler as someone at Google. Now the Queue adds its +1 when the company someone's
+  score is built on scores 8 or more, once, and the panel's "top-tier company" and "former"
+  notes name a company that scores 8 or more, with its score. That's the curated list's
+  major companies and up, or any company you score that high on Paths → Scores or lift there
+  with *Your sector*.
 - **Built-in company scores are the same for everyone.** The built-in list of well-known
   companies, which every network's scores start from, held some personal and regional
   picks: Snap at 9 as "home turf", UCF at 5 as a "local institution", and a group of 6s

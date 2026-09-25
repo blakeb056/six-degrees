@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   readTitle, cleanCompany, currentCompany, companyScore, reachBonus, scorePerson, scoreNetwork, bridgeBoost, tierFor,
   explainScore, companyIndustry, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
+  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies,
 } from '../lib/scoring.js';
 
 const key = (h) => readTitle(h).key;
@@ -427,4 +428,57 @@ test('a network read once scores exactly like one read afresh, however many ways
     assert.deepEqual(reused.companyScores, fresh.companyScores);
   }
   assert.ok([...scoreNetwork(rows, { read }).scores.values()].some((s) => s.boost > 0), 'the circles are big enough to boost');
+});
+
+// ── what the views read ─────────────────────────────────────────────────────
+// The Queue's order and the person panel's notes used to keep their own lists
+// of famous names, matched anywhere in a headline. They read the model's
+// company scores instead (lib/scoring.js is the only model).
+
+// A row as rescoring stores it (lib/rpc.js): the title points and company score it was scored with.
+const asStored = (row, companyFor) => {
+  const s = scorePerson(row, companyFor);
+  return { ...row, seniority_score: s.title.points, company_prestige_score: s.companyScore };
+};
+
+test('views read the company score a row was scored with, or the list\'s for a row not scored yet', () => {
+  assert.equal(TOP_COMPANY, 8);
+  assert.equal(rowCompanyScore(asStored({ headline: 'VP at Google' })), 10);
+  assert.equal(rowCompanyScore({ headline: 'VP at Google' }), 10);
+  assert.equal(rowCompanyScore({ headline: 'VP at Google', company_prestige_score: 0 }), 10);   // 0: not scored yet
+  // A score you set and your sector are in what was stored.
+  assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) }))), 9);
+  assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { headcount: 20, industry: 'tech', focus: strong('tech') }))), 8);
+  // A famous name inside another word or another company's name is not that company.
+  assert.equal(rowCompanyScore(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 4);
+  assert.equal(rowCompanyScore(asStored({ headline: "Director at Applebee's" })), 4);
+});
+
+test('the company a score is built on: its strongest role\'s, current or former, found by the stored title points', () => {
+  assert.deepEqual(scoredCompany(asStored({ headline: 'VP at Google | Ex-Manager at Discord' })), { name: 'Google', score: 10, former: false });
+  assert.deepEqual(scoredCompany(asStored({ headline: 'Consultant | Ex-Manager at Discord' })), { name: 'Discord', score: 7, former: true });
+  // Your score for Quillon makes the current role the strongest; the list alone would say Google.
+  const quillon8 = (n) => companyScore(n, { overrides: new Map([['Quillon', 8]]) });
+  const row = asStored({ headline: 'Manager at Quillon | Ex-Manager at Google' }, quillon8);
+  assert.deepEqual(scoredCompany(row), { name: 'Quillon', score: 8, former: false });
+  assert.equal(scorePerson({ headline: row.headline }).company, 'Google');
+  // Two roles with the same points: the one scored as stored.
+  assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Quillon | Founder at Google' })), { name: 'Google', score: 10, former: false });
+  // Not scored yet: the list alone.
+  assert.deepEqual(scoredCompany({ headline: 'Consultant | Ex-Manager at Discord' }), { name: 'Discord', score: 7, former: true });
+  assert.deepEqual(scoredCompany({ headline: 'Building cool things' }), { name: null, score: 3, former: false });
+});
+
+test('the panel\'s top companies: where someone is now and was before, by the model\'s scores', () => {
+  const tops = (headline, companyFor) => topCompanies(asStored({ headline }, companyFor));
+  assert.deepEqual(tops('VP at Google'), { now: { name: 'Google', score: 10 }, before: null });
+  assert.deepEqual(tops('Stealth | Ex-Google'), { now: null, before: { name: 'Google', score: 10 } });
+  assert.deepEqual(tops('Founder at Quillon | Ex-Director at Snap'), { now: null, before: { name: 'Snap', score: 8 } });
+  assert.deepEqual(tops('VP at Google | Ex-Manager at Google'), { now: { name: 'Google', score: 10 }, before: null });
+  assert.deepEqual(tops('Designer at Quillon | Ex-Director at Discord'), { now: null, before: null });    // 7 isn't top
+  // What the lists got wrong: a name inside another word, and a company that isn't famous but is top to you.
+  assert.deepEqual(tops('Snapdragon Engineer at Qualcomm'), { now: { name: 'Qualcomm', score: 8 }, before: null });
+  assert.deepEqual(tops('Metadata Analyst at Pinecrest Foods'), { now: null, before: null });
+  assert.deepEqual(tops('Founder at Quillon', (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) })),
+    { now: { name: 'Quillon', score: 9 }, before: null });
 });
