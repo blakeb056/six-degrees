@@ -503,7 +503,7 @@ test('a network read once scores exactly like one read afresh, however many ways
 // A row as rescoring stores it (lib/rpc.js): the title points and company score it was scored with.
 const asStored = (row, companyFor) => {
   const s = scorePerson(row, companyFor);
-  return { ...row, seniority_score: s.title.points, company_prestige_score: s.companyScore };
+  return { ...row, seniority_score: s.title.points, company_prestige_score: s.companyScore, score_why: explainScore(s) };
 };
 
 test('views read the company score a row was scored with, or the list\'s for a row not scored yet', () => {
@@ -529,6 +529,9 @@ test('the company a score is built on: its strongest role\'s, current or former,
   assert.equal(scorePerson({ headline: row.headline }).company, 'Google');
   // Two roles with the same points: the one scored as stored.
   assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Quillon | Founder at Google' })), { name: 'Google', score: 10, former: false });
+  // …which the stored working names when your own score made the second one stronger.
+  const beta9 = (n) => companyScore(n, { overrides: new Map([['Beta Labs', 9]]) });
+  assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Acme Widgets | Founder at Beta Labs' }, beta9)), { name: 'Beta Labs', score: 9, former: false });
   // Not scored yet: the list alone.
   assert.deepEqual(scoredCompany({ headline: 'Consultant | Ex-Manager at Discord' }), { name: 'Discord', score: 7, former: true });
   assert.deepEqual(scoredCompany({ headline: 'Building cool things' }), { name: null, score: 3, former: false });
@@ -546,4 +549,10 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   assert.deepEqual(tops('Metadata Analyst at Pinecrest Foods'), { now: null, before: null });
   assert.deepEqual(tops('Founder at Quillon', (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) })),
     { now: { name: 'Quillon', score: 9 }, before: null });
+  // Two current roles alike, your score on the second: the panel names the one the score came from.
+  assert.deepEqual(tops('Founder at Acme Widgets | Founder at Beta Labs', (n) => companyScore(n, { overrides: new Map([['Beta Labs', 9]]) })),
+    { now: { name: 'Beta Labs', score: 9 }, before: null });
+  // And your sector's lift, on the second of two equal roles.
+  const hooli = (n) => companyScore(n, n === 'Hooli Health' ? { headcount: 15, industry: 'health', industryFrom: 'name', focus: strong('health') } : {});
+  assert.deepEqual(tops('Founder at Acme Widgets | Founder at Hooli Health', hooli), { now: { name: 'Hooli Health', score: 8 }, before: null });
 });
