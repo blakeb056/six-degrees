@@ -47,6 +47,15 @@ export async function startTestReleaseServer({ slug, port = 0, release = null } 
   const tagOf = (r) => r.tag || `v${r.version}`;
 
   const server = createServer((req, res) => {
+    try {
+      handle(req, res);
+    } catch (err) {
+      // A file that went missing, say: answer like a failing server, don't die.
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(String(err.message));
+    }
+  });
+  function handle(req, res) {
     requests.push(`${req.method} ${req.url}`);
     const r = current;
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -85,7 +94,7 @@ export async function startTestReleaseServer({ slug, port = 0, release = null } 
       return res.end(body);
     }
     return send(404, JSON.stringify({ message: 'Not Found' }));
-  });
+  }
   server.on('connection', (socket) => { open.add(socket); socket.on('close', () => open.delete(socket)); });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
