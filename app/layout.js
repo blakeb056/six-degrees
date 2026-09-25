@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "6 Degrees of Separation — LinkedIn Network Research",
-  description: "Visualizing the six degrees of separation hypothesis through LinkedIn connection analysis. A certified research project mapping power networks.",
+  title: "Six Degrees",
+  description: "Maps your LinkedIn network: who you know, who they know, and the shortest path to someone you haven't met. Runs on your own computer; nothing is uploaded.",
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 

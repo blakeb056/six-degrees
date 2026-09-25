@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 
 // Nothing here runs on its own. The spec forbids a silent update check, and
 // this respects that: the first network call happens when someone presses
-// "Check for updates". Loading the panel only reads the local git state.
+// "Check for updates", here or in the Mac app's menu (which opens this page at
+// /setup?check=updates — the same click, made from the menu). Loading the panel
+// only reads the local state.
 
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
@@ -77,7 +79,7 @@ export default function UpdatePanel() {
             You are on <Mono>{local.sha}</Mono> — “{local.subject}”.
           </Body>
 
-          {result && result.behind === 0 && <Body>Up to date.</Body>}
+          {result && result.behind === 0 && <Status ok>You&rsquo;re up to date.</Status>}
 
           {result && result.behind > 0 && (
             <>
@@ -127,9 +129,22 @@ function InstalledUpdates({ local }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [checkedAt, setCheckedAt] = useState(null);
+
+  // Opened from the menu's "Check for Updates…": bring the panel into view and
+  // run the check that click asked for.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('check') !== 'updates') return;
+    const panel = () => document.getElementById('updates');
+    panel()?.scrollIntoView({ block: 'center' });
+    check().then(() => panel()?.scrollIntoView({ block: 'end', behavior: 'smooth' }));
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
 
   async function check() {
     setBusy(true);
+    setResult(null);
     setError(null);
     try {
       const r = await fetch('/api/update', {
@@ -139,7 +154,7 @@ function InstalledUpdates({ local }) {
       });
       const d = await r.json();
       if (!r.ok) setError(d.error || 'Could not check.');
-      else setResult(d);
+      else { setResult(d); setCheckedAt(new Date()); }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -168,8 +183,13 @@ function InstalledUpdates({ local }) {
       <Title>Updates</Title>
       <Body>You have version <Mono>{local.version}</Mono>.</Body>
 
-      {result && !result.latest && <Body>No release has been published yet.</Body>}
-      {result?.latest && !result.newer && <Body>That is the newest version.</Body>}
+      {result && !result.latest && <Status>No release has been published yet.</Status>}
+      {result?.latest && !result.newer && (
+        <Status ok>
+          You&rsquo;re up to date: {result.latest.version} is the newest version.
+          {checkedAt && <span style={{ color: '#8b9a9a' }}> Checked at {checkedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</span>}
+        </Status>
+      )}
 
       {result?.newer && (
         <>
@@ -190,7 +210,7 @@ function InstalledUpdates({ local }) {
 
       {!result?.newer && (
         <div style={{ marginTop: 12 }}>
-          <Btn onClick={check} disabled={busy}>{busy ? 'Checking…' : 'Check for updates'}</Btn>
+          <Btn onClick={check} disabled={busy}>{busy ? 'Checking…' : result ? 'Check again' : 'Check for updates'}</Btn>
         </div>
       )}
 
@@ -213,7 +233,18 @@ const pre = {
 
 function Wrap({ children }) {
   return (
-    <div style={{ marginTop: 32, paddingTop: 24, borderTop: LINE }}>{children}</div>
+    <div id="updates" style={{ marginTop: 32, paddingTop: 24, borderTop: LINE }}>{children}</div>
+  );
+}
+// The answer to a check, where it can't be missed.
+function Status({ children, ok }) {
+  return (
+    <div role="status" style={{
+      marginTop: 10, padding: '10px 14px', borderRadius: 8, fontSize: 13.5, lineHeight: 1.6,
+      color: ok ? '#00ff88' : '#e8e8ee',
+      background: ok ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.05)',
+      border: `1px solid ${ok ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.12)'}`,
+    }}>{ok && '✓ '}{children}</div>
   );
 }
 function Title({ children }) {
