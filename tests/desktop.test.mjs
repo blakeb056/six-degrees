@@ -79,3 +79,27 @@ test('--data-dir lets a beta run against a copy of the data', () => {
   assert.equal(dataDirArg(['x', '--data-dir=/tmp/copy']), '/tmp/copy');
   assert.equal(dataDirArg(['x', '-psn_0_12345']), null);
 });
+
+test('a relative --data-dir is made absolute against the folder the app was started from', () => {
+  // The server runs from its own folder inside the app, so a relative path
+  // handed over as typed named a different, empty folder.
+  const home = '/Users/someone';
+  assert.equal(dataDirArg(['x', '--data-dir', 'copy'], { cwd: '/Users/someone/work', home }), '/Users/someone/work/copy');
+  assert.equal(dataDirArg(['x', '--data-dir=../copy'], { cwd: '/Users/someone/work', home }), '/Users/someone/copy');
+  assert.equal(dataDirArg(['x', '--data-dir', '/tmp/copy'], { cwd: '/Users/someone/work', home }), '/tmp/copy');
+  assert.equal(dataDirArg(['x', '--data-dir='], { cwd: '/Users/someone/work', home }), null);
+});
+
+test('opened with `open` (which starts apps in /), a relative --data-dir is taken from the home folder', () => {
+  const home = '/Users/someone';
+  assert.equal(dataDirArg(['x', '--data-dir', 'copy'], { cwd: '/', home }), '/Users/someone/copy');
+  assert.equal(dataDirArg(['x', '--data-dir', '/Volumes/Backup/copy'], { cwd: '/', home }), '/Volumes/Backup/copy');
+});
+
+test('a leading ~ in --data-dir is the home folder, even after = where the shell leaves it alone', () => {
+  const home = '/Users/someone';
+  assert.equal(dataDirArg(['x', '--data-dir=~/copy'], { cwd: '/Users/someone/work', home }), '/Users/someone/copy');
+  assert.equal(dataDirArg(['x', '--data-dir', '~'], { cwd: '/', home }), '/Users/someone');
+  // Only "~" and "~/": "~other" is somebody else's home, left as a plain name.
+  assert.equal(dataDirArg(['x', '--data-dir=~other'], { cwd: '/Users/someone/work', home }), '/Users/someone/work/~other');
+});

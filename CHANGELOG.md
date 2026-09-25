@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
 
+### Fixed
+- **A relative `--data-dir` stays where you meant it.** `npx six-degrees --data-dir
+  my-network` used to keep that network inside npm's own cache (the server runs from the
+  package's folder), where clearing the cache deleted it; the Mac app looked for it inside
+  the app. It's now the folder from where you ran the command, the home folder when the
+  Mac app is opened with `open`, and `--data-dir=~/copy` means your home folder too.
+
 ### Security
 - **Pages on other local ports can no longer send the app commands.** The check that refuses
   writes from other websites trusted the browser's "same-site" label. A site ignores the

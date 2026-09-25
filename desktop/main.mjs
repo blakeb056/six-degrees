@@ -32,7 +32,8 @@ const REPO = path.resolve(HERE, '..'); // only meaningful when run from a checko
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(REPO, '.next', 'standalone');
 const NODE = app.isPackaged ? path.join(process.resourcesPath, 'node') : (process.env.SIX_DEGREES_NODE || 'node');
 const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/scrape.py
-const DATA_DIR = dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees');
+// Absolute before it reaches the server, which runs from its own folder.
+const DATA_DIR = path.resolve(dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees'));
 const LOG = path.join(os.tmpdir(), 'six-degrees.log');
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const SMOKE = process.env.SIX_DEGREES_SMOKE === '1';

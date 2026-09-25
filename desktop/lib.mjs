@@ -2,6 +2,8 @@
 // can run them directly (tests/desktop.test.mjs). main.mjs wires them up.
 
 import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 
 const sleepFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -129,12 +131,28 @@ export function stopProcess(child, { graceMs = 5000 } = {}) {
  * A data folder asked for on the command line: `--data-dir PATH` or
  * `--data-dir=PATH`. It lets a beta run against a copy of the data:
  *   open "Six Degrees.app" --args --data-dir ~/six-degrees-copy
+ *
+ * Made absolute here. The server runs in its own folder inside the app, so a
+ * relative path handed to it as it is would name a different folder, and a
+ * new, empty network. A relative path is taken from the folder the app was
+ * started in, except /: `open` and the Finder start every app in /, which
+ * can't hold a folder, so there it is taken from the home folder. A leading ~
+ * is the home folder, as the shell would have made it (it doesn't after =).
  */
-export function dataDirArg(argv = []) {
+export function dataDirArg(argv = [], { cwd = process.cwd(), home = os.homedir() } = {}) {
+  let value = null;
   for (let i = 0; i < argv.length; i++) {
     const arg = String(argv[i]);
-    if (arg.startsWith('--data-dir=')) return arg.slice('--data-dir='.length) || null;
-    if (arg === '--data-dir' && argv[i + 1]) return String(argv[i + 1]);
+    if (arg.startsWith('--data-dir=')) {
+      value = arg.slice('--data-dir='.length);
+      break;
+    }
+    if (arg === '--data-dir' && argv[i + 1]) {
+      value = String(argv[i + 1]);
+      break;
+    }
   }
-  return null;
+  if (!value) return null;
+  const expanded = value === '~' ? home : value.startsWith('~/') ? path.join(home, value.slice(2)) : value;
+  return path.resolve(cwd === '/' ? home : cwd, expanded);
 }

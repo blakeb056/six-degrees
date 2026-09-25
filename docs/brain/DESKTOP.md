@@ -97,6 +97,10 @@ Contents/Resources/python/      from D2
       (TRAPS §38). Checked: quit mid-job with another app in front, and job, server and app
       were gone in about 2 seconds.
 - [x] One copy at a time: opening it again brings the window forward (checked).
+- [x] `--data-dir` is made absolute where it is parsed (`dataDirArg`): against the folder
+      the app was started in, or the home folder when that is `/` (as with `open` and the
+      Finder), with `~` expanded. Handed over as typed, a relative path named a folder
+      inside the app, where the server runs, and so a new, empty network.
 - [x] Links: anything not on the app's own address opens in the default browser (rule 7);
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,
