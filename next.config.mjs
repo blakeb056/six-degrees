@@ -32,6 +32,17 @@ const nextConfig = {
   // node:sqlite is a built-in, but bundling would rewrite the import; leave it
   // to be required at runtime.
   serverExternalPackages: ['node:sqlite'],
+
+  experimental: {
+    // middleware.js makes Next buffer every /api request body so both it and the
+    // route can read it, and past 10 MB it keeps only the first 10 MB, with a
+    // console warning and no error. An import (Settings → Your data) is one
+    // file of about 5-25 MB, so it would arrive cut short. This is the most an
+    // import accepts (MAX_IMPORT_BYTES in lib/data-import.js); the route also
+    // compares what arrived with the size the page declared. Only a body this
+    // big costs this much memory; everything else is a few KB.
+    proxyClientMaxBodySize: '512mb',
+  },
 };
 
 export default nextConfig;

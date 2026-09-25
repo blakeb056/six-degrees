@@ -156,3 +156,29 @@ export function dataDirArg(argv = [], { cwd = process.cwd(), home = os.homedir()
   const expanded = value === '~' ? home : value.startsWith('~/') ? path.join(home, value.slice(2)) : value;
   return path.resolve(cwd === '/' ? home : cwd, expanded);
 }
+
+/**
+ * The exit code with which the server asks to be started again, to finish an
+ * import (Settings → Your data). main.mjs hands it to the server as
+ * SIX_DEGREES_RESTART_CODE, so only a shell that knows it offers the button.
+ * 75 is EX_TEMPFAIL: "try again". Next ends with 143 on SIGTERM, so a signal
+ * can never be mistaken for it.
+ */
+export const RESTART_EXIT_CODE = 75;
+
+/**
+ * What the shell does when its server ends:
+ *   'ignore'   the app is quitting anyway
+ *   'quit'     stopped by a signal from outside (the installer replacing this
+ *              copy, or the system): the whole app is going, so go quietly
+ *   'restart'  it asked to be started again (RESTART_EXIT_CODE)
+ *   'crash'    any other exit: say so out loud
+ * Asking again within `minGapMs` of the last restart counts as a crash, so a
+ * server that can't stay up is reported rather than started forever.
+ */
+export function serverExitAction({ code, signal, quitting = false, lastRestartAt = 0, now = Date.now(), minGapMs = 15000 }) {
+  if (quitting) return 'ignore';
+  if (signal) return 'quit';
+  if (code === RESTART_EXIT_CODE) return now - lastRestartAt < minGapMs ? 'crash' : 'restart';
+  return 'crash';
+}

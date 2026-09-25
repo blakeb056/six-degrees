@@ -17,8 +17,10 @@
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
 | `app/settings/page.js` | Settings: Updates (`UpdatePanel`), About this copy, and a `<Section>` per feature that adds a setting. Reached from the ⚙ button and *Six Degrees → Settings…* (⌘,). |
 | `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
+| `app/components/settings/DataSection.js` | Settings → Your data: the data folder (path, *Copy*, *Show in Finder*), what it takes up, the backups, and moving the network to another computer (save a copy, import one, restart to finish). Only asks the server, on a click; the work is in `lib/data-*.js`. |
 | `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. |
-| `app/api/*` | 19 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/api/*` | 24 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
+| `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. |
 | `middleware.js` | Refuses cross-site writes on all of `/api`, then applies the destructive-route gate. |
@@ -59,10 +61,10 @@
 | `bin/args.mjs` | Its command line, testable on its own. `--data-dir` is made absolute (and `~` expanded) here, before the launcher moves into the package's folder. |
 | `.github/workflows/npm-package.yml` | Builds the npm package for a tag on Linux, installs it from the tarball and checks that it serves the app. Publishes nothing. Used for the package's **first** publish, which has to be done by hand, because npm's trusted publishing (release.yml) needs the package to exist. |
 | `site/` | The download website, https://blakeb056.github.io/six-degrees/ (plain HTML, CSS and JS, no build). `.github/workflows/pages.yml` publishes it with the README's screenshots, 1200px copies of them, and the app icon. Its claims must match the README; it was reviewed against it. |
-| `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit. |
-| `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan), tested in `tests/desktop.test.mjs`. |
+| `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit, and starts the server again when it exits with 75 (to finish an import). |
+| `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan, `--data-dir`, what a server exit means), tested in `tests/desktop.test.mjs`. |
 | `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). Used by `build-app.mjs` (the `.icns`), `pages.yml` (the website), the README header, and `scripts/readme_buttons.py` (saved into the button pictures, so rerun it after a change). |
-| `tests/*.test.mjs` | About 150 tests on `node --test`. No test framework dependency. |
+| `tests/*.test.mjs` | About 230 tests on `node --test`. No test framework dependency. |
 
 ## Data directory
 

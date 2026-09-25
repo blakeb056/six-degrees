@@ -5,13 +5,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gateDecision, isDestructive, boundToLoopback } from '../lib/gate.js';
+import { gateDecision, isDestructive, boundToLoopback, DESTRUCTIVE_ROUTES } from '../lib/gate.js';
 
-test('only the four destructive routes are gated', () => {
-  for (const p of ['/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile']) {
-    assert.equal(isDestructive(p), true, p);
-  }
-  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import']) {
+test('exactly these routes are gated; everything else, reads included, is not', () => {
+  const gated = [
+    '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
+    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal',
+  ];
+  for (const p of gated) assert.equal(isDestructive(p), true, p);
+  // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
+  assert.deepEqual([...DESTRUCTIVE_ROUTES].sort(), [...gated].sort());
+  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import', '/api/settings', '/api/data']) {
     assert.equal(isDestructive(p), false, p);
   }
 });
@@ -163,4 +167,17 @@ test('a server bound elsewhere is left to its ADMIN_TOKEN', () => {
 
 test('a client that sends no Host is not judged', () => {
   assert.equal(isRebound({ bind: '127.0.0.1', host: null }), false);
+});
+
+test('Settings → Your data: export, import, restart and reveal are gated; reading the folder’s sizes is not', () => {
+  // Export hands over the whole network in one file, import replaces it,
+  // restart stops the server, and reveal starts a process. None of them may be
+  // reachable from another machine. GET /api/data changes nothing.
+  for (const p of ['/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal']) {
+    assert.equal(isDestructive(p), true, p);
+  }
+  assert.equal(isDestructive('/api/data'), false);
+  assert.equal(isDestructive('/api/database'), false);
+  // A cancelled import is a DELETE from the page: a write, so the cross-site rule applies.
+  assert.equal(isCrossSiteWrite({ method: 'DELETE', secFetchSite: 'cross-site', host: '127.0.0.1:6363' }), true);
 });

@@ -13,6 +13,9 @@
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
 //   again   opening the app while it runs brings its window forward
+//   restart the server can ask to be started again (exit code 75, to finish
+//           an import from Settings → Your data): the window shows the
+//           "starting" page meanwhile and comes back to Settings
 //
 // For CI: SIX_DEGREES_SMOKE=1 prints "SIX_DEGREES_READY <address>" once the app
 // has drawn, and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
@@ -25,6 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  RESTART_EXIT_CODE, serverExitAction,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +48,7 @@ let ready = false;   // the server has answered
 let win = null;
 let quitting = false;
 let pendingPath = null; // a menu choice made before the server answered
+let lastRestartAt = 0;  // when the server last asked to be started again
 
 app.setName('Six Degrees');
 app.enableSandbox();
@@ -67,11 +72,15 @@ async function start() {
     copyright: 'Runs on this computer only. MIT licence.',
   });
   showWindow(); // the "starting" page, until the server answers
+  await startServer(await findFreePort(), { logMode: 'w' });
+}
 
-  const port = await findFreePort();
+// The server on `port`. Also how it is started again when it asks to: an
+// import (Settings → Your data) is finished as the server starts.
+async function startServer(port, { logMode }) {
   origin = `http://127.0.0.1:${port}`;
-  const log = openSync(LOG, 'w');
-  server = spawn(NODE, [path.join(SERVER_DIR, 'server.js')], {
+  const log = openSync(LOG, logMode);
+  const child = spawn(NODE, [path.join(SERVER_DIR, 'server.js')], {
     cwd: SERVER_DIR,
     env: {
       ...process.env,
@@ -81,28 +90,55 @@ async function start() {
       NEXT_TELEMETRY_DISABLED: '1',
       SIX_DEGREES_ROOT: ROOT,
       SIX_DEGREES_HOME: DATA_DIR,
+      // Tells the server this shell starts it again when it exits with this
+      // code, so Settings can offer "Restart now".
+      SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE),
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
     },
     stdio: ['ignore', log, log],
   });
   closeSync(log);
-  server.on('exit', (code, signal) => {
-    if (quitting) return;
-    // Stopped by a signal from outside (the installer replacing this copy, or
-    // the system): the whole app is going, so go quietly. A crash (an exit
-    // code) is worth saying out loud.
-    if (signal) {
+  server = child;
+  child.on('exit', (code, signal) => {
+    // What to do is decided in lib.mjs (tested): a signal from outside quits
+    // quietly, the restart code starts it again, any other exit is a crash
+    // and is said out loud.
+    const action = serverExitAction({ code, signal, quitting, lastRestartAt, now: Date.now() });
+    if (action === 'ignore') return;
+    if (action === 'quit') {
       quitting = true;
       app.exit(0);
+      return;
+    }
+    if (action === 'restart') {
+      restartServer(port);
       return;
     }
     fail('Six Degrees stopped', new Error(`Its server exited (code ${code}).`));
   });
 
-  await waitForServer(origin, { isAlive: () => server.exitCode === null && server.signalCode === null });
+  await waitForServer(origin, { isAlive: () => child.exitCode === null && child.signalCode === null });
   ready = true;
   if (win) win.loadURL(origin + (pendingPath || ''));
   pendingPath = null;
+}
+
+// The server asked to be started again. The same port if it is still free, so
+// the page's own storage (kept per address) carries on. Meanwhile the window
+// shows the starting page, and then comes back to Settings → Your data, where
+// the finished import is reported.
+async function restartServer(port) {
+  lastRestartAt = Date.now();
+  ready = false;
+  pendingPath = '/settings#data';
+  if (win) win.loadFile(path.join(HERE, 'starting.html'));
+  try {
+    const again = await findFreePort(port, port).catch(() => findFreePort());
+    if (quitting) return; // quit while the port was being found: start nothing
+    await startServer(again, { logMode: 'a' });
+  } catch (err) {
+    fail('Six Degrees could not restart', err);
+  }
 }
 
 function showWindow() {

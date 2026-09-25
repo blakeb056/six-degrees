@@ -11,7 +11,8 @@ import { isDestructive, gateDecision, isCrossSiteWrite, isRebound } from './lib/
 //    by the browser and cannot be forged from script; curl and the scraper send
 //    no such header and are unaffected.
 //
-// 2. The four routes that irreversibly destroy or rewrite data. Allowed when the
+// 2. The routes that destroy, replace or hand over data, start processes, or
+//    change the code (DESTRUCTIVE_ROUTES in lib/gate.js). Allowed when the
 //    server is bound to loopback, since the operator can open the SQLite file
 //    directly anyway; otherwise ADMIN_TOKEN is required and they fail closed.
 //    The rule lives in lib/gate.js and is covered by tests/gate.test.mjs.

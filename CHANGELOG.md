@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   your network is kept. What you choose there is saved with your network, so it travels
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
+- **Settings → Your data.** Where your network is kept, with *Copy the path* and *Show in
+  Finder*; what it takes up (your network, profile photos, backups); every backup with its
+  date and why it was made; and whether a LinkedIn sign-in is kept here. The folder can't be
+  moved from the app, and the page says why.
+- **Move your network to another computer.** *Save a copy of my network* makes one
+  `.sixdegrees` file: your network, your settings, the scanner's progress, skip lists and
+  LinkedIn budget, and your profile photos unless you untick them. Your LinkedIn sign-in is
+  never in it; you sign in again on the new computer. There, *Import* checks the file first
+  and changes nothing if it isn't a whole, untouched copy from this version or an older
+  one. It replaces the network there (nothing is merged, and a network that has people
+  asks you to confirm how many it replaces) the next time Six Degrees starts, after keeping
+  a copy of what was there in `backups/`. The Mac app does that with *Restart now*; with
+  `npx six-degrees`, stop it and start it again. Refused while a scan runs, and scans wait
+  until the import is finished.
 
 ### Fixed
 - **A relative `--data-dir` stays where you meant it.** `npx six-degrees --data-dir
@@ -31,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own origin, so the page could read `/api/network` and the photos, and send writes. While
   the app is bound to loopback, requests to `/api` and `/avatars` must now be addressed to
   `127.0.0.1`, `localhost` or `[::1]`; any other name gets a 421.
+- The four new actions in Settings → Your data (save a copy, import, restart, show the
+  folder) are gated like the routes that delete data or start processes: never reachable
+  from another machine. An imported file is treated as untrusted and checked in full before
+  anything changes ([SECURITY.md](SECURITY.md)).
 
 ## [0.2.1] - 2026-09-25
 

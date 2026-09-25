@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
-import { routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg } from '../desktop/lib.mjs';
+import {
+  routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  RESTART_EXIT_CODE, serverExitAction,
+} from '../desktop/lib.mjs';
 
 const ORIGIN = 'http://127.0.0.1:6364';
 const noSleep = async () => {};
@@ -102,4 +105,27 @@ test('a leading ~ in --data-dir is the home folder, even after = where the shell
   assert.equal(dataDirArg(['x', '--data-dir', '~'], { cwd: '/', home }), '/Users/someone');
   // Only "~" and "~/": "~other" is somebody else's home, left as a plain name.
   assert.equal(dataDirArg(['x', '--data-dir=~other'], { cwd: '/Users/someone/work', home }), '/Users/someone/work/~other');
+});
+
+test('when the server ends: a signal quits quietly, the restart code starts it again, anything else is a crash', () => {
+  assert.equal(serverExitAction({ code: null, signal: 'SIGTERM' }), 'quit');
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, now: 100000 }), 'restart');
+  assert.equal(serverExitAction({ code: 1, signal: null }), 'crash');
+  // Next ends with 143 when the server itself gets SIGTERM: never a restart.
+  assert.notEqual(serverExitAction({ code: 143, signal: null, now: 100000 }), 'restart');
+  // Quitting anyway: nothing to report, nothing to restart.
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, signal: null, quitting: true }), 'ignore');
+  assert.equal(serverExitAction({ code: 1, signal: null, quitting: true }), 'ignore');
+  // Asking again straight after a restart means it can't stay up: say so.
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, lastRestartAt: 100000, now: 105000 }), 'crash');
+  assert.equal(serverExitAction({ code: RESTART_EXIT_CODE, lastRestartAt: 100000, now: 200000 }), 'restart');
+});
+
+test('the restart code the shell hands its server is one the server accepts', async () => {
+  // main.mjs passes RESTART_EXIT_CODE as SIX_DEGREES_RESTART_CODE; the server
+  // (lib/data-import.js) exits with it. The two can't share a module (the server
+  // never imports desktop/), so this keeps them agreeing.
+  const { restartCodeFrom } = await import('../lib/data-import.js');
+  assert.equal(RESTART_EXIT_CODE, 75);
+  assert.equal(restartCodeFrom({ SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE) }), RESTART_EXIT_CODE);
 });
