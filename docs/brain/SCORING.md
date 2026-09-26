@@ -260,8 +260,10 @@ no longer read as Snap. UnitedHealthcare, OptumRx and Sirius XM now read as thei
 - Companies run apart keep their own names: Hewlett Packard Enterprise, Merck KGaA, Merck
   Millipore, Berkshire Hathaway HomeServices (franchised brokerages), Hilton Grand Vacations,
   Lowes Foods, Chevron Phillips Chemical, Siemens Energy and Siemens Healthineers, Uber
-  Freight and Warner Music Group aren't HP, Merck, Berkshire Hathaway, Hilton, Lowe's,
-  Chevron, Siemens, Uber or Warner Bros. Discovery.
+  Freight, Warner Music Group, and Mitsubishi UFJ (a bank), Mitsubishi HC Capital and
+  Mitsubishi Estate aren't HP, Merck, Berkshire Hathaway, Hilton, Lowe's, Chevron, Siemens,
+  Uber, Warner Bros. Discovery or Mitsubishi. Mitsubishi's makers (Mitsubishi Corporation,
+  Heavy Industries, Electric, Motors) still read as Mitsubishi.
 - A university takes in its name alone or with "University" and the schools named with it
   (Yale School of Management, Columbia Business School, Stanford GSB, Harvard Kennedy School;
   `university()` in `lib/scoring.js`), and nothing else: a hospital, a health system, a lab
@@ -403,15 +405,21 @@ and finds every company anyone names, a former employer included, with its headc
 industry. `scoreNetwork(rows, {read})` then scores that read with no parsing, so the
 preview and a save score one read twice for about the price of once.
 
+Paths groups people under the names scoring gives companies (`companyOf()` is
+`currentCompany()`, so every name comes from `cleanCompany()`): each bubble, list row and
+"way in" is the company a score is built on, and there is one list of companies, the curated
+one. Until September 2026 Paths merged names by a second, hand-picked list of its own
+(`normalizeCompany`, about 77 substring rules, one person's picks among them), which also
+folded other companies in: Oxford, Hartford and Bradford were Ford, Bainbridge was Bain, and
+Mitsubishi UFJ, a bank, was "Mitsubishi Power". Names that list merged and the curated one
+doesn't ("Navy Federal Credit Union" and "Navy Federal") are now two, like any other company
+written two ways; a company worth merging belongs on the curated list.
+
 Where Paths' colour can still differ from the industry scoring uses:
 
 - **Two profiles in one database.** The server votes over every row it holds; Paths only
   sees the profile on screen. A company whose people mostly belong to the other profile can
   vote differently.
-- **Names Paths merges and scoring doesn't** (`normalizeCompany`: "BNY Mellon" and "BNY",
-  or a loose rule that folds two companies into one). Paths looks the merged name up as
-  scoring would write it, which usually lands on the same answer, but a wrong merge shows
-  the other company's industry.
 
 ## Your sector (Settings)
 

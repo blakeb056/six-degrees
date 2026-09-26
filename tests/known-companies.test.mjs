@@ -182,6 +182,7 @@ const CLOSED = {
   'Red Bull': ['Red Bull', 'Red Bull North America', 'Red Bull Racing'],
   'Warner Bros. Discovery': ['Warner Bros. Discovery', 'Warner Bros', 'Warner Brothers', 'Warner Bros Games', 'WarnerMedia', 'Warner Media', 'WBD'],
   Siemens: ['Siemens', 'Siemens USA', 'Siemens Digital Industries Software'],
+  Mitsubishi: ['Mitsubishi', 'Mitsubishi Corporation', 'Mitsubishi Heavy Industries', 'Mitsubishi Electric', 'Mitsubishi Motors'],
   Toyota: ['Toyota', 'Toyota Motor North America', 'Toyota Motor Manufacturing Kentucky', 'Toyota Financial Services', 'Toyota Research Institute'],
   'Johnson & Johnson': ['Johnson & Johnson', 'Johnson and Johnson', 'J&J', 'Johnson & Johnson MedTech'],
   UnitedHealth: ['UnitedHealth', 'UnitedHealth Group', 'UnitedHealthcare', 'United Healthcare', 'Optum', 'OptumRx'],
@@ -266,7 +267,8 @@ const NOT_LISTED = [
   'Citi Trends', 'Citi Field', 'Merrill Gardens', 'Merck Millipore', 'Campbell Clinic', 'Campbell Scientific',
   'Paramount Residential Mortgage Group', 'Paramount Group', 'Nielsen Norman Group', 'NielsenIQ', 'Chase Brass', 'Chase Design Studio',
   'Goldman Properties', 'Sequoia Health', 'Sequoia Consulting Group', 'Adobe Dental', 'Adobe Realty', 'Uber Freight', 'Oracle Elevator',
-  'Siemens Energy', 'Siemens Healthineers', 'Siemens Gamesa', 'Red Bull Arena', 'Capital One Arena', 'Wells Fargo Center',
+  'Siemens Energy', 'Siemens Healthineers', 'Siemens Gamesa', 'Mitsubishi UFJ Financial Group', 'Mitsubishi UFJ Trust and Banking',
+  'Mitsubishi HC Capital', 'Mitsubishi Estate', 'Red Bull Arena', 'Capital One Arena', 'Wells Fargo Center',
   'Bank of America Stadium', 'AT&T Performing Arts Center', 'NASA Federal Credit Union', 'Meta Financial Group', 'Meta Materials',
   'Alphabet Soup Marketing', 'Amazon Conservation Association', 'Blizzard Snow Removal', 'MrBeast Burger', 'Snowflake Bakery',
 ];

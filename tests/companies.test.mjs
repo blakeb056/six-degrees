@@ -4,16 +4,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { companyOf, industryOf, industryKeyOf, buildCompanyIndex, companyLinks, waysInto, INDUSTRIES, UNKNOWN_INDUSTRY } from '../lib/companies.js';
-import { KNOWN_COMPANIES, networkCompanies } from '../lib/scoring.js';
+import { KNOWN_COMPANIES, networkCompanies, currentCompany } from '../lib/scoring.js';
 
 const p = (id, degree, extra = {}) => ({ id, degree, profile_url: `/in/${id}`, tier: 'B', ...extra });
 
 test('the company comes from a scan, the stored field, or the headline', () => {
-  assert.equal(companyOf({ company: 'Snap Inc.' }), 'Snap');
+  assert.equal(companyOf({ company: 'Adobe Systems Inc.' }), 'Adobe');
   assert.equal(companyOf({ headline: 'Head of Growth at Northwind Labs | AI' }), 'Northwind Labs');
   assert.equal(companyOf({ headline: 'Designer @ Acme, remote' }), 'Acme');
   assert.equal(companyOf({ headline: 'Open to work' }), null);
   assert.equal(companyOf({ scanned_company: 'Stripe', company: 'Old Co' }), 'Stripe');
+});
+
+test('Paths names each company as scoring does, and merges nothing scoring keeps apart', () => {
+  // One company written several ways is one, by the curated list's names.
+  for (const [written, name] of [['Adobe Systems Inc.', 'Adobe'], ['BNY Mellon', 'BNY'], ['Bain & Company', 'Bain'], ['Google LLC', 'Google'],
+    ['Mitsubishi Electric', 'Mitsubishi']]) {
+    assert.equal(companyOf({ company: written }), name, written);
+    assert.equal(companyOf({ company: written }), currentCompany({ company: written }), written);
+  }
+  // Paths used to merge by a list of its own, which also took in other companies.
+  for (const name of ['Oxford', 'Hartford', 'Bradford', 'Bainbridge', 'Mitsubishi UFJ Financial Group']) {
+    assert.equal(companyOf({ company: name }), name, name);
+  }
+  const index = buildCompanyIndex([
+    p('a', 1, { company: 'Ford' }), p('b', 2, { company: 'Ford Motor Company' }), p('c', 1, { company: 'Oxford' }),
+    p('d', 2, { company: 'Hartford' }), p('e', 2, { company: 'Bainbridge' }), p('f', 2, { company: 'Bain & Company' }),
+  ]);
+  assert.deepEqual([...index.keys()].sort(), ['Bain', 'Bainbridge', 'Ford', 'Hartford', 'Oxford']);
+  assert.equal(index.get('Ford').people.length, 2);
+  // A way in is found by the same names.
+  assert.deepEqual(waysInto('Ford', [p('a', 1, { company: 'Ford Motor Company' })], []).direct.map((c) => c.id), ['a']);
 });
 
 test('industry is inferred from the company first, then the headline, else unclear', () => {
@@ -105,9 +126,9 @@ test('Paths colours a company with the industry scoring uses', () => {
   const index = buildCompanyIndex(rows);
   assert.equal(index.get('Quillon').industry.key, industries.get('Quillon'));
   assert.equal(index.get('Quillon').industry.key, 'tech');
-  // Paths calls it "BNY Mellon", scoring "BNY"; both say finance.
+  // "BNY Mellon" is BNY to both.
   assert.equal(industries.get('BNY'), 'finance');
-  assert.equal(index.get('BNY Mellon').industry.key, 'finance');
+  assert.equal(index.get('BNY').industry.key, 'finance');
   // No industry word in "Adobe": the list says tech (it used to be its people's guess).
   assert.equal(index.get('Adobe').industry.key, 'tech');
   // One vote each way stays unclear, in both.
@@ -126,9 +147,9 @@ test('Bain Capital and a business school keep their own industry, in scoring and
   assert.deepEqual([...industries], [
     ['Bain Capital', 'finance'], ['Bain', 'consulting'], ['Kellogg School of Management', 'education'], ['Kellanova', 'consumer'],
   ]);
-  // Paths groups by its own names (normalizeCompany) and colours the same way.
+  // Paths groups by the same names and colours them the same way.
   const index = buildCompanyIndex(rows);
   assert.equal(index.get('Bain Capital').industry.key, 'finance');
-  assert.equal(index.get('Bain & Company').industry.key, 'consulting');
+  assert.equal(index.get('Bain').industry.key, 'consulting');
   assert.equal(index.get('Kellogg School of Management').industry.key, 'education');
 });

@@ -142,6 +142,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was a role at Amazon (10), and "Uber Driver", "Airbnb Superhost", "Twitch Streamer",
   "LinkedIn Top Voice" and "Google Alum" were at theirs. The sector directory reads names the
   same way. Best Buy and Best Western count as companies (they were dropped with "at best").
+- **Paths groups people under the companies their scores are built on.** It merged
+  company names by a list of its own, which also folded other companies in: Oxford,
+  Hartford and Bradford counted as Ford, Bainbridge as Bain, and Mitsubishi UFJ, a bank, as
+  "Mitsubishi Power". Paths now names each company as the score does, from the one built-in
+  list, in its bubbles, its Companies list and its ways in; the score itself no longer reads
+  Mitsubishi's bank, lender or landlord as Mitsubishi. The launch page no longer claims "80+
+  company normalizations".
 - **A refresh's notifications count who is new, and who scored high.** New connections were
   the ones missing from a lookup of the first hundred, so a refresh of known people past a
   hundred announced "10 new connections found!", and genuinely new ones were never announced.
