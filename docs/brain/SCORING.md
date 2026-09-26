@@ -11,7 +11,7 @@ pinning it down. Everything scores through it:
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
 | `lib/legacy-offer.js` `legacyOffer()` | Paths → Scores' one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
-| `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Snap (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
+| `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Adobe (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
 | `app/api/company-scores/route.js` | Paths → Scores: each company scored from the same read as rescoring, through `companyScoreIn()` |
 
 Until 0.1.10 there were three scorers that disagreed. The hosted era's SQL scorers
@@ -45,12 +45,12 @@ role. Current students are capped at 3. Rules that earlier words mask:
 - A fraternity chair is not a chairman.
 - "International" is not "intern".
 
-Schools are read alike; the rules name none. A major at a school is a student ("CS @ UCF",
+Schools are read alike; the rules name none. A major at a school is a student ("CS @ NYU",
 "Economics at University of Utah"), and so is a leading title in a school club ("President,
-UCF Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at UCF"): a
+USC Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at UCLA"): a
 club, chapter, society or association named with a school's words (university, college,
 school, student), or a club or society named with its short name. A short name is two to
-four capitals that start or end with the U of University (UCF, USC, NYU, UCLA, BYU), so no
+four capitals that start or end with the U of University (USC, NYU, UCLA, BYU, UNC), so no
 list of schools favours the ones on it. Not a short name:
 
 - a country or union (US, USA, UK, EU, UN), a US national body (USGA, USTA, USAA) or the AAU;
@@ -61,7 +61,7 @@ list of schools favours the ones on it. Not a short name:
   works in finance, and "President, UAW Local 600 Chapter" leads a union local.
 
 With a short name, only a club or a society is a student group, or an association named for
-a field of study ("USC Trojan Marketing Association", "UCF Chapter of the American Marketing
+a field of study ("USC Trojan Marketing Association", "UVA Chapter of the American Marketing
 Association"). A chapter alone is as often a union local's or a professional body's, and
 another association a university's own staff ("KU Endowment Association"). An alumni club or
 a parents' association is for grown-ups, and a company's own club (Sam's Club, AAA Club
@@ -69,7 +69,7 @@ Alliance, UPS Toastmasters Club) or a professional society (CFA Society, IEEE Co
 Society, an EO chapter) is not a school's.
 
 The price: a school whose short name is on that list (UA, UL, UTC) isn't read from it; a
-student chapter named only by a short name ("President, UCF Chapter of IEEE") reads as the
+student chapter named only by a short name ("President, NYU Chapter of IEEE") reads as the
 title it says; and a company's short name that isn't on the list can still read as a
 school's in "Marketing @ …". Until September 2026 the rules named UCF and UF, so their
 students and clubs were caught and other schools' weren't; the first rule that replaced them
@@ -81,8 +81,8 @@ rule [below](#the-curated-list)). Otherwise it's an estimate from how many of yo
 work there: 5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
 is education). Unknown is 4, and no company found is 3, so the company weight runs from
 0.615 (no company) to 1.0; 0.505 is the floor, for a company you score 1. Names are cleaned
-first, so "Snap Inc.", "Snapchat 👻" and
-"Snap" are one company. Phrases like "at scale" and "at best" are not companies (Best Buy and
+first, so "Adobe Inc.", "Adobe Systems 🎨" and
+"Adobe" are one company. Phrases like "at scale" and "at best" are not companies (Best Buy and
 Best Western are). The list's aliases match from the start of a name, only in the forms their
 companies use ([below](#aliases-kept-narrow)), and a name that says school, college or
 university only matches a school on the list: "Kellogg School of Management" is not
@@ -112,7 +112,7 @@ unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed eac
 never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
-"VP / Partner / GM (9) · Snap (8/10) · +0.7 strong circle", or with a sector lean
+"VP / Partner / GM (9) · Adobe (8/10) · +0.7 strong circle", or with a sector lean
 "Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector: Dental)".
 
 ## The curated list
@@ -583,7 +583,7 @@ What a headline counts, for precision:
 - **What someone does now.** "Ex-", "Former" and "Retired" parts are where they were.
 - **Not who they serve.** Words after "for", "helping", "serving", "supporting" or
   "empowering" don't count: "Mortgage lender for dentists" is banking, not dental.
-- **Each part for its own company.** A part that names a company ("Host at The Growth
+- **Each part for its own company.** A part that names a company ("Host at The Long Table
   Podcast") counts for that company only. The parts before the first company describe that
   role ("Dentist | Owner at Smith Family Practice"); the parts after it are side notes and
   don't count ("… at Quillon | Soccer mom | Podcaster"). A headline that names no company

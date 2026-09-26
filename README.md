@@ -233,7 +233,7 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
 
-Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (8/10) · +0.7
+Scanned and sample people show the working ("VP / Partner / GM (9) · Adobe (8/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
 rather than your own scores or sectors; the sample network keeps its own. The model is
 [`lib/scoring.js`](lib/scoring.js), explained in

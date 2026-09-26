@@ -1222,7 +1222,7 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
   // (lib/scoring.js topCompanies): the one this person's score is built on
   // carries its stored score, your own score and sector included. These used
   // to be lists of one person's favourite names matched anywhere in the
-  // headline, so "Snapdragon" read as Snap and an ex-Googler as at Google.
+  // headline, so "Metadata Analyst" read as Meta and an ex-Googler as at Google.
   const { now, before } = topCompanies(person);
   if (now) {
     insights.push({ icon: '🏢', text: `At ${now.name} (${now.score}/10) — top-tier company network access`, color: '#9B59B6' });
