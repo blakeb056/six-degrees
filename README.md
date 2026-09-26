@@ -208,18 +208,36 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 - **Title (1–10)** comes from someone's current role in their headline, with former
   roles at 70%; current students are capped.
 - **Company score (1–10)** is the one you set (Paths → Scores) if there is one. Otherwise
-  it comes from a list of well-known companies, or from how many of your people work
-  there.
+  it comes from a built-in list of well-known companies, or from how many of your people
+  work there. The built-in list is the same for everyone and follows one rule: only
+  companies most US professionals would recognise (household names, the largest companies,
+  top investment, consulting, law and accounting firms, frontier AI labs, top universities),
+  scored 7 to 10. Anything else is estimated from your network. If you scanned with an
+  earlier version, Paths → Scores offers once to keep its old scores for the companies in
+  your network whose score changed.
+- **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
+  in them get +1 ("lean") or +2 ("strong") on that score, once, never above 10 and never on
+  a score you set. A pick is one of twelve broad industries or a narrower sector from a
+  built-in list of about fifty (Dental, Real Estate, Software & SaaS…). A sector matches by a
+  fixed list of words: in the company's name, or in the headlines of at least half of the
+  people you know there, where a job every kind of company has (recruiter, accountant,
+  software engineer) doesn't count. An industry includes its sectors, and a company's one
+  industry when the known list or the company's name gives it, not when only its people's
+  job titles do. Settings suggests the sectors your network is in and shows what would
+  change before you save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 6.7.
-- **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions. It counts half
-  at an unknown company, because headlines are self-written.
+- **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions, the top award
+  of any field (a Nobel, a Pulitzer, an Oscar, an Olympic medal…). It counts half
+  at an unknown company, because headlines are self-written (your sector doesn't change
+  that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
 
-Scanned and sample people show the working ("VP / Partner / GM (9) · Snap (9/10) · +0.7
+Scanned and sample people show the working ("VP / Partner / GM (9) · Adobe (8/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
-rather than your own scores. The model is [`lib/scoring.js`](lib/scoring.js), explained
-in [`docs/brain/SCORING.md`](docs/brain/SCORING.md).
+rather than your own scores or sectors; the sample network keeps its own. The model is
+[`lib/scoring.js`](lib/scoring.js), explained in
+[`docs/brain/SCORING.md`](docs/brain/SCORING.md).
 
 It estimates **network position**, not what anyone is worth as a person.
 

@@ -9,14 +9,14 @@ installed rather than run from a checkout. TRAPS §4.
 
 | Table | Holds |
 |---|---|
-| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. |
+| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. Nothing in the app writes `sectors`; the Sidebar and Outlink read it as free text. The sectors you pick in Settings live in `app_meta` 'settings'. |
 | `linkedin_connections` | Everyone in the network, all degrees. The main table. |
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |
 | `queue_items` | The outreach queue. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
 | `company_scores` | A company score **you** set (Paths → Scores): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
-| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from; a mismatch rescores everyone once. |
+| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, `scoring_list` which curated company list, industries' words and labels, and scoring rule tables (a fingerprint of them, `scoringStamp()` in `lib/rpc.js`), and `scoring_focus` which sector focus (`lean:health,dental@<version>`, `<version>` being the sector directory's, since every pick matches by its words, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `legacy_scores_offer` is the one-time offer to keep the old list's scores: `open`, then `kept` or `declined` for good, or `none` when its first look found nothing to offer; absent when the database was never scored with the old list. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`). |
 
 ## `linkedin_connections` — the fields that carry meaning
 

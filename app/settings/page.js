@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import OnboardingGate from '../components/OnboardingGate';
 import UpdatePanel from '../components/UpdatePanel';
+import SectorSection from '../components/settings/SectorSection';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 
@@ -69,6 +70,7 @@ function SettingsInner() {
         {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
+        <SectorSection />
 
         <Section id="about" title="About this copy">
           {about ? (
