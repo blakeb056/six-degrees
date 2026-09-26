@@ -47,6 +47,7 @@
 | `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser. Never persisted. |
 | `lib/user.js` | Identity/context provider. |
 | `lib/demo.js` | The static demo-mode short circuit, inherited from v1. |
+| `lib/sample-stats.js` | The sample network's own counts, which the launch page shows instead of anyone's real network. `tests/sample-stats.test.mjs` recounts them from `public/demo-data.json`. |
 
 ## Data + scripts
 

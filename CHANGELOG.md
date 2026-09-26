@@ -169,6 +169,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scored them S or A.
 - **The launch page's formula** is the one the app scores with, `T × (0.45 + 0.055 × C) + R +
   B`, with S from 7.5. It showed the sum retired in 0.1.10.
+- **The launch page shows the sample network's numbers, not one person's.** Its counters,
+  degree counts and feature cards were one real network's (2,438 connections, 25 bridges,
+  798 recommendations…) shown as if they were the app's, and its footer named a company. They
+  are now counted from the invented sample network that comes with the app (873 connections,
+  14 bridges, 748 people, 19 companies), and the page says so; the footer says the app is
+  open source (MIT). Its S tier card said 7.0+; S starts at 7.5. The public demo's profile no
+  longer names a company either.
 - **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
   found, not 0.56, up to 1.0 for a company scored 10.
 - **Schools named like a company on the curated list were scored as that company.**

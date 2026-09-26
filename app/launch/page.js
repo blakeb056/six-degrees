@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { SAMPLE_STATS } from '../../lib/sample-stats';
 
 // ── Intersection Observer hook for scroll-triggered animations ──
 function useInView(options = {}) {
@@ -177,13 +178,15 @@ function HeroSection() {
 // ═══════════════════════════════════════════════════════════════
 // STATS BAR — Animated counters
 // ═══════════════════════════════════════════════════════════════
+// The numbers on this page are the invented sample network's
+// (lib/sample-stats.js), never one person's real network.
 function StatsBar() {
   const [ref, inView] = useInView();
   const stats = [
-    { label: 'Connections Mapped', value: 2438, color: '#3498DB' },
-    { label: 'Bridges Discovered', value: 25, color: '#FFD700' },
-    { label: 'Power Scored', value: 575, color: '#9B59B6' },
-    { label: 'Degrees Deep', value: 6, color: '#00ff88' },
+    { label: 'Connections Mapped', value: SAMPLE_STATS.connections, color: '#3498DB' },
+    { label: 'Bridges Discovered', value: SAMPLE_STATS.bridges, color: '#FFD700' },
+    { label: 'People Scored', value: SAMPLE_STATS.people, color: '#9B59B6' },
+    { label: 'Companies', value: SAMPLE_STATS.companies, color: '#00ff88' },
   ];
   return (
     <section ref={ref} style={{ padding: '80px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -196,12 +199,14 @@ function StatsBar() {
           }}>
             <div style={{ fontSize: 48, fontWeight: 800, color: s.color, lineHeight: 1 }}>
               <Counter end={s.value} active={inView} />
-              {s.value > 100 ? '+' : ''}
             </div>
             <div style={{ fontSize: 13, color: '#666', marginTop: 8, fontWeight: 500, letterSpacing: 0.5 }}>{s.label}</div>
           </div>
         ))}
       </div>
+      <p style={{ textAlign: 'center', fontSize: 12, color: '#555', margin: '32px auto 0', maxWidth: 520 }}>
+        Counted from the sample network that comes with the app. Every person in it is invented.
+      </p>
     </section>
   );
 }
@@ -315,9 +320,10 @@ function GalaxySection() {
 function ChainSection() {
   const [ref, inView] = useInView();
   const degrees = [
-    { d: 1, label: 'Your Connections', desc: 'Direct network — scored & tiered', color: '#3498DB', count: 575 },
-    { d: 2, label: 'Bridge Connections', desc: 'Friends of your bridges', color: '#9B59B6', count: 1519 },
-    { d: 3, label: 'Extended Reach', desc: 'Bridged from promoted D2s', color: '#FFD700', count: 344 },
+    // The sample's counts; it maps two degrees.
+    { d: 1, label: 'Your Connections', desc: 'Direct network — scored & tiered', color: '#3498DB', count: SAMPLE_STATS.degree1 },
+    { d: 2, label: 'Bridge Connections', desc: 'Friends of your bridges', color: '#9B59B6', count: SAMPLE_STATS.degree2 },
+    { d: 3, label: 'Extended Reach', desc: 'Bridged from promoted D2s', color: '#FFD700', count: null },
     { d: 4, label: 'Industry Layer', desc: 'Company & sector intelligence', color: '#FF6B35', count: null },
     { d: 5, label: 'Market Layer', desc: 'Cross-industry connections', color: '#00ff88', count: null },
     { d: 6, label: 'Global Reach', desc: 'Anyone in the world', color: '#ff5050', count: null },
@@ -396,6 +402,9 @@ function ChainSection() {
             </div>
           ))}
         </div>
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#555', marginTop: 40 }}>
+          The counts are the sample network&rsquo;s, whose people are all invented.
+        </p>
       </div>
     </section>
   );
@@ -407,7 +416,7 @@ function ChainSection() {
 function ScoringSection() {
   const [ref, inView] = useInView();
   const tiers = [
-    { tier: 'S', label: 'Supreme', score: '7.0+', color: TIER.S, glow: 'rgba(255,215,0,0.3)', people: 'C-Suite, VPs, Founders', icon: '👑' },
+    { tier: 'S', label: 'Supreme', score: '7.5+', color: TIER.S, glow: 'rgba(255,215,0,0.3)', people: 'C-Suite, VPs, Founders', icon: '👑' },
     { tier: 'A', label: 'Ace', score: '5.5+', color: TIER.A, glow: 'rgba(155,89,182,0.3)', people: 'Directors, Senior Leaders', icon: '💎' },
     { tier: 'B', label: 'Builder', score: '4.0+', color: TIER.B, glow: 'rgba(52,152,219,0.3)', people: 'Managers, Senior ICs', icon: '🔷' },
     { tier: 'C', label: 'Connector', score: '2.5+', color: TIER.C, glow: 'rgba(149,165,166,0.2)', people: 'Associates, Specialists', icon: '🔸' },
@@ -482,7 +491,7 @@ function FeaturesGrid() {
       desc: 'Scan any company on LinkedIn and see every person mapped, scored, and organized by seniority.',
       color: '#00ff88',
       icon: '🏢',
-      stat: '344 people scanned',
+      stat: `${SAMPLE_STATS.companies} companies in the sample`,
     },
     {
       title: 'Outlink',
@@ -490,7 +499,7 @@ function FeaturesGrid() {
       desc: 'Your curated list of high-value D2 connections to request. Grouped by bridge, filtered by tier, with batch-open for efficient networking.',
       color: '#FF6B35',
       icon: '🚀',
-      stat: '798 recommendations',
+      stat: `${SAMPLE_STATS.recommendations} recommendations in the sample`,
     },
     {
       title: 'XP System',
@@ -506,7 +515,7 @@ function FeaturesGrid() {
       desc: 'Select any D1 connection as a bridge. Automatically discover and score all their connections — your D2 layer.',
       color: '#9B59B6',
       icon: '🔗',
-      stat: '25 bridges mapped',
+      stat: `${SAMPLE_STATS.bridges} bridges in the sample`,
     },
   ];
 
@@ -752,7 +761,7 @@ function CTASection() {
           opacity: inView ? 0.4 : 0, transition: 'opacity 1.5s ease 0.5s',
         }}>
           <span style={{ fontSize: 12, color: '#444' }}>Built by Blake Burford</span>
-          <span style={{ fontSize: 12, color: '#444' }}>Stead Labs</span>
+          <span style={{ fontSize: 12, color: '#444' }}>Open source · MIT</span>
           <span style={{ fontSize: 12, color: '#444' }}>2026</span>
         </div>
       </div>
