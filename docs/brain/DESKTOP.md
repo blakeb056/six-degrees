@@ -2,7 +2,8 @@
 
 The plan for turning Six Degrees into an app people download and open. No Terminal, no
 Python, no setup step before a scan. Adopted 2026-09-24. **D1 shipped: the Electron app is the
-main download from 0.2.0.** D2 (Python inside the app) is built for 0.3.1.
+main download from 0.2.0.** D2 (Python inside the app) is built for 0.3.0, one release with
+Settings and the one-click updater.
 
 Tick items in the same change that finishes them, and keep the status table at the bottom
 current. When this note and the spec disagree, the spec wins; fix this note.
@@ -149,9 +150,10 @@ from about 54 MB to about 180 MB.
 
 ### D2 — Python inside the app (removes the install step)
 
-Built on branch `python-inside` (2026-09-25) for **0.3.1**, after 0.3.0 is tagged. Not
-released. Blake's decision the same day: the Mac app carries its own Python, and
-`npx six-degrees` gets a button that downloads one when the computer has none.
+Built on branch `python-inside` (2026-09-25) for **0.3.0**. Not released. Blake's decisions
+the same day: the Mac app carries its own Python, and `npx six-degrees` gets a button that
+downloads one when the computer has none; and it ships in the same release as everything
+else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
 
 - [x] At build time, per chip (`scripts/build-app.mjs` `bundlePython`, Electron app
       only): python-build-standalone's CPython **3.12.14** (release `20260814`,
@@ -459,7 +461,7 @@ is ever attempted, it must answer each reason first:
 |---|---|
 | D0 Groundwork | backups ✅ pre-releases ✅ "scanner" wording ✅; the icon still to do |
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
-| D2 Python inside | ✅ built on branch `python-inside` for 0.3.1 (Blake confirmed 2026-09-25); the x64 build and a quarantined install still to see |
+| D2 Python inside | ✅ built on branch `python-inside` for 0.3.0, one release with Settings (Blake confirmed 2026-09-25); the x64 build and a quarantined install still to see |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
 | D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
 | D5 Scanner in JS | optional; spec still rejects it |

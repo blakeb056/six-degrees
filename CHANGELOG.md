@@ -6,12 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [0.3.1] (to be): Python inside the app
-
-For 0.3.1, which follows 0.3.0. When 0.3.0 is tagged, everything after this part moves
-under [0.3.0], and this part stays here until 0.3.1 is.
-
-#### Added
+### Added
 - **The Mac app scans with nothing to install.** It carries its own Python (3.12) with the
   scanner's packages already inside it, so the Scan page's first step is ticked from the
   start: nothing to install, nothing to click, and setting up needs no internet. Scanning
@@ -29,19 +24,6 @@ under [0.3.0], and this part stays here until 0.3.1 is.
   outside your data folder changes, and neither the Python nor the packages ever go into
   a copy of your network. A stopped setup carries on from the Python already downloaded.
   With Python 3.10 to 3.14 installed, Install works as before.
-
-#### Changed
-- The Scan page's first step is now **Set up the scanner**. When it can't use this
-  computer's Python, it says which one it found and why. Install no longer updates pip
-  first: everything it downloads is a pinned file.
-- **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
-  2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
-  install. Only ready-built files (wheels), so nothing is built from source on your
-  computer, and pip refuses any file that isn't the one pinned. They need Python 3.10 or
-  newer, as the newest Playwright does; a Python that already has the scanner's packages
-  keeps working as it is.
-
-### Added
 - **Settings.** A new page, from the ⚙ button beside the bell or *Six Degrees → Settings…*
   (⌘,). It's the new home for **Updates**, and it shows which version this is and where
   your network is kept. What you choose there is saved with your network, so it travels
@@ -96,7 +78,7 @@ under [0.3.0], and this part stays here until 0.3.1 is.
   while another copy of Six Degrees has the same folder open.
 - **Install and restart, in the Mac app: updating without Terminal.** When *Check for
   Updates…* finds a newer version, one more click installs it. The app downloads that
-  release from GitHub (about 190 MB), checks it against the release's published checksums
+  release from GitHub (about 220 MB), checks it against the release's published checksums
   and checks that the app's code signature is intact, and gets it ready while you keep
   working. Then it closes, puts the new version in its place and opens it on Settings,
   which says how it went ("Updated to 0.2.2"). Your network isn't touched, and the new
@@ -120,6 +102,15 @@ under [0.3.0], and this part stays here until 0.3.1 is.
     once more.
 
 ### Changed
+- The Scan page's first step is now **Set up the scanner**. When it can't use this
+  computer's Python, it says which one it found and why. Install no longer updates pip
+  first: everything it downloads is a pinned file.
+- **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
+  2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
+  install. Only ready-built files (wheels), so nothing is built from source on your
+  computer, and pip refuses any file that isn't the one pinned. They need Python 3.10 or
+  newer, as the newest Playwright does; a Python that already has the scanner's packages
+  keeps working as it is.
 - **The Queue and the person panel go by company scores, not a list of names.** Both kept
   their own list of one person's favourite companies (Snap, Polymarket, Whatnot…), matched
   anywhere in a headline: "Metadata Analyst" counted as Meta, "Snapdragon" as Snap, and an
