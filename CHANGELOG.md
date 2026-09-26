@@ -106,7 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The Scan page's first step is now **Set up the scanner**. When it can't use this
   computer's Python, it says which one it found and why. Install no longer updates pip
-  first: everything it downloads is a pinned file.
+  first: everything it downloads is a pinned file. It leaves out pip settings that would
+  put the packages somewhere else (`PIP_TARGET`, `PIP_PREFIX`, `PIP_ROOT`, `PIP_USER`;
+  your index, proxy and certificate settings still apply), and it checks that the scanner
+  can load them before it says it has finished.
 - **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
   2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
   install. Only ready-built files (wheels), so nothing is built from source on your

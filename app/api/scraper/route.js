@@ -10,7 +10,7 @@ import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import {
-  choosePython, thisHostKey, scannerCommand, venvDir, venvPython, downloadedPython, downloadVerified,
+  choosePython, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
 
@@ -325,8 +325,9 @@ function cleanName(raw) {
  * command, or a `run` done inside this server; nothing comes from the request.
  *
  *   install  build the scanner's environment from `found.base` (this
- *            computer's Python, or the one a setup downloaded) and install the
- *            pinned packages into it
+ *            computer's Python, or the one a setup downloaded), install the
+ *            pinned packages into it, and check that they load there, so a pip
+ *            that put them elsewhere fails with its reason, not "Finished"
  *   setup    when there is nothing to build from: download the standalone
  *            Python pinned for this computer, check its SHA-256, unpack it into
  *            the data folder, then install as above. The download is checked
@@ -355,20 +356,14 @@ function setupPlan(action, found, { root, data, say }) {
     return { status: 409, error: 'There is no Python download for this computer. Install Python 3.10 to 3.14, then reload.' };
   }
 
-  const reqs = path.join(root, 'scripts', 'requirements.txt');
-  const install = (python) => [
-    // --clear: Install runs only when the environment doesn't work, so what is there goes.
-    { cmd: python, args: ['-m', 'venv', '--clear', venvDir(data)], note: 'Creating the scanner’s own Python environment' },
-    // Every file pinned by its hash, wheels only (scripts/requirements.txt says so itself).
-    {
-      cmd: venvPython(data),
-      args: ['-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '-r', reqs],
-      note: 'Installing Playwright, requests and Pillow',
-    },
-  ];
+  // The environment, the pinned packages without the pip settings that would
+  // put them elsewhere, and a check that they load there
+  // (lib/scanner-python.js installSteps).
+  const requirements = path.join(root, 'scripts', 'requirements.txt');
+  const install = (from) => installSteps({ base: from, dataDir: data, requirements });
   // A setup that already got as far as the download (it was stopped, or the
   // packages failed) carries on from its Python rather than fetching it again.
-  if (base) return { plan: install(base.path), cleanup: null };
+  if (base) return { plan: install(base), cleanup: null };
 
   const dl = found.download;
   mkdirSync(data, { recursive: true });
@@ -398,7 +393,7 @@ function setupPlan(action, found, { root, data, say }) {
       },
       { cmd: 'tar', args: ['-xzf', archive, '-C', work], note: 'Unpacking it' },
       { run: () => placeDownloadedPython(work, data, work) },
-      ...install(downloadedPython(data)),
+      ...install({ path: downloadedPython(data), source: 'downloaded' }),
     ],
     cleanup: () => rmSync(work, { recursive: true, force: true }),
   };

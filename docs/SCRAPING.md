@@ -39,7 +39,10 @@ packages into a **private virtual environment** inside your data directory
 (from GitHub, checked against a checksum built into Six Degrees before it's unpacked). It
 never touches the Python your system or Homebrew installed, and it goes away when you
 delete that folder. Every package file is checked against a checksum too
-(`scripts/requirements.txt`).
+(`scripts/requirements.txt`). Your own pip settings for which index, proxy or certificates
+to use still apply (on a company network they are often what makes pip work at all);
+settings that would install the packages somewhere else are ignored, and the last step
+checks that the scanner can load them before it says it has finished.
 
 The page has four steps: set up the scanner, sign in, **1st degree** (the people you know) and
 **2nd degree** (the people they know — this is what fills Degrees and Outlink). The

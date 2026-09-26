@@ -85,8 +85,11 @@ This app is designed to run **on your own machine, against your own network**.
     deleted.
   - **PyPI** (`pypi.org`, `files.pythonhosted.org`) for the scanner's packages,
     every file checked against `scripts/requirements.txt`. (pip follows your
-    own pip settings for which index to ask, if you have any; the hashes still
-    have to match.)
+    own pip settings for which index, proxy and certificates to use, if you
+    have any; the hashes still have to match. Settings that would install the
+    packages somewhere other than `venv/` (`PIP_TARGET`, `PIP_PREFIX`,
+    `PIP_ROOT`, `PIP_USER`) are left out, and Install checks that the packages
+    load from `venv/` before it says it has finished.)
 
   The Python lands in the data folder's `python/`, the packages in `venv/`;
   nothing outside the data folder changes, and neither is ever exported. The

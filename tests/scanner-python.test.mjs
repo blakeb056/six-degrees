@@ -16,10 +16,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  STANDALONE_PYTHON, STANDALONE_BASE, SYSTEM_PYTHON, SETUP_WORK_PREFIX, PROBE_SCRIPT, OWN_PYTHON_FLAGS,
+  STANDALONE_PYTHON, STANDALONE_BASE, SYSTEM_PYTHON, SETUP_WORK_PREFIX, PROBE_SCRIPT, OWN_PYTHON_FLAGS, IMPORTS,
   hostKey, standaloneBuild, standaloneUrl, systemPythonFits, parseProbe, ownPythonEnv, noBytecodeEnv, choosePython,
-  scannerCommand, runProbe,
-  downloadVerified, placeDownloadedPython, sweepSetupLeftovers, venvPython, downloadedPython,
+  scannerCommand, pipInstallEnv, installSteps, installCheckScript, runProbe,
+  downloadVerified, placeDownloadedPython, sweepSetupLeftovers, venvPython, venvDir, downloadedPython,
   machoSlices, machoSlice, ScannerSetupError,
 } from '../lib/scanner-python.js';
 import { PYTHON } from './python.mjs';
@@ -225,6 +225,66 @@ test('REGRESSION: the app\'s own Python starts, and finds image_store, whatever 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── Install: pip's settings, and a check that the packages load ─────────────
+
+test('Install\'s pip ignores settings that would put the packages elsewhere, and keeps the rest', () => {
+  const given = {
+    PATH: '/usr/bin',
+    PIP_TARGET: '/tmp/elsewhere', PIP_PREFIX: '/opt/x', PIP_ROOT: '/r', PIP_USER: '1',
+    // pip reads PIP_<NAME> whatever the case of NAME.
+    PIP_Target: '/tmp/elsewhere-too', PIP_user: 'yes',
+    // A company network's settings: kept, and the hashes still have to match.
+    PIP_INDEX_URL: 'https://mirror.example/simple', PIP_EXTRA_INDEX_URL: 'https://other.example/simple',
+    PIP_TRUSTED_HOST: 'mirror.example', PIP_CERT: '/etc/company-ca.pem', PIP_CLIENT_CERT: '/etc/me.pem',
+    PIP_PROXY: 'http://proxy:3128', HTTPS_PROXY: 'http://proxy:3128', https_proxy: 'http://proxy:3128',
+    NO_PROXY: 'localhost', REQUESTS_CA_BUNDLE: '/etc/company-ca.pem', SSL_CERT_FILE: '/etc/company-ca.pem',
+    PIP_CONFIG_FILE: '/etc/pip.conf', PIP_TIMEOUT: '60',
+    // Not pip's: a name that merely contains one of the words.
+    MY_PIP_TARGET: 'kept', PIP_TARGETS: 'kept',
+  };
+  const env = pipInstallEnv(given);
+  for (const gone of ['PIP_TARGET', 'PIP_PREFIX', 'PIP_ROOT', 'PIP_USER', 'PIP_Target', 'PIP_user']) {
+    assert.equal(gone in env, false, gone);
+  }
+  for (const kept of ['PATH', 'PIP_INDEX_URL', 'PIP_EXTRA_INDEX_URL', 'PIP_TRUSTED_HOST', 'PIP_CERT', 'PIP_CLIENT_CERT',
+    'PIP_PROXY', 'HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'REQUESTS_CA_BUNDLE', 'SSL_CERT_FILE', 'PIP_CONFIG_FILE',
+    'PIP_TIMEOUT', 'MY_PIP_TARGET', 'PIP_TARGETS']) {
+    assert.equal(env[kept], given[kept], kept);
+  }
+  assert.equal(given.PIP_TARGET, '/tmp/elsewhere', 'the environment passed in is left alone');
+});
+
+test('Install\'s steps: the environment, the pinned packages (no redirecting pip settings), then a check that they load', () => {
+  const data = '/home/someone/.six-degrees';
+  const requirements = '/app/scripts/requirements.txt';
+  const fromSystem = installSteps({ base: { path: 'python3', source: 'system' }, dataDir: data, requirements });
+  assert.deepEqual(fromSystem.map((s) => s.cmd), ['python3', venvPython(data), venvPython(data)]);
+  assert.deepEqual(fromSystem[0].args, ['-m', 'venv', '--clear', venvDir(data)]);
+  assert.equal(fromSystem[0].env, undefined, 'this computer\'s Python: the environment as it is');
+  assert.deepEqual(fromSystem[1].args, ['-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '-r', requirements]);
+  assert.equal(fromSystem[1].env, pipInstallEnv);
+  assert.equal('PIP_TARGET' in fromSystem[1].env({ PIP_TARGET: '/x', PIP_INDEX_URL: 'y' }), false);
+  assert.deepEqual(fromSystem[2].args, ['-c', installCheckScript()]);
+  assert.match(fromSystem[2].args[1], new RegExp(IMPORTS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'the same imports the scanner needs');
+  assert.ok(fromSystem.every((s) => s.note), 'each step says what it does on the page');
+
+  // The Python Set up downloaded is the app's own: isolated like the one inside the app.
+  const own = downloadedPython(data);
+  const fromDownload = installSteps({ base: { path: own, source: 'downloaded' }, dataDir: data, requirements });
+  assert.deepEqual(fromDownload[0].args, [...OWN_PYTHON_FLAGS, '-m', 'venv', '--clear', venvDir(data)]);
+  assert.equal(fromDownload[0].env, ownPythonEnv);
+});
+
+test('REGRESSION: packages pip put somewhere else fail Install with a reason in words, not "Finished"', { skip: noRealPython }, () => {
+  const missing = spawnSync(PYTHON, ['-c', installCheckScript('import no_such_package_six_degrees')], { encoding: 'utf8' });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /^pip said it installed them, but the scanner's environment can't load them \(ModuleNotFoundError: No module named 'no_such_package_six_degrees'\)\. A pip setting may send packages somewhere else: pip config list shows yours\.\n$/);
+  assert.doesNotMatch(missing.stderr, /Traceback/, 'a sentence, not a traceback');
+  const there = spawnSync(PYTHON, ['-c', installCheckScript('import json')], { encoding: 'utf8' });
+  assert.equal(there.status, 0, there.stderr);
+  assert.equal(there.stdout.trim(), 'The scanner\'s packages load in its environment.');
 });
 
 // ── the order: bundled, then this computer's, then downloaded ────────────────

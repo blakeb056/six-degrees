@@ -204,6 +204,11 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       Silicon or Intel: 24 MB) from GitHub into the data folder's `python/`, checks its
       size and SHA-256 before anything is unpacked, then builds `venv/` from it and
       installs the pinned packages from PyPI, with the download's progress on the page.
+      Install (so Set up too) keeps the user's pip settings for index, proxy and
+      certificates but not the ones that would install elsewhere (`PIP_TARGET`,
+      `PIP_PREFIX`, `PIP_ROOT`, `PIP_USER`), and ends by checking that the packages
+      load in `venv/`: a `pip.conf` that sends them elsewhere fails with a reason,
+      not "Finished" (`installSteps`).
       Only on the click, only those two hosts, cancellable like Install. A Python 3.10
       to 3.14 on the computer is still used as before. Checked end to end on this Mac (arm64,
       against a server that could see only macOS's Python 3.9): the download, its
