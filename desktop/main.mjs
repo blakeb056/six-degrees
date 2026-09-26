@@ -32,7 +32,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
 } from './lib.mjs';
 
@@ -301,15 +301,19 @@ let quitStarted = false;
 let asking = false;
 async function requestQuit({ ask }) {
   if (quitStarted || asking) return;
-  if (ask && origin && (await scanRunning(origin)) === true) {
+  // A scan, or Install, Set up the scanner or the sign-in window: the question
+  // names what runs (lib.mjs quitQuestion).
+  const job = ask && origin ? await runningJob(origin) : null;
+  if (job) {
     asking = true;
+    const question = quitQuestion(job);
     const { response } = await dialog.showMessageBox(win ?? undefined, {
       type: 'question',
-      buttons: ['Stop the Scan and Quit', 'Keep Scanning'],
+      buttons: question.buttons,
       defaultId: 1,
       cancelId: 1,
-      message: 'A scan is running.',
-      detail: 'Quitting stops it the way the Stop button does, and it closes its Chrome window. A list that was stopped part-way carries on from where it got to next time.',
+      message: question.message,
+      detail: question.detail,
     });
     asking = false;
     if (response !== 0) return;

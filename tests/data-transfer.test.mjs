@@ -440,6 +440,12 @@ test('an import is refused during a scan, beside another import, too big, or wit
   const scan = importPreflight({ ...ok, scanRunning: true });
   assert.equal(scan.status, 409);
   assert.match(scan.message, /A scan is running/);
+  // It says what runs (lib/scan-state.js scannerJob): Install isn't a scan.
+  assert.match(importPreflight({ ...ok, scanRunning: 'full' }).message, /^A scan is running\. Let it finish, or stop it on the Scan page, then import\.$/);
+  assert.match(importPreflight({ ...ok, scanRunning: 'install' }).message, /^The scanner's packages are being installed\. Let it finish/);
+  assert.match(importPreflight({ ...ok, scanRunning: 'setup' }).message, /^The scanner is being set up\. Let it finish/);
+  assert.match(importPreflight({ ...ok, scanRunning: 'login' }).message, /^The LinkedIn sign-in window is open\. /);
+  assert.equal(importPreflight({ ...ok, scanRunning: null }), null);
   assert.equal(importPreflight({ ...ok, pending: { people: 3 } }).status, 409);
   assert.equal(importPreflight({ ...ok, declared: Number.NaN }).status, 400);
   assert.equal(importPreflight({ ...ok, declared: 0 }).status, 400);

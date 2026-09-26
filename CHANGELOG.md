@@ -74,8 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to put it back. The LinkedIn search budget belongs to the account, so that computer keeps
   its own: searches made on either computer still count, and a pause on scanning stays. The
   Mac app finishes with *Restart now*; with `npx six-degrees`, stop it and start it again.
-  Refused while a scan runs, scans wait until the import is finished, and the import waits
-  while another copy of Six Degrees has the same folder open.
+  Refused while a scan, or setting up the scanner, runs (it says which), scans wait until
+  the import is finished, and the import waits while another copy of Six Degrees has the
+  same folder open.
 - **Install and restart, in the Mac app: updating without Terminal.** When *Check for
   Updates…* finds a newer version, one more click installs it. The app downloads that
   release from GitHub (about 220 MB), checks it against the release's published checksums

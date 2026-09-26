@@ -295,7 +295,8 @@ have grown by about 62 MB.
         from under them.
   - [x] The hand-over (TRAPS §39): the helper starts detached, from a copy outside the
         app, with a clean environment and a UTF-8 locale (TRAPS §40); the server ends with
-        exit code 76, which the app reads as "quit quietly". Refused while a scan runs.
+        exit code 76, which the app reads as "quit quietly". Refused while a scan or the
+        scanner's setup runs, and the reason says which (`lib/scan-state.js`).
   - [x] The helper, `scripts/apply-update.sh` (shipped inside the app): waits for the
         processes the server named and every process whose *executable* is inside the app,
         and stops only those, never a Terminal or editor that merely sits in its folder

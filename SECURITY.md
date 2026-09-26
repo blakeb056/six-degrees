@@ -127,8 +127,8 @@ logged-in LinkedIn session. Never copy, sync, or commit it.
   the app writes them by: limits only from the Scan page's own menu (the
   scanner reads a daily limit of 0 as no limit at all). The network is then
   rebuilt into this version's own schema, so only rows travel, never table
-  definitions. It is refused while a scan runs, and replacing a network that
-  has people needs a confirmation that names how many.
+  definitions. It is refused while a scan (or the scanner's setup) runs, and
+  replacing a network that has people needs a confirmation that names how many.
 - **The upload never sits in memory.** Next copies the body of every request
   `middleware.js` sees into memory before middleware decides anything, so the
   import route is left out of it and makes the same checks itself

@@ -1,7 +1,7 @@
 import { after } from 'next/server';
 import { dataDir } from '../../../../lib/db-client';
 import { pendingImport, restartCodeFrom } from '../../../../lib/data-import';
-import { scanIsRunning } from '../../../../lib/scan-state';
+import { busyRefusal } from '../../../../lib/scan-state';
 
 // Restart the server so a staged import finishes. Only the Mac app can do this:
 // its shell (desktop/main.mjs) tells the server which exit code means "start
@@ -21,9 +21,11 @@ export async function POST() {
   if (!pendingImport(dataDir())) {
     return Response.json({ error: 'No import is waiting, so there is nothing to restart for.' }, { status: 409 });
   }
-  // The scanner runs in its own process group and would outlive the server.
-  if (scanIsRunning()) {
-    return Response.json({ error: 'A scan is running. Stop it on the Scan page first, then restart.' }, { status: 409 });
+  // The scanner (and Install) runs in its own process group and would outlive
+  // the server. The refusal says which is running.
+  const busy = busyRefusal('Stop it on the Scan page first, then restart.');
+  if (busy) {
+    return Response.json({ error: busy }, { status: 409 });
   }
   // After the answer has gone, so the page learns it worked. process.exit and
   // not a signal: Next turns SIGTERM into exit code 143, which the shell would
