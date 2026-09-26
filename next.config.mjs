@@ -25,7 +25,10 @@ const nextConfig = {
   outputFileTracingExcludes: {
     '*': ['dist/*.app/**', 'dist/*.dmg', 'dist/staging/**', 'dist/electron-stage/**', 'docs/**', 'tests/**',
           '.git', '.git/**', '*.log', 'scripts/dmg/**', 'scripts/pin-python-packages.mjs', 'desktop/**',
-          'node_modules/electron/**', 'node_modules/@electron/**'],
+          'node_modules/electron/**', 'node_modules/@electron/**',
+          // The download website (site/, published by pages.yml from the repo) is
+          // never read by the app; tracing swept its 17 MB of videos in.
+          'site/**'],
   },
   // Emits .next/standalone with a server and only the dependencies actually
   // reached, so the published package can run without node_modules being
