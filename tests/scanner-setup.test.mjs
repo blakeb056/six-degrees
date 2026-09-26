@@ -69,7 +69,7 @@ test('no Python and no download for this computer: it says what to install, with
   const s = setupStep(status({ python: false, download: null }));
   assert.deepEqual(s, {
     done: false,
-    text: 'Python 3.10 or newer was not found on this machine. Install it from python.org, then reload.',
+    text: 'No Python 3.10 to 3.14 was found on this machine. Install one from python.org, then reload.',
     button: null,
   });
   // Before the first answer the page draws no body; the step itself is simply not done.
@@ -96,7 +96,7 @@ test('other pages send people to Scan while there is something to set up there',
   assert.equal(notReadyMessage(status({ python: true, dependencies: false })),
     'The scanner is not set up yet — open Scan to set it up.');
   assert.equal(notReadyMessage(status({ python: false, dependencies: false, download: null })),
-    'Python 3.10 or newer is not installed on this machine.');
+    'No Python 3.10 to 3.14 is installed on this machine.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: true, chrome: false })), 'Google Chrome is not installed.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: true, pythonSource: 'bundled' })), null);
 });

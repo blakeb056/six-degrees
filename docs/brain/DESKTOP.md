@@ -200,8 +200,8 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       Silicon or Intel: 24 MB) from GitHub into the data folder's `python/`, checks its
       size and SHA-256 before anything is unpacked, then builds `venv/` from it and
       installs the pinned packages from PyPI, with the download's progress on the page.
-      Only on the click, only those two hosts, cancellable like Install. A Python 3.10+
-      on the computer is still used as before. Checked end to end on this Mac (arm64,
+      Only on the click, only those two hosts, cancellable like Install. A Python 3.10
+      to 3.14 on the computer is still used as before. Checked end to end on this Mac (arm64,
       against a server that could see only macOS's Python 3.9): the download, its
       checksum, the environment and the packages, then ready. And a stop part-way
       (during the environment step): its working folder, download included, was gone,

@@ -346,13 +346,13 @@ function setupPlan(action, found, { root, data, say }) {
   if (action === 'install' && !base) {
     return found.download
       ? { status: 409, error: 'This computer has no Python the scanner can use. Use Set up the scanner instead.' }
-      : { status: 500, error: 'Python 3.10 or newer is not installed, or not on this app’s PATH.' };
+      : { status: 500, error: 'No Python 3.10 to 3.14 is installed, or none is on this app’s PATH.' };
   }
   if (action === 'setup' && base?.source === 'system') {
     return { status: 409, error: `This computer already has Python ${base.version}, so nothing needs downloading. Use Install instead.` };
   }
   if (action === 'setup' && !base && !found.download) {
-    return { status: 409, error: 'There is no Python download for this computer. Install Python 3.10 or newer, then reload.' };
+    return { status: 409, error: 'There is no Python download for this computer. Install Python 3.10 to 3.14, then reload.' };
   }
 
   const reqs = path.join(root, 'scripts', 'requirements.txt');
