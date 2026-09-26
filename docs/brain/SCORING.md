@@ -14,9 +14,12 @@ pinning it down. Everything scores through it:
 | `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Snap (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
 | `app/api/company-scores/route.js` | Paths → Scores: each company scored from the same read as rescoring, through `companyScoreIn()` |
 
-Until 0.1.10 there were three scorers that disagreed. `scripts/*.sql` are the retired
-hosted-era model, kept for history and marked as such. Do not transcribe the model
-anywhere else again.
+Until 0.1.10 there were three scorers that disagreed. The hosted era's SQL scorers
+(`scripts/score_new_connections.sql`, `scripts/score-connections.sql`) were kept for history
+until September 2026, when they were deleted: nothing read them, but the first shipped inside
+every Mac app and npm package, headed "CANONICAL SCORER", with the old list's personal
+picks. Git history keeps both. `rpc('score_new_connections')` is only the stored procedure's
+old name; it runs `rescoreAll()`. Do not transcribe the model anywhere else again.
 
 ## The formula
 

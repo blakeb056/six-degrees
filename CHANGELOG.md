@@ -113,6 +113,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own headline could put the same company in a different industry. Your network is
   rescored once, automatically, on the first load after updating.
 
+### Removed
+- **The retired SQL scorers.** `scripts/score_new_connections.sql`, the hosted-era scoring
+  model retired in 0.1.10, still shipped inside the Mac app and the npm package, headed
+  "CANONICAL SCORER" and holding the old list's personal picks. Nothing read it (imports
+  score with `lib/scoring.js`). It and its repo-only twin, `scripts/score-connections.sql`,
+  are deleted; git history keeps them.
+
 ### Fixed
 - **Students and school clubs read the same at every school.** The title rules named two
   schools, UCF and UF: "President, UCF Marketing Club" counted as a student's club role and
