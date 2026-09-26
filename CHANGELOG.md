@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   start: nothing to install, nothing to click, and setting up needs no internet. Scanning
   still needs Google Chrome. The download grows by about 22 MB, to about 220 MB.
   Playwright's own copy of Node isn't duplicated: it runs on the one the app already has.
-  The Python inside is signed like the rest of the app, uses only its own packages, and
-  never writes into the app.
+  The Python inside is signed like the rest of the app, uses only its own packages (your
+  own Python settings, such as `PYTHONPATH`, don't reach it), and never writes into the
+  app; nor does a scan on another Python.
 - **Set up the scanner** (`npx six-degrees`, or from source). On a computer with no Python
   the scanner can use (none at all, one older than 3.10, or Ubuntu's without
   `python3-venv`), the Scan page no longer ends at "install it from python.org". One

@@ -179,11 +179,15 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       (an inherited value wins, an empty one turns it off). `lib/scanner-python.js
       choosePython` decides: the app's own, then `venv/`, then a Python on the computer
       that already has the packages. The Scan page's first step says it's ready, with
-      nothing to install. The app's Python runs with no user site-packages, `PYTHONPATH`
-      or `PYTHONHOME`, and writes no bytecode (that would be writing into the signed app;
-      it compiles as it imports instead, about 0.3 s). Once seen to work it isn't
-      started again to ask. If it ever fails to start, the page says why and offers what
-      an npm copy gets.
+      nothing to install. The app's Python runs isolated, as `-E -s -B -u`
+      (`OWN_PYTHON_FLAGS`): none of the user's `PYTHON*` settings count (an inherited
+      `PYTHONPLATLIBDIR` alone used to stop it before it started), no user
+      site-packages, and no bytecode (that would be writing into the signed app; it
+      compiles as it imports instead, about 0.3 s). A scan on any other Python (the
+      fallbacks) writes no bytecode either: `scrape.py`'s `import image_store` would
+      otherwise write `scripts/__pycache__` into the app (`scannerCommand`). Once seen
+      to work it isn't started again to ask. If it ever fails to start, the page says
+      why and offers what an npm copy gets.
 - [x] `scrape.py` is not edited. Its pure functions run under the bundled Python in CI:
       the five test files that run them on `python3` today, pointed at it with
       `SIX_DEGREES_TEST_PYTHON` (`tests/python.mjs`). Checked here on the built app: 35
@@ -219,9 +223,11 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       setup runs, before the download and again before the hand-over.
 - [x] CI (release.yml): each chip's job fetches its own Python on its own runner. The
       smoke test runs the installed app's Python (right chip, the imports, the five
-      test files), checks that the running app reports `pythonSource: "bundled"` and
-      wrote no bytecode into itself, then opens it again with `SIX_DEGREES_PYTHON=` to
-      exercise the fallback and have a job (Install) to stop while quitting.
+      test files), each run with `PYTHONDONTWRITEBYTECODE=1` (one without it once wrote
+      `__pycache__` into the app and broke its signature), checks that the running app
+      reports `pythonSource: "bundled"` and wrote no bytecode into itself, then opens it
+      again with `SIX_DEGREES_PYTHON=` to exercise the fallback and have a job (Install)
+      to stop while quitting.
       `npm-package.yml` fails if a Python ever rides along in the npm package.
 - [ ] **Not yet seen:** the Intel build (CI's `macos-15-intel` job; whether its
       Playwright wheel's Node matches the app's is logged by the build), and Set up the

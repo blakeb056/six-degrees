@@ -69,9 +69,11 @@ This app is designed to run **on your own machine, against your own network**.
   every file pip may install, wheels only, so pip refuses any other file and
   nothing is built from source. The Python is signed ad hoc like the rest of the
   app and sealed into its signature, which `codesign --verify --deep --strict`
-  checks (in CI, and before the in-app updater uses a download). It runs with
-  no user site-packages, `PYTHONPATH` or `PYTHONHOME`, so nothing of the user's
-  can stand in for its packages, and it writes no bytecode into the app.
+  checks (in CI, and before the in-app updater uses a download). It runs
+  isolated from the user's Python settings (`-E -s`: no `PYTHON*` variable and
+  no user site-packages count), so nothing of the user's can stand in for its
+  packages, and no scan writes bytecode into the app, on this Python or any
+  other.
 - **Set up the scanner** (the Scan page, for `npx six-degrees` and source copies
   on a computer with no Python 3.10–3.14 it can use) downloads only when that
   button is pressed, and only from two places:

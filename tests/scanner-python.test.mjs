@@ -11,19 +11,26 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  STANDALONE_PYTHON, STANDALONE_BASE, SYSTEM_PYTHON, SETUP_WORK_PREFIX, PROBE_SCRIPT,
-  hostKey, standaloneBuild, standaloneUrl, systemPythonFits, parseProbe, ownPythonEnv, choosePython,
+  STANDALONE_PYTHON, STANDALONE_BASE, SYSTEM_PYTHON, SETUP_WORK_PREFIX, PROBE_SCRIPT, OWN_PYTHON_FLAGS,
+  hostKey, standaloneBuild, standaloneUrl, systemPythonFits, parseProbe, ownPythonEnv, noBytecodeEnv, choosePython,
+  scannerCommand, runProbe,
   downloadVerified, placeDownloadedPython, sweepSetupLeftovers, venvPython, downloadedPython,
   machoSlices, machoSlice, ScannerSetupError,
 } from '../lib/scanner-python.js';
+import { PYTHON } from './python.mjs';
 
 const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sixdeg-python-'));
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
+
+// A real Python for the few tests that need one to prove a point (python3, or
+// SIX_DEGREES_TEST_PYTHON): skipped where there is none.
+const hasPython = spawnSync(PYTHON, ['-c', 'pass']).status === 0;
+const noRealPython = !hasPython && 'no python3 here';
 
 // ── the pins ─────────────────────────────────────────────────────────────────
 
@@ -95,27 +102,144 @@ test('one look says a Python\'s version, whether it can make environments, and w
 });
 
 test('the app\'s own Python runs on its own packages only, and writes nothing into the app', () => {
-  const given = { PATH: '/usr/bin', PYTHONPATH: '/somewhere', PYTHONHOME: '/elsewhere', HOME: '/Users/someone' };
+  // Isolated by its flags (no PYTHON* setting, no user site-packages, no
+  // bytecode, unbuffered for the Scan page's log), not only by its environment.
+  assert.deepEqual([...OWN_PYTHON_FLAGS], ['-E', '-s', '-B', '-u']);
+  assert.ok(!OWN_PYTHON_FLAGS.includes('-I'), 'not -I: it would hide scrape.py\'s own folder, and image_store with it');
+  const given = {
+    PATH: '/usr/bin', HOME: '/Users/someone', PYTHONPATH: '/somewhere', PYTHONHOME: '/elsewhere',
+    PYTHONPLATLIBDIR: 'nowhere', PYTHONSAFEPATH: '1', PYTHONSTARTUP: '/x.py', PYTHONUNBUFFERED: '1', PIP_INDEX_URL: 'https://mirror.example/simple',
+  };
   const env = ownPythonEnv(given);
   assert.equal(env.PYTHONNOUSERSITE, '1');
   assert.equal(env.PYTHONDONTWRITEBYTECODE, '1');
-  assert.equal('PYTHONPATH' in env, false);
-  assert.equal('PYTHONHOME' in env, false);
+  // Nothing else of the user's PYTHON* settings reaches it or what it starts.
+  assert.deepEqual(Object.keys(env).filter((k) => k.startsWith('PYTHON')).sort(), ['PYTHONDONTWRITEBYTECODE', 'PYTHONNOUSERSITE']);
   assert.equal(env.PATH, '/usr/bin');
+  assert.equal(env.PIP_INDEX_URL, 'https://mirror.example/simple', 'not a Python setting: kept');
   assert.equal(given.PYTHONPATH, '/somewhere', 'the environment passed in is left alone');
+});
+
+test('a scan on the user\'s own Python keeps their environment, and never writes bytecode', () => {
+  const given = { PATH: '/usr/bin', PYTHONPATH: '/their/packages' };
+  const script = '/Applications/Six Degrees.app/Contents/Resources/server/scripts/scrape.py';
+  for (const source of ['venv', 'system']) {
+    const cmd = scannerCommand({ path: '/py/bin/python3', source }, script, ['--full']);
+    assert.equal(cmd.cmd, '/py/bin/python3');
+    assert.deepEqual(cmd.args, [script, '--full'], `${source}: no flags, as before`);
+    const env = cmd.env(given);
+    assert.equal(env.PYTHONDONTWRITEBYTECODE, '1', `${source}: scrape.py's folder is inside the app`);
+    assert.equal(env.PYTHONPATH, '/their/packages', `${source}: their environment, as before`);
+  }
+  for (const source of ['bundled', 'custom']) {
+    const cmd = scannerCommand({ path: '/app/python3', source }, script, ['--bridge=Ana']);
+    assert.deepEqual(cmd.args, [...OWN_PYTHON_FLAGS, script, '--bridge=Ana'], source);
+    assert.deepEqual(cmd.env(given), ownPythonEnv(given), source);
+  }
+  assert.deepEqual(noBytecodeEnv({ A: '1' }), { A: '1', PYTHONDONTWRITEBYTECODE: '1' });
+});
+
+// A copy of the scanner's layout: scripts/scrape.py importing image_store from
+// its own folder, the way the real one does.
+function scannerLayout() {
+  const dir = scratch();
+  const scripts = path.join(dir, 'scripts');
+  fs.mkdirSync(scripts);
+  fs.writeFileSync(path.join(scripts, 'image_store.py'), 'WHERE = "beside scrape.py"\n');
+  fs.writeFileSync(path.join(scripts, 'scrape.py'), [
+    'import sys',
+    'from image_store import WHERE',
+    'print(WHERE, sys.flags.ignore_environment, sys.flags.no_user_site, sys.dont_write_bytecode, sys.stdout.write_through, sys.pycache_prefix)',
+  ].join('\n'));
+  return { dir, scrape: path.join(scripts, 'scrape.py'), cache: path.join(scripts, '__pycache__') };
+}
+
+test('REGRESSION: a scan on any Python writes no __pycache__ beside scrape.py (in the Mac app, into the signed app)', { skip: noRealPython }, () => {
+  const { dir, scrape, cache } = scannerLayout();
+  // What the run printed: [where image_store came from, -E, -s, no bytecode, unbuffered, pycache prefix].
+  const said = (r) => r.stdout.trim().replace(/^beside scrape\.py /, 'beside ').split(' ');
+  const plainEnv = { ...process.env, PYTHONDONTWRITEBYTECODE: '' };
+  try {
+    // Without the fix, Python writes image_store's bytecode: beside it, unless
+    // this Python keeps bytecode elsewhere (macOS's own python3 does, in
+    // ~/Library/Caches). The one inside the app keeps it beside, in the app.
+    const before = spawnSync(PYTHON, [scrape], { encoding: 'utf8', env: plainEnv });
+    assert.equal(before.status, 0, before.stderr);
+    assert.equal(said(before)[3], 'False', 'the check can tell when bytecode would be written');
+    if (said(before)[5] === 'None') assert.ok(fs.existsSync(cache), 'and sees the write beside scrape.py');
+    fs.rmSync(cache, { recursive: true, force: true });
+    // The fallback Pythons (the scanner's environment, this computer's) and the app's own.
+    for (const source of ['venv', 'system', 'bundled']) {
+      const run = scannerCommand({ path: PYTHON, source }, scrape);
+      const r = spawnSync(run.cmd, run.args, { encoding: 'utf8', env: run.env(plainEnv) });
+      assert.equal(r.status, 0, `${source}: ${r.stderr}`);
+      assert.equal(said(r)[0], 'beside', source);
+      assert.equal(said(r)[3], 'True', `${source}: writes no bytecode`);
+      assert.equal(fs.existsSync(cache), false, `${source}: nothing written beside scrape.py`);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('REGRESSION: the app\'s own Python starts, and finds image_store, whatever PYTHON* settings the user has', { skip: noRealPython }, async () => {
+  const { dir, scrape, cache } = scannerLayout();
+  // An image_store of the user's that must never stand in for the app's.
+  const theirs = path.join(dir, 'theirs');
+  fs.mkdirSync(theirs);
+  fs.writeFileSync(path.join(theirs, 'image_store.py'), 'WHERE = "the user\'s"\n');
+  const poisoned = {
+    ...process.env,
+    PYTHONPLATLIBDIR: 'no-such-lib',   // alone, stops Python before it starts
+    PYTHONHOME: path.join(dir, 'no-such-home'),
+    PYTHONPATH: theirs,
+    PYTHONSAFEPATH: '1',               // would hide scrape.py's own folder
+    PYTHONNOUSERSITE: '', PYTHONDONTWRITEBYTECODE: '', PYTHONUNBUFFERED: '',
+  };
+  try {
+    // The poison is real: this Python, started plainly with it, doesn't get going.
+    assert.notEqual(spawnSync(PYTHON, ['-c', 'print("started")'], { encoding: 'utf8', env: poisoned }).stdout.trim(), 'started');
+
+    // The scan, as the route starts it on the app's own Python.
+    const run = scannerCommand({ path: PYTHON, source: 'bundled' }, scrape);
+    const r = spawnSync(run.cmd, run.args, { encoding: 'utf8', env: run.env(poisoned) });
+    assert.equal(r.status, 0, r.stderr);
+    // Its own image_store; -E, -s and -B in force; unbuffered for the Scan page's log.
+    assert.match(r.stdout.trim(), /^beside scrape\.py 1 1 True True /);
+    assert.equal(fs.existsSync(cache), false);
+
+    // And the look that decides whether it is used at all (choosePython's probe).
+    const probe = await runProbe(PYTHON, [...OWN_PYTHON_FLAGS, '-c', PROBE_SCRIPT], { env: ownPythonEnv(poisoned) });
+    assert.equal(probe.ok, true, probe.stderr);
+    assert.match(parseProbe(probe.stdout).version, /^3\.\d+\.\d+$/);
+    const seen = [];
+    const r2 = await choosePython({
+      bundled: PYTHON, app: '', dataDir: dir, env: poisoned,
+      probe: (cmd, args, opts) => { seen.push({ cmd, args, env: opts.env }); return runProbe(cmd, args, opts); },
+      systemCandidates: [],
+    });
+    assert.deepEqual(seen[0].args, [...OWN_PYTHON_FLAGS, '-c', PROBE_SCRIPT]);
+    assert.equal(seen[0].env.PYTHONPLATLIBDIR, undefined);
+    // It started: either it runs the scanner, or it said which package is missing.
+    assert.ok(r2.run?.path === PYTHON || /No module named/.test(r2.own?.problem || ''), JSON.stringify(r2));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // ── the order: bundled, then this computer's, then downloaded ────────────────
 
 // A pretend computer: `pythons` maps a command to what PROBE_SCRIPT would print
-// (or null: not there). Every probe is recorded.
+// (or null: not there). Every probe is recorded. The app's own Pythons are
+// asked with OWN_PYTHON_FLAGS, as they run; any other plainly.
 function computer(pythons, files = []) {
   const calls = [];
   return {
     calls,
     probe: async (cmd, args, opts) => {
-      calls.push({ cmd, env: opts?.env });
-      assert.deepEqual(args, ['-c', PROBE_SCRIPT]);
+      calls.push({ cmd, args, env: opts?.env });
+      assert.deepEqual(args.slice(-2), ['-c', PROBE_SCRIPT]);
+      assert.ok(args.length === 2 || String(args.slice(0, -2)) === String(OWN_PYTHON_FLAGS), String(args.slice(0, -2)));
       const said = pythons[cmd];
       if (said == null) return { ok: false, stdout: '', stderr: '', problem: 'it isn\'t there' };
       return { ok: true, stdout: said, stderr: '', problem: null };
@@ -136,6 +260,7 @@ test('the app\'s own Python comes first, and when it works nothing else is start
   assert.equal(r.download, null);
   assert.deepEqual(pc.calls.map((c) => c.cmd), [BUNDLED], 'not /usr/bin/python3: on a Mac without the developer tools it asks to install them');
   assert.equal(pc.calls[0].env.PYTHONNOUSERSITE, '1', 'probed the way it runs');
+  assert.deepEqual(pc.calls[0].args, [...OWN_PYTHON_FLAGS, '-c', PROBE_SCRIPT], 'isolated, as it runs');
 });
 
 test('a Python named from outside the app is used the same way, and called what it is', async () => {
@@ -203,6 +328,9 @@ test('a Python the setup already downloaded is built from before anything is dow
   // Order: this computer's Pythons were asked first, the downloaded one last.
   assert.equal(pc.calls.at(-1).cmd, own);
   assert.ok(pc.calls.findIndex((c) => c.cmd === '/usr/bin/python3') < pc.calls.length - 1);
+  // The downloaded one is the app's own: asked isolated. This computer's, plainly.
+  assert.deepEqual(pc.calls.at(-1).args, [...OWN_PYTHON_FLAGS, '-c', PROBE_SCRIPT]);
+  assert.deepEqual(pc.calls[0].args, ['-c', PROBE_SCRIPT]);
 });
 
 test('the full order when nothing works: bundled, the environment, this computer\'s, the downloaded one, then a download', async () => {

@@ -10,7 +10,7 @@ import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import {
-  choosePython, thisHostKey, ownPythonEnv, venvDir, venvPython, downloadedPython, downloadVerified,
+  choosePython, thisHostKey, scannerCommand, venvDir, venvPython, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
 
@@ -506,26 +506,21 @@ export async function POST(request) {
     if (!found.run) {
       return Response.json({ error: 'The scanner’s packages are not installed yet. Do step 1 first.' }, { status: 409 });
     }
-    plan = [
-        {
-          cmd: found.run.path,
-          // The app's own Python runs on its own packages only (lib/scanner-python.js ownPythonEnv).
-          own: found.run.source === 'bundled' || found.run.source === 'custom',
-          args: [
-            path.join(root, 'scripts', 'scrape.py'),
-            // `--flag=value` is one token on purpose: a name beginning with
-            // "-" can then never be read as a flag of its own.
-            ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`${spec.flag}=${profileUrl}`] : spec.flag.split(' ')),
-            ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
-            ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
-            ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
-            // Resuming always reads to the end: a remembered "10 pages" would
-            // otherwise leave everyone paused at page 11 and do nothing.
-            ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
-            ...(deeper ? ['--deeper'] : []),
-          ],
-        },
-      ];
+    // The app's own Python runs isolated from this user's Python settings; any
+    // Python runs it without writing bytecode beside scrape.py, which in the Mac
+    // app is inside the signed app (lib/scanner-python.js scannerCommand).
+    plan = [scannerCommand(found.run, path.join(root, 'scripts', 'scrape.py'), [
+      // `--flag=value` is one token on purpose: a name beginning with
+      // "-" can then never be read as a flag of its own.
+      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`${spec.flag}=${profileUrl}`] : spec.flag.split(' ')),
+      ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
+      ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
+      ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
+      // Resuming always reads to the end: a remembered "10 pages" would
+      // otherwise leave everyone paused at page 11 and do nothing.
+      ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
+      ...(deeper ? ['--deeper'] : []),
+    ])];
   }
 
   // The scraper writes back through this very app, so point it at the port we
@@ -614,8 +609,9 @@ export async function POST(request) {
 
     let child;
     try {
-      // Its own process group, so cancelling reaches the browser as well.
-      child = spawn(step.cmd, step.args, { cwd: root, env: step.own ? ownPythonEnv(childEnv) : childEnv, detached: true });
+      // Its own process group, so cancelling reaches the browser as well. A
+      // step's env() makes its own environment from this one.
+      child = spawn(step.cmd, step.args, { cwd: root, env: step.env ? step.env(childEnv) : childEnv, detached: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);
