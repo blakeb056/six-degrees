@@ -13,6 +13,11 @@
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
 //   again   opening the app while it runs brings its window forward
+//   update  Settings → Updates → Install and restart: the server downloads and
+//           checks the new version, starts scripts/apply-update.sh and ends
+//           with a code that means "quit quietly" (lib.mjs serverExitAction).
+//           The helper swaps the app once this one has gone and opens the new
+//           one with --after-update, which opens Settings to show how it went
 //   restart the server can ask to be started again (exit code 75, to finish
 //           an import from Settings → Your data): the window shows the
 //           "starting" page meanwhile and comes back to Settings
@@ -28,7 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
-  RESTART_EXIT_CODE, serverExitAction,
+  RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -41,13 +46,19 @@ const DATA_DIR = path.resolve(dataDirArg(process.argv) || process.env.SIX_DEGREE
 const LOG = path.join(os.tmpdir(), 'six-degrees.log');
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const SMOKE = process.env.SIX_DEGREES_SMOKE === '1';
+// This app's own bundle, for the in-app updater, which replaces it. The shell
+// knows it for certain; the server would otherwise have to guess from its folder.
+// process.execPath, not app.getPath('exe'): the same path, and it can't throw
+// here, before the app is ready.
+const APP_BUNDLE = app.isPackaged ? bundlePathFromExe(process.execPath) : null;
 
 let server = null;   // the Node server process
 let origin = null;   // http://127.0.0.1:<port>, once chosen
 let ready = false;   // the server has answered
 let win = null;
 let quitting = false;
-let pendingPath = null; // a menu choice made before the server answered
+// A menu choice made before the server answered, or Settings when opened after an update.
+let pendingPath = startPathArg(process.argv);
 
 app.setName('Six Degrees');
 app.enableSandbox();
@@ -93,6 +104,7 @@ async function startServer(port, { logMode }) {
       // code, so Settings can offer "Restart now".
       SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE),
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
+      ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
     },
     stdio: ['ignore', log, log],
   });

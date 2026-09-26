@@ -805,6 +805,88 @@ indefinitely.
 
 What holds it now (`desktop/main.mjs`): it asks only when one of its windows has focus
 (someone is looking at it, so it's Cmd-Q); otherwise it stops the scan and quits.
-A server stopped by a *signal* means the whole app is going, so it quits quietly; only
-a crash (an exit code) is reported. Checked by quitting mid-job with another app in
-front: job, server and app gone in about 2 seconds. CI repeats that on every build.
+A server stopped from outside means the whole app is going, so it quits quietly; only
+a crash is reported. Checked by quitting mid-job with another app in front: job, server
+and app gone in about 2 seconds. CI repeats that on every build. (This said "stopped by
+a *signal*" until §39: Next turns the signal into an exit code.)
+
+## 39. Next turns SIGTERM into exit code 143, so "stopped from outside" looked like a crash
+
+The in-app updater's first design had the server end itself with a SIGTERM, trusting
+§38's "a server stopped by a signal quits quietly". Every update would have ended on the
+"Six Degrees stopped" error.
+
+- **Why.** The bundled server is Next's standalone `server.js`. It catches SIGTERM and
+  SIGINT, closes its connections, then calls `process.exit(143)` or `process.exit(130)`
+  (`node_modules/next/dist/server/lib/start-server.js`). The app sees an exit *code*, not
+  a signal, and `desktop/main.mjs` took every exit code for a crash. Only a signal Next
+  doesn't catch, like SIGKILL, arrived as a signal. `NEXT_MANUAL_SIG_HANDLE` turns Next's
+  handling off; nothing sets it.
+- **Where it could already bite.** `install.sh` stops a running copy by sending SIGTERM
+  to the app and its server at once. From Terminal no window has focus, so the app
+  usually starts quitting first and ignores the server's exit. With a window in focus,
+  `requestQuit` first asks the server whether a scan is running, and a 143 arriving in
+  that gap showed the error. CI never saw it: it sends SIGTERM to the app only.
+
+What holds it now: `desktop/lib.mjs` `serverExitAction()` decides, and
+`tests/desktop-updater.test.mjs` pins it (the data import's branch pins its own
+side, 75, in `tests/desktop.test.mjs`; the function is the same text on both). While the app is quitting, its server's exit is
+expected. Otherwise 143, 130 and a signal mean "stopped from outside", and the app quits
+quietly; only any other code is reported as a crash.
+
+**How the in-app update quits, because of this.** The server, not Electron, runs the
+update (the page has no bridge to Electron), so the server has to make the whole app quit
+without a dialog. Three ways were weighed:
+
+- *SIGTERM to the app* (the server's parent). It takes the Cmd-Q path, and the user has
+  just clicked Install, so a window has focus: if a scan started meanwhile, the app asks
+  "A scan is running" and waits, while the helper waits for the app.
+- *`install.sh`'s way*, SIGTERM to the app and the server at once. Same question, plus the
+  race above. (`install.sh` isn't inside the app either.)
+- *`NEXT_MANUAL_SIG_HANDLE`*. It would change how every quit shuts the server down.
+
+Chosen: the server ends with its own exit code, **76** (`UPDATE_HANDOFF_EXIT_CODE`, in
+`lib/updater.js` and `desktop/lib.mjs`, pinned equal by `tests/updater.test.mjs`), which
+`serverExitAction` reads as "quit quietly". Nothing waits on a question, and it doesn't
+depend on Next's numbers. It does so only after the helper has started, has stayed up
+for a moment, and no scan is running (a scan would be cut off: `app.exit` skips the
+quit path that stops it). The classic launcher needs nothing: its `wait` returns
+whatever the code. Not 75: that is `RESTART_EXIT_CODE`, the data import's "start the
+server again"; `serverExitAction` reads both. The helper (`scripts/apply-update.sh`)
+waits for the app, its server and every other process whose executable is inside the app
+to exit before it touches anything (§40). Not yet seen on a real Mac (2026-09-25): the
+whole quit, swap and reopen; the manual test is in DESKTOP.md D4.
+
+## 40. A process *in* the app's folder isn't the app, and without a locale a path that isn't ASCII matches nothing
+
+The in-app updater's helper first recognised the old app's processes the way `install.sh`
+finds its server: anything whose working folder or command line was inside the app. After
+30 seconds it stopped whatever was left, SIGTERM, then SIGKILL.
+
+- **What that also caught.** A Terminal, an editor or a Claude Code session opened inside
+  the app's folder, and `tail -f` of a file in it. Reproduced in review: a shell in
+  `Contents/Resources/server` that ignored SIGTERM got SIGKILLed, and `tail -f
+  …/Contents/Info.plist` got SIGTERMed. (`install.sh` reaches as far for `node`
+  processes, but on a click in Terminal; the helper runs unseen.)
+- **What is the app.** A process whose *executable* is inside the app: the first `txt`
+  entry `lsof -d txt` lists for it. That finds Electron's main and helper processes, and
+  the server, whose executable is the app's own `Contents/Resources/node` whatever Next
+  renames its process to (§26). A command line or a working folder only says what a
+  process mentions, and any program can mention the app. `ps -o comm` won't do either:
+  it is argv[0], which Next rewrites ("next-server (v16"). Besides those, only the pids
+  the server names (the app and itself), checked to be the same processes by their start
+  time. The helper stops nothing else, and waits for nothing else.
+- **The locale.** The server starts the helper with a clean environment. With no `LANG`,
+  `ps` and `lsof` print a path like "Programmes Été" with escapes, nothing matched, and
+  the helper swapped the app while it still ran (reproduced). `helperEnv()` sets
+  `en_US.UTF-8`, and so does the script itself.
+- **Another user's copy.** `lsof` shows a user only their own processes, and one user
+  can't stop another's anyway. So the server refuses to hand over while `ps` shows the app
+  running for another user, before the download and again before the hand-over.
+
+What holds it: `tests/apply-update.test.mjs` runs the helper with the server's exact
+environment against pretend apps, with real processes whose executables are clones of
+Node inside them: a shell in the app's folder and a `tail -f` survive, the app's own
+programs are stopped, a folder named "Programmes Été" works, and one that keeps coming
+back leaves the app as it was and reopens it. (A copy of a system program can't stand
+in: macOS kills a copy of `/bin/sleep` that runs from anywhere else.)

@@ -25,10 +25,17 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    user presses** may ask whether something newer exists (`/api/update`). For a git
    checkout that is `git fetch` / `git pull` against the remote it already has; for an
    installed copy (the Mac app or the npm package) it is one GET for the newest GitHub
-   release's version number, after which the user runs the update themselves. Either
-   way it sends nothing about them beyond the request, runs only on a click, and is
-   what they would do by hand. Anything that checks on a timer, on launch, or in the
-   background is the forbidden thing.
+   release's version number. In the Mac app, a **second, separate press** ("Install and
+   restart", offered only after that answer) may then download that release's disk image
+   and its `SHA256SUMS` from the same GitHub release, and replace the app with it once
+   both check out. That is always `releases/latest`, and only the version that answer
+   named: if a newer one has come out since, nothing is installed and a new check is
+   asked for. Never a pre-release, never a version the page names, never the data folder,
+   and nothing is downloaded before the press.
+   Otherwise the user runs the update themselves. Either way it sends nothing about them
+   beyond the requests, runs only on a click, and is what they would do by hand. Anything
+   that checks, downloads or installs on a timer, on launch, or in the background is the
+   forbidden thing. *(The second press was added on 2026-09-25, for the Mac app only.)*
 3. **Never commit real network data.** Not a CSV, not an avatar, not a snapshot. CI
    fails the build if any appears. The sample network is generated and every person in
    it is invented.
@@ -63,5 +70,5 @@ Written down so the same idea does not arrive every few months looking fresh.
 | Voyager (LinkedIn's internal HTTP API) | Requires forging an authenticated internal client. More fragile than the DOM and unambiguously adversarial. |
 | Defeating Google's OAuth block | Google blocks its sign-in flow inside automation-controlled browsers deliberately. Working around an anti-automation control is out of scope; the tool tells the user to use email and password instead. |
 | A login gate on the local app | It runs on `127.0.0.1`. A password on a loopback service is theatre that costs real usability. |
-| Auto-updating, or checking for updates on launch | Invariant 2. A request nobody asked for is a request that can be counted. The update button is user-pressed only. |
+| Auto-updating, or checking for or downloading updates on launch | Invariant 2. A request nobody asked for is a request that can be counted. Checking is a press; in the Mac app, installing is a second press. Neither ever happens by itself, and nothing is downloaded ahead of time. |
 | Discarding a user's local changes to force an update | The update refuses on a dirty tree and says which files. The single exception is `package-lock.json`, which npm regenerates and nobody edits on purpose. |
