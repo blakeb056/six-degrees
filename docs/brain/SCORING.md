@@ -393,7 +393,10 @@ industry, so two people at one company could get different estimates.
 
 The words are the same for everyone. Until September 2026 they also named one school
 ("UCF") and one company's world ("Snap", "Snapchat", "Lens", "AR", so "AR Specialist",
-accounts receivable, read as media).
+accounts receivable, read as media), four retired picks (Polymarket, Anduril, Sandia and
+Whatnot, which also read "whatnot", a word, as retail), and a job title, "growth", which made
+"Head of Growth at Acme Software" and "Summit Growth Equity" media. "Growth marketing" still
+reads as marketing, and "growth equity" as finance.
 
 `readNetwork(rows, {industryOf})` reads every headline once (roles, student, reach signals)
 and finds every company anyone names, a former employer included, with its headcount and
@@ -478,9 +481,9 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   The sample's companies all carry set scores ("sample score"), so a lean wouldn't move it
   anyway.
 - **Calibration:** the lean inflates S. On the sample, scored as if scanned (no set
-  scores), 13 of its 19 invented companies are tech, but only one (Northwind Labs) by its
-  name; the other twelve are tech by their people's headlines, which a broad pick no longer
-  counts. So lean tech lifts one company and moves 10 of its 748 people up a tier, S 118 →
+  scores), 14 of its 19 invented companies are tech, but only one (Northwind Labs) by its
+  name; the other thirteen are tech by their people's headlines, which a broad pick no longer
+  counts (Aperture Grid became one of them when "growth" stopped reading as media). So lean tech lifts one company and moves 10 of its 748 people up a tier, S 118 →
   123 of 873 rows, and strong tech 27 (before: 120 people and S 118 → 199 at lean, 220 at
   strong). Lean finance lifts Ironwood Capital (by its name) and Orchard Pay (Fintech &
   Payments by its name): 20 people up, S 118 → 132. On the synthetic network in the timing

@@ -75,8 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   score only for its own company's names (a Snap-on person isn't counted under Snap), and
   closes on its own when your network has nothing to offer. Not for a new database, a CSV
   import or the sample. The words that guess a company's industry lose the same kind of
-  picks: "UCF" (education), and "Snap", "Lens" and "AR" (media; "AR Specialist" is accounts
-  receivable). Your network is rescored once, automatically, on the first load after
+  picks: "UCF" (education), "Snap", "Lens" and "AR" (media; "AR Specialist" is accounts
+  receivable), Polymarket, Anduril, Sandia and Whatnot ("whatnot" is also a word), and
+  "growth", a job title: "Head of Growth at Acme Software" works at a software company, and
+  "Summit Growth Equity" is an investment firm, not media ("growth marketing" is still
+  marketing). Your network is rescored once, automatically, on the first load after
   updating.
 - **The reach bonus counts the top award of every field.** It named four awards, from
   advertising, TV, music and the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so

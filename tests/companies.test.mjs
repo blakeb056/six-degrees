@@ -24,6 +24,20 @@ test('industry is inferred from the company first, then the headline, else uncle
   assert.equal(industryOf(null, null), UNKNOWN_INDUSTRY);
 });
 
+test('the industry words are the same for everyone: no job title, and no one person\'s picks', () => {
+  // "Growth" is a job title every kind of company has; "growth marketing" is a field.
+  assert.equal(industryOf(null, 'Head of Growth at Acme Software').key, 'tech');
+  assert.equal(industryOf('Summit Growth Equity', null).key, 'finance');
+  assert.equal(industryOf(null, 'Growth Marketing Manager').key, 'media');
+  const rows = [p('a', 1, { headline: 'Head of Growth at Quillon' }), p('b', 2, { headline: 'Backend Engineer at Quillon' })];
+  assert.equal(buildCompanyIndex(rows).get('Quillon').industry.key, 'tech');     // was a tie with media: unclear
+  // Retired picks from one person's world, one of them also a word.
+  for (const name of ['Polymarket', 'Anduril Industries', 'Sandia National Laboratories', 'Whatnot']) {
+    assert.equal(industryOf(name, null), UNKNOWN_INDUSTRY, name);
+  }
+  assert.equal(industryOf(null, 'Gifts, snacks and whatnot'), UNKNOWN_INDUSTRY);
+});
+
 test('each person counts once, at their closest degree', () => {
   const rows = [p('a', 2, { company: 'Acme' }), p('a', 1, { company: 'Acme' }), p('b', 2, { company: 'Acme', tier: 'S' })];
   const acme = buildCompanyIndex(rows).get('Acme');
