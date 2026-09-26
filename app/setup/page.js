@@ -213,9 +213,11 @@ function SetupInner() {
           </Box>
         )}
 
-        {/* The Python inside the app didn't work: what happened, and what to do instead. */}
+        {/* The Python inside the app didn't work: what happened, and what to do instead.
+            Red only while there is something to do; once another Python runs the
+            scanner it is just news. */}
         {s && step1.note && (
-          <Box tone="bad">{step1.note}</Box>
+          <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
         )}
 
         {/* ---- step 1 : the scanner itself ---- */}

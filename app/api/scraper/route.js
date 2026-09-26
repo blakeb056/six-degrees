@@ -146,10 +146,14 @@ function forgetChecks() {
 // The Python the app ships can't change while this server runs, so once it has
 // been seen to work it isn't started again to ask: each look costs a Python
 // start, and the page asks every 1.5 seconds. Once it has failed it isn't
-// started again at all until the server restarts, so a Python macOS refuses to
-// run can't bring macOS's alert back every few seconds; the page says what
-// happened instead. (lib/scanner-python.js pythonLooker.)
-const lookForPython = pythonLooker();
+// started again at all until the server restarts (it used to be asked again
+// every minute), so a Python macOS refuses to run can't keep bringing macOS's
+// alert back; the page says what happened instead. (lib/scanner-python.js
+// pythonLooker.) Kept once per server process, like the scan state
+// (lib/scan-state.js): a second copy of this module (the bundler's, or a reload
+// while developing) must not start a failed Python afresh.
+const LOOKER = Symbol.for('six-degrees.python-looker');
+const lookForPython = (globalThis[LOOKER] ??= pythonLooker());
 
 let host;
 function hostOnce() {
