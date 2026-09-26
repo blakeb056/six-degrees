@@ -32,6 +32,14 @@ const nextConfig = {
   // node:sqlite is a built-in, but bundling would rewrite the import; leave it
   // to be required at runtime.
   serverExternalPackages: ['node:sqlite'],
+
+  // experimental.proxyClientMaxBodySize stays at Next's 10 MB on purpose. Next
+  // copies the body of every request middleware.js sees into memory, up to that
+  // size, before middleware decides anything, so raising it for the one big
+  // upload (an import) would let any request, a refused cross-site one
+  // included, make the server hold that much. The import route is left out of
+  // middleware.js instead, and writes its body to disk as it arrives
+  // (docs/brain/ENDPOINTS.md, "Request bodies over 10 MB").
 };
 
 export default nextConfig;

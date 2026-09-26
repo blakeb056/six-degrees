@@ -5,13 +5,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gateDecision, isDestructive, boundToLoopback } from '../lib/gate.js';
+import { gateDecision, isDestructive, boundToLoopback, DESTRUCTIVE_ROUTES } from '../lib/gate.js';
 
-test('only the four destructive routes are gated', () => {
-  for (const p of ['/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile']) {
-    assert.equal(isDestructive(p), true, p);
-  }
-  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import']) {
+test('exactly these routes are gated; everything else, reads included, is not', () => {
+  const gated = [
+    '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
+    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal',
+  ];
+  for (const p of gated) assert.equal(isDestructive(p), true, p);
+  // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
+  assert.deepEqual([...DESTRUCTIVE_ROUTES].sort(), [...gated].sort());
+  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import', '/api/settings', '/api/data']) {
     assert.equal(isDestructive(p), false, p);
   }
 });
@@ -163,4 +167,96 @@ test('a server bound elsewhere is left to its ADMIN_TOKEN', () => {
 
 test('a client that sends no Host is not judged', () => {
   assert.equal(isRebound({ bind: '127.0.0.1', host: null }), false);
+});
+
+test('Settings → Your data: export, import, restart and reveal are gated; reading the folder’s sizes is not', () => {
+  // Export hands over the whole network in one file, import replaces it,
+  // restart stops the server, and reveal starts a process. None of them may be
+  // reachable from another machine. GET /api/data changes nothing.
+  for (const p of ['/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal']) {
+    assert.equal(isDestructive(p), true, p);
+  }
+  assert.equal(isDestructive('/api/data'), false);
+  assert.equal(isDestructive('/api/database'), false);
+  // A cancelled import is a DELETE from the page: a write, so the cross-site rule applies.
+  assert.equal(isCrossSiteWrite({ method: 'DELETE', secFetchSite: 'cross-site', host: '127.0.0.1:6363' }), true);
+});
+
+// ── one decision for middleware.js and the route it leaves alone ─────────────
+// middleware.js makes these checks on every /api request but one: the import,
+// whose body Next would otherwise copy into memory (up to its proxy limit)
+// before middleware could refuse it. That route calls requestRefusal itself,
+// before it reads anything, so the two can never drift apart.
+
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { requestRefusal } from '../lib/gate.js';
+
+const LOCAL = { SIX_DEGREES_BIND: '127.0.0.1' };
+const req = (method, pathname, headers = {}, env = LOCAL) => ({ method, pathname, headers: new Headers(headers), env });
+
+test('requestRefusal: the app\'s own page, curl and the scanner go through', () => {
+  assert.equal(requestRefusal(req('POST', '/api/data/import', { host: '127.0.0.1:6363', 'sec-fetch-site': 'same-origin' })), null);
+  assert.equal(requestRefusal(req('POST', '/api/data/import', { host: '127.0.0.1:6363' })), null, 'no browser headers: not a browser');
+  assert.equal(requestRefusal(req('GET', '/api/network', { host: 'localhost:6363', 'sec-fetch-site': 'cross-site' })), null,
+    'reads are never refused as cross-site');
+});
+
+test('requestRefusal: another name 421, another site 403, in that order', () => {
+  const rebound = requestRefusal(req('POST', '/api/data/import', { host: 'evil.example', 'sec-fetch-site': 'same-origin' }));
+  assert.deepEqual(rebound, { status: 421, error: 'This app only answers to 127.0.0.1 and localhost.' });
+  const crossSite = requestRefusal(req('POST', '/api/data/import', { host: '127.0.0.1:6363', 'sec-fetch-site': 'cross-site' }));
+  assert.equal(crossSite.status, 403);
+  assert.match(crossSite.error, /Cross-site requests are not accepted/);
+  const otherPort = requestRefusal(req('DELETE', '/api/data/import',
+    { host: '127.0.0.1:6363', 'sec-fetch-site': 'same-site', origin: 'http://127.0.0.1:3000' }));
+  assert.equal(otherPort.status, 403, 'a page on another local port');
+});
+
+test('requestRefusal: a gated route on an exposed server needs ADMIN_TOKEN; an ordinary one doesn\'t', () => {
+  const exposed = { SIX_DEGREES_BIND: '0.0.0.0' };
+  assert.equal(requestRefusal(req('POST', '/api/data/import', { host: 'box.lan:6363' }, exposed)).status, 503);
+  assert.equal(requestRefusal(req('POST', '/api/data/import', { host: 'box.lan:6363', authorization: 'Bearer nope' },
+    { ...exposed, ADMIN_TOKEN: 'the-real-token' })).status, 401);
+  assert.equal(requestRefusal(req('POST', '/api/data/import', { host: 'box.lan:6363', authorization: 'Bearer the-real-token' },
+    { ...exposed, ADMIN_TOKEN: 'the-real-token' })), null);
+  assert.equal(requestRefusal(req('POST', '/api/ingest', { host: 'box.lan:6363' }, exposed)), null);
+  // HOSTNAME is what the Mac app and Next's standalone server set.
+  assert.equal(requestRefusal(req('POST', '/api/data/export', { host: 'evil.example' }, { HOSTNAME: '127.0.0.1' })).status, 421);
+});
+
+test('middleware.js runs on every /api route and every photo except exactly POST /api/data/import', () => {
+  // Checked with Next's own matcher code, as `next build` compiles it. The
+  // config has to be a literal in middleware.js (Next reads it without running
+  // the file), so it is read from the source here the same way.
+  const source = readFileSync(new URL('../middleware.js', import.meta.url), 'utf8');
+  const literal = /matcher:\s*(\[[^\]]*\])/.exec(source)?.[1];
+  assert.ok(literal, 'middleware.js has a matcher list');
+  const matcher = JSON.parse(literal.replace(/'/g, '"'));
+  const require = createRequire(import.meta.url);
+  const { getMiddlewareMatchers } = require('next/dist/build/analysis/get-page-static-info');
+  const { getMiddlewareRouteMatcher } = require('next/dist/shared/lib/router/utils/middleware-route-matcher');
+  const runs = getMiddlewareRouteMatcher(getMiddlewareMatchers(matcher, {}));
+  const covered = (p) => runs(p, { headers: {} }, {});
+
+  assert.equal(covered('/api/data/import'), false, 'the one route left alone');
+  for (const p of ['/api', '/api/', '/api/users', '/api/network', '/api/data', '/api/data/export', '/api/data/restart',
+    '/api/data/reveal', '/api/scraper', '/api/update', '/api/admin-delete', '/api/settings', '/api/data/import/',
+    '/api/data/import/x', '/api/data/imports', '/api/data/import.json', '/api/data/importx', '/avatars/a.webp']) {
+    assert.equal(covered(p), true, p);
+  }
+  // Every route it leaves alone must make the checks itself: today, one.
+  const left = ['/api/data/import'];
+  for (const route of left) assert.equal(isDestructive(route), true, `${route} is still gated, by the route itself`);
+});
+
+test('the import route calls requestRefusal before anything else, in every handler', () => {
+  // The route can't be loaded here (Next resolves its imports), so its source
+  // is read: POST goes through admitImport (which calls requestRefusal first,
+  // tested in data-transfer.test.mjs) and DELETE calls requestRefusal first.
+  const route = readFileSync(new URL('../app/api/data/import/route.js', import.meta.url), 'utf8');
+  const body = (name) => route.slice(route.indexOf(`export async function ${name}(`)).split('\n').slice(1, 3).join('\n');
+  assert.match(body('POST'), /admitImport\(request/);
+  assert.match(body('DELETE'), /requestRefusal\(/);
+  assert.doesNotMatch(route, /export async function (GET|PUT|PATCH)\(/, 'no handler that skips the checks');
 });

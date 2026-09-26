@@ -8,6 +8,7 @@ import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
+import { pendingImport } from '../../../lib/data-import';
 
 // The app runs the scraper itself.
 //
@@ -344,6 +345,11 @@ export async function POST(request) {
   // The 1st-degree scans aren't searches, but they open LinkedIn with automation too.
   const searches = spec.searches || action.startsWith('auto-bridge')
     || ['bridge', 'rescrape', 'company', 'full', 'refresh'].includes(action);
+  // A staged import replaces the network at the next start, so anything scanned
+  // now would land in the copy that is about to be set aside.
+  if (!['install', 'login'].includes(action) && pendingImport(dataDir())) {
+    return Response.json({ error: 'An import is waiting to finish. Restart Six Degrees first (Settings → Your data), then scan.' }, { status: 409 });
+  }
   const cooldown = linkedinState(dataDir()).cooldown;
   if (searches && cooldown) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()} — ${cooldown.reason}.`, cooldown }, { status: 409 });

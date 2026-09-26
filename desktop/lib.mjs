@@ -2,6 +2,8 @@
 // can run them directly (tests/desktop.test.mjs). main.mjs wires them up.
 
 import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 
 const sleepFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -129,12 +131,77 @@ export function stopProcess(child, { graceMs = 5000 } = {}) {
  * A data folder asked for on the command line: `--data-dir PATH` or
  * `--data-dir=PATH`. It lets a beta run against a copy of the data:
  *   open "Six Degrees.app" --args --data-dir ~/six-degrees-copy
+ *
+ * Made absolute here. The server runs in its own folder inside the app, so a
+ * relative path handed to it as it is would name a different folder, and a
+ * new, empty network. A relative path is taken from the folder the app was
+ * started in, except /: `open` and the Finder start every app in /, which
+ * can't hold a folder, so there it is taken from the home folder. A leading ~
+ * is the home folder, as the shell would have made it (it doesn't after =).
  */
-export function dataDirArg(argv = []) {
+export function dataDirArg(argv = [], { cwd = process.cwd(), home = os.homedir() } = {}) {
+  let value = null;
   for (let i = 0; i < argv.length; i++) {
     const arg = String(argv[i]);
-    if (arg.startsWith('--data-dir=')) return arg.slice('--data-dir='.length) || null;
-    if (arg === '--data-dir' && argv[i + 1]) return String(argv[i + 1]);
+    if (arg.startsWith('--data-dir=')) {
+      value = arg.slice('--data-dir='.length);
+      break;
+    }
+    if (arg === '--data-dir' && argv[i + 1]) {
+      value = String(argv[i + 1]);
+      break;
+    }
   }
-  return null;
+  if (!value) return null;
+  const expanded = value === '~' ? home : value.startsWith('~/') ? path.join(home, value.slice(2)) : value;
+  return path.resolve(cwd === '/' ? home : cwd, expanded);
+}
+
+/**
+ * The exit code with which the server asks to be started again, to finish an
+ * import (Settings → Your data). main.mjs hands it to the server as
+ * SIX_DEGREES_RESTART_CODE, so only a shell that knows it offers the button.
+ * 75 is EX_TEMPFAIL: "try again". Next ends with 143 on SIGTERM, so a signal
+ * can never be mistaken for it.
+ */
+export const RESTART_EXIT_CODE = 75;
+
+/**
+ * The exit code with which the server hands over to the in-app updater
+ * (Settings → Updates → Install and restart): its helper takes it from there,
+ * and the app quits quietly. Reserved here with the updater's own number, so
+ * the shell reads every code the same way whichever feature is in.
+ */
+export const UPDATE_HANDOFF_EXIT_CODE = 76;
+
+/**
+ * Next's server catches SIGTERM and SIGINT and ends with 143 or 130
+ * (next/dist/server/lib/start-server.js). So a server stopped from outside
+ * (the installer replacing this copy, logging out) arrives as one of these
+ * codes, not as a signal; only a signal Next doesn't catch (SIGKILL) arrives
+ * as one.
+ */
+const STOPPED_FROM_OUTSIDE = [143, 130];
+
+/**
+ * What the shell does when its server ends:
+ *   'ignore'   the app is quitting anyway
+ *   'quit'     stopped from outside (a signal, or Next's 143 or 130), or handed
+ *              over to the updater (76): the whole app is going, so go quietly
+ *   'restart'  it asked to be started again (75), to finish an import
+ *   'report'   any other exit: a crash, said out loud
+ *
+ * `answered` says whether that server ever answered the shell. Restart now is
+ * a click on a page the server served, so a server that asks to be restarted
+ * before it has answered once can't be doing it for a person: it can't stay
+ * up, and is reported rather than started forever. One that answered is
+ * restarted however soon after the last restart, so trying again after an
+ * import that stopped (the page says why) is never a crash.
+ */
+export function serverExitAction({ code, signal, quitting = false, answered = true }) {
+  if (quitting) return 'ignore';
+  if (signal) return 'quit';
+  if (code === UPDATE_HANDOFF_EXIT_CODE || STOPPED_FROM_OUTSIDE.includes(code)) return 'quit';
+  if (code === RESTART_EXIT_CODE) return answered ? 'restart' : 'report';
+  return 'report';
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import OnboardingGate from '../components/OnboardingGate';
 import UpdatePanel from '../components/UpdatePanel';
 import SectorSection from '../components/settings/SectorSection';
+import DataSection from '../components/settings/DataSection';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 
@@ -71,6 +72,8 @@ function SettingsInner() {
 
         <UpdatePanel />
         <SectorSection />
+
+        <DataSection />
 
         <Section id="about" title="About this copy">
           {about ? (
