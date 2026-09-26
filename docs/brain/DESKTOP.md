@@ -206,7 +206,10 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       checksum, the environment and the packages, then ready. And a stop part-way
       (during the environment step): its working folder, download included, was gone,
       and the next press carried on from the Python already downloaded. A stop during
-      the download itself is covered by `tests/scanner-python.test.mjs`.
+      the download itself is covered by `tests/scanner-python.test.mjs`. A server that
+      stops mid-setup leaves its working folder (the download, what was unpacked):
+      it is swept once an hour old, at the next start as well as the next setup
+      (`lib/data-folder.js sweepLeftovers`).
 - [x] The updater: its size cap (1 GB) and download fallback already allow the bigger
       image; the space check for the staged copy measures the new app. A process whose
       executable is the app's Python (or the app's Node, through the driver's link) is

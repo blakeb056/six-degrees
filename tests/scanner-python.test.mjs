@@ -412,6 +412,33 @@ test('setup folders left by a stopped server are swept once an hour old, and not
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('setup folders are swept at the server\'s start too, not only before the next setup', async () => {
+  // getDb() runs applyPendingImport before it opens the database, once per
+  // server: the start. It sweeps every private working folder an hour old.
+  const { applyPendingImport } = await import('../lib/data-import.js');
+  const { sweepLeftovers } = await import('../lib/data-folder.js');
+  const dir = scratch();
+  const old = path.join(dir, `${SETUP_WORK_PREFIX}stopped`);
+  const fresh = path.join(dir, `${SETUP_WORK_PREFIX}running`);
+  fs.mkdirSync(path.join(old, 'python', 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(old, 'cpython.tar.gz'), Buffer.alloc(1024));
+  fs.mkdirSync(fresh);
+  for (const d of ['python', 'venv']) fs.mkdirSync(path.join(dir, d));
+  const hoursAgo = (Date.now() - 2 * 3600000) / 1000;
+  for (const d of [old, path.join(dir, 'python'), path.join(dir, 'venv')]) fs.utimesSync(d, hoursAgo, hoursAgo);
+  try {
+    assert.equal(applyPendingImport({ dir, dbFile: path.join(dir, 'six-degrees.sqlite') }), null, 'no import waiting');
+    assert.deepEqual(fs.readdirSync(dir).sort(), [`${SETUP_WORK_PREFIX}running`, 'python', 'venv'],
+      'the stopped setup\'s download is gone; one still running (under an hour) and the Python in use stay');
+    // The same sweep the export and import routes run.
+    fs.utimesSync(fresh, hoursAgo, hoursAgo);
+    assert.equal(sweepLeftovers(dir), 1);
+    assert.deepEqual(fs.readdirSync(dir).sort(), ['python', 'venv']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ── Mach-O, as build-app.mjs checks the Python inside the app ────────────────
 
 // A thin 64-bit Mach-O for `cpu` with LC_BUILD_VERSION (minos) and one LC_LOAD_DYLIB.
