@@ -66,7 +66,7 @@
 | `desktop/main.mjs` | The Electron app for the Mac (DESKTOP.md D1): the window, menu and lifecycle around the bundled server. Starts it, keeps links to LinkedIn out of the window, stops a scan cleanly on quit. |
 | `desktop/lib.mjs` | Its decisions that don't need Electron (link routing, ports, stopping a scan), tested in `tests/desktop.test.mjs`. |
 | `desktop/starting.html`, `desktop/icon/icon.svg` | The "starting" page, and the app icon (a placeholder until Blake picks one). Used by `build-app.mjs` (the `.icns`), `pages.yml` (the website), the README header, and `scripts/readme_buttons.py` (saved into the button pictures, so rerun it after a change). |
-| `tests/*.test.mjs` | About 285 tests in 27 files on `node --test`. No test framework dependency. `tests/sector-directory.test.mjs` holds every sector's must-match and must-not examples; `tests/ingest-route.test.mjs` runs a route as Next resolves it (`tests/helpers/extensionless.mjs`). |
+| `tests/*.test.mjs` | About 290 tests in 28 files on `node --test`. No test framework dependency. `tests/sector-directory.test.mjs` holds every sector's must-match and must-not examples; `tests/ingest-route.test.mjs` runs a route as Next resolves it (`tests/helpers/extensionless.mjs`). |
 
 ## Data directory
 
