@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0-beta.1] - 2026-09-26 (beta: a pre-release, never installed automatically)
+
 ### Added
 - **The Mac app scans with nothing to install.** It carries its own Python (3.12) with the
   scanner's packages already inside it, so the Scan page's first step is ticked from the
