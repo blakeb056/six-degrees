@@ -180,7 +180,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   // The import path (score_new_connections) is rescoreAll too: nothing passes the focus in.
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
-  assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing, Media & Creator\)/);
+  assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
   assert.equal(meta('scoring_version'), '3');
   assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
 });

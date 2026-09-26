@@ -93,6 +93,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anywhere in a headline no longer counts on its own. Your network is rescored once,
   automatically, on the first load after updating; stored scores now carry a fingerprint of
   scoring's rules as well as its lists, so a later change to them rescores the same way.
+- **Two industries have plainer names.** "Finance, VC & Crypto" is "Finance & Investing"
+  and "Marketing, Media & Creator" is "Marketing & Media", in Settings, Paths and the
+  working beside a score. Crypto and the creator economy are sectors of their own in the
+  directory (Crypto & Web3, Creator Economy). What you picked stays picked.
 - **The built-in company list reaches well beyond tech and finance.** 112 companies most US
   professionals would recognise join it, taken from named sources so anyone can check the
   choice: the household names of the Fortune 100 (CVS Health, Costco, Ford, UPS, State Farm,

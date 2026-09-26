@@ -392,7 +392,7 @@ function Suggestions({ state, chip }) {
 
 /** "Saved: …. Rescored your network (N people). …" */
 function savedLine(focus, effect) {
-  // The labels have commas of their own ("Finance, VC & Crypto"), so a dot
+  // The labels have commas of their own ("Tech, Software & AI"), so a dot
   // separates them.
   const what = focus.sectors.length
     ? `Saved: ${focus.sectors.map((k) => sectorByKey(k).label).join(' · ')} (${STRENGTH_LABEL[focus.strength].toLowerCase()}).`
