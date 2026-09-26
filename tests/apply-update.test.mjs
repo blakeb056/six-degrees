@@ -96,9 +96,38 @@ function track(t, child) {
 }
 const running = (child) => child.exitCode === null && child.signalCode === null;
 
+// What a started process prints is watched from the start, for the line
+// "ready": `child.ready` resolves true once it has said so, false if it ended
+// first. Its output is read to the end either way.
+function watchReady(child) {
+  let said = '';
+  child.ready = new Promise((resolve) => {
+    child.stdout.on('data', (d) => {
+      said += d;
+      if (/^ready$/m.test(said)) resolve(true);
+    });
+    child.once('exit', () => resolve(false));
+  });
+  return child;
+}
+
+// Wait until a process has said "ready": it has set up what the test relies on
+// (a SIGTERM it ignores). A fixed sleep wasn't enough: under the whole suite's
+// load a new copy of Node can take longer than 400 ms to start, and a SIGTERM
+// that arrives before its handler ends it (the test then saw SIGTERM where it
+// expected SIGKILL). Fails the test after `ms` rather than wait forever.
+async function whenReady(child, what, ms = 20000) {
+  let timer;
+  const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  const ok = await Promise.race([child.ready, deadline]);
+  clearTimeout(timer);
+  if (ok === null) assert.fail(`${what} didn't say it was ready within ${ms / 1000} s`);
+  if (!ok) assert.fail(`${what} ended before it was ready`);
+}
+
 // A program of the app, running: its executable is inside the app. `code` is JavaScript.
 function startExeInside(t, app, rel, code) {
-  return track(t, spawn(nodeInside(app, rel), ['-e', code], { stdio: 'ignore' }));
+  return watchReady(track(t, spawn(nodeInside(app, rel), ['-e', code], { stdio: ['ignore', 'pipe', 'ignore'] })));
 }
 
 // A bash script inside the app, run by /bin/bash (so its executable is not the
@@ -107,10 +136,13 @@ function startScriptInside(t, app, name, body, { cwd } = {}) {
   const file = path.join(app, 'Contents', 'MacOS', name);
   fs.writeFileSync(file, `#!/bin/bash\n${body}\n`);
   fs.chmodSync(file, 0o755);
-  return track(t, spawn('/bin/bash', [file], { env: { ...process.env, MARKERS: '' }, stdio: 'ignore', cwd }));
+  return watchReady(track(t, spawn('/bin/bash', [file],
+    { env: { ...process.env, MARKERS: '' }, stdio: ['ignore', 'pipe', 'ignore'], cwd })));
 }
 
-const IGNORES_TERM = "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)";
+// Each says "ready" once SIGTERM can no longer end it: wait with whenReady.
+const IGNORES_TERM = "process.on('SIGTERM', () => {}); console.log('ready'); setInterval(() => {}, 1000)";
+const TRAPS_TERM = "trap '' TERM; echo ready; while :; do sleep 0.2; done";
 const ENDS_ON_TERM = 'setInterval(() => {}, 1000)';
 
 function world(t, { folder = 'Applications' } = {}) {
@@ -304,7 +336,7 @@ test('REGRESSION (M1): stops only what runs the app\'s own executables; a Termin
   // The app's own: its server's node, which won't go on SIGTERM, and a helper process, which does.
   const server = startExeInside(t, w.target, 'Contents/Resources/node', IGNORES_TERM);
   const helper = startExeInside(t, w.target, 'Contents/Frameworks/Six Degrees Helper.app/Contents/MacOS/Six Degrees Helper', ENDS_ON_TERM);
-  await sleep(400);
+  await whenReady(server, 'the app\'s server');
   const r = await runHelper(w, [...baseArgs(w, '1.0.0', '2.0.0', { keep: false }), '--wait', '1', '--grace', '1']);
   assert.equal(r.code, 0, r.out);
   assert.equal((await server.ended).signal, 'SIGKILL', 'SIGTERM first, then SIGKILL');
@@ -318,8 +350,8 @@ test('stops a process the server named that won\'t go after --wait: SIGTERM firs
   const w = world(t);
   makeApp(w.target, '1.0.0');
   makeApp(w.staged, '2.0.0');
-  const stubborn = startScriptInside(t, w.target, 'stubborn', "trap '' TERM; while :; do sleep 0.2; done");
-  await sleep(200); // let it set its trap
+  const stubborn = startScriptInside(t, w.target, 'stubborn', TRAPS_TERM);
+  await whenReady(stubborn, 'the process the server named');
   const r = await runHelper(w, [...baseArgs(w, '1.0.0', '2.0.0'), '--pid', String(stubborn.pid), '--wait', '1', '--grace', '1']);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Asking them to stop/);
@@ -376,9 +408,10 @@ test('REGRESSION: an app in a folder whose name isn\'t plain ASCII is found and 
   makeApp(w.staged, '2.0.0');
   const server = startExeInside(t, w.target, 'Contents/Resources/node', IGNORES_TERM);
   // And one the server names, sitting in the app's folder, as the server itself does.
-  const named = startScriptInside(t, w.target, 'stuck', "trap '' TERM; while :; do sleep 0.2; done",
+  const named = startScriptInside(t, w.target, 'stuck', TRAPS_TERM,
     { cwd: path.join(w.target, 'Contents', 'Resources', 'server') });
-  await sleep(400);
+  await whenReady(server, 'the app\'s server');
+  await whenReady(named, 'the process the server named');
   const r = await runHelper(w, [...baseArgs(w, '1.0.0', '2.0.0', { keep: false }),
     '--pid', String(named.pid), '--wait', '1', '--grace', '1']);
   assert.equal(r.code, 0, r.out);
