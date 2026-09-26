@@ -53,7 +53,7 @@ test('a refresh says how many are new, and names each new person the model score
     { name: 'Ada', profile_url: '/in/a', headline: 'VP Sales at Hooli' },
     { name: 'Bo', profile_url: '/in/b', headline: 'Metadata Engineer at Initech' },
     { name: 'Cy', profile_url: '/in/c', headline: 'CEO at Northwind' },
-    { name: 'Di', profile_url: '/in/d', headline: 'Engineer at Snap-on' },
+    { name: 'Di', profile_url: '/in/d', headline: 'Engineer at Applewood Bakery' },
   ];
   const tiers = { '/in/a': 'A', '/in/b': 'C', '/in/c': 'S', '/in/d': 'C' };
   const out = refreshNotifications({ added, checked: 10, tierOf: (url) => tiers[url], userId: 'me' });

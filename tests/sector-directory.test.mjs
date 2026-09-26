@@ -185,7 +185,7 @@ const EXAMPLES = {
       ['Healthcare Recruiter at Quillon Staffing', 'Quillon Staffing'], ['Nurse Recruiter at Quillon Staffing', 'Quillon Staffing']],
   },
   dental: {
-    yes: ['Dentist | Owner at Smith Family Practice', 'Orthodontist', 'VP Operations | DSO Growth', 'Dental Hygienist, RDH',
+    yes: ['Dentist | Owner at Smith Family Practice', 'Orthodontist', 'VP Operations | DSO Expansion', 'Dental Hygienist, RDH',
       'company: Smith Family Dental', 'company: Henry Schein'],
     no: ['Incidental findings reviewer', 'Marketing for dentists', 'DSOx platform lead', ['Engineer at Quillon | Ex-Dentist', 'Quillon']],
   },
@@ -211,14 +211,14 @@ const EXAMPLES = {
     no: ['Army Vet | Project Manager at Quillon', 'Dog lover | Engineer', 'company: Vetted Talent Partners', 'Registered Nurse'],
   },
   k12: {
-    yes: ['Teacher at Lincoln Elementary School', '5th Grade Teacher', 'Special Education paraprofessional', 'company: Orange County Public Schools',
+    yes: ['Teacher at Lincoln Elementary School', '5th Grade Teacher', 'Special Education paraprofessional', 'company: Fairfax County Public Schools',
       'company: Oak Elementary', 'company: Northwind Preparatory School'],
     no: ['Yoga Teacher', 'Principal at Quillon Consulting', 'Elementary particle physicist'],
   },
   'higher-ed': {
-    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Central Florida', 'company: MIT', 'company: Stanford GSB'],
+    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Michigan', 'company: MIT', 'company: Stanford GSB'],
     no: ['company: University Federal Credit Union', 'company: College Park Realty', 'company: Purdue Pharma', 'company: University Health',
-      'company: University Hospitals', ['University Recruiter at Quillon', 'Quillon'], 'company: UCF', 'company: NYU'],
+      'company: University Hospitals', ['University Recruiter at Quillon', 'Quillon'], 'company: UGA', 'company: NYU'],
   },
   'marketing-advertising': {
     yes: ['Account Director at a creative agency', 'Founder | Digital marketing agency', 'company: Quillon Marketing Agency',
@@ -237,8 +237,8 @@ const EXAMPLES = {
       'company: Good News Church'],
   },
   'creator-economy': {
-    yes: ['Content Creator', 'YouTuber', 'UGC creator', 'company: Patreon', ['Founder at Quillon | Host at The Growth Podcast', 'The Growth Podcast']],
-    no: [['Founder at Quillon | Podcaster', 'Quillon'], ['Founder at Quillon | Host at The Growth Podcast', 'Quillon'], 'Creator of Quillon'],
+    yes: ['Content Creator', 'YouTuber', 'UGC creator', 'company: Patreon', ['Founder at Quillon | Host at The Long Table Podcast', 'The Long Table Podcast']],
+    no: [['Founder at Quillon | Podcaster', 'Quillon'], ['Founder at Quillon | Host at The Long Table Podcast', 'Quillon'], 'Creator of Quillon'],
   },
   'film-tv-music': {
     yes: ['Filmmaker', 'Music Producer at Quillon Records', 'company: Quillon Pictures', 'company: Netflix'],
@@ -250,7 +250,7 @@ const EXAMPLES = {
     no: ['Gaming Commission investigator', 'Casino gaming floor supervisor', 'company: Blizzard Snow Removal'],
   },
   sports: {
-    yes: ["Head Coach, Women's Soccer", 'Sports Marketing Manager', 'company: Orlando Magic', 'company: ESPN'],
+    yes: ["Head Coach, Women's Soccer", 'Sports Marketing Manager', 'company: Denver Nuggets', 'company: ESPN'],
     no: ['Soccer mom | Nurse', 'Football fan | Engineer', 'NFL alumni | Financial Advisor', 'company: Wasserman Law'],
   },
   'ecommerce-retail': {
@@ -306,10 +306,10 @@ const EXAMPLES = {
   },
   military: {
     yes: ['Captain, US Army', 'Active Duty Air Force', 'Army National Guard officer', 'company: United States Marine Corps'],
-    no: ['Army Veteran | Project Manager at Quillon', 'company: Old Navy', 'company: Salvation Army', 'Battalion Chief, Orange County Fire Rescue'],
+    no: ['Army Veteran | Project Manager at Quillon', 'company: Old Navy', 'company: Salvation Army', 'Battalion Chief, Travis County Fire Rescue'],
   },
   government: {
-    yes: ['Police Officer at Northwind Police Department', 'Legislative Aide', 'company: City of Northwind', 'company: State of Florida',
+    yes: ['Police Officer at Northwind Police Department', 'Legislative Aide', 'company: City of Northwind', 'company: State of Ohio',
       'Law Enforcement Officer'],
     no: ['company: State of Mind Media', 'company: City of Hope', 'Student Government President',
       ['Government Affairs Manager at Quillon Pharma', 'Quillon Pharma'], ['Public Policy Manager at Hooli', 'Hooli']],
@@ -419,7 +419,7 @@ test('whole words only: "incidental" isn\'t dental, "Banksy" isn\'t banking, "La
   assert.deepEqual(sectorsInName('Lawson Law Group'), ['legal']);
   // DSO only as a whole word, plural included.
   assert.deepEqual(sectorsInHeadline('DSO operations lead'), ['dental']);
-  assert.deepEqual(sectorsInHeadline('Growing DSOs across Florida'), ['dental']);
+  assert.deepEqual(sectorsInHeadline('Growing DSOs across Texas'), ['dental']);
   assert.deepEqual(sectorsInHeadline('ADSO coordinator'), []);
   assert.deepEqual(sectorsInHeadline('DSOx platform lead'), []);
   // A realtor, and a real estate firm, both match.
@@ -470,18 +470,18 @@ test('a headline counts what it says now, and not who someone serves', () => {
 });
 
 test('a part of a headline that names a company counts for that company; side notes don\'t count', () => {
-  const two = 'Founder at Quillon | Host at The Growth Podcast';
+  const two = 'Founder at Quillon | Host at The Long Table Podcast';
   assert.deepEqual(sectorsInHeadline(two, 'Quillon'), []);
-  assert.deepEqual(sectorsInHeadline(two, 'The Growth Podcast'), ['media-publishing', 'creator-economy']);
+  assert.deepEqual(sectorsInHeadline(two, 'The Long Table Podcast'), ['media-publishing', 'creator-economy']);
   // The parts before the first company describe that role…
   assert.deepEqual(sectorsInHeadline('Dentist | Owner at Smith Family Practice', 'Smith Family Practice'), ['dental']);
   // …and what comes after it is a side note.
   assert.deepEqual(sectorsInHeadline('Dental Hygienist at Quillon | Soccer mom | Podcaster', 'Quillon'), ['dental']);
   assert.deepEqual(sectorsInHeadline('Orthodontist at Bright Smiles | Founder at SmileTech', 'SmileTech'), []);
   // A company the headline doesn't name (a company scan) gets the leading parts.
-  assert.deepEqual(sectorsInHeadline('Registered Nurse | Volunteer at Second Harvest', 'Orlando Health'), ['hospitals']);
+  assert.deepEqual(sectorsInHeadline('Registered Nurse | Volunteer at Second Harvest', 'Northwind Health'), ['hospitals']);
   // With no company named at all, everything current counts.
-  assert.deepEqual(sectorsInHeadline('Registered Nurse | BSN', 'Orlando Health'), ['hospitals']);
+  assert.deepEqual(sectorsInHeadline('Registered Nurse | BSN', 'Northwind Health'), ['hospitals']);
 });
 
 // ── a company, from its name and its people ─────────────────────────────────

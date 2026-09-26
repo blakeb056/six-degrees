@@ -14,8 +14,8 @@ test('titles: the traps the old rules fell into', () => {
   assert.equal(key('Chief of Staff to the CEO at Acme'), 'director');  // not a chief
   assert.equal(key('Product Owner at Acme'), 'ic');                    // not an owner
   assert.equal(key('International Business Development at Acme'), 'ic');  // works there; not an intern
-  assert.equal(key('CS @ UCF | Zeta Beta Tau Treasury Chair'), 'student');  // a club chair is not a chairman
-  assert.equal(key('Head of EMEA Partner Ecosystems @ Snap'), 'director');  // not a partner
+  assert.equal(key('CS @ NYU | Zeta Beta Tau Treasury Chair'), 'student');  // a club chair is not a chairman
+  assert.equal(key('Head of EMEA Partner Ecosystems @ Adobe'), 'director');  // not a partner
   assert.equal(key('Chief Technologist & Technical Fellow at Raytheon'), 'vp');
   assert.equal(key('Client Partner at Meta'), 'senior');               // not a partner
   assert.equal(key('Lead Generation Specialist'), 'senior');           // not a lead
@@ -25,7 +25,7 @@ test('titles: the current role decides, not a former one or a student club', () 
   assert.equal(key('Ex-Google | Designer at Acme'), 'ic');
   assert.equal(key('Former CEO at Acme | Consultant'), 'ic');
   assert.equal(key('Budget Analyst Intern | Director of Fundraising at Delta Fraternity'), 'intern');
-  assert.equal(key('President of the Marketing Club at UCF'), 'student');
+  assert.equal(key('President of the Marketing Club at UCLA'), 'student');
   assert.equal(key('Founder & Managing Director at Acme'), 'csuite');
   assert.equal(key('Senior Director of Product'), 'director');
   assert.equal(key('Building cool things'), 'unknown');
@@ -33,8 +33,8 @@ test('titles: the current role decides, not a former one or a student club', () 
 
 test('student clubs: a school\'s words or its short name, at any school, and no school by name', () => {
   // A role in a school club is a student's, not an officer's, at every school alike.
-  for (const h of ['President, UCF Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
-    'President of the Marketing Club at UCF', 'Vice President, BYU Consulting Club', 'Director of Events, ASU Entrepreneurship Club',
+  for (const h of ['President, UNC Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President of the Marketing Club at UGA', 'Vice President, BYU Consulting Club', 'Director of Events, ASU Entrepreneurship Club',
     'President, University Consulting Club', 'President of the Finance Society at the University of Utah']) {
     assert.equal(key(h), 'student', h);
   }
@@ -45,14 +45,14 @@ test('student clubs: a school\'s words or its short name, at any school, and no 
     ["General Manager at BJ's Wholesale Club", 'vp'],
     ['Director of Operations, AAA Club Alliance', 'director'],
     ['Executive Director, IEEE Computer Society', 'director'],
-    ['President, CFA Society Orlando', 'csuite'],
-    ['President, EO Orlando Chapter', 'csuite'],
+    ['President, CFA Society Denver', 'csuite'],
+    ['President, EO Austin Chapter', 'csuite'],
     ['Chief Executive Officer, American Cancer Society', 'csuite'],
     ['Director of Operations, NFL Players Association', 'director'],
     ['Executive Director at the United States Tennis Association (USTA)', 'director'],
     ['Director, AAU Basketball Club', 'director'],
-    ['President, UCF Alumni Association', 'csuite'],
-    ['President, UF Alumni Club of Orlando', 'csuite'],
+    ['President, UNC Alumni Association', 'csuite'],
+    ['President, UW Alumni Club of Seattle', 'csuite'],
     ['President, Parent Teacher Association at Lincoln Elementary School', 'csuite'],
   ]) {
     assert.equal(key(h), want, h);
@@ -71,25 +71,25 @@ test('student clubs: a union local, a company\'s club and a university\'s staff 
     ['President, UPS Toastmasters Club', 'csuite', 'A'],             // UPS is on the curated list
     ['President, UBS Toastmasters Club', 'csuite', 'A'],
     ['Vice President, KU Endowment Association', 'vp', 'A'],          // the university's staff
-    ['President, UCF Chapter of IEEE', 'csuite', 'A'],                // the price: a chapter alone never counts
+    ['President, NYU Chapter of IEEE', 'csuite', 'A'],                // the price: a chapter alone never counts
   ]) {
     assert.equal(key(h), want, h);
     assert.equal(scorePerson({ headline: h }).tier, tier, h);
   }
   // Still read at every school alike.
-  for (const h of ['President, UCF Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
-    'President, UT Engineering Association', 'President, Rotary Club of UCF', 'President, UCF Chapter of the American Marketing Association',
-    'Chair, IEEE UCF Student Chapter']) {
+  for (const h of ['President, LSU Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President, UT Engineering Association', 'President, Rotary Club of UGA', 'President, UVA Chapter of the American Marketing Association',
+    'Chair, IEEE UMD Student Chapter']) {
     assert.equal(key(h), 'student', h);
   }
 });
 
 test('students: a major at any school, by its name or its short name', () => {
-  for (const h of ['CS @ UCF', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UF', 'Biology at University of Utah', 'Marketing @ NYU']) {
+  for (const h of ['CS @ UGA', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UW', 'Biology at University of Utah', 'Marketing @ LSU']) {
     assert.equal(key(h), 'student', h);
   }
   // A company's short name isn't a school's, and a short name is written in capitals.
-  for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ uf']) assert.notEqual(key(h), 'student', h);
+  for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ usc']) assert.notEqual(key(h), 'student', h);
   // Companies, a league and unions whose short names look like a school's, or
   // that the curated list knows (UPS): a major there is someone's department.
   for (const h of ['Finance @ UBS', 'Finance at UBS', 'Engineering @ UPS', 'Accounting @ UPS', 'Information Technology at UPS',
@@ -102,8 +102,8 @@ test('students: a major at any school, by its name or its short name', () => {
 });
 
 test('companies: one clean name per company, junk dropped', () => {
-  assert.equal(cleanCompany('Snap Inc.'), 'Snap');
-  assert.equal(cleanCompany('Snapchat 👻'), 'Snap');
+  assert.equal(cleanCompany('Adobe Inc.'), 'Adobe');
+  assert.equal(cleanCompany('Adobe Systems 🎨'), 'Adobe');
   assert.equal(cleanCompany('Meta'), 'Meta');                          // the old rule missed plain "Meta"
   assert.equal(cleanCompany('Meta (Facebook)'), 'Meta');
   assert.equal(cleanCompany('AWS'), 'Amazon');
@@ -185,7 +185,7 @@ test('bonus: whole words only, capped', () => {
   assert.equal(reachBonus('$3.4M+ in client results | helped a Forbes entrepreneur').points, 0);
   assert.equal(reachBonus('Raised $12M').points, 0.8);
   assert.deepEqual(reachBonus('Investor Relations Manager').points, 0);
-  assert.deepEqual(reachBonus('Creator, 747M+ views').reasons, ['reach in the millions']);
+  assert.deepEqual(reachBonus('Creator, 12M+ views').reasons, ['reach in the millions']);
 });
 
 test('bonus: the top honour of every field counts, in the forms people claim it', () => {
@@ -242,7 +242,7 @@ test('a person scores as their strongest role; former roles count at 70%', () =>
   assert.equal(retired.title.label, 'Former VP / Partner / GM');
   assert.equal(retired.company, 'Coca-Cola');
   assert.ok(retired.power > scorePerson({ headline: 'Executive' }).power);
-  assert.equal(scorePerson({ headline: 'GTM @ Whatnot' }).company, 'Whatnot');
+  assert.equal(scorePerson({ headline: 'GTM @ Quillon' }).company, 'Quillon');
 });
 
 test('a current student is capped, whatever else they list', () => {
@@ -520,7 +520,7 @@ test('a network read once scores exactly like one read afresh, however many ways
   // Settings' preview and save read every headline once and score the read
   // with two sector focuses. That must change nothing but the time it takes.
   const titles = ['Founder', 'VP Engineering', 'Director of Design', 'Engineer', 'Nurse', 'Marketing Intern', 'CS student'];
-  const companies = ['Quillon', 'Adobe', 'Snap', 'Meridian Health', 'Harvard University'];
+  const companies = ['Quillon', 'Adobe', 'Pinterest', 'Meridian Health', 'Harvard University'];
   const rows = Array.from({ length: 60 }, (_, i) => {
     let headline = `${titles[i % titles.length]} at ${companies[i % companies.length]}`;
     if (i % 4 === 0) headline += ` | Ex-Director at ${companies[(i + 2) % companies.length]}`;
@@ -587,7 +587,7 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   const tops = (headline, companyFor) => topCompanies(asStored({ headline }, companyFor));
   assert.deepEqual(tops('VP at Google'), { now: { name: 'Google', score: 10 }, before: null });
   assert.deepEqual(tops('Stealth | Ex-Google'), { now: null, before: { name: 'Google', score: 10 } });
-  assert.deepEqual(tops('Founder at Quillon | Ex-Director at Snap'), { now: null, before: { name: 'Snap', score: 8 } });
+  assert.deepEqual(tops('Founder at Quillon | Ex-Director at Pinterest'), { now: null, before: { name: 'Pinterest', score: 8 } });
   assert.deepEqual(tops('VP at Google | Ex-Manager at Google'), { now: { name: 'Google', score: 10 }, before: null });
   assert.deepEqual(tops('Designer at Quillon | Ex-Director at Northwind'), { now: null, before: null });
   // What the lists got wrong: a name inside another word, and a company that isn't famous but is top to you.

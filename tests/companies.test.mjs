@@ -10,7 +10,7 @@ const p = (id, degree, extra = {}) => ({ id, degree, profile_url: `/in/${id}`, t
 
 test('the company comes from a scan, the stored field, or the headline', () => {
   assert.equal(companyOf({ company: 'Adobe Systems Inc.' }), 'Adobe');
-  assert.equal(companyOf({ headline: 'Head of Growth at Northwind Labs | AI' }), 'Northwind Labs');
+  assert.equal(companyOf({ headline: 'Head of Design at Northwind Labs | AI' }), 'Northwind Labs');
   assert.equal(companyOf({ headline: 'Designer @ Acme, remote' }), 'Acme');
   assert.equal(companyOf({ headline: 'Open to work' }), null);
   assert.equal(companyOf({ scanned_company: 'Stripe', company: 'Old Co' }), 'Stripe');

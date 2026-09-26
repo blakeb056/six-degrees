@@ -41,7 +41,7 @@ test('new connections are the ones this refresh added, and high-value is the tie
   const first = await send([
     person(1, 'VP Sales at Hooli'),                   // 6.0: A
     person(2, 'Metadata Analyst at Initech'),         // not Meta: C
-    person(3, 'Engineer at Snap-on'),                 // not Snap: C
+    person(3, 'Engineer at Applewood Bakery'),        // not Apple: C
     person(4, 'Nurse at Mercy Hospital'),
   ]);
   assert.equal(first.saved, 4);
@@ -49,7 +49,7 @@ test('new connections are the ones this refresh added, and high-value is the tie
 });
 
 test('a re-scan of people already saved finds nothing new, however many it sends', async () => {
-  const known = Array.from({ length: 110 }, (_, i) => person(100 + i, i % 2 ? 'Engineer at Snap-on' : 'Metadata Engineer at Acme'));
+  const known = Array.from({ length: 110 }, (_, i) => person(100 + i, i % 2 ? 'Engineer at Applewood Bakery' : 'Metadata Engineer at Acme'));
   await send(known);
   getDb().exec('DELETE FROM notifications');
   const again = await send(known);

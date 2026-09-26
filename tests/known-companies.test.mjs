@@ -41,7 +41,7 @@ const SPELLINGS = {
   Cigna: ['Cigna', 'The Cigna Group', 'Cigna Healthcare'],
   Humana: ['Humana', 'Humana Military'],
   'Elevance Health': ['Elevance Health', 'Elevance', 'Anthem', 'Anthem Blue Cross', 'Anthem Blue Cross and Blue Shield', 'Anthem Blue Cross Blue Shield'],
-  'HCA Healthcare': ['HCA Healthcare', 'HCA', 'HCA Florida Healthcare', 'HCA Houston Healthcare'],
+  'HCA Healthcare': ['HCA Healthcare', 'HCA', 'HCA Midwest Health', 'HCA Houston Healthcare'],
   'Kaiser Permanente': ['Kaiser Permanente', 'Kaiser', 'Kaiser Foundation Health Plan', 'Kaiser Foundation Hospitals'],
   Merck: ['Merck', 'Merck &', 'Merck Sharp & Dohme', 'Merck Animal Health'],
   AbbVie: ['AbbVie'],
@@ -50,7 +50,7 @@ const SPELLINGS = {
   AstraZeneca: ['AstraZeneca'],
   Bayer: ['Bayer', 'Bayer U.S', 'Bayer Crop Science', 'Bayer Pharmaceuticals'],
   'Mayo Clinic': ['Mayo Clinic', 'Mayo Clinic Health System', 'Mayo Clinic Arizona'],
-  'Cleveland Clinic': ['Cleveland Clinic', 'Cleveland Clinic Florida'],
+  'Cleveland Clinic': ['Cleveland Clinic', 'Cleveland Clinic Abu Dhabi'],
   'Johns Hopkins Medicine': ['Johns Hopkins Medicine', 'The Johns Hopkins Hospital', 'Johns Hopkins Health System', 'Johns Hopkins HealthCare',
     "Johns Hopkins All Children's Hospital", 'Johns Hopkins Bayview Medical Center'],
   // Retail, food, hotels
@@ -262,8 +262,8 @@ const NOT_LISTED = [
   'Vanderbilt University Medical Center', 'Brown University Health', 'University of Pennsylvania Health System', 'University of Chicago Medicine',
   'Columbia University Irving Medical Center', 'University of Notre Dame Australia', 'Princeton High School', 'Yale Elementary School',
   'Kellogg Brown & Root', 'Fidelity National Financial', 'Fidelity National Information Services', 'FIS', 'Fidelity Bank',
-  'Warner Music Group', 'Warner Robins', 'Warner Norcross + Judd', 'Warner Chilcott', 'J&J Snack Foods', 'Toyota of Orlando', 'Toyota of Northwind',
-  'Toyota Tsusho America', 'Coca-Cola Consolidated', 'Coca-Cola Beverages Florida', 'Coca-Cola Bottling Co. United', 'Pepsi Bottling Ventures',
+  'Warner Music Group', 'Warner Robins', 'Warner Norcross + Judd', 'Warner Chilcott', 'J&J Snack Foods', 'Toyota of Dallas', 'Toyota of Northwind',
+  'Toyota Tsusho America', 'Coca-Cola Consolidated', 'Coca-Cola Beverages Northeast', 'Coca-Cola Bottling Co. United', 'Pepsi Bottling Ventures',
   'Citi Trends', 'Citi Field', 'Merrill Gardens', 'Merck Millipore', 'Campbell Clinic', 'Campbell Scientific',
   'Paramount Residential Mortgage Group', 'Paramount Group', 'Nielsen Norman Group', 'NielsenIQ', 'Chase Brass', 'Chase Design Studio',
   'Goldman Properties', 'Sequoia Health', 'Sequoia Consulting Group', 'Adobe Dental', 'Adobe Realty', 'Uber Freight', 'Oracle Elevator',
@@ -316,7 +316,7 @@ test('entries closed because other companies share their first word still read i
   // …and a person there reads as working there, at its score.
   assert.deepEqual([currentCompany({ headline: 'Engineer at Snap Inc.' }), scorePersonAt('Director at Snap Inc.')], ['Snap', 8]);
   assert.deepEqual([currentCompany({ headline: 'Territory Manager at Snap-on' }), scorePersonAt('Territory Manager at Snap-on')], ['Snap-on', 4]);
-  assert.deepEqual([currentCompany({ headline: 'Salesperson at Toyota of Orlando' }), scorePersonAt('Salesperson at Toyota of Orlando')], ['Toyota of Orlando', 4]);
+  assert.deepEqual([currentCompany({ headline: 'Salesperson at Toyota of Dallas' }), scorePersonAt('Salesperson at Toyota of Dallas')], ['Toyota of Dallas', 4]);
 });
 
 test('a credential, a program or gig work on a listed company\'s platform is not a job there', () => {
