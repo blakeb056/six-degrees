@@ -42,8 +42,11 @@ on:
         options: [auto, electron, classic]
         default: auto
 
+# Read-only for every job by default. Only the job that publishes the GitHub
+# Release may write, and it runs only after both Macs' builds and checks
+# passed, and never on a dry run.
 permissions:
-  contents: write
+  contents: read
 
 
 jobs:
@@ -108,10 +111,15 @@ jobs:
 
           # The scanner's Python, inside the app (DESKTOP.md D2): it runs, as this
           # chip, and its packages load, compiled parts included (TRAPS §30).
+          # Every run of it here has PYTHONDONTWRITEBYTECODE=1: without it Python
+          # writes __pycache__ into the app, which breaks the app's signature
+          # ("a sealed resource is missing or invalid") and fails the check
+          # after the first quit. Not set for the whole step: the app must keep
+          # its own Python from writing, and this check is how CI knows it does.
           py="$app/Contents/Resources/python/bin/python3"
           PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; from importlib.metadata import version as v; print("Python", sys.version.split()[0], platform.machine(), "· Playwright", v("playwright"), "· requests", v("requests"), "· Pillow", v("pillow"))'
           want=$([ "${{ matrix.arch }}" = x64 ] && echo x86_64 || echo arm64)
-          got=$(PYTHONNOUSERSITE=1 "$py" -c 'import platform; print(platform.machine())')
+          got=$(PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import platform; print(platform.machine())')
           [ "$got" = "$want" ] || { echo "::error::The app's Python runs as $got, not $want"; exit 1; }
           # scrape.py's pure functions on it: the same checks npm test runs on python3.
           PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$py" node --test \
@@ -196,6 +204,8 @@ jobs:
     needs: mac
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create / upload
     steps:
       - uses: actions/download-artifact@v4
         with:
