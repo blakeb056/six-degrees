@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-26
+
+### Changed
+- **0.3.0-beta.1, promoted: this is now the Mac app and npm package everyone gets.** It adds:
+  - **Settings**, with **Updates** there too. The Mac app now updates itself: *Install and restart*, with no Terminal.
+  - **Your sector**, a directory of 49 sectors suggested from your own network. Everyone starts from the same neutral company scores.
+  - **Your data:** see where your network lives, save a copy, and move it to another computer.
+  - **The scanner's Python inside the Mac app,** so scanning needs nothing installed.
+  - **Two security fixes.**
+
+  The details are under 0.3.0-beta.1 below.
+- **The download page** says the scanner's Python comes with the Mac app, offers *Set up the scanner* for `npx`, and gives the new size (about 195–210 MB).
+- **Updating from 0.2.1 or older:** use the Terminal line or the download page one last time. From 0.3.0 on, it's *Install and restart* in Settings.
+
 ## [0.3.0-beta.1] - 2026-09-26 (beta: a pre-release, never installed automatically)
 
 ### Added
