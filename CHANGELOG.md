@@ -13,23 +13,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
   page links to it.
 - **Your sector (Settings).** Pick up to three sectors you work in and how much to lean
-  toward them. A pick is one of twelve broad industries or one of 44 narrower sectors from a
-  built-in directory (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education…):
-  open an industry to see its sectors, search by a job, a kind of business or a company
-  ("dentist", "bakery", "Stripe"), or take a sector suggested from your own network
-  ("Dental: 42 people at 17 companies"). An industry includes its sectors: it counts each
-  company whose one industry it is and any company in one of its sectors, so Healthcare &
-  Biotech takes in a practice only the directory calls dental. A directory sector goes by a
-  fixed list of words, as whole words, in the company's name or in the headlines of at least
-  half of the people you know there; for a one-person company, that person decides. Nine
-  sectors are work every kind of company has (HR & Recruiting, Marketing & Advertising, PR &
-  Communications, Accounting & Tax, Legal, Management Consulting, Software & SaaS, AI &
-  Data, Cybersecurity): for those a job title in a headline doesn't count, so "Recruiter at
-  Acme Widgets" doesn't make Acme a recruiting firm and "Software Engineer at Chase" doesn't
-  make a bank a software company; the company's name ("Acme Staffing", "Smith CPA") or a
-  kind of firm ("staffing agency", "law firm", "SaaS") does. There's no AI and nothing is
-  sent anywhere: the same words give the same answer on every computer, and anyone can add
-  to the list. Companies in your sectors get +1 ("lean") or +2 ("strong") on their score,
+  toward them. A pick is one of twelve broad industries or one of 49 narrower sectors from a
+  built-in directory (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education,
+  Beauty & Personal Care, Agriculture & Farming, Veterinary & Animal Care, Social Work &
+  Human Services, Security Services…): open an industry to see its sectors, search by a job,
+  a kind of business or a company ("dentist", "bakery", "Stripe"), or take a sector
+  suggested from your own network ("Dental: 42 people at 17 companies"). An industry
+  includes its sectors: it counts any company in one of its sectors, so Healthcare & Biotech
+  takes in a practice only the directory calls dental, and a company whose one industry the
+  built-in list or the company's own name gives. Not one known only from its people's job
+  titles: "Recruiter at Acme Widgets" doesn't make Acme a consulting firm, nor "Software
+  Engineer at Pinecrest Foods" a tech company (Paths still colours them by what their people
+  say). A directory sector goes by a fixed list of words, as whole words, in the company's
+  name or in the headlines of at least half of the people you know there; for a one-person
+  company, that person decides. Ten sectors are work every kind of company has (HR &
+  Recruiting, Marketing & Advertising, PR & Communications, Accounting & Tax, Legal,
+  Management Consulting, Software & SaaS, AI & Data, Cybersecurity, Security Services): for
+  those a job title in a headline doesn't count, so "Recruiter at Acme Widgets" doesn't make
+  Acme a recruiting firm and "Software Engineer at Chase" doesn't make a bank a software
+  company; the company's name ("Acme Staffing", "Smith CPA") or a kind of firm ("staffing
+  agency", "law firm", "SaaS") does. Nor do the industry words beside such a job ("University
+  Recruiter", "Insurance Defense Attorney", "Dental Marketing Manager"). The lists name only
+  companies known across the country, and schools by their names, not their short names
+  (UCF, NYU): a regional company or a school is placed by the words in its name and its
+  people's headlines, like everything else. There's no AI and nothing is sent anywhere: the
+  same words give the same answer on every computer, and anyone can add to the list. Companies in your sectors get +1 ("lean") or +2 ("strong") on their score,
   once however many of your picks they're in, never above 10 and never on a score you set on
   Paths → Scores, so the people there rank higher; the working names the sector ("4 + 1 your
   sector: Dental"). It lifts companies, not what people claim: a reach bonus at an unknown
@@ -66,9 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anywhere in a headline: "Metadata Analyst" counted as Meta, "Snapdragon" as Snap, and an
   ex-Googler as someone at Google. Now the Queue adds its +1 when the company someone's
   score is built on scores 8 or more, once, and the panel's "top-tier company" and "former"
-  notes name a company that scores 8 or more, with its score. That's the curated list's
-  major companies and up, or any company you score that high on Paths → Scores or lift there
-  with *Your sector*.
+  notes name a company that scores 8 or more, with its score: the one the score was built
+  on, when someone has two roles alike. That's the curated list's major companies and up, or
+  any company you score that high on Paths → Scores or lift there with *Your sector*.
 - **Built-in company scores are the same for everyone.** The built-in list of well-known
   companies, which every network's scores start from, held some personal and regional
   picks: Snap at 9 as "home turf", UCF at 5 as a "local institution", and a group of 6s
@@ -80,9 +88,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   University of Florida, AdventHealth, Polymarket, Kalshi and Anduril; they're estimated from
   your network like any other company, and you can score any of them on Paths → Scores. If
   your scanned network had people at a company whose score changed, Paths → Scores offers
-  once to keep the old scores as your own: keep all, choose, or no thanks. Not for a new
-  database, a CSV import or the sample. Your network is rescored once, automatically, on the
-  first load after updating.
+  once to keep the old scores as your own: keep all, choose, or no thanks. It offers each old
+  score only for its own company's names (a Snap-on person isn't counted under Snap), and
+  closes on its own when your network has nothing to offer. Not for a new database, a CSV
+  import or the sample. The words that guess a company's industry lose the same kind of
+  picks: "UCF" (education), "Snap", "Lens" and "AR" (media; "AR Specialist" is accounts
+  receivable), Polymarket, Anduril, Sandia and Whatnot ("whatnot" is also a word), and
+  "growth", a job title: "Head of Growth at Acme Software" works at a software company, and
+  "Summit Growth Equity" is an investment firm, not media ("growth marketing" is still
+  marketing). Your network is rescored once, automatically, on the first load after
+  updating.
+- **The reach bonus counts the top award of every field.** It named four awards, from
+  advertising, TV, music and the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so
+  a Pulitzer, an Oscar, a Nobel Prize or an Olympic medal earned nothing. Now it's the top
+  honour of each field: the Nobel, the Pulitzer, the Peabody, the Emmy, the Grammy, the
+  Oscar, the Tony, the Webby, the Clio and Cannes Lions, the James Beard, the Turing Award,
+  the Fields Medal, the Pritzker Prize, MacArthur Fellows, Rhodes Scholars, Olympians and
+  Paralympians, as well as "award-winning" and "prize-winning". A name that is also a
+  company's or a person's counts only as a claim ("Oscar-winning", "Tony Award", "Emmy
+  nominee"): Oscar Health, Peabody Energy and Clio get nothing, and "Emmy" or "Grammy"
+  anywhere in a headline no longer counts on its own. Your network is rescored once,
+  automatically, on the first load after updating; stored scores now carry a fingerprint of
+  scoring's rules as well as its lists, so a later change to them rescores the same way.
+- **Two industries have plainer names.** "Finance, VC & Crypto" is "Finance & Investing"
+  and "Marketing, Media & Creator" is "Marketing & Media", in Settings, Paths and the
+  working beside a score. Crypto and the creator economy are sectors of their own in the
+  directory (Crypto & Web3, Creator Economy). What you picked stays picked.
 - **The built-in company list reaches well beyond tech and finance.** 112 companies most US
   professionals would recognise join it, taken from named sources so anyone can check the
   choice: the household names of the Fortune 100 (CVS Health, Costco, Ford, UPS, State Farm,
@@ -103,13 +134,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own headline could put the same company in a different industry. Your network is
   rescored once, automatically, on the first load after updating.
 
+### Removed
+- **The retired SQL scorers.** `scripts/score_new_connections.sql`, the hosted-era scoring
+  model retired in 0.1.10, still shipped inside the Mac app and the npm package, headed
+  "CANONICAL SCORER" and holding the old list's personal picks. Nothing read it (imports
+  score with `lib/scoring.js`). It and its repo-only twin, `scripts/score-connections.sql`,
+  are deleted; git history keeps them.
+
 ### Fixed
 - **Students and school clubs read the same at every school.** The title rules named two
   schools, UCF and UF: "President, UCF Marketing Club" counted as a student's club role and
   "CS @ UCF" as a student, while "VP, NYU Finance Society" counted as a VP and "CS @ NYU" as
   someone working at NYU. A school's short name in capitals (UCF, NYU, USC, BYU…) now counts
   for every school, and an alumni club or a parents' association is no longer taken for a
-  student club.
+  student club. What that costs: a short name is two to four capitals that start or end with
+  a U, so companies and unions that look like one are set aside by name (the curated list's
+  companies, such as UPS, and UBS, UFC, UPMC, UnitedHealth's UHG and UHC, UA, UL, ULA, UTC,
+  the UAW, USW, SEIU, UFCW and UFT): "Finance @ UBS" works in finance, and "President, UAW
+  Local 600 Chapter" leads a union local. A school whose short name is on that list isn't read
+  from it; with a short name only a club or a society counts as a school's, or an association
+  named for a field of study ("USC Trojan Marketing Association"), so a chapter named only by
+  one ("President, UCF Chapter of IEEE") reads as the title it says; and a company's short name
+  that isn't on the list still reads as a school's in "Marketing @ …".
+- **Companies that share a name with a well-known one are themselves.** The curated list's
+  names matched anything that started with them: Snap-on, Snap Finance and Specs Optical
+  counted as Snap, Harvard Pilgrim Health Care and Stanford Health Care as the universities,
+  Kellogg Brown & Root as Kellanova, Fidelity National Financial and Fidelity Bank as
+  Fidelity, Warner Music Group as Warner Bros. Discovery, J&J Snack Foods as Johnson &
+  Johnson, Toyota of Orlando and Coca-Cola Consolidated as the automaker and Coca-Cola, Citi
+  Trends as Citi, Merrill Gardens as Bank of America and Merck Millipore as Merck. A name
+  other companies share now matches only in its own company's forms ("Snap Inc.", "Harvard
+  Business School"); a dealership, a bottler, a venue or a company spun off keeps its own
+  name. So does a credential, a program or gig work on a company's platform, which used to
+  read as a job there when written first in a headline: "AWS Certified Solutions Architect"
+  was a role at Amazon (10), and "Uber Driver", "Airbnb Superhost", "Twitch Streamer",
+  "LinkedIn Top Voice" and "Google Alum" were at theirs. The sector directory reads names the
+  same way. Best Buy and Best Western count as companies (they were dropped with "at best"),
+  and so do Home Instead and Home Chef (dropped with "at home"). Chase Corporation and
+  Merrill Corporation aren't read as the banks once "Corporation" is trimmed, and a name
+  with initials is read in full: "J.P. Morgan" was cut to "J.P" and matched nothing, and
+  "J. Crew", "T. Rowe Price", "U.S. Bank" and "St. Jude Children's Research Hospital" lost
+  everything after the first full stop.
+- **Paths groups people under the companies their scores are built on.** It merged
+  company names by a list of its own, which also folded other companies in: Oxford,
+  Hartford and Bradford counted as Ford, Bainbridge as Bain, and Mitsubishi UFJ, a bank, as
+  "Mitsubishi Power". Paths now names each company as the score does, from the one built-in
+  list, in its bubbles, its Companies list and its ways in; the score itself no longer reads
+  Mitsubishi's bank, lender or landlord as Mitsubishi. The launch page no longer claims "80+
+  company normalizations".
+- **A refresh's notifications count who is new, and who scored high.** New connections were
+  the ones missing from a lookup of the first hundred, so a refresh of known people past a
+  hundred announced "10 new connections found!", and genuinely new ones were never announced.
+  "High-value connection" went by famous names anywhere in the headline ("Metadata Engineer",
+  "Engineer at Snap-on"). Now new means added by that refresh, and high-value means the model
+  scored them S or A.
+- **The launch page's formula** is the one the app scores with, `T × (0.45 + 0.055 × C) + R +
+  B`, with S from 7.5. It showed the sum retired in 0.1.10.
+- **The launch page shows the sample network's numbers, not one person's.** Its counters,
+  degree counts and feature cards were one real network's (2,438 connections, 25 bridges,
+  798 recommendations…) shown as if they were the app's, and its footer named a company. They
+  are now counted from the invented sample network that comes with the app (873 connections,
+  14 bridges, 748 people, 19 companies), and the page says so; the footer says the app is
+  open source (MIT). Its S tier card said 7.0+; S starts at 7.5. The public demo's profile no
+  longer names a company either.
 - **Paths → Scores misstated the company weight.** It runs from 0.615 when no company is
   found, not 0.56, up to 1.0 for a company scored 10.
 - **Schools named like a company on the curated list were scored as that company.**
