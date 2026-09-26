@@ -24,7 +24,7 @@ test('a Python named in SIX_DEGREES_PYTHON, or one already installed: ready', ()
   assert.equal(custom.done, true);
   assert.match(custom.text, /SIX_DEGREES_PYTHON \(\/opt\/py\/bin\/python3\)/);
   for (const source of ['venv', 'system']) {
-    assert.deepEqual(setupStep(status({ dependencies: true, pythonSource: source })), { done: true, text: 'Installed.', button: null });
+    assert.deepEqual(setupStep(status({ dependencies: true, pythonSource: source })), { done: true, text: 'Installed.', button: null, note: null });
   }
 });
 
@@ -71,21 +71,51 @@ test('no Python and no download for this computer: it says what to install, with
     done: false,
     text: 'No Python 3.10 to 3.14 was found on this machine. Install one from python.org, then reload.',
     button: null,
+    note: null,
   });
   // Before the first answer the page draws no body; the step itself is simply not done.
   assert.equal(setupStep(null).done, false);
 });
 
-test('the app\'s own Python failing is said out loud, before the way round it', () => {
-  const s = setupStep(status({
-    python: true, ownPython: { source: 'bundled', problem: 'it was stopped (SIGKILL)' },
-    installFrom: { source: 'system', version: '3.13.1' },
-  }));
-  assert.match(s.text, /^The Python inside the app didn't work \(it was stopped \(SIGKILL\)\), so the scanner needs setting up another way\. One-time/);
+test('the app\'s own Python failing is said in a line of its own: what happened, and what to do', () => {
+  // The server won't start it again (lib/scanner-python.js pythonLooker, retry: false).
+  const blocked = { source: 'bundled', problem: 'it was stopped (SIGKILL)', retry: false };
+  const s = setupStep(status({ python: true, ownPython: blocked, installFrom: { source: 'system', version: '3.13.1' } }));
+  assert.equal(s.note, 'The Python that comes with the app didn\'t work (it was stopped (SIGKILL)). macOS may have blocked it. '
+    + 'Six Degrees won\'t try it again until you restart it. '
+    + 'To scan now, use Install below: it gives the scanner a Python of its own in your data folder.');
   assert.equal(s.button.action, 'install');
+  assert.match(s.text, /^One-time, about a minute/, 'the step itself reads as for any copy');
+
+  // No Python on this computer that will do: Set up the scanner is the way.
+  const setup = setupStep(status({ python: false, ownPython: blocked, systemPython: { version: '3.9.6', venv: true }, download: DOWNLOAD }));
+  assert.match(setup.note, /To scan now, use Set up the scanner below/);
+  assert.equal(setup.button.action, 'setup');
+  // While it runs the button says Setting up…, but the line still names it.
+  assert.match(setupStep(status({ python: false, ownPython: blocked, download: DOWNLOAD }, { running: true, action: 'setup' })).note,
+    /use Set up the scanner below/);
+
+  // Another Python already has the packages: the scanner runs, and the line says on what.
+  const fellBack = setupStep(status({ python: true, dependencies: true, pythonSource: 'system', ownPython: blocked }));
+  assert.equal(fellBack.done, true);
+  assert.match(fellBack.note, /^The Python that comes with the app didn't work .* The scanner uses another Python on this computer instead\.$/);
+
+  // Nothing to install from or download: the line says what's left.
+  assert.match(setupStep(status({ python: false, ownPython: blocked, download: null })).note,
+    /install Python 3\.10 to 3\.14 from python\.org, then reload\.$/);
+
+  // A reason that doesn't point at macOS doesn't blame it.
+  const missing = setupStep(status({ python: true, ownPython: { source: 'bundled', problem: 'ModuleNotFoundError: No module named \'PIL\'', retry: false }, installFrom: { source: 'system', version: '3.12.3' } }));
+  assert.doesNotMatch(missing.note, /macOS/);
+  assert.match(missing.note, /No module named 'PIL'/);
+
+  // A Python named in SIX_DEGREES_PYTHON (a developer's) is said in the step, as before, and asked again later.
   const custom = setupStep(status({ python: false, ownPython: { source: 'custom', problem: 'it isn\'t there' }, download: DOWNLOAD }));
   assert.match(custom.text, /^The Python named in SIX_DEGREES_PYTHON didn't work \(it isn't there\)/);
   assert.equal(custom.button.action, 'setup');
+  assert.equal(custom.note, null);
+  // No failure, no line.
+  assert.equal(setupStep(status({ python: true, dependencies: true, pythonSource: 'bundled' })).note, null);
 });
 
 test('other pages send people to Scan while there is something to set up there', () => {

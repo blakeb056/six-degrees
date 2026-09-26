@@ -10,7 +10,7 @@ import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import {
-  choosePython, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
+  pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
 
@@ -145,11 +145,11 @@ function forgetChecks() {
 
 // The Python the app ships can't change while this server runs, so once it has
 // been seen to work it isn't started again to ask: each look costs a Python
-// start, and the page asks every 1.5 seconds. One that failed is asked again a
-// minute later, not every look: a first start can take up to 20 seconds to
-// give up (lib/scanner-python.js choosePython), and every look would wait on it.
-let ownPythonWorks = null;
-let ownPythonFailed = null;   // { path, at, own }
+// start, and the page asks every 1.5 seconds. Once it has failed it isn't
+// started again at all until the server restarts, so a Python macOS refuses to
+// run can't bring macOS's alert back every few seconds; the page says what
+// happened instead. (lib/scanner-python.js pythonLooker.)
+const lookForPython = pythonLooker();
 
 let host;
 function hostOnce() {
@@ -157,26 +157,13 @@ function hostOnce() {
   return host;
 }
 
-async function lookForPython(named) {
-  if (ownPythonWorks && ownPythonWorks.path === named) {
-    return { run: ownPythonWorks, own: null, base: null, systemFound: null, download: null };
-  }
-  const failedLately = Boolean(named) && ownPythonFailed?.path === named && Date.now() - ownPythonFailed.at < 60000;
-  const python = await choosePython({
-    bundled: failedLately ? '' : named,
+async function look() {
+  const root = projectRoot();
+  const python = await lookForPython(process.env.SIX_DEGREES_PYTHON || '', {
     app: process.env.SIX_DEGREES_APP || '',
     dataDir: dataDir(),
     host: hostOnce(),
   });
-  if (failedLately) return { ...python, own: ownPythonFailed.own };
-  if (named && python.run?.path === named) ownPythonWorks = python.run;
-  else if (named && python.own) ownPythonFailed = { path: named, at: Date.now(), own: python.own };
-  return python;
-}
-
-async function look() {
-  const root = projectRoot();
-  const python = await lookForPython(process.env.SIX_DEGREES_PYTHON || '');
 
   // Where Playwright's "chrome" channel looks for Google Chrome (Chromium doesn't count).
   const chrome =

@@ -186,8 +186,12 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       compiles as it imports instead, about 0.3 s). A scan on any other Python (the
       fallbacks) writes no bytecode either: `scrape.py`'s `import image_store` would
       otherwise write `scripts/__pycache__` into the app (`scannerCommand`). Once seen
-      to work it isn't started again to ask. If it ever fails to start, the page says
-      why and offers what an npm copy gets.
+      to work it isn't started again to ask; once it has failed, not again until the app
+      restarts (`pythonLooker`): if macOS refused to run it, every start could bring its
+      "python3.12 Not Opened" alert back (it used to be retried every minute). The Scan
+      page then says so in a line of its own above step 1, and what to do: use Install or
+      Set up the scanner below, which give the scanner a Python of its own
+      (`lib/scanner-setup.js`).
 - [x] `scrape.py` is not edited. Its pure functions run under the bundled Python in CI:
       the five test files that run them on `python3` today, pointed at it with
       `SIX_DEGREES_TEST_PYTHON` (`tests/python.mjs`). Checked here on the built app: 35
@@ -241,9 +245,11 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       `.dmg`, use Open Anyway, and check the Scan page says the scanner is ready. The
       Python inside is signed ad hoc like the app; whether macOS lets an approved app run
       a quarantined, ad hoc-signed program from its Resources is untested. If it doesn't,
-      the page falls back to Install/Set up and says why ("The Python inside the app
-      didn't work"), and the fix is D4's signing, or clearing the quarantine on the
-      app's own `python/` at first launch.
+      the app asks once per start, never again until it restarts, and the page falls back
+      to Install/Set up and says why ("The Python that comes with the app didn't work (…).
+      macOS may have blocked it."). The fix is then D4's signing, or clearing the
+      quarantine on the app's own `python/` at first launch: **Blake's decision, after
+      that test**. Nothing clears it today.
 
 Scanning still needs **Google Chrome**. That's deliberate: the scanner drives the user's
 real browser, and the Scan page already checks for it. The download grows by about 22 MB

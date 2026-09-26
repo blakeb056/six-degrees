@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Playwright's own copy of Node isn't duplicated: it runs on the one the app already has.
   The Python inside is signed like the rest of the app, uses only its own packages (your
   own Python settings, such as `PYTHONPATH`, don't reach it), and never writes into the
-  app; nor does a scan on another Python.
+  app; nor does a scan on another Python. If macOS ever won't run it, the Scan page says
+  so and offers the other way to set the scanner up, and the app doesn't try it again
+  until you restart it, so a warning from macOS about it doesn't keep coming back.
 - **Set up the scanner** (`npx six-degrees`, or from source). On a computer with no Python
   the scanner can use (none at all, one older than 3.10, or Ubuntu's without
   `python3-venv`), the Scan page no longer ends at "install it from python.org". One

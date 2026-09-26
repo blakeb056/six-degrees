@@ -18,7 +18,7 @@ import path from 'node:path';
 import {
   STANDALONE_PYTHON, STANDALONE_BASE, SYSTEM_PYTHON, SETUP_WORK_PREFIX, PROBE_SCRIPT, OWN_PYTHON_FLAGS, IMPORTS,
   hostKey, standaloneBuild, standaloneUrl, systemPythonFits, parseProbe, ownPythonEnv, noBytecodeEnv, choosePython,
-  scannerCommand, pipInstallEnv, installSteps, installCheckScript, runProbe,
+  scannerCommand, pipInstallEnv, installSteps, installCheckScript, pythonLooker, runProbe,
   downloadVerified, placeDownloadedPython, sweepSetupLeftovers, venvPython, venvDir, downloadedPython,
   machoSlices, machoSlice, ScannerSetupError,
 } from '../lib/scanner-python.js';
@@ -412,6 +412,64 @@ test('no Python and no build for this computer: nothing to offer but installing 
   const pc = computer({});
   const r = await choosePython({ dataDir: DATA, probe: pc.probe, exists: pc.exists, host: null });
   assert.deepEqual(r, { run: null, own: null, base: null, systemFound: null, download: null });
+});
+
+// ── asking again and again: the server's looks (route.js, pythonLooker) ─────
+
+// choosePython stand-in: the named Python works or not as `named` says; counts
+// how often each was started.
+function chooser(named) {
+  const started = [];
+  const choose = async ({ bundled }) => {
+    if (bundled) started.push(bundled);
+    const said = bundled ? named[bundled] : null;
+    if (said === 'works') return { run: { path: bundled, source: 'bundled', version: '3.12.14' }, own: null, base: null, systemFound: null, download: null };
+    const own = bundled ? { source: bundled.startsWith(APP) ? 'bundled' : 'custom', problem: said } : null;
+    return { run: null, own, base: { path: '/usr/bin/python3', source: 'system', version: '3.13.1' }, systemFound: null, download: null };
+  };
+  return { choose, started };
+}
+
+test('REGRESSION: the Python inside the app that didn\'t work is never started again while the server runs', async () => {
+  // If macOS refused to run it, every start could bring its "Not Opened" alert back.
+  let clock = 0;
+  const { choose, started } = chooser({ [BUNDLED]: 'it was stopped (SIGKILL)' });
+  const look = pythonLooker({ choose, now: () => clock });
+  const first = await look(BUNDLED, { dataDir: DATA });
+  assert.deepEqual(first.own, { source: 'bundled', problem: 'it was stopped (SIGKILL)', retry: false });
+  assert.deepEqual(first.base, { path: '/usr/bin/python3', source: 'system', version: '3.13.1' }, 'the other way is offered');
+  for (const later of [1500, 60001, 3600000, 86400000]) {
+    clock = later;
+    const again = await look(BUNDLED, { dataDir: DATA });
+    assert.deepEqual(again.own, first.own, `still said at ${later} ms, so the page can say it`);
+    assert.equal(again.base.source, 'system');
+  }
+  assert.deepEqual(started, [BUNDLED], 'started once, then never again');
+});
+
+test('a Python named from outside the app that didn\'t work is asked again a minute later; one that works, never', async () => {
+  let clock = 0;
+  const custom = '/opt/py/bin/python3';
+  const { choose, started } = chooser({ [custom]: 'it isn\'t there', [BUNDLED]: 'works' });
+  const look = pythonLooker({ choose, now: () => clock });
+  assert.deepEqual((await look(custom)).own, { source: 'custom', problem: 'it isn\'t there' });
+  clock = 30000;
+  assert.equal((await look(custom)).own.problem, 'it isn\'t there');
+  assert.deepEqual(started, [custom], 'not within the minute');
+  clock = 61000;
+  await look(custom);
+  assert.deepEqual(started, [custom, custom], 'again after it');
+
+  const good = pythonLooker({ choose, now: () => clock });
+  assert.equal((await good(BUNDLED)).run.path, BUNDLED);
+  assert.equal((await good(BUNDLED)).run.path, BUNDLED);
+  assert.equal(started.filter((p) => p === BUNDLED).length, 1, 'seen to work: not started again to ask');
+  // Nothing named: nothing remembered, choosePython every time (the fallbacks can change).
+  const plain = chooser({});
+  const none = pythonLooker({ choose: plain.choose });
+  await none('');
+  await none('');
+  assert.deepEqual(plain.started, []);
 });
 
 // ── the download, checked before anything is unpacked ────────────────────────

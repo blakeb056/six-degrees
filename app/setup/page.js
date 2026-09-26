@@ -108,7 +108,8 @@ function SetupInner() {
   const c = s?.checks || {};
   const running = s?.running;
   // Step 1 (lib/scanner-setup.js): ready (the Mac app's own Python, or one
-  // installed), Install, Set up the scanner (download a Python first), or neither.
+  // installed), Install, Set up the scanner (download a Python first), or neither;
+  // and a line of its own when the Python inside the app didn't work.
   const step1 = setupStep(s);
   const needsDeps = s && !c.dependencies;
   const needsChrome = s && !c.chrome;
@@ -210,6 +211,11 @@ function SetupInner() {
                  style={{ color: '#3498DB' }}>google.com/chrome</a>, then reload this page.
             </span>
           </Box>
+        )}
+
+        {/* The Python inside the app didn't work: what happened, and what to do instead. */}
+        {s && step1.note && (
+          <Box tone="bad">{step1.note}</Box>
         )}
 
         {/* ---- step 1 : the scanner itself ---- */}
