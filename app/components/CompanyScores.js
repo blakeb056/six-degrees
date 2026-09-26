@@ -105,7 +105,7 @@ export default function CompanyScores({ onRescored }) {
           <b style={{ color: '#fff' }}>How a power score works.</b> power = <b>title</b> × <b>company weight</b> + bonus.
           The title (student 1 … founder or C-suite 10) comes from someone&rsquo;s current role, with former roles at 70%.
           The company weight runs from 0.615 (no company found) to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
-          The bonus is at most +1.5, for investor, YC or an audience in the millions, and counts half at an unknown company.
+          The bonus is at most +1.5, for investor, YC, an audience in the millions or the top award of any field, and counts half at an unknown company.
           A 1st-degree person whose circle is unusually strong gets up to +1 more.
           S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
           <div style={{ marginTop: 6, color: '#8b9a9a' }}>

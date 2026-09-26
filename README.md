@@ -227,7 +227,8 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   change before you save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 6.7.
-- **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions. It counts half
+- **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions, the top award
+  of any field (a Nobel, a Pulitzer, an Oscar, an Olympic medal…). It counts half
   at an unknown company, because headlines are self-written (your sector doesn't change
   that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.

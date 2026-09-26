@@ -88,9 +88,21 @@ Bain Capital (private equity) has its own entry, apart from Bain & Company. If y
 sectors in Settings, a company in one of them gets +1 or +2 on top (below).
 
 **Reach bonus (≤1.5)** needs whole-word signals: investor, YC, 30 under 30, an audience or
-revenue in the millions, keynote/TEDx/patents/awards. It's halved for someone at a company
-scored 4 or less, because headlines are self-written. That's judged by the company's score
-before any sector lean (a score you set counts as the company's own).
+revenue in the millions, keynote/TEDx/patents, "award-winning" or "prize-winning", and the
+top honour of each field (`HONOURS`): the Nobel, the Pulitzer, the Peabody, the Emmy, the
+Grammy, the Oscar (Academy Award), the Tony, the Webby, the Clio and Cannes Lions, the James
+Beard, the Turing Award, the Fields Medal, the Pritzker Prize, a MacArthur Fellow, a Rhodes
+Scholar, and an Olympian or Paralympian or their medals. An award's name that is also a
+company's, a person's or its own organisation's counts only as a claim ("Oscar-winning",
+"Tony Award", "Emmy nominee", "Pulitzer finalist"), so Oscar Health, Peabody Energy, Clio the
+legal software, Nobel Biocare, Olympic Steel, "Tony" as a first name and the staff of the
+Peabody Awards or the Pulitzer Center get nothing. The price: "3x Emmy", with no award word,
+isn't read either. Until September 2026 it named four awards, from advertising, TV, music and
+the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so a Pulitzer, an Oscar, a Nobel
+Prize or an Olympic medal earned nothing, and "Emmy" or "Grammy" counted anywhere, a bakery's
+name included. It's halved for someone at a company scored 4 or less, because headlines are
+self-written. That's judged by the company's score before any sector lean (a score you set
+counts as the company's own).
 
 **Bridge boost (≤1)** goes to a 1st-degree person whose mapped circle (20+ people) is
 unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed each time and

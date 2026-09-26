@@ -78,6 +78,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   picks: "UCF" (education), and "Snap", "Lens" and "AR" (media; "AR Specialist" is accounts
   receivable). Your network is rescored once, automatically, on the first load after
   updating.
+- **The reach bonus counts the top award of every field.** It named four awards, from
+  advertising, TV, music and the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so
+  a Pulitzer, an Oscar, a Nobel Prize or an Olympic medal earned nothing. Now it's the top
+  honour of each field: the Nobel, the Pulitzer, the Peabody, the Emmy, the Grammy, the
+  Oscar, the Tony, the Webby, the Clio and Cannes Lions, the James Beard, the Turing Award,
+  the Fields Medal, the Pritzker Prize, MacArthur Fellows, Rhodes Scholars, Olympians and
+  Paralympians, as well as "award-winning" and "prize-winning". A name that is also a
+  company's or a person's counts only as a claim ("Oscar-winning", "Tony Award", "Emmy
+  nominee"): Oscar Health, Peabody Energy and Clio get nothing, and "Emmy" or "Grammy"
+  anywhere in a headline no longer counts on its own. Your network is rescored once,
+  automatically, on the first load after updating; stored scores now carry a fingerprint of
+  scoring's rules as well as its lists, so a later change to them rescores the same way.
 - **The built-in company list reaches well beyond tech and finance.** 112 companies most US
   professionals would recognise join it, taken from named sources so anyone can check the
   choice: the household names of the Fortune 100 (CVS Health, Costco, Ford, UPS, State Farm,

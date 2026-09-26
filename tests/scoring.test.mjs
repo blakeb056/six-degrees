@@ -163,6 +163,27 @@ test('bonus: whole words only, capped', () => {
   assert.deepEqual(reachBonus('Creator, 747M+ views').reasons, ['reach in the millions']);
 });
 
+test('bonus: the top honour of every field counts, in the forms people claim it', () => {
+  for (const h of ['Pulitzer Prize-winning journalist', 'Pulitzer finalist | Reporter', 'Nobel laureate in Chemistry', 'Nobel Prize winner',
+    'Oscar-winning film editor', 'Academy Award nominee', 'Tony Award-winning producer', 'Emmy-nominated director', 'Grammy winner',
+    'Peabody Award-winning podcast host', 'Clio Award winner', 'Webby Honoree', 'Cannes Lions Grand Prix', 'James Beard Award-winning chef',
+    'Turing Award laureate', 'Fields Medal recipient', 'Pritzker Prize laureate', 'MacArthur Fellow', 'Rhodes Scholar', 'Olympian',
+    'Olympic gold medalist', 'Paralympian', 'Paralympic silver medalist', 'Prize-winning novelist', 'Award-winning designer']) {
+    assert.deepEqual(reachBonus(h), { points: 0.5, reasons: ['recognition'] }, h);
+  }
+  // Several honours are one signal, as several awards always were.
+  assert.deepEqual(reachBonus('Olympian | Rhodes Scholar | Keynote speaker'), { points: 0.5, reasons: ['recognition'] });
+});
+
+test('bonus: an award\'s name that is also a company\'s, a person\'s or its own organisation\'s is not a claim', () => {
+  for (const h of ['Engineer at Oscar Health', 'Analyst at Peabody Energy', 'Account Executive at Clio', 'Sales Director at Nobel Biocare',
+    'Buyer at Olympic Steel', 'Coach | Tony Marsh Fitness', "Founder at Emmy's Bakery", 'Proud Grammy of four | Retired teacher',
+    'Producer at the Peabody Awards', 'Program Manager at the Pulitzer Center', 'Recruiter at Turing', 'Special Olympics volunteer coach',
+    'Program Officer at the MacArthur Foundation']) {
+    assert.deepEqual(reachBonus(h), { points: 0, reasons: [] }, h);
+  }
+});
+
 test('seniority and company multiply: level × platform', () => {
   const s = (headline) => scorePerson({ headline }).power;
   const vpGoogle = s('VP Engineering at Google');
