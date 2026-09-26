@@ -6,7 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0-beta.1] - 2026-09-26 (beta: a pre-release, never installed automatically)
+
 ### Added
+- **The Mac app scans with nothing to install.** It carries its own Python (3.12) with the
+  scanner's packages already inside it, so the Scan page's first step is ticked from the
+  start: nothing to install, nothing to click, and setting up needs no internet. Scanning
+  still needs Google Chrome. The download grows by about 22 MB, to about 220 MB.
+  Playwright's own copy of Node isn't duplicated: it runs on the one the app already has.
+  The Python inside is signed like the rest of the app, uses only its own packages (your
+  own Python settings, such as `PYTHONPATH`, don't reach it), and never writes into the
+  app; nor does a scan on another Python. If macOS ever won't run it, the Scan page says
+  so and offers the other way to set the scanner up, and the app doesn't try it again
+  until you restart it, so a warning from macOS about it doesn't keep coming back.
+- **Set up the scanner** (`npx six-degrees`, or from source). On a computer with no Python
+  the scanner can use (none at all, one older than 3.10, or Ubuntu's without
+  `python3-venv`), the Scan page no longer ends at "install it from python.org". One
+  button downloads a private copy of Python 3.12 from GitHub (python-build-standalone,
+  24 to 33 MB) into your data folder, checks it against a checksum built into Six Degrees
+  before unpacking anything, and installs the scanner's packages into it, with the
+  download's progress on the page. Only when you click it, and Stop stops it. Nothing
+  outside your data folder changes, and neither the Python nor the packages ever go into
+  a copy of your network. A stopped setup carries on from the Python already downloaded.
+  With Python 3.10 to 3.14 installed, Install works as before.
 - **Settings.** A new page, from the ⚙ button beside the bell or *Six Degrees → Settings…*
   (⌘,). It's the new home for **Updates**, and it shows which version this is and where
   your network is kept. What you choose there is saved with your network, so it travels
@@ -65,11 +87,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to put it back. The LinkedIn search budget belongs to the account, so that computer keeps
   its own: searches made on either computer still count, and a pause on scanning stays. The
   Mac app finishes with *Restart now*; with `npx six-degrees`, stop it and start it again.
-  Refused while a scan runs, scans wait until the import is finished, and the import waits
-  while another copy of Six Degrees has the same folder open.
+  Refused while a scan, or setting up the scanner, runs (it says which), scans wait until
+  the import is finished, and the import waits while another copy of Six Degrees has the
+  same folder open.
 - **Install and restart, in the Mac app: updating without Terminal.** When *Check for
   Updates…* finds a newer version, one more click installs it. The app downloads that
-  release from GitHub (about 190 MB), checks it against the release's published checksums
+  release from GitHub (about 220 MB), checks it against the release's published checksums
   and checks that the app's code signature is intact, and gets it ready while you keep
   working. Then it closes, puts the new version in its place and opens it on Settings,
   which says how it went ("Updated to 0.2.2"). Your network isn't touched, and the new
@@ -93,6 +116,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     once more.
 
 ### Changed
+- The Scan page's first step is now **Set up the scanner**. When it can't use this
+  computer's Python, it says which one it found and why. Install no longer updates pip
+  first: everything it downloads is a pinned file. It leaves out pip settings that would
+  put the packages somewhere else (`PIP_TARGET`, `PIP_PREFIX`, `PIP_ROOT`, `PIP_USER`;
+  your index, proxy and certificate settings still apply), and it checks that the scanner
+  can load them before it says it has finished.
+- **The scanner's Python packages are pinned**: exact versions (Playwright 1.63.0, requests
+  2.34.2, Pillow 12.3.0 and everything they need) and the checksum of every file pip may
+  install. Only ready-built files (wheels), so nothing is built from source on your
+  computer, and pip refuses any file that isn't the one pinned. They need Python 3.10 to
+  3.14 (the newest Playwright needs 3.10, and 3.14 is the newest the pinned files are built
+  for); a Python that already has the scanner's packages keeps working as it is.
 - **The Queue and the person panel go by company scores, not a list of names.** Both kept
   their own list of one person's favourite companies (Snap, Polymarket, Whatnot…), matched
   anywhere in a headline: "Metadata Analyst" counted as Meta, "Snapdragon" as Snap, and an

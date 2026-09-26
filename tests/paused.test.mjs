@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pausedList, nextPageToRead } from '../lib/paused.js';
+import { PYTHON, noPython } from './python.mjs';
 
 const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const p = (id, url, extra = {}) => ({ id, name: `Person ${id}`, tier: 'A', profile_url: url, ...extra });
@@ -56,8 +57,8 @@ ns = {}
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
 print(json.dumps([ns['next_page_to_read'](c) for c in json.loads(sys.argv[2])]))
 `;
-  const r = spawnSync('python3', ['-c', lift, SCRAPER, JSON.stringify(cases)], { encoding: 'utf8' });
-  if (r.error) { t.skip('python3 is not available here'); return; }
+  const r = spawnSync(PYTHON, ['-c', lift, SCRAPER, JSON.stringify(cases)], { encoding: 'utf8' });
+  if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout), cases.map(nextPageToRead));
 });

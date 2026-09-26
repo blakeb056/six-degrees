@@ -9,7 +9,7 @@ import { requestRefusal } from '../../../../lib/gate';
 import {
   ImportError, IMPORT_ROUTE, admitImport, receiveUpload, stageImport, pendingImport, cancelPendingImport,
 } from '../../../../lib/data-import';
-import { scanIsRunning } from '../../../../lib/scan-state';
+import { scannerJob, runningNow } from '../../../../lib/scan-state';
 
 // Bring in a network from another computer. The body is the .sixdegrees file
 // itself; X-Six-Degrees-Size says how big it is (a body cut short must never
@@ -32,7 +32,7 @@ function refuse(err) {
 export async function POST(request) {
   const admitted = admitImport(request, {
     env: process.env,
-    scanRunning: scanIsRunning,
+    scanRunning: scannerJob,
     pending: () => pendingImport(dataDir()),
     currentPeople: () => countPeople(getDb()),
   });
@@ -48,9 +48,10 @@ export async function POST(request) {
   try {
     const upload = path.join(work, 'upload.sixdegrees');
     await receiveUpload(request.body, upload, { declared });
-    // Asked again: a scan or a second import could have started during the upload.
-    if (scanIsRunning()) {
-      throw new ImportError('A scan started while the file was arriving. Let it finish, then import again.', { status: 409 });
+    // Asked again: a scan (or Install) or a second import could have started during the upload.
+    const job = scannerJob();
+    if (job) {
+      throw new ImportError(`${runningNow(job)}: it started while the file was arriving. Let it finish, then import again.`, { status: 409 });
     }
     if (pendingImport(dir)) {
       throw new ImportError('Another import is already waiting to finish.', { status: 409 });

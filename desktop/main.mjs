@@ -27,12 +27,12 @@
 
 import { app, BrowserWindow, Menu, dialog, shell, session } from 'electron';
 import { spawn } from 'node:child_process';
-import { openSync, closeSync, writeFileSync } from 'node:fs';
+import { openSync, closeSync, writeFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  routeFor, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
 } from './lib.mjs';
 
@@ -41,6 +41,13 @@ const REPO = path.resolve(HERE, '..'); // only meaningful when run from a checko
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(REPO, '.next', 'standalone');
 const NODE = app.isPackaged ? path.join(process.resourcesPath, 'node') : (process.env.SIX_DEGREES_NODE || 'node');
 const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/scrape.py
+// The scanner's own Python, inside the app (DESKTOP.md D2): a standalone CPython
+// with the scanner's packages installed when the app was built. The server runs
+// the scanner on it before any other Python, so there is nothing to install.
+// A SIX_DEGREES_PYTHON the app was started with wins, an empty one included,
+// which turns it off: CI does that to check the fallback (the Scan page's
+// Install) still works, and to have a job to stop while quitting.
+const PYTHON = app.isPackaged ? path.join(process.resourcesPath, 'python', 'bin', 'python3') : null;
 // Absolute before it reaches the server, which runs from its own folder.
 const DATA_DIR = path.resolve(dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees'));
 const LOG = path.join(os.tmpdir(), 'six-degrees.log');
@@ -105,6 +112,7 @@ async function startServer(port, { logMode }) {
       SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE),
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
       ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
+      ...(PYTHON && process.env.SIX_DEGREES_PYTHON === undefined && existsSync(PYTHON) ? { SIX_DEGREES_PYTHON: PYTHON } : {}),
     },
     stdio: ['ignore', log, log],
   });
@@ -293,15 +301,19 @@ let quitStarted = false;
 let asking = false;
 async function requestQuit({ ask }) {
   if (quitStarted || asking) return;
-  if (ask && origin && (await scanRunning(origin)) === true) {
+  // A scan, or Install, Set up the scanner or the sign-in window: the question
+  // names what runs (lib.mjs quitQuestion).
+  const job = ask && origin ? await runningJob(origin) : null;
+  if (job) {
     asking = true;
+    const question = quitQuestion(job);
     const { response } = await dialog.showMessageBox(win ?? undefined, {
       type: 'question',
-      buttons: ['Stop the Scan and Quit', 'Keep Scanning'],
+      buttons: question.buttons,
       defaultId: 1,
       cancelId: 1,
-      message: 'A scan is running.',
-      detail: 'Quitting stops it the way the Stop button does, and it closes its Chrome window. A list that was stopped part-way carries on from where it got to next time.',
+      message: question.message,
+      detail: question.detail,
     });
     asking = false;
     if (response !== 0) return;

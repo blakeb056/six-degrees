@@ -17,7 +17,8 @@ open http://localhost:3000         # opens on the welcome screen; no name to ent
 
 Then either import a LinkedIn `Connections.csv` at `/import`, click **Explore a sample
 network** for the synthetic dataset, or open **Scan** (`/setup`) and use the buttons —
-that path installs the Python side into a venv and runs the scraper for you.
+that path installs the Python side into a venv and runs the scraper for you (downloading a
+Python first if this machine has no 3.10–3.14; the Mac app carries its own: DESKTOP.md D2).
 
 Equivalent from a terminal, with the app still running in another window:
 

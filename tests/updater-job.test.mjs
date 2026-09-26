@@ -377,10 +377,20 @@ test('an app with a link pointing outside itself is refused (TRAPS §37)', { ski
 test('a scan that started meanwhile: the new version is thrown away and the app stays open', { skip }, async (t) => {
   const w = world(t);
   server.setRelease(release());
-  const { c, calls } = context(w, { scanRunning: () => true });
+  const { c, calls } = context(w, { scanRunning: () => 'full' });
   const job = await run(c);
   assert.equal(job.phase, 'failed');
-  assert.match(job.error, /A scan started/);
+  assert.equal(job.error, 'A scan is running, so the update was not applied. Try again when it has finished.');
+  assertUntouched(w, calls, job);
+});
+
+test('Install or Set up the scanner started meanwhile: the same, and it says which', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release());
+  const { c, calls } = context(w, { scanRunning: () => 'setup' });
+  const job = await run(c);
+  assert.equal(job.phase, 'failed');
+  assert.equal(job.error, 'The scanner is being set up, so the update was not applied. Try again when it has finished.');
   assertUntouched(w, calls, job);
 });
 

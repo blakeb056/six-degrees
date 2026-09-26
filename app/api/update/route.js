@@ -12,7 +12,7 @@ import {
   bundleFacts, cancelUpdate, checkedVersion, cleanLeftovers, confirmStarted, currentUpdate, macFacts,
   othersRunningApp, readStatusFile, rememberCheck, startUpdate, updateActive, updatePaths,
 } from '../../../lib/updater-job';
-import { scanIsRunning } from '../../../lib/scan-state';
+import { busyRefusal, scannerJob } from '../../../lib/scan-state';
 import pkg from '../../../package.json';
 
 // Updating, when the app is a git checkout.
@@ -266,12 +266,11 @@ async function installedPost(action, root) {
     if (refusal) {
       return Response.json({ error: refusal.message, refusal: refusal.code, fallback, command: info.command }, { status: 409 });
     }
-    // Quitting mid-scan would stop it half-way; the job looks again just before it restarts.
-    if (scanIsRunning()) {
-      return Response.json(
-        { error: 'A scan is running. Let it finish or stop it, then install the update.', fallback, command: info.command },
-        { status: 409 },
-      );
+    // Quitting mid-scan (or mid-Install) would stop it half-way; the job looks
+    // again just before it restarts. The refusal says which is running.
+    const busy = busyRefusal('Let it finish or stop it, then install the update.');
+    if (busy) {
+      return Response.json({ error: busy, fallback, command: info.command }, { status: 409 });
     }
     // Only the version a check on this server offered (the page names none).
     const expectVersion = checkedVersion();
@@ -296,7 +295,7 @@ async function installedPost(action, root) {
       ...updatePaths(),
       apiBase: source.apiBase,
       downloadBase: source.downloadBase,
-      scanRunning: scanIsRunning,
+      scanRunning: scannerJob,
       othersRunning: () => othersRunningApp(bundle),
     });
     if (started.error) return Response.json({ error: started.error, job: started.job }, { status: 409 });
