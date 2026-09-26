@@ -6,7 +6,7 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list and the industries' words, or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and where it came from, its sectors from the directory and the industries those sit under |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list, the industries' words and scoring's rule tables, or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and where it came from, its sectors from the directory and the industries those sit under |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
@@ -139,12 +139,20 @@ and the aliases that other companies share were closed ([below](#aliases-kept-na
 industry) for the offer below and nothing else; `lib/scoring.js` imports nothing, so the
 model can't read them.
 
-**Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_list' with a fingerprint of the
-whole list (every name, score, alias and industry) and of the broad industries' words in
-`lib/companies.js` (`KNOWN_LIST_STAMP` in `lib/rpc.js`), and `rescoreIfStale()` rescores when
-it no longer matches. Those words decide a company's one industry, which decides whether it
-is a school (no estimate) and whether a broad pick in Settings leans it, so editing either
-refreshes stored scores with no `SCORING_VERSION` bump to remember.
+**Staleness:** `rescoreAll()` stamps `app_meta` 'scoring_list' with a fingerprint
+(`scoringStamp()` in `lib/rpc.js`) of the whole list (every name, score, alias and
+industry), of the broad industries' words and labels in `lib/companies.js`, and of every rule
+table scoring reads headlines and names with (`RULE_TABLES` in `lib/scoring.js`: the title
+ladder and its rules, the student, club and former rules, what isn't a company or a job
+there, and the reach bonuses), and `rescoreIfStale()` rescores when it no longer matches.
+The industries' words decide a company's one industry, which decides whether it is a school
+(no estimate) and whether a broad pick in Settings leans it, and their labels are in the
+stored working ("4 + 1 your sector: Healthcare & Biotech"). So editing any of these
+refreshes stored scores with no `SCORING_VERSION` bump to remember; a test changes each part
+and checks the stamp changes. How they're combined (the formula, the weights, the order of
+the steps) is still a `SCORING_VERSION`. Until September 2026 the stamp covered the list and
+the industries' words only, so an edit to a title rule or a school rule left stored scores
+as they were until something else rescored them.
 
 ### Where the list comes from
 
@@ -687,9 +695,10 @@ re-run that check on a real network with school clubs in it.
 and "major @ school" headlines (0 of the sample's 873 titles change), and the rest changes
 company scores under a sector focus only, never title points. Re-run the title-to-circle
 check on a real network with school clubs in it. A database the unreleased build scored
-keeps its old school readings until its next rescore (any import, company score or
-Settings save); a focus stamped before industries included their sectors is redone on the
-next load. The Queue and the person panel read the stored scores, so they change with them.
+kept its old school readings until its next rescore (any import, company score or Settings
+save); since the rule tables joined the list stamp (Staleness, above) the next load redoes
+them, as it does a focus stamped before industries included their sectors. The Queue and the
+person panel read the stored scores, so they change with them.
 
 ## Bridges
 

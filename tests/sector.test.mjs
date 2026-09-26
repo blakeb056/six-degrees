@@ -9,8 +9,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
-import { scoreNetwork, companyScore, companyScoreIn, KNOWN_COMPANIES } from '../lib/scoring.js';
+import { scoreNetwork, companyScore, companyScoreIn, KNOWN_COMPANIES, RULE_TABLES } from '../lib/scoring.js';
 import { industryKeyOf, INDUSTRIES } from '../lib/companies.js';
 import {
   parseSectorFocus, focusFingerprint, sameFocus, previewSectorFocus, tierMoves, NO_FOCUS, MAX_SECTORS,
@@ -22,12 +21,12 @@ process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
 let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, afterSettingsChange;
-let KNOWN_LIST_STAMP;
+let KNOWN_LIST_STAMP, scoringStamp;
 
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
   ({ readSettings, writeSettings, SETTINGS, SettingsError } = await import('../lib/settings.js'));
-  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, KNOWN_LIST_STAMP } = await import('../lib/rpc.js'));
+  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, KNOWN_LIST_STAMP, scoringStamp } = await import('../lib/rpc.js'));
   ({ afterSettingsChange } = await import('../lib/settings-effects.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
@@ -533,12 +532,25 @@ test('a broad pick doesn\'t count an industry voted by job titles: the preview, 
   assert.deepEqual([tech.companiesUp, tech.companiesDown], [0, 2]);
 });
 
-test('the list stamp covers the curated list and the industries\' words, since both decide a score', () => {
-  const stamp = createHash('sha256').update(JSON.stringify([
-    KNOWN_COMPANIES.map(([name, score, alias, industry]) => [name, score, String(alias), industry]),
-    INDUSTRIES.map(({ key, words }) => [key, String(words)]),
-  ])).digest('hex').slice(0, 16);
-  assert.equal(KNOWN_LIST_STAMP, stamp);
+test('the list stamp covers the curated list, the industries\' words and labels, and scoring\'s rule tables', () => {
+  assert.equal(KNOWN_LIST_STAMP, scoringStamp());
+  // An edit to any of them changes it, so stored scores are redone once with
+  // no SCORING_VERSION to bump: a company's score, an industry's words or its
+  // label (the stored working names it), a title rule, an award in the reach
+  // bonus, a short name that isn't a school's.
+  const known = KNOWN_COMPANIES.map((e) => (e[0] === 'Adobe' ? [e[0], 7, e[2], e[3]] : e));
+  const words = INDUSTRIES.map((i) => (i.key === 'health' ? { ...i, words: new RegExp(`${i.words.source}|dentist`, i.words.flags) } : i));
+  const labels = INDUSTRIES.map((i) => (i.key === 'health' ? { ...i, label: 'Health' } : i));
+  const titles = RULE_TABLES.titles.slice(1);
+  const bonuses = RULE_TABLES.bonuses.map(([re, points, label]) => [label === 'recognition' ? new RegExp(`${re.source}|quillon medal`, re.flags) : re, points, label]);
+  const notASchool = new Set([...RULE_TABLES.notASchool, 'UXU']);
+  for (const [what, changed] of Object.entries({
+    known: { known }, words: { industries: words }, labels: { industries: labels },
+    titles: { rules: { ...RULE_TABLES, titles } }, bonuses: { rules: { ...RULE_TABLES, bonuses } }, notASchool: { rules: { ...RULE_TABLES, notASchool } },
+  })) {
+    assert.notEqual(scoringStamp(changed), KNOWN_LIST_STAMP, what);
+  }
+  assert.equal(scoringStamp({ rules: { ...RULE_TABLES } }), KNOWN_LIST_STAMP, 'the same tables, the same stamp');
 });
 
 test('suggestions count your scanned people by the sector their company is in', () => {
