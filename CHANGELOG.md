@@ -141,7 +141,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   read as a job there when written first in a headline: "AWS Certified Solutions Architect"
   was a role at Amazon (10), and "Uber Driver", "Airbnb Superhost", "Twitch Streamer",
   "LinkedIn Top Voice" and "Google Alum" were at theirs. The sector directory reads names the
-  same way. Best Buy and Best Western count as companies (they were dropped with "at best").
+  same way. Best Buy and Best Western count as companies (they were dropped with "at best"),
+  and so do Home Instead and Home Chef (dropped with "at home"). Chase Corporation and
+  Merrill Corporation aren't read as the banks once "Corporation" is trimmed, and a name
+  with initials is read in full: "J.P. Morgan" was cut to "J.P" and matched nothing, and
+  "J. Crew", "T. Rowe Price", "U.S. Bank" and "St. Jude Children's Research Hospital" lost
+  everything after the first full stop.
 - **Paths groups people under the companies their scores are built on.** It merged
   company names by a list of its own, which also folded other companies in: Oxford,
   Hartford and Bradford counted as Ford, Bainbridge as Bain, and Mitsubishi UFJ, a bank, as

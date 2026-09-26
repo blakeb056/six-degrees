@@ -116,6 +116,31 @@ test('companies: one clean name per company, junk dropped', () => {
   assert.equal(cleanCompany('Scale AI'), 'Scale AI');
 });
 
+test('companies: a phrase\'s first word, a legal form and an initial\'s full stop don\'t change who a company is', () => {
+  // "at home" is a phrase; Home Instead and Home Chef are employers, as The Home Depot is.
+  assert.equal(cleanCompany('Home Instead'), 'Home Instead');
+  assert.equal(cleanCompany('Home Instead Senior Care'), 'Home Instead Senior Care');
+  assert.equal(cleanCompany('Home Chef'), 'Home Chef');
+  assert.equal(currentCompany({ headline: 'Caregiver at Home Instead' }), 'Home Instead');
+  assert.equal(currentCompany({ headline: 'Stay at home mom' }), null);
+  assert.equal(cleanCompany('home with my kids'), null);
+  // Chase Corporation and Merrill Corporation aren't the banks once "Corporation" is trimmed.
+  for (const n of ['Chase Corporation', 'Merrill Corporation', 'Chase Corp.']) {
+    assert.equal(knownIndustry(cleanCompany(n)), null, n);
+    assert.deepEqual(companyScore(cleanCompany(n)), { score: 4, source: 'default' }, n);
+  }
+  assert.equal(cleanCompany('Chase'), 'JPMorgan Chase');
+  assert.equal(cleanCompany('Merrill'), 'Bank of America');
+  assert.equal(cleanCompany('JPMorgan Chase & Co.'), 'JPMorgan Chase');
+  // An initial's full stop isn't the end of a sentence: "J.P. Morgan" was cut to "J.P".
+  assert.equal(cleanCompany('J.P. Morgan'), 'JPMorgan Chase');
+  assert.equal(scorePerson({ headline: 'VP at J.P. Morgan' }).companyScore, 9);
+  for (const n of ['J. Crew', 'T. Rowe Price', 'U.S. Bank', "St. Jude Children's Research Hospital"]) assert.equal(cleanCompany(n), n);
+  // A sentence still ends a name, and a legal form still goes.
+  assert.equal(cleanCompany('Acme Corp. We build rockets'), 'Acme');
+  assert.equal(cleanCompany('Northwind Systems Incorporated'), 'Northwind Systems');
+});
+
 test('companies: a school is not the company its name starts like, and Bain Capital is not Bain', () => {
   // The list's aliases match from the start of a name, so these used to read
   // as Kellanova, Warner Bros., Campbell's and JPMorgan Chase.

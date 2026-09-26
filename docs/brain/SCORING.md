@@ -282,11 +282,15 @@ no longer read as Snap. UnitedHealthcare, OptumRx and Sirius XM now read as thei
   consultant or an admin is another company's too ("Google Premier Partner", "Workday
   Consultant"); at a bank, a firm or a shop they work there ("Deloitte Partner", "Starbucks
   Partner").
-- Two limits of reading a name: cleaning trims a trailing "Corporation", so "Chase
-  Corporation" and "Merrill Corporation" read as JPMorgan Chase and Bank of America; and
-  "J.P. Morgan" is cut at its first ". " to "J.P", which matches nothing.
-- "Home Depot" was never read as a company: the rule that drops "at home" dropped it too. It
-  now reads as The Home Depot.
+- Reading a name: cleaning trims a legal form ("Inc.", "Incorporated", "Corporation",
+  "LLC"…; `LEGAL_FORM`), except where the name with it is another company (`WHOLE_NAME`):
+  Chase Corporation and Merrill Corporation read as JPMorgan Chase and Bank of America until
+  September 2026, and are their own now. A name stops at a sentence's end or a comma
+  (`NAME_END`), not at an initial's or a short form's full stop: "J.P. Morgan" was cut to
+  "J.P", which matched nothing, "J. Crew" and "T. Rowe Price" to nothing, "U.S. Bank" to
+  "U.S" and "St. Jude Children's Research Hospital" to "St". They read in full now.
+- The rule that drops "at home" dropped The Home Depot, Home Instead and Home Chef too. They
+  read as companies now; "Stay at home mom" still names none.
 
 `tests/known-companies.test.mjs` checks each addition's spellings, the forms each closed entry
 must still read, that no two entries claim one name, a list of names that must stay their
