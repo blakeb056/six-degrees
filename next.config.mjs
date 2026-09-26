@@ -19,9 +19,12 @@ const nextConfig = {
   //
   // The desktop shell (desktop/) and Electron itself are packed around the
   // server, never inside it: Electron alone is ~250 MB.
+  //
+  // scripts/pin-python-packages.mjs is a developer's tool that asks PyPI
+  // about packages; nothing the app runs uses it, so it doesn't ship.
   outputFileTracingExcludes: {
     '*': ['dist/*.app/**', 'dist/*.dmg', 'dist/staging/**', 'dist/electron-stage/**', 'docs/**', 'tests/**',
-          '.git', '.git/**', '*.log', 'scripts/dmg/**', 'desktop/**',
+          '.git', '.git/**', '*.log', 'scripts/dmg/**', 'scripts/pin-python-packages.mjs', 'desktop/**',
           'node_modules/electron/**', 'node_modules/@electron/**'],
   },
   // Emits .next/standalone with a server and only the dependencies actually

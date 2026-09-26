@@ -7,7 +7,8 @@
 // To move a package to a newer version, change its `name==version` line in
 // scripts/requirements.txt and run this. It asks PyPI (pypi.org, the JSON API)
 // about each version, and nothing else. A developer's tool: the app never runs
-// it, and it isn't in the npm package.
+// it, and it isn't in the npm package or the Mac app (next.config.mjs leaves it
+// out of the standalone build, which otherwise carries every file in scripts/).
 //
 // Why hashes. Every copy of the scanner installs from this one file: the Python
 // inside the Mac app when it is built (scripts/build-app.mjs), and the private
