@@ -47,7 +47,7 @@ role. Current students are capped at 3. Rules that earlier words mask:
 
 Schools are read alike; the rules name none. A major at a school is a student ("CS @ NYU",
 "Economics at University of Utah"), and so is a leading title in a school club ("President,
-USC Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at UCLA"): a
+USC Marketing Club", "VP, NYU Finance Society", "President of the Marketing Club at USC"): a
 club, chapter, society or association named with a school's words (university, college,
 school, student), or a club or society named with its short name. A short name is two to
 four capitals that start or end with the U of University (USC, NYU, UCLA, BYU, UNC), so no
@@ -61,7 +61,7 @@ list of schools favours the ones on it. Not a short name:
   works in finance, and "President, UAW Local 600 Chapter" leads a union local.
 
 With a short name, only a club or a society is a student group, or an association named for
-a field of study ("USC Trojan Marketing Association", "UVA Chapter of the American Marketing
+a field of study ("USC Trojan Marketing Association", "NYU Chapter of the American Marketing
 Association"). A chapter alone is as often a union local's or a professional body's, and
 another association a university's own staff ("KU Endowment Association"). An alumni club or
 a parents' association is for grown-ups, and a company's own club (Sam's Club, AAA Club
