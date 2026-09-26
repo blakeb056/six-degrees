@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { INDUSTRIES } from '../lib/companies.js';
 import { industryKeyOf } from '../lib/companies.js';
-import { readNetwork } from '../lib/scoring.js';
+import { readNetwork, cleanCompany } from '../lib/scoring.js';
 import {
   DIRECTORY, DIRECTORY_VERSION, SECTOR_KEYS, wordsOf, sectorsInName, sectorsInHeadline, sectorMatcher, suggestSectors,
   sectorByKey, sectorLabel, isDirectoryKey, sectorGroup,
@@ -29,7 +29,7 @@ const GENERIC = new Set([
 
 // ── the list ────────────────────────────────────────────────────────────────
 
-test('the directory: about forty sectors, each under one of the twelve industries, with keys that never collide', () => {
+test('the directory: about fifty sectors, each under one of the twelve industries, with keys that never collide', () => {
   assert.ok(DIRECTORY.length >= 30 && DIRECTORY.length <= 50, `${DIRECTORY.length} sectors`);
   const keys = DIRECTORY.map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length, 'keys are unique');
@@ -51,7 +51,7 @@ test('each sector is an industry or a function, and a function sector keeps its 
   // accountant, a lawyer, a consultant, an engineer or a data scientist works
   // at a firm in that line and at Acme Widgets alike.
   const functions = ['software', 'ai-data', 'cybersecurity', 'accounting', 'marketing-advertising', 'pr-comms', 'legal',
-    'management-consulting', 'hr-recruiting'];
+    'management-consulting', 'hr-recruiting', 'security-services'];
   assert.deepEqual(DIRECTORY.filter((s) => s.kind === 'function').map((s) => s.key).sort(), [...functions].sort());
   for (const s of DIRECTORY) {
     assert.ok(['industry', 'function'].includes(s.kind), `${s.key}: kind is industry or function`);
@@ -93,6 +93,17 @@ test('the directory: every word is a real whole-word phrase, and none is a word 
 
 test('the version comes from the list itself', () => {
   assert.match(DIRECTORY_VERSION, /^[0-9a-f]{8}$/);
+});
+
+test('the labels a page loads on its own are the directory\'s', async () => {
+  const labels = await import('../lib/sector-labels.js');
+  for (const s of DIRECTORY) {
+    const health = INDUSTRIES.find((g) => g.key === s.group);
+    assert.deepEqual(labels.sectorByKey(s.key), { key: s.key, label: s.label, color: health.color, group: s.group, kind: s.kind }, s.key);
+  }
+  for (const g of INDUSTRIES) assert.equal(labels.sectorLabel(g.key), g.label);
+  assert.equal(labels.sectorLabel('nope'), undefined);
+  assert.equal(sectorByKey, labels.sectorByKey, 'one implementation');
 });
 
 test('picks are the twelve industries, each followed by its sectors, and each has a label and colour', () => {
@@ -156,7 +167,7 @@ const EXAMPLES = {
   },
   insurance: {
     yes: ['Insurance Agent at Quillon Insurance Group', 'Actuarial Analyst', 'Claims Adjuster', 'company: State Farm'],
-    no: ["company: Nationwide Children's Hospital", 'Mortgage Underwriter'],
+    no: ["company: Nationwide Children's Hospital", 'Mortgage Underwriter', ['Insurance Defense Attorney at Smith & Lee', 'Smith & Lee']],
   },
   accounting: {
     yes: ['Audit Senior | Big 4', 'Partner at a CPA firm', 'company: Smith CPA', 'company: Quillon Accounting', 'company: Grant Thornton'],
@@ -168,11 +179,13 @@ const EXAMPLES = {
     no: ['Digital Asset Management specialist', 'Cryptography professor'],
   },
   hospitals: {
-    yes: ['Registered Nurse at Orlando Health', 'Pediatrician', 'company: Quillon Medical Center', 'company: Mayo Clinic', 'company: City of Hope'],
-    no: ['Veterinarian at Quillon Animal Hospital', 'company: Quillon Legal Clinic', 'Hospitality manager'],
+    yes: ['Registered Nurse at Quillon Health', 'Pediatrician', 'company: Quillon Medical Center', 'company: Mayo Clinic', 'company: City of Hope',
+      'company: Stanford Health Care'],
+    no: ['Veterinarian at Quillon Animal Hospital', 'company: Quillon Legal Clinic', 'Hospitality manager',
+      ['Healthcare Recruiter at Quillon Staffing', 'Quillon Staffing'], ['Nurse Recruiter at Quillon Staffing', 'Quillon Staffing']],
   },
   dental: {
-    yes: ['Dentist | Owner at Smith Family Practice', 'Orthodontist', 'VP Operations | DSO Growth', 'Dental Hygienist, RDH',
+    yes: ['Dentist | Owner at Smith Family Practice', 'Orthodontist', 'VP Operations | DSO Expansion', 'Dental Hygienist, RDH',
       'company: Smith Family Dental', 'company: Henry Schein'],
     no: ['Incidental findings reviewer', 'Marketing for dentists', 'DSOx platform lead', ['Engineer at Quillon | Ex-Dentist', 'Quillon']],
   },
@@ -192,13 +205,20 @@ const EXAMPLES = {
     yes: ['Personal Trainer', 'Yoga Instructor', 'company: Quillon Fitness', 'company: Planet Fitness'],
     no: ['Corporate Wellness program lead', 'Fitness enthusiast | Engineer', 'company: Equinox Gold Mining'],
   },
+  veterinary: {
+    yes: ['Veterinarian | Practice Owner', 'Vet Tech at Quillon Animal Hospital', 'Dog Groomer', 'DVM', 'company: Quillon Animal Clinic',
+      'company: Banfield Pet Hospital'],
+    no: ['Army Vet | Project Manager at Quillon', 'Dog lover | Engineer', 'company: Vetted Talent Partners', 'Registered Nurse'],
+  },
   k12: {
-    yes: ['Teacher at Lincoln Elementary School', '5th Grade Teacher', 'Special Education paraprofessional', 'company: Orange County Public Schools'],
-    no: ['Yoga Teacher', 'Principal at Quillon Consulting'],
+    yes: ['Teacher at Lincoln Elementary School', '5th Grade Teacher', 'Special Education paraprofessional', 'company: Fairfax County Public Schools',
+      'company: Oak Elementary', 'company: Northwind Preparatory School'],
+    no: ['Yoga Teacher', 'Principal at Quillon Consulting', 'Elementary particle physicist'],
   },
   'higher-ed': {
-    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Central Florida', 'company: MIT'],
-    no: ['company: University Federal Credit Union', 'company: College Park Realty', 'company: Purdue Pharma'],
+    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Michigan', 'company: MIT', 'company: Stanford GSB'],
+    no: ['company: University Federal Credit Union', 'company: College Park Realty', 'company: Purdue Pharma', 'company: University Health',
+      'company: University Hospitals', ['University Recruiter at Quillon', 'Quillon'], 'company: UGA', 'company: NYU'],
   },
   'marketing-advertising': {
     yes: ['Account Director at a creative agency', 'Founder | Digital marketing agency', 'company: Quillon Marketing Agency',
@@ -212,23 +232,25 @@ const EXAMPLES = {
       'company: Edelman Financial Engines'],
   },
   'media-publishing': {
-    yes: ['Journalist at the Orlando Sentinel', 'Managing Editor', 'company: Quillon Publishing', 'company: The New York Times'],
-    no: ['Video Editor at Quillon Films', 'Newsletter writer', 'company: Macmillan Cancer Support'],
+    yes: ['Journalist at the Quillon Gazette', 'Managing Editor', 'company: Quillon Publishing', 'company: The New York Times'],
+    no: ['Video Editor at Quillon Films', 'Newsletter writer', 'company: Macmillan Cancer Support', 'company: Newport News Shipbuilding',
+      'company: Good News Church'],
   },
   'creator-economy': {
-    yes: ['Content Creator', 'YouTuber', 'UGC creator', 'company: Patreon', ['Founder at Quillon | Host at The Growth Podcast', 'The Growth Podcast']],
-    no: [['Founder at Quillon | Podcaster', 'Quillon'], ['Founder at Quillon | Host at The Growth Podcast', 'Quillon'], 'Creator of Quillon'],
+    yes: ['Content Creator', 'YouTuber', 'UGC creator', 'company: Patreon', ['Founder at Quillon | Host at The Long Table Podcast', 'The Long Table Podcast']],
+    no: [['Founder at Quillon | Podcaster', 'Quillon'], ['Founder at Quillon | Host at The Long Table Podcast', 'Quillon'], 'Creator of Quillon'],
   },
   'film-tv-music': {
     yes: ['Filmmaker', 'Music Producer at Quillon Records', 'company: Quillon Pictures', 'company: Netflix'],
-    no: ['Threat actor researcher at Quillon', 'Music lover | Accountant', 'Home theater installer', 'company: Illumination Lighting'],
+    no: ['Threat actor researcher at Quillon', 'Music lover | Accountant', 'Home theater installer', 'company: Illumination Lighting',
+      'company: UTA'],
   },
   'gaming-esports': {
     yes: ['Game Designer at Quillon Games', 'Esports Manager', 'Gaming studio founder', 'company: Riot Games'],
     no: ['Gaming Commission investigator', 'Casino gaming floor supervisor', 'company: Blizzard Snow Removal'],
   },
   sports: {
-    yes: ["Head Coach, Women's Soccer", 'Sports Marketing Manager', 'company: Orlando Magic', 'company: ESPN'],
+    yes: ["Head Coach, Women's Soccer", 'Sports Marketing Manager', 'company: Denver Nuggets', 'company: ESPN'],
     no: ['Soccer mom | Nurse', 'Football fan | Engineer', 'NFL alumni | Financial Advisor', 'company: Wasserman Law'],
   },
   'ecommerce-retail': {
@@ -244,24 +266,39 @@ const EXAMPLES = {
     no: ['Cook County Clerk', 'Server Engineer'],
   },
   'hospitality-travel': {
-    yes: ['Hotel General Manager', 'Travel Advisor', 'Flight Attendant at Delta', 'company: Marriott'],
-    no: ['Travel Nurse at Quillon Health', 'Concierge Medicine physician', 'company: Hilton Head Island Realty'],
+    yes: ['Hotel General Manager', 'Travel Advisor', 'Flight Attendant at Delta', 'Cruise Ship Director', 'company: Marriott',
+      'company: Best Western'],
+    no: ['Travel Nurse at Quillon Health', 'Concierge Medicine physician', 'company: Hilton Head Island Realty', 'company: Cruise',
+      'Software Engineer at Cruise'],
+  },
+  'beauty-personal-care': {
+    yes: ['Hair Stylist at Northwind Salon', 'Barber | Owner at Fade Kings', 'Licensed Esthetician', 'Nail Technician',
+      'company: Quillon Salon', 'company: Great Clips'],
+    no: ['company: Salon Media Group', 'Brand strategist for beauty salons', 'Film Editor | Colorist', 'company: Barber Foods',
+      'Makeup enthusiast | Accountant'],
   },
   logistics: {
-    yes: ['Freight Broker', 'Supply Chain Manager', 'CDL Truck Driver', 'company: FedEx'],
-    no: ['Data Warehouse Architect', 'Relationship Manager'],
+    yes: ['Freight Broker', 'Supply Chain Manager', 'CDL Truck Driver', 'company: FedEx', 'company: Uber Freight'],
+    no: ['Data Warehouse Architect', 'Relationship Manager', ['Procurement Manager at Quillon Hospital', 'Quillon Hospital'], 'Demand Planner'],
   },
   manufacturing: {
-    yes: ['CNC Machinist', 'Plant Manager at Quillon Plastics', 'company: Quillon Manufacturing', 'company: Caterpillar'],
-    no: ['company: The Cheesecake Factory', 'company: Idea Factory Studio', 'company: Dupont Circle Realty'],
+    yes: ['CNC Machinist', 'Plant Manager at Quillon Plastics', 'company: Quillon Manufacturing', 'company: Caterpillar', 'company: Dover Corporation'],
+    no: ['company: The Cheesecake Factory', 'company: Idea Factory Studio', 'company: Dupont Circle Realty', ['OEM Account Manager at Initech', 'Initech']],
   },
   energy: {
     yes: ['Petroleum Engineer', 'Solar sales lead', 'company: Quillon Solar', 'company: Duke Energy'],
     no: ['company: Monster Energy', 'Essential oils educator', 'High-energy sales leader'],
   },
   automotive: {
-    yes: ['Service Advisor at Toyota of Orlando', 'Automotive Technician', 'company: Toyota of Orlando', 'company: Tesla'],
-    no: ['company: Ford Foundation', 'EV/EBITDA modeling', 'company: Firestone Walker Brewing'],
+    yes: ['Service Advisor at Toyota of Northwind', 'Automotive Technician', 'company: Toyota of Northwind', 'company: Tesla',
+      'company: Lear Corporation'],
+    no: ['company: Ford Foundation', 'EV/EBITDA modeling', 'company: Firestone Walker Brewing', 'Customer Service Advisor',
+      ['Financial Service Advisor at Quillon Bank', 'Quillon Bank']],
+  },
+  agriculture: {
+    yes: ['Farmer | Owner at Green Acres Farm', 'Agronomist at Corteva', 'Dairy Farmer', 'company: Quillon Farms', 'company: Cargill'],
+    no: ['company: State Farm', 'company: Farmers Insurance', 'Server farm engineer', 'company: Farmers & Merchants Bank',
+      'Wind farm developer', 'company: Orchard Pay'],
   },
   'aerospace-defense': {
     yes: ['Aerospace Engineer', 'TS/SCI cleared systems lead', 'Avionics technician', 'company: Lockheed Martin'],
@@ -269,16 +306,19 @@ const EXAMPLES = {
   },
   military: {
     yes: ['Captain, US Army', 'Active Duty Air Force', 'Army National Guard officer', 'company: United States Marine Corps'],
-    no: ['Army Veteran | Project Manager at Quillon', 'company: Old Navy', 'company: Salvation Army', 'Battalion Chief, Orange County Fire Rescue'],
+    no: ['Army Veteran | Project Manager at Quillon', 'company: Old Navy', 'company: Salvation Army', 'Battalion Chief, Travis County Fire Rescue'],
   },
   government: {
-    yes: ['Police Officer at Orlando Police Department', 'Legislative Aide', 'company: City of Orlando', 'company: State of Florida'],
-    no: ['company: State of Mind Media', 'company: City of Hope', 'Student Government President'],
+    yes: ['Police Officer at Northwind Police Department', 'Legislative Aide', 'company: City of Northwind', 'company: State of Ohio',
+      'Law Enforcement Officer'],
+    no: ['company: State of Mind Media', 'company: City of Hope', 'Student Government President',
+      ['Government Affairs Manager at Quillon Pharma', 'Quillon Pharma'], ['Public Policy Manager at Hooli', 'Hooli']],
   },
   legal: {
     yes: [['Attorney | Partner at Jones Law Group', 'Jones Law Group'], 'Associate at a law firm', 'company: Quillon Law Group',
       'company: Smith Legal', 'company: Kirkland & Ellis'],
-    no: ['Attorney at Smith & Jones', 'Paralegal', 'company: Lawson Group', ['General Counsel at Quillon', 'Quillon'], 'Law Enforcement Officer'],
+    no: ['Attorney at Smith & Jones', 'Paralegal', 'company: Lawson Group', ['General Counsel at Quillon', 'Quillon'], 'Law Enforcement Officer',
+      'company: Legal Sea Foods', 'company: Legal & General'],
   },
   'management-consulting': {
     yes: ['Associate | Management Consulting', 'Strategy consulting at Quillon Advisors', 'company: McKinsey & Company',
@@ -292,27 +332,45 @@ const EXAMPLES = {
     no: ['Technical Recruiter', 'HR Business Partner', ['Recruiter at Acme Widgets', 'Acme Widgets'], 'company: 24 Hr Fitness Club',
       'Talent show host'],
   },
+  'security-services': {
+    yes: ['Owner of a private security company', 'Director at a security firm', 'company: Quillon Security Services', 'company: Allied Universal'],
+    no: [['Security Officer at Quillon Mall', 'Quillon Mall'], 'Information Security Officer', 'company: Quillon Cyber Security',
+      'Chief Security Officer at Quillon', 'National Security fellow', 'company: Quillon Securities'],
+  },
   'real-estate': {
-    yes: ['Realtor at Keller Williams', 'Property Manager', 'company: Smith Real Estate Group', 'company: Quillon Properties'],
-    no: ['Intellectual Property Attorney', 'Real-time systems engineer'],
+    yes: ['Realtor at Keller Williams', 'Property Manager', 'company: Smith Real Estate Group', 'company: Quillon Properties',
+      'company: Fidelity National Financial'],
+    no: ['Intellectual Property Attorney', 'Real-time systems engineer', ['Real Estate Attorney at Jones Law Group', 'Jones Law Group']],
   },
   'construction-trades': {
     yes: ['General Contractor', 'Electrician', 'company: Quillon Builders', 'company: Quillon Construction'],
-    no: ['company: Brand Builders Group', 'Independent Contractor | Designer', 'Concrete results for your brand'],
+    no: ['company: Brand Builders Group', 'Independent Contractor | Designer', 'Concrete results for your brand',
+      ['Auto Damage Estimator at Progressive', 'Progressive'], ['Construction Recruiter at Quillon Staffing', 'Quillon Staffing']],
   },
   charities: {
     yes: ['Grant Writer', 'Program Director at a nonprofit', 'company: Quillon Community Foundation', 'company: Habitat for Humanity'],
     no: ['company: Foundation Medicine', 'Fundraising for our Series A', 'company: Goodwill Realty'],
   },
+  'social-work': {
+    yes: ['Social Worker at Department of Children and Families', 'Case Worker | Foster Care', 'MSW', 'company: Quillon Family Services',
+      'company: Catholic Charities'],
+    no: ['Social Media Manager', 'Case Manager at Quillon Insurance', 'Social Security attorney'],
+  },
   faith: {
-    yes: ['Senior Pastor at Grace Church', 'Youth Minister', 'Chaplain', 'company: First Baptist Church of Orlando'],
+    yes: ['Senior Pastor at Grace Church', 'Youth Minister', 'Chaplain', 'company: First Baptist Church of Northwind'],
     no: ['company: Ministry of Defence', 'Tech Evangelist'],
   },
 };
 
+// A company is read the way the matcher reads it: named as lib/scoring.js
+// cleanCompany names it ("AWS" is Amazon, "Dover Corporation" is Dover), since
+// that is the name a read of the network carries. A name it drops is no company.
 const sectorsOfExample = (ex) => {
-  if (Array.isArray(ex)) return sectorsInHeadline(ex[0], ex[1]);
-  if (ex.startsWith('company: ')) return sectorsInName(ex.slice(9));
+  if (Array.isArray(ex)) return sectorsInHeadline(ex[0], cleanCompany(ex[1]));
+  if (ex.startsWith('company: ')) {
+    const name = cleanCompany(ex.slice(9));
+    return name ? sectorsInName(name) : [];
+  }
   return sectorsInHeadline(ex);
 };
 
@@ -325,6 +383,32 @@ test('every sector has examples it matches and examples it must not', () => {
   }
 });
 
+test('every listed company reaches its own sector as scoring names it', () => {
+  // The matcher sees each company as cleanCompany names it, so an entry that
+  // scoring folds into another name ("aws" is Amazon) or trims ("Dover
+  // Corporation" is Dover) could never match. Each entry, written the way a
+  // person would, must still reach its sector.
+  for (const s of DIRECTORY) {
+    for (const c of s.companies) {
+      const written = c.replace(/\$$/, '').split(' ').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+      const name = cleanCompany(written);
+      assert.ok(name && sectorsInName(name).includes(s.key), `${s.key}: '${c}' is read as ${JSON.stringify(name)} (${name ? sectorsInName(name).join(', ') : 'no company'})`);
+    }
+  }
+});
+
+test('lists name companies known across the country, and no school by a short name', () => {
+  // Regional names are placed by their words and their people's headlines, as
+  // everything else is; the curated list's schools are named as scoring names them.
+  const listed = new Set(DIRECTORY.flatMap((s) => s.companies.map((c) => c.replace(/\$$/, ''))));
+  for (const c of ['orlando health', 'adventhealth', 'florida blue', 'tampa electric', 'orlando utilities commission', 'shutts & bowen', 'gunster',
+    'akerman llp', 'universal orlando', 'winn dixie', 'publix', 'fpl', 'georgia power', 'ucf', 'uf', 'fsu', 'usf', 'usc', 'nyu', 'asu']) {
+    assert.ok(!listed.has(c), c);
+  }
+  const schools = DIRECTORY.find((s) => s.key === 'higher-ed').companies.map((c) => c.replace(/\$$/, ''));
+  assert.deepEqual(schools.filter((c) => /^([a-z]{1,3}u|u[a-z]{1,3})$/.test(c)), ['ucla'], 'only the curated list\'s own names');
+});
+
 // ── whole words, and the traps ──────────────────────────────────────────────
 
 test('whole words only: "incidental" isn\'t dental, "Banksy" isn\'t banking, "Lawson" isn\'t legal', () => {
@@ -335,7 +419,7 @@ test('whole words only: "incidental" isn\'t dental, "Banksy" isn\'t banking, "La
   assert.deepEqual(sectorsInName('Lawson Law Group'), ['legal']);
   // DSO only as a whole word, plural included.
   assert.deepEqual(sectorsInHeadline('DSO operations lead'), ['dental']);
-  assert.deepEqual(sectorsInHeadline('Growing DSOs across Florida'), ['dental']);
+  assert.deepEqual(sectorsInHeadline('Growing DSOs across Texas'), ['dental']);
   assert.deepEqual(sectorsInHeadline('ADSO coordinator'), []);
   assert.deepEqual(sectorsInHeadline('DSOx platform lead'), []);
   // A realtor, and a real estate firm, both match.
@@ -386,18 +470,18 @@ test('a headline counts what it says now, and not who someone serves', () => {
 });
 
 test('a part of a headline that names a company counts for that company; side notes don\'t count', () => {
-  const two = 'Founder at Quillon | Host at The Growth Podcast';
+  const two = 'Founder at Quillon | Host at The Long Table Podcast';
   assert.deepEqual(sectorsInHeadline(two, 'Quillon'), []);
-  assert.deepEqual(sectorsInHeadline(two, 'The Growth Podcast'), ['media-publishing', 'creator-economy']);
+  assert.deepEqual(sectorsInHeadline(two, 'The Long Table Podcast'), ['media-publishing', 'creator-economy']);
   // The parts before the first company describe that role…
   assert.deepEqual(sectorsInHeadline('Dentist | Owner at Smith Family Practice', 'Smith Family Practice'), ['dental']);
   // …and what comes after it is a side note.
   assert.deepEqual(sectorsInHeadline('Dental Hygienist at Quillon | Soccer mom | Podcaster', 'Quillon'), ['dental']);
   assert.deepEqual(sectorsInHeadline('Orthodontist at Bright Smiles | Founder at SmileTech', 'SmileTech'), []);
   // A company the headline doesn't name (a company scan) gets the leading parts.
-  assert.deepEqual(sectorsInHeadline('Registered Nurse | Volunteer at Second Harvest', 'Orlando Health'), ['hospitals']);
+  assert.deepEqual(sectorsInHeadline('Registered Nurse | Volunteer at Second Harvest', 'Northwind Health'), ['hospitals']);
   // With no company named at all, everything current counts.
-  assert.deepEqual(sectorsInHeadline('Registered Nurse | BSN', 'Orlando Health'), ['hospitals']);
+  assert.deepEqual(sectorsInHeadline('Registered Nurse | BSN', 'Northwind Health'), ['hospitals']);
 });
 
 // ── a company, from its name and its people ─────────────────────────────────

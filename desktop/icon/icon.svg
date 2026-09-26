@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!-- PLACEHOLDER app icon (DESKTOP.md D0): you at the centre, your circles around
-       you in the tier colours. Blake chooses the real one. The app's old favicon
+       you in the tier colours, until the real one is chosen. The app's old favicon
        was Next.js's default Vercel triangle, which is Vercel's mark, not ours. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">

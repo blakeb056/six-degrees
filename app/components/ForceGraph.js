@@ -23,6 +23,10 @@ function safeImageUrl(url) {
     : null;
 }
 
+// The id of the node at the centre, you. Not a connection's id (those come from
+// the database), and never shown.
+const CENTER_ID = '__center__';
+
 // Builds the avatar tooltip through the DOM rather than a string, so no value
 // can break out of the attribute it is written into.
 function renderPhoto(sel, d, size, borderColor) {
@@ -181,7 +185,7 @@ function createTooltip() {
 
 function renderNetworkMode(svg, width, height, connections, onSelect, tierColors, focusNodeRef, savedTransform, zoomTransformRef, userName) {
   const centerNode = {
-    id: 'blake', name: userName || 'You', tier: 'center', degree: 0,
+    id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
     power_score: 10, fx: width / 2, fy: height / 2,
   };
 
@@ -197,14 +201,14 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     circle_power: c.circle_power, circle_s_count: c.circle_s_count, circle_a_count: c.circle_a_count,
   }))];
 
-  const links = connections.map(c => ({ source: 'blake', target: c.id }));
+  const links = connections.map(c => ({ source: CENTER_ID, target: c.id }));
 
   const tierRadius = (tier) => {
     switch (tier) { case 'S': return 150; case 'A': return 250; case 'B': return 350; case 'C': return 450; default: return 520; }
   };
 
   const nodeRadius = (d) => {
-    if (d.id === 'blake') return 18;
+    if (d.id === CENTER_ID) return 18;
     return Math.max(3, Math.min(12, (d.power_score || 1) * 1.3));
   };
 
@@ -250,7 +254,7 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     nodes.forEach(n => { const t = n.tier || 'D'; if (!tierGroups[t]) tierGroups[t] = []; tierGroups[t].push(n); });
     Object.entries(tierGroups).forEach(([tier, group]) => {
       group.forEach((n, i) => {
-        if (n.id === 'blake') { n.x = width / 2; n.y = height / 2; n.fx = n.x; n.fy = n.y; return; }
+        if (n.id === CENTER_ID) { n.x = width / 2; n.y = height / 2; n.fx = n.x; n.fy = n.y; return; }
         const r = tierRadius(tier);
         const angle = (i / group.length) * Math.PI * 2 - Math.PI / 2;
         n.x = width / 2 + r * Math.cos(angle);
@@ -262,10 +266,10 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
 
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(d => tierRadius(d.target.tier || 'D')).strength(isMobileGraph ? 0 : 0.1))
-    .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : (d => d.id === 'blake' ? -300 : -15)))
+    .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : (d => d.id === CENTER_ID ? -300 : -15)))
     .force('center', isMobileGraph ? null : d3.forceCenter(width / 2, height / 2))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
-    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === 'blake' ? 0 : tierRadius(d.tier), width / 2, height / 2).strength(0.3));
+    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : tierRadius(d.tier), width / 2, height / 2).strength(0.3));
 
   const link = g.append('g').selectAll('line').data(links).join('line')
     .attr('stroke', d => { const t = nodes.find(n => n.id === (d.target.id || d.target)); return tierColors[t?.tier] || '#333'; })
@@ -291,20 +295,20 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
 
   const node = g.append('g').selectAll('circle').data(nodes).join('circle')
     .attr('r', nodeRadius)
-    .attr('fill', d => d.id === 'blake' ? '#fff' : tierColors[d.tier] || '#666')
+    .attr('fill', d => d.id === CENTER_ID ? '#fff' : tierColors[d.tier] || '#666')
     .attr('stroke', d => {
-      if (d.id === 'blake') return '#FFD700';
+      if (d.id === CENTER_ID) return '#FFD700';
       if (d.is_catalyst) return '#00ff88';
       return 'none';
     })
     .attr('stroke-width', d => {
-      if (d.id === 'blake') return 3;
+      if (d.id === CENTER_ID) return 3;
       if (d.is_catalyst) return 2.5;
       return 0;
     })
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
-      if (d.id === 'blake') return;
+      if (d.id === CENTER_ID) return;
       // Remove previous selection glow
       g.selectAll('.selected-glow').remove();
       // Add breathing glow to selected node
@@ -328,7 +332,7 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
 
   node.on('mouseover', function (event, d) {
     d3.select(this).attr('r', nodeRadius(d) * 1.5);
-    if (d.profile_image_url && d.id !== 'blake') {
+    if (d.profile_image_url && d.id !== CENTER_ID) {
       const size = Math.max(48, nodeRadius(d) * 5);
       photoTooltip.style('opacity', 1);
       renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
@@ -346,7 +350,7 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
         .style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mousemove', function (event, d) {
-    if (d.profile_image_url && d.id !== 'blake') {
+    if (d.profile_image_url && d.id !== CENTER_ID) {
       const size = Math.max(48, nodeRadius(d) * 5);
       photoTooltip.style('left', (event.clientX - size / 2) + 'px').style('top', (event.clientY - size - 8) + 'px');
       tooltip.style('left', (event.clientX - 40) + 'px').style('top', (event.clientY + 12) + 'px');
@@ -359,16 +363,16 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     photoTooltip.style('opacity', 0);
   });
 
-  setupDrag(node, simulation, 'blake');
+  setupDrag(node, simulation, CENTER_ID);
 
   const labels = g.append('g').selectAll('text')
-    .data(nodes.filter(n => n.id === 'blake' || n.tier === 'S' || n.is_catalyst))
+    .data(nodes.filter(n => n.id === CENTER_ID || n.tier === 'S' || n.is_catalyst))
     .join('text')
     .text(d => d.is_catalyst && d.tier !== 'S' ? d.name + ' ⚡' : d.name)
-    .attr('font-size', d => d.id === 'blake' ? 14 : 10)
-    .attr('font-weight', d => d.id === 'blake' ? 700 : 500)
+    .attr('font-size', d => d.id === CENTER_ID ? 14 : 10)
+    .attr('font-weight', d => d.id === CENTER_ID ? 700 : 500)
     .attr('fill', d => {
-      if (d.id === 'blake') return '#fff';
+      if (d.id === CENTER_ID) return '#fff';
       if (d.is_catalyst) return '#00ff88';
       return tierColors[d.tier];
     })
@@ -410,14 +414,14 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
   const numBridges = Math.max(bridges.length, 1);
   const cx = width / 2, cy = height / 2;
 
-  // Per-tier orbit distance from Blake — S closest, A further, etc.
+  // Per-tier orbit distance from the centre (you): S closest, A further, etc.
   const bridgeTierOrbit = { S: 350, A: 600, B: 820, C: 1000, D: 1150 };
   const tierRing = { S: 40, A: 70, B: 100, C: 125, D: 145 };
   const tierOrder = ['S', 'A', 'B', 'C', 'D'];
 
   // --- Build nodes ---
   const centerNode = {
-    id: 'blake', name: userName || 'You', tier: 'center', degree: 0,
+    id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
     power_score: 10, nodeType: 'center', fx: cx, fy: cy,
   };
 
@@ -484,7 +488,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
 
   const nodes = [centerNode, ...bridgeNodes, ...d2Nodes];
   const links = [
-    ...bridgeNodes.map(b => ({ source: 'blake', target: b.id, linkType: 'bridge' })),
+    ...bridgeNodes.map(b => ({ source: CENTER_ID, target: b.id, linkType: 'bridge' })),
     ...d2Nodes.map(d => ({ source: d.source_connection_id, target: d.id, linkType: 'degree2' })),
   ];
 
@@ -774,10 +778,10 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       return 0;  // d2 has NO charge — positions are computed, not physics-driven
     }))
     .force('bridgeOrbit', (() => {
-      let _nodes, _blake;
+      let _nodes, _center;
       const force = (alpha) => {
-        if (!_blake) return;
-        const bx = _blake.fx ?? _blake.x, by = _blake.fy ?? _blake.y;
+        if (!_center) return;
+        const bx = _center.fx ?? _center.x, by = _center.fy ?? _center.y;
         for (const n of _nodes) {
           if (n.nodeType !== 'bridge') continue;
           const targetR = n._orbitRadius || 500;
@@ -788,7 +792,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
           n.vy -= (dy / dist) * diff * alpha * 0.4;
         }
       };
-      force.initialize = (n) => { _nodes = n; _blake = n.find(x => x.id === 'blake'); };
+      force.initialize = (n) => { _nodes = n; _center = n.find(x => x.id === CENTER_ID); };
       return force;
     })())
     .force('clusterPositioning', (() => {
@@ -856,8 +860,8 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
     // Animated boundaries — deform where clusters overlap
     updateBoundaries();
     // Bridge connecting lines
-    const blakeX = centerNode.fx ?? centerNode.x, blakeY = centerNode.fy ?? centerNode.y;
-    bridgeLines.attr('x1', blakeX).attr('y1', blakeY)
+    const centerX = centerNode.fx ?? centerNode.x, centerY = centerNode.fy ?? centerNode.y;
+    bridgeLines.attr('x1', centerX).attr('y1', centerY)
       .attr('x2', d => d.x).attr('y2', d => d.y);
     // Discovery chain lines
     chainLines
@@ -883,7 +887,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
   });
 
   // --- Drag ---
-  setupDrag(node, simulation, 'blake');
+  setupDrag(node, simulation, CENTER_ID);
 
   // --- Tooltip + Photo Hover (same as Network Map) ---
   const tooltip = createTooltip();
@@ -897,7 +901,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
     d3.select(this).attr('r', nodeRadius(d) * 1.5).attr('filter', 'url(#glow)');
 
     // Photo hover
-    if (d.profile_image_url && d.id !== 'blake') {
+    if (d.profile_image_url && d.id !== CENTER_ID) {
       const size = Math.max(48, nodeRadius(d) * 4);
       photoTooltip.style('opacity', 1);
       renderPhoto(photoTooltip, d, size, tierColors[d.tier] || '#555');
@@ -923,7 +927,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       ].filter(Boolean).join('<br/>'))
       .style('left', (event.clientX + 12) + 'px').style('top', (event.clientY + 12) + 'px');
   }).on('mousemove', function (event, d) {
-    if (d.profile_image_url && d.id !== 'blake') {
+    if (d.profile_image_url && d.id !== CENTER_ID) {
       const size = Math.max(48, nodeRadius(d) * 4);
       photoTooltip.style('left', (event.clientX - size / 2) + 'px').style('top', (event.clientY - size - 8) + 'px');
     }
@@ -937,7 +941,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
 
   // --- Click: select + Connect to Unlock overlay ---
   node.on('click', (event, d) => {
-    if (d.id === 'blake') return;
+    if (d.id === CENTER_ID) return;
     // Selection glow
     g.selectAll('.selected-glow').remove();
     g.append('circle')
@@ -960,9 +964,9 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       const overlay = g.append('g').attr('class', 'unlock-overlay');
       // Dim non-path nodes
       node.transition().duration(300)
-        .attr('opacity', n => (n.id === d.id || n.id === 'blake' || n.id === d.source_connection_id) ? 1 : 0.2);
+        .attr('opacity', n => (n.id === d.id || n.id === CENTER_ID || n.id === d.source_connection_id) ? 1 : 0.2);
       labels.transition().duration(300)
-        .attr('opacity', n => (n.id === d.id || n.id === 'blake' || n.id === d.source_connection_id) ? 1 : 0.1);
+        .attr('opacity', n => (n.id === d.id || n.id === CENTER_ID || n.id === d.source_connection_id) ? 1 : 0.1);
       // Phantom cluster
       [30, 55, 80].forEach(r => {
         overlay.append('circle').attr('cx', ox).attr('cy', oy).attr('r', r)
@@ -977,9 +981,9 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       }
       // Path highlight
       const bridge = bridgeById[d.source_connection_id];
-      const blake = centerNode;
-      if (blake && bridge) {
-        overlay.append('line').attr('x1', blake.x).attr('y1', blake.y).attr('x2', bridge.x).attr('y2', bridge.y)
+      const center = centerNode;
+      if (center && bridge) {
+        overlay.append('line').attr('x1', center.x).attr('y1', center.y).attr('x2', bridge.x).attr('y2', bridge.y)
           .attr('stroke', '#FFD700').attr('stroke-width', 2).attr('stroke-opacity', 0.6);
         overlay.append('line').attr('x1', bridge.x).attr('y1', bridge.y).attr('x2', ox).attr('y2', oy)
           .attr('stroke', '#FF6B35').attr('stroke-width', 2).attr('stroke-opacity', 0.6);

@@ -153,8 +153,7 @@ try {
 // The helper ships inside the app, so the version that swaps the app is the one
 // the user is running, never a script fetched from the main branch.
 for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt',
-                   'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs',
-                   'scripts/apply-update.sh']) {
+                   'scripts/audit-avatars.mjs', 'scripts/apply-update.sh']) {
   const from = path.join(ROOT, rel);
   if (existsSync(from)) {
     mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
