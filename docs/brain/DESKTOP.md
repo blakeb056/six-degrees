@@ -181,7 +181,7 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       that already has the packages. The Scan page's first step says it's ready, with
       nothing to install. The app's Python runs isolated, as `-E -s -B -u`
       (`OWN_PYTHON_FLAGS`): none of the user's `PYTHON*` settings count (an inherited
-      `PYTHONPLATLIBDIR` alone used to stop it before it started), no user
+      `PYTHONPLATLIBDIR` alone would stop it before it starts), no user
       site-packages, and no bytecode (that would be writing into the signed app; it
       compiles as it imports instead, about 0.3 s). A scan on any other Python (the
       fallbacks) writes no bytecode either: `scrape.py`'s `import image_store` would
@@ -208,15 +208,15 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       Silicon or Intel: 24 MB) from GitHub into the data folder's `python/`, checks its
       size and SHA-256 before anything is unpacked, then builds `venv/` from it and
       installs the pinned packages from PyPI, with the download's progress on the page.
-      Install (so Set up too) keeps the user's pip settings for index, proxy and
-      certificates but not the ones that would install elsewhere (`PIP_TARGET`,
-      `PIP_PREFIX`, `PIP_ROOT`, `PIP_USER`), and ends by checking that the packages
-      load in `venv/`: a `pip.conf` that sends them elsewhere fails with a reason,
-      not "Finished" (`installSteps`).
       Only on the click, only those two hosts, cancellable like Install. A Python 3.10
-      to 3.14 on the computer is still used as before. Checked end to end on this Mac (arm64,
-      against a server that could see only macOS's Python 3.9): the download, its
-      checksum, the environment and the packages, then ready. And a stop part-way
+      to 3.14 on the computer is still used as before. Install (so Set up too) keeps
+      the user's pip settings for index, proxy and certificates but not the ones that
+      would install elsewhere (`PIP_TARGET`, `PIP_PREFIX`, `PIP_ROOT`, `PIP_USER`), and
+      ends by checking that the packages load in `venv/`: a `pip.conf` that sends them
+      elsewhere fails with a reason, not "Finished" (`installSteps`). Checked end to
+      end on this Mac (arm64, against a server that could see only macOS's Python
+      3.9): the download, its checksum, the environment and the packages, then ready.
+      And a stop part-way
       (during the environment step): its working folder, download included, was gone,
       and the next press carried on from the Python already downloaded. A stop during
       the download itself is covered by `tests/scanner-python.test.mjs`. A server that
@@ -236,8 +236,11 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       `__pycache__` into the app and broke its signature), checks that the running app
       reports `pythonSource: "bundled"` and wrote no bytecode into itself, then opens it
       again with `SIX_DEGREES_PYTHON=` to exercise the fallback and have a job (Install)
-      to stop while quitting.
-      `npm-package.yml` fails if a Python ever rides along in the npm package.
+      to stop while quitting. `npm-package.yml` fails if a Python ever rides along in
+      the npm package. Checked on an arm64 build (2026-09-26), on a copy taken from its
+      disk image: the step's Python lines in order, then the bytecode check and
+      `codesign --verify --deep --strict` both pass; with the old chip line, both fail
+      ("a sealed resource is missing or invalid").
 - [ ] **Not yet seen:** the Intel build (CI's `macos-15-intel` job; whether its
       Playwright wheel's Node matches the app's is logged by the build), and Set up the
       scanner on Linux (`npm-package.yml` doesn't run it: it needs GitHub and PyPI).
