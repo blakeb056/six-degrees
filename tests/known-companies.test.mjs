@@ -8,10 +8,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { KNOWN_COMPANIES, cleanCompany, companyScore, knownIndustry, currentCompany, scoreNetwork } from '../lib/scoring.js';
+import { KNOWN_COMPANIES, cleanCompany, companyScore, knownIndustry, currentCompany, scoreNetwork, scorePerson } from '../lib/scoring.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIST = new Map(KNOWN_COMPANIES.map(([name, score, alias, industry]) => [name, { score, alias, industry }]));
+const scorePersonAt = (headline) => scorePerson({ headline }).companyScore;
 
 // The entries whose alias claims a name as cleanCompany() reads it: lowercase,
 // with or without a leading "the", and a name that says it is a school only
@@ -40,7 +41,7 @@ const SPELLINGS = {
   Cigna: ['Cigna', 'The Cigna Group', 'Cigna Healthcare'],
   Humana: ['Humana', 'Humana Military'],
   'Elevance Health': ['Elevance Health', 'Elevance', 'Anthem', 'Anthem Blue Cross', 'Anthem Blue Cross and Blue Shield', 'Anthem Blue Cross Blue Shield'],
-  'HCA Healthcare': ['HCA Healthcare', 'HCA', 'HCA Florida Healthcare', 'HCA Houston Healthcare'],
+  'HCA Healthcare': ['HCA Healthcare', 'HCA', 'HCA Midwest Health', 'HCA Houston Healthcare'],
   'Kaiser Permanente': ['Kaiser Permanente', 'Kaiser', 'Kaiser Foundation Health Plan', 'Kaiser Foundation Hospitals'],
   Merck: ['Merck', 'Merck &', 'Merck Sharp & Dohme', 'Merck Animal Health'],
   AbbVie: ['AbbVie'],
@@ -49,7 +50,7 @@ const SPELLINGS = {
   AstraZeneca: ['AstraZeneca'],
   Bayer: ['Bayer', 'Bayer U.S', 'Bayer Crop Science', 'Bayer Pharmaceuticals'],
   'Mayo Clinic': ['Mayo Clinic', 'Mayo Clinic Health System', 'Mayo Clinic Arizona'],
-  'Cleveland Clinic': ['Cleveland Clinic', 'Cleveland Clinic Florida'],
+  'Cleveland Clinic': ['Cleveland Clinic', 'Cleveland Clinic Abu Dhabi'],
   'Johns Hopkins Medicine': ['Johns Hopkins Medicine', 'The Johns Hopkins Hospital', 'Johns Hopkins Health System', 'Johns Hopkins HealthCare',
     "Johns Hopkins All Children's Hospital", 'Johns Hopkins Bayview Medical Center'],
   // Retail, food, hotels
@@ -156,6 +157,61 @@ const SPELLINGS = {
   'Vanderbilt University': ['Vanderbilt', 'Vanderbilt University'],
 };
 
+// Entries from before the additions whose aliases were closed (September
+// 2026) because other companies start with the same word: the forms their own
+// companies use, which must still read as them.
+const CLOSED = {
+  Google: ['Google', 'Google LLC', 'Google Cloud', 'Google DeepMind', 'DeepMind', 'Alphabet'],
+  Meta: ['Meta', 'Meta Platforms', 'Facebook', 'Instagram', 'WhatsApp', 'Reality Labs'],
+  Amazon: ['Amazon', 'AWS', 'Amazon Web Services', 'Amazon Robotics'],
+  'Coca-Cola': ['Coca-Cola', 'Coca Cola', 'The Coca-Cola Company', 'Coca-Cola North America'],
+  'Goldman Sachs': ['Goldman Sachs', 'Goldman', 'Goldman Sachs Asset Management', 'Goldman Sachs Bank USA'],
+  'JPMorgan Chase': ['JPMorgan Chase', 'JPMorgan', 'JP Morgan', 'Chase', 'Chase Bank', 'JPMorgan Chase & Co'],
+  Sequoia: ['Sequoia', 'Sequoia Capital'],
+  Adobe: ['Adobe', 'Adobe Systems'],
+  Oracle: ['Oracle', 'Oracle America', 'Oracle Health', 'Oracle NetSuite', 'Oracle Cloud Infrastructure'],
+  Uber: ['Uber', 'Uber Technologies', 'Uber Eats'],
+  Snap: ['Snap', 'Snap Inc', 'Snapchat', 'Snapchat 👻'],
+  Snowflake: ['Snowflake', 'Snowflake Computing'],
+  'Capital One': ['Capital One', 'Capital One Financial', 'Capital One Bank'],
+  Citi: ['Citi', 'Citigroup', 'Citibank', 'Citi Private Bank'],
+  'Wells Fargo': ['Wells Fargo', 'Wells Fargo Advisors', 'Wells Fargo Bank'],
+  'Bank of America': ['Bank of America', 'Merrill', 'Merrill Lynch', 'Merrill Lynch Wealth Management', 'Merrill Edge', 'Bank of America Merrill Lynch'],
+  Fidelity: ['Fidelity', 'Fidelity Investments', 'Fidelity Institutional', 'Fidelity Management & Research Company'],
+  PepsiCo: ['PepsiCo', 'Pepsi', 'Pepsi Beverages Company', 'PepsiCo Foods North America'],
+  'Red Bull': ['Red Bull', 'Red Bull North America', 'Red Bull Racing'],
+  'Warner Bros. Discovery': ['Warner Bros. Discovery', 'Warner Bros', 'Warner Brothers', 'Warner Bros Games', 'WarnerMedia', 'Warner Media', 'WBD'],
+  Siemens: ['Siemens', 'Siemens USA', 'Siemens Digital Industries Software'],
+  Mitsubishi: ['Mitsubishi', 'Mitsubishi Corporation', 'Mitsubishi Heavy Industries', 'Mitsubishi Electric', 'Mitsubishi Motors'],
+  Toyota: ['Toyota', 'Toyota Motor North America', 'Toyota Motor Manufacturing Kentucky', 'Toyota Financial Services', 'Toyota Research Institute'],
+  'Johnson & Johnson': ['Johnson & Johnson', 'Johnson and Johnson', 'J&J', 'Johnson & Johnson MedTech'],
+  UnitedHealth: ['UnitedHealth', 'UnitedHealth Group', 'UnitedHealthcare', 'United Healthcare', 'Optum', 'OptumRx'],
+  NASA: ['NASA', 'NASA Goddard Space Flight Center'],
+  'Stanford University': ['Stanford', 'Stanford University', 'Stanford GSB', 'Stanford Graduate School of Business', 'Stanford Law School',
+    'Stanford University School of Medicine', 'Stanford Doerr School of Sustainability'],
+  'Harvard University': ['Harvard', 'Harvard University', 'Harvard Business School', 'Harvard Kennedy School', 'Harvard Medical School',
+    'Harvard Law School', 'Harvard College', 'Harvard Graduate School of Design', 'Harvard School of Public Health'],
+  Merck: ['Merck', 'Merck & Co', 'Merck Animal Health'],
+  Paramount: ['Paramount', 'Paramount Global', 'Paramount Pictures', 'Paramount+', 'Paramount Skydance'],
+  Nielsen: ['Nielsen', 'The Nielsen Company', 'Nielsen Holdings'],
+  SiriusXM: ['SiriusXM', 'Sirius XM'],
+  'Activision Blizzard': ['Activision', 'Activision Blizzard', 'Blizzard', 'Blizzard Entertainment'],
+  MrBeast: ['MrBeast', 'Beast Industries'],
+  Kellanova: ['Kellanova', "Kellogg's", 'Kellogg Company'],
+  Campbell: ['Campbell', "Campbell's", 'Campbell Soup Company'],
+  'Princeton University': ['Princeton', 'Princeton University', 'Princeton School of Architecture'],
+  'Yale University': ['Yale', 'Yale College'],
+  'Northwestern University': ['Northwestern', 'Northwestern University', 'Northwestern Feinberg School of Medicine'],
+  'University of Pennsylvania': ['University of Pennsylvania School of Nursing'],
+  'Cornell University': ['Cornell Law School'],
+  'University of Chicago': ['University of Chicago Law School'],
+  'Brown University': ['Brown School of Engineering'],
+  'Columbia University': ['Columbia Journalism School'],
+  'Rice University': ['Rice University School of Engineering'],
+  'University of Notre Dame': ['Notre Dame University'],
+  'Vanderbilt University': ['Vanderbilt', 'Vanderbilt University', 'Vanderbilt Law School', 'Vanderbilt Owen Graduate School of Management'],
+};
+
 // As people type them into LinkedIn, suffixes and all.
 const WRITTEN = [
   ['Costco Wholesale Corporation', 'Costco'], ['The Home Depot, Inc.', 'The Home Depot'], ['The Kroger Co.', 'Kroger'],
@@ -196,6 +252,25 @@ const NOT_LISTED = [
   'Brown & Brown', 'Brown Brothers Harriman', 'Brown Mackie College', 'Rice', 'Dartmouth Health', 'UCLA Health', 'Vanderbilt Health',
   'Princeton Plasma Physics Laboratory', 'Princeton Day School', 'University of Illinois Chicago', 'Chicago State University', 'California Institute of the Arts',
   'Mars Hill University',
+  // Entries from before the additions, closed in September 2026: a company
+  // that shares a name, a spun-off or separately run one, a bottler, a
+  // dealership, a school's hospital, a venue, and a word.
+  'Snap-on', 'Snap-on Incorporated', 'Snap Finance', 'Snap One', 'Snap Fitness', 'Snap Kitchen', 'Specs', 'Specs Optical',
+  'SPECS Surface Nano Analysis', 'Specs Engineering',
+  'Harvard Pilgrim Health Care', 'Harvard Maintenance', 'Harvard Bioscience', 'Harvard Elementary School', 'Harvard Club of Boston',
+  'Stanford Health Care', "Stanford Children's Health", 'Stanford Medicine', 'Stanford Research Systems', 'Stanford Middle School',
+  'Vanderbilt University Medical Center', 'Brown University Health', 'University of Pennsylvania Health System', 'University of Chicago Medicine',
+  'Columbia University Irving Medical Center', 'University of Notre Dame Australia', 'Princeton High School', 'Yale Elementary School',
+  'Kellogg Brown & Root', 'Fidelity National Financial', 'Fidelity National Information Services', 'FIS', 'Fidelity Bank',
+  'Warner Music Group', 'Warner Robins', 'Warner Norcross + Judd', 'Warner Chilcott', 'J&J Snack Foods', 'Toyota of Dallas', 'Toyota of Northwind',
+  'Toyota Tsusho America', 'Coca-Cola Consolidated', 'Coca-Cola Beverages Northeast', 'Coca-Cola Bottling Co. United', 'Pepsi Bottling Ventures',
+  'Citi Trends', 'Citi Field', 'Merrill Gardens', 'Merck Millipore', 'Campbell Clinic', 'Campbell Scientific',
+  'Paramount Residential Mortgage Group', 'Paramount Group', 'Nielsen Norman Group', 'NielsenIQ', 'Chase Brass', 'Chase Design Studio',
+  'Goldman Properties', 'Sequoia Health', 'Sequoia Consulting Group', 'Adobe Dental', 'Adobe Realty', 'Uber Freight', 'Oracle Elevator',
+  'Siemens Energy', 'Siemens Healthineers', 'Siemens Gamesa', 'Mitsubishi UFJ Financial Group', 'Mitsubishi UFJ Trust and Banking',
+  'Mitsubishi HC Capital', 'Mitsubishi Estate', 'Red Bull Arena', 'Capital One Arena', 'Wells Fargo Center',
+  'Bank of America Stadium', 'AT&T Performing Arts Center', 'NASA Federal Credit Union', 'Meta Financial Group', 'Meta Materials',
+  'Alphabet Soup Marketing', 'Amazon Conservation Association', 'Blizzard Snow Removal', 'MrBeast Burger', 'Snowflake Bakery',
 ];
 
 test('every name on the list reads as itself, with its score and industry', () => {
@@ -231,6 +306,46 @@ test('a name that only starts like a listed company keeps its own', () => {
     const c = cleanCompany(n);
     assert.ok(!c || !LIST.has(c), `${n} read as ${c}`);
   }
+});
+
+test('entries closed because other companies share their first word still read in their own forms', () => {
+  for (const [name, spellings] of Object.entries(CLOSED)) {
+    assert.ok(LIST.has(name), `${name} is on the list`);
+    for (const s of spellings) assert.equal(cleanCompany(s), name, s);
+  }
+  // …and a person there reads as working there, at its score.
+  assert.deepEqual([currentCompany({ headline: 'Engineer at Snap Inc.' }), scorePersonAt('Director at Snap Inc.')], ['Snap', 8]);
+  assert.deepEqual([currentCompany({ headline: 'Territory Manager at Snap-on' }), scorePersonAt('Territory Manager at Snap-on')], ['Snap-on', 4]);
+  assert.deepEqual([currentCompany({ headline: 'Salesperson at Toyota of Dallas' }), scorePersonAt('Salesperson at Toyota of Dallas')], ['Toyota of Dallas', 4]);
+});
+
+test('a credential, a program or gig work on a listed company\'s platform is not a job there', () => {
+  // As the first part of a headline, a listed company's name reads as the
+  // person's employer; these aren't.
+  for (const n of ['AWS Certified Solutions Architect', 'Google Developer Expert', 'Google Developer Groups', 'Google Premier Partner',
+    'Google Alum', 'Meta Alumni', 'Microsoft MVP', 'Microsoft Certified Trainer', 'Microsoft for Startups', 'Salesforce Developer',
+    'Salesforce Certified Administrator', 'Salesforce Consultant', 'Workday Consultant', 'Shopify Partner', 'Shopify Expert', 'Uber Driver',
+    'Lyft Driver', 'DoorDash Dasher', 'Instacart Shopper', 'Airbnb Superhost', 'Airbnb Host', 'Twitch Streamer', 'Twitch Affiliate',
+    'TikTok Creator', 'TikTok Shop Seller', 'YouTube Creator', 'Amazon Seller', 'Amazon FBA', 'Amazon Influencer', 'LinkedIn Top Voice',
+    'LinkedIn Learning Instructor', 'Roblox Developer', 'Canva Creator', 'Discord Moderator', 'Nike Athlete', 'Red Bull Athlete',
+    'Coca-Cola Scholar', 'Goldman Sachs 10,000 Small Businesses', 'Disney Fan', 'Tesla Enthusiast', "McDonald's Franchisee"]) {
+    const c = cleanCompany(n);
+    assert.ok(!LIST.has(c), `${n} read as ${c}`);
+  }
+  const at = (h) => currentCompany({ headline: h });
+  // It read as a current role at Amazon (10): 5.0 for a senior IC anywhere.
+  const aws = scorePerson({ headline: 'AWS Certified Solutions Architect | DevOps Engineer at Northwind Labs' });
+  assert.deepEqual([aws.company, aws.companyScore, aws.tier], [null, 3, 'C']);
+  assert.equal(at('LinkedIn Top Voice | Marketing Specialist at Pinecrest Foods'), 'Pinecrest Foods');
+  assert.equal(at('Google Alum | Founder at Quillon'), 'Quillon');
+  assert.equal(at('Uber Driver'), null);
+  // Staff still read as staff, the firm's partners and consultants too.
+  assert.equal(at('Driver at Uber'), 'Uber');
+  assert.equal(at('Starbucks Partner'), 'Starbucks');
+  assert.equal(at('Deloitte Consultant'), 'Deloitte');
+  assert.equal(at('Partner at KKR'), 'KKR');
+  assert.equal(cleanCompany('Uber Eats'), 'Uber');
+  assert.equal(cleanCompany('TikTok Shop'), 'TikTok');
 });
 
 test('in a headline: "GM" is a title, "at home" is not a company, and Home Depot is one', () => {

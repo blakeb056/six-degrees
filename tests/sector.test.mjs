@@ -9,8 +9,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { scoreNetwork, companyScore } from '../lib/scoring.js';
-import { industryKeyOf } from '../lib/companies.js';
+import { scoreNetwork, companyScore, companyScoreIn, KNOWN_COMPANIES, RULE_TABLES } from '../lib/scoring.js';
+import { industryKeyOf, INDUSTRIES } from '../lib/companies.js';
 import {
   parseSectorFocus, focusFingerprint, sameFocus, previewSectorFocus, tierMoves, NO_FOCUS, MAX_SECTORS,
 } from '../lib/sector-focus.js';
@@ -21,11 +21,12 @@ process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
 let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, afterSettingsChange;
+let KNOWN_LIST_STAMP, scoringStamp;
 
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
   ({ readSettings, writeSettings, SETTINGS, SettingsError } = await import('../lib/settings.js'));
-  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring } = await import('../lib/rpc.js'));
+  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, KNOWN_LIST_STAMP, scoringStamp } = await import('../lib/rpc.js'));
   ({ afterSettingsChange } = await import('../lib/settings-effects.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
@@ -81,19 +82,19 @@ test('the fingerprint is the same for the same choice, whatever order it was sen
 
 // ── the dry run ─────────────────────────────────────────────────────────────
 
-// A small invented network: an unknown startup whose people are engineers
-// (Quillon, so tech), a media company from the curated list (YouTube, 9), a tech
-// one (Adobe, 8), and Google (10, which has nowhere to go).
-//   founder at Quillon       4 → 6 at strong tech:  6.7 (A) → 7.8 (S)
-//   director at Adobe        8 → 10 at strong tech: 6.7 (A) → 7.5 (S)
-//   director at YouTube      9 → 10 at lean media:  7.1 (A) → 7.5 (S)
-//   engineers at Quillon     2.7 → 3.1, C either way
+// A small invented network: an unknown startup whose name says tech (Quillon
+// Labs), a media company from the curated list (YouTube, 9), a tech one
+// (Adobe, 8), and Google (10, which has nowhere to go).
+//   founder at Quillon Labs    4 → 6 at strong tech:  6.7 (A) → 7.8 (S)
+//   director at Adobe          8 → 10 at strong tech: 6.7 (A) → 7.5 (S)
+//   director at YouTube        9 → 10 at lean media:  7.1 (A) → 7.5 (S)
+//   engineers at Quillon Labs  2.7 → 3.1, C either way
 function network() {
   const p = (id, degree, name, headline, extra = {}) => ({ id, degree, name, headline, profile_url: `/in/${id}`, source_connection_id: null, ...extra });
   return [
-    p('f', 1, 'Ada Farrow', 'Founder at Quillon'),
-    p('e1', 1, 'Bo Nyberg', 'Engineer at Quillon'),
-    p('e2', 2, 'Cleo Varga', 'Backend developer at Quillon', { source_connection_id: 'f' }),
+    p('f', 1, 'Ada Farrow', 'Founder at Quillon Labs'),
+    p('e1', 1, 'Bo Nyberg', 'Engineer at Quillon Labs'),
+    p('e2', 2, 'Cleo Varga', 'Backend developer at Quillon Labs', { source_connection_id: 'f' }),
     p('s', 1, 'Dev Moreau', 'Director of Partnerships at YouTube'),
     p('a', 1, 'Esme Ibarra', 'Director of Design at Adobe'),
     // The same person again, in Ada's circle: one person, counted at 1st degree.
@@ -107,13 +108,13 @@ test('the preview counts companies and people that would move, against what is s
   const p = previewSectorFocus(rows, { industryOf: industryKeyOf, from: NO_FOCUS, to: strong('tech') });
   assert.equal(p.scored, 7);                                             // rows…
   assert.equal(p.people, 6);                                             // …and people: Esme is two rows
-  // Quillon 4 → 6 and Adobe 8 → 10; Google is already 10, YouTube is media.
+  // Quillon Labs 4 → 6 and Adobe 8 → 10; Google is already 10, YouTube is media.
   assert.equal(p.companies, 2);
   assert.deepEqual([p.companiesUp, p.companiesDown], [2, 0]);
-  assert.deepEqual(p.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]).sort(), [['Adobe', 8, 10, 'tech'], ['Quillon', 4, 6, 'tech']]);
+  assert.deepEqual(p.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]).sort(), [['Adobe', 8, 10, 'tech'], ['Quillon Labs', 4, 6, 'tech']]);
   assert.deepEqual([p.up, p.down], [2, 0]);
   assert.deepEqual(p.examples.map((e) => [e.name, e.degree, e.company, e.from, e.to]), [
-    ['Ada Farrow', 1, 'Quillon', 'A', 'S'],
+    ['Ada Farrow', 1, 'Quillon Labs', 'A', 'S'],
     ['Esme Ibarra', 1, 'Adobe', 'A', 'S'],
   ]);
   // Back again: the same people move down.
@@ -179,7 +180,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   // The import path (score_new_connections) is rescoreAll too: nothing passes the focus in.
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
-  assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing, Media & Creator\)/);
+  assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
   assert.equal(meta('scoring_version'), '3');
   assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
 });
@@ -198,11 +199,11 @@ test('turning it off gives back exactly the scores from before: nothing ratchets
 
 test('a company score you set wins over your sector, in the database too', () => {
   insert(network());
-  getDb().prepare("INSERT INTO company_scores (id, name, score) VALUES ('x', 'Quillon', 5)").run();
+  getDb().prepare("INSERT INTO company_scores (id, name, score) VALUES ('x', 'Quillon Labs', 5)").run();
   writeSettings(getDb(), { sectorFocus: strong('tech') });
   rescoreAll();
   assert.equal(row('f').company_prestige_score, 5);
-  assert.match(row('f').score_why, /Quillon \(5\/10, your score\)/);
+  assert.match(row('f').score_why, /Quillon Labs \(5\/10, your score\)/);
   assert.equal(row('a').company_prestige_score, 10);                     // Adobe 8 + 2
 });
 
@@ -263,7 +264,7 @@ test('the preview and the save agree when the stored scores are stale', () => {
   writeSettings(db, { sectorFocus: strong('tech') });                   // saved, never rescored
   assert.deepEqual([row('f').tier, row('a').tier], ['A', 'A']);
   const preview = previewAsRoute(db, lean('media'));
-  // Strong tech had Ada (Quillon) and Esme (Adobe) at S; lean media lifts Dev (YouTube) instead.
+  // Strong tech had Ada (Quillon Labs) and Esme (Adobe) at S; lean media lifts Dev (YouTube) instead.
   assert.deepEqual([preview.up, preview.down], [1, 2]);
   const effects = save(db, lean('media'));
   assert.deepEqual(effects.sectorFocus, { scored: 7, people: 6, moved: 3, up: preview.up, down: preview.down });
@@ -481,6 +482,75 @@ test('an edited word list makes stored scores stale, and they are redone once', 
   getDb().prepare("UPDATE app_meta SET value = 'lean:health@00000000' WHERE key = 'scoring_focus'").run();
   assert.deepEqual(rescoreIfStale(), { scored: 5 });
   assert.deepEqual(rescoreIfStale(), { scored: 0 });
+});
+
+// Founders at companies whose one industry comes only from their job titles,
+// and at ones whose name gives it. A founder at an unknown company is 6.7 (A);
+// at 4 + 2 (strong) 7.8 (S).
+//   Acme Widgets          recruiting: consulting by the vote
+//   Initech               talent: consulting by the vote
+//   Pinecrest Foods       software engineering: tech by the vote
+//   Northwind Consulting  its name says consulting
+//   Umbrella Staffing     its name says consulting, and places it in HR & Recruiting
+function jobTitleNetwork() {
+  const p = (id, name, headline) => ({ id, degree: 1, name, headline, profile_url: `/in/${id}`, source_connection_id: null });
+  return [
+    p('r', 'Rae Holt', 'Founder, Recruiting at Acme Widgets'),
+    p('t', 'Tomas Ek', 'Founder, Talent at Initech'),
+    p('w', 'Wen Park', 'Founder, Software Engineering at Pinecrest Foods'),
+    p('c', 'Cora Vale', 'Founder at Northwind Consulting'),
+    p('u', 'Uli Brandt', 'Founder at Umbrella Staffing'),
+  ];
+}
+
+test('a broad pick doesn\'t count an industry voted by job titles: the preview, the save and Paths → Scores agree', () => {
+  insert(jobTitleNetwork());
+  rescoreAll();
+  const db = getDb();
+  const read = readForScoring(scoringRows(db));
+  // Paths still colours them by the vote (lib/companies.js); where it came from rides along.
+  assert.deepEqual(['Acme Widgets', 'Initech', 'Pinecrest Foods', 'Northwind Consulting', 'Umbrella Staffing'].map((n) => {
+    const c = read.companies.get(n);
+    return [c.industry, c.industryFrom];
+  }), [['consulting', 'people'], ['consulting', 'people'], ['tech', 'people'], ['consulting', 'name'], ['consulting', 'name']]);
+  const preview = previewAsRoute(db, strong('consulting'));
+  // Only the two whose names say so move, 4 → 6.
+  assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to]).sort(),
+    [['Northwind Consulting', 4, 6], ['Umbrella Staffing', 4, 6]]);
+  assert.deepEqual([preview.up, preview.down], [2, 0]);
+  assert.deepEqual(save(db, strong('consulting')).sectorFocus, { scored: 5, people: 5, moved: 2, up: 2, down: 0 });
+  assert.deepEqual(['r', 't', 'c', 'u'].map((id) => row(id).company_prestige_score), [4, 4, 6, 6]);
+  // Paths → Scores scores each company from the same read, through the same function.
+  const rows = scoringRows(db);
+  const again = readForScoring(rows);
+  for (const r of rows) {
+    const name = again.people.get(r).roles.find((x) => !x.former)?.company;
+    assert.equal(companyScoreIn(again, name, { overrides: companyOverrides(db), focus: sectorFocusOf(db) }).score, row(r.id).company_prestige_score, name);
+  }
+  // Tech doesn't lift Pinecrest Foods for its engineer either: nothing scores higher.
+  const tech = previewAsRoute(db, strong('tech'));
+  assert.deepEqual([tech.companiesUp, tech.companiesDown], [0, 2]);
+});
+
+test('the list stamp covers the curated list, the industries\' words and labels, and scoring\'s rule tables', () => {
+  assert.equal(KNOWN_LIST_STAMP, scoringStamp());
+  // An edit to any of them changes it, so stored scores are redone once with
+  // no SCORING_VERSION to bump: a company's score, an industry's words or its
+  // label (the stored working names it), a title rule, an award in the reach
+  // bonus, a short name that isn't a school's.
+  const known = KNOWN_COMPANIES.map((e) => (e[0] === 'Adobe' ? [e[0], 7, e[2], e[3]] : e));
+  const words = INDUSTRIES.map((i) => (i.key === 'health' ? { ...i, words: new RegExp(`${i.words.source}|dentist`, i.words.flags) } : i));
+  const labels = INDUSTRIES.map((i) => (i.key === 'health' ? { ...i, label: 'Health' } : i));
+  const titles = RULE_TABLES.titles.slice(1);
+  const bonuses = RULE_TABLES.bonuses.map(([re, points, label]) => [label === 'recognition' ? new RegExp(`${re.source}|quillon medal`, re.flags) : re, points, label]);
+  const notASchool = new Set([...RULE_TABLES.notASchool, 'UXU']);
+  for (const [what, changed] of Object.entries({
+    known: { known }, words: { industries: words }, labels: { industries: labels },
+    titles: { rules: { ...RULE_TABLES, titles } }, bonuses: { rules: { ...RULE_TABLES, bonuses } }, notASchool: { rules: { ...RULE_TABLES, notASchool } },
+  })) {
+    assert.notEqual(scoringStamp(changed), KNOWN_LIST_STAMP, what);
+  }
+  assert.equal(scoringStamp({ rules: { ...RULE_TABLES } }), KNOWN_LIST_STAMP, 'the same tables, the same stamp');
 });
 
 test('suggestions count your scanned people by the sector their company is in', () => {

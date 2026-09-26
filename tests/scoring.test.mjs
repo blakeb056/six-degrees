@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   readTitle, cleanCompany, currentCompany, companyScore, reachBonus, scorePerson, scoreNetwork, bridgeBoost, tierFor,
-  explainScore, companyIndustry, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
-  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies,
+  explainScore, companyIndustry, industryAndSource, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
+  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies, isStudent,
 } from '../lib/scoring.js';
 
 const key = (h) => readTitle(h).key;
@@ -14,8 +14,8 @@ test('titles: the traps the old rules fell into', () => {
   assert.equal(key('Chief of Staff to the CEO at Acme'), 'director');  // not a chief
   assert.equal(key('Product Owner at Acme'), 'ic');                    // not an owner
   assert.equal(key('International Business Development at Acme'), 'ic');  // works there; not an intern
-  assert.equal(key('CS @ UCF | Zeta Beta Tau Treasury Chair'), 'student');  // a club chair is not a chairman
-  assert.equal(key('Head of EMEA Partner Ecosystems @ Snap'), 'director');  // not a partner
+  assert.equal(key('CS @ NYU | Zeta Beta Tau Treasury Chair'), 'student');  // a club chair is not a chairman
+  assert.equal(key('Head of EMEA Partner Ecosystems @ Adobe'), 'director');  // not a partner
   assert.equal(key('Chief Technologist & Technical Fellow at Raytheon'), 'vp');
   assert.equal(key('Client Partner at Meta'), 'senior');               // not a partner
   assert.equal(key('Lead Generation Specialist'), 'senior');           // not a lead
@@ -25,7 +25,7 @@ test('titles: the current role decides, not a former one or a student club', () 
   assert.equal(key('Ex-Google | Designer at Acme'), 'ic');
   assert.equal(key('Former CEO at Acme | Consultant'), 'ic');
   assert.equal(key('Budget Analyst Intern | Director of Fundraising at Delta Fraternity'), 'intern');
-  assert.equal(key('President of the Marketing Club at UCF'), 'student');
+  assert.equal(key('President of the Marketing Club at UCLA'), 'student');
   assert.equal(key('Founder & Managing Director at Acme'), 'csuite');
   assert.equal(key('Senior Director of Product'), 'director');
   assert.equal(key('Building cool things'), 'unknown');
@@ -33,8 +33,8 @@ test('titles: the current role decides, not a former one or a student club', () 
 
 test('student clubs: a school\'s words or its short name, at any school, and no school by name', () => {
   // A role in a school club is a student's, not an officer's, at every school alike.
-  for (const h of ['President, UCF Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
-    'President of the Marketing Club at UCF', 'Vice President, BYU Consulting Club', 'Director of Events, ASU Entrepreneurship Club',
+  for (const h of ['President, UNC Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President of the Marketing Club at UGA', 'Vice President, BYU Consulting Club', 'Director of Events, ASU Entrepreneurship Club',
     'President, University Consulting Club', 'President of the Finance Society at the University of Utah']) {
     assert.equal(key(h), 'student', h);
   }
@@ -45,31 +45,65 @@ test('student clubs: a school\'s words or its short name, at any school, and no 
     ["General Manager at BJ's Wholesale Club", 'vp'],
     ['Director of Operations, AAA Club Alliance', 'director'],
     ['Executive Director, IEEE Computer Society', 'director'],
-    ['President, CFA Society Orlando', 'csuite'],
-    ['President, EO Orlando Chapter', 'csuite'],
+    ['President, CFA Society Denver', 'csuite'],
+    ['President, EO Austin Chapter', 'csuite'],
     ['Chief Executive Officer, American Cancer Society', 'csuite'],
     ['Director of Operations, NFL Players Association', 'director'],
     ['Executive Director at the United States Tennis Association (USTA)', 'director'],
     ['Director, AAU Basketball Club', 'director'],
-    ['President, UCF Alumni Association', 'csuite'],
-    ['President, UF Alumni Club of Orlando', 'csuite'],
+    ['President, UNC Alumni Association', 'csuite'],
+    ['President, UW Alumni Club of Seattle', 'csuite'],
     ['President, Parent Teacher Association at Lincoln Elementary School', 'csuite'],
   ]) {
     assert.equal(key(h), want, h);
   }
 });
 
+test('student clubs: a union local, a company\'s club and a university\'s staff are not a school club', () => {
+  // A short name marks a school club only with "club" or "society" (or an
+  // association named for a field of study), never "chapter", and never when
+  // the short name is a company's or a union's.
+  for (const [h, want, tier] of [
+    ['President, UAW Local 600 Chapter', 'csuite', 'A'],
+    ['VP, SEIU Healthcare Chapter', 'vp', 'A'],
+    ['President, UFCW Local 7 Chapter', 'csuite', 'A'],
+    ['Chapter Leader, UFT', 'manager', 'B'],
+    ['President, UPS Toastmasters Club', 'csuite', 'A'],             // UPS is on the curated list
+    ['President, UBS Toastmasters Club', 'csuite', 'A'],
+    ['Vice President, KU Endowment Association', 'vp', 'A'],          // the university's staff
+    ['President, NYU Chapter of IEEE', 'csuite', 'A'],                // the price: a chapter alone never counts
+  ]) {
+    assert.equal(key(h), want, h);
+    assert.equal(scorePerson({ headline: h }).tier, tier, h);
+  }
+  // Still read at every school alike.
+  for (const h of ['President, LSU Marketing Club', 'President, USC Trojan Marketing Association', 'VP, NYU Finance Society',
+    'President, UT Engineering Association', 'President, Rotary Club of UGA', 'President, UVA Chapter of the American Marketing Association',
+    'Chair, IEEE UMD Student Chapter']) {
+    assert.equal(key(h), 'student', h);
+  }
+});
+
 test('students: a major at any school, by its name or its short name', () => {
-  for (const h of ['CS @ UCF', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UF', 'Biology at University of Utah']) {
+  for (const h of ['CS @ UGA', 'Computer Science @ NYU', 'Economics at BYU', 'Finance @ UW', 'Biology at University of Utah', 'Marketing @ LSU']) {
     assert.equal(key(h), 'student', h);
   }
   // A company's short name isn't a school's, and a short name is written in capitals.
-  for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ uf']) assert.notEqual(key(h), 'student', h);
+  for (const h of ['Engineering @ IBM', 'Marketing @ AMD', 'Finance at USAA', 'Finance @ usc']) assert.notEqual(key(h), 'student', h);
+  // Companies, a league and unions whose short names look like a school's, or
+  // that the curated list knows (UPS): a major there is someone's department.
+  for (const h of ['Finance @ UBS', 'Finance at UBS', 'Engineering @ UPS', 'Accounting @ UPS', 'Information Technology at UPS',
+    'Marketing @ UFC', 'Business @ UFC', 'Engineering at UPMC', 'Engineering @ ULA', 'Engineering at UTC', 'Finance @ UHG',
+    'Marketing @ UHC', 'Marketing @ UA', 'Engineering @ UL']) {
+    assert.equal(key(h), 'ic', h);
+    assert.equal(isStudent(h), false, h);
+    assert.equal(scorePerson({ headline: h }).tier, 'C', h);
+  }
 });
 
 test('companies: one clean name per company, junk dropped', () => {
-  assert.equal(cleanCompany('Snap Inc.'), 'Snap');
-  assert.equal(cleanCompany('Snapchat 👻'), 'Snap');
+  assert.equal(cleanCompany('Adobe Inc.'), 'Adobe');
+  assert.equal(cleanCompany('Adobe Systems 🎨'), 'Adobe');
   assert.equal(cleanCompany('Meta'), 'Meta');                          // the old rule missed plain "Meta"
   assert.equal(cleanCompany('Meta (Facebook)'), 'Meta');
   assert.equal(cleanCompany('AWS'), 'Amazon');
@@ -80,6 +114,31 @@ test('companies: one clean name per company, junk dropped', () => {
   assert.equal(cleanCompany('Self-employed'), null);
   assert.equal(cleanCompany('scale'), null);                           // "…brands at scale"
   assert.equal(cleanCompany('Scale AI'), 'Scale AI');
+});
+
+test('companies: a phrase\'s first word, a legal form and an initial\'s full stop don\'t change who a company is', () => {
+  // "at home" is a phrase; Home Instead and Home Chef are employers, as The Home Depot is.
+  assert.equal(cleanCompany('Home Instead'), 'Home Instead');
+  assert.equal(cleanCompany('Home Instead Senior Care'), 'Home Instead Senior Care');
+  assert.equal(cleanCompany('Home Chef'), 'Home Chef');
+  assert.equal(currentCompany({ headline: 'Caregiver at Home Instead' }), 'Home Instead');
+  assert.equal(currentCompany({ headline: 'Stay at home mom' }), null);
+  assert.equal(cleanCompany('home with my kids'), null);
+  // Chase Corporation and Merrill Corporation aren't the banks once "Corporation" is trimmed.
+  for (const n of ['Chase Corporation', 'Merrill Corporation', 'Chase Corp.']) {
+    assert.equal(knownIndustry(cleanCompany(n)), null, n);
+    assert.deepEqual(companyScore(cleanCompany(n)), { score: 4, source: 'default' }, n);
+  }
+  assert.equal(cleanCompany('Chase'), 'JPMorgan Chase');
+  assert.equal(cleanCompany('Merrill'), 'Bank of America');
+  assert.equal(cleanCompany('JPMorgan Chase & Co.'), 'JPMorgan Chase');
+  // An initial's full stop isn't the end of a sentence: "J.P. Morgan" was cut to "J.P".
+  assert.equal(cleanCompany('J.P. Morgan'), 'JPMorgan Chase');
+  assert.equal(scorePerson({ headline: 'VP at J.P. Morgan' }).companyScore, 9);
+  for (const n of ['J. Crew', 'T. Rowe Price', 'U.S. Bank', "St. Jude Children's Research Hospital"]) assert.equal(cleanCompany(n), n);
+  // A sentence still ends a name, and a legal form still goes.
+  assert.equal(cleanCompany('Acme Corp. We build rockets'), 'Acme');
+  assert.equal(cleanCompany('Northwind Systems Incorporated'), 'Northwind Systems');
 });
 
 test('companies: a school is not the company its name starts like, and Bain Capital is not Bain', () => {
@@ -126,7 +185,28 @@ test('bonus: whole words only, capped', () => {
   assert.equal(reachBonus('$3.4M+ in client results | helped a Forbes entrepreneur').points, 0);
   assert.equal(reachBonus('Raised $12M').points, 0.8);
   assert.deepEqual(reachBonus('Investor Relations Manager').points, 0);
-  assert.deepEqual(reachBonus('Creator, 747M+ views').reasons, ['reach in the millions']);
+  assert.deepEqual(reachBonus('Creator, 12M+ views').reasons, ['reach in the millions']);
+});
+
+test('bonus: the top honour of every field counts, in the forms people claim it', () => {
+  for (const h of ['Pulitzer Prize-winning journalist', 'Pulitzer finalist | Reporter', 'Nobel laureate in Chemistry', 'Nobel Prize winner',
+    'Oscar-winning film editor', 'Academy Award nominee', 'Tony Award-winning producer', 'Emmy-nominated director', 'Grammy winner',
+    'Peabody Award-winning podcast host', 'Clio Award winner', 'Webby Honoree', 'Cannes Lions Grand Prix', 'James Beard Award-winning chef',
+    'Turing Award laureate', 'Fields Medal recipient', 'Pritzker Prize laureate', 'MacArthur Fellow', 'Rhodes Scholar', 'Olympian',
+    'Olympic gold medalist', 'Paralympian', 'Paralympic silver medalist', 'Prize-winning novelist', 'Award-winning designer']) {
+    assert.deepEqual(reachBonus(h), { points: 0.5, reasons: ['recognition'] }, h);
+  }
+  // Several honours are one signal, as several awards always were.
+  assert.deepEqual(reachBonus('Olympian | Rhodes Scholar | Keynote speaker'), { points: 0.5, reasons: ['recognition'] });
+});
+
+test('bonus: an award\'s name that is also a company\'s, a person\'s or its own organisation\'s is not a claim', () => {
+  for (const h of ['Engineer at Oscar Health', 'Analyst at Peabody Energy', 'Account Executive at Clio', 'Sales Director at Nobel Biocare',
+    'Buyer at Olympic Steel', 'Coach | Tony Marsh Fitness', "Founder at Emmy's Bakery", 'Proud Grammy of four | Retired teacher',
+    'Producer at the Peabody Awards', 'Program Manager at the Pulitzer Center', 'Recruiter at Turing', 'Special Olympics volunteer coach',
+    'Program Officer at the MacArthur Foundation']) {
+    assert.deepEqual(reachBonus(h), { points: 0, reasons: [] }, h);
+  }
 });
 
 test('seniority and company multiply: level × platform', () => {
@@ -162,7 +242,7 @@ test('a person scores as their strongest role; former roles count at 70%', () =>
   assert.equal(retired.title.label, 'Former VP / Partner / GM');
   assert.equal(retired.company, 'Coca-Cola');
   assert.ok(retired.power > scorePerson({ headline: 'Executive' }).power);
-  assert.equal(scorePerson({ headline: 'GTM @ Whatnot' }).company, 'Whatnot');
+  assert.equal(scorePerson({ headline: 'GTM @ Quillon' }).company, 'Quillon');
 });
 
 test('a current student is capped, whatever else they list', () => {
@@ -234,15 +314,38 @@ test('your sector lifts the company, not the headline\'s claims: a reach bonus i
   assert.equal(explainScore(leaned), 'C-Suite / Founder (10) · Quillon (5/10: 4 + 1 your sector) · +0.5 investor, halved: unknown company');
   // A score you set is your judgement of the company, so it decides.
   assert.deepEqual(at(lean('tech'), new Map([['Quillon', 5]])).bonus, { points: 1, reasons: ['investor'] });
-  // The same in a whole network, where Quillon is tech by its people's headlines.
+  // The same in a whole network, where Quillon is tech by its name.
   const rows = [
     { id: 'f', profile_url: '/in/f', degree: 1, headline: h },
     { id: 'e1', profile_url: '/in/e1', degree: 1, headline: 'Engineer at Quillon' },
     { id: 'e2', profile_url: '/in/e2', degree: 1, headline: 'Developer at Quillon' },
   ];
-  const techPeople = (company, headline) => (!company && /engineer|developer/i.test(headline || '') ? 'tech' : 'unknown');
-  const f = scoreNetwork(rows, { industryOf: techPeople, focus: lean('tech') }).scores.get('f');
+  const techByName = (company) => (company === 'Quillon' ? 'tech' : 'unknown');
+  const f = scoreNetwork(rows, { industryOf: techByName, focus: lean('tech') }).scores.get('f');
   assert.deepEqual([f.companyScore, f.bonus.points, f.power, f.tier], [5, 0.5, 7.8, 'S']);
+});
+
+test('a broad pick counts a company\'s one industry only when the curated list or its name gave it', () => {
+  // Where it came from: the list, the name, the people's headlines, or nowhere.
+  assert.deepEqual(industryAndSource('Adobe', { industryOf: fakeIndustryOf }), { industry: 'tech', from: 'list' });
+  assert.deepEqual(industryAndSource('Meridian Health', { industryOf: fakeIndustryOf }), { industry: 'health', from: 'name' });
+  assert.deepEqual(industryAndSource('Quillon', { industryOf: fakeIndustryOf, headlines: ['Engineer', 'Developer'] }), { industry: 'tech', from: 'people' });
+  assert.deepEqual(industryAndSource('Quillon', { industryOf: fakeIndustryOf, headlines: ['Engineer', 'Nurse'] }), { industry: 'unknown', from: null });
+  // Voted by its people's job words, it doesn't lean: "Recruiter at Acme
+  // Widgets" says what the person does, not what Acme is.
+  assert.deepEqual(companyScore('Acme Widgets', { industry: 'consulting', industryFrom: 'people', focus: strong('consulting') }), { score: 4, source: 'default' });
+  assert.deepEqual(companyScore('Pinecrest Foods', { industry: 'tech', industryFrom: 'people', headcount: 6, focus: lean('tech') }), { score: 5, source: 'network' });
+  // By the list or the name it does, as does an industry given with no source.
+  assert.deepEqual(companyScore('Meridian Health', { industry: 'health', industryFrom: 'name', focus: lean('health') }),
+    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+  assert.deepEqual(companyScore('Adobe', { industry: 'tech', industryFrom: 'list', focus: lean('tech') }),
+    { score: 9, source: 'known', base: 8, sector: 'tech', sectorBonus: 1 });
+  // The directory's sectors still count for such a company, a sector pick and a broad one alike.
+  const smith = { industry: 'health', industryFrom: 'people', sectors: ['dental'], sectorIndustries: ['health'] };
+  assert.deepEqual(companyScore('Smith Family Practice', { ...smith, focus: lean('health') }),
+    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+  assert.deepEqual(companyScore('Smith Family Practice', { ...smith, focus: lean('dental') }),
+    { score: 5, source: 'default', base: 4, sector: 'dental', sectorBonus: 1 });
 });
 
 // A stand-in for lib/companies.js's inference, so these cases pin the order of
@@ -306,8 +409,8 @@ test('a network read with the directory carries each company\'s sectors to its s
   const asked = [];
   const sectorsOf = (name, headlines) => { asked.push([name, headlines.length]); return /smith|bright/i.test(name) ? ['dental'] : []; };
   const read = readNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf });
-  assert.deepEqual(read.companies.get('Smith Family Practice'), { headcount: 1, industry: 'unknown', sectors: ['dental'] });
-  assert.deepEqual(read.companies.get('Bright Smiles'), { headcount: 0, industry: 'unknown', sectors: ['dental'] });
+  assert.deepEqual(read.companies.get('Smith Family Practice'), { headcount: 1, industry: 'unknown', industryFrom: null, sectors: ['dental'] });
+  assert.deepEqual(read.companies.get('Bright Smiles'), { headcount: 0, industry: 'unknown', industryFrom: null, sectors: ['dental'] });
   // Asked once per company: with the people there now, or none for a former employer.
   assert.deepEqual(asked.sort(), [['Bright Smiles', 0], ['Smith Family Practice', 1]]);
   const leaned = scoreNetwork(rows, { read, focus: lean('dental') });
@@ -330,15 +433,19 @@ test('a read with the directory\'s groups carries the industries a company\'s se
   const groupOf = (key) => ({ dental: 'health', hospitals: 'health' })[key];
   const read = readNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf });
   // Each industry once, a former employer's too.
-  assert.deepEqual(read.companies.get('Smith Family Practice'), { headcount: 1, industry: 'unknown', sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
-  assert.deepEqual(read.companies.get('Bright Smiles'), { headcount: 0, industry: 'unknown', sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
-  assert.deepEqual(read.companies.get('Quillon'), { headcount: 1, industry: 'tech', sectors: [], sectorIndustries: [] });
+  const at = (industry, from) => ({ industry, industryFrom: from });
+  assert.deepEqual(read.companies.get('Smith Family Practice'), { headcount: 1, ...at('unknown', null), sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
+  assert.deepEqual(read.companies.get('Bright Smiles'), { headcount: 0, ...at('unknown', null), sectors: ['dental', 'hospitals'], sectorIndustries: ['health'] });
+  // Quillon is tech by its one person's headline, which a broad pick doesn't count.
+  assert.deepEqual(read.companies.get('Quillon'), { headcount: 1, ...at('tech', 'people'), sectors: [], sectorIndustries: [] });
   assert.deepEqual(networkCompanies(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf }).sectorIndustries.get('Smith Family Practice'), ['health']);
   // Picking health lifts both, and not Quillon; the same scored straight from the rows.
   const leaned = scoreNetwork(rows, { read, focus: lean('health') });
   assert.deepEqual(['Smith Family Practice', 'Bright Smiles', 'Quillon'].map((n) => leaned.companyScores.get(n).score), [5, 5, 4]);
   assert.equal(leaned.companyScores.get('Smith Family Practice').sector, 'health');
   assert.deepEqual(scoreNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf, focus: lean('health') }).scores, leaned.scores);
+  // Nor does picking tech lift Quillon: its engineer's job title isn't what Quillon is.
+  assert.equal(scoreNetwork(rows, { read, focus: lean('tech') }).companyScores.get('Quillon').score, 4);
 });
 
 test('one industry per company: the curated list, then the name, then most of its people', () => {
@@ -374,25 +481,29 @@ test('a company\'s people: current roles, each person once, every company they l
   assert.equal(industries.get('Meridian Health'), 'health');
 });
 
-test('in a network, everyone at a company gets the same industry, and the lean follows it', () => {
+test('in a network, everyone at a company gets the same industry, and the lean follows it when the name gave it', () => {
   // Quillon's name says nothing; its people are mostly engineers, so it is tech
-  // for the nurse there too (before, each person's own headline decided).
+  // for the nurse there too (before, each person's own headline decided), and
+  // Paths colours it tech. But a vote over job titles isn't what the company
+  // is, so picking tech doesn't lift it. Meridian Health's name says health.
   const rows = [
     { id: 'f', profile_url: '/in/f', degree: 1, headline: 'Founder at Quillon' },
     { id: 'e1', profile_url: '/in/e1', degree: 1, headline: 'Engineer at Quillon' },
     { id: 'e2', profile_url: '/in/e2', degree: 1, headline: 'Developer at Quillon' },
     { id: 'n', profile_url: '/in/n', degree: 1, headline: 'Nurse at Quillon' },
+    { id: 'm', profile_url: '/in/m', degree: 1, headline: 'Founder at Meridian Health' },
   ];
   const plain = scoreNetwork(rows, { industryOf: fakeIndustryOf });
-  const leaned = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: lean('tech') });
-  const hard = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: strong('tech') });
+  const leaned = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: lean('tech', 'health') });
+  const hard = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: strong('tech', 'health') });
   assert.equal(plain.industries.get('Quillon'), 'tech');
-  assert.deepEqual(['f', 'e1', 'n'].map((id) => leaned.scores.get(id).companyScore), [5, 5, 5]);
-  // A founder at an unknown company: 6.7 (A), 7.3 lean (A), 7.8 strong (S).
-  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('f').power, x.scores.get('f').tier]), [[6.7, 'A'], [7.3, 'A'], [7.8, 'S']]);
+  assert.deepEqual(['f', 'e1', 'n'].map((id) => leaned.scores.get(id).companyScore), [4, 4, 4]);
+  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('f').power, x.scores.get('f').tier]), [[6.7, 'A'], [6.7, 'A'], [6.7, 'A']]);
+  // A founder at an unknown company its name places: 6.7 (A), 7.3 lean (A), 7.8 strong (S).
+  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('m').power, x.scores.get('m').tier]), [[6.7, 'A'], [7.3, 'A'], [7.8, 'S']]);
   // Recomputed from scratch each time: dropping the focus gives back the first answer exactly.
   const again = scoreNetwork(rows, { industryOf: fakeIndustryOf });
-  for (const id of ['f', 'e1', 'e2', 'n']) assert.deepEqual(again.scores.get(id), plain.scores.get(id));
+  for (const id of ['f', 'e1', 'e2', 'n', 'm']) assert.deepEqual(again.scores.get(id), plain.scores.get(id));
 });
 
 test('the company estimate skips schools by the company\'s industry, the same for everyone there', () => {
@@ -409,7 +520,7 @@ test('a network read once scores exactly like one read afresh, however many ways
   // Settings' preview and save read every headline once and score the read
   // with two sector focuses. That must change nothing but the time it takes.
   const titles = ['Founder', 'VP Engineering', 'Director of Design', 'Engineer', 'Nurse', 'Marketing Intern', 'CS student'];
-  const companies = ['Quillon', 'Adobe', 'Snap', 'Meridian Health', 'Harvard University'];
+  const companies = ['Quillon', 'Adobe', 'Pinterest', 'Meridian Health', 'Harvard University'];
   const rows = Array.from({ length: 60 }, (_, i) => {
     let headline = `${titles[i % titles.length]} at ${companies[i % companies.length]}`;
     if (i % 4 === 0) headline += ` | Ex-Director at ${companies[(i + 2) % companies.length]}`;
@@ -419,8 +530,8 @@ test('a network read once scores exactly like one read afresh, however many ways
   rows.push({ id: 'x', profile_url: '/in/x', degree: 1, headline: 'Consultant | Ex-VP at Discord' });
   const read = readNetwork(rows, { industryOf: fakeIndustryOf });
   // Every company anyone names, a former employer included, with its facts.
-  assert.deepEqual(read.companies.get('Discord'), { headcount: 0, industry: 'tech' });
-  assert.deepEqual(read.companies.get('Meridian Health'), { headcount: read.headcount.get('Meridian Health'), industry: 'health' });
+  assert.deepEqual(read.companies.get('Discord'), { headcount: 0, industry: 'tech', industryFrom: 'list' });
+  assert.deepEqual(read.companies.get('Meridian Health'), { headcount: read.headcount.get('Meridian Health'), industry: 'health', industryFrom: 'name' });
   for (const focus of [undefined, lean('tech'), strong('tech', 'health'), lean('media')]) {
     const fresh = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus });
     const reused = scoreNetwork(rows, { focus, read });
@@ -438,7 +549,7 @@ test('a network read once scores exactly like one read afresh, however many ways
 // A row as rescoring stores it (lib/rpc.js): the title points and company score it was scored with.
 const asStored = (row, companyFor) => {
   const s = scorePerson(row, companyFor);
-  return { ...row, seniority_score: s.title.points, company_prestige_score: s.companyScore };
+  return { ...row, seniority_score: s.title.points, company_prestige_score: s.companyScore, score_why: explainScore(s) };
 };
 
 test('views read the company score a row was scored with, or the list\'s for a row not scored yet', () => {
@@ -464,6 +575,9 @@ test('the company a score is built on: its strongest role\'s, current or former,
   assert.equal(scorePerson({ headline: row.headline }).company, 'Google');
   // Two roles with the same points: the one scored as stored.
   assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Quillon | Founder at Google' })), { name: 'Google', score: 10, former: false });
+  // …which the stored working names when your own score made the second one stronger.
+  const beta9 = (n) => companyScore(n, { overrides: new Map([['Beta Labs', 9]]) });
+  assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Acme Widgets | Founder at Beta Labs' }, beta9)), { name: 'Beta Labs', score: 9, former: false });
   // Not scored yet: the list alone.
   assert.deepEqual(scoredCompany({ headline: 'Consultant | Ex-Manager at Discord' }), { name: 'Discord', score: 7, former: true });
   assert.deepEqual(scoredCompany({ headline: 'Building cool things' }), { name: null, score: 3, former: false });
@@ -473,7 +587,7 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   const tops = (headline, companyFor) => topCompanies(asStored({ headline }, companyFor));
   assert.deepEqual(tops('VP at Google'), { now: { name: 'Google', score: 10 }, before: null });
   assert.deepEqual(tops('Stealth | Ex-Google'), { now: null, before: { name: 'Google', score: 10 } });
-  assert.deepEqual(tops('Founder at Quillon | Ex-Director at Snap'), { now: null, before: { name: 'Snap', score: 8 } });
+  assert.deepEqual(tops('Founder at Quillon | Ex-Director at Pinterest'), { now: null, before: { name: 'Pinterest', score: 8 } });
   assert.deepEqual(tops('VP at Google | Ex-Manager at Google'), { now: { name: 'Google', score: 10 }, before: null });
   assert.deepEqual(tops('Designer at Quillon | Ex-Director at Northwind'), { now: null, before: null });
   // What the lists got wrong: a name inside another word, and a company that isn't famous but is top to you.
@@ -481,4 +595,10 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   assert.deepEqual(tops('Metadata Analyst at Pinecrest Foods'), { now: null, before: null });
   assert.deepEqual(tops('Founder at Quillon', (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) })),
     { now: { name: 'Quillon', score: 9 }, before: null });
+  // Two current roles alike, your score on the second: the panel names the one the score came from.
+  assert.deepEqual(tops('Founder at Acme Widgets | Founder at Beta Labs', (n) => companyScore(n, { overrides: new Map([['Beta Labs', 9]]) })),
+    { now: { name: 'Beta Labs', score: 9 }, before: null });
+  // And your sector's lift, on the second of two equal roles.
+  const hooli = (n) => companyScore(n, n === 'Hooli Health' ? { headcount: 15, industry: 'health', industryFrom: 'name', focus: strong('health') } : {});
+  assert.deepEqual(tops('Founder at Acme Widgets | Founder at Hooli Health', hooli), { now: { name: 'Hooli Health', score: 8 }, before: null });
 });

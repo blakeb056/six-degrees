@@ -79,13 +79,18 @@ test('a removed company is estimated from the network like any other', () => {
 test('the old scores live apart from the model, one row per entry removed or rescored', () => {
   const names = LEGACY_SCORES.map(([name]) => name);
   assert.equal(new Set(names).size, names.length);
-  for (const [name, score, alias, industry] of LEGACY_SCORES) {
+  // Offered only for the entry's own company's names, which end there, except
+  // where every company starting so is the entry's (UCF's colleges,
+  // AdventHealth's hospitals, Havas's agencies).
+  const open = new Set(['UCF', 'AdventHealth', 'Havas']);
+  for (const [name, score, own, industry] of LEGACY_SCORES) {
     assert.ok(Number.isInteger(score) && score >= 1 && score <= 10, name);
-    assert.ok(alias instanceof RegExp, name);
+    assert.ok(own instanceof RegExp && !own.flags.includes('g'), name);
+    assert.equal(own.source.endsWith('$'), !open.has(name), `${name}: ${own}`);
     const now = known.get(name);
     if (!now) continue;                                     // removed
     assert.notEqual(now.score, score, `${name} is on both lists at one score`);
-    assert.equal(String(now.alias), String(alias), `${name}'s alias changed`);
+    assert.equal(String(now.alias), String(own), `${name} is offered for the names the list reads as it`);
     assert.equal(now.industry, industry, `${name}'s industry changed`);
   }
   assert.deepEqual(LEGACY_SCORES.find(([n]) => n === 'Snap').slice(0, 2), ['Snap', 9]);
@@ -102,11 +107,15 @@ test('an old entry is found by the name scoring gives the company now', () => {
   assert.equal(entry('Acme'), null);
   for (const n of ['UCF', 'University of Central Florida', 'the University of Central Florida', 'UCF College of Business']) assert.equal(entry(n), 'UCF', n);
   for (const n of ['UF', 'University of Florida']) assert.equal(entry(n), 'University of Florida', n);
-  assert.equal(entry('Hard Rock Hotel & Casino'), 'Hard Rock Digital');
-  assert.equal(entry('VaynerX'), 'VaynerMedia');
-  assert.equal(entry('The Athletic'), 'The Athletic');
-  assert.equal(entry('Later'), 'Later');
-  assert.equal(entry('Later Media'), null);                  // its alias was the whole name
+  for (const n of ['Hard Rock Digital', 'VaynerMedia', 'Vayner Media', 'The Athletic', 'Later', 'Anduril Industries', 'Notion Labs', 'Hims & Hers Health']) {
+    assert.ok(entry(n), n);
+  }
+  // Other companies the old aliases also caught: the old list scored them by
+  // mistake, and keeping must not give them its score.
+  for (const n of ['Hard Rock Hotel & Casino', 'Hard Rock Cafe', 'VaynerX', 'The Athletic Club', 'Later Media', 'Notion Wellness',
+    'Plaid Pantry', 'Whatnot Antiques', 'Snap-on', 'Snap Finance', 'Specs', 'Specs Optical', 'Beast Industries Foundation']) {
+    assert.equal(entry(n), null, n);
+  }
   // As the old list read them: a school only matched a school.
   assert.equal(entry('Havas University'), null);
   assert.equal(entry(null), null);
@@ -173,8 +182,9 @@ test('a database scored with the old list is offered what changed in it, once it
     { name: 'Polymarket', was: 9, now: 4, estimated: true, people: 1, names: ['Polymarket'] },
     { name: 'Snap', was: 9, now: 8, estimated: false, people: 1, names: ['Snap'] },
   ] });
-  // Hard Rock Hotel was Hard Rock Digital (6), but only as Rex's former employer.
-  assert.equal(legacyEntryFor('Hard Rock Hotel').name, 'Hard Rock Digital');
+  // The old alias read Hard Rock Hotel as Hard Rock Digital (6), which it isn't
+  // (and it is only Rex's former employer).
+  assert.equal(legacyEntryFor('Hard Rock Hotel'), null);
   // The stored scores are the new ones meanwhile.
   assert.deepEqual([row('dev').company_prestige_score, row('pia').company_prestige_score], [8, 4]);
 });
@@ -192,11 +202,45 @@ test('a company you scored yourself is not offered, nor one whose estimate lands
   assert.ok(byName.Polymarket);
 });
 
-test('an old database whose network the change didn\'t touch shows nothing', () => {
+test('an old database whose network the change didn\'t touch shows nothing, and the offer closes on that first look', () => {
   oldDatabase([{ id: 'gus', name: 'Gus Adair', headline: 'Engineer at Google' }]);
   rescoreIfStale();
   assert.equal(legacyOfferState(), 'open');
   assert.equal(legacyOffer(), null);
+  // Closed, so Paths → Scores stops reading the whole network for it on every
+  // visit, and a card can't turn up months later.
+  assert.equal(legacyOfferState(), 'none');
+  insert([{ id: 'pia', name: 'Pia Okoro', headline: 'Product Manager at Polymarket' }]);
+  rescoreAll();
+  assert.equal(legacyOfferState(), 'none');
+  assert.equal(legacyOffer(), null);
+  assert.deepEqual(answerLegacyOffer(['Polymarket']), { kept: [], scored: 0 });
+  assert.deepEqual(yours(), {});
+  // A database that is empty when first looked at closes it too.
+  getDb().exec('DELETE FROM linkedin_connections');
+  getDb().prepare("UPDATE app_meta SET value = 'open' WHERE key = 'legacy_scores_offer'").run();
+  assert.equal(legacyOffer(), null);
+  assert.equal(legacyOfferState(), 'none');
+});
+
+test('a company that only shares a name with an old entry is not offered its score', () => {
+  // The old list read Snap-on, Specs Optical and Hard Rock Hotel as Snap and
+  // Hard Rock Digital. Keeping Snap must not give Snap-on 9.
+  oldDatabase([
+    ...network(),
+    { id: 'sol', name: 'Sol Ortega', headline: 'Territory Manager at Snap-on' },
+    { id: 'spe', name: 'Spe Varga', headline: 'Optician at Specs Optical' },
+    { id: 'hal', name: 'Hal Brandt', headline: 'Director at Hard Rock Hotel' },
+  ]);
+  rescoreIfStale();
+  const offer = legacyOffer();
+  const snap = offer.companies.find((c) => c.name === 'Snap');
+  assert.deepEqual([snap.people, snap.names], [1, ['Snap']]);
+  assert.equal(offer.companies.find((c) => c.name === 'Hard Rock Digital'), undefined);
+  answerLegacyOffer(offer.companies.map((c) => c.name));
+  assert.deepEqual(yours(), { Polymarket: 9, Snap: 9, UCF: 5, 'University of Central Florida': 5 });
+  assert.equal(row('dev').company_prestige_score, 9);
+  for (const id of ['sol', 'spe', 'hal']) assert.equal(row(id).company_prestige_score, 4, id);
 });
 
 test('keeping writes the old scores under every name scoring uses, then rescores once', () => {

@@ -6,7 +6,7 @@ import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
-import { sectorByKey } from '../../lib/sector-directory';
+import { sectorByKey } from '../../lib/sector-labels';
 import Link from 'next/link';
 
 const LEVEL_NAMES = {
