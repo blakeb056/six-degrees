@@ -32,8 +32,11 @@ Nothing to configure: no `.env`, no account, no keys. It uses the same data
 folder as the installed app, `~/.six-degrees`; point `SIX_DEGREES_HOME` somewhere
 else to develop against an empty one.
 
-Scraper work also needs Python 3.9+ and Google Chrome — the Scan page sets up
-the Python side. Read `docs/SCRAPING.md` and `docs/brain/TRAPS.md` first.
+Scanner work also needs Google Chrome, and Python 3.10–3.14 (or the Scan page's
+**Set up the scanner**, which downloads one) — the Scan page sets up the Python side.
+Read `docs/SCRAPING.md` and `docs/brain/TRAPS.md` first. The scanner's packages are
+pinned by hash in `scripts/requirements.txt`: to change one, edit its version there and
+run `node scripts/pin-python-packages.mjs`.
 
 ## Releasing
 

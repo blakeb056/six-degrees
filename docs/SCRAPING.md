@@ -29,11 +29,22 @@ the scan — showing the live log as it goes.
 On a Mac, the app itself installs with one line — see **Install it** in the README — and
 opens from Applications like any other. Everything after that is buttons.
 
-That page installs the scanner's Python packages into a **private virtual environment**
-inside your data directory (`~/.six-degrees/venv`). It never touches the Python your
-system or Homebrew installed, and it goes away when you delete that folder.
+**In the Mac app there is nothing to install:** it carries its own Python with the
+scanner's packages inside it, so the first step is already ticked.
 
-The page has four steps: install, sign in, **1st degree** (the people you know) and
+Otherwise (`npx six-degrees`, or from source) that page installs the scanner's Python
+packages into a **private virtual environment** inside your data directory
+(`~/.six-degrees/venv`), from the Python 3.10–3.14 on your computer. If there isn't one,
+**Set up the scanner** first downloads a private copy of Python into `~/.six-degrees/python`
+(from GitHub, checked against a checksum built into Six Degrees before it's unpacked). It
+never touches the Python your system or Homebrew installed, and it goes away when you
+delete that folder. Every package file is checked against a checksum too
+(`scripts/requirements.txt`). Your own pip settings for which index, proxy or certificates
+to use still apply (on a company network they are often what makes pip work at all);
+settings that would install the packages somewhere else are ignored, and the last step
+checks that the scanner can load them before it says it has finished.
+
+The page has four steps: set up the scanner, sign in, **1st degree** (the people you know) and
 **2nd degree** (the people they know — this is what fills Degrees and Outlink). The
 second-degree step runs in batches of 5, 10 or 25 and has a **Stop** button; stopping
 closes the browser cleanly and keeps everything found so far.

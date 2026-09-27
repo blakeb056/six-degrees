@@ -22,7 +22,8 @@
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
-(Ventura) or later**, and it's about 185 MB.
+(Ventura) or later**, and it's about 220 MB. Everything the scanner needs except Google
+Chrome is inside, Python included, so there's nothing else to install.
 
 **The first time you open it**, macOS stops it, because the app isn't signed with a
 paid Apple certificate yet:
@@ -80,9 +81,11 @@ It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without
 desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
 `--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
 `npx six-degrees@latest`; **Settings → Updates** gives the same
-line. Scanning LinkedIn also needs Google Chrome (not Chromium) and Python 3.9+ with venv
-(on Ubuntu: `sudo apt install python3-venv`). It's tested on Ubuntu, and works on a Mac
-too if you'd rather not install the app.
+line. Scanning LinkedIn also needs Google Chrome (not Chromium), and Python: your own 3.10
+to 3.14 if you have it (on Ubuntu with `python3-venv`), or, if not, the Scan page's **Set
+up the scanner** button downloads a private copy into your data folder (24–33 MB, from
+GitHub, checked against a checksum built into Six Degrees). It's tested on Ubuntu, and
+works on a Mac too if you'd rather not install the app.
 
 **Windows:** not yet. There's no Windows app, and `npx six-degrees` doesn't run on
 Windows yet; npm says so if you try.
@@ -102,7 +105,8 @@ npm run start:packaged      # opens http://127.0.0.1:6363 in your browser
 
 To update later: stop it (Ctrl-C), then
 `git pull && npm ci && npm run build && npm run start:packaged`.
-Scanning LinkedIn also needs Python 3.9+ and Google Chrome (see below).
+Scanning LinkedIn also needs Google Chrome, and Python 3.10 to 3.14 or the Scan page's
+**Set up the scanner** (see below).
 </details>
 
 ## What it is
@@ -145,9 +149,10 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 
 - **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It sets up
   the scanner in one click, you sign into LinkedIn yourself in a Chrome window, and then
-  it scans. Needs Google Chrome and Python 3.9+; the page checks that
-  both are installed and says what's missing. The app marks this *Recommended* because
-  it's the only way to Degrees and Outlink. Read the warning above first.
+  it scans. Needs Google Chrome. The Mac app brings its own Python; with `npx six-degrees`
+  the page uses yours, or sets up a private one with a click. It checks and says what's
+  missing. The app marks this *Recommended* because it's the only way to Degrees and
+  Outlink. Read the warning above first.
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
   LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
   Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
@@ -157,7 +162,7 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 
 |  | Your scan | Your `Connections.csv` | Sample network |
 |---|---|---|---|
-| Setup | Python + Chrome, once | ~10 min (LinkedIn emails the file) | none |
+| Setup | Chrome (Python comes with the Mac app) | ~10 min (LinkedIn emails the file) | none |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
 | **Degrees** (people you *haven't* met) | ✅ | — | ✅ |
 | **Outlink** (getting introduced) | ✅ | — | — |
@@ -259,7 +264,11 @@ It estimates **network position**, not what anyone is worth as a person.
 - The app contacts only these, and only when you act:
   - **LinkedIn**, while you scan. Also, until a profile photo has been saved to your
     computer, the app shows it straight from LinkedIn's image server.
-  - **PyPI** (the Python package library), once, to download the scanner's add-ons.
+  - Only without the Mac app (which carries the scanner's Python and add-ons inside it),
+    once, when you set the scanner up: **PyPI** (the Python package library) for the
+    scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**
+    for a copy of Python when you click *Set up the scanner*. Every file is checked
+    against a checksum built into Six Degrees.
   - **GitHub**, only when you click *Check for updates*, to read the newest version
     number. In the Mac app, also when you then click *Install and restart*, to download
     that version and the file of checksums that proves it's the one published.
@@ -283,7 +292,8 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 │                           before an import, touched it
 ├── avatars/                profile photos, if you scan
 ├── chrome-profile/         the scanner's Chrome sign-in, if you scan (see below)
-├── venv/                   the scanner's Python add-ons, if you set it up
+├── venv/                   the scanner's Python add-ons, if you set it up without the Mac app
+├── python/                 a private Python for them, if Set up the scanner downloaded one
 ├── pushback/               what LinkedIn's page said if it ever pushed back
 └── *.json                  the scanner's budget, cooldown, progress and skip lists
 ```

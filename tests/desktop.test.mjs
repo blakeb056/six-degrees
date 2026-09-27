@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import {
-  routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, stopScan, stopProcess, dataDirArg,
+  routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, UPDATE_HANDOFF_EXIT_CODE, serverExitAction,
 } from '../desktop/lib.mjs';
 
@@ -64,6 +64,33 @@ test('stopping a scan: nothing to do when nothing runs, or when the server is al
   const gone = async () => { throw new Error('ECONNREFUSED'); };
   assert.equal(await scanRunning(ORIGIN, { fetchImpl: gone }), null);
   assert.equal(await stopScan(ORIGIN, { fetchImpl: gone, sleep: noSleep }), 'none');
+});
+
+test('quitting while the Scan page runs something asks in the words of what runs', async () => {
+  const answering = (status) => async () => ({ ok: true, json: async () => status });
+  assert.equal(await runningJob(ORIGIN, { fetchImpl: answering({ running: true, action: 'install' }) }), 'install');
+  assert.equal(await runningJob(ORIGIN, { fetchImpl: answering({ running: true, action: null }) }), 'scan');
+  assert.equal(await runningJob(ORIGIN, { fetchImpl: answering({ running: false, action: 'full' }) }), null);
+  assert.equal(await runningJob(ORIGIN, { fetchImpl: async () => { throw new Error('ECONNREFUSED'); } }), null);
+  assert.equal(await runningJob(ORIGIN, { fetchImpl: async () => ({ ok: false }) }), null);
+
+  for (const [job, message, quit] of [
+    ['full', 'A scan is running.', 'Stop the Scan and Quit'],
+    ['auto-bridge', 'A scan is running.', 'Stop the Scan and Quit'],
+    ['scan', 'A scan is running.', 'Stop the Scan and Quit'],
+    ['install', 'The scanner\'s packages are being installed.', 'Stop It and Quit'],
+    ['setup', 'The scanner is being set up.', 'Stop It and Quit'],
+    ['login', 'The LinkedIn sign-in window is open.', 'Close It and Quit'],
+  ]) {
+    const q = quitQuestion(job);
+    assert.equal(q.message, message, job);
+    assert.equal(q.buttons.length, 2, job);
+    assert.equal(q.buttons[0], quit, `${job}: the first button quits`);
+    assert.ok(q.detail.length > 20, job);
+    if (['install', 'setup', 'login'].includes(job)) {
+      assert.doesNotMatch(`${q.message} ${q.buttons.join(' ')}`, /\bscan(ning)?\b/i, `${job} isn't called a scan`);
+    }
+  }
 });
 
 test('stopping a process: SIGTERM, and SIGKILL if it will not go', async () => {

@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PYTHON, noPython } from './python.mjs';
 
 const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
@@ -54,8 +55,8 @@ function parses(js) {
 }
 
 test('every JavaScript snippet scrape.py injects is valid JavaScript', (t) => {
-  const run = spawnSync('python3', ['-c', DUMP, SCRAPER], { encoding: 'utf8' });
-  if (run.error) { t.skip('python3 is not available here'); return; }
+  const run = spawnSync(PYTHON, ['-c', DUMP, SCRAPER], { encoding: 'utf8' });
+  if (noPython(t, run)) return;
   assert.equal(run.status, 0, run.stderr);
 
   const snippets = JSON.parse(run.stdout);

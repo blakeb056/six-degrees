@@ -85,6 +85,51 @@ export async function scanRunning(origin, { fetchImpl = fetch } = {}) {
 }
 
 /**
+ * What the Scan page is running: its action ('full', 'install', 'setup',
+ * 'login', …), or null when nothing runs or the server can't be asked.
+ */
+export async function runningJob(origin, { fetchImpl = fetch } = {}) {
+  try {
+    const res = await fetchImpl(`${origin}/api/scraper`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    const status = await res.json();
+    if (!status.running) return null;
+    return typeof status.action === 'string' && status.action ? status.action : 'scan';
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The question Quit asks while the Scan page runs something, in the words of
+ * what runs: Install and Set up the scanner aren't scans, and saying "A scan is
+ * running" over them sent people looking for one (the server's refusals say
+ * the same, lib/scan-state.js). { message, detail, buttons }: the first button
+ * quits, the second keeps it going.
+ */
+export function quitQuestion(job) {
+  if (job === 'install' || job === 'setup') {
+    return {
+      message: job === 'setup' ? 'The scanner is being set up.' : 'The scanner\'s packages are being installed.',
+      detail: 'Quitting stops it the way the Stop button does. Press the same button on the Scan page next time to finish it.',
+      buttons: ['Stop It and Quit', 'Keep Going'],
+    };
+  }
+  if (job === 'login') {
+    return {
+      message: 'The LinkedIn sign-in window is open.',
+      detail: 'Quitting closes it the way the Stop button does. If you hadn\'t finished signing in, open LinkedIn from the Scan page again next time.',
+      buttons: ['Close It and Quit', 'Keep It Open'],
+    };
+  }
+  return {
+    message: 'A scan is running.',
+    detail: 'Quitting stops it the way the Stop button does, and it closes its Chrome window. A list that was stopped part-way carries on from where it got to next time.',
+    buttons: ['Stop the Scan and Quit', 'Keep Scanning'],
+  };
+}
+
+/**
  * Stop a running scan the way the Stop button does, then wait until it has
  * stopped: the scanner closes its own Chrome window when it is asked to stop.
  * Resolves 'none' (nothing was running), 'stopped', or 'timeout'.

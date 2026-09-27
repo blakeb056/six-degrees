@@ -57,3 +57,11 @@ test('other actions have no bar', () => {
   assert.equal(scanProgress(['  50 / 817 collected'], 'login'), null);
   assert.equal(scanProgress(['[1/10] Someone'], 'install'), null);
 });
+
+test('setting up the scanner: a bar while its Python downloads, none once it has moved on', () => {
+  const log = ['Setting up the scanner…', 'Downloading Python 3.12.14 from GitHub (32.6 MB)…',
+    'Downloading Python 3.12.14: 0.0 of 32.6 MB', 'Downloading Python 3.12.14: 16.3 of 32.6 MB'];
+  assert.deepEqual(scanProgress(log, 'setup'), { done: 16.3, total: 32.6, kind: 'download' });
+  assert.equal(scanProgress([...log, 'Its checksum matches the one Six Degrees has for it.', 'Unpacking it…'], 'setup'), null);
+  assert.equal(scanProgress(log, 'install'), null);
+});

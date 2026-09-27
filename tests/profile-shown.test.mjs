@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PYTHON, noPython } from './python.mjs';
 
 const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const GET = `
@@ -18,8 +19,8 @@ for node in ast.walk(ast.parse(open(sys.argv[1]).read())):
 `;
 
 function shown(t, name, title, heading) {
-  const run = spawnSync('python3', ['-c', GET, SCRAPER], { encoding: 'utf8' });
-  if (run.error) { t.skip('python3 is not available here'); return null; }
+  const run = spawnSync(PYTHON, ['-c', GET, SCRAPER], { encoding: 'utf8' });
+  if (noPython(t, run)) return null;
   const js = JSON.parse(run.stdout);
   const document = {
     title,
