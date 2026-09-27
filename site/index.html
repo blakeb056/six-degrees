@@ -12,16 +12,18 @@
   <meta property="og:image" content="https://blakeb056.github.io/six-degrees/img/app-window.png">
   <meta name="theme-color" content="#0b0a1c">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=2026-09-27">
-  <script src="app.js?v=2026-09-25" defer></script>
+  <link rel="stylesheet" href="style.css?v=2026-09-28">
+  <script src="app.js?v=2026-09-28" defer></script>
 </head>
 <body>
   <header class="top">
     <a class="brand" href="./"><img src="img/icon.svg" alt="" width="32" height="32"> Six Degrees</a>
-    <nav>
+    <nav aria-label="Sections">
       <a href="#install">Install</a>
+      <a href="#network">Scanning</a>
       <a href="#what">What it does</a>
       <a href="#privacy">Privacy</a>
+      <a href="#linux">Linux</a>
       <a href="https://github.com/blakeb056/six-degrees">GitHub</a>
     </nav>
   </header>
@@ -40,24 +42,27 @@
       </p>
 
       <div class="downloads" id="download">
-        <a class="dl primary" id="dl-silicon" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
-          <span class="dl-title">Download for Mac</span>
-          <span class="dl-sub">Apple Silicon (M1 or newer)</span>
+        <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Download for Mac</span>
+            <span class="dl-sub" id="dl-main-sub">Apple Silicon (M1 or newer)</span>
+          </span>
         </a>
-        <a class="dl" id="dl-intel" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">
-          <span class="dl-title">Download for Mac</span>
-          <span class="dl-sub">Intel</span>
-        </a>
+        <p class="dl-alt"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a></p>
       </div>
       <p class="fine" id="version-line">macOS 13.5 or later · about 195–210 MB · free and open source</p>
       <p class="guess" id="chip-guess" hidden></p>
-      <p class="fine watch"><a href="#install">New here? Watch how to install it (about a minute)</a></p>
+      <ol class="roadmap" role="list" aria-label="Three steps">
+        <li><a href="#install"><span class="step">1</span> Install it</a></li>
+        <li><a href="#network"><span class="step">2</span> Bring your network in</a></li>
+        <li><a href="#what"><span class="step">3</span> Explore it</a></li>
+      </ol>
 
-      <img class="shot" src="img/app-window.png" srcset="img/app-window-1200.png 1200w, img/app-window.png 3136w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="3136" height="2118">
-      <p class="caption">Every person shown on this page is invented.</p>
     </section>
 
     <section class="install" id="install">
+      <p class="kicker">Step 1 of 3</p>
       <h2>Install it in a minute</h2>
       <figure class="video">
         <video controls muted playsinline preload="metadata" poster="video/install-mac-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: installing Six Degrees on a Mac">
@@ -105,28 +110,49 @@
       </div>
     </section>
 
-    <section class="linux" id="linux">
-      <h2>On Linux</h2>
-      <figure class="video">
-        <video controls muted playsinline preload="metadata" poster="video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
-          <source src="video/linux.mp4?v=0.2.1" type="video/mp4">
-        </video>
-        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
-      </figure>
-      <div class="terminal">
-        <h3>One command</h3>
-        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
-          too old), then run:</p>
-        <div class="cmd"><code>npx six-degrees</code></div>
-        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
-          <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
-          also needs Google Chrome (not Chromium), and Python 3.10 to 3.14 with venv, or the Scan page's
-          <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
-          yet.</p>
+    <section class="ways" id="network">
+      <p class="kicker">Step 2 of 3</p>
+      <h2>Bring your network in</h2>
+      <p class="intro">Three ways, from no risk at all to the full picture. Scanning is the only one that shows who <em>your connections</em> know.</p>
+      <div class="cards">
+        <article>
+          <h3>Explore a sample</h3>
+          <p>150 invented connections and the 598 people they know. Every view except Outlink, which needs your own scan.</p>
+        </article>
+        <article>
+          <h3>Import LinkedIn's export</h3>
+          <p>LinkedIn's own <code>Connections.csv</code>, read on your Mac. It shows the people you know, not who they
+            know (so no Degrees or Outlink), and there's no risk to your LinkedIn account.</p>
+        </article>
+        <article>
+          <h3>Scan your LinkedIn</h3>
+          <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
+            own, you sign into LinkedIn there yourself, and it reads slowly with daily limits. Needs Google Chrome (in
+            Applications); the scanner's Python comes with the app.</p>
+        </article>
       </div>
+      <figure class="video" id="export">
+        <video controls muted playsinline preload="metadata" poster="video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing LinkedIn's export">
+          <source src="video/export.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>Importing LinkedIn's export</strong> (half a minute): ask LinkedIn for your Connections file,
+          then drop it on the app. No sign-in, and no risk to your account.</figcaption>
+      </figure>
+      <p class="warning"><strong>Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that
+        automate it.</strong> Automating LinkedIn may break its User Agreement. It happened twice while building this
+        app. The scanner now reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.
+        The sample and the CSV import carry no LinkedIn risk at all.</p>
+      <figure class="video" id="scanning">
+        <video controls muted playsinline preload="metadata" poster="video/scan-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: how scanning works">
+          <source src="video/scan.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>How scanning works</strong> (under a minute): install what it needs, sign into LinkedIn in the Chrome
+          window it opens, scan the people you know, then map who they know a few at a time.</figcaption>
+      </figure>
     </section>
 
     <section class="what" id="what">
+      <p class="kicker">Step 3 of 3</p>
       <h2>What it shows you</h2>
       <div class="features">
         <article>
@@ -174,45 +200,7 @@
         <img src="img/paths.png" srcset="img/paths-1200.png 1200w, img/paths.png 2880w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Screenshot of the Paths view" width="2880" height="1800" loading="lazy">
         <figcaption><strong>Paths.</strong> Companies grouped by industry, and for any one of them, who's there and how to reach them.</figcaption>
       </figure>
-    </section>
-
-    <section class="ways">
-      <h2>Three ways to bring your network in</h2>
-      <div class="cards">
-        <article>
-          <h3>Explore a sample</h3>
-          <p>150 invented connections and the 598 people they know. Every view except Outlink, which needs your own scan.</p>
-        </article>
-        <article>
-          <h3>Import LinkedIn's export</h3>
-          <p>LinkedIn's own <code>Connections.csv</code>, read on your Mac. It shows the people you know, not who they
-            know (so no Degrees or Outlink), and there's no risk to your LinkedIn account.</p>
-        </article>
-        <article>
-          <h3>Scan your LinkedIn</h3>
-          <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
-            own, you sign into LinkedIn there yourself, and it reads slowly with daily limits. Needs Google Chrome (in
-            Applications); the scanner's Python comes with the app.</p>
-        </article>
-      </div>
-      <figure class="video" id="export">
-        <video controls muted playsinline preload="metadata" poster="video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing LinkedIn's export">
-          <source src="video/export.mp4?v=0.2.1" type="video/mp4">
-        </video>
-        <figcaption><strong>Importing LinkedIn's export</strong> (half a minute): ask LinkedIn for your Connections file,
-          then drop it on the app. No sign-in, and no risk to your account.</figcaption>
-      </figure>
-      <p class="warning"><strong>Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that
-        automate it.</strong> Automating LinkedIn may break its User Agreement. It happened twice while building this
-        app. The scanner now reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.
-        The sample and the CSV import carry no LinkedIn risk at all.</p>
-      <figure class="video" id="scanning">
-        <video controls muted playsinline preload="metadata" poster="video/scan-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: how scanning works">
-          <source src="video/scan.mp4?v=0.2.1" type="video/mp4">
-        </video>
-        <figcaption><strong>How scanning works</strong> (under a minute): install what it needs, sign into LinkedIn in the Chrome
-          window it opens, scan the people you know, then map who they know a few at a time.</figcaption>
-      </figure>
+      <p class="caption center">Every person shown on this page is invented.</p>
     </section>
 
     <section class="privacy" id="privacy">
@@ -233,9 +221,34 @@
 
     <section class="again">
       <a class="dl primary" href="#download">
-        <span class="dl-title">Get Six Degrees</span>
-        <span class="dl-sub">Free for Mac</span>
+        <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="dl-text">
+          <span class="dl-title">Get Six Degrees</span>
+          <span class="dl-sub">Free for Mac</span>
+        </span>
       </a>
+    </section>
+
+    <section class="linux" id="linux">
+      <h2>On Linux</h2>
+      <p class="intro">Six Degrees runs on Linux from the Terminal with <code>npx</code>, which comes with Node.js: it downloads Six Degrees from <strong>npm</strong>, the public library of Node.js programs, and runs it in your browser. Windows isn't supported yet.</p>
+      <figure class="video">
+        <video controls muted playsinline preload="metadata" poster="video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
+          <source src="video/linux.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
+      </figure>
+      <div class="terminal">
+        <h3>One command</h3>
+        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
+          too old), then run:</p>
+        <div class="cmd"><code>npx six-degrees</code></div>
+        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
+          <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
+          also needs Google Chrome (not Chromium), and Python 3.10 to 3.14 with venv, or the Scan page's
+          <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
+          yet.</p>
+      </div>
     </section>
   </main>
 

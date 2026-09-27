@@ -8,8 +8,6 @@
   --text: #eef0f6;
   --muted: #a9aec4;
   --faint: #9297ad;
-  --green: #1a7f37;
-  --green-2: #238636;
   --gold: #ffd700;
   --purple: #9b59b6;
   --blue: #3498db;
@@ -34,12 +32,17 @@ code, kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0
 kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--panel); }
 
 .top {
+  position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  max-width: 1120px; margin: 0 auto; padding: 18px 24px;
+  padding: 14px max(24px, calc((100% - 1072px) / 2));
+  background: rgba(11, 10, 28, 0.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
 }
+/* Jumps from the menu land below the pinned header, not under it. */
+section[id], figure[id], #download { scroll-margin-top: 84px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 18px; }
 .top nav { display: flex; gap: 22px; flex-wrap: wrap; }
-.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; white-space: nowrap; }
 .top nav a:hover { color: var(--text); }
 
 main { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
@@ -55,26 +58,34 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 .hero h1 { font-size: clamp(34px, 6vw, 58px); margin: 0 0 16px; font-weight: 800; }
 .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
 
-.downloads { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.downloads { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .dl {
-  display: inline-flex; flex-direction: column; align-items: center; min-width: 250px;
-  padding: 14px 26px; border-radius: 12px; text-decoration: none; color: var(--text);
+  display: inline-flex; align-items: center; gap: 14px; min-width: 280px; justify-content: center;
+  padding: 16px 30px; border-radius: 16px; text-decoration: none; color: var(--text);
   background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line);
-  transition: transform 0.12s ease, background 0.12s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.dl:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.11); color: var(--text); }
-.dl.primary { background: linear-gradient(180deg, var(--green-2), var(--green)); border-color: transparent; color: #fff; box-shadow: 0 10px 30px rgba(46, 164, 79, 0.3); }
-.dl.primary:hover { background: linear-gradient(180deg, #1f883d, #196c2e); }
-.dl.primary .dl-sub { opacity: 1; }
-.dl.suggested { outline: 2px solid var(--gold); outline-offset: 3px; }
-.dl.suggested:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
+.dl:hover { transform: translateY(-2px); color: var(--text); }
+/* The app's own gold, the sun in its icon, with dark text. */
+.dl.primary {
+  color: #1b1400; border-color: transparent;
+  background: linear-gradient(180deg, #ffe45c 0%, #ffd700 55%, #f4c400 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 36px rgba(255, 196, 0, 0.28), 0 0 0 1px rgba(255, 215, 0, 0.35);
+}
+.dl.primary:hover { color: #1b1400; filter: brightness(1.04); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 16px 44px rgba(255, 196, 0, 0.38), 0 0 0 1px rgba(255, 215, 0, 0.5); }
+.dl.primary:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.dl-icon { width: 26px; height: 26px; flex: none; }
+.dl-text { display: inline-flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.dl .dl-title { font-weight: 800; font-size: 19px; letter-spacing: -0.01em; }
+.dl .dl-sub { font-size: 14px; opacity: 0.8; }
+.dl.primary .dl-sub { opacity: 0.75; }
+.dl-alt { margin: 0; color: var(--faint); font-size: 14.5px; }
+.dl-alt a { color: var(--text); text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.35); text-underline-offset: 3px; }
+.dl-alt a:hover { text-decoration-color: var(--gold); }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.dl-title { font-weight: 700; font-size: 18px; }
-.dl-sub { font-size: 14px; opacity: 0.85; }
 .hero .fine { margin: 14px 0 0; }
 .guess { color: var(--gold); font-size: 14px; margin: 6px 0 0; }
 .not-mac { max-width: 560px; margin: 0 auto 18px; padding: 12px 16px; border-radius: 10px; background: rgba(255, 138, 61, 0.1); border: 1px solid rgba(255, 138, 61, 0.35); color: var(--text); font-size: 15px; }
-.shot { display: block; margin: 44px auto 6px; border-radius: 12px; }
 .caption { color: var(--faint); font-size: 13px; margin: 0; }
 
 /* install */
@@ -101,9 +112,14 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 /* the tutorial videos (silent: the captions are in the picture). index.html asks for
    this file by version (style.css?v=…): a browser holding the old copy drew them at
    their full 1920px, off-centre. Bump the version whenever the page's layout changes. */
-.watch { margin: 8px 0 0; }
 .video { max-width: 860px; margin: 0 auto 32px; }
-.video video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #05040f; }
+/* Videos in the app's colours: a gold → purple → blue edge and a soft glow. */
+.video video {
+  display: block; width: 100%; height: auto; border-radius: 16px;
+  border: 2px solid transparent;
+  background: linear-gradient(#05040f, #05040f) padding-box, linear-gradient(135deg, var(--gold), var(--purple) 55%, var(--blue)) border-box;
+  box-shadow: 0 24px 70px rgba(155, 89, 182, 0.22), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
 .ways .video { margin: 32px auto 0; }
 
 /* what it does */
@@ -136,6 +152,23 @@ figcaption strong { color: var(--text); }
 
 footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
 
+/* The three steps, as a path under the download buttons and as badges on the headings. */
+.step {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: 0.35em;
+  border-radius: 50%; background: var(--gold); color: #0b0a1c; font-size: 0.62em; font-weight: 800;
+  vertical-align: 0.18em;
+}
+.roadmap { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; list-style: none; padding: 0; margin: 22px 0 0; }
+.roadmap a {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; font-size: 15px;
+}
+.roadmap a:hover { border-color: rgba(255, 215, 0, 0.5); }
+.roadmap .step { font-size: 12px; width: 22px; height: 22px; margin: 0; vertical-align: 0; }
+.kicker { text-align: center; margin: 0 0 6px; color: var(--gold); font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.intro { text-align: center; color: var(--muted); max-width: 680px; margin: -8px auto 24px; }
+.caption.center { text-align: center; margin-top: 8px; }
+
 @media (max-width: 860px) {
   .steps, .features, .features.three, .cards { grid-template-columns: 1fr; }
   .steps { gap: 26px; }
@@ -144,9 +177,14 @@ footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align:
 @media (max-width: 520px) {
   body { font-size: 16px; }
   .hero h1 br { display: none; }
-  .top nav { gap: 16px; }
-  .top nav a:not(:last-child) { display: none; }
+  .top { flex-wrap: wrap; row-gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .top nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; scrollbar-width: none; }
+  .top nav a { font-size: 14px; }
+  .top nav a[href^="http"] { display: none; } /* GitHub is in the footer; the five sections fit */
+  .top nav::-webkit-scrollbar { display: none; }
+  section[id], figure[id], #download { scroll-margin-top: 108px; }
   .dl { min-width: 0; width: 100%; }
+  .dl-text { align-items: center; text-align: center; }
   .cmd { flex-direction: column; }
   .cmd button { padding: 10px; }
   .top, main { padding-left: 16px; padding-right: 16px; }
