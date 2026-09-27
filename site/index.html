@@ -7,12 +7,187 @@
   <meta name="description" content="A free Mac app that maps your LinkedIn network: who you know, who they know, and the shortest path to someone you haven't met. Runs on your own computer; nothing is uploaded.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
-  <meta property="og:title" content="Six Degrees">
-  <meta property="og:description" content="A free Mac app that maps your LinkedIn network as a galaxy. Runs on your own computer.">
-  <meta property="og:image" content="https://blakeb056.github.io/six-degrees/img/app-window.png">
+  <meta name="author" content="Blake Burford">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <link rel="canonical" href="https://sixdegreesapp.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Six Degrees">
+  <meta property="og:url" content="https://sixdegreesapp.com/">
+  <meta property="og:title" content="Six Degrees: see your LinkedIn network as a galaxy">
+  <meta property="og:description" content="A free, open-source Mac app that maps your LinkedIn network: who you know, who they know, and the shortest path to someone you haven't met. Nothing is uploaded.">
+  <meta property="og:image" content="https://sixdegreesapp.com/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="810">
+  <meta property="og:image:alt" content="Six Degrees on a Mac: a network drawn as circles around you, the most powerful people closest">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Six Degrees: see your LinkedIn network as a galaxy">
+  <meta name="twitter:description" content="Free, open-source Mac app. Who you know, who they know, and the shortest path to anyone. Nothing is uploaded.">
+  <meta name="twitter:image" content="https://sixdegreesapp.com/img/og-image.jpg">
   <meta name="theme-color" content="#0b0a1c">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=2026-09-28">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://sixdegreesapp.com/#app",
+      "name": "Six Degrees",
+      "alternateName": [
+        "6 Degrees",
+        "Six Degrees app"
+      ],
+      "url": "https://sixdegreesapp.com/",
+      "description": "A free, open-source Mac app that maps your LinkedIn network as a galaxy: who you know, who they know, who bridges you into new circles, and the shortest path to someone you haven't met. Runs on your own Mac; nothing is uploaded.",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Professional networking",
+      "operatingSystem": "macOS 13.5 or later; Linux via npx",
+      "softwareVersion": "0.3.0",
+      "datePublished": "2026-09-24",
+      "dateModified": "2026-09-27",
+      "isAccessibleForFree": true,
+      "license": "https://github.com/blakeb056/six-degrees/blob/main/LICENSE",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "downloadUrl": "https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg",
+      "installUrl": "https://sixdegreesapp.com/#install",
+      "releaseNotes": "https://github.com/blakeb056/six-degrees/releases",
+      "image": "https://sixdegreesapp.com/img/og-image.jpg",
+      "screenshot": [
+        "https://sixdegreesapp.com/img/app-window.png",
+        "https://sixdegreesapp.com/img/degrees.png",
+        "https://sixdegreesapp.com/img/paths.png"
+      ],
+      "featureList": [
+        "Network Circle: your connections on rings by how much they can open up for you",
+        "Degrees: people two steps away, ranked, with who can introduce you",
+        "Paths: your network by company and industry",
+        "Outlink: getting introduced, as a game",
+        "Import LinkedIn's Connections.csv",
+        "Optional scanning of your own LinkedIn in a Chrome window you sign into",
+        "Updates in one click",
+        "Export your network to move to another Mac"
+      ],
+      "author": {
+        "@id": "https://blakeburford.com/#person"
+      },
+      "sameAs": [
+        "https://github.com/blakeb056/six-degrees",
+        "https://www.npmjs.com/package/six-degrees"
+      ]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "https://sixdegreesapp.com/#source",
+      "name": "blakeb056/six-degrees",
+      "codeRepository": "https://github.com/blakeb056/six-degrees",
+      "programmingLanguage": [
+        "TypeScript",
+        "Python"
+      ],
+      "runtimePlatform": "Electron; Node.js 22",
+      "license": "https://opensource.org/licenses/MIT",
+      "targetProduct": {
+        "@id": "https://sixdegreesapp.com/#app"
+      },
+      "author": {
+        "@id": "https://blakeburford.com/#person"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://blakeburford.com/#person",
+      "name": "Blake Burford",
+      "url": "https://blakeburford.com/",
+      "sameAs": [
+        "https://www.linkedin.com/in/blakedburford",
+        "https://github.com/blakeb056"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://sixdegreesapp.com/#website",
+      "url": "https://sixdegreesapp.com/",
+      "name": "Six Degrees",
+      "inLanguage": "en",
+      "about": {
+        "@id": "https://sixdegreesapp.com/#app"
+      },
+      "publisher": {
+        "@id": "https://blakeburford.com/#person"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://sixdegreesapp.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Six Degrees free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it upload my LinkedIn data anywhere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Your network stays on your Mac, in a hidden .six-degrees folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan, and GitHub when you check for an update."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work on Windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet. Six Degrees is a Mac app for Apple Silicon and Intel Macs on macOS 13.5 or later, and it runs on Linux with npx six-degrees. A Windows version is planned, without a date."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does macOS say it can't check the app for malware?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Because the app isn't signed with Apple's paid developer certificate yet. Allow it once in System Settings → Privacy & Security → Open Anyway, or use the one-line Terminal install, which checks the download against the published checksums before opening it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is scanning LinkedIn against LinkedIn's rules?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do I need to get started?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A Mac and, optionally, LinkedIn's Connections.csv export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does “six degrees” mean here?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="style.css?v=2026-09-29">
   <script src="app.js?v=2026-09-28" defer></script>
 </head>
 <body>
@@ -249,6 +424,39 @@
           <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
           yet.</p>
       </div>
+    </section>
+    <section class="faq" id="faq">
+      <h2>Questions people ask</h2>
+      <dl>
+        <div>
+          <dt>Is Six Degrees free?</dt>
+          <dd>Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub.</dd>
+        </div>
+        <div>
+          <dt>Does it upload my LinkedIn data anywhere?</dt>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan, and GitHub when you check for an update.</dd>
+        </div>
+        <div>
+          <dt>Does it work on Windows?</dt>
+          <dd>Not yet. Six Degrees is a Mac app for Apple Silicon and Intel Macs on macOS 13.5 or later, and it runs on Linux with <code>npx six-degrees</code>. A Windows version is planned, without a date.</dd>
+        </div>
+        <div>
+          <dt>Why does macOS say it can't check the app for malware?</dt>
+          <dd>Because the app isn't signed with Apple's paid developer certificate yet. Allow it once in System Settings → Privacy &amp; Security → Open Anyway, or use the one-line Terminal install, which checks the download against the published checksums before opening it.</dd>
+        </div>
+        <div>
+          <dt>Is scanning LinkedIn against LinkedIn's rules?</dt>
+          <dd>Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account.</dd>
+        </div>
+        <div>
+          <dt>What do I need to get started?</dt>
+          <dd>A Mac and, optionally, LinkedIn's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+        </div>
+        <div>
+          <dt>What does “six degrees” mean here?</dt>
+          <dd>The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met.</dd>
+        </div>
+      </dl>
     </section>
   </main>
 

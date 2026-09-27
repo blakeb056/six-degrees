@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://blakeb056.github.io/six-degrees/"><img src="desktop/icon/icon.svg" width="128" height="128" alt="Six Degrees website"></a>
+  <a href="https://sixdegreesapp.com/"><img src="desktop/icon/icon.svg" width="128" height="128" alt="Six Degrees website"></a>
 </p>
 
 <h1 align="center">Six Degrees</h1>
@@ -18,7 +18,7 @@
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a>
 </p>
 
-<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://blakeb056.github.io/six-degrees/">website</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
+<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://sixdegreesapp.com/">website</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5

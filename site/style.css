@@ -150,6 +150,12 @@ figcaption strong { color: var(--text); }
 
 .again { text-align: center; padding-top: 8px; }
 
+/* Questions people ask (mirrored by the FAQ structured data in the head). */
+.faq dl { max-width: 760px; margin: 0 auto; padding: 0; display: grid; gap: 10px; }
+.faq dl > div { padding: 14px 18px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.faq dt { font-weight: 700; color: var(--text); margin: 0 0 6px; }
+.faq dd { margin: 0; color: var(--muted); }
+
 footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
 
 /* The three steps, as a path under the download buttons and as badges on the headings. */
