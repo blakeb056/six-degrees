@@ -49,8 +49,8 @@ It downloads the right version for your Mac, checks the file is exactly the one
 published here, puts **Six Degrees** in Applications and opens it.
 [Read the script](install.sh) first if you like.
 
-**Updating.** Choose *Six Degrees → Check for Updates…*, scroll to **Updates** at the
-bottom of the page that opens, and click **Check for updates**. Nothing checks by
+**Updating.** Choose *Six Degrees → Check for Updates…* (or open **Settings** with the ⚙
+button or ⌘,). It opens the Updates section and checks. Nothing checks by
 itself. If there's a newer version, it gives you the Terminal line to paste, which
 replaces the app even while it's running. Downloading the new `.dmg` works too; you'll
 repeat step 3 once for it.
@@ -70,7 +70,7 @@ npx six-degrees
 It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without a
 desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
 `--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
-`npx six-degrees@latest`; the Updates panel at the bottom of the Scan page gives the same
+`npx six-degrees@latest`; **Settings → Updates** gives the same
 line. Scanning LinkedIn also needs Google Chrome (not Chromium) and Python 3.9+ with venv
 (on Ubuntu: `sudo apt install python3-venv`). It's tested on Ubuntu, and works on a Mac
 too if you'd rather not install the app.

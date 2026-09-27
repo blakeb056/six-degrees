@@ -5,7 +5,6 @@ import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape } from '../../lib/scraper-client';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
-import UpdatePanel from '../components/UpdatePanel';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -30,6 +29,12 @@ export default function SetupPage() {
 }
 
 function SetupInner() {
+  // Updates moved to Settings; an old menu item or bookmark still lands there.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('check') === 'updates') {
+      window.location.replace('/settings?check=updates');
+    }
+  }, []);
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
   // Ten, not twenty-five. The only measured number this project has is that
@@ -416,7 +421,10 @@ function SetupInner() {
           </>
         )}
 
-        <UpdatePanel />
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: LINE, fontSize: 13.5, color: '#8b9a9a' }}>
+          Checking for updates has moved to{' '}
+          <Link href="/settings#updates" style={{ color: '#3498DB' }}>Settings →</Link>
+        </div>
 
         <p style={{ color: '#667', fontSize: 12.5, lineHeight: 1.7, marginTop: 32 }}>
           Automating LinkedIn may go against its User Agreement, and accounts have been

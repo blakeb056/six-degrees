@@ -21,6 +21,17 @@ export default function UpdatePanel() {
     fetch('/api/update').then((r) => r.json()).then(setLocal).catch(() => {});
   }, []);
 
+  // A git checkout opened from the menu's "Check for Updates…" runs its check
+  // too (the installed copies do the same in InstalledUpdates).
+  useEffect(() => {
+    if (!local || local.installed || local.supported === false) return;
+    if (new URLSearchParams(window.location.search).get('check') !== 'updates') return;
+    document.getElementById('updates')?.scrollIntoView({ block: 'center' });
+    call('check');
+    window.history.replaceState(null, '', window.location.pathname);
+    // Runs once, when the local facts arrive.
+  }, [local]);
+
   async function call(action) {
     setBusy(action);
     setError(null);
@@ -231,9 +242,10 @@ const pre = {
   whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto',
 };
 
+// Laid out like the other sections of the Settings page (app/components/ui.js).
 function Wrap({ children }) {
   return (
-    <div id="updates" style={{ marginTop: 32, paddingTop: 24, borderTop: LINE }}>{children}</div>
+    <section id="updates" style={{ padding: '24px 0', borderBottom: LINE, scrollMarginTop: 16 }}>{children}</section>
   );
 }
 // The answer to a check, where it can't be missed.
@@ -248,7 +260,7 @@ function Status({ children, ok }) {
   );
 }
 function Title({ children }) {
-  return <div style={{ fontSize: 15.5, fontWeight: 650, marginBottom: 6 }}>{children}</div>;
+  return <h2 style={{ fontSize: 16, fontWeight: 650, margin: '0 0 6px' }}>{children}</h2>;
 }
 function Body({ children, style }) {
   return (

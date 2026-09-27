@@ -13,13 +13,15 @@ const nextConfig = {
   // directory for the scraper), so anything sitting in it rides along unless it
   // is named here. `.git` above all: inside the Mac app it made the installed
   // copy look like a checkout, so its Updates panel would have tried to
-  // `git pull` into the app bundle. Logs carry local paths and are never needed.
+  // `git pull` into the app bundle. In a git worktree `.git` is a file, not a
+  // folder, which '.git/**' doesn't match, so both are named. Logs carry local
+  // paths and are never needed.
   //
   // The desktop shell (desktop/) and Electron itself are packed around the
   // server, never inside it: Electron alone is ~250 MB.
   outputFileTracingExcludes: {
     '*': ['dist/*.app/**', 'dist/*.dmg', 'dist/staging/**', 'dist/electron-stage/**', 'docs/**', 'tests/**',
-          '.git/**', '*.log', 'scripts/dmg/**', 'desktop/**',
+          '.git', '.git/**', '*.log', 'scripts/dmg/**', 'desktop/**',
           'node_modules/electron/**', 'node_modules/@electron/**'],
   },
   // Emits .next/standalone with a server and only the dependencies actually

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Settings.** A new page, from the ⚙ button beside the bell or *Six Degrees → Settings…*
+  (⌘,). It's the new home for **Updates**, and it shows which version this is and where
+  your network is kept. What you choose there is saved with your network, so it travels
+  with your data. *Check for Updates…* in the menu opens it and runs the check; the Scan
+  page links to it.
+
 ### Security
 - **Pages on other local ports can no longer send the app commands.** The check that refuses
   writes from other websites trusted the browser's "same-site" label. A site ignores the
