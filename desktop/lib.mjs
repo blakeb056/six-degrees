@@ -128,6 +128,26 @@ export function stopProcess(child, { graceMs = 5000 } = {}) {
 }
 
 /**
+ * The app bundle, from the path of its own executable (process.execPath in
+ * Electron's main process):
+ * "/Applications/Six Degrees.app/Contents/MacOS/Six Degrees" → "/Applications/Six Degrees.app".
+ * null when it isn't running from a bundle (npm run desktop, from a checkout).
+ */
+export function bundlePathFromExe(exe) {
+  const m = String(exe || '').match(/^(\/.+\.app)\/Contents\/MacOS\/[^/]+$/);
+  return m ? m[1] : null;
+}
+
+/**
+ * The page to open first. After an update the new version (or the old one,
+ * put back) is opened with --after-update, and opens Settings, where the
+ * outcome is shown, rather than the map.
+ */
+export function startPathArg(argv = []) {
+  return argv.includes('--after-update') ? '/settings#updates' : null;
+}
+
+/**
  * A data folder asked for on the command line: `--data-dir PATH` or
  * `--data-dir=PATH`. It lets a beta run against a copy of the data:
  *   open "Six Degrees.app" --args --data-dir ~/six-degrees-copy

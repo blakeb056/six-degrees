@@ -88,9 +88,12 @@ The layout inside `Six Degrees.app`:
 ```
 Contents/MacOS/Six Degrees      Electron: the window, the menu, the lifecycle
 Contents/Resources/node         the same Node binary 0.1.x bundles
-Contents/Resources/app/         the same standalone server (+ scanner files)
+Contents/Resources/server/      the same standalone server (+ scanner files, apply-update.sh)
 Contents/Resources/python/      from D2
 ```
+
+(The classic app keeps the server in `Contents/Resources/app/` and its executable is a
+bash script, `Contents/MacOS/six-degrees`.)
 
 - [x] Main process (`desktop/main.mjs`): start `server.js` on the bundled Node with the
       same settings as the old launcher (127.0.0.1, ports walked up from 6363,
@@ -187,8 +190,168 @@ to about 250 MB.
       warning.
 - [ ] Until then, **one-click updates without signing:** the app downloads the new build,
       checks its SHA-256 against `SHA256SUMS`, swaps itself and relaunches. This is
-      `install.sh`'s logic inside the app. It works unsigned because files an app
-      downloads itself are not quarantined.
+      `install.sh`'s logic inside the app, with a rollback `install.sh` doesn't have.
+      Built on the draft branch `settings-updater` (2026-09-25); not released.
+  - [x] The spec allows it: invariant 2 now permits a second, separate press
+        ("Install and restart") to download and install the release. **Blake approves
+        this before it merges.**
+  - [x] Settings → Updates: *Install and restart* after a check finds a newer version,
+        progress (download %, checking, preparing), "Restarting…", and on the next start
+        how it went (nothing, once this copy has reached that version another way). When
+        the app can't update itself it says why, and offers the Terminal line only where
+        the line does what the page says (`lib/updater.js` `terminalFallback`): in
+        Applications it replaces the app; anywhere else (the disk image, a translocated
+        copy, `~/Applications` when `/Applications` isn't writable) `install.sh` installs a
+        second copy and leaves this one running, so the page says to quit first and where
+        the new copy will be; never for a network kept inside the app (`install.sh` deletes
+        the app, and the network with it) or another user's app. Hidden in test mode. Mac
+        app only: an npm or source copy runs inside its own terminal, so it can't replace
+        itself.
+  - [x] The work, while the old version keeps running (`lib/updater-job.js`, decisions
+        in `lib/updater.js`): `releases/latest` again, and only the version the check
+        offered (the server remembers it; a newer one since asks for a new check; never a
+        pre-release, never a version from the page), this chip's `.dmg` by its exact name
+        (the chip from `sysctl hw.optional.arm64`, TRAPS §30), `SHA256SUMS` required
+        (unlike `install.sh`), free space, `hdiutil attach -nobrowse -readonly`,
+        `codesign --verify --deep --strict`, bundle id, version and macOS minimum from
+        `Info.plist`, the chip from the executable's Mach-O header (not `lipo`, the
+        developer-tools stub), no link pointing outside the app (TRAPS §37). Then `ditto`
+        into `.Six Degrees.app.incoming` beside the running app (same disk, so the swap is
+        a rename; not named `.app`, so macOS doesn't see a second app), checked again.
+        Refused when another user of the Mac has the app open (asked before the download
+        and again before the hand-over): they can't be stopped, and it mustn't be swapped
+        from under them.
+  - [x] The hand-over (TRAPS §39): the helper starts detached, from a copy outside the
+        app, with a clean environment and a UTF-8 locale (TRAPS §40); the server ends with
+        exit code 76, which the app reads as "quit quietly". Refused while a scan runs.
+  - [x] The helper, `scripts/apply-update.sh` (shipped inside the app): waits for the
+        processes the server named and every process whose *executable* is inside the app,
+        and stops only those, never a Terminal or editor that merely sits in its folder
+        (TRAPS §40); if they won't go, nothing changes and the app reopens. Renames the old
+        app aside to a name nothing has (never deletes first), renames the new one in
+        (`ditto` if it can't), clears quarantine, and opens it with `--after-update` and
+        `--data-dir` (always: the folder the old one used, however it was chosen). Then it
+        waits for the new version to say it has started: its server writes
+        `update-confirmed.json` on the first page. If the new version can't be put in
+        place, won't open, or closes before saying so (it crashed, or its server couldn't
+        start and the error was dismissed), it is moved out of the way, the old app put
+        back and reopened, and only then is the new one removed. If it runs for 10 minutes
+        without saying so, it is left running. The outcome goes to
+        `~/Library/Caches/Six Degrees/last-update.json`, its log to
+        `$TMPDIR/six-degrees-update.log`. Handles the classic layout too (it moves whole
+        bundles). Not covered: a new version that starts and goes wrong later; the kept
+        zip is the way back.
+  - [x] The previous version is kept, **zipped**, in `~/Library/Caches/Six Degrees`
+        (one copy, replaced by the next update), once the new version has started. Not as
+        an app: a second `Six Degrees.app` there could turn up in Spotlight and be opened
+        by mistake, and a Finder alias or Dock icon may follow the moved folder instead of
+        the path (not seen, but deleting the old folder is what `install.sh` does and has
+        always worked). Unzip it and drag it to Applications to go back.
+  - [x] Leftovers of an update cut off half-way (the aside and failed folders once their
+        helper has ended, a stale staged copy, half-made zips, a download folder, its
+        image unmounted first) are removed at the next check or install. Only this app's
+        own names, and never the previous version a failed update couldn't put back.
+  - [x] Tests: the decisions (`tests/updater.test.mjs`), the helper against pretend apps
+        with real processes of their own (`tests/apply-update.test.mjs`, run with the
+        server's exact environment), and the whole job against a pretend release on
+        127.0.0.1 with real disk images (`tests/updater-job.test.mjs`,
+        `scripts/test-release-server.mjs`). `SIX_DEGREES_TEST_RELEASES` points the app at
+        such a server; it is honoured only for a 127.0.0.1 address, and the app never
+        sets it.
+  - [ ] **Blake, on a real Mac**: the morning test below. It can't be run without quitting
+        a real copy, because only one copy of the app runs at a time.
+  - [ ] Before release: whether macOS's App Management asks or refuses when the app being
+        replaced was first installed from a browser-downloaded, quarantined `.dmg` (then
+        allowed with Open Anyway). That needs a copy installed that way, on macOS 13, 14,
+        15 and 26 if possible, and a plan of its own for which copy and data to use. If it
+        refuses, the update ends like step 5 below ("Nothing was changed") and the
+        Terminal line still works.
+  - [ ] CI (rule 6, extended): after the smoke test, install the previous release (N-1,
+        once it has this button) from its `.dmg`, serve the `.dmg` just built with
+        `scripts/test-release-server.mjs`, start N-1 with `SIX_DEGREES_TEST_RELEASES`
+        pointing at it, `POST /api/update {action:'check-release'}` then
+        `{action:'install-release'}`, wait for `last-update.json` to say `installed`, then
+        check the installed app is version N, verifies with `codesign`, answers, and that
+        nothing of N-1 is left running.
+
+#### The morning test
+
+**Quit your real Six Degrees first. Nothing below touches it or `~/.six-degrees`.** Every
+copy below is a test copy in `~/Six-Degrees-Update-Test`, started, and reopened by the
+updater, with `--data-dir` set to a test folder, and the "release" comes from a server on
+127.0.0.1. Quitting first matters because one copy runs at a time: a test copy started
+while yours runs only brings yours forward. (Like any copy of the app, the test copies
+share the window settings and page storage in `~/Library/Application Support/Six Degrees`.
+Your network isn't kept there, and your copy puts its own profile back when it opens.)
+
+Three rules for the whole test:
+- Open a test copy only with the commands below, **never from the Dock, Finder or
+  Spotlight**: opened that way it has no `--data-dir` and would open `~/.six-degrees`.
+  (The old "click the Dock icon" check is gone for that reason. It isn't needed: the old
+  folder is deleted once the new version has started, so an alias can only find the app
+  by its path, as after `install.sh`.)
+- Click *Check for updates* and *Install and restart* only in a copy whose Updates section
+  says "Test mode" at the bottom. A copy the updater reopened isn't in test mode (`open`
+  passes no environment) and would ask the real GitHub.
+- Never paste a Terminal line from a test copy. It would install the real release into
+  Applications, over your copy. (Test mode doesn't show it.)
+
+1. Build the old version and the new one, from a checkout of this branch (`~/dev/sd-wt-updater` below; use yours):
+   ```
+   cd ~/dev/sd-wt-updater
+   mkdir -p ~/Six-Degrees-Update-Test/release ~/Six-Degrees-Update-Test/data
+   SIX_DEGREES_HOME=~/Six-Degrees-Update-Test/data npm run build:desktop
+   ditto "dist/Six Degrees.app" ~/Six-Degrees-Update-Test/old.app
+   npm pkg set version=0.2.2
+   SIX_DEGREES_HOME=~/Six-Degrees-Update-Test/data npm run build:desktop
+   cp dist/Six-Degrees-0.2.2-*.dmg ~/Six-Degrees-Update-Test/release/
+   ```
+   (A build never opens a data folder; `SIX_DEGREES_HOME` there is a second lock.)
+2. The pretend release, in a Terminal window of its own, left running:
+   `node scripts/test-release-server.mjs --dir ~/Six-Degrees-Update-Test/release --port 3303`
+3. A fresh old copy, in another Terminal window:
+   ```
+   cd ~/Six-Degrees-Update-Test && rm -rf "Six Degrees.app" && ditto old.app "Six Degrees.app"
+   SIX_DEGREES_TEST_RELEASES=http://127.0.0.1:3303 "Six Degrees.app/Contents/MacOS/Six Degrees" --data-dir ~/Six-Degrees-Update-Test/data
+   ```
+   Settings → Updates says "Test mode" at the bottom, and About shows the test data folder.
+4. **The update.** Check for updates → "Version 0.2.2 is available" → Install and restart.
+   Expect: progress; the window closes; within a few seconds 0.2.2 opens by itself on
+   Settings, saying "Updated to 0.2.2", with About showing `~/Six-Degrees-Update-Test/data`.
+   Then: `cat ~/Library/Caches/Six\ Degrees/last-update.json` says `installed` and names
+   `Six Degrees 0.2.1.zip` in that folder; `cat "$TMPDIR/six-degrees-update.log"` has
+   "The new version has started." and ends "Outcome: installed";
+   `ls -A ~/Six-Degrees-Update-Test` shows no `.Six Degrees.app.…` folder; and
+   `ps -axo pid,command | grep -F Six-Degrees-Update-Test` shows only the new copy (and
+   the grep). Quit it (Six Degrees → Quit).
+5. **A refusal: nothing changes.** Repeat step 3, then, before clicking anything,
+   `chflags uchg ~/Six-Degrees-Update-Test/"Six Degrees.app"`. Check for updates →
+   Install and restart. Expect: the window closes, and the same old version reopens on
+   Settings: "The update to 0.2.2 didn't finish: macOS didn't let Six Degrees move its old
+   version aside (…). Nothing was changed." Quit it, then
+   `chflags nouchg ~/Six-Degrees-Update-Test/"Six Degrees.app"`.
+6. **A rollback** (one more build, about as long as step 1's): a new version whose server
+   can't start.
+   ```
+   cd ~/dev/sd-wt-updater
+   sed -i '' "s/'server.js'/'no-such-server.js'/" desktop/main.mjs
+   npm pkg set version=0.2.3
+   SIX_DEGREES_HOME=~/Six-Degrees-Update-Test/data npm run build:desktop
+   rm ~/Six-Degrees-Update-Test/release/*.dmg && cp dist/Six-Degrees-0.2.3-*.dmg ~/Six-Degrees-Update-Test/release/
+   ```
+   Stop step 2's server (Ctrl-C) and start it again. Repeat step 3, then Check for updates
+   → 0.2.3 → Install and restart. Expect: the window closes, 0.2.3 opens and says it
+   stopped or couldn't start; click OK; within a few seconds 0.2.1 reopens on Settings:
+   "The update to 0.2.3 didn't finish: the new version closed before it finished starting.
+   Your previous version was put back." Quit it.
+7. Clean up: stop step 2's server (Ctrl-C), then
+   ```
+   rm -rf ~/Six-Degrees-Update-Test "$HOME/Library/Caches/Six Degrees"
+   cd ~/dev/sd-wt-updater && git checkout package.json desktop/main.mjs
+   ```
+   (`~/Library/Caches/Six Degrees` holds only the updater's files: it didn't exist before
+   this, and 0.2.1 doesn't use it.) Then open your real Six Degrees from Applications, as
+   usual.
 
 ### D5 — Optional: the scanner in JavaScript
 
@@ -228,5 +391,5 @@ reason first:
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | after D1 (recommended over D5; Blake to confirm) |
 | D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
-| D4 Signing | when Blake decides to pay |
+| D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
 | D5 Scanner in JS | optional; spec still rejects it |

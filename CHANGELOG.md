@@ -67,6 +67,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Mac app finishes with *Restart now*; with `npx six-degrees`, stop it and start it again.
   Refused while a scan runs, scans wait until the import is finished, and the import waits
   while another copy of Six Degrees has the same folder open.
+- **Install and restart, in the Mac app: updating without Terminal.** When *Check for
+  Updates…* finds a newer version, one more click installs it. The app downloads that
+  release from GitHub (about 190 MB), checks it against the release's published checksums
+  and checks that the app's code signature is intact, and gets it ready while you keep
+  working. Then it closes, puts the new version in its place and opens it on Settings,
+  which says how it went ("Updated to 0.2.2"). Your network isn't touched, and the new
+  version backs it up before it opens it.
+  - Nothing is downloaded until you click Install, and it never happens by itself. It
+    installs the version the check showed you; if a newer one came out in between, it asks
+    you to check again.
+  - If the new version can't be put in place, won't open, or closes before its first page
+    appears, your previous version is put back and reopened, and Settings says why. Once
+    the new version has started, the previous one is kept, zipped, in
+    `~/Library/Caches/Six Degrees` until the next update: the way back if the new one
+    misbehaves later.
+  - While it swaps the app, it stops only the app's own programs. A Terminal or an editor
+    open in the app's folder is left alone.
+  - When the app can't replace itself (it's running from the disk image, from a folder your
+    user can't change, another user installed it or has it open, or your network is kept
+    inside the app), it says why and what to do. Where the Terminal line helps, it gives
+    you the line and says what it will do; where the line would delete your network, it
+    doesn't offer it. The npm and source copies keep their Terminal lines.
+  - Copies of 0.2.1 and older don't have the button: update them with the Terminal line
+    once more.
 
 ### Changed
 - **The Queue and the person panel go by company scores, not a list of names.** Both kept
