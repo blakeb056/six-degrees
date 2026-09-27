@@ -2,10 +2,14 @@
 //   1. Not on a Mac: say so plainly, with the Linux route.
 //   2. A likely chip: if the graphics card name gives it away (Chrome shows
 //      "Apple M…", or "Intel"), point at that download. Safari hides it; then
-//      nothing is guessed and both buttons stay equal.
+//      nothing is guessed and the button stays on Apple Silicon, the Mac most
+//      people have, with Intel one link away.
 //   3. The latest version and its size, asked of GitHub once. If that fails,
 //      the page keeps its fallback line.
 //   4. A Copy button for the Terminal line.
+//   5. Videos play by themselves, silently, while they're on screen, and pause
+//      when scrolled away. Pausing one yourself keeps it paused. Not when the
+//      Mac asks for reduced motion.
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -22,13 +26,16 @@
     $('not-mac').hidden = false;
   } else {
     chip = guessChip();
-    if (chip) {
-      const pick = chip === 'silicon' ? $('dl-silicon') : $('dl-intel');
-      pick.classList.add('suggested');
-      $('chip-guess').textContent = chip === 'silicon'
-        ? 'This looks like an Apple Silicon Mac: take the Apple Silicon download.'
-        : 'This looks like an Intel Mac: take the Intel download.';
-      $('chip-guess').hidden = false;
+    if (chip === 'intel') {
+      // The main button becomes Intel's; the link offers Apple Silicon.
+      const main = $('dl-main');
+      const alt = $('dl-alt');
+      [main.href, alt.href] = [alt.href, main.href];
+      $('dl-main-sub').textContent = 'Intel · for this Mac';
+      $('dl-alt-label').textContent = 'Apple Silicon Mac?';
+      alt.textContent = 'Download for Apple Silicon';
+    } else if (chip === 'silicon') {
+      $('dl-main-sub').textContent = 'Apple Silicon · for this Mac';
     }
   }
 
@@ -62,6 +69,29 @@
       $('version-line').textContent = `Version ${version} · macOS 13.5 or later${size} · free and open source`;
     })
     .catch(() => { /* keep the fallback line */ });
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    const seen = new IntersectionObserver((entries) => {
+      for (const { target: v, isIntersecting, intersectionRatio } of entries) {
+        if (isIntersecting && intersectionRatio >= 0.5) {
+          if (v.paused && !v.ended && !v.dataset.userPaused) v.play().catch(() => { /* the browser said no: controls still work */ });
+        } else if (!v.paused) {
+          v.dataset.autoPaused = '1';
+          v.pause();
+        }
+      }
+    }, { threshold: [0, 0.5] });
+    for (const v of document.querySelectorAll('figure.video video')) {
+      v.muted = true; // playing by itself needs it, and the videos are silent anyway
+      v.addEventListener('pause', () => {
+        if (!v.dataset.autoPaused && !v.ended) v.dataset.userPaused = '1';
+        delete v.dataset.autoPaused;
+      });
+      v.addEventListener('play', () => { delete v.dataset.userPaused; });
+      seen.observe(v);
+    }
+  }
 
   const copy = $('copy');
   copy.addEventListener('click', async () => {

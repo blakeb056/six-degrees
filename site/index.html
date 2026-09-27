@@ -13,7 +13,7 @@
   <meta name="theme-color" content="#0b0a1c">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css?v=2026-09-28">
-  <script src="app.js?v=2026-09-25" defer></script>
+  <script src="app.js?v=2026-09-28" defer></script>
 </head>
 <body>
   <header class="top">
@@ -42,14 +42,14 @@
       </p>
 
       <div class="downloads" id="download">
-        <a class="dl primary" id="dl-silicon" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
-          <span class="dl-title">Download for Mac</span>
-          <span class="dl-sub">Apple Silicon (M1 or newer)</span>
+        <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Download for Mac</span>
+            <span class="dl-sub" id="dl-main-sub">Apple Silicon (M1 or newer)</span>
+          </span>
         </a>
-        <a class="dl" id="dl-intel" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">
-          <span class="dl-title">Download for Mac</span>
-          <span class="dl-sub">Intel</span>
-        </a>
+        <p class="dl-alt"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a></p>
       </div>
       <p class="fine" id="version-line">macOS 13.5 or later · about 195–210 MB · free and open source</p>
       <p class="guess" id="chip-guess" hidden></p>
@@ -221,8 +221,11 @@
 
     <section class="again">
       <a class="dl primary" href="#download">
-        <span class="dl-title">Get Six Degrees</span>
-        <span class="dl-sub">Free for Mac</span>
+        <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="dl-text">
+          <span class="dl-title">Get Six Degrees</span>
+          <span class="dl-sub">Free for Mac</span>
+        </span>
       </a>
     </section>
 
