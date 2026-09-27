@@ -20,14 +20,15 @@ export default function UserProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Demo mode: hand back a fixed identity so the app renders Blake's snapshot
-    // for everyone, with no onboarding and no /api/users call.
+    // Demo mode: hand back a fixed identity so the app renders the invented
+    // sample network (public/demo-data.json) for everyone, with no onboarding
+    // and no /api/users call. It names no company, as a CSV import doesn't.
     if (IS_DEMO) {
       setUserId(DEMO_USER.id);
       setUserName(DEMO_USER.name);
       setUserProfile({
         name: DEMO_USER.name, headline: DEMO_USER.headline,
-        role: '', company: 'Stead Labs', industry: '', sectors: [], goals: [], linkedin_url: '',
+        role: '', company: '', industry: '', sectors: [], goals: [], linkedin_url: '',
       });
       setReady(true);
       return;

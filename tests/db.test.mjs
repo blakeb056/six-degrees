@@ -137,9 +137,9 @@ test('.in() filters, and an empty list matches nothing', async () => {
 });
 
 test('.ilike() is case-insensitive', async () => {
-  await db.from('users').insert({ name: 'Blake Burford' });
-  const { data } = await db.from('users').select('*').ilike('name', 'blake burford').single();
-  assert.equal(data.name, 'Blake Burford');
+  await db.from('users').insert({ name: 'Ines Okafor' });
+  const { data } = await db.from('users').select('*').ilike('name', 'ines okafor').single();
+  assert.equal(data.name, 'Ines Okafor');
 });
 
 test('descending order puts NULL scores last', async () => {

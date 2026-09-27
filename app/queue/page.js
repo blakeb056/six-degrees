@@ -6,15 +6,21 @@ import { IS_DEMO } from '../../lib/demo';
 import OutlinkQuest from '../components/OutlinkQuest';
 import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
+import { rowCompanyScore, TOP_COMPANY } from '../../lib/scoring';
 import Link from 'next/link';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-const PRESTIGE = ['snap', 'google', 'meta', 'apple', 'amazon', 'microsoft', 'netflix', 'tesla', 'spotify', 'tiktok', 'coca-cola', 'nike', 'disney', 'palantir', 'stripe', 'coinbase', 'polymarket', 'pinterest', 'whatnot', 'blackrock', 'anduril'];
 
+// Who to reach first: power, +1 when the company their score is built on is a
+// top one by the model's own scores (TOP_COMPANY: the curated list's major
+// companies and up, or one you or your sector score that high), a nudge for
+// the free-text sectors on your profile, then a lift for S and A. The +1 used
+// to come from a list of one person's favourite names, matched anywhere in the
+// headline, once per name: "Metadata" counted as Meta, "Ex-Google" as Google.
 function calculatePriority(person, sectors) {
   let score = parseFloat(person.power_score) || 0;
   const hl = (person.headline || '').toLowerCase();
-  PRESTIGE.forEach(c => { if (hl.includes(c)) score += 1; });
+  if (rowCompanyScore(person) >= TOP_COMPANY) score += 1;
   (sectors || []).forEach(s => { if (hl.includes(s.toLowerCase())) score += 0.5; });
   if (person.tier === 'S') score *= 1.5;
   else if (person.tier === 'A') score *= 1.2;

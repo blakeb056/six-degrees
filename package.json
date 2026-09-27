@@ -43,7 +43,6 @@
     "scripts/scrape.py",
     "scripts/image_store.py",
     "scripts/requirements.txt",
-    "scripts/score_new_connections.sql",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",

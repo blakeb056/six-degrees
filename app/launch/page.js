@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { SAMPLE_STATS } from '../../lib/sample-stats';
 
 // ── Intersection Observer hook for scroll-triggered animations ──
 function useInView(options = {}) {
@@ -177,13 +178,15 @@ function HeroSection() {
 // ═══════════════════════════════════════════════════════════════
 // STATS BAR — Animated counters
 // ═══════════════════════════════════════════════════════════════
+// The numbers on this page are the invented sample network's
+// (lib/sample-stats.js), never one person's real network.
 function StatsBar() {
   const [ref, inView] = useInView();
   const stats = [
-    { label: 'Connections Mapped', value: 2438, color: '#3498DB' },
-    { label: 'Bridges Discovered', value: 25, color: '#FFD700' },
-    { label: 'Power Scored', value: 575, color: '#9B59B6' },
-    { label: 'Degrees Deep', value: 6, color: '#00ff88' },
+    { label: 'Connections Mapped', value: SAMPLE_STATS.connections, color: '#3498DB' },
+    { label: 'Bridges Discovered', value: SAMPLE_STATS.bridges, color: '#FFD700' },
+    { label: 'People Scored', value: SAMPLE_STATS.people, color: '#9B59B6' },
+    { label: 'Companies', value: SAMPLE_STATS.companies, color: '#00ff88' },
   ];
   return (
     <section ref={ref} style={{ padding: '80px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -196,12 +199,14 @@ function StatsBar() {
           }}>
             <div style={{ fontSize: 48, fontWeight: 800, color: s.color, lineHeight: 1 }}>
               <Counter end={s.value} active={inView} />
-              {s.value > 100 ? '+' : ''}
             </div>
             <div style={{ fontSize: 13, color: '#666', marginTop: 8, fontWeight: 500, letterSpacing: 0.5 }}>{s.label}</div>
           </div>
         ))}
       </div>
+      <p style={{ textAlign: 'center', fontSize: 12, color: '#555', margin: '32px auto 0', maxWidth: 520 }}>
+        Counted from the sample network that comes with the app. Every person in it is invented.
+      </p>
     </section>
   );
 }
@@ -315,9 +320,10 @@ function GalaxySection() {
 function ChainSection() {
   const [ref, inView] = useInView();
   const degrees = [
-    { d: 1, label: 'Your Connections', desc: 'Direct network — scored & tiered', color: '#3498DB', count: 575 },
-    { d: 2, label: 'Bridge Connections', desc: 'Friends of your bridges', color: '#9B59B6', count: 1519 },
-    { d: 3, label: 'Extended Reach', desc: 'Bridged from promoted D2s', color: '#FFD700', count: 344 },
+    // The sample's counts; it maps two degrees.
+    { d: 1, label: 'Your Connections', desc: 'Direct network — scored & tiered', color: '#3498DB', count: SAMPLE_STATS.degree1 },
+    { d: 2, label: 'Bridge Connections', desc: 'Friends of your bridges', color: '#9B59B6', count: SAMPLE_STATS.degree2 },
+    { d: 3, label: 'Extended Reach', desc: 'Bridged from promoted D2s', color: '#FFD700', count: null },
     { d: 4, label: 'Industry Layer', desc: 'Company & sector intelligence', color: '#FF6B35', count: null },
     { d: 5, label: 'Market Layer', desc: 'Cross-industry connections', color: '#00ff88', count: null },
     { d: 6, label: 'Global Reach', desc: 'Anyone in the world', color: '#ff5050', count: null },
@@ -396,6 +402,9 @@ function ChainSection() {
             </div>
           ))}
         </div>
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#555', marginTop: 40 }}>
+          The counts are the sample network&rsquo;s, whose people are all invented.
+        </p>
       </div>
     </section>
   );
@@ -407,7 +416,7 @@ function ChainSection() {
 function ScoringSection() {
   const [ref, inView] = useInView();
   const tiers = [
-    { tier: 'S', label: 'Supreme', score: '7.0+', color: TIER.S, glow: 'rgba(255,215,0,0.3)', people: 'C-Suite, VPs, Founders', icon: '👑' },
+    { tier: 'S', label: 'Supreme', score: '7.5+', color: TIER.S, glow: 'rgba(255,215,0,0.3)', people: 'C-Suite, VPs, Founders', icon: '👑' },
     { tier: 'A', label: 'Ace', score: '5.5+', color: TIER.A, glow: 'rgba(155,89,182,0.3)', people: 'Directors, Senior Leaders', icon: '💎' },
     { tier: 'B', label: 'Builder', score: '4.0+', color: TIER.B, glow: 'rgba(52,152,219,0.3)', people: 'Managers, Senior ICs', icon: '🔷' },
     { tier: 'C', label: 'Connector', score: '2.5+', color: TIER.C, glow: 'rgba(149,165,166,0.2)', people: 'Associates, Specialists', icon: '🔸' },
@@ -479,10 +488,10 @@ function FeaturesGrid() {
     {
       title: 'Paths',
       subtitle: 'Company Intelligence',
-      desc: 'Scan any company on LinkedIn and see every person mapped, scored, and organized by seniority. 80+ company normalizations built in.',
+      desc: 'Scan any company on LinkedIn and see every person mapped, scored, and organized by seniority.',
       color: '#00ff88',
       icon: '🏢',
-      stat: '344 people scanned',
+      stat: `${SAMPLE_STATS.companies} companies in the sample`,
     },
     {
       title: 'Outlink',
@@ -490,7 +499,7 @@ function FeaturesGrid() {
       desc: 'Your curated list of high-value D2 connections to request. Grouped by bridge, filtered by tier, with batch-open for efficient networking.',
       color: '#FF6B35',
       icon: '🚀',
-      stat: '798 recommendations',
+      stat: `${SAMPLE_STATS.recommendations} recommendations in the sample`,
     },
     {
       title: 'XP System',
@@ -506,7 +515,7 @@ function FeaturesGrid() {
       desc: 'Select any D1 connection as a bridge. Automatically discover and score all their connections — your D2 layer.',
       color: '#9B59B6',
       icon: '🔗',
-      stat: '25 bridges mapped',
+      stat: `${SAMPLE_STATS.bridges} bridges in the sample`,
     },
   ];
 
@@ -599,13 +608,14 @@ function TechSection() {
             background: GRADIENT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             marginBottom: 32,
           }}>
-            P = (S &times; 0.5) + (C &times; 0.3) + B
+            P = T &times; (0.45 + 0.055 &times; C) + R + B
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
             {[
-              { sym: 'S', label: 'Seniority', desc: 'VP = 8, Director = 6, Manager = 4', weight: '50%', color: TIER.S },
-              { sym: 'C', label: 'Company Prestige', desc: 'FAANG = 9, Fortune 500 = 7', weight: '30%', color: TIER.A },
-              { sym: 'B', label: 'Circle Bonus', desc: 'Inner circle proximity boost', weight: '20%', color: TIER.B },
+              // The model in lib/scoring.js: a product, so a title counts for more at a bigger company.
+              { sym: 'T', label: 'Title', desc: 'C-suite 10, VP 9, Director 7.5, Manager 6.5', note: 'Multiplied by the company', color: TIER.S },
+              { sym: 'C', label: 'Company', desc: 'Well-known 7–10, else estimated from your network', note: 'Weight 0.5 to 1.0', color: TIER.A },
+              { sym: 'R + B', label: 'Reach & bridge', desc: 'Investor, YC, an audience in the millions; a strong circle', note: 'Up to +1.5 and +1', color: TIER.B },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: 16, borderRadius: 12, background: `${item.color}08`,
@@ -615,7 +625,7 @@ function TechSection() {
                 <div style={{ fontSize: 28, fontWeight: 900, color: item.color }}>{item.sym}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 4 }}>{item.label}</div>
                 <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>{item.desc}</div>
-                <div style={{ fontSize: 10, color: item.color, fontWeight: 700, marginTop: 8 }}>Weight: {item.weight}</div>
+                <div style={{ fontSize: 10, color: item.color, fontWeight: 700, marginTop: 8 }}>{item.note}</div>
               </div>
             ))}
           </div>
@@ -627,7 +637,7 @@ function TechSection() {
           opacity: inView ? 1 : 0, transition: 'opacity 1s ease 0.6s',
         }}>
           {[
-            { t: 'S', min: 7, color: TIER.S },
+            { t: 'S', min: 7.5, color: TIER.S },
             { t: 'A', min: 5.5, color: TIER.A },
             { t: 'B', min: 4, color: TIER.B },
             { t: 'C', min: 2.5, color: TIER.C },
@@ -751,7 +761,7 @@ function CTASection() {
           opacity: inView ? 0.4 : 0, transition: 'opacity 1.5s ease 0.5s',
         }}>
           <span style={{ fontSize: 12, color: '#444' }}>Built by Blake Burford</span>
-          <span style={{ fontSize: 12, color: '#444' }}>Stead Labs</span>
+          <span style={{ fontSize: 12, color: '#444' }}>Open source · MIT</span>
           <span style={{ fontSize: 12, color: '#444' }}>2026</span>
         </div>
       </div>

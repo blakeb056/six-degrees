@@ -136,7 +136,7 @@ try {
 } catch { /* not a git checkout: nothing to compare against */ }
 // The scraper is not part of the standalone output but the Scan page runs it.
 for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt',
-                   'scripts/score_new_connections.sql', 'scripts/audit-avatars.mjs']) {
+                   'scripts/audit-avatars.mjs']) {
   const from = path.join(ROOT, rel);
   if (existsSync(from)) {
     mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { getDb } from '../../../lib/db-client';
 import { readSettings, writeSettings, SettingsError } from '../../../lib/settings';
+import { afterSettingsChange } from '../../../lib/settings-effects';
 import { dataDir, projectRoot, isGitCheckout } from '../../../lib/paths';
 import { installKind } from '../../../lib/release';
 import { APP_VERSION } from '../../../lib/app-version';
@@ -37,10 +38,21 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: 'Send the settings as JSON.' }, { status: 400 });
   }
+  let before, settings;
   try {
-    const settings = writeSettings(getDb(), body?.settings);
-    return Response.json({ settings });
+    before = readSettings(getDb());
+    settings = writeSettings(getDb(), body?.settings);
   } catch (err) {
     return Response.json({ error: err.message }, { status: err instanceof SettingsError ? 400 : 500 });
+  }
+  // What the change sets in motion (lib/settings-effects.js): a new sector
+  // focus rescores everyone. The save has landed either way, so a failure
+  // here is reported with the saved settings (and whatever work did finish)
+  // rather than hidden.
+  try {
+    const effects = afterSettingsChange(getDb(), before, settings);
+    return Response.json(effects ? { settings, effects } : { settings });
+  } catch (err) {
+    return Response.json({ settings, ...(err.effects ? { effects: err.effects } : {}), error: err.message }, { status: 500 });
   }
 }
