@@ -114,6 +114,8 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 .features article:nth-child(3) h3 { color: #3ee08f; }
 .features article:nth-child(4) h3 { color: #ff9f5a; }
 .features p, .cards p { margin: 0; color: var(--muted); font-size: 15.5px; }
+.new-in { margin: 4px 0 12px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.features.three { grid-template-columns: repeat(3, 1fr); }
 figure { margin: 0 0 28px; }
 figure img { display: block; border-radius: 12px; border: 1px solid var(--line); }
 figcaption { color: var(--muted); font-size: 15px; margin-top: 10px; text-align: center; }
@@ -135,7 +137,7 @@ figcaption strong { color: var(--text); }
 footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
 
 @media (max-width: 860px) {
-  .steps, .features, .cards { grid-template-columns: 1fr; }
+  .steps, .features, .features.three, .cards { grid-template-columns: 1fr; }
   .steps { gap: 26px; }
   section { padding: 40px 0; }
 }
