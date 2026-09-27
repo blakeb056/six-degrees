@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Pages on other local ports can no longer send the app commands.** The check that refuses
+  writes from other websites trusted the browser's "same-site" label. A site ignores the
+  port, so a page served by any other app or dev server on `127.0.0.1` counted as the same
+  site and could POST to `/api/update` and `/api/scraper`. A same-site write must now carry
+  an `Origin` that is exactly this app's host and port. The app's own pages are unaffected.
+- **Websites can no longer read or change the network through DNS rebinding.** A site can
+  make its own domain point at `127.0.0.1`; the browser then treats the app as that site's
+  own origin, so the page could read `/api/network` and the photos, and send writes. While
+  the app is bound to loopback, requests to `/api` and `/avatars` must now be addressed to
+  `127.0.0.1`, `localhost` or `[::1]`; any other name gets a 421.
+
 ## [0.2.1] - 2026-09-25
 
 ### Added

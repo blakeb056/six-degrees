@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isDestructive, gateDecision, isCrossSiteWrite } from './lib/gate';
+import { isDestructive, gateDecision, isCrossSiteWrite, isRebound } from './lib/gate';
 
 // Two separate protections.
 //
@@ -18,6 +18,18 @@ import { isDestructive, gateDecision, isCrossSiteWrite } from './lib/gate';
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  // 0. A request addressed to some other name (DNS rebinding) is refused before
+  //    anything else, reads included: lib/gate.js isRebound explains why.
+  if (isRebound({
+    bind: process.env.SIX_DEGREES_BIND || process.env.HOSTNAME,
+    host: request.headers.get('host'),
+  })) {
+    return Response.json(
+      { error: 'This app only answers to 127.0.0.1 and localhost.' },
+      { status: 421 }
+    );
+  }
 
   if (isCrossSiteWrite({
     method: request.method,
@@ -44,5 +56,7 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  // /avatars serves the photos of the people in the network, so it gets the
+  // same rebinding check as the API.
+  matcher: ['/api/:path*', '/avatars/:path*'],
 };
