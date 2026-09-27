@@ -34,12 +34,17 @@ code, kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0
 kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--panel); }
 
 .top {
+  position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  max-width: 1120px; margin: 0 auto; padding: 18px 24px;
+  padding: 14px max(24px, calc((100% - 1072px) / 2));
+  background: rgba(11, 10, 28, 0.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
 }
+/* Jumps from the menu land below the pinned header, not under it. */
+section[id], figure[id], #download { scroll-margin-top: 84px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 18px; }
 .top nav { display: flex; gap: 22px; flex-wrap: wrap; }
-.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; white-space: nowrap; }
 .top nav a:hover { color: var(--text); }
 
 main { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
@@ -74,7 +79,6 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 .hero .fine { margin: 14px 0 0; }
 .guess { color: var(--gold); font-size: 14px; margin: 6px 0 0; }
 .not-mac { max-width: 560px; margin: 0 auto 18px; padding: 12px 16px; border-radius: 10px; background: rgba(255, 138, 61, 0.1); border: 1px solid rgba(255, 138, 61, 0.35); color: var(--text); font-size: 15px; }
-.shot { display: block; margin: 44px auto 6px; border-radius: 12px; }
 .caption { color: var(--faint); font-size: 13px; margin: 0; }
 
 /* install */
@@ -101,7 +105,6 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 /* the tutorial videos (silent: the captions are in the picture). index.html asks for
    this file by version (style.css?v=…): a browser holding the old copy drew them at
    their full 1920px, off-centre. Bump the version whenever the page's layout changes. */
-.watch { margin: 8px 0 0; }
 .video { max-width: 860px; margin: 0 auto 32px; }
 .video video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #05040f; }
 .ways .video { margin: 32px auto 0; }
@@ -136,6 +139,23 @@ figcaption strong { color: var(--text); }
 
 footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
 
+/* The three steps, as a path under the download buttons and as badges on the headings. */
+.step {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: 0.35em;
+  border-radius: 50%; background: var(--gold); color: #0b0a1c; font-size: 0.62em; font-weight: 800;
+  vertical-align: 0.18em;
+}
+.roadmap { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; list-style: none; padding: 0; margin: 22px 0 0; }
+.roadmap a {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; font-size: 15px;
+}
+.roadmap a:hover { border-color: rgba(255, 215, 0, 0.5); }
+.roadmap .step { font-size: 12px; width: 22px; height: 22px; margin: 0; vertical-align: 0; }
+.kicker { text-align: center; margin: 0 0 6px; color: var(--gold); font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.intro { text-align: center; color: var(--muted); max-width: 680px; margin: -8px auto 24px; }
+.caption.center { text-align: center; margin-top: 8px; }
+
 @media (max-width: 860px) {
   .steps, .features, .features.three, .cards { grid-template-columns: 1fr; }
   .steps { gap: 26px; }
@@ -144,8 +164,12 @@ footer { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; text-align:
 @media (max-width: 520px) {
   body { font-size: 16px; }
   .hero h1 br { display: none; }
-  .top nav { gap: 16px; }
-  .top nav a:not(:last-child) { display: none; }
+  .top { flex-wrap: wrap; row-gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .top nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; scrollbar-width: none; }
+  .top nav a { font-size: 14px; }
+  .top nav a[href^="http"] { display: none; } /* GitHub is in the footer; the five sections fit */
+  .top nav::-webkit-scrollbar { display: none; }
+  section[id], figure[id], #download { scroll-margin-top: 108px; }
   .dl { min-width: 0; width: 100%; }
   .cmd { flex-direction: column; }
   .cmd button { padding: 10px; }
