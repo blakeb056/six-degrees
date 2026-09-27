@@ -30,7 +30,11 @@ wrong, however good it looks.
 3. **The user's data is untouchable.** It stays in `~/.six-degrees`
    (`%USERPROFILE%\.six-degrees` on Windows). From D0 on, the first launch of a new
    version copies the database into `backups/` (keeping the last five) before anything
-   opens it.
+   opens it. The one thing that replaces it is an import the user asks for (Settings →
+   Your data): checked first, applied only at the next start, and only after what was
+   there is kept in `backups/before-import-*`, which nothing ever prunes. The app never
+   moves the folder itself: a live SQLite database in a synced folder can tear, and
+   `chrome-profile/` lives inside it.
 4. **Nothing becomes "latest" until it is proven.** Each desktop phase ships first as a
    GitHub **pre-release** (`v0.2.0-beta.1`). `install.sh`, `install.ps1` and the Updates
    panel follow only `releases/latest`, which skips pre-releases, so no user gets a beta
@@ -97,6 +101,23 @@ Contents/Resources/python/      from D2
       (TRAPS §38). Checked: quit mid-job with another app in front, and job, server and app
       were gone in about 2 seconds.
 - [x] One copy at a time: opening it again brings the window forward (checked).
+- [x] `--data-dir` is made absolute where it is parsed (`dataDirArg`): against the folder
+      the app was started in, or the home folder when that is `/` (as with `open` and the
+      Finder), with `~` expanded. Handed over as typed, a relative path named a folder
+      inside the app, where the server runs, and so a new, empty network.
+- [ ] Restart to finish an import (Settings → Your data): the server exits with 75
+      (`SIX_DEGREES_RESTART_CODE`, which only this shell sets; Next's own exit on SIGTERM
+      is 143, so a signal can't pass for it). The shell shows the starting page, starts the
+      server again on the same port if it's free, and returns to Settings → Your data. A
+      server that asks to be restarted before it has ever answered is reported as a crash
+      (it can't stay up); one that answered is restarted however soon after the last, so
+      clicking Restart now again after an import that stopped is never "Six Degrees
+      stopped". 76 (the in-app updater's hand-off), 143 and 130 (Next stopped from outside)
+      and a signal quit quietly; any other code is a crash. The decision is
+      `serverExitAction` (tested, every code); the server's side was checked with the
+      standalone build. **Tick once it has been clicked through in the real app**, then
+      check the Save dialog for *Save a copy* (there is no `will-download` handler, so
+      Electron asks where to save).
 - [x] Links: anything not on the app's own address opens in the default browser (rule 7);
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,

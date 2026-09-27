@@ -10,8 +10,9 @@ import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { existsSync, mkdirSync } from 'node:fs';
-import { homedir, platform } from 'node:os';
+import { platform } from 'node:os';
 import path from 'node:path';
+import { parseArgs, resolveDataDir } from './args.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
@@ -31,19 +32,6 @@ function checkNode() {
       process.exit(1);
     }
   }
-}
-
-function parseArgs(argv) {
-  const out = { port: Number(process.env.PORT) || 6363, open: true };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--port' || a === '-p') out.port = Number(argv[++i]);
-    else if (a === '--no-open') out.open = false;
-    else if (a === '--data-dir') process.env.SIX_DEGREES_HOME = argv[++i];
-    else if (a === '--help' || a === '-h') out.help = true;
-    else if (a === '--version' || a === '-v') out.version = true;
-  }
-  return out;
 }
 
 const HELP = `
@@ -106,9 +94,15 @@ async function main() {
     return;
   }
 
+  if (args.error) {
+    console.error(`\n  ${args.error}\n`);
+    process.exit(1);
+  }
+
   checkNode();
 
-  const dataDir = process.env.SIX_DEGREES_HOME || path.join(homedir(), '.six-degrees');
+  // Absolute (bin/args.mjs): the server runs from inside the package, not here.
+  const dataDir = resolveDataDir(args);
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 
   const server = path.join(ROOT, '.next', 'standalone', 'server.js');
