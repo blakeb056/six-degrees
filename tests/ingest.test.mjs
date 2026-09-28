@@ -41,6 +41,16 @@ test('LinkedIn\'s "Connected on" dates become ISO dates, without a timezone shif
   assert.equal(toIsoDate('2026-09-22'), '2026-09-22');
 });
 
+test('the CSV export\'s "28 Sep 2026" reads the same way, and a day the month lacks is refused', () => {
+  assert.equal(toIsoDate('28 Sep 2026'), '2026-09-28');
+  assert.equal(toIsoDate('01 Jan 2026'), '2026-01-01');
+  assert.equal(toIsoDate('3 September 2026'), '2026-09-03');
+  assert.equal(toIsoDate('29 Feb 2024'), '2024-02-29');
+  assert.equal(toIsoDate('29 Feb 2026'), null);
+  assert.equal(toIsoDate('February 30, 2026'), null);
+  assert.equal(toIsoDate('31 Apr 2026'), null);
+});
+
 test('text that is not a date gives null rather than throwing', () => {
   assert.equal(toIsoDate(''), null);
   assert.equal(toIsoDate(null), null);

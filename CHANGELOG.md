@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that person's circle, and Degrees offered *Auto-Bridge Next*, but both networks live
   only in the window, so the scan could only fail ("Bridge '…' not found in database").
   In their place a line says scanning needs your own network.
+- **A CSV import's dates are the day LinkedIn says.** Anywhere east of London, each "Connected
+  On" date landed a day early (28 Sep 2026 became 27 Sep). The import now reads it as the
+  calendar date it is, the way a scan already did, and a date it can't read is left blank
+  rather than guessed.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 

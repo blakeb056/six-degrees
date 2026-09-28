@@ -669,6 +669,11 @@ block holding exactly one "Connected on" line (more than one means the climb rea
 list and would take a neighbour's date), and `lib/ingest.js` `toIsoDate` parses it by hand —
 `new Date(text).toISOString()` shifts the day east of Greenwich and throws on bad text.
 
+The CSV import kept its own copy of that mistake (`lib/csv.js`): the export's "28 Sep 2026"
+was saved as the 27th anywhere east of London, and nothing failed, because every test ran
+west of it. It reads through `toIsoDate` now, and `tests/csv.test.mjs` imports the same
+export under six time zones, each in a process of its own (TZ is read when a process starts).
+
 ---
 
 ## 34. Every 2nd-degree read stopped at page 10, and nothing said so
