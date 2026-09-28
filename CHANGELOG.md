@@ -37,6 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Used by rarity** in place of the count from your scans, which could only be a floor.
   - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
     real circle scan is the check. Any other wording reads as no count, never a wrong one.
+- **A public company dataset.** 64 companies and institutions the built-in list leaves off
+  are now known, scored 6 to 8 from public facts on one published scale. Each has its
+  source beside it: an exchange listing, a reported valuation, a U.S. News rank, a federal
+  department's size. The first set, by score:
+  - **8:** Anduril, CoreWeave, GE Vernova, LSEG, MLB, Raymond James, Siemens Energy,
+    Simon Property Group, the U.S. Treasury, Universal Orlando and Universal Pictures.
+  - **7:** 31, among them WWE, Roku, IMAX, UC San Diego, the University of Florida and
+    Tufts.
+  - **6:** 22, among them UCF and USF.
+
+  Someone there is scored from those facts, not as an unknown company, and Paths → Scores
+  labels the score *public data*. The list is built from public sources only, never from
+  anyone's scan, and grows each release. The built-in list itself is unchanged: household
+  names only, 7 and up.
 
 ### Fixed
 - **A request you send shows everywhere, at once.**
@@ -63,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   window. Close a card mid-scan and open it again and its progress is still there; when it
   ends, the card says so. The page asks the scanner once for all of them
   (`/api/scraper?job=1`, which reads only memory), not once per button.
+- **Company names written in styled letters or with a logo are read.** "𝗠𝗶𝗰𝗿𝗼𝘀𝗼𝗳𝘁",
+  "Apple " (with Apple's logo) and "Snapchat｜ex-L'Oréal" (a full-width bar) used to read
+  as unknown companies. So did "Meta Superintelligence Labs" and "Snapchat MENA Region",
+  and a class year ("UCF ’26") hid the school.
 
 ### Changed
 - **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
