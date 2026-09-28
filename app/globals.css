@@ -19,6 +19,13 @@ body:has(> div > [data-map]) {
   overflow: hidden;
 }
 
+/* The Scan page's field question holds Continue and Skip for now at the foot
+   of the window (app/components/FieldStep.js). Without this, a pick reached
+   with Tab can stop behind them. */
+html:has([data-field-question]) {
+  scroll-padding-bottom: 80px;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
