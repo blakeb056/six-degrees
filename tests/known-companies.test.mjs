@@ -306,10 +306,15 @@ test('a name that only starts like a listed company keeps its own', () => {
   // claim what the list is careful to leave alone. Except where the list left a
   // name alone because it is a company of its own, which the dataset now lists.
   const data = new Set(COMPANY_DATA.map(([name]) => name));
-  const ownInData = new Map([['Siemens Energy', 'Siemens Energy'], ['Siemens Gamesa', 'Siemens Energy']]);
+  // A name read as the company that owns it, now the dataset lists that company.
+  const ownInData = new Map([
+    ['Siemens Gamesa', 'Siemens Energy'], ['Delta Faucet Company', 'Masco'], ['Penn State University', 'Penn State'],
+    ['Kellogg Brown & Root', 'KBR'], ['Fidelity National Information Services', 'FIS'],
+    ['Johns Hopkins Applied Physics Laboratory', 'Johns Hopkins APL'],
+  ]);
   for (const n of NOT_LISTED) {
     const c = cleanCompany(n);
-    if (ownInData.get(n) === c) continue;
+    if (ownInData.get(n) === c || (c && data.has(c) && c.toLowerCase() === n.toLowerCase())) continue;
     assert.ok(!c || (!LIST.has(c) && !data.has(c)), `${n} read as ${c}`);
   }
 });

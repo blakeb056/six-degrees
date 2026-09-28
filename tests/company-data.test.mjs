@@ -131,9 +131,15 @@ test('every entry reads as itself, at its score, with an industry and a source',
   }
 });
 
+// The entries grown from public lists match only the whole forms listed for them
+// (exactly()); tests/company-data-spellings.json holds those forms, written out
+// when they were researched, so each is read here the way the app reads it.
+const GROWN = JSON.parse(readFileSync(path.join(ROOT, 'tests/company-data-spellings.json'), 'utf8'));
+const ALL_SPELLINGS = { ...SPELLINGS, ...GROWN };
+
 test('each entry reads from the ways its name is written', () => {
-  assert.equal(Object.keys(SPELLINGS).length, COMPANY_DATA.length, 'every entry has spellings here');
-  for (const [name, spellings] of Object.entries(SPELLINGS)) {
+  assert.equal(Object.keys(ALL_SPELLINGS).length, COMPANY_DATA.length, 'every entry has spellings here');
+  for (const [name, spellings] of Object.entries(ALL_SPELLINGS)) {
     assert.ok(DATA.has(name), `${name} is in the dataset`);
     for (const s of spellings) assert.equal(cleanCompany(s), name, s);
   }
@@ -141,7 +147,7 @@ test('each entry reads from the ways its name is written', () => {
 
 test('no name is claimed by two entries, across both lists', () => {
   for (const [name] of BOTH) assert.deepEqual(claims(name), [name], name);
-  for (const [name, spellings] of Object.entries(SPELLINGS)) {
+  for (const [name, spellings] of Object.entries(ALL_SPELLINGS)) {
     for (const s of spellings) {
       const c = claims(s.replace(/\s+['’‘]\d{2}$/, ''));
       assert.ok(c.length <= 1 && (c.length === 0 || c[0] === name), `${s}: ${c.join(', ')}`);
@@ -150,9 +156,10 @@ test('no name is claimed by two entries, across both lists', () => {
 });
 
 test('a name that only looks like an entry keeps its own', () => {
+  // …or is an entry of its own now (US Foods, GE HealthCare): never someone else's.
   for (const n of THEIR_OWN) {
     const c = cleanCompany(n);
-    assert.ok(!c || !DATA.has(c), `${n} read as ${c}`);
+    assert.ok(!c || !DATA.has(c) || c.toLowerCase() === n.toLowerCase(), `${n} read as ${c}`);
   }
 });
 
@@ -214,6 +221,7 @@ const COMMON = [
   'director', 'manager', 'engineer', 'president', 'founder', 'partner', 'consultant', 'analyst', 'associate', 'lead', 'head',
   'chief', 'officer', 'specialist', 'coordinator', 'student', 'intern', 'freelance', 'self-employed', 'retired', 'owner', 'investor',
   'advisor', 'stealth', 'stealth startup', 'startup', 'company', 'confidential', 'later on', 'whatnot else',
+  'lab', 'yum', 'gap', 'ball', 'reliance', 'dover', 'dana', 'seaboard', 'westlake', 'apache', 'apa', 'chs', 'vf',
 ];
 
 test('no dataset name matches a common word, a first name or a job title alone', () => {
