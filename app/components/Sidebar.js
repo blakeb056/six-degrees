@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason } from '../../lib/scraper-client';
 import useScanner from './useScanner';
+import useRequests from './useRequests';
+import TheirCircle from './TheirCircle';
+import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
@@ -30,6 +33,10 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // Chains or Galaxy gets every route too.
   const routeIdx = useMemo(() => routeIndex(degree2), [degree2]);
   const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
+  // Who you've asked, shared with every view: a request sent here shows in
+  // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
+  const requests = useRequests();
+  const isRequested = useCallback((row) => hasRequest(row, requests), [requests]);
 
   if (selected) {
     const isBridge = selected.degree === 1 && bridgeMap[selected.id];
@@ -114,6 +121,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             )}
           </div>
         </div>
+
+        {/* Their circle, out to six degrees: who they know, who you added from
+            it, and who those people know (TheirCircle.js). Your connections only:
+            a 2nd-degree person's circle isn't yours to scan until they accept. */}
+        {selected.degree === 1 && (
+          <TheirCircle
+            person={selected} connections={connections} degree2={degree2}
+            tierColors={tierColors} onSelect={onSelect} isRequested={isRequested}
+          />
+        )}
 
         {selected.is_catalyst && (
           <div style={{
@@ -295,57 +312,61 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           </button>
         )}
 
-        {/* Connect to Unlock — for ALL degree-2 connections */}
-        {(selected.degree === 2 || selected.source_connection_id) && selected.degree !== 1 && selected.unlock_status !== 'unlocked' && (
-          <div style={{
-            background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
-            borderRadius: 10, padding: 16, marginTop: 16, textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
-              {selected.unlock_status === 'pending' ? 'CONNECTION PENDING' : 'LOCKED PATH'}
-            </div>
-            <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
-              {selected.unlock_status === 'pending'
-                ? `Waiting for ${selected.name} to accept. Run a scan to check.`
-                : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
-              }
-            </div>
+        {/* Connect to Unlock — for ALL degree-2 connections. A request sent here
+            is the person's, everywhere at once (lib/requests-client.js). */}
+        {(selected.degree === 2 || selected.source_connection_id) && selected.degree !== 1 && selected.unlock_status !== 'unlocked' && (() => {
+          const asked = isRequested(selected);
+          return (
             <div style={{
-              width: '100%', height: 60, background: 'rgba(255,255,255,0.03)',
-              borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, color: '#444', marginBottom: 12,
+              background: 'rgba(255,215,0,0.06)', border: `1px ${asked ? 'dashed' : 'solid'} rgba(255,215,0,${asked ? 0.45 : 0.25})`,
+              borderRadius: 10, padding: 16, marginTop: 16, textAlign: 'center',
             }}>
-              {selected.unlock_status === 'pending' ? '[ Cluster Pending... ]' : '[ Hidden Network ]'}
+              <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
+                {asked ? 'REQUEST SENT' : 'LOCKED PATH'}
+              </div>
+              <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
+                {asked
+                  ? `Waiting for ${selected.name} to accept. The next scan of your own connections notices when they do.`
+                  : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
+                }
+              </div>
+              <div style={{
+                width: '100%', height: 60, background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, color: '#444', marginBottom: 12,
+              }}>
+                {asked ? '[ Cluster Pending... ]' : '[ Hidden Network ]'}
+              </div>
+              {asked ? (
+                <button
+                  onClick={() => { undoRequest(selected).catch(() => {}); }}
+                  style={{
+                    background: 'none', border: 'none', color: '#888', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Didn&apos;t send it? Undo
+                </button>
+              ) : (
+                <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'block', padding: '10px 16px',
+                    background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+                    color: '#000', borderRadius: 8, textDecoration: 'none',
+                    fontWeight: 700, fontSize: 13,
+                  }}
+                  onClick={() => {
+                    // Opens their profile to connect, and marks the request
+                    // sent, through the bridge whose circle you found them in.
+                    markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
+                  }}
+                >
+                  Connect to Unlock Path
+                </a>
+              )}
             </div>
-            {selected.unlock_status !== 'pending' && (
-              <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: 'block', padding: '10px 16px',
-                  background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-                  color: '#000', borderRadius: 8, textDecoration: 'none',
-                  fontWeight: 700, fontSize: 13,
-                }}
-                onClick={() => {
-                  // Mark as pending in unlock system
-                  fetch('/api/unlock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ connectionId: selected.id }),
-                  }).catch(() => {});
-                  // Sync to outreach/pending system (Outlink)
-                  fetch('/api/outreach', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'mark-sent', connectionId: selected.id, profileUrl: selected.profile_url, userId }),
-                  }).catch(() => {});
-                }}
-              >
-                Connect to Unlock Path
-              </a>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {/* Create Cluster — for D1 connections OR accepted D2 (promoted, ready to bridge for D3) */}
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
