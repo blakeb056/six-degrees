@@ -44,7 +44,8 @@ function page(results, { extraLines = [] } = {}) {
   const lines = [];
   const anchors = [];
   for (const r of results) {
-    const card = { innerText: [r.name, `View ${r.name}’s profile`, '• 2nd', r.headline, r.place || 'Orlando, FL', r.mutual, 'Connect'].filter(Boolean).join('\n') };
+    // `mutual` is the line, or its parts when LinkedIn draws the names on lines of their own.
+    const card = { innerText: [r.name, `View ${r.name}’s profile`, '• 2nd', r.headline, r.place || 'Orlando, FL', ...[r.mutual].flat(), 'Connect'].filter(Boolean).join('\n') };
     card.parentElement = { innerText: card.innerText, parentElement: null };
     anchors.push({
       getAttribute: () => `/in/${r.slug}?miniProfileUrn=x`,
@@ -53,8 +54,10 @@ function page(results, { extraLines = [] } = {}) {
       innerText: r.name,
       parentElement: card,
     });
-    // Your own connection's link inside the mutual line, as LinkedIn draws it.
-    if (r.via) anchors.push({ getAttribute: () => `/in/${r.via.slug}`, closest: () => null, querySelector: () => null, innerText: r.via.name, parentElement: card });
+    // Your own connections' links inside the mutual line, as LinkedIn draws them.
+    for (const v of [r.via].flat().filter(Boolean)) {
+      anchors.push({ getAttribute: () => `/in/${v.slug}`, closest: () => null, querySelector: () => null, innerText: v.name, parentElement: card });
+    }
     lines.push(...card.innerText.split('\n'));
   }
   lines.push(...extraLines);
@@ -120,4 +123,23 @@ test('a name drawn with its degree on the same line still owns the count below i
 test('what reaches the app is a whole number from 1 to 30,000, or nothing', () => {
   assert.deepEqual([24, '1,205', ' 12 ', 1, 30000].map(mutualCountOf), [24, 1205, 12, 1, 30000]);
   assert.deepEqual([0, -3, 2.5, 30001, '12 people', null, undefined, NaN, {}].map(mutualCountOf), [null, null, null, null, null, null, null, null, null]);
+});
+
+test('names drawn on lines of their own above the rest stay part of the line, and the count stays on its card', (t) => {
+  // Codex's review of #47: the mutuals' links are on the page as people too, so
+  // their name lines used to take the count away from the result it belongs to.
+  const js = reader(t);
+  if (!js) return;
+  const maya = { slug: 'maya-chen', name: 'Maya Chen' };
+  const leo = { slug: 'leo-park', name: 'Leo Park' };
+  const results = run(js, page([
+    { slug: 'ada-stone', name: 'Ada Stone', headline: 'VP Sales at Northwind Labs', mutual: ['Maya Chen', 'and 23 other mutual connections'], via: maya },
+    { slug: 'ben-ortiz', name: 'Ben Ortiz', headline: 'Designer at Halcyon', mutual: ['Maya Chen', 'Leo Park', 'and 4 other mutual connections'], via: [maya, leo] },
+    { slug: 'cy-moreno', name: 'Cy Moreno', headline: 'Founder at Ironwood', mutual: ['Leo Park', 'is a mutual connection'], via: leo },
+    { slug: 'di-lang', name: 'Di Lang', headline: 'Engineer at Initech', mutual: ['Maya Chen', 'Leo Park', 'are mutual connections'], via: [maya, leo] },
+  ]));
+  const by = Object.fromEntries(results.map((r) => [r.profileUrl.replace('https://www.linkedin.com/in/', '').replace(/\/$/, ''), r]));
+  assert.deepEqual(['ada-stone', 'ben-ortiz', 'cy-moreno', 'di-lang'].map((s) => by[s].mutualCount), [24, 6, 1, 2]);
+  // …and the mutuals themselves, your own connections, take none.
+  assert.deepEqual([by['maya-chen'].mutualCount, by['leo-park'].mutualCount], [undefined, undefined]);
 });

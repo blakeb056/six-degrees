@@ -1784,13 +1784,29 @@ BRIDGE_RESULTS_JS = r"""
             }
             return undefined;
           };
+          // The rest of a mutual line when the names are drawn above it, each on
+          // a line of its own ("Maya Chen" / "and 23 other mutual connections").
+          const tailOf = (l) => /^(and [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
           let current = null;
-          for (const raw of (root.innerText || '').split('\n')) {
-            const l = clean(raw);
-            if (!l) continue;
+          const give = (n) => {
+            if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
+          };
+          const lines = (root.innerText || '').split('\n').map(clean).filter(Boolean);
+          for (let i = 0; i < lines.length; i++) {
+            const l = lines[i];
+            // Those names are links to your own connections, so they're on the
+            // page as people too, but they are the line, not a new result: read
+            // them with the rest of it, and the count stays with the card it's on.
+            let j = i;
+            while (j < lines.length && j - i < 3 && !tailOf(lines[j]) && nameAt(lines[j]) !== undefined) j++;
+            if (j > i && j < lines.length && tailOf(lines[j])) {
+              give(mutualCount(`${lines.slice(i, j).join(', ')} ${lines[j]}`));
+              i = j;
+              continue;
+            }
             const n = mutualCount(l);
             if (n != null) {
-              if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
+              give(n);
               continue;
             }
             const hit = nameAt(l);
