@@ -451,3 +451,116 @@ test('round two: …and more of what isn\'t one', () => {
     'Master Chief | Halo Cosplayer', 'Warrant Officer, Northwind County Sheriff',
   ]) assert.ok(!MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
 });
+
+// A third review round's cases. A government or military title needs its
+// organization to be a government's or a service's (lib/scoring.js where()):
+// its own part's, the next part's when that is an organization, or the
+// headline's first part's. Only a title nobody else holds, or the whole
+// headline, counts with none named. And a company's name after "at" stops
+// where another title starts, and a retirement is its own role's.
+test('round three: what still reads, however the organization is written', () => {
+  for (const [h, k] of [
+    ['MD at Emory, Pediatrics', 'ic'], ['MD at Stanford, Surgery', 'ic'], ['MD at Northwell, Emergency Medicine', 'ic'],
+    ['MD @ UCSF, Oncology', 'ic'], ['MD @ Lazard, Healthcare M&A', 'vp'], ['MD at Northwind Capital, Healthcare Investment Banking', 'vp'],
+    ['AT&T Senior Director of Product', 'director'], ['AT&T Retail Sales Manager', 'manager'], ['Ex-AT&T Director | Consultant', 'director'],
+    ['At-Large Director, Northwind Credit Union', 'director'], ['At Home Store Manager', 'manager'], ['At Microsoft: Principal PM', 'manager'],
+    ['Started at Google in 2015 now Director of Engineering', 'director'], ['Associate at Goldman Sachs (Vice President)', 'vp'], ['Analyst at Goldman Sachs (VP)', 'vp'],
+    ['Consultant at Deloitte (Senior Manager)', 'manager'], ['Software Engineer at Google (Tech Lead)', 'manager'], ['Software Engineer at Google and Founder of Northwind', 'csuite'],
+    ['Assistant Professor at Emory University and Co-Founder of Northwind Bio', 'csuite'], ['Associate to VP at Morgan Stanley', 'vp'], ['Promoted from Associate to Vice President at JPMorgan', 'vp'],
+    ['Promoted from Manager to VP of Sales at Northwind', 'vp'], ['Executive Assistant to the General Manager at Four Seasons', 'ic'], ['EA to the VP of Finance at Northwind', 'ic'],
+    ['Attorney, General Counsel\'s Office', 'ic'], ['Staff Attorney, Office of General Counsel of the Navy', 'ic'], ['Legal Assistant, General Counsel', 'ic'],
+    ['Attorney, IRS Chief Counsel', 'ic'], ['Attorney & General Counsel', 'vp'], ['SVP, General Counsel & Secretary', 'vp'],
+    ['Division Chief Nursing Officer | HCA Healthcare', 'csuite'], ['Business Unit Chief Financial Officer, Siemens', 'csuite'], ['Division Chief Operating Officer at Tenet Healthcare', 'csuite'],
+    ['Section Chief of Pediatric Cardiology at Yale School of Medicine', 'director'], ['Division Chief of Cardiology at Emory University', 'director'], ['Mexico City Manager, Uber', 'manager'],
+    ['President, Tribe Capital', 'csuite'], ['President, Cherokee Nation Businesses', 'csuite'], ['Chairman, Band of Angels', 'csuite'],
+    ['President, Senate Bank', 'csuite'], ['President, Congress Asset Management', 'csuite'], ['President, Legislature Solutions Inc.', 'csuite'],
+    ['Mayor of Orlando', 'govLeader'], ['Mayor | City of Orlando', 'govLeader'], ['City of Orlando - Mayor', 'govLeader'],
+    ['State of Ohio | Governor', 'govLeader'], ['Florida Supreme Court | Justice', 'judge'], ['Supreme Court of Ohio - Justice', 'judge'],
+    ['U.S. District Court for the Southern District of New York | Judge', 'judge'], ['Associate Justice, Massachusetts Appeals Court', 'judge'], ['Immigration Judge, Executive Office for Immigration Review', 'judge'],
+    ['U.S. Department of State | Ambassador', 'govSenior'], ['Ambassador, Deputy Permanent Representative to the United Nations', 'govSenior'], ['U.S. Consul General, Lagos', 'govOfficial'],
+    ['Commissioner, Florida Public Service Commission', 'govSenior'], ['Commissioner, Nuclear Regulatory Commission', 'govSenior'], ['Commissioner - FCC', 'govSenior'],
+    ['Chair, Council of Economic Advisers', 'govSenior'], ['Chief Patrol Agent, U.S. Border Patrol Miami Sector', 'govOfficial'], ['Deputy Under Secretary of Defense | Georgetown University', 'govSenior'],
+    ['Regional Administrator, EPA Region 5', 'govOfficial'], ['Special Agent in Charge, FBI Miami Field Office', 'govOfficial'], ['Mayor, City of Winter Park', 'govLeader'],
+    ['County Manager | Seminole County', 'govOfficial'], ['City Manager, City of Phoenix', 'govOfficial'], ['Secretary of Defense', 'govLeader'],
+    ['Ambassador (Ret.) | Diplomat in Residence', 'govSenior'], ['Commander, Navy Region Southeast', 'general'], ['Commander, Nurse Corps, U.S. Navy', 'ltColonel'],
+    ['LTC | Acquisition Officer | U.S. Army', 'ltColonel'], ['MAJ | Operations Officer | U.S. Army', 'major'], ['Lt Col | F-35 Pilot | USAF', 'ltColonel'],
+    ['Major | Intelligence Officer | USMC', 'major'], ['CDR | Submarine Officer | USN', 'ltColonel'], ['Army Reserve Captain | Intelligence Analyst at Booz Allen Hamilton', 'major'],
+  ]) assert.equal(best(h), k, h);
+});
+
+test('round three: …and a company, a club, a joke or a second job doesn\'t make a government title', () => {
+  for (const h of [
+    'Assistant to the President, Northwind University', 'Assistant to the President for Strategic Initiatives, Northwind College', 'Trade Representative, Heineken USA',
+    'Trade Representative | E. & J. Gallo', 'US Trade Representative, Northwind Exports', 'National Security Advisor, Northwind Institute',
+    'Realtor at Compass | Mayor of Midtown', 'Mayor of LinkedIn', 'Mayor of Flavortown',
+    'Barista | Mayor of Downtown Orlando', 'Recruiter | Mayor of Brooklyn', 'Mayor | Northwind Town Hall Podcast',
+    'Controller | Texas', 'Auditor, Texas Department of Transportation', 'Treasurer, State of Florida Credit Union',
+    'Controller | Georgia | CPA | Mom of 2', 'Texas Controller | Northwind Homes', 'State Controller | Northwind Foods',
+    'Auditor, State of Texas', 'State Representative | Florida | Northwind Brands', 'Florida State Representative | Northwind Pharmaceuticals',
+    'City Manager, Uber', 'City Manager | Lime', 'Launch City Manager, Bird',
+    'County Manager | Northwind Seeds', 'Council Member, Kansas City Tech Council', 'Council Member, City Year',
+    'Council Member, Salt Lake City Chamber', 'Guidance Councillor, Kansas City Public Schools', 'Mental Health Councillor, Orange County',
+    'Administrator, FAA Part 145 Repair Station', 'Administrator, TSA PreCheck Enrollment Center', 'Administrator | EPA | Environmental Scientist',
+    'Administrator, SBA Lending | Northwind Bank', 'SBA Administrator, Northwind Bank', 'GSA Administrator | Northwind Federal Solutions',
+    'Regional Administrator, Brookdale Senior Living, Florida', 'Regional Administrator, Texas | Northwind Home Health', 'Associate Administrator, Department of Surgery, Northwind Medical Center',
+    'US Attorney | Immigration', 'U.S. Attorney | Licensed in New York', 'US Attorney | Brazilian Lawyer | Cross-border M&A',
+    'State Attorney | Northwind Law Firm', 'County Attorney | Northwind Title Co.', 'Former Ambassador | Lululemon | Yoga Instructor',
+    'Ex-Ambassador | Red Bull', 'Ambassador to Japan | Northwind Sake', 'Ambassador | Embassy Row Hotel',
+    'Ambassador to India | Northwind Yoga Retreats', 'Chief, Nation Builders Coaching', 'Chief | The Growth Tribe',
+    'Chief, Band of Brothers Coffee', 'Member, Community Depository Institutions Advisory Council, Federal Reserve Bank of Atlanta', 'Member | Federal Reserve Bank of Atlanta',
+    'Analyst at the Federal Reserve Bank of St. Louis | Member, Beta Gamma Sigma', 'Bank Examiner at the Federal Reserve Bank of Richmond | Member', 'Chair, Internal Revenue Service Advisory Council',
+    'Legislative Analyst | U.S. Congress | Member', 'Police Chief, Northwind Mall Security', 'Fire Chief, Northwind Chemical Plant',
+    'Speaker at Mobile World Congress', 'Speaker at ASCO & ESMO Congress | Medical Oncologist', 'Speaker, World Congress on Pain | Physician',
+    'Speaker of the House | Realtor at Northwind Realty', 'Member, Congress for the New Urbanism', 'Member, African National Congress',
+    'Representative | Congress Title Co.', 'Member | Congress Street Capital', 'Representative | US Congressional District 7 Sales Territory',
+    'Commissioner, Orange County Pickleball League', 'Commissioner, Kansas City Rugby Union', 'Commissioner, Kansas City Sports Commission',
+    'Governor for Florida, American College of Physicians', 'Governor of the Florida Chapter, American College of Physicians', 'Governor of the Florida District, Key Club International',
+    'Secretary of State | Florida Girls State', 'Secretary of State | YMCA Youth in Government', 'Secretary of Education | Homeschool Mom',
+    'Secretary of Labor | Doula', 'Member of Parliament | UK Youth Parliament', 'Member of Parliament | Northwind Student Parliament',
+    'Chief Justice | Model Supreme Court | Pre-Law', 'Attorney General, Undergraduate Assembly', 'Chief Justice, Interfraternity Council Judicial Board',
+    'Attorney General, Panhellenic Council', 'Justice, Supreme Court of Delta Sigma Phi', 'Assistant Secretary of Northwind Foods | Senior Paralegal',
+    'Assistant Secretary of Kroger | Corporate Paralegal', 'PEO Account Manager | U.S. Army Reserve', 'PEO Sales Executive | Air National Guard',
+    'Deputy PEO Sales Lead, Northwind HR Solutions', 'Adjutant General, American Legion Department of Florida', 'Inspector General, Scottish Rite of Freemasonry',
+    'Inspector General | Northwind Health Plan', 'Postmaster General, Northwind Stamp Collectors', 'Inspector General Counsel',
+    'Judge, Southeast Rodeo Circuit', 'Senior Judge, Northwind BBQ Circuit', 'District Judge, Texas FFA',
+    'District Judge | 4-H Livestock', 'Former Judge | Startup Pitch Night', 'School Board Member, Northwind Christian Academy',
+    'School Board Chair, Northwind Montessori School', 'Delegate, NEA Representative Assembly | Texas', 'Special Envoy | Northwind Crypto',
+    'Special Envoy for Web3 | Northwind', 'Consul General | Northwind Travel', 'Candidate for County Commissioner',
+    'Senator, Northwind Florida Office',
+  ]) assert.ok(!GOVERNMENT.includes(best(h)), `${h} read as ${best(h)}`);
+  // A staff member in a general counsel's office isn't the general counsel.
+  for (const h of ['Paralegal, General Counsel\'s Office', 'Law Clerk, General Counsel Division']) assert.notEqual(best(h), 'vp', h);
+});
+
+test('round three: …nor a rank, with a police, fire, club or civilian employer\'s name', () => {
+  for (const h of [
+    'Captain | Delta Air Lines | Retired USAF', 'Captain | United Airlines | U.S. Air Force Reserve', 'Captain | Former USAF | Delta Air Lines',
+    'Captain, American Airlines Group | U.S. Air Force', 'Captain, Delta Flight Operations | U.S. Air Force', 'Captain | Orange County Fire Rescue | U.S. Army',
+    'Captain | Allied Universal Security | U.S. Army', 'General | Northwind Contracting | U.S. Army', 'Captain | Northwind Fishing Charters | U.S. Coast Guard',
+    'Master Chief | Northwind Kitchen | U.S. Navy', 'Master Sergeant | Northwind Martial Arts | Army', 'Commander, 3rd Division, Northwind Police',
+    'Colonel, 1st Division, Northwind State Police', 'Captain, 1st Battalion, Northwind Fire Department', 'Commander, 77th Street Division, LAPD',
+    'Commanding Officer, 1st Division, Los Angeles Fire Department', 'Captain, Engine 12, 3rd Battalion', 'Lieutenant, Engine Company 7 | U.S. Navy',
+    'Commander, Patrol Division, Orange County Sheriff\'s Office | U.S. Army', 'Commander, Special Operations Division, Miami-Dade Police | USMC', 'Commander, Security Group, Northwind Casino | U.S. Army',
+    'Commander, Air Force Sergeants Association Chapter 1075', 'Commander, U.S. Navy Seabee Veterans of America Island 12', 'Commander, USS Constitution Museum',
+    'Captain, USS Midway Museum Docent Program', 'Commander, Northwind Sail & Power Squadron | U.S. Navy (Ret.)', 'Executive Officer, Army Aviation Center Federal Credit Union',
+    'Executive Officer, Air Force Aid Society', 'Executive Officer, Army Emergency Relief', 'General, Army of Hope Ministries',
+    'General, Army of Darkness Fan Society', 'Captain, Army Navy Surplus Store', 'Captain, Coast Guard Beach Lifeguards',
+    'Captain, Navy Blue Cleaning Co.', 'Commander, 5th Street Restaurant Group', 'Captain, Northwind Naval Architects',
+    'Captain, 1st Boys Brigade', 'Major, Naval Architecture, University of Michigan', 'Captain, 1st Division Pickleball Squad',
+    'Captain, 3rd Wing, Northwind Hospital', 'Sergeant Major, 1st Division Drum Corps', 'Commodore, Naval Academy Sailing Squadron',
+    'Major, Army Corps of Engineers Park Ranger',
+  ]) assert.ok(!MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
+});
+
+test('round three: a retirement is its own role\'s, not a service\'s after a civilian job nor a second role\'s', () => {
+  for (const [h, k, former] of [
+    ['Program Manager at Lockheed Martin, USN (Ret.)', 'manager', false], ['VP of Sales at Oracle, U.S. Army (Ret.)', 'vp', false],
+    ['Program Manager at Leidos (USAF, Ret.)', 'manager', false], ['Realtor at Compass, Firefighter (Ret.)', 'ic', false],
+    ['Teacher (Retired), Realtor at Compass', 'ic', false], ['Senior Manager at Deloitte | Navy Veteran | Retired', 'manager', false],
+    ['Owner, Northwind Coffee | USMC | Retired', 'owner', false], ['Teacher at Orange County Public Schools (Retired)', 'ic', true],
+    ['Nurse, Retired', 'ic', true], ['Colonel | U.S. Army | Retired', 'colonel', true],
+  ]) {
+    assert.equal(best(h), k, h);
+    assert.equal(person(h).title.former, former, h);
+  }
+});

@@ -86,6 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the title, so "Account Executive at Oracle | 3x President's Club" scored 7.3 (A) as a
   C-suite, and so did "Chairman's Award" and "Chief of Staff, CEO's Office". It's the
   title's own: 3.6 (C), and a chief of staff is a director again (5.4, B).
+- **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
+  scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
+  Information Officer". "Executive Assistant to the General Manager" scored as a VP.
 
 ### Changed
 - **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
@@ -121,6 +124,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Your network is rescored once, the first time the map loads after updating. The sample
   network's tiers don't change.
+- **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
+  secretary score like a C-suite; their deputies, state legislators, commissioners,
+  ambassadors and judges like a VP; a city councilmember or a sheriff like a director.
+  Officers by rank: a 3–4 star general or admiral 10, a 1–2 star 9, a colonel 7.5, a
+  lieutenant colonel 6.5, a major 5, and a commander by their unit. "(Ret.)" and
+  "Retired" make a role former. They count only where a title is written, and only where
+  their place is a government's or a service's: a staffer in an Office of the Secretary, a
+  veteran's civilian job, a Rotary district governor, a team captain or a Kentucky colonel
+  isn't one. Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
 - **Separation's map is "who to ask next".** It skips anyone you've already asked or
   already know. Send requests to its ten and the next ten come up. The list below
   still shows everyone, marked *Request sent* or *Connected*, with their rarity.
