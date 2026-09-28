@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   labels the score *public data*. The list is built from public sources only, never from
   anyone's scan, and grows each release. The built-in list itself is unchanged: household
   names only, 7 and up.
+- **A card says when a score is a guess, and what would firm it up.** When someone's headline
+  gives the app no title to read, or no company it knows, the top of their card says so
+  ("Their score is a guess. The app couldn't find where they work.") and offers *Scan their
+  circle*, which brings the scan button into view. Who you can reach through them is what the
+  score can read instead, and a strong circle adds up to +2.
 
 ### Fixed
 - **A request you send shows everywhere, at once.**

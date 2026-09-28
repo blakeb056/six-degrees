@@ -996,7 +996,7 @@ function CreateClusterCard({ selected, degree2 }) {
   });
 
   return (
-    <div style={{
+    <div id="scan-box" style={{
       background: hasCluster ? 'rgba(0,255,136,0.06)' : 'rgba(155,89,182,0.08)',
       border: `1px solid ${hasCluster ? 'rgba(0,255,136,0.2)' : 'rgba(155,89,182,0.3)'}`,
       borderRadius: 10, padding: 16, marginTop: 16,

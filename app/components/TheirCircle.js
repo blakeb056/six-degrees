@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom';
 import { circleIndex, circleRings, circleLayout, requestedByDefault } from '../../lib/circle';
 import { keyFor, routeIndex } from '../../lib/separation';
 import { RARITY, rarityOf, passes, countByRarity, toggle, rarityInfo } from '../../lib/rarity';
+import { scoreGuess } from '../../lib/score-guess';
 
 const CLASSIC = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
@@ -44,16 +45,35 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
   // How complete the ways-in count is: circles scanned out of your connections.
   const scanned = useMemo(() => connections.filter((c) => index.circles.has(c.id)).length, [connections, index]);
   const fromLinkedIn = people.some((p) => p.mutuals?.from === 'linkedin');
+  // A score the headline gave nothing to read for: say so, and point at the
+  // scan, which is what can firm it up (lib/score-guess.js).
+  const guess = useMemo(() => scoreGuess(person), [person]);
 
   if (!person) return null;
   if (!rings.length) {
+    const first = person.name?.split(' ')[0] || 'them';
     return (
-      <div style={box}>
+      <div style={guess ? { ...box, borderColor: 'rgba(255,215,0,0.28)' } : box}>
         <Label>Their circle</Label>
-        <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>
-          Not scanned yet. Scan {person.name?.split(' ')[0] || 'them'}&apos;s circle below to see who they know, and
-          everyone you reach through them after that.
-        </div>
+        {guess ? (
+          <>
+            <div style={{ fontSize: 11.5, color: '#d8ccb0', lineHeight: 1.5, marginBottom: 9 }}>
+              <b style={{ color: '#FFD700' }}>Their score is a guess.</b> {guess.reason} Scanning {first}&apos;s circle shows
+              who you can reach through them, and a strong circle adds up to +2 to their score.
+            </div>
+            <button type="button" onClick={toScanBox} style={{
+              width: '100%', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700',
+            }}>
+              Scan their circle ↓
+            </button>
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>
+            Not scanned yet. Scan {first}&apos;s circle below to see who they know, and
+            everyone you reach through them after that.
+          </div>
+        )}
       </div>
     );
   }
@@ -249,6 +269,16 @@ function Enlarged({ title, onClose, children }) {
     </div>,
     document.body,
   );
+}
+
+// The card's scan box (Sidebar.js CreateClusterCard, id "scan-box"): bring it
+// into view, flash it, and put the keyboard on its button.
+function toScanBox() {
+  const scanBox = document.getElementById('scan-box');
+  if (!scanBox) return;
+  scanBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  scanBox.animate?.([{ boxShadow: '0 0 0 3px rgba(255,215,0,0.75)' }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)' }], { duration: 1600 });
+  scanBox.querySelector('button:not([disabled])')?.focus({ preventScroll: true });
 }
 
 function Label({ children }) {
