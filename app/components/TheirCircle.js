@@ -13,6 +13,7 @@
 // where a dot opens that person's card.
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { circleIndex, circleRings, circleLayout, requestedByDefault } from '../../lib/circle';
 import { keyFor, routeIndex } from '../../lib/separation';
 import { RARITY, rarityOf, passes, countByRarity, toggle, rarityInfo } from '../../lib/rarity';
@@ -219,13 +220,17 @@ function Legend() {
   );
 }
 
+// Rendered into <body>, not the card: the side panel's backdrop blur makes it
+// the containing block for anything position: fixed inside it, so an overlay
+// there only ever covered the panel. Fixed, so it can't change the page's
+// size (TRAPS §29).
 function Enlarged({ title, onClose, children }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={title} onClick={onClose} style={{
       position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.78)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
@@ -241,7 +246,8 @@ function Enlarged({ title, onClose, children }) {
         <div style={{ fontSize: 10.5, color: '#888', marginBottom: 8 }}>Click a dot to open that person.</div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
