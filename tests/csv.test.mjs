@@ -32,3 +32,22 @@ test('packing and unpacking gives back exactly what was parsed', () => {
   const back = unpackConnections(JSON.parse(JSON.stringify(packConnections(connections))));
   assert.deepEqual(back, connections);
 });
+
+test('an import is graded on its own curve, the same on the import page and on the map', () => {
+  // Thirty invented people at companies the built-in list doesn't know: an owner, three
+  // directors, eight managers and eighteen technicians, as a first look at a real export.
+  const town = ['North', 'South', 'East', 'West', 'Harbor', 'Pine', 'Maple', 'Cedar', 'Lake', 'River'];
+  const trade = ['Plumbing', 'Electric', 'Freight'];
+  const title = (k) => (k === 0 ? 'Owner' : k <= 3 ? 'Director of Operations' : k <= 11 ? 'Store Manager' : 'Technician');
+  const lines = ['First Name,Last Name,URL,Email Address,Company,Position,Connected On'];
+  for (let k = 0; k < 30; k++) {
+    lines.push(['Invented', `Person-${k}`, `https://www.linkedin.com/in/invented-worker-${k}`, '', `${town[k % 10]} ${trade[Math.floor(k / 10)]}`, title(k), '01 Sep 2026'].join(','));
+  }
+  const count = (list) => list.reduce((m, x) => ({ ...m, [x.tier]: (m[x.tier] || 0) + 1 }), {});
+  const { connections } = parseConnectionsCsv(lines.join('\n'));
+  // On the fixed scale this export would be 1 A, 11 B and 18 C: no S at all.
+  assert.deepEqual(count(connections), { S: 1, A: 3, B: 8, C: 18 });
+  const back = unpackConnections(JSON.parse(JSON.stringify(packConnections(connections))));
+  assert.deepEqual(count(back), count(connections));
+});
+

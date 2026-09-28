@@ -257,7 +257,7 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
 
 Scanned and sample people show the working ("VP / Partner / GM (9) · Adobe (8/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
-rather than your own scores or sectors; the sample network keeps its own. The model is
+rather than your own scores or sectors, graded on its own curve; the sample network keeps its own. The model is
 [`lib/scoring.js`](lib/scoring.js), explained in
 [`docs/brain/SCORING.md`](docs/brain/SCORING.md).
 

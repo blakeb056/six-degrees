@@ -66,7 +66,7 @@ test('switching the scale rescores everyone and says how many changed tier', () 
   const before = readSettings(getDb());
   const after = writeSettings(getDb(), { tierScale: 'fixed' });
   // The owner goes back to A and the three directors to B; power doesn't move.
-  assert.deepEqual(afterSettingsChange(getDb(), before, after), { tierScale: { scored: 30, moved: 4 } });
+  assert.deepEqual(afterSettingsChange(getDb(), before, after), { tierScale: { scored: 30, people: 30, moved: 4, up: 0, down: 4 } });
   assert.equal(meta('scoring_tiers'), 'fixed');
   assert.deepEqual(tiers(), { A: 1, B: 11, C: 18 });
   // The same choice again sets nothing in motion.
@@ -83,3 +83,18 @@ test('scores graded on another scale are stale, and are redone once', () => {
   assert.deepEqual(rescoreIfStale(), { scored: 0 });
   assert.equal(tierOf('p0'), 'A');
 });
+
+test('someone reachable through two of your connections is one person when counting who changed tier', () => {
+  insert(smallBusinesses());
+  // One of their people, mapped through two of yours: two rows, one person.
+  const two = getDb().prepare(`INSERT INTO linkedin_connections (id, degree, name, headline, profile_url, source_connection_id)
+    VALUES (?, 2, 'Person X', 'Owner at River Supply', '/in/x', ?)`);
+  two.run('x1', 'p12');
+  two.run('x2', 'p13');
+  rescoreAll();
+  assert.equal(tierOf('x1'), 'S');                                      // graded on your cut-offs
+  const before = readSettings(getDb());
+  const effects = afterSettingsChange(getDb(), before, writeSettings(getDb(), { tierScale: 'fixed' }));
+  assert.deepEqual(effects.tierScale, { scored: 32, people: 31, moved: 5, up: 0, down: 5 });
+});
+

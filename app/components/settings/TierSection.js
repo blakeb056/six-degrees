@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { Section, Body, Status, LINE } from '../ui';
 import { CURVE, CURVE_FLOOR } from '../../../lib/scoring';
+import { csvNetworkSource } from '../../../lib/csv';
 
 const pct = (x) => `${Math.round(x * 100)}%`;
 const [S, A, B] = CURVE.map(([, share]) => share);
@@ -33,6 +34,11 @@ export default function TierSection() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  // A CSV import or the sample network held in this window: neither is changed
+  // by this (a CSV is always graded on its own curve; the sample keeps its
+  // tiers). This section only renders in the browser (OnboardingGate), so
+  // reading sessionStorage here can't disagree with a server render.
+  const [onScreen] = useState(() => (typeof window === 'undefined' ? null : csvNetworkSource()));
 
   useEffect(() => {
     let off = false;
@@ -82,6 +88,14 @@ export default function TierSection() {
             );
           })}
         </div>
+      )}
+      {onScreen && (
+        <Body style={{ color: '#FFD700', marginTop: 10 }}>
+          {onScreen === 'sample'
+            ? 'The sample network open in this window keeps its own tiers (they’re the same either way).'
+            : 'The CSV import open in this window is always graded on its own curve.'}{' '}
+          This applies to networks you&rsquo;ve scanned.
+        </Body>
       )}
       {result && <Status tone={result.tone}>{result.text}</Status>}
     </Section>

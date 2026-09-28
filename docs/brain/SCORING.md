@@ -154,10 +154,13 @@ reaches S or A, and a first scan looks bleak. The curve fixes that:
   boost, which reads the tiers you see.
 
 `scoreNetwork(rows, { tierScale })` grades on the curve only when asked (called without one,
-on the fixed scale, as the sample's generator does). `rescoreAll()` passes the saved choice
+on the fixed scale, as the sample's generator does). A CSV import (lib/csv.js) is always graded
+on its own curve, on the parse and on every load: it uses the app's defaults, never your
+settings, as with company scores and sectors, and Settings → Tiers says so while one is open. `rescoreAll()` passes the saved choice
 and stamps it (`app_meta` `scoring_tiers`); `rescoreIfStale()` rescores once when the stamp
 and the saved choice differ. Saving a new choice rescores everyone and reports how many
-changed tier (lib/settings-effects.js). Settings → Your sector's preview grades both sides on
+people changed tier, each person once at their closest degree (lib/settings-effects.js, with
+the sector focus's own `tierMoves`). Settings → Your sector's preview grades both sides on
 the saved scale, so the preview and the save agree.
 
 ## The curated list
