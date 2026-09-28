@@ -224,10 +224,13 @@ test('seniority and company multiply: level × platform', () => {
   assert.equal(tierFor(internGoogle), 'D');
 });
 
-test('a strong mapped circle boosts its bridge by at most 1, and only if big enough', () => {
+test('a strong mapped circle boosts its bridge: by its share at most 1, judged only in a circle big enough', () => {
   const strong = Array.from({ length: 40 }, (_, i) => ({ tier: i < 16 ? 'A' : 'C' }));
   assert.equal(bridgeBoost(strong).boost, 1);
-  assert.equal(bridgeBoost(strong.slice(0, 10)).boost, 0);
+  // Ten people are too few to judge a share by; only its strong people count,
+  // +1 for every 25 (tests/scoring-misses.test.mjs), and a circle with none gets nothing.
+  assert.equal(bridgeBoost(strong.slice(0, 10)).boost, 0.4);
+  assert.equal(bridgeBoost(strong.slice(20, 30)).boost, 0);
   const rows = [
     { id: 'b', degree: 1, headline: 'Designer at Northwind', profile_url: '/in/b' },
     ...strong.map((_, i) => ({ id: `p${i}`, degree: 2, source_connection_id: 'b', profile_url: `/in/p${i}`, headline: i < 16 ? 'VP at Google' : 'Analyst at Acme' })),
