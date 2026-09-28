@@ -23,7 +23,7 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--auto-bridge` | Map every bridge in turn, highest tier first. Hidden profiles are recorded and skipped on later runs. |
 | `--retry-private` | With `--auto-bridge`: try the people previously found to be hidden. |
 | `--clear-skips` | Forget every hidden-profile skip. |
-| `--save-photos` | Saves the photos older versions kept as links (`GET /api/update-images`), once each: the file's path if it saved, else the link is forgotten. No browser, no search. Every scan that finishes does the same at its end (`save_waiting_photos`); the Scan page's *Save photos* runs this. |
+| `--save-photos` | Saves the photos older versions kept as links (`GET /api/update-images`), once each: the file's path if it saved, and a definite no (expired, not LinkedIn's, not a picture, someone else's) forgets the link. No connection, a timeout, a 429 or 5xx keeps it (`TryLater`); three in a row, or nothing but those, end the run with the reason and exit 1. No browser, no search. Every scan that finishes does the same at its end (`save_waiting_photos`); the Scan page's *Save photos* runs this. |
 | `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
 | `--headless` | Works on every mode once signed in — but headless Chrome is **more** detectable, not less. |
 

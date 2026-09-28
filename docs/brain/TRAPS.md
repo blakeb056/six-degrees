@@ -105,6 +105,14 @@ the error and aborts after three consecutive failures.
 Generalise this: any `except`/`catch` that turns a failure into an empty result is a
 place where a bug can hide indefinitely.
 
+It came back in *Save photos* (2026-09-28). `store_avatar()` returned `None` for every
+failure, and Save photos forgets a link on `None`, so a run offline, behind a firewall or
+while LinkedIn's image server was busy cleared links only days old and said they had
+expired. Getting one back means scanning that person again. A definite no (403, 404,
+410, not LinkedIn's, not a picture, someone else's picture) is now told apart from
+`TryLater` (no connection, a timeout, 429, 5xx, a file it couldn't write), which keeps
+the link; three in a row stop the run with the reason.
+
 ---
 
 ## 8. `prepack` re-runs the build and wipes the standalone output

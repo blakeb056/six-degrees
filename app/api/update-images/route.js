@@ -27,10 +27,10 @@ export async function GET() {
 // attached to every row of that person. Only a saved file's path is stored,
 // never a link (lib/photos.js).
 //
-// `forget`: [{ profileUrl, imageUrl }], links the scanner tried and could not
-// save (expired, not LinkedIn's, or the same picture as someone else's). The
-// link is cleared, and only where it is still that link, so each is tried once
-// and the person shows initials.
+// `forget`: [{ profileUrl, imageUrl }], links the scanner got a definite no for
+// (expired, not LinkedIn's, not a picture, or the same picture as someone
+// else's), never one it couldn't reach. The link is cleared, and only where it
+// is still that link, so each is tried once and the person shows initials.
 export async function POST(request) {
   try {
     const { images, forget } = await request.json();

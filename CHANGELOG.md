@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Photos an older version kept as links are saved once.** Until then those people show
   initials. The next scan saves them at its end, or *Save photos* on the Scan page does it
   now, without opening a browser. A link more than a few weeks old has expired: that
-  person's photo comes back when they're next scanned.
+  person's photo comes back when they're next scanned. Offline, or with LinkedIn's image
+  server busy, nothing is forgotten, and *Save photos* stops and says why.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 

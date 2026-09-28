@@ -196,6 +196,109 @@ test('saving a photo fetches only from LinkedIn\'s image servers, over https', (
   Object.entries(cases).forEach(([link, want], i) => assert.equal(got[i], want, link));
 });
 
+// scripts/scrape.py save_waiting_photos with image_store.store_avatar, as
+// written. `requests` and Pillow are stand-ins, so nothing here can reach a
+// network: each link answers as its first word says (a status, "offline",
+// "slow" for a timeout, "photo", or "html" for a page that isn't a picture).
+const SCRIPTS = path.dirname(IMAGE_STORE);
+const SAVE_PHOTOS = `
+import ast, io, json, os, sys, types
+scripts, links = sys.argv[1], json.loads(sys.argv[2])
+
+requests = types.ModuleType('requests')
+class RequestException(Exception): pass
+class ConnectionError(RequestException): pass
+class Timeout(RequestException): pass
+requests.RequestException, requests.ConnectionError, requests.Timeout = RequestException, ConnectionError, Timeout
+fetched, posted = [], []
+class Answer:
+    def __init__(self, status, content=b'', body=None):
+        self.status_code, self.content, self.body, self.text = status, content, body, ''
+    def json(self): return self.body
+def get(url, **kw):
+    if url.startswith('http://app/'):
+        return Answer(200, body={'waiting': [{'profileUrl': 'https://www.linkedin.com/in/' + l,
+                                              'imageUrl': 'https://media.licdn.com/dms/image/' + l} for l in links]})
+    slug = url.rsplit('/', 1)[1]
+    fetched.append(slug)
+    how = slug.split('-')[0]
+    if how == 'offline': raise ConnectionError('no network here')
+    if how == 'slow': raise Timeout('read timed out')
+    if how in ('photo', 'html'): return Answer(200, ('%s of %s' % (how, slug)).encode())
+    return Answer(int(how))
+def post(url, json=None, **kw):
+    posted.append(json)
+    return Answer(200, body={'success': True})
+requests.get, requests.post = get, post
+
+class Picture:
+    def convert(self, mode): return self
+    def save(self, out, *a, **kw): open(out, 'wb').write(b'webp')
+def open_image(data):
+    if not data.getvalue().startswith(b'photo'): raise OSError('cannot identify image file')
+    return Picture()
+pil = types.ModuleType('PIL')
+pil.Image = types.SimpleNamespace(open=open_image, LANCZOS=1)
+pil.ImageOps = types.SimpleNamespace(exif_transpose=lambda i: i, fit=lambda i, size, method: i)
+sys.modules['requests'], sys.modules['PIL'] = requests, pil
+sys.path.insert(0, scripts)
+import image_store
+
+src = open(os.path.join(scripts, 'scrape.py')).read()
+body = [n for n in ast.parse(src).body
+        if (isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in ('save_waiting_photos', 'SaveFailed'))
+        or (isinstance(n, ast.Assign) and any(getattr(x, 'id', '') == 'PHOTO_TRIES_IN_A_ROW' for x in n.targets))]
+ns = {'requests': requests, 'APP_URL': 'http://app', 'app_headers': lambda json_body=True: {},
+      'stop_requested': lambda: False, 'store_avatar': image_store.store_avatar, 'TryLater': image_store.TryLater}
+exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
+out, sys.stdout = sys.stdout, io.StringIO()
+try:
+    result = ns['save_waiting_photos']()
+except image_store.TryLater as e:
+    result = 'stopped: %s' % e
+said, sys.stdout = sys.stdout.getvalue(), out
+print(json.dumps({'result': result, 'fetched': fetched, 'posted': posted, 'said': said}))
+`;
+
+function savePhotos(t, links) {
+  const home = mkdtempSync(path.join(dir, 'home-'));
+  const run = spawnSync(PYTHON, ['-c', SAVE_PHOTOS, SCRIPTS, JSON.stringify(links)], {
+    encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home },
+  });
+  if (noPython(t, run)) return null;
+  assert.equal(run.status, 0, run.stderr);
+  return JSON.parse(run.stdout);
+}
+const pairs = (slugs) => slugs.map((s) => ({ profileUrl: url(s), imageUrl: `https://media.licdn.com/dms/image/${s}` }));
+
+test('Save photos forgets a link only on a definite no, and keeps one it couldn\'t fetch', (t) => {
+  const got = savePhotos(t, ['photo-ada', 'offline-ben', '403-cora', 'slow-dev', 'html-eli', '503-fern', '404-gus', '429-hana', '410-ivo']);
+  if (!got) return;
+  assert.equal(got.result, 1);
+  assert.equal(got.posted.length, 1);
+  assert.deepEqual(got.posted[0].images.map((x) => x.profileUrl), [url('photo-ada')]);
+  assert.match(got.posted[0].images[0].imageUrl, /^\/avatars\/[0-9a-f]{16}\.webp$/);
+  // Expired or gone, and a page that isn't a picture: forgotten.
+  assert.deepEqual(got.posted[0].forget, pairs(['403-cora', 'html-eli', '404-gus', '410-ivo']));
+  // No connection, a timeout, busy, down: kept, and said so.
+  assert.match(got.said, /Saved 1 photo to this computer; 4 couldn't be .*; 4 couldn't be fetched this time/);
+});
+
+test('REGRESSION: Save photos offline forgets nothing, and stops after three in a row', (t) => {
+  // It used to send every link it couldn't fetch to `forget`, and the app
+  // cleared them: links only days old, reported as expired (TRAPS §7).
+  const got = savePhotos(t, ['403-ada', 'offline-ben', 'offline-cora', 'offline-dev', '404-eli', 'photo-fern']);
+  if (!got) return;
+  assert.deepEqual(got.fetched, ['403-ada', 'offline-ben', 'offline-cora', 'offline-dev']);
+  assert.deepEqual(got.posted, [{ images: [], forget: pairs(['403-ada']) }]);
+  assert.match(got.result, /^stopped: couldn't reach LinkedIn's image server \(ConnectionError\)\. Nothing was forgotten/);
+
+  // One link, offline: the run still ends with the reason, and nothing is sent.
+  const one = savePhotos(t, ['offline-gus']);
+  assert.deepEqual(one.posted, []);
+  assert.match(one.result, /^stopped: couldn't reach LinkedIn's image server/);
+});
+
 // ── And the browser's own refusal ───────────────────────────────────────────
 
 test('every page carries a Content-Security-Policy that allows pictures from the app only', async () => {

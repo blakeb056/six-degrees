@@ -37,7 +37,7 @@ from urllib.parse import parse_qs, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
-from image_store import localize_images, store_avatar
+from image_store import TryLater, localize_images, store_avatar
 
 # --- Config ---
 def _load_env_local():
@@ -779,6 +779,11 @@ def push_company(people, company_name):
     return inserted
 
 
+# Failures in a row that say nothing about a link (offline, LinkedIn's image
+# server busy or down) before Save photos stops: the rest would fail the same way.
+PHOTO_TRIES_IN_A_ROW = 3
+
+
 def save_waiting_photos(say_none=False):
     """Save the photos still kept as links, once each. Returns how many were saved.
 
@@ -786,10 +791,17 @@ def save_waiting_photos(say_none=False):
     browsing never goes online. Older versions stored the link until a scan
     replaced it, and a copy of a network made by one carries them too; those
     people show initials until this runs, at the end of a scan or from Save
-    photos on the Scan page (--save-photos). Each link is tried once: saved, it
-    becomes the file's path; not (expired, not LinkedIn's, or the same picture
-    as someone else's), the app forgets it. A photo already saved for that
-    person is used without fetching anything.
+    photos on the Scan page (--save-photos). Each link is tried until there's an
+    answer: saved, it becomes the file's path; a definite no (expired, not
+    LinkedIn's, not a picture, or the same picture as someone else's), the app
+    forgets it. A photo already saved for that person is used without fetching.
+
+    A failure that says nothing about the link (TryLater: offline, LinkedIn's
+    image server busy or down) keeps it for next time. Forgetting on those wiped
+    good links whenever this ran offline, and a person's photo then came back
+    only by scanning them again (TRAPS §7). A few in a row, or nothing but
+    those, raise TryLater once the answers there were are recorded, so the
+    run ends with the reason.
     """
     try:
         resp = requests.get(f"{APP_URL}/api/update-images", headers=app_headers(json_body=False), timeout=30)
@@ -805,20 +817,28 @@ def save_waiting_photos(say_none=False):
 
     people = len({w.get("profileUrl") for w in waiting})
     print(f"\nSaving {people} profile photo{'s' if people != 1 else ''} kept as links to LinkedIn...")
-    saved, forget = [], []
+    saved, forget, kept = [], [], set()
+    in_a_row, why = 0, ""
     for w in waiting:
-        if stop_requested():
+        if stop_requested() or in_a_row >= PHOTO_TRIES_IN_A_ROW:
             break
         purl, iurl = w.get("profileUrl"), w.get("imageUrl")
         if not purl or not iurl:
             continue
-        local = store_avatar(iurl, purl, overwrite=False)
+        try:
+            local = store_avatar(iurl, purl, overwrite=False)
+        except TryLater as e:
+            print(f"  Not saved this time: {purl} — {e}")
+            kept.add(purl)
+            in_a_row, why = in_a_row + 1, str(e)
+            continue
+        in_a_row = 0
         if local:
             saved.append({"profileUrl": purl, "imageUrl": local})
         else:
             forget.append({"profileUrl": purl, "imageUrl": iurl})
 
-    # What was tried is recorded even after a stop, so it isn't tried again.
+    # What was answered is recorded even after a stop, so it isn't tried again.
     for i in range(0, max(len(saved), len(forget)), 100):
         r = requests.post(
             f"{APP_URL}/api/update-images",
@@ -831,9 +851,15 @@ def save_waiting_photos(say_none=False):
 
     done = len({x["profileUrl"] for x in saved})
     lost = len({x["profileUrl"] for x in forget} - {x["profileUrl"] for x in saved})
+    later = len(kept - {x["profileUrl"] for x in saved})
     print(f"  Saved {done} photo{'s' if done != 1 else ''} to this computer"
-          + (f"; {lost} couldn't be (an expired link, a link that isn't LinkedIn's, or the same "
-             "picture as someone else's), so those people show initials" if lost else "") + ".")
+          + (f"; {lost} couldn't be (an expired link, a link that isn't LinkedIn's or isn't a picture, "
+             "or the same picture as someone else's), so those people show initials" if lost else "")
+          + (f"; {later} couldn't be fetched this time, and their links are kept to try again" if later else "")
+          + ".")
+    if not stop_requested() and (in_a_row >= PHOTO_TRIES_IN_A_ROW or (kept and not saved and not forget)):
+        raise TryLater(f"{why}. Nothing was forgotten: the photos still waiting are tried again "
+                       "with Save photos, and at the end of your next scan")
     return done
 
 
@@ -3616,6 +3642,8 @@ Examples:
     def _say_why(exc_type, exc, tb):
         if issubclass(exc_type, SaveFailed):
             print(f"\n  The app could not save what was scraped: {exc}\n", file=sys.stderr)
+        elif issubclass(exc_type, TryLater):
+            print(f"\n  The photos weren't saved: {exc}.\n", file=sys.stderr)
         elif issubclass(exc_type, NotSignedIn):
             print("\n  LinkedIn isn't signed in, so nothing was read. Sign in with --login, then run it again.\n",
                   file=sys.stderr)
@@ -3703,7 +3731,7 @@ Examples:
         if not args.server and not stop_requested():
             try:
                 save_waiting_photos()
-            except SaveFailed as e:
+            except (SaveFailed, TryLater) as e:
                 print(f"  The photos kept as links weren't saved this time: {e}")
     except (BudgetReached, CoolingDown) as exc:
         print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)))
