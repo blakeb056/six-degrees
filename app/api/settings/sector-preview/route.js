@@ -1,5 +1,5 @@
 import { getDb } from '../../../../lib/db-client';
-import { companyOverrides, readForScoring, scoringRows, sectorFocusOf } from '../../../../lib/rpc';
+import { companyOverrides, readForScoring, scoringRows, sectorFocusOf, tierScaleOf } from '../../../../lib/rpc';
 import { parseSectorFocus, previewSectorFocus } from '../../../../lib/sector-focus';
 
 // Settings → Your sector, before you save: what a sector focus would change,
@@ -31,6 +31,7 @@ export async function POST(request) {
       read: readForScoring(rows),
       from: sectorFocusOf(db),
       to,
+      tierScale: tierScaleOf(db),
     }));
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });

@@ -211,7 +211,7 @@ test('a company score you set wins and rescoring applies it', async () => {
   await db.from('company_scores').insert([{ name: 'Northwind', score: 10 }]);
   await db.rpc('rescore_all');
   const after = (await db.from('linkedin_connections').select('*').eq('profile_url', 'https://linkedin.com/in/d').single()).data;
-  assert.equal(before.company_prestige_score, 4);
+  assert.equal(before.company_prestige_score, 5);   // not on the list: neutral
   assert.equal(after.company_prestige_score, 10);
   assert.ok(after.power_score > before.power_score);
   assert.match(after.score_why, /your score/);

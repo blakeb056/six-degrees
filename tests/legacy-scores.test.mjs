@@ -62,14 +62,14 @@ test('a removed company is estimated from the network like any other', () => {
   assert.ok(removed.length > 20);
   for (const [name, , , industry] of removed) {
     assert.equal(knownIndustry(name), null, name);
-    assert.deepEqual(companyScore(name), { score: 4, source: 'default' }, name);
+    assert.deepEqual(companyScore(name), { score: 5, source: 'default' }, name);
     // Many of your people there lift it, as for any company but a school.
     assert.deepEqual(companyScore(name, { headcount: 15, industry }),
-      industry === 'education' ? { score: 4, source: 'default' } : { score: 6, source: 'network' }, name);
+      industry === 'education' ? { score: 5, source: 'default' } : { score: 6, source: 'network' }, name);
   }
   // Someone at a company the list used to call elite is scored as at any other.
   const pm = scorePerson({ headline: 'Head of Growth at Polymarket' });
-  assert.deepEqual([pm.company, pm.companyScore, pm.companySource], ['Polymarket', 4, 'default']);
+  assert.deepEqual([pm.company, pm.companyScore, pm.companySource], ['Polymarket', 5, 'default']);
   // A removed entry's aliases no longer fold names together.
   assert.equal(cleanCompany('University of Central Florida'), 'University of Central Florida');
   assert.equal(cleanCompany('UCF'), 'UCF');
@@ -136,8 +136,8 @@ const yours = () => Object.fromEntries(getDb().prepare('SELECT name, score FROM 
 function network() {
   return [
     { id: 'dev', name: 'Dev Moreau', headline: 'Director of Partnerships at Snap' },
-    { id: 'uma', name: 'Uma Castell', headline: 'Research Assistant at University of Central Florida' },
-    { id: 'ubo', name: 'Ubo Lind', headline: 'Lecturer at UCF' },
+    { id: 'uma', name: 'Uma Castell', headline: 'Research Assistant at University of Florida' },
+    { id: 'ubo', name: 'Ubo Lind', headline: 'Lecturer at UF' },
     { id: 'pia', name: 'Pia Okoro', headline: 'Product Manager at Polymarket' },
     { id: 'gus', name: 'Gus Adair', headline: 'Engineer at Google' },
     // Only a former employer: nobody works there now, so Paths → Scores doesn't
@@ -178,26 +178,26 @@ test('a database scored with the old list is offered what changed in it, once it
   assert.deepEqual(rescoreIfStale(), { scored: 6 });         // the first load after updating
   assert.equal(legacyOfferState(), 'open');
   assert.deepEqual(legacyOffer(), { companies: [
-    { name: 'UCF', was: 5, now: 4, estimated: true, people: 2, names: ['UCF', 'University of Central Florida'] },
-    { name: 'Polymarket', was: 9, now: 4, estimated: true, people: 1, names: ['Polymarket'] },
+    { name: 'University of Florida', was: 6, now: 5, estimated: true, people: 2, names: ['UF', 'University of Florida'] },
+    { name: 'Polymarket', was: 9, now: 5, estimated: true, people: 1, names: ['Polymarket'] },
     { name: 'Snap', was: 9, now: 8, estimated: false, people: 1, names: ['Snap'] },
   ] });
   // The old alias read Hard Rock Hotel as Hard Rock Digital (6), which it isn't
   // (and it is only Rex's former employer).
   assert.equal(legacyEntryFor('Hard Rock Hotel'), null);
   // The stored scores are the new ones meanwhile.
-  assert.deepEqual([row('dev').company_prestige_score, row('pia').company_prestige_score], [8, 4]);
+  assert.deepEqual([row('dev').company_prestige_score, row('pia').company_prestige_score], [8, 5]);
 });
 
 test('a company you scored yourself is not offered, nor one whose estimate lands on its old score', () => {
   const later = Array.from({ length: 15 }, (_, i) => ({ id: `l${i}`, name: `Lee Varga ${i}`, headline: 'Marketer at Later' }));
   oldDatabase([...network(), ...later]);
-  getDb().prepare("INSERT INTO company_scores (id, name, score) VALUES ('a', 'Snap', 9), ('b', 'UCF', 7)").run();
+  getDb().prepare("INSERT INTO company_scores (id, name, score) VALUES ('a', 'Snap', 9), ('b', 'UF', 7)").run();
   rescoreAll();
   const offer = legacyOffer();
   const byName = Object.fromEntries(offer.companies.map((c) => [c.name, c]));
   assert.equal(byName.Snap, undefined);                      // yours
-  assert.deepEqual(byName.UCF.names, ['University of Central Florida']);   // the name you haven't scored
+  assert.deepEqual(byName['University of Florida'].names, ['University of Florida']);   // the name you haven't scored
   assert.equal(byName.Later, undefined);                     // 15 people: estimated at 6, as it was
   assert.ok(byName.Polymarket);
 });
@@ -238,29 +238,29 @@ test('a company that only shares a name with an old entry is not offered its sco
   assert.deepEqual([snap.people, snap.names], [1, ['Snap']]);
   assert.equal(offer.companies.find((c) => c.name === 'Hard Rock Digital'), undefined);
   answerLegacyOffer(offer.companies.map((c) => c.name));
-  assert.deepEqual(yours(), { Polymarket: 9, Snap: 9, UCF: 5, 'University of Central Florida': 5 });
+  assert.deepEqual(yours(), { Polymarket: 9, Snap: 9, UF: 6, 'University of Florida': 6 });
   assert.equal(row('dev').company_prestige_score, 9);
-  for (const id of ['sol', 'spe', 'hal']) assert.equal(row(id).company_prestige_score, 4, id);
+  for (const id of ['sol', 'spe', 'hal']) assert.equal(row(id).company_prestige_score, 5, id);
 });
 
 test('keeping writes the old scores under every name scoring uses, then rescores once', () => {
   oldDatabase();
   rescoreIfStale();
   const r = counting();
-  const answer = answerLegacyOffer(['Snap', 'UCF', 'Not offered'], { rescore: r.rescore });
+  const answer = answerLegacyOffer(['Snap', 'University of Florida', 'Not offered'], { rescore: r.rescore });
   assert.equal(r.calls, 1, 'one rescore for the whole batch');
   assert.deepEqual(answer, { scored: 6, kept: [
-    { name: 'UCF', score: 5, names: ['UCF', 'University of Central Florida'] },
+    { name: 'University of Florida', score: 6, names: ['UF', 'University of Florida'] },
     { name: 'Snap', score: 9, names: ['Snap'] },
   ] });
-  assert.deepEqual(yours(), { Snap: 9, UCF: 5, 'University of Central Florida': 5 });
+  assert.deepEqual(yours(), { Snap: 9, UF: 6, 'University of Florida': 6 });
   // Rows exactly like Paths → Scores writes: an id and a time on each.
   for (const c of getDb().prepare('SELECT * FROM company_scores').all()) assert.ok(c.id && c.updated_at, c.name);
   // Everyone there carries the kept score, as their own.
   assert.equal(row('dev').company_prestige_score, 9);
   assert.match(row('dev').score_why, /Snap \(9\/10, your score\)/);
-  assert.deepEqual([row('uma').company_prestige_score, row('ubo').company_prestige_score], [5, 5]);
-  assert.equal(row('pia').company_prestige_score, 4);         // not kept: estimated
+  assert.deepEqual([row('uma').company_prestige_score, row('ubo').company_prestige_score], [6, 6]);
+  assert.equal(row('pia').company_prestige_score, 5);         // not kept: estimated
   // Answered: never offered again, whatever rescores next.
   assert.equal(legacyOfferState(), 'kept');
   assert.equal(legacyOffer(), null);
@@ -268,7 +268,7 @@ test('keeping writes the old scores under every name scoring uses, then rescores
   assert.equal(legacyOffer(), null);
   assert.deepEqual(answerLegacyOffer(['Polymarket'], { rescore: r.rescore }), { kept: [], scored: 0 });
   assert.equal(r.calls, 1);
-  assert.deepEqual(yours(), { Snap: 9, UCF: 5, 'University of Central Florida': 5 });
+  assert.deepEqual(yours(), { Snap: 9, UF: 6, 'University of Florida': 6 });
 });
 
 test('No thanks keeps nothing, rescores nothing, and never asks again', () => {

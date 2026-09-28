@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {
   readTitle, cleanCompany, currentCompany, companyScore, reachBonus, scorePerson, scoreNetwork, bridgeBoost, tierFor,
   explainScore, companyIndustry, industryAndSource, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
-  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies, isStudent,
+  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies, isStudent, UNKNOWN_COMPANY, CURVE, CURVE_FLOOR, curveCutoffs,
+  curvedTier, TIER_SCALE_SETTING,
 } from '../lib/scoring.js';
 
 const key = (h) => readTitle(h).key;
@@ -127,7 +128,7 @@ test('companies: a phrase\'s first word, a legal form and an initial\'s full sto
   // Chase Corporation and Merrill Corporation aren't the banks once "Corporation" is trimmed.
   for (const n of ['Chase Corporation', 'Merrill Corporation', 'Chase Corp.']) {
     assert.equal(knownIndustry(cleanCompany(n)), null, n);
-    assert.deepEqual(companyScore(cleanCompany(n)), { score: 4, source: 'default' }, n);
+    assert.deepEqual(companyScore(cleanCompany(n)), { score: 5, source: 'default' }, n);
   }
   assert.equal(cleanCompany('Chase'), 'JPMorgan Chase');
   assert.equal(cleanCompany('Merrill'), 'Bank of America');
@@ -147,7 +148,7 @@ test('companies: a school is not the company its name starts like, and Bain Capi
   for (const school of ['Kellogg School of Management', 'Kellogg College', 'Warner University', 'Campbell University', 'Chase College of Law']) {
     assert.equal(cleanCompany(school), school);
     assert.equal(knownIndustry(school), null);
-    assert.deepEqual(companyScore(cleanCompany(school)), { score: 4, source: 'default' });
+    assert.deepEqual(companyScore(cleanCompany(school)), { score: 5, source: 'default' });
   }
   // The companies themselves still match, and so do schools on the list.
   assert.equal(cleanCompany("Kellogg's"), 'Kellanova');
@@ -173,9 +174,9 @@ test('the company is where they work now', () => {
 test('company scores: yours, then the known list, then your network', () => {
   assert.deepEqual(companyScore('Google'), { score: 10, source: 'known' });
   assert.deepEqual(companyScore('Google', { overrides: new Map([['Google', 7]]) }), { score: 7, source: 'yours' });
-  assert.deepEqual(companyScore('Northwind', { headcount: 6 }), { score: 5, source: 'network' });
-  assert.deepEqual(companyScore('Northwind', { headcount: 20, industry: 'education' }), { score: 4, source: 'default' });
-  assert.deepEqual(companyScore(null), { score: 3, source: 'none' });
+  assert.deepEqual(companyScore('Northwind', { headcount: 6 }), { score: 5.5, source: 'network' });
+  assert.deepEqual(companyScore('Northwind', { headcount: 20, industry: 'education' }), { score: 5, source: 'default' });
+  assert.deepEqual(companyScore(null), { score: 5, source: 'none' });
 });
 
 test('bonus: whole words only, capped', () => {
@@ -232,7 +233,7 @@ test('a strong mapped circle boosts its bridge by at most 1, and only if big eno
   const { scores } = scoreNetwork(rows);
   const b = scores.get('b');
   assert.equal(b.boost, 1);
-  assert.equal(b.power, Math.round((4 * (0.45 + 0.055 * 4) + 1) * 10) / 10);
+  assert.equal(b.power, Math.round((4 * (0.45 + 0.055 * 5) + 1) * 10) / 10);
 });
 
 test('a person scores as their strongest role; former roles count at 70%', () => {
@@ -263,8 +264,8 @@ test('your sector: +1 lean, +2 strong, never above 10, and it says what it added
   // Capped: YouTube is 9, so strong adds only 1.
   assert.deepEqual(companyScore('YouTube', { focus: strong('media') }), { score: 10, source: 'known', base: 9, sector: 'media', sectorBonus: 1 });
   // Unknown companies move too, by the company's one industry.
-  assert.deepEqual(companyScore('Northwind', { industry: 'tech', focus: lean('tech') }), { score: 5, source: 'default', base: 4, sector: 'tech', sectorBonus: 1 });
-  assert.deepEqual(companyScore('Northwind', { industry: 'tech', headcount: 6, focus: strong('tech') }), { score: 7, source: 'network', base: 5, sector: 'tech', sectorBonus: 2 });
+  assert.deepEqual(companyScore('Northwind', { industry: 'tech', focus: lean('tech') }), { score: 6, source: 'default', base: 5, sector: 'tech', sectorBonus: 1 });
+  assert.deepEqual(companyScore('Northwind', { industry: 'tech', headcount: 6, focus: strong('tech') }), { score: 7.5, source: 'network', base: 5.5, sector: 'tech', sectorBonus: 2 });
 });
 
 test('your sector: nothing changes (not even the shape) outside it, at 10, or with no focus', () => {
@@ -272,8 +273,8 @@ test('your sector: nothing changes (not even the shape) outside it, at 10, or wi
   assert.deepEqual(companyScore('Adobe', { focus: strong('media', 'finance') }), { score: 8, source: 'known' });
   assert.deepEqual(companyScore('Adobe', { focus: lean() }), { score: 8, source: 'known' });
   assert.deepEqual(companyScore('Adobe', { focus: undefined }), { score: 8, source: 'known' });
-  assert.deepEqual(companyScore('Northwind', { focus: lean('tech') }), { score: 4, source: 'default' });   // industry unclear
-  assert.deepEqual(companyScore(null, { focus: strong('tech') }), { score: 3, source: 'none' });
+  assert.deepEqual(companyScore('Northwind', { focus: lean('tech') }), { score: 5, source: 'default' });   // industry unclear
+  assert.deepEqual(companyScore(null, { focus: strong('tech') }), { score: 5, source: 'none' });
 });
 
 test('your sector never touches a score you set', () => {
@@ -300,18 +301,18 @@ test('your sector shows in the working, and can lift a tier', () => {
 
 test('your sector lifts the company, not the headline\'s claims: a reach bonus is halved by the score before the lean', () => {
   // A founder at an unknown company who says "Angel investor": the claim counts
-  // half at a 4. Leaning toward tech makes the company a 5 or 6 for scoring,
-  // but liking a sector says nothing about whether the claim is true, so it
-  // stays halved: lean adds one company point (+0.55 for a founder), not the
-  // +1.1 it gave when the lean also un-halved the bonus (7.2 → 8.3).
+  // half, as at any company we don't know. Leaning toward tech makes the company
+  // a 6 or 7 for scoring (from its neutral 5), but liking a sector says nothing
+  // about whether the claim is true, so it stays halved: lean adds one company
+  // point (+0.55 for a founder), not the +1.1 it would if it also un-halved it.
   const h = 'Founder at Quillon | Angel investor';
   const at = (focus, overrides) => scorePerson({ headline: h }, (n) => companyScore(n, { overrides, industry: 'tech', focus }));
   const [plain, leaned, hard] = [undefined, lean('tech'), strong('tech')].map((f) => at(f));
-  assert.deepEqual([plain.power, plain.tier], [7.2, 'A']);
-  assert.deepEqual([leaned.power, leaned.tier], [7.8, 'S']);
-  assert.deepEqual([hard.power, hard.tier], [8.3, 'S']);
+  assert.deepEqual([plain.power, plain.tier], [7.8, 'S']);
+  assert.deepEqual([leaned.power, leaned.tier], [8.3, 'S']);
+  assert.deepEqual([hard.power, hard.tier], [8.9, 'S']);
   for (const s of [plain, leaned, hard]) assert.deepEqual(s.bonus, { points: 0.5, reasons: ['investor', 'halved: unknown company'] });
-  assert.equal(explainScore(leaned), 'C-Suite / Founder (10) · Quillon (5/10: 4 + 1 your sector) · +0.5 investor, halved: unknown company');
+  assert.equal(explainScore(leaned), 'C-Suite / Founder (10) · Quillon (6/10: 5 + 1 your sector) · +0.5 investor, halved: unknown company');
   // A score you set is your judgement of the company, so it decides.
   assert.deepEqual(at(lean('tech'), new Map([['Quillon', 5]])).bonus, { points: 1, reasons: ['investor'] });
   // The same in a whole network, where Quillon is tech by its name.
@@ -322,7 +323,7 @@ test('your sector lifts the company, not the headline\'s claims: a reach bonus i
   ];
   const techByName = (company) => (company === 'Quillon' ? 'tech' : 'unknown');
   const f = scoreNetwork(rows, { industryOf: techByName, focus: lean('tech') }).scores.get('f');
-  assert.deepEqual([f.companyScore, f.bonus.points, f.power, f.tier], [5, 0.5, 7.8, 'S']);
+  assert.deepEqual([f.companyScore, f.bonus.points, f.power, f.tier], [6, 0.5, 8.3, 'S']);
 });
 
 test('a broad pick counts a company\'s one industry only when the curated list or its name gave it', () => {
@@ -333,19 +334,19 @@ test('a broad pick counts a company\'s one industry only when the curated list o
   assert.deepEqual(industryAndSource('Quillon', { industryOf: fakeIndustryOf, headlines: ['Engineer', 'Nurse'] }), { industry: 'unknown', from: null });
   // Voted by its people's job words, it doesn't lean: "Recruiter at Acme
   // Widgets" says what the person does, not what Acme is.
-  assert.deepEqual(companyScore('Acme Widgets', { industry: 'consulting', industryFrom: 'people', focus: strong('consulting') }), { score: 4, source: 'default' });
-  assert.deepEqual(companyScore('Pinecrest Foods', { industry: 'tech', industryFrom: 'people', headcount: 6, focus: lean('tech') }), { score: 5, source: 'network' });
+  assert.deepEqual(companyScore('Acme Widgets', { industry: 'consulting', industryFrom: 'people', focus: strong('consulting') }), { score: 5, source: 'default' });
+  assert.deepEqual(companyScore('Pinecrest Foods', { industry: 'tech', industryFrom: 'people', headcount: 6, focus: lean('tech') }), { score: 5.5, source: 'network' });
   // By the list or the name it does, as does an industry given with no source.
   assert.deepEqual(companyScore('Meridian Health', { industry: 'health', industryFrom: 'name', focus: lean('health') }),
-    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+    { score: 6, source: 'default', base: 5, sector: 'health', sectorBonus: 1 });
   assert.deepEqual(companyScore('Adobe', { industry: 'tech', industryFrom: 'list', focus: lean('tech') }),
     { score: 9, source: 'known', base: 8, sector: 'tech', sectorBonus: 1 });
   // The directory's sectors still count for such a company, a sector pick and a broad one alike.
   const smith = { industry: 'health', industryFrom: 'people', sectors: ['dental'], sectorIndustries: ['health'] };
   assert.deepEqual(companyScore('Smith Family Practice', { ...smith, focus: lean('health') }),
-    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+    { score: 6, source: 'default', base: 5, sector: 'health', sectorBonus: 1 });
   assert.deepEqual(companyScore('Smith Family Practice', { ...smith, focus: lean('dental') }),
-    { score: 5, source: 'default', base: 4, sector: 'dental', sectorBonus: 1 });
+    { score: 6, source: 'default', base: 5, sector: 'dental', sectorBonus: 1 });
 });
 
 // A stand-in for lib/companies.js's inference, so these cases pin the order of
@@ -365,25 +366,25 @@ const fakeIndustryOf = (company, headline) => {
 
 test('a sector from the directory leans a company that matches it, once, and says which', () => {
   assert.deepEqual(companyScore('Smith Family Practice', { sectors: ['dental'], focus: lean('dental') }),
-    { score: 5, source: 'default', base: 4, sector: 'dental', sectorBonus: 1 });
-  assert.deepEqual(companyScore('Quillon', { sectors: ['software'], focus: lean('dental') }), { score: 4, source: 'default' });
-  assert.deepEqual(companyScore('Quillon', { focus: lean('dental') }), { score: 4, source: 'default' });
+    { score: 6, source: 'default', base: 5, sector: 'dental', sectorBonus: 1 });
+  assert.deepEqual(companyScore('Quillon', { sectors: ['software'], focus: lean('dental') }), { score: 5, source: 'default' });
+  assert.deepEqual(companyScore('Quillon', { focus: lean('dental') }), { score: 5, source: 'default' });
   // A broad industry includes its sectors: a practice only the directory calls dental is in health.
   assert.deepEqual(companyScore('Smith Family Practice', { industry: 'unknown', sectors: ['dental'], sectorIndustries: ['health'], focus: lean('health') }),
-    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+    { score: 6, source: 'default', base: 5, sector: 'health', sectorBonus: 1 });
   // Told nothing about where its sectors sit, it goes by the one industry alone.
-  assert.deepEqual(companyScore('Smith Family Practice', { industry: 'unknown', sectors: ['dental'], focus: lean('health') }), { score: 4, source: 'default' });
+  assert.deepEqual(companyScore('Smith Family Practice', { industry: 'unknown', sectors: ['dental'], focus: lean('health') }), { score: 5, source: 'default' });
   // In the industry both ways, or in two picked industries: still once.
   assert.deepEqual(companyScore('Smith Family Practice', { industry: 'health', sectors: ['dental'], sectorIndustries: ['health'], focus: strong('health') }),
-    { score: 6, source: 'default', base: 4, sector: 'health', sectorBonus: 2 });
+    { score: 7, source: 'default', base: 5, sector: 'health', sectorBonus: 2 });
   assert.deepEqual(companyScore('Quillon', { industry: 'tech', sectors: ['dental'], sectorIndustries: ['health'], focus: lean('health', 'tech') }),
-    { score: 5, source: 'default', base: 4, sector: 'health', sectorBonus: 1 });
+    { score: 6, source: 'default', base: 5, sector: 'health', sectorBonus: 1 });
   // A narrower pick stays narrow: Dental doesn't take in the rest of health.
   assert.deepEqual(companyScore('Northwind Clinic', { industry: 'health', sectors: ['hospitals'], sectorIndustries: ['health'], focus: lean('dental') }),
-    { score: 4, source: 'default' });
+    { score: 5, source: 'default' });
   // Several picks match (the industry and two sectors): +2 once, named by a directory sector.
   assert.deepEqual(companyScore('Smith Family Practice', { industry: 'health', sectors: ['hospitals', 'dental'], focus: strong('health', 'hospitals', 'dental') }),
-    { score: 6, source: 'default', base: 4, sector: 'hospitals', sectorBonus: 2 });
+    { score: 7, source: 'default', base: 5, sector: 'hospitals', sectorBonus: 2 });
   // Never above 10, and never on a score you set.
   assert.deepEqual(companyScore('Northwind', { headcount: 20, sectors: ['dental'], focus: strong('dental') }),
     { score: 8, source: 'network', base: 6, sector: 'dental', sectorBonus: 2 });
@@ -393,11 +394,11 @@ test('a sector from the directory leans a company that matches it, once, and say
 
 test('the working names the sector that leaned the company, when it is given the labels', () => {
   const s = scorePerson({ headline: 'Owner at Smith Family Practice' }, (n) => companyScore(n, { sectors: ['dental'], focus: lean('dental') }));
-  assert.deepEqual(s.companySector, { key: 'dental', base: 4, bonus: 1 });
+  assert.deepEqual(s.companySector, { key: 'dental', base: 5, bonus: 1 });
   const sectorLabel = (k) => ({ dental: 'Dental' })[k];
-  assert.equal(explainScore(s, 0, { sectorLabel }), 'Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector: Dental)');
+  assert.equal(explainScore(s, 0, { sectorLabel }), 'Owner / Entrepreneur (8) · Smith Family Practice (6/10: 5 + 1 your sector: Dental)');
   // Without labels, or for a key it doesn't know, it says "your sector" and nothing wrong.
-  assert.equal(explainScore(s), 'Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector)');
+  assert.equal(explainScore(s), 'Owner / Entrepreneur (8) · Smith Family Practice (6/10: 5 + 1 your sector)');
   assert.equal(explainScore(s, 0, { sectorLabel: () => undefined }), explainScore(s));
 });
 
@@ -414,8 +415,8 @@ test('a network read with the directory carries each company\'s sectors to its s
   // Asked once per company: with the people there now, or none for a former employer.
   assert.deepEqual(asked.sort(), [['Bright Smiles', 0], ['Smith Family Practice', 1]]);
   const leaned = scoreNetwork(rows, { read, focus: lean('dental') });
-  assert.equal(leaned.scores.get('n').companyScore, 5);
-  assert.equal(leaned.companyScores.get('Bright Smiles').score, 5);
+  assert.equal(leaned.scores.get('n').companyScore, 6);
+  assert.equal(leaned.companyScores.get('Bright Smiles').score, 6);
   assert.deepEqual(scoreNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, focus: lean('dental') }).scores, leaned.scores);
   // Without the directory nothing is attached, as before.
   assert.equal(readNetwork(rows, { industryOf: fakeIndustryOf }).companies.get('Smith Family Practice').sectors, undefined);
@@ -441,11 +442,11 @@ test('a read with the directory\'s groups carries the industries a company\'s se
   assert.deepEqual(networkCompanies(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf }).sectorIndustries.get('Smith Family Practice'), ['health']);
   // Picking health lifts both, and not Quillon; the same scored straight from the rows.
   const leaned = scoreNetwork(rows, { read, focus: lean('health') });
-  assert.deepEqual(['Smith Family Practice', 'Bright Smiles', 'Quillon'].map((n) => leaned.companyScores.get(n).score), [5, 5, 4]);
+  assert.deepEqual(['Smith Family Practice', 'Bright Smiles', 'Quillon'].map((n) => leaned.companyScores.get(n).score), [6, 6, 5]);
   assert.equal(leaned.companyScores.get('Smith Family Practice').sector, 'health');
   assert.deepEqual(scoreNetwork(rows, { industryOf: fakeIndustryOf, sectorsOf, groupOf, focus: lean('health') }).scores, leaned.scores);
   // Nor does picking tech lift Quillon: its engineer's job title isn't what Quillon is.
-  assert.equal(scoreNetwork(rows, { read, focus: lean('tech') }).companyScores.get('Quillon').score, 4);
+  assert.equal(scoreNetwork(rows, { read, focus: lean('tech') }).companyScores.get('Quillon').score, 5);
 });
 
 test('one industry per company: the curated list, then the name, then most of its people', () => {
@@ -497,10 +498,10 @@ test('in a network, everyone at a company gets the same industry, and the lean f
   const leaned = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: lean('tech', 'health') });
   const hard = scoreNetwork(rows, { industryOf: fakeIndustryOf, focus: strong('tech', 'health') });
   assert.equal(plain.industries.get('Quillon'), 'tech');
-  assert.deepEqual(['f', 'e1', 'n'].map((id) => leaned.scores.get(id).companyScore), [4, 4, 4]);
-  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('f').power, x.scores.get('f').tier]), [[6.7, 'A'], [6.7, 'A'], [6.7, 'A']]);
-  // A founder at an unknown company its name places: 6.7 (A), 7.3 lean (A), 7.8 strong (S).
-  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('m').power, x.scores.get('m').tier]), [[6.7, 'A'], [7.3, 'A'], [7.8, 'S']]);
+  assert.deepEqual(['f', 'e1', 'n'].map((id) => leaned.scores.get(id).companyScore), [5, 5, 5]);
+  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('f').power, x.scores.get('f').tier]), [[7.3, 'A'], [7.3, 'A'], [7.3, 'A']]);
+  // A founder at an unknown company its name places: 7.3 (A), 7.8 lean (S), 8.4 strong (S).
+  assert.deepEqual([plain, leaned, hard].map((x) => [x.scores.get('m').power, x.scores.get('m').tier]), [[7.3, 'A'], [7.8, 'S'], [8.4, 'S']]);
   // Recomputed from scratch each time: dropping the focus gives back the first answer exactly.
   const again = scoreNetwork(rows, { industryOf: fakeIndustryOf });
   for (const id of ['f', 'e1', 'e2', 'n', 'm']) assert.deepEqual(again.scores.get(id), plain.scores.get(id));
@@ -561,8 +562,8 @@ test('views read the company score a row was scored with, or the list\'s for a r
   assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) }))), 9);
   assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { headcount: 20, industry: 'tech', focus: strong('tech') }))), 8);
   // A famous name inside another word or another company's name is not that company.
-  assert.equal(rowCompanyScore(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 4);
-  assert.equal(rowCompanyScore(asStored({ headline: 'Director at Applewood Bakery' })), 4);
+  assert.equal(rowCompanyScore(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 5);
+  assert.equal(rowCompanyScore(asStored({ headline: 'Director at Applewood Bakery' })), 5);
 });
 
 test('the company a score is built on: its strongest role\'s, current or former, found by the stored title points', () => {
@@ -570,7 +571,8 @@ test('the company a score is built on: its strongest role\'s, current or former,
   assert.deepEqual(scoredCompany(asStored({ headline: 'Consultant | Ex-Manager at Discord' })), { name: 'Discord', score: 7, former: true });
   // Your score for Quillon makes the current role the strongest; the list alone would say Google.
   const quillon8 = (n) => companyScore(n, { overrides: new Map([['Quillon', 8]]) });
-  const row = asStored({ headline: 'Manager at Quillon | Ex-Manager at Google' }, quillon8);
+  // (A director at Google before: 7.5 × 70% outweighs a manager at a company we don't know.)
+  const row = asStored({ headline: 'Manager at Quillon | Ex-Director at Google' }, quillon8);
   assert.deepEqual(scoredCompany(row), { name: 'Quillon', score: 8, former: false });
   assert.equal(scorePerson({ headline: row.headline }).company, 'Google');
   // Two roles with the same points: the one scored as stored.
@@ -580,7 +582,7 @@ test('the company a score is built on: its strongest role\'s, current or former,
   assert.deepEqual(scoredCompany(asStored({ headline: 'Founder at Acme Widgets | Founder at Beta Labs' }, beta9)), { name: 'Beta Labs', score: 9, former: false });
   // Not scored yet: the list alone.
   assert.deepEqual(scoredCompany({ headline: 'Consultant | Ex-Manager at Discord' }), { name: 'Discord', score: 7, former: true });
-  assert.deepEqual(scoredCompany({ headline: 'Building cool things' }), { name: null, score: 3, former: false });
+  assert.deepEqual(scoredCompany({ headline: 'Building cool things' }), { name: null, score: 5, former: false });
 });
 
 test('the panel\'s top companies: where someone is now and was before, by the model\'s scores', () => {
@@ -602,3 +604,79 @@ test('the panel\'s top companies: where someone is now and was before, by the mo
   const hooli = (n) => companyScore(n, n === 'Hooli Health' ? { headcount: 15, industry: 'health', industryFrom: 'name', focus: strong('health') } : {});
   assert.deepEqual(tops('Founder at Acme Widgets | Founder at Hooli Health', hooli), { now: { name: 'Hooli Health', score: 8 }, before: null });
 });
+
+// ── tiers on your network's curve ───────────────────────────────────────────
+
+test('a company we don\'t know is neutral: it neither lifts a title nor sinks it', () => {
+  assert.equal(UNKNOWN_COMPANY, 5);
+  assert.deepEqual(companyScore('Northwind'), { score: 5, source: 'default' });
+  assert.deepEqual(companyScore(null), { score: 5, source: 'none' });
+  // A founder at a company the list doesn't know: 7.3 (it was 6.7, at 4); a director 5.4 (it was 5.0).
+  assert.equal(scorePerson({ headline: 'Founder at Quillon' }).power, 7.3);
+  assert.equal(scorePerson({ headline: 'Director at Quillon' }).power, 5.4);
+  // A claim in the headline still counts half there: not knowing the company doesn't make it truer.
+  assert.deepEqual(scorePerson({ headline: 'Founder at Quillon | Angel investor' }).bonus, { points: 0.5, reasons: ['investor', 'halved: unknown company'] });
+});
+
+test('the curve: your top 3% are S, then A to 15%, B to 40% and C to 70%', () => {
+  assert.deepEqual(CURVE, [['S', 0.03], ['A', 0.15], ['B', 0.4], ['C', 0.7]]);
+  assert.deepEqual(curveCutoffs(Array.from({ length: 100 }, (_, i) => (100 - i) / 10)), { S: 9.8, A: 8.6, B: 6.1, C: 3.1 });
+  // At least one person reaches each cut-off, so a small network still has a top.
+  assert.deepEqual(curveCutoffs([3, 2, 1]), { S: 3, A: 3, B: 3, C: 2 });
+  assert.equal(curveCutoffs([]), null);
+  assert.equal(curveCutoffs([NaN, undefined]), null);
+});
+
+test('people tied at a cut-off all come in or all stay out, whichever is nearer the share', () => {
+  // An owner, three directors, eight managers and eighteen technicians, all at companies nobody knows.
+  const powers = [5.8, 5.4, 5.4, 5.4, ...Array(8).fill(4.7), ...Array(18).fill(2.9)];
+  // A's share is 5 of 30: the eight managers tied at 4.7 would make it 12, so they stay out (4 is nearer).
+  assert.deepEqual(curveCutoffs(powers), { S: 5.8, A: 5.4, B: 4.7, C: 2.9 });
+});
+
+test('graded on the curve, a tier only ever lifts, and never into S or A under 4', () => {
+  const cut = { S: 6, A: 5, B: 3, C: 2 };
+  assert.equal(curvedTier(6.2, cut), 'S');                             // A on the fixed scale; this network's top
+  assert.equal(curvedTier(3.5, cut), 'B');                             // C on the fixed scale; in the top 40% here
+  assert.equal(curvedTier(1, cut), 'D');
+  // A strong network keeps its fixed-scale tiers: the curve never lowers anyone.
+  assert.equal(curvedTier(8, { S: 9, A: 8.5, B: 8, C: 7 }), 'S');
+  // A network of students and interns: its best is B at most.
+  assert.equal(CURVE_FLOOR, 4);
+  assert.equal(curvedTier(3.9, { S: 3.9, A: 3.5, B: 3, C: 2 }), 'B');
+  // Without cut-offs, the fixed scale.
+  assert.equal(curvedTier(6.2, null), 'A');
+});
+
+test('on the curve a network the list barely knows has a top; on the fixed scale it has none', () => {
+  const rows = [];
+  const add = (id, degree, headline, extra = {}) => rows.push({ id, degree, headline, profile_url: `/in/${id}`, ...extra });
+  const town = ['North', 'South', 'East', 'West', 'Harbor', 'Pine', 'Maple', 'Cedar', 'Lake', 'River'];
+  const trade = ['Plumbing', 'Electric', 'Freight', 'Market', 'Supply'];
+  const at = (k) => `${town[k % 10]} ${trade[Math.floor(k / 10)]}`;   // thirty companies, one person each
+  add('o', 1, `Owner at ${at(0)}`);
+  for (let i = 1; i <= 3; i++) add(`d${i}`, 1, `Director of Operations at ${at(i)}`);
+  for (let i = 4; i <= 11; i++) add(`m${i}`, 1, `Store Manager at ${at(i)}`);
+  for (let i = 12; i <= 29; i++) add(`t${i}`, 1, `Technician at ${at(i)}`);
+  // One of their people, graded on your cut-offs.
+  add('two', 2, `Owner at ${at(30)}`, { source_connection_id: 't12' });
+  const count = (scores) => [...scores.entries()].filter(([id]) => id !== 'two').reduce((m, [, x]) => ({ ...m, [x.tier]: (m[x.tier] || 0) + 1 }), {});
+  const fixed = scoreNetwork(rows);
+  assert.equal(fixed.cutoffs, null);
+  assert.deepEqual(count(fixed.scores), { A: 1, B: 11, C: 18 });
+  const curve = scoreNetwork(rows, { tierScale: 'curve' });
+  assert.deepEqual(curve.cutoffs, { S: 5.8, A: 5.4, B: 4.7, C: 2.9 });
+  assert.deepEqual(count(curve.scores), { S: 1, A: 3, B: 8, C: 18 });
+  assert.deepEqual(['o', 'd1', 'm4', 't12'].map((id) => curve.scores.get(id).tier), ['S', 'A', 'B', 'C']);
+  // Power doesn't change with the scale; only the tier does.
+  for (const id of ['o', 'd1', 'm4', 't12']) assert.equal(curve.scores.get(id).power, fixed.scores.get(id).power, id);
+  assert.equal(curve.scores.get('two').tier, 'S');
+  assert.equal(fixed.scores.get('two').tier, 'A');
+});
+
+test('Settings → Tiers is the curve unless you choose the fixed scale', () => {
+  assert.equal(TIER_SCALE_SETTING.default, 'curve');
+  assert.equal(TIER_SCALE_SETTING.parse('fixed'), 'fixed');
+  assert.throws(() => TIER_SCALE_SETTING.parse('relative'), /curve.*fixed/);
+});
+

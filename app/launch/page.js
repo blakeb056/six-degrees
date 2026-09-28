@@ -474,6 +474,9 @@ function ScoringSection() {
             </div>
           ))}
         </div>
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#555', marginTop: 24 }}>
+          These are the fixed scale&rsquo;s lines. By default tiers are graded on your own network&rsquo;s curve: your top 3% are S, the next 12% A.
+        </p>
       </div>
     </section>
   );

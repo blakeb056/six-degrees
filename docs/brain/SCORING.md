@@ -6,7 +6,7 @@ pinning it down. Everything scores through it:
 
 | Caller | When |
 |---|---|
-| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list, the industries' words and scoring's rule tables, or the sector focus they were computed with no longer matches, the sector directory's version included; all three stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and where it came from, its sectors from the directory and the industries those sit under |
+| `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* or *Tiers* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list, the industries' words and scoring's rule tables, the sector focus they were computed with, the sector directory's version included, or the tier scale no longer matches; all four stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and where it came from, its sectors from the directory and the industries those sit under |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
@@ -26,12 +26,15 @@ old name; it runs `rescoreAll()`. Do not transcribe the model anywhere else agai
 ```
 power = title × (0.45 + 0.055 × company) + reach bonus + bridge boost
 
-tiers   S ≥ 7.5    A ≥ 5.5    B ≥ 4.0    C ≥ 2.5    D < 2.5
+tiers, on your network's curve (the default)   top 3% S · to 15% A · to 40% B · to 70% C · D
+tiers, on the fixed scale                      S ≥ 7.5    A ≥ 5.5    B ≥ 4.0    C ≥ 2.5    D < 2.5
 ```
+
+Which one is Settings → Tiers ([below](#tiers-on-your-networks-curve)).
 
 It's a **product, not a sum**: a title is worth more at a bigger company, and a big
 company is worth more the higher someone sits in it. A VP at a company scored 10 gets 9.0,
-a founder at an unknown company 6.7, a director at an unknown company 5.0, and an intern
+a founder at an unknown company 7.3, a director at an unknown company 5.4, and an intern
 at a 10 gets 2.0. The old sum let an intern at a famous company tie with a director
 somewhere unknown.
 
@@ -78,9 +81,16 @@ also read "Finance @ UBS" as a student and the UAW local's president as a studen
 **Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
 `company_scores`), then the curated `KNOWN_COMPANIES` list (245 companies, on it by the
 rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people
-work there: 5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
-is education). Unknown is 4, and no company found is 3, so the company weight runs from
-0.615 (no company) to 1.0; 0.505 is the floor, for a company you score 1. Names are cleaned
+work there: 5.5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
+is education). Unknown, and no company found, is 5 (`UNKNOWN_COMPANY`), the middle of the
+scale, so the company weight runs from 0.725 (a company we don't know) to 1.0; 0.505 is the
+floor, for a company you score 1. Not knowing a company says nothing about its size, so it
+neither lifts someone's title nor sinks it. Until scoring 4 (September 2026) an unknown
+company was 4 and no company 3, which pushed down everyone the list doesn't know: most of
+any network outside big tech, and founders whose headline is only their company's name
+("Back Roads Entertainment", "Snapback Sports") landed in D. One knock-on, on purpose: a
+current role at a company we don't know now outweighs the same title held before at a top
+company (a manager: 4.7 now, 4.6 as a former manager at a 10). Names are cleaned
 first, so "Adobe Inc.", "Adobe Systems 🎨" and
 "Adobe" are one company. Phrases like "at scale" and "at best" are not companies (Best Buy and
 Best Western are). The list's aliases match from the start of a name, only in the forms their
@@ -103,9 +113,11 @@ Peabody Awards or the Pulitzer Center get nothing. The price: "3x Emmy", with no
 isn't read either. Until September 2026 it named four awards, from advertising, TV, music and
 the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so a Pulitzer, an Oscar, a Nobel
 Prize or an Olympic medal earned nothing, and "Emmy" or "Grammy" counted anywhere, a bakery's
-name included. It's halved for someone at a company scored 4 or less, because headlines are
-self-written. That's judged by the company's score before any sector lean (a score you set
-counts as the company's own).
+name included. It's halved for someone at a company we don't know or one scored 4 or less,
+because headlines are self-written: a company becoming neutral didn't make anyone's claims
+truer, so `scorePerson` still judges an unknown company as the 4 it used to be here. That's
+judged by the company's score before any sector lean (a score you set counts as the
+company's own).
 
 **Bridge boost (≤1)** goes to a 1st-degree person whose mapped circle (20+ people) is
 unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed each time and
@@ -113,7 +125,40 @@ never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
 "VP / Partner / GM (9) · Adobe (8/10) · +0.7 strong circle", or with a sector lean
-"Owner / Entrepreneur (8) · Smith Family Practice (5/10: 4 + 1 your sector: Dental)".
+"Owner / Entrepreneur (8) · Smith Family Practice (6/10: 5 + 1 your sector: Dental)".
+
+## Tiers on your network's curve
+
+**Settings → Tiers** (`tierScale`, lib/settings.js; `TIER_SCALE_SETTING` in lib/scoring.js)
+is `curve` unless the user chooses `fixed`. On the fixed scale everyone gets the same lines
+(`tierFor`). They were tuned on a network full of companies the curated list knows, where S
+is about the top 3–4%; in a network the list barely knows (most networks), almost nobody
+reaches S or A, and a first scan looks bleak. The curve fixes that:
+
+- **The shares** (`CURVE`): of your 1st-degree people, the top 3% are S, the next 12% A, the
+  next 25% B and the next 30% C; the rest D. That's about where the fixed scale puts a
+  network full of known companies.
+- **Cut-offs** (`curveCutoffs`) come from your 1st-degree people's powers before any circle
+  boost, so a boost (which reads the graded tiers) can't move its own cut-off. Everyone, the
+  2nd degree included, is graded on the same cut-offs. At least one person reaches each cut-off.
+- **Ties** at a cut-off all come in or all stay out, whichever lands nearer the share (in,
+  when it's as near): eight "Store Manager at <a company nobody knows>", all at 4.7, don't
+  all become A to fill two places.
+- **It only lifts** (`curvedTier`): a tier is the better of the fixed scale's and the
+  curve's, so a strong network keeps its fixed-scale tiers. The invented sample network is
+  such a network: its tiers are the same on either scale (a test pins it), so the counts the
+  tutorials and films show stay true.
+- **A floor** (`CURVE_FLOOR`, 4): nobody under 4 is lifted into S or A. In a network of
+  students, the strongest classmate is B at most.
+- **Power never changes with the scale**, only tiers do, except through a bridge's circle
+  boost, which reads the tiers you see.
+
+`scoreNetwork(rows, { tierScale })` grades on the curve only when asked (called without one,
+on the fixed scale, as the sample's generator does). `rescoreAll()` passes the saved choice
+and stamps it (`app_meta` `scoring_tiers`); `rescoreIfStale()` rescores once when the stamp
+and the saved choice differ. Saving a new choice rescores everyone and reports how many
+changed tier (lib/settings-effects.js). Settings → Your sector's preview grades both sides on
+the saved scale, so the preview and the save agree.
 
 ## The curated list
 

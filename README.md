@@ -216,7 +216,8 @@ lock, and a **Paused** list you can carry on from.
 
 ```
 power = title × (0.45 + 0.055 × company score) + reach bonus + bridge boost
-tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
+tiers, on your network's curve (the default):  your top 3% S, then A to 15%, B to 40%, C to 70%
+tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
 ```
 
 - **Title (1–10)** comes from someone's current role in their headline, with former
@@ -226,7 +227,9 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   work there. The built-in list is the same for everyone and follows one rule: only
   companies most US professionals would recognise (household names, the largest companies,
   top investment, consulting, law and accounting firms, frontier AI labs, top universities),
-  scored 7 to 10. Anything else is estimated from your network. If you scanned with an
+  scored 7 to 10. Anything else is estimated from your network: a company it doesn't
+  know counts as 5, the middle of the scale, a little more when several of your people
+  work there. If you scanned with an
   earlier version, Paths → Scores offers once to keep its old scores for the companies in
   your network whose score changed.
 - **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
@@ -240,12 +243,17 @@ tiers:  S ≥ 7.5   A ≥ 5.5   B ≥ 4.0   C ≥ 2.5   D < 2.5
   job titles do. Settings suggests the sectors your network is in and shows what would
   change before you save.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
-  scored 10 gets 9.0; a founder at an unknown company, 6.7.
+  scored 10 gets 9.0; a founder at an unknown company, 7.3.
 - **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions, the top award
   of any field (a Nobel, a Pulitzer, an Oscar, an Olympic medal…). It counts half
   at an unknown company, because headlines are self-written (your sector doesn't change
   that).
 - **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
+- **Tiers (Settings):** graded on your own network's curve by default, so any network has a
+  top: your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C.
+  The curve only lifts, so a network full of well-known companies keeps its tiers, and it
+  never lifts anyone under 4 into S or A. People tied at a line all come in or all stay out.
+  Choose the fixed scale instead for the same lines as everyone else.
 
 Scanned and sample people show the working ("VP / Partner / GM (9) · Adobe (8/10) · +0.7
 strong circle"). A CSV import shows the score only, and uses the built-in company list
