@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape } from '../../lib/scraper-client';
-import { setupStep } from '../../lib/scanner-setup';
+import { setupStep, askForField } from '../../lib/scanner-setup';
+import { IS_DEMO } from '../../lib/demo';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
+import FieldStep, { FieldAnswer } from '../components/FieldStep';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -60,6 +62,10 @@ function SetupInner() {
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
+  // What's saved, for the question about your field: undefined while it
+  // loads, null when it couldn't be read. And the answer given here, if any.
+  const [settings, setSettings] = useState(undefined);
+  const [field, setField] = useState(null);
 
   const poll = useCallback(async () => {
     try {
@@ -77,6 +83,16 @@ function SetupInner() {
   }, [poll]);
 
   useEffect(() => {
+    if (IS_DEMO) return;
+    let off = false;
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!off) setSettings(d?.settings || null); })
+      .catch(() => { if (!off) setSettings(null); });
+    return () => { off = true; };
+  }, []);
+
+  useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [s?.log?.length]);
 
@@ -84,6 +100,13 @@ function SetupInner() {
     setError(null);
     await stopScrape().catch((e) => setError(e.message));
     poll();
+  }
+
+  // The question is answered: the steps take its place, from the top, since
+  // it may have been answered from far down the picker.
+  function answered(sectors) {
+    setField({ sectors });
+    window.scrollTo(0, 0);
   }
 
   async function run(action, extra = {}) {
@@ -123,6 +146,9 @@ function SetupInner() {
   // you know, then the people found through them, then company scans.
   const net = s?.network || { first: 0, second: 0, third: 0 };
   const mapped = net.first;
+  // Your field, asked once before the first scan (lib/scanner-setup.js
+  // askForField). The steps wait while that isn't known yet (null).
+  const askField = IS_DEMO || field ? false : askForField(s, settings);
   // A run that ended badly, and the line that says why — the last thing it
   // printed before stopping. Shown as a box, not left for someone to find in the log.
   const failed = s && !running && s.exitCode != null && s.exitCode !== 0;
@@ -157,276 +183,285 @@ function SetupInner() {
           This reads your own LinkedIn connections in a real Chrome window on this
           machine and saves them here. Nothing leaves your computer, and you will never
           be asked for your password — you sign in yourself, once.
-          {!mapped && ' Three steps and your galaxy appears; each one ticks itself off.'}
+          {!mapped && (askField
+            ? ' One optional question, then three steps and your galaxy appears.'
+            : ' Three steps and your galaxy appears; each one ticks itself off.')}
         </p>
 
-        {mapped > 0 && !running && (
-          <Box>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <b>{mapped.toLocaleString()} connections</b>
-                {net.second > 0 && <>, plus {net.second.toLocaleString()} people in their circles</>}
-                {net.third > 0 && <> and {net.third.toLocaleString()} from company scans</>}
-                .{' '}
-                <span style={{ color: '#9aa' }}>Your galaxy is ready.</span>
-              </div>
-              <Link href="/" style={{
-                padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 700,
-                color: '#0a0a1a', textDecoration: 'none',
-                background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-              }}>See your network →</Link>
-            </div>
-          </Box>
-        )}
+        {/* The first look at the scanner can take a while (it looks for Python): say so, never a blank page. */}
+        {askField === null && <p style={{ color: '#778', fontSize: 13 }}>Checking your setup…</p>}
+        {askField && <FieldStep onDone={answered} />}
+        {field && <FieldAnswer sectors={field.sectors} />}
 
-        {failed && (
-          <Box tone="bad">
-            <b>The last run stopped before it finished.</b>
-            {failReason && (
-              <div style={{
-                marginTop: 6, color: '#e8c4c4', whiteSpace: 'pre-wrap',
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5,
-              }}>{failReason}</div>
-            )}
-            <div style={{ color: '#9aa', marginTop: 6 }}>The full log is below.</div>
-          </Box>
-        )}
-
-        {notFound && (
-          <Box tone="bad">
-            <b>Can’t find the scanner files.</b><br />
-            <span style={{ color: '#9aa' }}>
-              Expected <code style={code}>scripts/scrape.py</code> next to the app. If you
-              downloaded a zip, run the app from inside the project folder.
-            </span>
-          </Box>
-        )}
-
-        {needsChrome && (
-          <Box tone="bad">
-            <b>Google Chrome isn’t installed.</b><br />
-            <span style={{ color: '#9aa' }}>
-              The scanner drives your real Chrome. Install it from{' '}
-              <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer"
-                 style={{ color: '#3498DB' }}>google.com/chrome</a>, then reload this page.
-            </span>
-          </Box>
-        )}
-
-        {/* The Python inside the app didn't work: what happened, and what to do instead.
-            Red only while there is something to do; once another Python runs the
-            scanner it is just news. */}
-        {s && step1.note && (
-          <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
-        )}
-
-        {/* ---- step 1 : the scanner itself ---- */}
-        <Step
-          n={1}
-          done={step1.done}
-          title="Set up the scanner"
-          body={s ? step1.text : ''}
-          action={
-            s && step1.button && (
-              <Btn onClick={() => run(step1.button.action)} disabled={busy || running}>
-                {step1.button.label}
-              </Btn>
-            )
-          }
-        />
-
-        {/* ---- step 2 : sign in ---- */}
-        <Step
-          n={2}
-          done={!!c.signedIn}
-          title="Sign into LinkedIn"
-          body={
-            c.signedIn
-              ? 'Signed in on this machine. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
-              : 'Opens a Chrome window. Sign in with your email and password — “Continue with Google” cannot work here, because Google blocks its sign-in inside automated browsers.'
-          }
-          action={
-            // Shown after sign-in too: a security check survives the session
-            // cookie, so "signed in" can still need a person (TRAPS §35).
-            c.dependencies && (
-              <Btn onClick={() => run('login')} disabled={busy || running}>
-                {running && s.action === 'login' ? 'Waiting for you…' : 'Open LinkedIn'}
-              </Btn>
-            )
-          }
-        />
-
-        {/* ---- step 3 : the people you know ---- */}
-        <Step
-          n={3}
-          done={mapped > 0}
-          title="1st degree — the people you know"
-          body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
-          action={
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Btn onClick={() => run('full')} disabled={!canSearch} primary>
-                {running && s.action === 'full' ? 'Scanning…' : 'Scan my whole network'}
-              </Btn>
-              <Btn onClick={() => run('refresh')} disabled={!canSearch}>
-                {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
-              </Btn>
-            </div>
-          }
-        />
-
-        {/* ---- step 4 : who they know ---- */}
-        <Step
-          n={4}
-          done={false}
-          title="2nd degree — the people they know"
-          body={
-            <>
-              This is what fills <b>Degrees</b> and <b>Outlink</b>: it opens each of your
-              connections in turn and reads who <i>they</i> know. Most people hide their
-              connections — those are noted and never tried again.
-              <br /><br />
-              It is slow on purpose, about two minutes between each person, because
-              this is the part LinkedIn notices. During development a real account was
-              temporarily restricted after roughly <b>19 people in one sitting</b>.
-              Run a batch, leave it for a day, run another — and stop the moment
-              LinkedIn mentions unusual activity. It always picks up where it left
-              off: anyone still without a mapped circle, in the order you choose below —
-              your newest connections first, or highest tier first. Each person&rsquo;s
-              list is read to the end, saving every 10 pages, and a read that is stopped
-              carries on from the same page next time.
-            </>
-          }
-          action={
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <CooldownBanner
-                cooldown={li?.cooldown}
-                disabled={busy}
-                onLift={() => run('lift-cooldown')}
-              />
-              <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
-              {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
-                {['S', 'A', 'B', 'C', 'D'].map((t) => {
-                  const on = tiers.includes(t);
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setTiers((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}
-                      disabled={running}
-                      style={{
-                        width: 30, height: 28, borderRadius: 7, fontSize: 12, fontWeight: 700,
-                        cursor: running ? 'not-allowed' : 'pointer', border: LINE,
-                        background: on ? 'rgba(52,152,219,0.22)' : 'rgba(255,255,255,0.05)',
-                        color: on ? '#cfe6f7' : '#667',
-                      }}
-                    >{t}</button>
-                  );
-                })}
-                <span style={{ fontSize: 11.5, color: '#667' }}>
-                  {tiers.length ? '' : 'pick at least one'}
-                </span>
-              </div>}
-              {order === 'newest' && (
-                <div style={{ fontSize: 12, color: '#8b9a9a', lineHeight: 1.6 }}>
-                  Goes by the date you connected, newest first, across every tier. Run
-                  {' '}<b>Check for new</b> first so your latest connections are in the list.
+        {askField === false && <>
+          {mapped > 0 && !running && (
+            <Box>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <b>{mapped.toLocaleString()} connections</b>
+                  {net.second > 0 && <>, plus {net.second.toLocaleString()} people in their circles</>}
+                  {net.third > 0 && <> and {net.third.toLocaleString()} from company scans</>}
+                  .{' '}
+                  <span style={{ color: '#9aa' }}>Your galaxy is ready.</span>
                 </div>
+                <Link href="/" style={{
+                  padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 700,
+                  color: '#0a0a1a', textDecoration: 'none',
+                  background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+                }}>See your network →</Link>
+              </div>
+            </Box>
+          )}
+
+          {failed && (
+            <Box tone="bad">
+              <b>The last run stopped before it finished.</b>
+              {failReason && (
+                <div style={{
+                  marginTop: 6, color: '#e8c4c4', whiteSpace: 'pre-wrap',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5,
+                }}>{failReason}</div>
               )}
+              <div style={{ color: '#9aa', marginTop: 6 }}>The full log is below.</div>
+            </Box>
+          )}
+
+          {notFound && (
+            <Box tone="bad">
+              <b>Can’t find the scanner files.</b><br />
+              <span style={{ color: '#9aa' }}>
+                Expected <code style={code}>scripts/scrape.py</code> next to the app. If you
+                downloaded a zip, run the app from inside the project folder.
+              </span>
+            </Box>
+          )}
+
+          {needsChrome && (
+            <Box tone="bad">
+              <b>Google Chrome isn’t installed.</b><br />
+              <span style={{ color: '#9aa' }}>
+                The scanner drives your real Chrome. Install it from{' '}
+                <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer"
+                   style={{ color: '#3498DB' }}>google.com/chrome</a>, then reload this page.
+              </span>
+            </Box>
+          )}
+
+          {/* The Python inside the app didn't work: what happened, and what to do instead.
+              Red only while there is something to do; once another Python runs the
+              scanner it is just news. */}
+          {s && step1.note && (
+            <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
+          )}
+
+          {/* ---- step 1 : the scanner itself ---- */}
+          <Step
+            n={1}
+            done={step1.done}
+            title="Set up the scanner"
+            body={s ? step1.text : ''}
+            action={
+              s && step1.button && (
+                <Btn onClick={() => run(step1.button.action)} disabled={busy || running}>
+                  {step1.button.label}
+                </Btn>
+              )
+            }
+          />
+
+          {/* ---- step 2 : sign in ---- */}
+          <Step
+            n={2}
+            done={!!c.signedIn}
+            title="Sign into LinkedIn"
+            body={
+              c.signedIn
+                ? 'Signed in on this machine. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
+                : 'Opens a Chrome window. Sign in with your email and password — “Continue with Google” cannot work here, because Google blocks its sign-in inside automated browsers.'
+            }
+            action={
+              // Shown after sign-in too: a security check survives the session
+              // cookie, so "signed in" can still need a person (TRAPS §35).
+              c.dependencies && (
+                <Btn onClick={() => run('login')} disabled={busy || running}>
+                  {running && s.action === 'login' ? 'Waiting for you…' : 'Open LinkedIn'}
+                </Btn>
+              )
+            }
+          />
+
+          {/* ---- step 3 : the people you know ---- */}
+          <Step
+            n={3}
+            done={mapped > 0}
+            title="1st degree — the people you know"
+            body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
+            action={
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Btn onClick={() => run('full')} disabled={!canSearch} primary>
+                  {running && s.action === 'full' ? 'Scanning…' : 'Scan my whole network'}
+                </Btn>
+                <Btn onClick={() => run('refresh')} disabled={!canSearch}>
+                  {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
+                </Btn>
+              </div>
+            }
+          />
+
+          {/* ---- step 4 : who they know ---- */}
+          <Step
+            n={4}
+            done={false}
+            title="2nd degree — the people they know"
+            body={
+              <>
+                This is what fills <b>Degrees</b> and <b>Outlink</b>: it opens each of your
+                connections in turn and reads who <i>they</i> know. Most people hide their
+                connections — those are noted and never tried again.
+                <br /><br />
+                It is slow on purpose, about two minutes between each person, because
+                this is the part LinkedIn notices. During development a real account was
+                temporarily restricted after roughly <b>19 people in one sitting</b>.
+                Run a batch, leave it for a day, run another — and stop the moment
+                LinkedIn mentions unusual activity. It always picks up where it left
+                off: anyone still without a mapped circle, in the order you choose below —
+                your newest connections first, or highest tier first. Each person&rsquo;s
+                list is read to the end, saving every 10 pages, and a read that is stopped
+                carries on from the same page next time.
+              </>
+            }
+            action={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <CooldownBanner
+                  cooldown={li?.cooldown}
+                  disabled={busy}
+                  onLift={() => run('lift-cooldown')}
+                />
+                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
+                {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
+                  {['S', 'A', 'B', 'C', 'D'].map((t) => {
+                    const on = tiers.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setTiers((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}
+                        disabled={running}
+                        style={{
+                          width: 30, height: 28, borderRadius: 7, fontSize: 12, fontWeight: 700,
+                          cursor: running ? 'not-allowed' : 'pointer', border: LINE,
+                          background: on ? 'rgba(52,152,219,0.22)' : 'rgba(255,255,255,0.05)',
+                          color: on ? '#cfe6f7' : '#667',
+                        }}
+                      >{t}</button>
+                    );
+                  })}
+                  <span style={{ fontSize: 11.5, color: '#667' }}>
+                    {tiers.length ? '' : 'pick at least one'}
+                  </span>
+                </div>}
+                {order === 'newest' && (
+                  <div style={{ fontSize: 12, color: '#8b9a9a', lineHeight: 1.6 }}>
+                    Goes by the date you connected, newest first, across every tier. Run
+                    {' '}<b>Check for new</b> first so your latest connections are in the list.
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: '#8b9a9a' }}>Start with</span>
+                  <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
+                    <option value="newest">Newest connections first</option>
+                    <option value="score">Highest tier first</option>
+                  </select>
+                  <span style={{ fontSize: 12, color: '#8b9a9a' }}>Read up to</span>
+                  <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
+                    <option value={100}>every page, to the end of their list</option>
+                    <option value={50}>50 pages each</option>
+                    <option value={25}>25 pages each</option>
+                    <option value={10}>10 pages (~100 people) each</option>
+                  </select>
+                </div>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8', cursor: running ? 'not-allowed' : 'pointer' }}>
+                  <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
+                  Also finish people already mapped, from the page each one stopped at
+                </label>
+                <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
+                  Every page is a LinkedIn search, so it rests 20 seconds before each one and a
+                  minute after every 10, and a long list can take
+                  {' '}{pages >= 100 ? 'about 55 minutes a person' : `about ${Math.max(5, Math.round(pages * 0.55))} minutes a person`}.
+                  LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
+                  have a monthly search limit: if LinkedIn says it has been reached, the scan saves
+                  what it read and stops, and carries on from that page next time. Keep batches small.
+                </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Start with</span>
-                <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
-                  <option value="newest">Newest connections first</option>
-                  <option value="score">Highest tier first</option>
+                <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
+                  {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
+                </Btn>
+                <select
+                  value={batch}
+                  onChange={(e) => setBatch(Number(e.target.value))}
+                  disabled={running}
+                  style={selectStyle}
+                >
+                  <option value={5}>5 people</option>
+                  <option value={10}>10 people</option>
+                  <option value={25}>25 people</option>
+                  <option value={0}>everyone — not advised</option>
                 </select>
-                <span style={{ fontSize: 12, color: '#8b9a9a' }}>Read up to</span>
-                <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
-                  <option value={100}>every page, to the end of their list</option>
-                  <option value={50}>50 pages each</option>
-                  <option value={25}>25 pages each</option>
-                  <option value={10}>10 pages (~100 people) each</option>
-                </select>
+                <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
+                  Retry hidden ones
+                </Btn>
               </div>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8', cursor: running ? 'not-allowed' : 'pointer' }}>
-                <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
-                Also finish people already mapped, from the page each one stopped at
-              </label>
-              <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
-                Every page is a LinkedIn search, so it rests 20 seconds before each one and a
-                minute after every 10, and a long list can take
-                {' '}{pages >= 100 ? 'about 55 minutes a person' : `about ${Math.max(5, Math.round(pages * 0.55))} minutes a person`}.
-                LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
-                have a monthly search limit: if LinkedIn says it has been reached, the scan saves
-                what it read and stops, and carries on from that page next time. Keep batches small.
+              <PausedList
+                paused={s?.paused || []}
+                disabled={!canSearch}
+                onResume={(p) => run('resume', { id: p.id })}
+                onResumeAll={() => run('resume-all', { maxBridges: batch })}
+              />
               </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
-                {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
-              </Btn>
-              <select
-                value={batch}
-                onChange={(e) => setBatch(Number(e.target.value))}
-                disabled={running}
-                style={selectStyle}
-              >
-                <option value={5}>5 people</option>
-                <option value={10}>10 people</option>
-                <option value={25}>25 people</option>
-                <option value={0}>everyone — not advised</option>
-              </select>
-              <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
-                Retry hidden ones
-              </Btn>
-            </div>
-            <PausedList
-              paused={s?.paused || []}
-              disabled={!canSearch}
-              onResume={(p) => run('resume', { id: p.id })}
-              onResumeAll={() => run('resume-all', { maxBridges: batch })}
-            />
-            </div>
-          }
-        />
+            }
+          />
 
-        {/* ---- stop: one control, always where the log is ---- */}
-        {running && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
-            padding: '14px 16px', borderRadius: 8,
-            background: 'rgba(255,255,255,0.05)', border: LINE,
-          }}>
-            <Spinner />
-            <div style={{ flex: 1, fontSize: 13.5 }}>
-              <b>{ACTION_LABELS[s.action] || 'Working'}</b>
-              {s.progress && <Progress p={s.progress} action={s.action} />}
-              <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 2 }}>
-                Stopping closes the browser cleanly and keeps everything found so far.
-              </div>
-            </div>
-            <Btn onClick={stop} tone="bad">Stop</Btn>
-          </div>
-        )}
-
-        {error && <Box tone="bad">{error}</Box>}
-
-        {(s?.log?.length > 0) && (
-          <>
+          {/* ---- stop: one control, always where the log is ---- */}
+          {running && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              margin: '28px 0 8px', fontSize: 12, color: '#788',
-              textTransform: 'uppercase', letterSpacing: 0.6,
+              display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
+              padding: '14px 16px', borderRadius: 8,
+              background: 'rgba(255,255,255,0.05)', border: LINE,
             }}>
-              {running && <Spinner />}
-              {running ? 'Working' : 'Last run'}
+              <Spinner />
+              <div style={{ flex: 1, fontSize: 13.5 }}>
+                <b>{ACTION_LABELS[s.action] || 'Working'}</b>
+                {s.progress && <Progress p={s.progress} action={s.action} />}
+                <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 2 }}>
+                  Stopping closes the browser cleanly and keeps everything found so far.
+                </div>
+              </div>
+              <Btn onClick={stop} tone="bad">Stop</Btn>
             </div>
-            <pre ref={logRef} style={{
-              background: 'rgba(0,0,0,0.45)', border: LINE, borderRadius: 8,
-              padding: 14, maxHeight: 280, overflow: 'auto', margin: 0,
-              fontSize: 12.5, lineHeight: 1.7, color: '#b9c6c6',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            }}>{s.log.join('\n')}</pre>
-          </>
-        )}
+          )}
+
+          {error && <Box tone="bad">{error}</Box>}
+
+          {(s?.log?.length > 0) && (
+            <>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                margin: '28px 0 8px', fontSize: 12, color: '#788',
+                textTransform: 'uppercase', letterSpacing: 0.6,
+              }}>
+                {running && <Spinner />}
+                {running ? 'Working' : 'Last run'}
+              </div>
+              <pre ref={logRef} style={{
+                background: 'rgba(0,0,0,0.45)', border: LINE, borderRadius: 8,
+                padding: 14, maxHeight: 280, overflow: 'auto', margin: 0,
+                fontSize: 12.5, lineHeight: 1.7, color: '#b9c6c6',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}>{s.log.join('\n')}</pre>
+            </>
+          )}
+        </>}
 
         <div style={{ marginTop: 32, paddingTop: 20, borderTop: LINE, fontSize: 13.5, color: '#8b9a9a' }}>
           Checking for updates has moved to{' '}

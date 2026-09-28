@@ -1,10 +1,11 @@
 // The Scan page's first step, in every state GET /api/scraper can report
-// (lib/scanner-setup.js), and what other pages say when the scanner isn't
-// ready (lib/scraper-client.js notReadyMessage). DESKTOP.md D2.
+// (lib/scanner-setup.js), whether it asks for your field before it
+// (askForField), and what other pages say when the scanner isn't ready
+// (lib/scraper-client.js notReadyMessage). DESKTOP.md D2.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupStep } from '../lib/scanner-setup.js';
+import { setupStep, askForField } from '../lib/scanner-setup.js';
 import { notReadyMessage } from '../lib/scraper-client.js';
 
 const MB = 1024 * 1024;
@@ -129,4 +130,40 @@ test('other pages send people to Scan while there is something to set up there',
     'No Python 3.10 to 3.14 is installed on this machine.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: true, chrome: false })), 'Google Chrome is not installed.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: true, pythonSource: 'bundled' })), null);
+});
+
+// ── your field, before the first scan ───────────────────────────────────────
+
+const NOTHING = { first: 0, second: 0, third: 0 };
+const unasked = { sectorFocus: { sectors: [], strength: 'lean' }, fieldAsked: false, tierScale: 'curve' };
+
+test('your field is asked before the first scan, when no sector is picked and it was never answered', () => {
+  assert.equal(askForField(status({}, { network: NOTHING }), unasked), true);
+});
+
+test('never once there is a network: whoever has one finished onboarding', () => {
+  for (const network of [{ ...NOTHING, first: 1 }, { ...NOTHING, second: 40 }, { ...NOTHING, third: 3 }]) {
+    assert.equal(askForField(status({}, { network }), unasked), false, JSON.stringify(network));
+  }
+});
+
+test('never to someone who picked a sector, or answered or skipped it before', () => {
+  const s = status({}, { network: NOTHING });
+  assert.equal(askForField(s, { ...unasked, sectorFocus: { sectors: ['dental'], strength: 'lean' } }), false);
+  assert.equal(askForField(s, { ...unasked, fieldAsked: true }), false);
+});
+
+test('not while something runs, and not when the app couldn\'t be asked', () => {
+  assert.equal(askForField(status({}, { network: NOTHING, running: true, action: 'full' }), unasked), false);
+  // The page's stand-in when GET /api/scraper fails has no counts.
+  assert.equal(askForField({ ready: false, checks: {}, log: [] }, unasked), false);
+  // Settings that couldn't be read: the scan goes ahead, and Scores still has it.
+  assert.equal(askForField(status({}, { network: NOTHING }), null), false);
+});
+
+test('not known until both answers are in, so the page waits instead of swapping the steps out', () => {
+  assert.equal(askForField(null, unasked), null);
+  assert.equal(askForField(status({}, { network: NOTHING }), undefined), null);
+  // A network already says no, whatever the settings.
+  assert.equal(askForField(status({}, { network: { ...NOTHING, first: 5 } }), undefined), false);
 });

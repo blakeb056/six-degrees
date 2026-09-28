@@ -769,6 +769,13 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   where it was 704 and 1,189. Networks are often concentrated in their owner's own sector,
   so expect a broad lift more than a reshuffle, and "S is the top ~3–4%" no longer holds with
   a lean on.
+- **Asked before the first scan.** The Scan page asks for your field once, before anything
+  is scanned, as one optional step (`app/components/FieldStep.js`): the same picks
+  (`SectorPicker`), saved through the same `POST /api/settings` at *lean*, with
+  `fieldAsked: true`. With nobody to rescore, the save's rescore scores no one and stamps
+  the focus; the first scan's `rescoreAll()` reads it, so the first scores already use it.
+  *Skip for now* saves only `fieldAsked`. It isn't asked again, nor of anyone with a
+  network or a sector picked (`lib/scanner-setup.js askForField`), nor in the demo.
 - `users.sectors` (free text, never written by the app) is a different thing: the
   Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
   *Your Sectors* shows the Settings choice.
