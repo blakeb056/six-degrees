@@ -63,7 +63,7 @@ function tierLine(up, down, past) {
   return up ? `${plural(up, 'person', 'people')} ${verb(up)} up a tier.` : `${plural(down, 'person', 'people')} ${verb(down)} down a tier.`;
 }
 
-export default function SectorSection() {
+export default function SectorSection({ onSaved } = {}) {
   const [saved, setSaved] = useState(null);
   const [draft, setDraft] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -183,6 +183,7 @@ export default function SectorSection() {
       if (d.settings) { setSaved(d.settings.sectorFocus); setDraft(d.settings.sectorFocus); setPreview(null); }
       if (!r.ok) { setResult({ tone: 'bad', text: d.error || 'Could not save.' }); return; }
       setResult({ tone: 'ok', text: savedLine(d.settings.sectorFocus, d.effects?.sectorFocus) });
+      onSaved?.();
     } catch {
       setResult({ tone: 'bad', text: 'Could not reach the app. Reload this page to see what is saved.' });
     } finally {

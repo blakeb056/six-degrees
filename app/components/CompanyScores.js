@@ -59,8 +59,14 @@ export function ScorePicker({ company, onSet, compact }) {
   );
 }
 
-export default function CompanyScores({ onRescored }) {
+export default function CompanyScores({ onRescored, version = 0 }) {
   const { companies, error, setScore, reload } = useCompanyScores();
+  // A save beside the list (your sector or tiers, on the Scores tab) rescores
+  // everyone: `version` changes, and the list is read again, keeping what you
+  // searched and filtered.
+  useEffect(() => {
+    if (version) reload().catch(() => {});
+  }, [version, reload]);
   const [query, setQuery] = useState('');
   const [only, setOnly] = useState('all');
   const [limit, setLimit] = useState(150);

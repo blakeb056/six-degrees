@@ -7,6 +7,7 @@
 // Paths → Scores; the old links forward here (app/settings/page.js,
 // app/paths/page.js).
 
+import { useState } from 'react';
 import Link from 'next/link';
 import OnboardingGate from '../components/OnboardingGate';
 import SectorSection from '../components/settings/SectorSection';
@@ -22,6 +23,10 @@ export default function ScoresPage() {
 const jump = { color: '#3498DB', textDecoration: 'none', fontWeight: 600 };
 
 function ScoresInner() {
+  // Saving your sector or tiers rescores everyone; the company list below reads
+  // its scores again when this changes.
+  const [saves, setSaves] = useState(0);
+  const saved = () => setSaves((n) => n + 1);
   if (IS_DEMO) {
     return (
       <div style={{
@@ -56,10 +61,10 @@ function ScoresInner() {
           <a href="#sector" style={jump}>your field</a>, <a href="#tiers" style={jump}>how tiers are graded</a> and{' '}
           <a href="#companies" style={jump}>any company&rsquo;s score</a>. A change here rescores everyone.
         </Body>
-        <SectorSection />
-        <TierSection />
+        <SectorSection onSaved={saved} />
+        <TierSection onSaved={saved} />
         <div id="companies" style={{ marginTop: 28 }}>
-          <CompanyScores />
+          <CompanyScores version={saves} />
         </div>
       </main>
     </div>

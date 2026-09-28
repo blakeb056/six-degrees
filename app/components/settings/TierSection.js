@@ -29,7 +29,7 @@ const OPTIONS = [
   },
 ];
 
-export default function TierSection() {
+export default function TierSection({ onSaved } = {}) {
   const [saved, setSaved] = useState(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
@@ -62,6 +62,7 @@ export default function TierSection() {
       if (!r.ok) { setResult({ tone: 'bad', text: d.error || 'Could not save.' }); return; }
       const e = d.effects?.tierScale;
       setResult({ tone: 'ok', text: e ? `Saved. ${plural(e.moved, 'person', 'people')} changed tier.` : 'Saved.' });
+      onSaved?.();
     } catch {
       setResult({ tone: 'bad', text: 'Could not reach the app. Reload this page to see what is saved.' });
     } finally {
