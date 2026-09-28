@@ -14,6 +14,8 @@ name: Release
 # until a tag is pushed. Cutting one:
 #
 #   npm version 0.2.0 --no-git-tag-version   # bump package.json
+#   # a full release: the site's version lines too (docs/SEO.md), then
+#   node scripts/check-site-version.mjs      # this workflow runs it as well
 #   git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
 #
 # Testing the packaging without publishing anything — do this before tagging
@@ -79,6 +81,14 @@ jobs:
             echo "::error::Tag $tag does not match package.json version $ver. Bump the version first."
             exit 1
           fi
+      # The download website says this version (docs/SEO.md, "Release
+      # checklist"): softwareVersion and llms.txt name it, and dateModified and
+      # the sitemap's lastmod aren't older than its date in CHANGELOG.md. Before
+      # any build, so a stale site stops the release in seconds. A pre-release
+      # passes: the site keeps describing the last full release.
+      - name: The website says this version
+        if: ${{ !inputs.dry_run }}
+        run: node scripts/check-site-version.mjs
       - run: npm ci
       - run: npm test
       # Which shell (docs/brain/DESKTOP.md): the Electron app for everything since

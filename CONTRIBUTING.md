@@ -48,8 +48,14 @@ package through npm's trusted publishing: npm accepts this repository's
 keep. A tag with a hyphen (`v0.4.0-beta.1`) is a pre-release on GitHub and goes to npm
 under `next`, so neither `install.sh` nor `npx six-degrees` picks it up.
 
+A full release also bumps the download website's version lines (`docs/SEO.md`, "Release
+checklist"). `node scripts/check-site-version.mjs` says whether they match
+`package.json` and the release's date in `CHANGELOG.md`; the release workflow runs it
+before building anything and stops if they don't. A pre-release skips it.
+
 ```bash
 npm version 0.2.0 --no-git-tag-version
+node scripts/check-site-version.mjs
 git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
 ```
 

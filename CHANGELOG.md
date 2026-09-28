@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   database, a saved copy of a network and the scanner's signed-in browser profile out of a
   commit, wherever they sit in the tree.
 
+### Added
+- **A release checks the website's version lines.** Before building anything, the release
+  workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
+  `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
+  older than the release's date in the changelog. A stale site stops the release with a
+  line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
+
 ### Fixed
 - **↻ asks before it scans.** The round button in the header started *Check for new* the
   moment it was clicked. It now says what it will do (open Chrome on your connections list
