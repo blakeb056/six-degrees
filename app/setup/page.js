@@ -103,7 +103,7 @@ function SetupInner() {
   }
 
   // The question is answered: the steps take its place, from the top, since
-  // its Continue sat far down the page.
+  // it may have been answered from far down the picker.
   function answered(sectors) {
     setField({ sectors });
     window.scrollTo(0, 0);

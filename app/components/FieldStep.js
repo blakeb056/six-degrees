@@ -15,6 +15,9 @@ import { sectorByKey } from '../../lib/sector-directory';
 import { saveSettings } from '../../lib/settings-client';
 
 const link = { color: '#3498DB' };
+// The card's own colour (3% white on the page's #0a0a1a), made solid so the
+// picks scroll behind the buttons rather than through them.
+const FOOT = '#111121';
 
 /** The question. `onDone(sectors)` once it's answered ([] when skipped). */
 export default function FieldStep({ onDone }) {
@@ -43,8 +46,8 @@ export default function FieldStep({ onDone }) {
   }
 
   return (
-    <section aria-labelledby="field-question" style={{
-      margin: '8px 0 0', padding: '20px 22px', borderRadius: 12, border: LINE, background: 'rgba(255,255,255,0.03)',
+    <section aria-labelledby="field-question" data-field-question style={{
+      margin: '8px 0 0', padding: '20px 22px 0', borderRadius: 12, border: LINE, background: 'rgba(255,255,255,0.03)',
     }}>
       <div style={{ fontSize: 12, color: '#788', textTransform: 'uppercase', letterSpacing: 0.6 }}>Before you scan · optional</div>
       <h2 id="field-question" style={{ fontSize: 18, fontWeight: 700, margin: '6px 0 4px' }}>What field are you in?</h2>
@@ -55,13 +58,23 @@ export default function FieldStep({ onDone }) {
 
       <SectorPicker sectors={sectors} onChange={setSectors} disabled={Boolean(saving)} />
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-        <Btn primary onClick={pick} disabled={!sectors.length || Boolean(saving)}>
-          {saving === 'pick' ? 'Saving…' : 'Continue'}
-        </Btn>
-        <Btn onClick={skip} disabled={Boolean(saving)}>Skip for now</Btn>
+      {/* The twelve industries, and any lists opened, run the card past the
+          bottom of the window. So Continue and Skip for now stay at the foot of
+          the window while the card is on screen; globals.css keeps a pick
+          reached with Tab from stopping behind them. A failed save shows here
+          too, beside them. */}
+      <div style={{
+        position: 'sticky', bottom: 0, margin: '16px -22px 0', padding: '12px 22px 16px',
+        borderTop: LINE, borderRadius: '0 0 11px 11px', background: FOOT,
+      }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn primary onClick={pick} disabled={!sectors.length || Boolean(saving)}>
+            {saving === 'pick' ? 'Saving…' : 'Continue'}
+          </Btn>
+          <Btn onClick={skip} disabled={Boolean(saving)}>Skip for now</Btn>
+        </div>
+        {error && <Status tone="bad">{error}</Status>}
       </div>
-      {error && <Status tone="bad">{error}</Status>}
     </section>
   );
 }
