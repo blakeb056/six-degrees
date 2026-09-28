@@ -251,7 +251,8 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
   of any field (a Nobel, a Pulitzer, an Oscar, an Olympic medal…). It counts half
   at an unknown company, because headlines are self-written (your sector doesn't change
   that).
-- **Bridge boost (up to 1)**: someone whose mapped circle is unusually strong.
+- **Bridge boost (up to 2)**: someone whose mapped circle is unusually strong: a high
+  share of it at A or S (up to +1), or many people there (+1 for every 25, up to +2).
 - **Tiers (Settings):** graded on your own network's curve by default, so any network has a
   top: your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C.
   The curve only lifts, so a network full of well-known companies keeps its tiers, and it

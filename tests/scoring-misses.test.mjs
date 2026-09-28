@@ -1,12 +1,12 @@
 // Kinds of people a review of the power score found it under-rating
 // (docs/brain/SCORING.md, "What the review changed"): a title whose company is
 // written without "at", managing directors and country heads written short,
-// academics, an audience of one's own, and a title the rules can't read. And
-// the other way: an award named for a title isn't the title.
+// academics, an audience of one's own, a title the rules can't read, and a
+// strong circle. And the other way: an award named for a title isn't the title.
 // Invented people; public companies.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readTitle, readRoles, scorePerson, LEVELS } from '../lib/scoring.js';
+import { readTitle, readRoles, scorePerson, scoreNetwork, bridgeBoost, LEVELS } from '../lib/scoring.js';
 
 const key = (h) => readTitle(h).key;
 const person = (headline, row = {}) => scorePerson({ headline, ...row });
@@ -148,4 +148,29 @@ test('a title the rules can\'t read counts as the most common job, not below it'
   assert.equal(LEVELS.unknown.points, LEVELS.ic.points);
   assert.equal(s.power, round1(4 * weight(5)));
   assert.equal(s.tier, 'C');
+});
+
+test('a strong circle lifts its bridge by its share of strong people, or by how many there are, up to +2', () => {
+  // `strong` people at S or A (a third of them S), the rest C.
+  const circle = (size, strong) => Array.from({ length: size }, (_, i) => ({ tier: i < strong ? (i % 3 ? 'A' : 'S') : 'C' }));
+  // A big circle: its share (12%) says nothing, its 72 strong people do. +1 for every 25, up to +2.
+  assert.equal(bridgeBoost(circle(600, 72)).boost, 2);
+  assert.equal(bridgeBoost(circle(300, 36)).boost, 1.4);
+  // An elite share counts as it did: 40% of 40 is +1.
+  assert.equal(bridgeBoost(circle(40, 16)).boost, 1);
+  // A small circle's share is too small to judge, but its strong people are there.
+  assert.equal(bridgeBoost(circle(10, 10)).boost, 0.4);
+  assert.equal(bridgeBoost(circle(300, 0)).boost, 0);
+  // A vague title at a big company with 72 strong people in their circle: A, not C.
+  const rows = [
+    { id: 'b', degree: 1, headline: 'Strategy', company: 'Samsung', profile_url: '/in/b' },
+    ...circle(600, 72).map(({ tier }, i) => ({
+      id: `p${i}`, degree: 2, source_connection_id: 'b', profile_url: `/in/p${i}`,
+      headline: tier === 'C' ? 'Analyst at Northwind' : 'VP at Google',
+    })),
+  ];
+  const b = scoreNetwork(rows).scores.get('b');
+  assert.equal(b.boost, 2);
+  assert.equal(b.power, round1(round1(4 * weight(8)) + 2));
+  assert.equal(b.tier, 'A');
 });

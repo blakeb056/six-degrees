@@ -93,7 +93,7 @@ with 10M+ followers"). A 2.5M-follower creator scores 5.8 (A) where they scored 
 counts 4, an individual contributor's, the most common kind: not knowing someone's title
 says nothing about how senior they are, as with a company we don't know. Until scoring 6
 it was 3, below any job, so a founder who states no title and no company scored 2.2 (D);
-now 2.9 (C).
+now 2.9 (C), and a strong circle can lift them further (Bridge boost, below).
 
 Schools are read alike; the rules name none. A major at a school is a student ("CS @ NYU",
 "Economics at University of Utah"), and so is a leading title in a school club ("President,
@@ -166,9 +166,18 @@ truer, so `scorePerson` still judges an unknown company as the 4 it used to be h
 judged by the company's score before any sector lean (a score you set counts as the
 company's own).
 
-**Bridge boost (≤1)** goes to a 1st-degree person whose mapped circle (20+ people) is
-unusually strong: `(share at A or S − 0.12) × 5`, capped. It's recomputed each time and
-never ratchets.
+**Bridge boost (≤2)** goes to a 1st-degree person whose mapped circle is unusually strong,
+the larger of two readings of it (`bridgeBoost`):
+
+- **its share:** `(share at A or S − 0.12) × 5`, capped at 1, in a circle of 20+ people (a
+  smaller one is too few to judge a share by);
+- **its strong people:** +1 for every 25 at A or S, capped at 2, whatever its size.
+
+A big circle's share can look ordinary while it holds more strong people than most circles
+have people, and that's the hidden power a vague title doesn't show: someone whose title
+reads as unclear at a company scored 8, with 72 people at A or S in a circle of 600, scores
+5.6 (A) where they scored 3.6 (C). Until scoring 6 only the share counted, up to +1. It's
+recomputed each time and never ratchets.
 
 The person panel shows the working as `score_why`, e.g.
 "VP / Partner / GM (9) · Adobe (8/10) · +0.7 strong circle", or with a sector lean
@@ -900,10 +909,12 @@ person panel read the stored scores, so they change with them.
 **`SCORING_VERSION` 6 (what a review found under-rated):** a review of the score in
 September 2026 named the kinds of people it ranked too low, and scoring 6 is its fixes:
 titles whose company is written without "at", "MD" and country heads, academics, an
-audience of one's own and a title the rules can't read (all above).
-`tests/scoring-misses.test.mjs` holds invented examples of each, and every one of those
-tests fails on scoring 5. On the sample network nothing moves (0 of 873 scores, titles or
-tiers): none of its invented headlines is of those kinds. The title changes reach academics, audiences,
+audience of one's own, a title the rules can't read, and circles strong in number rather
+than in share (all above). `tests/scoring-misses.test.mjs` holds invented examples of each,
+and every one of those tests fails on scoring 5. On the sample network no tier and no
+title's points move (0 of 873); four of its bridges, already S, score 0.1 to 0.6 higher
+through the strong people in their circles (`public/demo-data.json` keeps the scores it
+was built with, which the films show). The title changes reach academics, audiences,
 unreadable titles and possessives, so re-run the title-to-circle check on a real network.
 Two of the review's findings aren't changed here: a sector you pick lifts power, not only
 how relevant someone is to you, and a founder's or a CEO's title at a venture nobody knows
@@ -914,9 +925,11 @@ still counts in full, which rates some of them too high.
 Being high-scoring makes someone worth *knowing*. Being a **bridge** is about the circle
 behind them: `circle_power`, `circle_s_count`, `circle_a_count`, `circle_elite_pct`. A
 mid-tier person with twelve S-tier people behind them can be worth more to you than an
-S-tier person who opens nothing. The boost above deliberately stays small. A proposal to
-blend a bridge's score toward their circle's strength was considered on 2026-09-24 and
-not adopted.
+S-tier person who opens nothing. The boost above stays a bonus on top, at most +2, so
+someone's own title and company still decide most of their score. A proposal to blend a
+bridge's score toward their circle's strength was considered on 2026-09-24 and not adopted;
+scoring 6's count of the strong people in a circle (Bridge boost, above) is the smaller step
+a review later argued for.
 
 ## The honest caveat
 

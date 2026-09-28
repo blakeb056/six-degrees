@@ -115,6 +115,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     director's, 10M+ a VP's. A creator with 2.5M followers scores 5.8 (A), not 3.3 (C).
   - A title the app can't read counts as an individual contributor's (4, was 3), so a
     founder whose headline names no title or company isn't put below every job.
+  - A strong circle counts by how many strong people are in it, not only by their share:
+    +1 for every 25 at A or S, up to +2 (was up to +1). A vague title at a big company with
+    72 of them in a circle of 600 scores 5.6 (A), not 3.6 (C).
 
   Your network is rescored once, the first time the map loads after updating. The sample
   network's tiers don't change.

@@ -618,7 +618,7 @@ function TechSection() {
               // The model in lib/scoring.js: a product, so a title counts for more at a bigger company.
               { sym: 'T', label: 'Title', desc: 'C-suite 10, VP 9, Director 7.5, Manager 6.5', note: 'Multiplied by the company', color: TIER.S },
               { sym: 'C', label: 'Company', desc: 'Well-known 7–10, else estimated from your network', note: 'Weight 0.5 to 1.0', color: TIER.A },
-              { sym: 'R + B', label: 'Reach & bridge', desc: 'Investor, YC, an audience in the millions; a strong circle', note: 'Up to +1.5 and +1', color: TIER.B },
+              { sym: 'R + B', label: 'Reach & bridge', desc: 'Investor, YC, an audience in the millions; a strong circle', note: 'Up to +1.5 and +2', color: TIER.B },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: 16, borderRadius: 12, background: `${item.color}08`,
