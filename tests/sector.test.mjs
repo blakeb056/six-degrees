@@ -69,6 +69,20 @@ test('Settings declares it, with nothing chosen by default', () => {
   assert.ok(Object.isFrozen(NO_FOCUS) && Object.isFrozen(NO_FOCUS.sectors), 'the shared default cannot be changed by a reader');
 });
 
+test('Settings keeps whether the Scan page asked for your field: no until it is answered or skipped', () => {
+  assert.equal(readSettings(getDb()).fieldAsked, false);
+  // Skipped: only that it was asked. Nothing to rescore.
+  const before = readSettings(getDb());
+  const skipped = writeSettings(getDb(), { fieldAsked: true });
+  assert.deepEqual([skipped.fieldAsked, skipped.sectorFocus], [true, { sectors: [], strength: 'lean' }]);
+  assert.equal(afterSettingsChange(getDb(), before, skipped), null);
+  for (const bad of ['yes', 1, null]) {
+    assert.throws(() => writeSettings(getDb(), { fieldAsked: bad }),
+      (err) => err instanceof SettingsError && err.message === 'Whether your field was asked is true or false.', String(bad));
+  }
+  assert.equal(readSettings(getDb()).fieldAsked, true);
+});
+
 test('the fingerprint is the same for the same choice, whatever order it was sent in', () => {
   assert.equal(focusFingerprint(NO_FOCUS), 'none');
   assert.equal(focusFingerprint(strong()), 'none');                     // no sectors: strength is moot

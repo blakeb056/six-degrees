@@ -147,12 +147,13 @@ Degrees**.)
 
 The app opens on a welcome screen with three ways in, and asks nothing about you:
 
-- **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It sets up
-  the scanner in one click, you sign into LinkedIn yourself in a Chrome window, and then
-  it scans. Needs Google Chrome. The Mac app brings its own Python; with `npx six-degrees`
-  the page uses yours, or sets up a private one with a click. It checks and says what's
-  missing. The app marks this *Recommended* because it's the only way to Degrees and
-  Outlink. Read the warning above first.
+- **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It first asks
+  one optional question, what field you're in (see *Your sector* below), and *Skip for
+  now* is fine. Then it sets up the scanner in one click, you sign into LinkedIn yourself
+  in a Chrome window, and then it scans. Needs Google Chrome. The Mac app brings its own
+  Python; with `npx six-degrees` the page uses yours, or sets up a private one with a
+  click. It checks and says what's missing. The app marks this *Recommended* because
+  it's the only way to Degrees and Outlink. Read the warning above first.
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
   LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
   Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
@@ -246,8 +247,9 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
   people you know there, where a job every kind of company has (recruiter, accountant,
   software engineer) doesn't count. An industry includes its sectors, and a company's one
   industry when the known list or the company's name gives it, not when only its people's
-  job titles do. Settings suggests the sectors your network is in and shows what would
-  change before you save.
+  job titles do. Scores suggests the sectors your network is in and shows what would
+  change before you save. The Scan page asks for it once, before your first scan, so your
+  first scores already use it; you can skip it and pick later.
 - Multiplying means seniority counts for more at a bigger company. A VP at a company
   scored 10 gets 9.0; a founder at an unknown company, 7.3.
 - **Reach bonus (up to 1.5)**: investor, YC, an audience in the millions, the top award

@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("Their score is a guess. The app couldn't find where they work.") and offers *Scan their
   circle*, which brings the scan button into view. Who you can reach through them is what the
   score can read instead, and a strong circle adds up to +2.
+- **The Scan page asks what field you're in, before your first scan.** One optional step,
+  with the same picks as *Scores → Your sector*: tech, government and defense, dental, and
+  the rest. Companies in your field count for more, so your first scores already use it.
+  *Skip for now* carries on without one. It's asked once, and never if you already have a
+  network or picked a sector. Change it anytime on the Scores tab.
 
 ### Fixed
 - **A request you send shows everywhere, at once.**
