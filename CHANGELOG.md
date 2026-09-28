@@ -37,15 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Used by rarity** in place of the count from your scans, which could only be a floor.
   - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
     real circle scan is the check. Any other wording reads as no count, never a wrong one.
-- **A public company dataset.** 64 companies and institutions the built-in list leaves off
-  are now known, scored 6 to 8 from public facts on one published scale. Each has its
-  source beside it: an exchange listing, a reported valuation, a U.S. News rank, a federal
-  department's size. The first set, by score:
-  - **8:** Anduril, CoreWeave, GE Vernova, LSEG, MLB, Raymond James, Siemens Energy,
-    Simon Property Group, the U.S. Treasury, Universal Orlando and Universal Pictures.
-  - **7:** 31, among them WWE, Roku, IMAX, UC San Diego, the University of Florida and
-    Tufts.
-  - **6:** 22, among them UCF and USF.
+- **A public company dataset: 631 organizations the built-in list leaves off,** scored 6
+  to 8 from public facts on one published scale, each with its source beside it (an exchange
+  listing, a reported valuation, a U.S. News rank, a federal department's size).
+  - **The Fortune 500 (2025):** 376 companies, and the brands their staff write as their
+    employer (KeyBank, Alaska Airlines, VMware, The Wall Street Journal…).
+  - **The U.S. federal government:** 114 entries. The departments and military branches
+    are 8; agencies and national labs 7. Each is matched only by forms that say which one
+    it is: "US Army", never "Army" alone.
+  - **Universities ranked 21–100 by U.S. News:** 77 of them.
+  - **64 more, researched one by one,** among them Anduril, CoreWeave, MLB, WWE, UF and UCF.
 
   Someone there is scored from those facts, not as an unknown company, and Paths → Scores
   labels the score *public data*. The list is built from public sources only, never from

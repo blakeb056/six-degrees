@@ -136,7 +136,9 @@ test('companies: a phrase\'s first word, a legal form and an initial\'s full sto
   // An initial's full stop isn't the end of a sentence: "J.P. Morgan" was cut to "J.P".
   assert.equal(cleanCompany('J.P. Morgan'), 'JPMorgan Chase');
   assert.equal(scorePerson({ headline: 'VP at J.P. Morgan' }).companyScore, 9);
-  for (const n of ['J. Crew', 'T. Rowe Price', 'U.S. Bank', "St. Jude Children's Research Hospital"]) assert.equal(cleanCompany(n), n);
+  for (const n of ['J. Crew', 'T. Rowe Price', "St. Jude Children's Research Hospital"]) assert.equal(cleanCompany(n), n);
+  // Whole too, and now known: U.S. Bank reads as the public dataset's US Bancorp, its parent.
+  assert.equal(cleanCompany('U.S. Bank'), 'US Bancorp');
   // A sentence still ends a name, and a legal form still goes.
   assert.equal(cleanCompany('Acme Corp. We build rockets'), 'Acme');
   assert.equal(cleanCompany('Northwind Systems Incorporated'), 'Northwind Systems');

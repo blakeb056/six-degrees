@@ -462,6 +462,26 @@ the lower score.
 - It is fingerprinted into the scoring stamp with the curated list, so an entry added or
   rescored rescores stored scores once.
 
+**Grown from public lists (2026-09-28).** 567 more, in one block at the end of
+`COMPANY_DATA` (`// ── grown from public lists`):
+- the Fortune 500 (2025), less the 127 either list already had: 376, with the
+  brands staff write as their employer given entries of their own at their owner's score
+  (KeyBank at KeyCorp's, Alaska Airlines at Alaska Air Group's), so the sector directory,
+  which names those brands, still finds them;
+- the U.S. federal government: 114 (departments and military branches 8, agencies and
+  national labs 7);
+- U.S. News's Best National Universities, ranks 21–100: 77 (21–50 at 7, 51–100 at 6).
+
+Each of these matches only whole names (`exactly()`, or `university()` for a university
+and its schools), and `tests/company-data-spellings.json` holds every form, each read
+the way the app reads it. Left out on purpose: a form that is a common word, first name
+or title alone (`COMMON` in the tests: "Army", "Hartford", "White House", which
+"White House | Black Market" would have become), one two organizations share (CHS,
+bare "Federal Reserve"), one the gig-work rule means can never read ("World Courier"),
+and names the reader trims to a bare word ("Gap Inc." reads as "Gap"). Names that the
+sector directory's words must still find are spelled its way ("US Bancorp", "Land O
+Lakes", "Census Bureau").
+
 **How it started (2026-09-28).** 155 organizations researched from public sources:
 - 64 met the scale (11 at 8, 31 at 7, 22 at 6);
 - 32 names were ambiguous and left out (several organizations share them);

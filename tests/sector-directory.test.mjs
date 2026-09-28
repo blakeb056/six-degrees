@@ -216,9 +216,12 @@ const EXAMPLES = {
     no: ['Yoga Teacher', 'Principal at Quillon Consulting', 'Elementary particle physicist'],
   },
   'higher-ed': {
-    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Michigan', 'company: MIT', 'company: Stanford GSB'],
+    // NYU is known now (the public dataset), so it reads as the university it is;
+    // UGA isn't (several schools share it), so it still can't be placed.
+    yes: ['Assistant Professor of Biology', 'PhD Candidate', 'company: University of Michigan', 'company: MIT', 'company: Stanford GSB',
+      'company: NYU'],
     no: ['company: University Federal Credit Union', 'company: College Park Realty', 'company: Purdue Pharma', 'company: University Health',
-      'company: University Hospitals', ['University Recruiter at Quillon', 'Quillon'], 'company: UGA', 'company: NYU'],
+      'company: University Hospitals', ['University Recruiter at Quillon', 'Quillon'], 'company: UGA'],
   },
   'marketing-advertising': {
     yes: ['Account Director at a creative agency', 'Founder | Digital marketing agency', 'company: Quillon Marketing Agency',
