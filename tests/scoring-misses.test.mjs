@@ -16,6 +16,25 @@ const round1 = (n) => Math.round(n * 10) / 10;
 const GOVERNMENT = ['govLeader', 'govSenior', 'govOfficial', 'judge'];
 const MILITARY = ['seniorGeneral', 'general', 'colonel', 'ltColonel', 'major', 'seniorEnlisted', 'nco'];
 
+test('the company after "at" is where they work, not their title; "at" inside a word is a word', () => {
+  // A company's words aren't read as a title ("Server at President Hotel" was a C-suite).
+  // A job the rules don't list, at a company, "works there": an IC.
+  for (const h of ['Server at President Hotel', 'Bartender at Chairman Grill', 'Receptionist at Chief Executive Partners',
+    'Driver at Executive Limo Co', 'Associate at Owner Operator Supply']) {
+    assert.equal(best(h), 'ic', h);
+  }
+  // …and a word that starts with "at" is no "at": these read as they always have.
+  for (const [h, k] of [['Attorney', 'ic'], ['Staff Attorney', 'ic'], ['Attorney | Northwind', 'ic'], ['Senior Atmospheric Scientist', 'senior'],
+    ['Flight Attendant Manager', 'manager']]) {
+    assert.equal(best(h), k, h);
+  }
+  // What they do there still counts when it follows the company ("at Stripe as Head of Growth").
+  assert.equal(best('Currently at Stripe as Head of Growth'), 'director');
+  // A doctor "MD at" a hospital is a doctor; "MD at" a bank a managing director.
+  assert.equal(best('MD at Mayo Clinic'), 'ic');
+  assert.equal(best('MD at Goldman Sachs'), 'vp');
+});
+
 test('a company named after a title without "at" is where the title is held', () => {
   for (const [h, company] of [
     ['Global Category President | The Coca-Cola Company', 'Coca-Cola'],
@@ -356,4 +375,79 @@ test('…but not a veteran\'s civilian job, a club\'s rank, a cadet or a company
   // A veteran's civilian job scores as that job.
   assert.equal(best('Army Veteran | Store Manager at Dollar General'), 'manager');
   assert.equal(best('U.S. Army Veteran | Senior Software Engineer'), 'senior');
+});
+
+// A second review round's cases (lib/scoring.js officeTitle): forms of the same
+// titles, and more of what isn't one.
+test('round two: more ways officials and officers write their titles', () => {
+  for (const [h, k] of [
+    ['U.S. Secretary of Commerce', 'govLeader'], ['United States Attorney General', 'govLeader'], ['U.S. Trade Representative', 'govLeader'],
+    ['Florida Attorney General', 'govLeader'], ['Florida Governor', 'govLeader'], ['Senate Majority Leader', 'govLeader'],
+    ['Majority Leader, U.S. Senate', 'govLeader'], ['Member, U.S. House of Representatives', 'govLeader'], ['Governor, U.S. Virgin Islands', 'govLeader'],
+    ['Principal Chief, Cherokee Nation', 'govLeader'], ['National Security Advisor', 'govLeader'],
+    ['Florida Lieutenant Governor', 'govSenior'], ['New York State Comptroller', 'govSenior'], ['Insurance Commissioner, State of Georgia', 'govSenior'],
+    ['Majority Leader, Florida Senate', 'govSenior'], ['President of the Florida Senate', 'govSenior'], ['Secretary of Education, Commonwealth of Virginia', 'govSenior'],
+    ['FCC Commissioner', 'govSenior'], ['Commissioner, Internal Revenue Service', 'govSenior'], ['Chair, Nuclear Regulatory Commission', 'govSenior'],
+    ['Chair, Florida Public Service Commission', 'govSenior'], ['Governor, Federal Reserve Board', 'govSenior'], ['FBI Director', 'govSenior'],
+    ['U.S. Marshal, Middle District of Florida', 'govSenior'], ['U.S. Ambassador to Türkiye', 'govSenior'], ['Ambassador of Japan to the United States', 'govSenior'],
+    ['Special Envoy for Climate', 'govSenior'], ['Under-Secretary-General, United Nations', 'govSenior'], ['Tier 3 SES, Department of Defense', 'govSenior'],
+    ['Texas House of Representatives | Representative, District 101', 'govSenior'], ['Chief, Miami Police Department', 'govSenior'],
+    ['Assistant Attorney General, Antitrust Division, U.S. Department of Justice', 'govSenior'],
+    ['Deputy Assistant Attorney General, Criminal Division, U.S. Department of Justice', 'govOfficial'],
+    ['Special Agent in Charge, FBI Miami Field Office', 'govOfficial'], ['Suffolk County Legislator', 'govOfficial'],
+    ['At-Large Council Member, City of Houston', 'govOfficial'], ['County Administrator, Orange County', 'govOfficial'],
+    ['United States District Judge', 'judge'], ['Judge, Ninth Circuit', 'judge'], ['County Court Judge, Orange County, Florida', 'judge'],
+    ['Associate Justice, Supreme Judicial Court of Massachusetts', 'judge'], ['Tribal Court Judge, Navajo Nation', 'judge'],
+    ['Chief of Staff of the Army', 'seniorGeneral'], ['Commandant of the Marine Corps', 'seniorGeneral'], ['Commander, Seventh Fleet, U.S. Navy', 'seniorGeneral'],
+    ['Commander, 3rd Infantry Division | U.S. Army', 'general'], ['Commanding General, 82nd Airborne Division', 'general'],
+    ['Commander, Carrier Strike Group 12, U.S. Navy', 'general'], ['Brigadier-General, Canadian Army', 'general'], ['Air Vice-Marshal, Royal Air Force', 'general'],
+    ['Lieutenant-Colonel, Canadian Army', 'ltColonel'], ['Lt. Colonel, U.S. Army', 'ltColonel'], ['Battalion Commander, 1st Battalion, 75th Ranger Regiment | U.S. Army', 'ltColonel'],
+    ['Commanding Officer, USS Gravely (DDG 107)', 'ltColonel'], ['Garrison Commander, Fort Liberty, U.S. Army', 'colonel'], ['COL | Florida Army National Guard', 'colonel'],
+    ['COL, USAR', 'colonel'], ['Group Captain, Royal Air Force', 'colonel'], ['Captain, U.S. Public Health Service', 'colonel'],
+    ['Executive Officer, 1st Battalion, 75th Ranger Regiment | U.S. Army', 'major'], ['Lieutenant, U.S. Navy', 'major'], ['USMC Reserve Major', 'major'],
+    ['Sergeant Major of the Army', 'seniorEnlisted'], ['SgtMaj, USMC', 'seniorEnlisted'], ['1st Sergeant, USMC', 'nco'], ['SFC, U.S. Army', 'nco'],
+    ['O-5, U.S. Navy', 'ltColonel'], ['Chief, Plans and Operations Division, U.S. Army', 'director'], ['Division Chief, Air Force Research Laboratory', 'director'],
+  ]) assert.equal(best(h), k, h);
+  // A war college's students are serving officers.
+  assert.equal(best('Colonel, U.S. Army | Student, U.S. Army War College'), 'colonel');
+  // Retired, written every way.
+  for (const h of ['Colonel, U.S. Army Retired', 'Colonel, USAF (Retd)', 'Ret. Navy Captain', 'Lt Col | U.S. Air Force (Ret.) | Consultant',
+    'Colonel | Retired U.S. Army', 'Retired Judge | Mediator', 'Judge (Ret.) | Mediator & Arbitrator at JAMS']) {
+    assert.equal(person(h).title.former, true, h);
+  }
+  // …but an association of retirees, a registered mark or the letter R aren't retirements.
+  for (const h of ['President, Retired Teachers Association of Florida', 'Senior Vice President, Wealth Management, CRPC(R) at Morgan Stanley',
+    'VP of Analytics | SQL | R | Tableau']) {
+    assert.equal(person(h).title.former, false, h);
+  }
+  // "Promoted to" is the new title; an assistant to a GC or a VP is the assistant.
+  assert.equal(best('Promoted to Vice President at Goldman Sachs'), 'vp');
+  assert.equal(best('Executive Assistant to the General Counsel at Google'), 'ic');
+  assert.equal(best('Office of Technology Licensing Director at Stanford'), 'director');
+});
+
+test('round two: …and more of what isn\'t one', () => {
+  for (const h of [
+    'Speaker at Soho House', 'Speaker at the White House', 'Speaker | State House Reporter', 'Speaker at General Assembly', 'Speaker | House Flipper | Realtor',
+    'Governor, The Florida Bar Board of Governors', 'Governor, Florida District of Circle K International', 'Governor, Florida Boys State',
+    'Governor, Loyal Order of Moose Lodge 2032 | Ocala, Florida', 'Governor, Florida Hospital Association',
+    'Pediatrician | Delegate, AMA House of Delegates', 'Member of the AMA House of Delegates', 'Delegate, General Assembly, Presbyterian Church (USA)',
+    'Senator, Staff Senate at Ohio State University', 'Neurosurgeon | Member of the Congress of Neurological Surgeons',
+    'Prime Minister, Northwind High School Model Parliament', 'Attorney General, SGA | Pre-Law', 'Justice, University Supreme Court, University of Florida',
+    'Secretary General, ELSA Maastricht', 'Mayor of Fun at Northwind', 'Mayor of Midtown | Realtor at Compass', 'Mayor (Honorary), Studio City',
+    'Secretary of State of Mind | Wellness Coach', 'Representative at Congressional Bank', 'PEO Benefits Administration Specialist',
+    'State Representative at Northwind Beverages Inc.', 'Florida State Representative, Northwind Pharmaceuticals', 'State Controller, Northwind Home Health',
+    'Commissioner of Deeds | Paralegal', 'Commissioner, The Joint Commission', 'Commissioner, Northwind County Special Olympics',
+    'Parish Council Member, St. Joseph Catholic Church', 'Ambassador at Embassy Suites by Hilton', 'Ambassador to Brazil, Northwind Coffee Co.',
+    'Ambassador to Japan for Northwind Sake', 'Ambassador to the Georgia Aquarium', 'Administrator at U.S. Bank', 'Administrator | FAA Part 107 Drone Pilot',
+    'Chair, US Youth Soccer Board', 'Controller, State of the Art Dental', 'US Attorney at Law | Immigration', 'Sheriff, Northwind Cowboy Action Shooting Club',
+    'Orange County Supervisor, Northwind Security Services', 'Assistant Secretary of the Vestry, St. Mark\'s Episcopal Church',
+  ]) assert.ok(!GOVERNMENT.includes(best(h)), `${h} read as ${best(h)}`);
+  for (const h of [
+    'Captain, Navy Rugby | Ensign, U.S. Navy', 'Captain, Army West Point Football', 'CPO at Marine Layer', 'Captain at Harbor Marine Towing',
+    'Commander, Marine Division at Northwind Yachts', 'Colonel, Honorable Order of Kentucky Colonels', 'Admiral, Great Navy of the State of Nebraska',
+    'Commander, Marine Corps League Detachment 708', 'Commander, Navy League Orlando Council', 'Commander, Army and Navy Union',
+    'Captain, Military Families Softball Team', 'Captain, Church Army', 'Captain, Brand Army at Northwind', 'Captain, USCG Licensed Master',
+    'Master Chief | Halo Cosplayer', 'Warrant Officer, Northwind County Sheriff',
+  ]) assert.ok(!MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
 });
