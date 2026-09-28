@@ -174,3 +174,106 @@ test('a strong circle lifts its bridge by its share of strong people, or by how 
   assert.equal(b.power, round1(round1(4 * weight(8)) + 2));
   assert.equal(b.tier, 'A');
 });
+
+test('government titles, from a city councilmember to a senator', () => {
+  for (const [h, k] of [
+    ['U.S. Senator', 'govLeader'],
+    ['Senator, U.S. Senate', 'govLeader'],
+    ['Member of Congress', 'govLeader'],
+    ['Congresswoman, U.S. House of Representatives', 'govLeader'],
+    ['Representative, U.S. House of Representatives', 'govLeader'],
+    ['Governor of Florida', 'govLeader'],
+    ['Mayor of Orlando', 'govLeader'],
+    ['Secretary of Commerce', 'govLeader'],
+    ['Secretary of the Army', 'govLeader'],
+    ['Attorney General of Florida', 'govLeader'],
+    ['Deputy Secretary of Defense', 'govSenior'],
+    ['Under Secretary of State for Economic Affairs', 'govSenior'],
+    ['Assistant Secretary of the Army for Acquisition', 'govSenior'],
+    ['Lieutenant Governor of Florida', 'govSenior'],
+    ['Deputy Mayor for Economic Development', 'govSenior'],
+    ['State Senator, Florida Senate', 'govSenior'],
+    ['State Representative, Florida House of Representatives', 'govSenior'],
+    ['Assemblymember, California State Assembly', 'govSenior'],
+    ['Commissioner, Florida Department of Education', 'govSenior'],
+    ['U.S. Ambassador to Japan', 'govSenior'],
+    ['Inspector General, Department of Veterans Affairs', 'govSenior'],
+    ['Program Executive Officer, PEO STRI', 'govSenior'],
+    ['Police Chief, City of Orlando', 'govSenior'],
+    ['Judge, U.S. District Court', 'judge'],
+    ['Circuit Judge, Ninth Judicial Circuit', 'judge'],
+    ['Associate Justice, Supreme Court of Florida', 'judge'],
+    ['Deputy Assistant Secretary of Defense for Readiness', 'govOfficial'],
+    ['City Council Member, City of Orlando', 'govOfficial'],
+    ['Orange County Commissioner', 'govOfficial'],
+    ['Sheriff, Orange County', 'govOfficial'],
+    ['SVP & General Counsel at Northwind', 'vp'],
+    ['Associate General Counsel at Google', 'director'],
+    ['Assistant Attorney General, State of Florida', 'senior'],
+  ]) assert.equal(best(h), k, h);
+  // With no company named, a senator is A (10 × 0.725); at the U.S. Senate, which
+  // the public dataset scores 7, S, as a C-suite at a company scored 7 is.
+  assert.equal(person('U.S. Senator').tier, 'A');
+  assert.equal(person('Senator, U.S. Senate').power, round1(10 * weight(7)));
+  assert.equal(person('Senator, U.S. Senate').tier, 'S');
+});
+
+test('military ranks, from major to general, and "(Ret.)" is a former role', () => {
+  for (const [h, k] of [
+    ['General, U.S. Army', 'seniorGeneral'],
+    ['Lieutenant General, US Air Force', 'seniorGeneral'],
+    ['Vice Admiral, U.S. Navy', 'seniorGeneral'],
+    ['LTG, U.S. Army', 'seniorGeneral'],
+    ['Major General, U.S. Army', 'general'],
+    ['Brigadier General, Florida National Guard', 'general'],
+    ['Rear Admiral, U.S. Coast Guard', 'general'],
+    ['Colonel, U.S. Air Force', 'colonel'],
+    ['Colonel | U.S. Air Force', 'colonel'],
+    ['Captain, U.S. Navy', 'colonel'],
+    ['Captain | U.S. Navy | Naval Aviator', 'colonel'],
+    ['Lieutenant Colonel, USMC', 'ltColonel'],
+    ['LTC, U.S. Army', 'ltColonel'],
+    ['Commander, U.S. Navy', 'ltColonel'],
+    ['Squadron Commander, USAF', 'ltColonel'],
+    ['Major, U.S. Army', 'major'],
+    ['Captain, U.S. Army', 'major'],
+    ['Lieutenant Commander, USN', 'major'],
+    ['Command Sergeant Major, U.S. Army', 'seniorEnlisted'],
+    ['Master Chief Petty Officer, U.S. Navy', 'seniorEnlisted'],
+  ]) assert.equal(best(h), k, h);
+  // Where a rank is held: the service after it.
+  assert.equal(person('Colonel, U.S. Air Force').company, 'U.S. Air Force');
+  assert.equal(person('Colonel, U.S. Air Force').power, round1(7.5 * weight(8)));
+  // Retired is former, at 70%, written before the rank or after it.
+  for (const h of ['Colonel (Ret.), U.S. Army', 'Admiral, USN, Ret.', 'Army Colonel, Retired', 'Retired Major General, US Air Force']) {
+    assert.equal(person(h).title.former, true, h);
+  }
+});
+
+test('…and the same words in everyday use aren\'t government or military', () => {
+  for (const [h, not] of [
+    ['General Manager at Northwind', ['seniorGeneral']],
+    ['Engineer at General Dynamics', ['seniorGeneral']],
+    ['Instructor at General Assembly', ['seniorGeneral']],
+    ['Gen AI Lead at Northwind', ['seniorGeneral', 'general']],
+    ['Analyst at ADM', ['seniorGeneral']],
+    ['Brand Ambassador at Nike', ['govSenior']],
+    ['Hackathon Judge | Software Engineer', ['judge']],
+    ['Law Clerk to Judge Rivera', ['judge']],
+    ['Executive Assistant to the Mayor', ['govLeader']],
+    ['Legislative Aide to a U.S. Senator', ['govLeader']],
+    ['Candidate for Mayor', ['govLeader']],
+    ["Program Manager, Mayor's Office of Innovation", ['govLeader']],
+    ['Commissioner, Northwind Fantasy Football League', ['govSenior']],
+    ['Secretary of the Board, Northwind Foundation', ['govLeader', 'govSenior']],
+    ['Assistant Secretary of the Corporation, Northwind', ['govSenior']],
+    ['Minister of Music at First Baptist Church', ['govLeader']],
+    ['Sales Representative at Oracle', ['govLeader', 'govSenior']],
+    ['Team Captain, Northwind Soccer Club', ['colonel', 'major']],
+    ['Captain at Delta Air Lines', ['colonel', 'major']],
+    ['Military Spouse | Captain of our home team', ['colonel', 'major']],
+    ['Major Gifts Officer at UCF Foundation', ['major']],
+    ['Kentucky Colonel | Bourbon enthusiast', ['colonel']],
+    ['Captain, The Salvation Army', ['colonel', 'major']],
+  ]) assert.ok(!not.includes(best(h)), `${h} read as ${best(h)}`);
+});
