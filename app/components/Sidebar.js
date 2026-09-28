@@ -11,8 +11,12 @@ import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
 import Avatar from './Avatar';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, csvSource = null }) {
   const isDegreesMode = mode === 'degrees';
+  // 'sample' or 'csv' while the sample or a CSV import is open in this window,
+  // null for your own network. Only your own can be scanned: the scanner looks
+  // the person up in the database, and these two never reach it.
+  const canScan = !csvSource;
   const { userId, userProfile: ctxProfile } = useUser();
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,7 +132,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {selected.degree === 1 && (
           <TheirCircle
             person={selected} connections={connections} degree2={degree2}
-            tierColors={tierColors} onSelect={onSelect} isRequested={isRequested}
+            tierColors={tierColors} onSelect={onSelect} isRequested={isRequested} canScan={canScan}
           />
         )}
 
@@ -370,7 +374,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
 
         {/* Create Cluster — for D1 connections OR accepted D2 (promoted, ready to bridge for D3) */}
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
-          <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} />
+          canScan
+            ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} />
+            : <ScansNeedYourNetwork csvSource={csvSource} style={{ marginTop: 16 }} />
         )}
 
         {selected.profile_url && (
@@ -404,7 +410,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         </p>
 
         {/* Auto-Bridge button */}
-        <AutoBridgeButton connections={connections} degree2={degree2} />
+        {canScan
+          ? <AutoBridgeButton connections={connections} degree2={degree2} />
+          : <ScansNeedYourNetwork csvSource={csvSource} style={{ marginBottom: 16 }} />}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           <StatBox label="Degree-2 Found" value={degree2.length} />
@@ -1062,6 +1070,22 @@ function CreateClusterCard({ selected, degree2 }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// In place of the Scan buttons while the sample or a CSV import is open. Both
+// live in this window only, so a scan could only fail: the scanner looks the
+// person up in the database, and says "Bridge '…' not found in database".
+function ScansNeedYourNetwork({ csvSource, style }) {
+  return (
+    <div style={{
+      padding: '10px 12px', borderRadius: 8, fontSize: 11, color: '#999', lineHeight: 1.5, textAlign: 'center',
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', ...style,
+    }}>
+      {csvSource === 'sample'
+        ? 'Scanning needs your own network: everyone in the sample is invented.'
+        : 'Scanning needs your own network: a CSV import lives only in this window. Close it (× at the top) and open Scan.'}
     </div>
   );
 }

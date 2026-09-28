@@ -439,6 +439,7 @@ function HomeInner() {
           onSelect={(node) => { setSelected(node || null); }}
           onSwitchMode={(newMode) => { setMode(newMode); setFilter('all'); }}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
+          csvSource={IS_DEMO ? 'sample' : csvMode ? csvSource : null}
         />
 
         {/* Galaxy experimental toggle — bottom right, Degrees mode only.

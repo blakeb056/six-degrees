@@ -23,7 +23,7 @@ const CLASSIC = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#B
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 const GREEN = '#00ff88';
 
-export default function TheirCircle({ person, connections = [], degree2 = [], tierColors = CLASSIC, onSelect, isRequested = requestedByDefault }) {
+export default function TheirCircle({ person, connections = [], degree2 = [], tierColors = CLASSIC, onSelect, isRequested = requestedByDefault, canScan = true }) {
   const index = useMemo(() => circleIndex(connections, degree2), [connections, degree2]);
   const ways = useMemo(() => routeIndex(degree2), [degree2]);
   const { rings, totals } = useMemo(() => circleRings(person, index, { isRequested }), [person, index, isRequested]);
@@ -50,6 +50,8 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
   const guess = useMemo(() => scoreGuess(person), [person]);
 
   if (!person) return null;
+  // With the sample or a CSV import open there is no scan box below to point
+  // at (Sidebar.js says why in its place), so this only says what is known.
   if (!rings.length) {
     const first = person.name?.split(' ')[0] || 'them';
     return (
@@ -57,22 +59,27 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
         <Label>Their circle</Label>
         {guess ? (
           <>
-            <div style={{ fontSize: 11.5, color: '#d8ccb0', lineHeight: 1.5, marginBottom: 9 }}>
-              <b style={{ color: '#FFD700' }}>Their score is a guess.</b> {guess.reason} Scanning {first}&apos;s circle shows
-              who you can reach through them, and a strong circle adds up to +2 to their score.
+            <div style={{ fontSize: 11.5, color: '#d8ccb0', lineHeight: 1.5, marginBottom: canScan ? 9 : 0 }}>
+              <b style={{ color: '#FFD700' }}>Their score is a guess.</b> {guess.reason}
+              {canScan && <> Scanning {first}&apos;s circle shows who you can reach through them, and a strong
+                circle adds up to +2 to their score.</>}
             </div>
-            <button type="button" onClick={toScanBox} style={{
-              width: '100%', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-              border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700',
-            }}>
-              Scan their circle ↓
-            </button>
+            {canScan && (
+              <button type="button" onClick={toScanBox} style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700',
+              }}>
+                Scan their circle ↓
+              </button>
+            )}
           </>
-        ) : (
+        ) : canScan ? (
           <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>
             Not scanned yet. Scan {first}&apos;s circle below to see who they know, and
             everyone you reach through them after that.
           </div>
+        ) : (
+          <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>Not scanned.</div>
         )}
       </div>
     );

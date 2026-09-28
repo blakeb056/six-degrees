@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moment it was clicked. It now says what it will do (open Chrome on your connections list
   and read it until it reaches people already saved) and what it costs (no search budget,
   but it is LinkedIn traffic from your account), and waits for OK.
+- **No Scan buttons on the sample or a CSV import.** Every card there offered a scan of
+  that person's circle, and Degrees offered *Auto-Bridge Next*, but both networks live
+  only in the window, so the scan could only fail ("Bridge '…' not found in database").
+  In their place a line says scanning needs your own network.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
