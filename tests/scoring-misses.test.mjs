@@ -675,3 +675,16 @@ test('round four: …and ordinary people, clubs, companies and look-alike titles
     ['Senior Associate at PwC then Manager', 'manager'], ['Volunteer at Habitat for Humanity | Retired', 'ic'],
   ]) assert.equal(best(h), k, h);
 });
+
+// Codex's review of #55: other countries' services, municipalities whose names
+// hold an organization's word, and a party beside a named office.
+test('a named office reads a party as bio; other countries\' services and cities like "League City" are read', () => {
+  for (const [h, k] of [
+    ['Captain, French Navy', 'colonel'], ['Colonel, German Army', 'colonel'], ['Major, Polish Army', 'major'],
+    ['Mayor of Plant City', 'govLeader'], ['Mayor of League City', 'govLeader'], ['Mayor of College Station', 'govLeader'],
+    ['Mayor of New York City | Democrat', 'govLeader'], ['County Sheriff | Republican', 'govOfficial'],
+  ]) assert.equal(best(h), k, h);
+  for (const h of ['Colonel, Swiss Army', 'Mayor of Mortgage Town', 'State Treasurer | Libertarian Party of Florida', 'State Treasurer | Florida Young Republicans']) {
+    assert.ok(!GOVERNMENT.includes(best(h)) && !MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
+  }
+});
