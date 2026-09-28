@@ -9,6 +9,7 @@ import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
+import { reachIndex, circleState } from '../../../lib/reach';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
@@ -125,6 +126,53 @@ function bridgeSkips() {
     }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * What lib/reach.js needs from the scanner's files to tell who is ready for a
+ * circle scan: whose list is hidden, and whose list has been read even though
+ * nothing in it was saved (everyone on it was already yours). Read on its own,
+ * without the machine checks, because the map asks for it when it loads and
+ * again after every scan.
+ */
+function scanNotes() {
+  let read = [];
+  try {
+    const me = resolveProfile({ create: false });
+    if (me) read = Object.keys(readProgress(dataDir(), me.id));
+  } catch {}
+  return { skips: bridgeSkips(), read };
+}
+
+/**
+ * One of your connections, for the Scan page's "Scan one circle" box (Bridge
+ * Chains and the Degrees panel send people there by id): who they are, and how
+ * their circle stands by the same rule the map uses. Null when not found.
+ */
+function pickedPerson(id) {
+  try {
+    const me = resolveProfile({ create: false });
+    if (!me) return { person: null };
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT id, name, tier, power_score, degree, profile_url, unlocked_from_bridge_id, unlocked_from_name
+         FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1`,
+    ).get(String(id ?? ''), me.id);
+    if (!row) return { person: null };
+    const mapped = db.prepare(
+      'SELECT 1 FROM linkedin_connections WHERE user_id = ? AND degree = 2 AND source_connection_id = ? LIMIT 1',
+    ).get(me.id, row.id);
+    const reach = reachIndex([], mapped ? [{ source_connection_id: row.id }] : [], scanNotes());
+    return {
+      person: {
+        id: row.id, name: row.name, tier: row.tier, power_score: row.power_score,
+        unlocked_from_bridge_id: row.unlocked_from_bridge_id, unlocked_from_name: row.unlocked_from_name,
+      },
+      circle: circleState(row, reach),
+    };
+  } catch {
+    return { person: null };
   }
 }
 
@@ -313,6 +361,8 @@ export async function GET(request) {
   const q = new URL(request?.url || 'http://127.0.0.1/api/scraper').searchParams;
   if (q.has('job')) return Response.json(job());
   if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
+  if (q.has('reach')) return Response.json(scanNotes());
+  if (q.has('person')) return Response.json(pickedPerson(q.get('person')));
   return Response.json(await status());
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason } from '../../lib/scraper-client';
 import useScanner from './useScanner';
 import useRequests from './useRequests';
@@ -9,9 +10,10 @@ import { hasRequest, markRequested, undoRequest } from '../../lib/requests-clien
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
+import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from '../../lib/reach';
 import Avatar from './Avatar';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, canScan = true }) {
   const isDegreesMode = mode === 'degrees';
   const { userId, userProfile: ctxProfile } = useUser();
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
@@ -403,8 +405,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           Your bridge connections and who they unlock.
         </p>
 
-        {/* Auto-Bridge button */}
-        <AutoBridgeButton connections={connections} degree2={degree2} />
+        {/* Who to scan next: people you reached, whose own circle is next */}
+        {canScan && <ReadyToScan connections={connections} degree2={degree2} scanNotes={scanNotes} tierColors={tierColors} />}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           <StatBox label="Degree-2 Found" value={degree2.length} />
@@ -1095,7 +1097,7 @@ function LastRead({ job, who = null }) {
       color: ok ? '#00ff88' : '#ff8080',
     }}>
       {ok
-        ? `${who ? `${who}’s circle` : 'The scan'} finished. Refresh the page to see what it found.`
+        ? `${who ? `${who}’s circle` : 'The scan'} finished. What it found is on the map.`
         : `${who ? `${who}’s scan` : 'The scan'} stopped before the end${why ? `: ${why}` : '.'}`}
     </div>
   );
@@ -1318,100 +1320,130 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
   return insights.slice(0, 5); // Max 5 insights
 }
 
-// The bridge section's "map the next one" button. Any circle being read shows
-// here, whoever started it; anything else running greys the button out.
-function AutoBridgeButton({ connections, degree2 }) {
+// Who to scan next, in the Degrees panel. It replaced "Auto-Bridge Next", which
+// started a scan of the top unmapped S/A connection in one click, by name, with
+// no cost shown, and offered hidden lists again after every run.
+//
+// This lists everyone you reached through a circle whose own circle can be
+// scanned now (lib/reach.js), strongest first, with the circle you found them
+// in and what a scan asks of LinkedIn. Each opens the Scan page with them
+// picked, and nothing starts until it's confirmed there, beside the budget and
+// the cooldown. Hidden lists stay in view, greyed, so nobody seems forgotten.
+// It's also the way to them from a keyboard or a screen reader: the orbs in
+// Bridge Chains aren't.
+function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
   const scan = useScanner();
-  const [checking, setChecking] = useState(false);
-  const [problem, setProblem] = useState(null);
-
-  // Read since the page loaded, so their circle isn't on screen until a
-  // refresh: never offered as next again meanwhile.
-  const readHere = new Set(scan.finished.filter(isCircleScan).map((j) => j.target?.id).filter(Boolean));
-  // Find the top S-tier person without a cluster
-  const bridgedIds = new Set(degree2.map(d => d.source_connection_id).filter(Boolean));
-  const unbridged = (connections || [])
-    .filter(c => (c.tier === 'S' || c.tier === 'A') && !bridgedIds.has(c.id) && !readHere.has(c.id))
-    .sort((a, b) => (parseFloat(b.power_score) || 0) - (parseFloat(a.power_score) || 0));
+  const [all, setAll] = useState(false);
+  const reach = useMemo(() => reachIndex(connections, degree2, scanNotes), [connections, degree2, scanNotes]);
+  const ready = useMemo(() => readyToScan(connections, reach), [connections, reach]);
+  const hidden = useMemo(() => connections.filter((c) => reachState(c, reach) === 'hidden'), [connections, reach]);
+  // Everyone else whose circle isn't scanned: the Scan page's batches.
+  const others = useMemo(
+    () => connections.filter((c) => reachState(c, reach) === null && circleState(c, reach) === 'todo').length,
+    [connections, reach],
+  );
+  const byId = useMemo(() => new Map(connections.map((c) => [c.id, c])), [connections]);
+  const cost = circleScanCost();
 
   const circle = scan.running && isCircleScan(scan);
   const busy = scan.running && !circle ? busyReason(scan) : null;
   const last = scan.finished.find(isCircleScan);
+  const shown = all ? ready : ready.slice(0, 5);
+  const origin = (p) => byId.get(p.unlocked_from_bridge_id)?.name || p.unlocked_from_name;
+  const first = (name) => String(name || '').trim().split(/\s+/)[0];
 
-  if (unbridged.length === 0 && !scan.running && !last) {
-    return (
-      <div style={{
-        padding: '10px', borderRadius: 8, marginBottom: 16,
-        background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)',
-        color: '#00ff88', fontSize: 11, fontWeight: 600, textAlign: 'center',
-      }}>
-        All S/A-tier bridges mapped
-      </div>
-    );
-  }
-
-  async function startAutoBridge() {
-    const next = unbridged[0];
-    if (!next) return;
-    setProblem(null);
-    setChecking(true);
-    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
-    setChecking(false);
-    if (blocked) {
-      setProblem(blocked);
-      return;
-    }
-    try {
-      await beginScrape('bridge', { name: next.name, id: next.id });
-    } catch (e) {
-      setProblem(e.message || 'Could not start the scan.');
-    }
-  }
-
-  const off = Boolean(busy) || checking;
   return (
     <div style={{
-      background: 'rgba(155,89,182,0.08)', border: '1px solid rgba(155,89,182,0.2)',
+      background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)',
       borderRadius: 10, padding: 14, marginBottom: 16,
     }}>
+      <div style={{ fontSize: 12, fontWeight: 800, color: '#00ff88', marginBottom: 4 }}>
+        Ready to scan ({ready.length})
+      </div>
+      <div style={{ fontSize: 10.5, color: '#999', lineHeight: 1.5, marginBottom: 10 }}>
+        People you added through a circle whose own circle isn&apos;t scanned yet. Scanning one
+        brings in who they know: 3rd degree, through the circle you found them in.
+      </div>
+
       {circle ? (
-        <ScanLog small title={scan.pending ? 'Starting…' : `Scanning ${scan.target?.name || 'a circle'}…`} log={scan.log} />
+        <div style={{ marginBottom: 10 }}>
+          <ScanLog small title={scan.pending ? 'Starting…' : `Scanning ${scan.target?.name || 'a circle'}…`} log={scan.log} />
+        </div>
+      ) : last && <LastRead job={last} who={last.target?.name} />}
+
+      {ready.length === 0 ? (
+        <div style={{ fontSize: 11, color: '#aaa', lineHeight: 1.5 }}>
+          Nobody yet. When someone you asked from a circle accepts, ↻ <b>Check for new</b> brings
+          them into your connections, and they show here.
+        </div>
       ) : (
-        <>
-          {last && <LastRead job={last} who={last.target?.name} />}
-          {unbridged.length > 0 ? (
-            <>
-              <div style={{ fontSize: 11, color: '#9B59B6', fontWeight: 700, marginBottom: 6 }}>
-                {unbridged.length} bridges unmapped
-              </div>
-              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 8 }}>
-                Next: <strong>{unbridged[0].name}</strong> ({unbridged[0].tier}-tier, {parseFloat(unbridged[0].power_score).toFixed(1)})
-              </div>
-              <button onClick={startAutoBridge} disabled={off} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: 'none',
-                cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
-                background: 'linear-gradient(135deg, #9B59B6, #FF6B35)',
-                color: '#fff', fontWeight: 700, fontSize: 13,
-              }}>
-                Auto-Bridge Next
-              </button>
-            </>
-          ) : (
-            <div style={{ color: '#00ff88', fontSize: 11, fontWeight: 600, textAlign: 'center' }}>
-              All S/A-tier bridges mapped
-            </div>
+        <div role="list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {shown.map((p) => {
+            const now = circle && scansCircleOf(scan, p);
+            const from = origin(p);
+            return (
+              <Link key={p.id} role="listitem" href={`/setup?scan=${encodeURIComponent(p.id)}`}
+                aria-label={`Scan ${p.name}’s circle: opens the Scan page to confirm`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
+                  textDecoration: 'none', color: '#fff',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,255,136,0.18)',
+                }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: tierColors[p.tier] || '#888', boxShadow: '0 0 0 2px rgba(0,255,136,0.45)' }} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>{p.name}</span>
+                  <span style={{ fontSize: 10, color: tierColors[p.tier] || '#888', fontWeight: 700, marginLeft: 6 }}>{p.tier}</span>
+                  {from && (
+                    <span style={{ display: 'block', fontSize: 10, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      was in {first(from)}&apos;s circle
+                    </span>
+                  )}
+                </span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#00ff88', whiteSpace: 'nowrap' }}>
+                  {now ? 'Scanning…' : 'Scan… →'}
+                </span>
+              </Link>
+            );
+          })}
+          {ready.length > 5 && (
+            <button type="button" onClick={() => setAll((v) => !v)} style={{
+              background: 'none', border: 'none', color: '#888', fontSize: 10.5, fontWeight: 600, cursor: 'pointer', padding: '2px 0', textAlign: 'left',
+            }}>
+              {all ? 'Show fewer' : `Show all ${ready.length}`}
+            </button>
           )}
-          {busy && (
-            <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, textAlign: 'center' }}>
-              {busy}. One scan at a time: this one can start when it finishes.
+        </div>
+      )}
+
+      {ready.length > 0 && (
+        <div style={{ fontSize: 10, color: '#888', lineHeight: 1.5, marginTop: 8 }}>
+          Each scan: {cost.profileViews} profile view, then one LinkedIn search for every page of their
+          list, up to {cost.searches} pages (about {cost.minutes} min for a whole list). Nothing starts
+          until you confirm it on the Scan page.
+        </div>
+      )}
+
+      {hidden.length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 10.5, color: '#777', lineHeight: 1.6 }}>
+          {hidden.slice(0, 3).map((p) => (
+            <div key={p.id} style={{ opacity: 0.7 }}>
+              <span aria-hidden="true">🔒</span> {p.name} <span style={{ color: '#666' }}>· their list is hidden</span>
             </div>
-          )}
-          {problem && (
-            <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(255,80,80,0.1)', color: '#ff5050', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
-              {problem}
-            </div>
-          )}
-        </>
+          ))}
+          {hidden.length > 3 && <div style={{ opacity: 0.7 }}>🔒 and {hidden.length - 3} more with hidden lists</div>}
+        </div>
+      )}
+
+      {others > 0 && (
+        <div style={{ fontSize: 10.5, color: '#888', lineHeight: 1.5, marginTop: 10 }}>
+          {others.toLocaleString('en-US')} of your other connections aren&apos;t scanned yet.{' '}
+          <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Map them in batches on the Scan page →</Link>
+        </div>
+      )}
+      {busy && (
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 8 }}>
+          {busy}. One scan at a time.
+        </div>
       )}
     </div>
   );

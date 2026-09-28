@@ -47,8 +47,8 @@ function Ring({ progress, size = 86, color = '#FF6B35', children }) {
   );
 }
 
-export default function OutlinkQuest({ recs, sentIds, added, mappedIds, onSend, onUndo }) {
-  const quest = useMemo(() => buildQuest({ recs, sentIds, added, mappedIds }), [recs, sentIds, added, mappedIds]);
+export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, onSend, onUndo }) {
+  const quest = useMemo(() => buildQuest({ recs, sentIds, added, mappedIds, reach }), [recs, sentIds, added, mappedIds, reach]);
   const [open, setOpen] = useState(null);         // bridge id of the expanded cluster
   const [toast, setToast] = useState(null);
   const { level } = quest;

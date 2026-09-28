@@ -11,6 +11,8 @@ import Link from 'next/link';
 import useRequests from '../components/useRequests';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { keyFor } from '../../lib/separation';
+import { reachIndex } from '../../lib/reach';
+import { loadScanNotes } from '../../lib/scraper-client';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -51,6 +53,8 @@ function QueueInner() {
   const [view, setView] = useState('quest'); // quest | recs | pending
   const [added, setAdded] = useState([]);
   const [mappedIds, setMappedIds] = useState(() => new Set());
+  // Whose circle can be scanned next, hidden lists known (lib/reach.js).
+  const [reach, setReach] = useState(null);
   const [bridgeFilter, setBridgeFilter] = useState(null);
 
   // Default to bridge view — shows D1 person → their D2 people
@@ -75,14 +79,16 @@ function QueueInner() {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      const [net, pendingRes] = await Promise.all([
+      const [net, pendingRes, notes] = await Promise.all([
         loadNetwork(userId),
         fetch(`/api/outreach?userId=${userId}`).then(r => r.json()).catch(() => ({ pending: [] })),
+        loadScanNotes(),
       ]);
       const d1 = net.degree1;
       const d2 = net.degree2;
       setAdded(d1.filter(c => c.unlocked_from_bridge_id));
       setMappedIds(new Set(d2.map(c => c.source_connection_id).filter(Boolean)));
+      setReach(reachIndex(d1, d2, notes));
       const d1Urls = new Set(d1.map(c => c.profile_url));
       const bridgeById = {};
       d1.forEach(c => { bridgeById[c.id] = c; });
@@ -323,6 +329,7 @@ function QueueInner() {
             sentIds={sentIds}
             added={added}
             mappedIds={mappedIds}
+            reach={reach}
             onSend={(r) => markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {})}
             onUndo={(r) => undoRequest(r).catch(() => {})}
           />
