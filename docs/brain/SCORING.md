@@ -424,6 +424,58 @@ The offer covers this one change, from lists that stamped nothing. A later edit 
 changes the stamp and rescores, but offers nothing unless it brings its own old rows and
 its own trigger.
 
+## The public company dataset
+
+The curated list stops at household names, so most places people actually work are unknown
+to it and score the neutral 5. `COMPANY_DATA` (in `lib/scoring.js`, just below the curated
+list) is a second, wider list: organizations with a public footprint that most people
+wouldn't know by name, each scored from public facts anyone can check, with the source
+beside the score.
+
+**Where it sits.** `companyScore()` reads, in order:
+1. your own score;
+2. the curated list (`known`);
+3. the dataset (`data`);
+4. the network's estimate (`network`: 5.5 at 5+ people there, 6 at 15+);
+5. the neutral 5 (`default`).
+
+A company on the dataset is a fact, not an estimate. Many of your people working there
+don't move it, and the legacy offer doesn't call it "estimated". Paths → Scores labels it
+*public data*.
+
+**The scale.** 8 for Fortune 500 / Global 2000 / S&P 500 scale (about $20B+, or 20,000+
+staff), a major pro league or a U.S. federal department. 7 for a listed company or a private
+one valued at about $2–20B, a national TV network, a large health system, a major defense
+research lab, or a university ranked about 11–50 (U.S. News Best National Universities).
+6 for an established, notable one: a listed small or mid cap, a venture-backed company with
+about $100M+ raised or 500+ staff, a university ranked about 51–150, or a national cultural
+institution. Anything smaller isn't listed, because it would score 5 anyway. When in doubt,
+the lower score.
+
+**The rules.**
+- Public sources only, never anyone's scan: the app uploads nothing, so nothing a user scans
+  can reach the list.
+- Organizations only. A one-person business or a personal brand is never listed, because
+  its name points at someone.
+- A name several organizations share goes in only in the forms that say which, and a venue
+  named for a company never matches it (`tests/company-data.test.mjs`).
+- It is fingerprinted into the scoring stamp with the curated list, so an entry added or
+  rescored rescores stored scores once.
+
+**How it started (2026-09-28).** 155 organizations researched from public sources:
+- 64 met the scale (11 at 8, 31 at 7, 22 at 6);
+- 32 names were ambiguous and left out (several organizations share them);
+- the rest were too small to add anything.
+
+It grows each release, from broad public lists (the Fortune 500, the Forbes Global 2000,
+the next bands of university rankings, federal agencies), so no one field's companies are
+the only ones known.
+
+**Names read through Unicode normalization.** Before any of this, a name is read through
+NFKC. Styled letters (𝗠𝗶𝗰𝗿𝗼𝘀𝗼𝗳𝘁), full-width bars (｜) and the Apple logo glyph after
+"Apple" used to hide a company, and a class year ("UCF ’26") is a student's, not the
+school's name.
+
 ## One industry per company
 
 Industry is inferred (`lib/companies.js` `INDUSTRIES`, regexes over names and headlines),

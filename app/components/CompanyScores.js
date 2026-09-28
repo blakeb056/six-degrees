@@ -12,6 +12,7 @@ const LINE = '1px solid rgba(255,255,255,0.1)';
 const SOURCE = {
   yours: { label: 'your score', color: '#00ff88' },
   known: { label: 'known list', color: '#3498DB' },
+  data: { label: 'public data', color: '#1abc9c' },
   network: { label: 'estimated: many of your people', color: '#FF6B35' },
   default: { label: 'unknown company', color: '#778' },
 };
@@ -118,7 +119,7 @@ export default function CompanyScores({ onRescored }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 10px' }}>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
             style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, minWidth: 180 }} />
-          {[['all', `All ${companies.length}`], ['known', `Known list ${count('known')}`], ['yours', `Yours ${count('yours')}`], ['network', `Estimated ${count('network')}`], ['default', `Unknown ${count('default')}`]].map(([k, l]) => (
+          {[['all', `All ${companies.length}`], ['known', `Known list ${count('known')}`], ['data', `Public data ${count('data')}`], ['yours', `Yours ${count('yours')}`], ['network', `Estimated ${count('network')}`], ['default', `Unknown ${count('default')}`]].map(([k, l]) => (
             <button key={k} onClick={() => setOnly(k)} style={{
               padding: '5px 10px', borderRadius: 7, border: LINE, cursor: 'pointer', fontSize: 11.5, fontWeight: 600,
               background: only === k ? 'rgba(52,152,219,0.25)' : 'transparent', color: only === k ? '#cfe6f7' : '#8b9a9a',

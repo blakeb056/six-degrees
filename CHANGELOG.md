@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A public company dataset.** 64 companies and institutions the built-in list leaves off
+  are now known, scored 6 to 8 from public facts on one published scale. Each has its
+  source beside it: an exchange listing, a reported valuation, a U.S. News rank, a federal
+  department's size. The first set, by score:
+  - **8:** Anduril, CoreWeave, GE Vernova, LSEG, MLB, Raymond James, Siemens Energy,
+    Simon Property Group, the U.S. Treasury, Universal Orlando and Universal Pictures.
+  - **7:** 31, among them WWE, Roku, IMAX, UC San Diego, the University of Florida and
+    Tufts.
+  - **6:** 22, among them UCF and USF.
+
+  Someone there is scored from those facts, not as an unknown company, and Paths → Scores
+  labels the score *public data*. The list is built from public sources only, never from
+  anyone's scan, and grows each release. The built-in list itself is unchanged: household
+  names only, 7 and up.
+
+### Fixed
+- **Company names written in styled letters or with a logo are read.** "𝗠𝗶𝗰𝗿𝗼𝘀𝗼𝗳𝘁",
+  "Apple " (with Apple's logo) and "Snapchat｜ex-L'Oréal" (a full-width bar) used to read
+  as unknown companies. So did "Meta Superintelligence Labs" and "Snapchat MENA Region",
+  and a class year ("UCF ’26") hid the school.
+
 ### Changed
 - **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
   Your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C, so

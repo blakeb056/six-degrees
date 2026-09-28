@@ -181,7 +181,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
   assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
-  assert.equal(meta('scoring_version'), '4');
+  assert.equal(meta('scoring_version'), '5');
   assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
   assert.equal(meta('scoring_tiers'), 'curve');                           // Settings → Tiers, as saved (the default)
 });
