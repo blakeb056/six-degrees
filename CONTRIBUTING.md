@@ -42,16 +42,21 @@ run `node scripts/pin-python-packages.mjs`.
 
 Bump the version, tag it, push the tag. `.github/workflows/release.yml` builds the
 Mac app for Apple Silicon and Intel, publishes both `.dmg` files and a `SHA256SUMS`
-file on a GitHub Release (which is what `install.sh` downloads), and publishes to
-npm when an `NPM_TOKEN` secret is set.
+file on a GitHub Release (which is what `install.sh` downloads), and publishes the npm
+package through npm's trusted publishing: npm accepts this repository's
+`release.yml`, and GitHub vouches for each run, so there is no npm token to set or
+keep. A tag with a hyphen (`v0.4.0-beta.1`) is a pre-release on GitHub and goes to npm
+under `next`, so neither `install.sh` nor `npx six-degrees` picks it up.
 
 ```bash
 npm version 0.2.0 --no-git-tag-version
 git commit -am "Release 0.2.0" && git tag v0.2.0 && git push --follow-tags
 ```
 
-To try a packaged build locally: `npm run build:app`, then
-`SIX_DEGREES_DMG=dist/Six-Degrees-<version>-arm64.dmg bash install.sh`.
+To try a packaged build locally: `npm run build:desktop`, then
+`SIX_DEGREES_DMG=dist/Six-Degrees-<version>-arm64.dmg bash install.sh`. That is the
+Electron app releases ship. `npm run build:app` builds the older classic launcher, kept
+only as a fallback.
 
 The picture behind the `.dmg` window is `scripts/dmg/background.html`. After changing
 it, run `node scripts/make-dmg-background.mjs` (needs Google Chrome) and commit the

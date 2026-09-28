@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **One name: Six Degrees.** The header, the welcome screen, the loading and launch pages,
   the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
   the window title and the app in Applications already did.
+- **Contributor docs and `.gitignore`.** CONTRIBUTING says npm releases go out through
+  trusted publishing, with no token to set, and that `npm run build:desktop` builds the app
+  releases ship (`build:app` is the old launcher). `.gitignore` keeps a LinkedIn export, a
+  database, a saved copy of a network and the scanner's signed-in browser profile out of a
+  commit, wherever they sit in the tree.
 
 ### Fixed
 - **↻ asks before it scans.** The round button in the header started *Check for new* the
