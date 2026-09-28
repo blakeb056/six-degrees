@@ -450,7 +450,7 @@ export async function POST(request) {
 
   // The two settings a person changes here. Neither starts anything.
   if (action === 'set-limits') {
-    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly });
+    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly, profiles: body.profiles });
     return Response.json({ ok: true, limits });
   }
   if (action === 'lift-cooldown') {

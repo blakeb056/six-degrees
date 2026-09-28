@@ -1,9 +1,10 @@
 'use client';
 
-// The Scan page's view of what LinkedIn allows: the search budget, the cooldown
-// lock, and everyone whose list was only partly read, with a way back into each.
-// TRAPS §35. The numbers come from /api/scraper (lib/linkedin-limits.js,
-// lib/paused.js), which reads the same files the scanner writes.
+// The Scan page's view of what LinkedIn allows: the search budget and the cap
+// on profile views, the cooldown lock, and everyone whose list was only partly
+// read, with a way back into each. TRAPS §16, §35. The numbers come from
+// /api/scraper (lib/linkedin-limits.js, lib/paused.js), which reads the same
+// files the scanner writes.
 
 import { useState } from 'react';
 
@@ -11,6 +12,7 @@ const LINE = '1px solid rgba(255,255,255,0.1)';
 const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const DAILY = [25, 50, 100, 200, 500];
 const MONTHLY = [100, 250, 500, 1000, 0];
+const PROFILES = [10, 25, 50, 100];
 
 const when = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -55,6 +57,8 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
   if (!li) return null;
   const { limits } = li;
   const today = li.unreadable ? '?' : li.searchesToday;
+  const views = li.unreadable ? '?' : li.profilesToday;
+  const set = (change) => onSetLimits({ ...limits, ...change });
   return (
     <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#b8c4c4' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
@@ -66,22 +70,33 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
           <div><b style={{ color: '#fff' }}>{li.searchesMonth}</b> of {limits.monthly || 'no limit'} this month · resets {day(li.monthResets)}</div>
           <Bar used={li.searchesMonth} cap={limits.monthly} />
         </div>
+        <div>
+          <div><b style={{ color: '#fff' }}>{views}</b> of {limits.profiles} profile views today</div>
+          <Bar used={li.unreadable ? limits.profiles : li.profilesToday} cap={limits.profiles} />
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
         <span>Budget:</span>
-        <select value={limits.daily} disabled={disabled} onChange={(e) => onSetLimits({ daily: Number(e.target.value), monthly: limits.monthly })} style={sel}>
+        <select value={limits.daily} disabled={disabled} onChange={(e) => set({ daily: Number(e.target.value) })} style={sel}>
           {DAILY.map((n) => <option key={n} value={n}>{n} a day</option>)}
         </select>
-        <select value={limits.monthly} disabled={disabled} onChange={(e) => onSetLimits({ daily: limits.daily, monthly: Number(e.target.value) })} style={sel}>
+        <select value={limits.monthly} disabled={disabled} onChange={(e) => set({ monthly: Number(e.target.value) })} style={sel}>
           {MONTHLY.map((n) => <option key={n} value={n}>{n ? `${n} a month` : 'no monthly cap (Premium)'}</option>)}
         </select>
-        <span style={{ color: '#778' }}>{li.profilesToday} profile views today</span>
+        <select value={limits.profiles} disabled={disabled} onChange={(e) => set({ profiles: Number(e.target.value) })} style={sel}>
+          {PROFILES.map((n) => <option key={n} value={n}>{n} profile views a day</option>)}
+        </select>
       </div>
       <div style={{ marginTop: 8, color: '#778', lineHeight: 1.6 }}>
         Every page of someone&rsquo;s connections is one search. LinkedIn limits a free account&rsquo;s people
         searches by the month (it doesn&rsquo;t say how many; reports put it around 250–350), resetting on the 1st.
         When a budget is used, a scan saves what it read and stops; the next one carries on from the same page.
         {limits.daily > 100 && <b style={{ color: '#FFD700' }}> {limits.daily} a day can use up a free account&rsquo;s month in a day or two.</b>}
+      </div>
+      <div style={{ marginTop: 6, color: '#778', lineHeight: 1.6 }}>
+        Each circle scan opens the person&rsquo;s profile once, which is one profile view. Profile views are what
+        LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
+        once today&rsquo;s are used, a scan stops before the next profile and tries that person next time.
       </div>
     </div>
   );

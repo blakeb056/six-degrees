@@ -85,6 +85,15 @@ next time. When LinkedIn pushes back, a cooldown stops anything that searches fo
 (until the 1st, for the monthly limit); the Scan page shows when it lifts, and lets you lift
 it early once search works for you again.
 
+**Profile views have a cap too.** A circle scan opens the person's profile once, and that
+is a profile view. Profile views are what got an account restricted, so they have their
+own cap: 50 in any 24 hours by default, and the Scan page offers 10, 25, 50 or 100. There is
+no "no limit". At least a minute passes between any two profile opens, even across scans
+started one after another; the log counts down while it waits, and Stop ends the wait.
+When the cap is reached, a scan stops before opening the next profile. Nothing about that
+person is recorded, so the next run starts with them. Carrying on with someone whose
+search id is already known doesn't open their profile, so it doesn't count.
+
 **Paused lists.** Everyone whose list was only partly read is listed on the Scan page with
 the page they carry on from. **Resume** carries on with one of them; **Resume all** with
 every paused list, and nobody new. For every result it keeps the profile link, name, photo and headline;
@@ -97,9 +106,9 @@ as the "mutual connections" under each result — are not saved into anyone's ci
 
 **Go easy on the 2nd-degree step.** It opens one profile per person, and LinkedIn
 restricts accounts that view a lot of profiles in a short time — that happened during
-development after about an hour of continuous mapping, roughly 20–25 profiles. Run a
-batch, leave it a while, run another. If LinkedIn warns you about unusual activity,
-press Stop and leave it for the day.
+development after about an hour of continuous mapping, roughly 20–25 profiles. The cap
+on profile views keeps a day to 50 by default. Run a batch, leave it a while, run
+another. If LinkedIn warns you about unusual activity, press Stop and leave it for the day.
 
 ## The terminal way
 

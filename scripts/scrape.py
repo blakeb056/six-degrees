@@ -592,10 +592,14 @@ class LinkedInPushedBack(Exception):
 
 
 class BudgetReached(Exception):
-    """Today's or this month's search budget is used. Raised after saving."""
+    """Today's or this month's search budget, or today's profile views, is used.
+
+    Raised after saving. `kind` is "daily", "monthly" or "profiles"; the
+    profile cap is checked before a profile opens, so for it `found` is 0.
+    """
 
     def __init__(self, found=0, kind="daily"):
-        super().__init__(f"the {kind} search budget")
+        super().__init__("today's profile views" if kind == "profiles" else f"the {kind} search budget")
         self.found = found
         self.kind = kind
 
@@ -1266,16 +1270,24 @@ def note_unclear(profile_url, clear=False):
 # day's or the month's budget is used. A cooldown lock is set when LinkedIn
 # pushes back, and nothing searches until it lifts.
 #
+# Profile views have a cap of their own, because they are what LinkedIn
+# restricted an account for (TRAPS §16). Every circle scan that opens someone's
+# profile takes one, and any two opens are at least PROFILE_GAP apart, timed
+# from the record, so starting scan after scan can't open profiles back to back.
+#
 # These belong to the LinkedIn account (the one Chrome profile), not to a
 # profile in the app: three app profiles must not triple the budget. The app's
 # Scan page reads and edits the same files (lib/linkedin-limits.js).
 #
 #   linkedin-activity.json  {"searches": [epoch s, ...], "profiles": [...]}
-#   scan-limits.json        {"daily": 50, "monthly": 250}   0 = no cap
+#   scan-limits.json        {"daily": 50, "monthly": 250, "profiles": 50}
+#                           0 = no cap on searches; profile views always have one
 #   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
 # ---------------------------------------------------------------------------
 DEFAULT_DAILY_SEARCHES = 50
 DEFAULT_MONTHLY_SEARCHES = 250
+DEFAULT_DAILY_PROFILES = 50
+PROFILE_GAP = 60                  # seconds between any two profile opens, whatever opened them
 DAY_SECONDS = 24 * 3600
 PACIFIC = "America/Los_Angeles"
 
@@ -1370,7 +1382,8 @@ def _read_activity():
         except OSError:
             pass
         print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
-        fresh = {"searches": [now] * max(1, search_limits()["daily"] or 1), "profiles": []}
+        lim = search_limits()
+        fresh = {"searches": [now] * max(1, lim["daily"] or 1), "profiles": [now] * lim["profiles"]}
         try:
             _write_json_atomic(path, fresh)
         except Exception:
@@ -1380,17 +1393,43 @@ def _read_activity():
 
 def charge_linkedin(kind="searches", n=1):
     """Write down n searches (or profile views) made just now."""
-    now = time.time()
-    keep_from = month_start_pacific(now) - 32 * DAY_SECONDS
     with _Locked("linkedin-activity"):
+        _charge(_read_activity(), kind, n, time.time())
+
+
+def _charge(data, kind, n, now):
+    """Add n of `kind` at `now` to the record and write it. The caller holds the lock."""
+    keep_from = month_start_pacific(now) - 32 * DAY_SECONDS
+    data[kind] = [t for t in data.get(kind, []) if t >= keep_from] + [now] * n
+    other = "profiles" if kind == "searches" else "searches"
+    data[other] = [t for t in data.get(other, []) if t >= keep_from]
+    try:
+        _write_json_atomic(_home() / "linkedin-activity.json", data)
+    except Exception as exc:
+        print(f"  (could not write down LinkedIn activity: {exc})")
+
+
+def take_profile_view(now=None):
+    """Write down one profile view, if the cap and the gap allow one now.
+
+    Returns 0 once it is written down and a profile may open, the whole
+    seconds still to wait when the last view was under PROFILE_GAP ago, or
+    None when the last 24 hours' views are used. The check and the write are
+    one step under the lock, so two runs can't both take the last view.
+    """
+    with _Locked("linkedin-activity"):
+        now = now if now is not None else time.time()
         data = _read_activity()
-        data[kind] = [t for t in data.get(kind, []) if t >= keep_from] + [now] * n
-        other = "profiles" if kind == "searches" else "searches"
-        data[other] = [t for t in data.get(other, []) if t >= keep_from]
-        try:
-            _write_json_atomic(_home() / "linkedin-activity.json", data)
-        except Exception as exc:
-            print(f"  (could not write down LinkedIn activity: {exc})")
+        views = [t for t in data["profiles"] if t > now - DAY_SECONDS]
+        if len(views) >= search_limits()["profiles"]:
+            return None
+        # A time ahead of this clock (another computer's, imported) is left
+        # out of the gap: waiting for it could never end.
+        last = max((t for t in views if t <= now), default=None)
+        if last is not None and now - last < PROFILE_GAP:
+            return int(last + PROFILE_GAP - now) + 1
+        _charge(data, "profiles", 1, now)
+        return 0
 
 
 def search_limits():
@@ -1405,7 +1444,9 @@ def search_limits():
         except (TypeError, ValueError):
             return default
     return {"daily": num(data.get("daily"), DEFAULT_DAILY_SEARCHES),
-            "monthly": num(data.get("monthly"), DEFAULT_MONTHLY_SEARCHES)}
+            "monthly": num(data.get("monthly"), DEFAULT_MONTHLY_SEARCHES),
+            # 0 is no cap for searches, never for profile views.
+            "profiles": num(data.get("profiles"), DEFAULT_DAILY_PROFILES) or DEFAULT_DAILY_PROFILES}
 
 
 def linkedin_usage(now=None):
@@ -1427,6 +1468,11 @@ def searches_left(now=None):
     return (left_day, "daily") if left_day <= left_month else (left_month, "monthly")
 
 
+def profiles_left(now=None):
+    """How many more profiles may be opened: the cap less the last 24 hours' views."""
+    return max(0, search_limits()["profiles"] - linkedin_usage(now)["profiles_today"])
+
+
 def _when(ts):
     t = datetime.fromtimestamp(ts)
     hour = t.hour % 12 or 12
@@ -1440,6 +1486,14 @@ def _day(ts):
 
 def budget_message(kind):
     lim = search_limits()
+    if kind == "profiles":
+        # The one that stops counting soonest frees the next view.
+        now = time.time()
+        views = sorted(t for t in _read_activity()["profiles"] if t > now - DAY_SECONDS)
+        extra = len(views) - lim["profiles"]
+        free = f" The next one frees up at {_when(views[extra] + DAY_SECONDS)}." if extra >= 0 else ""
+        return (f"Today's profile views ({lim['profiles']}) are used — they count the last 24 hours.{free} "
+                f"No profile was opened and nothing was recorded, so the next run starts with the same person.")
     if kind == "monthly":
         when = _day(next_month_start_pacific())
         return (f"This month's search budget ({lim['monthly']}) is used. It starts again on {when} "
@@ -2108,6 +2162,30 @@ def _page_limit_hint(next_page):
     return f"Run again with --deeper, and no --max-pages, to carry on from page {next_page}."
 
 
+def _wait_for_profile_view(page):
+    """Take one of today's profile views, first waiting out PROFILE_GAP.
+
+    None once it is taken and the profile may open; "budget" when the last 24
+    hours' views are used; "stopped" when Stop, or a closed window, came
+    during the wait. Nothing else is written down.
+    """
+    def tick(left):
+        if not _window_closed(page):          # a closed window sets the stop
+            print(f"    {left}s to go", flush=True)
+
+    while True:
+        wait = take_profile_view()
+        if wait is None:
+            return "budget"
+        if not wait:
+            return None
+        print(f"  Waiting {wait}s before opening a profile: at least {PROFILE_GAP}s pass "
+              f"between any two.", flush=True)
+        if not interruptible_sleep(wait, on_tick=tick, step=10) or _window_closed(page):
+            print("  Stopped before opening their profile.")
+            return "stopped"
+
+
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
                        start_page=1, urn=None, on_save=None):
     """
@@ -2122,6 +2200,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
       urn      the id LinkedIn searches their connections by
       found    how many people were read in all
       limited  LinkedIn's monthly search limit ended the read
+      budget   "daily", "monthly" or "profiles": that budget ended it (status "budget")
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -2138,9 +2217,17 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         # one fewer profile view, which is what LinkedIn counts most.
         print(f"  Going straight to {bridge_name}'s connections (their search id is known).")
     else:
-        # Step 1: Navigate to profile (wait_until="commit" — don't wait for full load)
+        # Step 1: take one of today's profile views, at least PROFILE_GAP after
+        # the last one. With none left nothing is opened or recorded: the batch
+        # ends (BudgetReached, which says why) and the next run tries them again.
+        why = _wait_for_profile_view(page)
+        if why == "budget":
+            reach["budget"] = "profiles"
+        if why:
+            return [], why, reach
+
+        # Navigate to profile (wait_until="commit" — don't wait for full load)
         print(f"  Opening {bridge_name}'s profile...")
-        charge_linkedin("profiles")
         try:
             page.goto(profile_url, wait_until="commit")
         except Exception as e:
@@ -2499,6 +2586,10 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
                   f"Choose more than {max_pages} pages to read further.")
             return _read([], "finished")
         start_page, urn = nxt, (entry or {}).get("urn")
+    # Without their search id, the read opens their profile: with no profile
+    # views left, stop before a browser opens.
+    if not urn and profiles_left() <= 0:
+        raise BudgetReached(0, "profiles")
 
     print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scraping'} connections of {bridge_name} ===\n")
 
@@ -2976,6 +3067,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     use, lim = linkedin_usage(), search_limits()
     log(f"Search budget: {use['searches_today']} of {lim['daily'] or 'no limit'} used today, "
         f"{use['searches_month']} of {lim['monthly'] or 'no limit'} this month")
+    log(f"Profile views: {use['profiles_today']} of {lim['profiles']} in the last 24 hours, "
+        f"at least {PROFILE_GAP}s apart")
 
     # Get all degree-1 connections (filtered by active user)
     D1_LIMIT = 20000
@@ -3188,9 +3281,12 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             log("Stopped.")
             raise
         except BudgetReached as exc:
-            results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "unclear"})
+            # The profile cap stops before their profile opens: nothing was
+            # tried, so they aren't counted, and the next run tries them again.
+            if exc.found or exc.kind != "profiles":
+                results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "unclear"})
             log("  " + budget_message(exc.kind))
-            stopped_early = f"the {exc.kind} search budget"
+            stopped_early = str(exc)
             break
         except CoolingDown as exc:
             log("  " + str(exc))
@@ -3286,6 +3382,8 @@ def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
         raise CoolingDown(cd)
     if searches_left()[0] <= 0:
         raise BudgetReached(0, searches_left()[1])
+    if profiles_left() <= 0:              # a fresh read opens their profile
+        raise BudgetReached(0, "profiles")
 
     print(f"Deleting old cluster data...")
     bridge_id = delete_bridge_cluster(bridge_name)
