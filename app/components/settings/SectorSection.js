@@ -1,6 +1,6 @@
 'use client';
 
-// Settings → Your sector. Up to three sectors you work in: one of the twelve
+// Scores → Your sector (app/scores; it was Settings → Your sector). Up to three sectors you work in: one of the twelve
 // broad industries, or a narrower sector from the app's directory (Dental,
 // Real Estate, Software & SaaS…). Companies in them count for more when your
 // scanned network is scored, like setting their scores by hand on Paths →
@@ -13,7 +13,6 @@
 // people you've scanned (/api/settings/sector-suggestions).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Section, Body, Status, Btn, LINE } from '../ui';
 import { INDUSTRIES } from '../../../lib/companies';
 import { MAX_SECTORS, sameFocus, focusFingerprint } from '../../../lib/sector-focus';
@@ -103,7 +102,7 @@ export default function SectorSection() {
     return () => { off = true; clearTimeout(timer.current); };
   }, []);
 
-  // Links to /settings#sector (the profile's card, Paths → Scores) arrive
+  // Links to /scores#sector (the profile's card, the old /settings#sector) arrive
   // before this section has loaded, so the browser's own jump to it finds
   // nothing. Jump once it's here, then keep it in place while what loads above
   // it (Updates) pushes it down: the browser only holds steady what's already
@@ -321,7 +320,7 @@ export default function SectorSection() {
 
           <ul style={{ margin: '16px 0 0', paddingLeft: 18, fontSize: 12.5, color: '#778', lineHeight: 1.7 }}>
             <li>Tiers rank how reachable someone is through your network, not the people themselves.</li>
-            <li>A company score you set on <Link href="/paths?tab=scores" style={{ color: '#3498DB' }}>Paths → Scores</Link> always wins. Your sector never changes it.</li>
+            <li>A company score you set on <a href="#companies" style={{ color: '#3498DB' }}>Company scores</a>, below, always wins. Your sector never changes it.</li>
             <li>If you scan highest tier first, people in your sectors come up sooner. Scanning newest first, the default, doesn&rsquo;t go by tier.</li>
             <li>
               An industry includes its sectors. It counts a company in any of its sectors (Healthcare &amp; Biotech counts a

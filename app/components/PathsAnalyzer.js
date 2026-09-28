@@ -505,7 +505,7 @@ function Section({ title, children }) {
 }
 
 // The company's score in people's power, where it comes from, and a control
-// to set it (Paths → Scores has every company).
+// to set it (the Scores tab has every company).
 function CompanyScoreLine({ name }) {
   const { companies, setScore } = useCompanyScores();
   const c = companies?.find((x) => x.name === name);

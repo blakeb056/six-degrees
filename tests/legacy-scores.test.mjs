@@ -150,7 +150,7 @@ function network() {
     { id: 'ubo', name: 'Ubo Lind', headline: 'Lecturer at UF' },
     { id: 'pia', name: 'Pia Okoro', headline: 'Product Manager at Polymarket' },
     { id: 'gus', name: 'Gus Adair', headline: 'Engineer at Google' },
-    // Only a former employer: nobody works there now, so Paths → Scores doesn't
+    // Only a former employer: nobody works there now, so the Scores tab doesn't
     // list it, and a score kept for it would be one you couldn't see or undo.
     { id: 'rex', name: 'Rex Halden', headline: 'Consultant | Ex-Director at Hard Rock Hotel' },
   ];
@@ -218,7 +218,7 @@ test('an old database whose network the change didn\'t touch shows nothing, and 
   rescoreIfStale();
   assert.equal(legacyOfferState(), 'open');
   assert.equal(legacyOffer(), null);
-  // Closed, so Paths → Scores stops reading the whole network for it on every
+  // Closed, so the Scores tab stops reading the whole network for it on every
   // visit, and a card can't turn up months later.
   assert.equal(legacyOfferState(), 'none');
   insert([{ id: 'pia', name: 'Pia Okoro', headline: 'Product Manager at Polymarket' }]);
@@ -265,7 +265,7 @@ test('keeping writes the old scores under every name scoring uses, then rescores
     { name: 'Snap', score: 9, names: ['Snap'] },
   ] });
   assert.deepEqual(yours(), { Snap: 9, 'University of Florida': 6 });
-  // Rows exactly like Paths → Scores writes: an id and a time on each.
+  // Rows exactly like the Scores tab writes: an id and a time on each.
   for (const c of getDb().prepare('SELECT * FROM company_scores').all()) assert.ok(c.id && c.updated_at, c.name);
   // Everyone there carries the kept score, as their own.
   assert.equal(row('dev').company_prestige_score, 9);

@@ -218,6 +218,16 @@ function HomeInner() {
               Paths
             </Link>}
             {!IS_DEMO && !csvMode && <Link
+              href="/scores"
+              style={{
+                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
+                background: 'rgba(255,255,255,0.06)', color: '#FFD700', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              Scores
+            </Link>}
+            {!IS_DEMO && !csvMode && <Link
               href="/queue"
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
