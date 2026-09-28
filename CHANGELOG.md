@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Their circle, on every card.** Open one of your connections and the top of their card
+  is a small map of their circle. Their scanned connections sit round them (D2). Anyone
+  you connected with from it gets a green ring, and their own circle fans out behind
+  them (D3), on out to D6. A request you've sent and they haven't accepted is a dotted
+  dot. Tap the map for the large one, where any dot opens that person. It's built from
+  what the app already keeps (whose circle someone was found in, and who introduced
+  you), so it needs no extra scanning. Not scanned yet? It says so, and points at the
+  scan below.
+- **Rarity, beside the tier.** How many mutual connections lead to someone, in five
+  bands: *Only way in* (1), *Rare* (2–3), *Uncommon* (4–10), *Common* (11–30) and
+  *Warm* (31+). It's a distinction, never a score: tiers and power are untouched.
+  Rarity and the tier filter together, in the circle and in Separation, so "S" and
+  "Only way in" is exactly the rare finds, and "S" and "Warm" the easy wins. Until a
+  scan saves LinkedIn's own count, it's counted from the circles you've scanned, which
+  can only go up as you scan more, and everywhere it shows says so.
+- **Resume beside Rescan on a profile card.** When someone's list was only partly read (a
+  page limit, a stop, LinkedIn pushing back), their card offers *Resume from page N* next
+  to *Rescan from the start*: the same carry-on as the Scan page's Paused list, for that
+  one person. LinkedIn lists other people's connections in its own order, with no dates,
+  so anyone new can be on any page: Rescan reads the whole list again from page 1, and
+  Resume picks up where the last read stopped. A list read to the end says so instead.
+- **LinkedIn's own mutual count, from circle scans.** Everyone a circle scan finds now
+  carries LinkedIn's count of the mutual connections you share with them, read from the
+  line under their result card ("Maya Chen and 23 other mutual connections" is 24).
+  - **No extra page views:** the line was already on the pages the scanner reads.
+  - **One count per person:** every copy of the person, one per bridge that knows them,
+    keeps the newest count read. A scan that doesn't see the line leaves the count alone.
+  - **Used by rarity** in place of the count from your scans, which could only be a floor.
+  - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
+    real circle scan is the check. Any other wording reads as no count, never a wrong one.
 - **A public company dataset.** 64 companies and institutions the built-in list leaves off
   are now known, scored 6 to 8 from public facts on one published scale. Each has its
   source beside it: an exchange listing, a reported valuation, a U.S. News rank, a federal
@@ -23,6 +53,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names only, 7 and up.
 
 ### Fixed
+- **A request you send shows everywhere, at once.**
+  - **Before:** *Connect to Unlock Path* marked one bridge's copy of the person and told
+    nothing else on the page.
+    - The card kept offering the link.
+    - Separation, Orbit and the circle never showed it, even after a reload.
+    - Every click awarded XP again.
+    - Undo took back only half of it.
+  - **Now:** a request belongs to the person, in one list every view reads, so the
+    card, Separation, Orbit, the new circle, the Outlink queue and the Pending badge
+    all change the moment you click.
+  - **The details:**
+    - The bridge whose circle you found them in is kept, so once they accept, their
+      card and circle say who introduced you.
+    - XP comes once per person.
+    - *Didn't send it? Undo* on the card takes all of it back, the XP too.
+- **One scan at a time, and every Scan button knows it.** A scan started on one profile
+  card left the Scan button on every other card clickable, and *Auto-Bridge Next*, the ↻
+  refresh and Paths' company scan too. Pressing one was refused, and the card then said
+  *"Scan failed — connections may be private"* about a scan that had never started. Now
+  they all grey out while anything runs and say what does ("Ada Park's circle is being
+  scanned. One scan at a time…"), even a scan started on the Scan page or in another
+  window. Close a card mid-scan and open it again and its progress is still there; when it
+  ends, the card says so. The page asks the scanner once for all of them
+  (`/api/scraper?job=1`, which reads only memory), not once per button.
 - **Company names written in styled letters or with a logo are read.** "𝗠𝗶𝗰𝗿𝗼𝘀𝗼𝗳𝘁",
   "Apple " (with Apple's logo) and "Snapchat｜ex-L'Oréal" (a full-width bar) used to read
   as unknown companies. So did "Meta Superintelligence Labs" and "Snapchat MENA Region",
@@ -41,6 +95,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   know aren't pushed down a tier for it. A founder at an unknown company scores 7.3 (was
   6.7), a director 5.4 (was 5.0). Claims in their headlines still count half. Your network
   is rescored once, the first time the map loads after updating.
+- **Separation's map is "who to ask next".** It skips anyone you've already asked or
+  already know. Send requests to its ten and the next ten come up. The list below
+  still shows everyone, marked *Request sent* or *Connected*, with their rarity.
+
+### Removed
+- **The Revolver view.** Degrees keeps Separation, Orbit, Bridge Chains, Pyramid and List.
 
 ## [0.3.0] - 2026-09-26
 

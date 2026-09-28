@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   unlocked_from_bridge_id TEXT,
   unlocked_from_name      TEXT,
   outreach_status         TEXT,
+  mutual_count            INTEGER,            -- LinkedIn's count of mutual connections (2nd degree), when a scan read one
   scanned_company         TEXT,
   score_why               TEXT,
   user_id                 TEXT,

@@ -186,8 +186,8 @@ panel on the left.
 
 **Degrees** *(needs a scan or the sample)*. The people two steps away. **Separation**
 ranks every one of them with every way in: which of your connections knows them, and
-how many do. **Orbit**, **Bridge Chains**, **Revolver**, **Pyramid** and **List** draw
-the same people differently.
+how many do. **Orbit**, **Bridge Chains**, **Pyramid** and **List** draw the same people
+differently.
 
 <img src="docs/img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="100%">
 

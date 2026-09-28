@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
+import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../lib/scraper-client';
+import useScanner from './components/useScanner';
+import useRequests from './components/useRequests';
+import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import Sidebar from './components/Sidebar';
@@ -59,9 +62,10 @@ function HomeInner() {
   const [visualMode, setVisualMode] = useState('galaxy');
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [pending, setPending] = useState([]);
   const [csvMode, setCsvMode] = useState(false);
   const [csvSource, setCsvSource] = useState('csv');
+  // Everyone with a request out, shared with every view (lib/requests-client.js).
+  const pendingCount = requestCount(useRequests());
 
   useEffect(() => {
     if (!userId) return;
@@ -93,8 +97,6 @@ function HomeInner() {
     if (!IS_DEMO && !hasCsvNetwork()) {
       // Fetch notifications
       fetch(`/api/notifications?userId=${userId}`).then(r => r.json()).then(d => setNotifications(d.notifications || [])).catch(() => {});
-      // Fetch pending outreach
-      fetch(`/api/outreach?userId=${userId}`).then(r => r.json()).then(d => setPending(d.pending || [])).catch(() => {});
     }
   }, [userId]);
 
@@ -316,28 +318,7 @@ function HomeInner() {
             )}
           </div>}
           {/* Refresh button — checks connections + notifies */}
-          {!IS_DEMO && !csvMode && <button
-            onClick={async () => {
-              try {
-                const status = await scraperStatus();
-                const blocked = notReadyMessage(status);
-                if (blocked) { alert(blocked); return; }
-                if (status.running) { alert('The scanner is already busy.'); return; }
-                await startScrape('refresh');
-                alert('Checking for new connections — watch it on the Scan page.');
-              } catch (e) {
-                alert(e.message);
-              }
-            }}
-            title="Refresh connections + bridges"
-            style={{
-              width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
-              display: isMobile ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
-            }}
-          >
-            ↻
-          </button>}
+          {!IS_DEMO && !csvMode && <RefreshButton isMobile={isMobile} />}
           {/* Profile icon — top right */}
           <a href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} style={{
             width: isMobile ? 30 : 36, height: isMobile ? 30 : 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -356,8 +337,8 @@ function HomeInner() {
           </a>
         </div>
 
-        {/* Pending count badge — in header */}
-        {isDegreesMode && pending.length > 0 && (
+        {/* Pending count badge — in header: everyone with a request out, once each (lib/requests-client.js) */}
+        {isDegreesMode && !csvMode && pendingCount > 0 && (
           <Link href="/queue" style={{
             padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, textDecoration: 'none',
             background: 'rgba(255,107,53,0.12)', color: '#FF6B35',
@@ -365,7 +346,7 @@ function HomeInner() {
             display: 'inline-flex', alignItems: 'center', gap: 5,
           }}>
             <span style={{ fontSize: 10 }}>⏳</span>
-            {pending.length} Pending
+            {pendingCount} Pending
           </Link>
         )}
       </header>
@@ -428,6 +409,10 @@ function HomeInner() {
             selectedId: selected?.id ?? null,
             tierColors: TIER_COLORS,
             focusNodeRef,
+            // Every row, whatever the filters: rarity counts the ways in across
+            // all your scanned circles, and "already connected" needs everyone.
+            fullDegree1: degree1,
+            fullDegree2: degree2,
           };
           return <View {...viewProps} />;
         })()}
@@ -440,32 +425,10 @@ function HomeInner() {
           mode={mode}
           collapsed={sidebarCollapsed}
           filter={filter}
-          pending={pending}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onSelect={(node) => { setSelected(node || null); }}
           onSwitchMode={(newMode) => { setMode(newMode); setFilter('all'); }}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
-          onMarkSent={async (person) => {
-            if (IS_DEMO) return;
-            const id = person.id;
-            const url = person.profile_url;
-            await fetch('/api/outreach', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'mark-sent', connectionId: id, profileUrl: url }),
-            });
-            setPending(prev => [...prev, person]);
-          }}
-          onUndoPending={async (person) => {
-            if (IS_DEMO) return;
-            const id = person.id;
-            await fetch('/api/outreach', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'undo', connectionId: id }),
-            });
-            setPending(prev => prev.filter(p => p.id !== id));
-          }}
         />
 
         {/* Galaxy experimental toggle — bottom right, Degrees mode only.
@@ -499,5 +462,36 @@ function HomeInner() {
         )}
       </div>
     </div>
+  );
+}
+
+// Its own component so the scanner's answer, which changes every second or two
+// while a scan runs, re-renders this button and not the whole map.
+function RefreshButton({ isMobile }) {
+  const scan = useScanner();
+  const busy = busyReason(scan);
+  return (
+    <button
+      onClick={async () => {
+        try {
+          const blocked = notReadyMessage(await scraperStatus());
+          if (blocked) { alert(blocked); return; }
+          await beginScrape('refresh');
+          alert('Checking for new connections — watch it on the Scan page.');
+        } catch (e) {
+          alert(e.message);
+        }
+      }}
+      disabled={Boolean(busy)}
+      title={busy ? `${busy}. One scan at a time.` : 'Refresh connections + bridges'}
+      style={{
+        width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none',
+        cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.4 : 1,
+        background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
+        display: isMobile ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+      }}
+    >
+      ↻
+    </button>
   );
 }

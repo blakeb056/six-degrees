@@ -20,7 +20,10 @@
 // appearing cannot feed a resize loop.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { separationPeople, compareWaysIn, summitLayout, shortName, TIERS } from '../../lib/separation';
+import { separationPeople, compareWaysIn, summitLayout, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { RARITY, rarityOf, rarityInfo, toggle } from '../../lib/rarity';
+import { hasRequest } from '../../lib/requests-client';
+import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
 import Avatar from './Avatar';
 
@@ -63,7 +66,7 @@ function subline(person) {
   return person.headline || person.role || person.company || '';
 }
 
-export default function SeparationView({ connections = [], degree2 = [], onSelect, userName, selectedId, tierColors = CLASSIC }) {
+export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC }) {
   const isMobile = useIsMobile();
   const ROW_H = isMobile ? 68 : 56;
   const K = isMobile ? 5 : 10;
@@ -73,6 +76,9 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
   const q = useDeferredValue(query.trim().toLowerCase());
   const [sort, setSort] = useState('power');     // 'power' | 'ways'
   const [tier, setTier] = useState('all');
+  // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
+  const [rarities, setRarities] = useState(() => new Set());
+  const requests = useRequests();
   const [scrollY, setScrollY] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 800 });
   // The scroll element lives in state as well as a ref: the ResizeObserver
@@ -90,11 +96,35 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
     () => (sort === 'ways' ? [...model.people].sort(compareWaysIn) : model.people),
     [model, sort],
   );
+  // How rare the way in to each person is, counted across every circle you've
+  // scanned (not only the ones a bridge-tier filter leaves): never a score.
+  const waysAll = useMemo(() => routeIndex(fullDegree2), [fullDegree2]);
+  const rarityBy = useMemo(() => {
+    const m = new Map();
+    for (const p of model.people) m.set(p.key, rarityOf(p.person, waysAll.get(p.key)?.size || p.waysIn));
+    return m;
+  }, [model, waysAll]);
+  const byRarity = useMemo(() => {
+    const out = Object.fromEntries(RARITY.map((r) => [r.key, 0]));
+    for (const r of rarityBy.values()) out[r.key]++;
+    return out;
+  }, [rarityBy]);
+  const matches = useCallback((p, text) => (tier === 'all' || p.tier === tier)
+    && (!rarities.size || rarities.has(rarityBy.get(p.key)?.key))
+    && (!text || p.haystack.includes(text)), [tier, rarities, rarityBy]);
   const visible = useMemo(() => {
-    if (!q && tier === 'all') return ordered;
-    return ordered.filter((p) => (tier === 'all' || p.tier === tier) && (!q || p.haystack.includes(q)));
-  }, [ordered, q, tier]);
-  const top = useMemo(() => visible.slice(0, K), [visible, K]);
+    if (!q && tier === 'all' && !rarities.size) return ordered;
+    return ordered.filter((p) => matches(p, q));
+  }, [ordered, q, tier, rarities, matches]);
+
+  // Who you've already asked, or already know. The map is "who to ask next",
+  // so it moves on past them: send requests to its ten and the next ten come
+  // up. The list still shows everyone, marked.
+  const d1Keys = useMemo(() => new Set(fullDegree1.map(keyFor)), [fullDegree1]);
+  const statusOf = useCallback((p) => (d1Keys.has(p.key) ? 'connected' : hasRequest(p.person, requests) ? 'asked' : null),
+    [d1Keys, requests]);
+  const top = useMemo(() => visible.filter((p) => !statusOf(p)).slice(0, K), [visible, K, statusOf]);
+  const askedShown = useMemo(() => visible.reduce((n, p) => n + (statusOf(p) ? 1 : 0), 0), [visible, statusOf]);
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
 
   // onSelect is read through a ref so the row and map callbacks never change
@@ -157,12 +187,14 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
 
   const changeQuery = (v) => { setQuery(v); toTop(); };
   const changeTier = (t) => { setTier(t); toTop(); };
+  const changeRarity = (r) => { setRarities((set) => toggle(set, r)); toTop(); };
+  const clearAll = () => { setQuery(''); setTier('all'); setRarities(new Set()); toTop(); };
   const changeSort = (s) => { setSort(s); toTop(); };
   const onSearchKey = (e) => {
     if (e.key === 'Enter') {
       // Read the live text, not the deferred copy the list is still catching up to.
       const live = query.trim().toLowerCase();
-      const first = ordered.find((p) => (tier === 'all' || p.tier === tier) && (!live || p.haystack.includes(live)));
+      const first = ordered.find((p) => matches(p, live));
       if (first) onPick(first);
     } else if (e.key === 'Escape') {
       if (query) changeQuery('');
@@ -171,7 +203,7 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
   };
 
   const { summary } = model;
-  const filtered = !!q || tier !== 'all';
+  const filtered = !!q || tier !== 'all' || rarities.size > 0;
   const youLabel = !userName || /^you$/i.test(String(userName).trim()) ? 'You' : initialsFor(userName);
   const rows = visible.slice(start, end);
 
@@ -276,6 +308,23 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
               </button>
             );
           })}
+          <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 6, cursor: 'help' }}>Rarity</span>
+          {RARITY.map((r) => {
+            const on = rarities.has(r.key);
+            return (
+              <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
+                title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+                  height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
+                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                  border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
+                  background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+                  color: on ? r.color : '#999',
+                }}>
+                {r.label}
+                <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -290,9 +339,10 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Top {fmt(top.length)} of {fmt(visible.length)}{filtered ? ' shown' : ''} · every way in drawn
+                  Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''} · every way in drawn
                 </div>
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
+                  {askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
                   <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes · dot size = ways in
                 </div>
               </div>
@@ -335,6 +385,8 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
               tierColors={tierColors}
               onPick={onPick}
               q={q}
+              status={statusOf(p)}
+              rarity={rarityBy.get(p.key)}
             />
           ))}
 
@@ -342,9 +394,9 @@ export default function SeparationView({ connections = [], degree2 = [], onSelec
             <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', color: '#888', fontSize: 13, padding: '0 16px' }}>
               {q
                 ? <>No one matches ‘{query.trim()}’. Search covers names, headlines, companies and who knows them.</>
-                : <>No {tier}-tier people here.</>}
+                : <>No one here with those filters.</>}
               <div style={{ marginTop: 12 }}>
-                <button type="button" onClick={() => { setQuery(''); setTier('all'); toTop(); }} style={{
+                <button type="button" onClick={clearAll} style={{
                   padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                   border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff',
                 }}>Clear</button>
@@ -495,7 +547,33 @@ function Via({ p, route, tierColors, compact }) {
   );
 }
 
-const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q }) {
+/** "Request sent" or "Connected", and how rare the way in is. */
+function Tags({ status, rarity }) {
+  const info = rarity ? rarityInfo(rarity.key) : null;
+  return (
+    <>
+      {status === 'asked' && (
+        <span title="You sent a request. It shows everywhere in the app." style={{
+          flexShrink: 0, fontSize: 9, fontWeight: 800, color: '#FFD700', border: '1px dashed rgba(255,215,0,0.6)', borderRadius: 4, padding: '0 4px',
+        }}>Request sent</span>
+      )}
+      {status === 'connected' && (
+        <span title="Already one of your connections" style={{
+          flexShrink: 0, fontSize: 9, fontWeight: 800, color: '#00ff88', border: '1px solid rgba(0,255,136,0.5)', borderRadius: 4, padding: '0 4px',
+        }}>Connected</span>
+      )}
+      {info && status !== 'connected' && (
+        <span title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ''}. ${RARITY_NOTE}`} style={{
+          flexShrink: 0, fontSize: 9, fontWeight: 700, color: info.color, border: `1px solid ${info.color}55`, borderRadius: 4, padding: '0 4px',
+        }}>{info.label}</span>
+      )}
+    </>
+  );
+}
+
+const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
+
+const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity }) {
   const { person } = p;
   const c = tierColors[p.tier] || '#888';
   const route = pickRoute(p, q);
@@ -532,8 +610,11 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
 
       {isMobile ? (
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff' }}>
-            {person.name}{member && <span style={{ fontSize: 10, color: '#666', fontWeight: 400 }}> · out of network</span>}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+            <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff', minWidth: 0 }}>
+              {person.name}{member && <span style={{ fontSize: 10, color: '#666', fontWeight: 400 }}> · out of network</span>}
+            </span>
+            <Tags status={status} rarity={rarity} />
           </span>
           <Via p={p} route={route} tierColors={tierColors} compact />
           <span style={{ ...ellipsis, fontSize: 10, color: '#666' }}>{subline(person)}</span>
@@ -544,6 +625,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff' }}>{person.name}</span>
               <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}55`, borderRadius: 4, padding: '0 4px' }}>{p.tier}</span>
+              <Tags status={status} rarity={rarity} />
               {member && <span style={{ flexShrink: 0, fontSize: 10, color: '#666' }}>out of network</span>}
             </div>
             <div style={{ ...ellipsis, fontSize: 10, color: '#777', marginTop: 2 }}>{subline(person)}</div>
