@@ -688,3 +688,69 @@ test('a named office reads a party as bio; other countries\' services and cities
     assert.ok(!GOVERNMENT.includes(best(h)) && !MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
   }
 });
+
+// A fifth review round's cases: staff who name their principal ("Legislative
+// Assistant | U.S. Senator"), joke mayors (a city must be one the list knows,
+// or written as one), county titles whose prefix isn't a county's name, clubs
+// and youth groups beside a named office, games and civilian boats beside a
+// rank, and a lone "Retired" before the role it retires.
+test('round five: staff, jokes, clubs and games aren\'t officials or officers', () => {
+  for (const h of [
+    'ADM | U.S. Navy Reserve | Commodity Trader', 'AIR MARSHAL | TSA', 'Admiral | Nebraska Navy',
+    'Admiral, Texas Navy', 'Aide to the County Supervisor', 'Air Marshal (FAMS)',
+    'Air Marshal | Former Police Officer', 'Air Marshal | U.S. Department of Homeland Security', 'Ambassador | Embassy Suites',
+    'Assistant to the Assistant General Counsel', 'Assistant to the County Legislator', 'Associate | General Counsel',
+    'Attorney Advisor – Chief Counsel, IRS', 'Attorney | Chief Counsel | FAA', 'Brigadier General | EVE Online',
+    'CPT | U.S. Army | PT', 'CSM | Army Reserve | Project Manager', 'Capt. | USCG | Fishing Charters',
+    'Captain - USCG - Yacht Delivery', 'Captain | Former USAF | Delta Air Lines', 'Captain | U.S. Coast Guard | Staten Island Ferry',
+    'Captain | U.S. Navy | Princess Cruises', 'Captain | USCG | Boat Tours', 'Captain — U.S. Navy — United Airlines',
+    'Captain, U.S. Coast Guard | Tow Boat US', 'Captain, USCG | Fishing Guide', 'Chief Counsel',
+    'Chief | First Nation Coffee Co', 'Chief | First Nations Development Institute', 'Chief | Indian Community School',
+    'Chief | Tribal Government Relations | Northwind Bank', 'Chief/Chairman/President', 'City Council Member, SimCity',
+    'Commissioner, Big East', 'Commissioner, Grand Prix Series', 'Compliance Officer | General Counsel',
+    'Contracts Manager | General Counsel', 'County Attorney | Northwind Title Co.', 'County Commissioner | Brownies & Guides',
+    'County Commissioner | Girlguiding UK | Teacher', 'County Commissioner, Girlguiding Northwind', 'District Attorney | Northwind Insurance',
+    'District Attorney | Rotary District 6980', 'District Attorney, Northwind Law Group', 'Driver for the County Mayor',
+    'Endorsed by the County Mayor', 'Executive Assistant to the Deputy General Counsel', 'Flag Aide | Rear Admiral, U.S. Navy',
+    'Florida State Representative | Northwind Pharmaceuticals', 'Future County Commissioner', 'General Counsel',
+    'Investigator - General Counsel', 'LTC | U.S. Army Reserve | RN', 'Law Clerk | Judge, U.S. District Court',
+    'Legal Secretary to the Deputy General Counsel | Northwind Bank', 'Lieutenant General | Nerf Wars', 'MAYOR OF CANDYLAND',
+    'MG | U.S. Army | HR', 'Married to a County Sheriff', 'Mayor of Brooklyn',
+    'Mayor of Foursquare', 'Mayor of Hollywood | Talent Agent', 'Mayor of Margaritaville | Bartender',
+    'Mayor of Silicon Valley', 'Mayor of Summer Camp | Camp Director', 'Mayor of Tinder',
+    'Mayor of Wall Street', 'Mayor of the Magic Kingdom', 'Mayor, Burning Man',
+    'Mayor, Minecraft', 'Member of Parliament | Northwind Debating Union', 'Member, House of Delegates, State Bar of Michigan',
+    'Member, Tribal Senate', 'Paralegal supporting the Associate General Counsel', 'Paralegal – General Counsel',
+    'President | Indian Community School', 'President, Library Senate', 'President, Resident Senate',
+    'Rear Admiral | Northwind Cruise Line', 'Rear Admiral | Starfleet', 'Representative to the United Nations | Rotary International',
+    'Senator | Adjunct Senate', 'Senator | Presbyteral Senate', 'Senator, Nursing Senate | RN',
+    'Senator, Postdoctoral Senate', 'Son of a County Sheriff', 'Staff Attorney - General Counsel - Northwind Bank',
+    'State Senator | Florida FFA', 'State Senator | Northwind Rotary Club', 'Supreme Court Justice | Northwind Debate Club',
+    'U.S. Senator | Northwind Golf Club', 'US Senator | Northwind Senators Hockey Club', 'USCG Captain | Charter Fishing',
+    'Vice Admiral | Starfleet International', 'Zonta International',
+  ]) assert.ok(!GOVERNMENT.includes(best(h)) && !MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
+});
+
+test('round five: …real ones still read, and a lone "Retired" before a role retires it', () => {
+  for (const [h, k] of [
+    ['Army Officer | Colonel | U.S. Army', 'colonel'], ['California Assemblymember', 'govSenior'],
+    ['Chargé d’Affaires, U.S. Embassy Caracas', 'govSenior'], ['Commander, 1st Special Forces Group', 'colonel'],
+    ['Congressman, Ohio\'s 3rd District', 'govLeader'], ['Councilmember, Montgomery County Council', 'govOfficial'],
+    ['County Executive | Westchester County', 'govLeader'], ['Florida Circuit Judge', 'judge'],
+    ['Governor, Board of Governors of the Federal Reserve System', 'govSenior'], ['Los Angeles County District Attorney', 'govSenior'],
+    ['Marine Colonel', 'colonel'], ['Mayor of Tampa, 2011-2019', 'govLeader'],
+    ['NY State Senator', 'govSenior'], ['Senator, U.S. Senate (R-OH)', 'govLeader'],
+    ['Supervisor, Los Angeles County Board of Supervisors', 'govOfficial'], ['Texas Agriculture Commissioner', 'govSenior'],
+    ['Two-Term Mayor of Tampa', 'govLeader'], ['US Ambassador to Italy and San Marino', 'govSenior'],
+  ]) assert.equal(best(h), k, h);
+  for (const [h, k] of [
+    ['Colonel | U.S. Army | Retired', 'colonel'], ['RETIRED | COLONEL, USMC', 'colonel'],
+    ['Retired Air Marshal | Private Investigator', 'unknown'],
+    ['Retired | Brigadier General', 'general'], ['Retired | Colonel, U.S. Army', 'colonel'],
+    ['Retired | Mayor, City of Orlando', 'govLeader'], ['Retired | Superior Court Judge', 'judge'],
+    ['Retired | U.S. Senator', 'govLeader'], ['Retired • Major General • U.S. Air Force', 'general'],
+  ]) {
+    assert.equal(best(h), k, h);
+    assert.equal(person(h).title.former, true, h);
+  }
+});
