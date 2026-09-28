@@ -32,6 +32,8 @@ const MAX_LOG = 500;
 const state = registerScanState({
   running: false,
   action: null,
+  target: null,    // who a scan is of: { id, name } (either may be null), or null for scans of no one
+  recent: [],      // the last few finished jobs, newest first: how each one ended
   log: [],
   startedAt: null,
   exitCode: null,
@@ -251,20 +253,66 @@ async function status() {
       signedIn: m.signedIn,
     },
     network,
-    running: state.running,
-    action: state.action,
-    startedAt: state.startedAt,
-    exitCode: state.exitCode,
-    failure: state.running ? null : state.failure,
-    progress: state.running ? scanProgress(state.log, state.action) : null,
-    log: state.log.slice(-120),
+    ...job(),
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
     paused: paused(me?.id),
   };
 }
 
-export async function GET() {
+/**
+ * The running job alone, from memory: no checks, no database. Every Scan
+ * button in the app asks this (lib/scraper-client.js watchScanner), every few
+ * seconds, so it must cost nothing.
+ *
+ * `recent` is how the last few jobs ended. A page following one job can then
+ * learn how it ended even when another job started before it looked again;
+ * with only the latest job's exit code, that one would never seem to finish.
+ */
+function job() {
+  return {
+    running: state.running,
+    action: state.action,
+    target: state.target,
+    startedAt: state.startedAt,
+    exitCode: state.exitCode,
+    failure: state.running ? null : state.failure,
+    progress: state.running ? scanProgress(state.log, state.action) : null,
+    log: state.log.slice(-120),
+    recent: state.recent,
+  };
+}
+
+/**
+ * Where Resume would carry on with one of your connections, for their profile
+ * card: { nextPage, pagesRead, legacy }, or null when there is nothing to carry
+ * on with (never mapped, read to the end, hidden). The Paused list's own rules
+ * (lib/paused.js), so the card and the Scan page can't disagree.
+ */
+function resumePoint(id) {
+  try {
+    const me = resolveProfile({ create: false });
+    if (!me) return null;
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT id, name, tier, profile_url, connected_date, created_at
+         FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1`,
+    ).get(String(id ?? ''), me.id);
+    if (!row) return null;
+    const mapped = db.prepare(
+      'SELECT 1 FROM linkedin_connections WHERE user_id = ? AND degree = 2 AND source_connection_id = ? LIMIT 1',
+    ).get(me.id, row.id);
+    const [p] = pausedList([row], new Set(mapped ? [row.id] : []), readProgress(dataDir(), me.id), readUnclear(dataDir()));
+    return p ? { nextPage: p.nextPage, pagesRead: p.pagesRead, legacy: p.legacy } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(request) {
+  const q = new URL(request?.url || 'http://127.0.0.1/api/scraper').searchParams;
+  if (q.has('job')) return Response.json(job());
+  if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
   return Response.json(await status());
 }
 
@@ -439,16 +487,23 @@ export async function POST(request) {
   // Resume sends the connection's id; the URL is looked up here, for this
   // profile, so nothing from the request itself reaches the command line.
   let profileUrl = null;
+  let person = null;
   if (spec.needsId) {
     try {
       const me = resolveProfile({ create: false });
-      const row = me && getDb().prepare(
-        'SELECT profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
+      person = me && getDb().prepare(
+        'SELECT name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
       ).get(String(body.id ?? ''), me.id);
-      profileUrl = row?.profile_url && cleanProfileUrl(row.profile_url);
+      profileUrl = person?.profile_url && cleanProfileUrl(person.profile_url);
     } catch { profileUrl = null; }
     if (!profileUrl) return Response.json({ error: 'That connection could not be found.' }, { status: 400 });
   }
+  // Who the job is of, so every Scan button can say whose scan is running and a
+  // profile card can show its own person's progress. Only ever shown: the id
+  // sent alongside a name never reaches the command line (the name does, as
+  // always), and anything not shaped like one of our ids is dropped.
+  const hintId = typeof body.id === 'string' && /^[\w-]{1,64}$/.test(body.id) ? body.id : null;
+  const target = name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
   // too, this just says so before a process is spawned.
   // The 1st-degree scans aren't searches, but they open LinkedIn with automation too.
@@ -517,6 +572,7 @@ export async function POST(request) {
   state.running = true;
   state.stopping = false;
   state.action = action;
+  state.target = target;
   state.exitCode = null;
   state.startedAt = Date.now();
   state.log = [spec.label + (name ? ` ${name}…` : '…')];
@@ -560,6 +616,9 @@ export async function POST(request) {
     state.child = null;
     state.abort = null;
     state.exitCode = code;
+    state.recent = [{
+      action: state.action, target: state.target, startedAt: state.startedAt, exitCode: code, failure: state.failure,
+    }, ...state.recent].slice(0, 5);
     // A setup's private folder (the download and what was unpacked from it).
     if (cleanup) {
       try { cleanup(); } catch { /* swept at the next setup (sweepSetupLeftovers) */ }
@@ -625,5 +684,7 @@ export async function POST(request) {
 
   runStep(0);
 
-  return Response.json({ ok: true, action });
+  // Which job this is, so the page that started it can tell its end from the
+  // end of whatever runs next (lib/scraper-client.js runScrape).
+  return Response.json({ ok: true, action, startedAt: state.startedAt });
 }
