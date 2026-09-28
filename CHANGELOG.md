@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
   the window title and the app in Applications already did.
 
+### Fixed
+- **↻ asks before it scans.** The round button in the header started *Check for new* the
+  moment it was clicked. It now says what it will do (open Chrome on your connections list
+  and read it until it reaches people already saved) and what it costs (no search budget,
+  but it is LinkedIn traffic from your account), and waits for OK.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added

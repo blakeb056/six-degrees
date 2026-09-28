@@ -327,7 +327,7 @@ function HomeInner() {
               </div>
             )}
           </div>}
-          {/* Refresh button — checks connections + notifies */}
+          {/* Refresh button — Check for new, once you say yes; notifies */}
           {!IS_DEMO && !csvMode && <RefreshButton isMobile={isMobile} />}
           {/* Profile icon — top right */}
           <a href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} style={{
@@ -477,6 +477,10 @@ function HomeInner() {
 
 // Its own component so the scanner's answer, which changes every second or two
 // while a scan runs, re-renders this button and not the whole map.
+//
+// It asks first, as a company scan does, and says what it will do and what it
+// costs: one click on a small icon used to open a Chrome window on LinkedIn
+// with no word of what it was about to do.
 function RefreshButton({ isMobile }) {
   const scan = useScanner();
   const busy = busyReason(scan);
@@ -486,6 +490,13 @@ function RefreshButton({ isMobile }) {
         try {
           const blocked = notReadyMessage(await scraperStatus());
           if (blocked) { alert(blocked); return; }
+          const ok = window.confirm(
+            'Check for new connections?\n\nThis opens a Chrome window on your LinkedIn connections ' +
+            'list and reads it from the newest, stopping once it reaches people already saved. It ' +
+            'usually takes under a minute. It reads your own list, not a search, so it doesn’t ' +
+            'use your search budget, but like any scan it is LinkedIn traffic from your account.',
+          );
+          if (!ok) return;
           await beginScrape('refresh');
           alert('Checking for new connections — watch it on the Scan page.');
         } catch (e) {
@@ -493,7 +504,7 @@ function RefreshButton({ isMobile }) {
         }
       }}
       disabled={Boolean(busy)}
-      title={busy ? `${busy}. One scan at a time.` : 'Refresh connections + bridges'}
+      title={busy ? `${busy}. One scan at a time.` : 'Check for new connections'}
       style={{
         width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none',
         cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.4 : 1,
