@@ -125,7 +125,7 @@ function HeroSection() {
           transition: 'all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s',
           letterSpacing: '-0.03em',
         }}>
-          6 Degrees of<br />Separation
+          Six Degrees of<br />Separation
         </h1>
 
         {/* Subtitle */}
@@ -315,7 +315,7 @@ function GalaxySection() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// BRIDGE CHAINS — 6 degrees visualization
+// BRIDGE CHAINS — six degrees visualization
 // ═══════════════════════════════════════════════════════════════
 function ChainSection() {
   const [ref, inView] = useInView();

@@ -123,8 +123,7 @@ whose own circles reach the furthest, and the shortest chain from you to a stran
 worth meeting.
 
 It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
-no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
-Degrees**.)
+no server.
 
 ## Before you scan LinkedIn
 

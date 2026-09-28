@@ -42,7 +42,7 @@ export default function EmptyState() {
           background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          Welcome to 6 Degrees
+          Welcome to Six Degrees
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14.5, lineHeight: 1.7, margin: '0 0 28px' }}>
           Your network, drawn as a galaxy. Everything stays on this computer.

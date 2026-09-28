@@ -13,7 +13,7 @@ if (major < NEED[0] || (major === NEED[0] && minor < NEED[1])) {
   const need = NEED.join('.');
   console.error(`
   ┌──────────────────────────────────────────────────────────────┐
-  │  6 Degrees needs Node ${need} or newer.                          │
+  │  Six Degrees needs Node ${need} or newer.                      │
   └──────────────────────────────────────────────────────────────┘
 
   You have Node ${process.versions.node}.

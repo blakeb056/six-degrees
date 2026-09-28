@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-6 Degrees LinkedIn Scraper
+Six Degrees LinkedIn scanner
 
 Drives Chrome with a persistent profile. You log into LinkedIn by hand once;
 the session is reused on every later run.
@@ -3485,7 +3485,7 @@ def run_server(port=5555):
 
     server = HTTPServer(("127.0.0.1", port), ScrapeHandler)
     print(f"\n{'='*50}")
-    print(f"  6 Degrees Scraper Server")
+    print(f"  Six Degrees scanner server")
     print(f"  Running on http://localhost:{port}")
     print(f"{'='*50}")
     print(f"\n  Open your visualization and use the Setup page buttons.")
@@ -3500,7 +3500,7 @@ def run_server(port=5555):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="6 Degrees LinkedIn Scraper",
+        description="Six Degrees LinkedIn scanner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

@@ -327,7 +327,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
               <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
                 {asked
                   ? `Waiting for ${selected.name} to accept. The next scan of your own connections notices when they do.`
-                  : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
+                  : `Connect with ${selected.name} to unlock their network and extend your six degrees.`
                 }
               </div>
               <div style={{
@@ -1006,7 +1006,7 @@ function CreateClusterCard({ selected, degree2 }) {
       </div>
       <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12, textAlign: 'center' }}>
         {hasCluster
-          ? `${clusterCount} connections mapped in 6 Degrees`
+          ? `${clusterCount} connections mapped in Six Degrees`
           : <>Scan {selected.name}&apos;s connections to map their network</>}
       </div>
 

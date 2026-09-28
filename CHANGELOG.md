@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **One name: Six Degrees.** The header, the welcome screen, the loading and launch pages,
+  the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
+  the window title and the app in Applications already did.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added
