@@ -38,6 +38,18 @@ test('a company someone scored is no guess, but a sector lean on an unknown one 
   assert.equal(scoreGuess(scored('Director at Northwind Labs', { score_why: 'Director / Head (7.5) · Northwind Labs (6/10: 5 + 1 your sector: Dental)' })).company, true);
 });
 
+test('it reads the role the stored score was built on, not a fresh guess at it', () => {
+  // Codex's review of #50: with several roles, the network's headcount (or your
+  // sector) can make an unknown company's role the stronger one, while scoring
+  // again without them would pick the known one.
+  const row = scored('Director at Northwind Labs | Manager at Snap');
+  assert.equal(scoreGuess({ ...row, score_why: 'Director / Head (7.5) · Northwind Labs (6/10)' }).companyName, 'Northwind Labs');
+  assert.equal(scoreGuess({ ...row, score_why: 'Manager / Lead (6.5) · Snap (8/10)' }), null);
+  assert.equal(scoreGuess({ ...row, score_why: 'Director / Head (7.5) · Northwind Labs (6/10: 5 + 1 your sector: Dental)' }).company, true);
+  assert.equal(scoreGuess({ ...row, score_why: 'Former Works there (2.8) · Snap (8/10)' }).title, true);
+  assert.equal(scoreGuess({ ...row, score_why: 'Audience of 1M+ (7.5) · no company found (5/10) · +0.4 reach in the millions' }), null);
+});
+
 test('never scored, and no row at all', () => {
   assert.equal(scoreGuess({ headline: 'VP at Google' }).never, true);
   assert.equal(scoreGuess({ headline: 'VP at Google', power_score: 9, tier: null }).never, true);
