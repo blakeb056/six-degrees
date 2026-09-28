@@ -57,3 +57,33 @@ test('a re-scan of people already saved finds nothing new, however many it sends
   // It used to look up the first hundred only, so ten "new connections" turned up.
   assert.deepEqual(notes(), ['refresh_summary: Network up to date']);
 });
+
+// ── LinkedIn's mutual count, from a circle scan ─────────────────────────────
+
+const circle = async (bridgeId, connections) => (await POST(new Request('http://127.0.0.1/api/ingest', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ connections, type: 'degree2', bridgeId, userId: 'me' }),
+}))).json();
+const counts = (slug) => getDb().prepare(
+  'SELECT source_connection_id AS bridge, mutual_count AS n FROM linkedin_connections WHERE profile_url = ? ORDER BY source_connection_id',
+).all(`https://www.linkedin.com/in/${slug}`).map((r) => [r.bridge, r.n]);
+const inCircle = (slug, mutualCount) => ({ name: slug, headline: 'Engineer at Initech', profileUrl: `https://www.linkedin.com/in/${slug}`, mutualCount });
+
+test('a circle scan keeps LinkedIn\'s mutual count, and every copy of the person carries the newest', async () => {
+  await circle('bridge-maya', [inCircle('ada', 24), inCircle('ben', undefined)]);
+  assert.deepEqual(counts('ada'), [['bridge-maya', 24]]);
+  assert.deepEqual(counts('ben'), [['bridge-maya', null]]);
+  // Found again through another bridge, with a newer count: both copies say it.
+  await circle('bridge-zoe', [inCircle('ada', 30)]);
+  assert.deepEqual(counts('ada'), [['bridge-maya', 30], ['bridge-zoe', 30]]);
+  // A scan that didn't read the line leaves the count alone; a misread is dropped.
+  await circle('bridge-maya', [inCircle('ada', undefined), inCircle('ben', -4)]);
+  assert.deepEqual(counts('ada'), [['bridge-maya', 30], ['bridge-zoe', 30]]);
+  assert.deepEqual(counts('ben'), [['bridge-maya', null]]);
+});
+
+test('only a circle scan brings a mutual count: your own connections never get one', async () => {
+  await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 12 }]);
+  const row = getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-900');
+  assert.equal(row.mutual_count, null);
+});

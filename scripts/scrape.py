@@ -1751,6 +1751,52 @@ BRIDGE_RESULTS_JS = r"""
             }
           });
 
+          // How many mutual connections each result shares with you: the line
+          // under its card, "Maya Chen and 23 other mutual connections". Read
+          // from the page's text in order, each count going to the result named
+          // above it. A name two results share ("LinkedIn Member") takes none:
+          // no count is better than someone else's. English only; any other
+          // wording reads as no count, never a wrong one.
+          // mutualCount: begin
+          const mutualCount = (text) => {
+            const l = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!/\bmutual connections?$/i.test(l) || l.length > 300) return null;
+            const num = (s) => Number(String(s).replace(/,/g, ''));
+            const names = (s) => s.split(/\s*,\s*|\s+and\s+/).filter(Boolean).length;
+            let m = l.match(/^([\d,]+) mutual connections?$/i);
+            if (m) return num(m[1]);
+            m = l.match(/^(.*?)\s*\band ([\d,]+) others? mutual connections?$/i);
+            if (m) return Math.max(1, names(m[1])) + num(m[2]);
+            if (/\bis a mutual connection$/i.test(l)) return 1;
+            m = l.match(/^(.+?)\s+are mutual connections$/i);
+            if (m) return names(m[1]);
+            return null;
+          };
+          // mutualCount: end
+          const byName = new Map();
+          for (const r of byHref.values()) {
+            if (r.name) byName.set(r.name, byName.has(r.name) ? null : r);
+          }
+          const nameAt = (l) => {
+            if (byName.has(l)) return byName.get(l);
+            for (const [name, r] of byName) {
+              if (l.startsWith(name) && /^\s*[\u2022\u00b7|,(]/.test(l.slice(name.length))) return r;
+            }
+            return undefined;
+          };
+          let current = null;
+          for (const raw of (root.innerText || '').split('\n')) {
+            const l = clean(raw);
+            if (!l) continue;
+            const n = mutualCount(l);
+            if (n != null) {
+              if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
+              continue;
+            }
+            const hit = nameAt(l);
+            if (hit !== undefined) current = hit;
+          }
+
           const results = [...byHref.values()]
             .filter((r) => r.name && r.name.length >= 2)
             .map(({ named, ...r }) => r);

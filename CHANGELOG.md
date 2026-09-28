@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **LinkedIn's own mutual count, from circle scans.** Everyone a circle scan finds now
+  carries LinkedIn's count of the mutual connections you share with them, read from the
+  line under their result card ("Maya Chen and 23 other mutual connections" is 24).
+  - **No extra page views:** the line was already on the pages the scanner reads.
+  - **One count per person:** every copy of the person, one per bridge that knows them,
+    keeps the newest count read. A scan that doesn't see the line leaves the count alone.
+  - **Used by rarity** in place of the count from your scans, which could only be a floor.
+  - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
+    real circle scan is the check. Any other wording reads as no count, never a wrong one.
+
 ## [0.3.0] - 2026-09-26
 
 ### Changed
