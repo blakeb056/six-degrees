@@ -17,6 +17,8 @@
  */
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import useRequests from './useRequests';
+import { hasRequest } from '../../lib/requests-client';
 import {
   drag,
   forceCollide,
@@ -71,6 +73,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
   const zoomKRef = useRef(1);
   const savedTransformRef = useRef(null);
   const applySelectionRef = useRef(() => {});
+  const applyRequestsRef = useRef(() => {});
   const focusNodeRef = useRef(() => {});
   const [size, setSize] = useState({ w: 0, h: 0 });
   const isMobile = useIsMobile();
@@ -121,6 +124,15 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     selectedIdRef.current = selectedId;
     applySelectionRef.current(selectedId);
   }, [selectedId]);
+
+  // So do requests you've sent (lib/requests-client.js): a request sent from
+  // any view rings that person's dots here at once.
+  const requests = useRequests();
+  const requestsRef = useRef(requests);
+  useEffect(() => {
+    requestsRef.current = requests;
+    applyRequestsRef.current(requests);
+  }, [requests]);
 
   useEffect(() => {
     const svgEl = svgRef.current;
@@ -545,6 +557,23 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     };
     applySelectionRef.current(selectedIdRef.current);
 
+    // ---- requests you've sent ---------------------------------------------
+    // A dashed gold ring on every 2nd-degree dot you've asked, in step with
+    // the shared list, without rebuilding the scene.
+    applyRequestsRef.current = (state) => {
+      nodesLayer.selectAll('circle.og-asked').remove();
+      node.filter((d) => d.kind === 'd2' && hasRequest(d.connection, state))
+        .append('circle')
+        .attr('class', 'og-asked')
+        .attr('r', (d) => d.r + 2.2)
+        .attr('fill', 'none')
+        .attr('stroke', '#FFD700')
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '2 1.6')
+        .style('pointer-events', 'none');
+    };
+    applyRequestsRef.current(requestsRef.current);
+
     // ---- fly-to ----------------------------------------------------------
     const nodeById = new Map(renderNodes.map((n) => [n.id, n]));
     focusNodeRef.current = (id) => {
@@ -591,6 +620,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     return () => {
       sim?.stop();
       applySelectionRef.current = () => {};
+      applyRequestsRef.current = () => {};
       focusNodeRef.current = () => {};
       svg.on('.zoom', null);
       svg.on('click', null);
