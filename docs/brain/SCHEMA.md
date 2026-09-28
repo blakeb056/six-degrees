@@ -31,6 +31,11 @@ installed rather than run from a checkout. TRAPS §4.
 - `unlock_status`, `unlocked_from_bridge_id`, `unlocked_from_name` — **provenance, and it
   is permanent.** Who introduced this person. Set when a path opens, and kept when they
   later become a direct connection, so the route you actually walked never disappears.
+- `mutual_count` — LinkedIn's own count of the mutual connections you share with a
+  2nd-degree person, read off their result card by a circle scan ("Maya Chen and 23 other
+  mutual connections": 24). One fact about the two of you, so every copy of the person
+  carries the newest count read; NULL until a scan reads one (or when LinkedIn's wording
+  isn't English). Rarity uses it (`lib/rarity.js`); never a score.
 
 **Two fields are easy to conflate and must not be:**
 
@@ -68,7 +73,8 @@ rule the original Postgres schema enforced.
 
 `CREATE TABLE IF NOT EXISTS` never adds a column to a table that already exists, so a
 new column on an existing table also goes in `ADDED_COLUMNS` in `lib/db-client.js`,
-which runs `ALTER TABLE … ADD COLUMN` once on older databases (first used for `score_why`).
+which runs `ALTER TABLE … ADD COLUMN` once on older databases (first used for `score_why`,
+then `mutual_count`).
 New tables need nothing extra.
 
 ## Conventions

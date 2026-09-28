@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one person. LinkedIn lists other people's connections in its own order, with no dates,
   so anyone new can be on any page: Rescan reads the whole list again from page 1, and
   Resume picks up where the last read stopped. A list read to the end says so instead.
+- **LinkedIn's own mutual count, from circle scans.** Everyone a circle scan finds now
+  carries LinkedIn's count of the mutual connections you share with them, read from the
+  line under their result card ("Maya Chen and 23 other mutual connections" is 24).
+  - **No extra page views:** the line was already on the pages the scanner reads.
+  - **One count per person:** every copy of the person, one per bridge that knows them,
+    keeps the newest count read. A scan that doesn't see the line leaves the count alone.
+  - **Used by rarity** in place of the count from your scans, which could only be a floor.
+  - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
+    real circle scan is the check. Any other wording reads as no count, never a wrong one.
 
 ### Fixed
 - **A request you send shows everywhere, at once.**
