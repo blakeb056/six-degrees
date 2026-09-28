@@ -42,11 +42,58 @@ somewhere unknown.
 Former ("Ex-", "Former") roles count at 70%, and the person scores as their strongest
 role. Current students are capped at 3. Rules that earlier words mask:
 
-- "Vice President" is not "President".
-- "Chief of Staff" is not a chief, and "to the CEO" is not a CEO.
+- "Vice President" is not "President", nor "Vice Provost" a provost.
+- "Chief of Staff" is not a chief, and "to the CEO" or "to Professor Chen" is not the title.
 - "Product Owner" is not an owner.
 - A fraternity chair is not a chairman.
 - "International" is not "intern".
+- A title's possessive is an award or an office named for it: "President's Club" (a sales
+  award), "Chairman's Award", "CEO's Office", "Dean's List", "Chancellor's Fellow".
+- "MD" is a managing director only where a doctor's degree can't be meant: "MD @ J.P.
+  Morgan", "MD, Investment Banking", not "MD, MBA", "Physician, MD" or "MD at Mayo Clinic".
+
+**Universities** have a ladder of their own, on the same points: an assistant professor 5
+(a senior IC's), an associate professor 6.5 (a manager's), a professor 7.5 (a director's:
+"Professor (Emeritus)", "Distinguished Professor", "Prof."), a dean 9 (a VP's: a dean runs a
+school as a VP runs a division), and a provost or a chancellor 10, like a president.
+Associate and assistant deans and provosts and a department's chair or head are directors;
+vice provosts and vice chancellors are VPs; adjunct, visiting and guest professors and
+lecturers are ICs. "Dean" counts only as a title (before "of", "for", a comma or the
+part's end), never in a company's name (Dean Foods). Until scoring 6 a professor was an
+entry-level IC (4), and a dean or a chancellor only someone who works there (4 as well).
+
+**Where a title is held.** "at" or "@" names the company. So does a company the lists
+know (curated or the public dataset) written after the title without it: after a comma
+("Corporate VP, Samsung") or as the next part ("Global Category President | The Coca-Cola
+Company", "Head of Country, Brazil - Snap"), for a current title that names none. That's
+a guess, so it's kept narrow (`heldAt`):
+
+- a founder, an owner or a CEO leads a venture of their own, so a big name after their
+  title is an accelerator, an investor, a school or a past employer ("Founder | Y
+  Combinator", "CEO | Stanford"): not taken;
+- a program, an award, a membership or a degree isn't a job ("AWS Community Builder",
+  "Forbes Council Member", "Harvard MBA", "Director, Microsoft Alliance");
+- a school after any but an academic title is more often where they studied ("VP
+  Marketing | Harvard");
+- a company scan's company goes before the guess (the stored company, which ingest reads
+  from the headline's own "at", doesn't).
+
+Until scoring 6 only "at" counted, so a Coca-Cola president who wrote "| The Coca-Cola
+Company" scored as one at an unknown company: 7.3 (A) instead of 9.5 (S).
+
+**An audience of their own** counts like a title (`AUDIENCE`): 100K+ followers,
+subscribers, listeners or readers like a manager's (6.5), 1M+ like a director's (7.5),
+10M+ like a VP's (9), with no company ("Creator | 2.5M+ followers", "1.2M monthly
+listeners", "3M+ on TikTok", "2,500,000 followers"). Views, users and impressions don't
+count (a campaign's or a product's; those are the reach bonus's), nor does a part about
+growing or managing someone else's ("Grew our TikTok to 2M followers", "Managed accounts
+with 10M+ followers"). A 2.5M-follower creator scores 5.8 (A) where they scored 3.3 (C).
+
+**A title the rules can't read** ("Studio / Show", "Storyteller", a job they don't list)
+counts 4, an individual contributor's, the most common kind: not knowing someone's title
+says nothing about how senior they are, as with a company we don't know. Until scoring 6
+it was 3, below any job, so a founder who states no title and no company scored 2.2 (D);
+now 2.9 (C).
 
 Schools are read alike; the rules name none. A major at a school is a student ("CS @ NYU",
 "Economics at University of Utah"), and so is a leading title in a school club ("President,
@@ -101,7 +148,7 @@ Bain Capital (private equity) has its own entry, apart from Bain & Company. If y
 sectors in Settings, a company in one of them gets +1 or +2 on top (below).
 
 **Reach bonus (≤1.5)** needs whole-word signals: investor, YC, 30 under 30, an audience or
-revenue in the millions, keynote/TEDx/patents, "award-winning" or "prize-winning", and the
+revenue in the millions ("2.5M+", "2.5 million" or "2,500,000"), keynote/TEDx/patents, "award-winning" or "prize-winning", and the
 top honour of each field (`HONOURS`): the Nobel, the Pulitzer, the Peabody, the Emmy, the
 Grammy, the Oscar (Academy Award), the Tony, the Webby, the Clio and Cannes Lions, the James
 Beard, the Turing Award, the Fields Medal, the Pritzker Prize, a MacArthur Fellow, a Rhodes
@@ -849,6 +896,18 @@ kept its old school readings until its next rescore (any import, company score o
 save); since the rule tables joined the list stamp (Staleness, above) the next load redoes
 them, as it does a focus stamped before industries included their sectors. The Queue and the
 person panel read the stored scores, so they change with them.
+
+**`SCORING_VERSION` 6 (what a review found under-rated):** a review of the score in
+September 2026 named the kinds of people it ranked too low, and scoring 6 is its fixes:
+titles whose company is written without "at", "MD" and country heads, academics, an
+audience of one's own and a title the rules can't read (all above).
+`tests/scoring-misses.test.mjs` holds invented examples of each, and every one of those
+tests fails on scoring 5. On the sample network nothing moves (0 of 873 scores, titles or
+tiers): none of its invented headlines is of those kinds. The title changes reach academics, audiences,
+unreadable titles and possessives, so re-run the title-to-circle check on a real network.
+Two of the review's findings aren't changed here: a sector you pick lifts power, not only
+how relevant someone is to you, and a founder's or a CEO's title at a venture nobody knows
+still counts in full, which rates some of them too high.
 
 ## Bridges
 

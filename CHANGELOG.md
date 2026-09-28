@@ -82,6 +82,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Apple " (with Apple's logo) and "Snapchat｜ex-L'Oréal" (a full-width bar) used to read
   as unknown companies. So did "Meta Superintelligence Labs" and "Snapchat MENA Region",
   and a class year ("UCF ’26") hid the school.
+- **"President's Club" is a sales award, not a president.** A title's possessive read as
+  the title, so "Account Executive at Oracle | 3x President's Club" scored 7.3 (A) as a
+  C-suite, and so did "Chairman's Award" and "Chief of Staff, CEO's Office". It's the
+  title's own: 3.6 (C), and a chief of staff is a director again (5.4, B).
 
 ### Changed
 - **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
@@ -96,6 +100,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   know aren't pushed down a tier for it. A founder at an unknown company scores 7.3 (was
   6.7), a director 5.4 (was 5.0). Claims in their headlines still count half. Your network
   is rescored once, the first time the map loads after updating.
+- **The power score reads more of who someone is.** A review of the score found kinds of
+  people it ranked too low:
+  - A title's company written without "at" counts: "Global Category President | The
+    Coca-Cola Company" scores 9.5 (S), not 7.3 (A), and so does "Corporate VP, Samsung".
+    Only a company the app knows, and not after a founder's, an owner's or a CEO's title,
+    not a program or a degree ("AWS Community Builder", "Harvard MBA"), and not a school
+    after a title that isn't an academic's.
+  - "MD @ J.P. Morgan", "MD, Investment Banking", "Head of Country" and "Country Head" are
+    senior, like a managing director; "MD, MBA" and "Physician, MD" aren't.
+  - Universities have their own ladder: an assistant professor 5, an associate professor
+    6.5, a professor 7.5 (was 4, an entry-level job), a dean 9, a provost or a chancellor 10.
+  - An audience of their own counts like a title: 100K+ followers like a manager's, 1M+ a
+    director's, 10M+ a VP's. A creator with 2.5M followers scores 5.8 (A), not 3.3 (C).
+  - A title the app can't read counts as an individual contributor's (4, was 3), so a
+    founder whose headline names no title or company isn't put below every job.
+
+  Your network is rescored once, the first time the map loads after updating. The sample
+  network's tiers don't change.
 - **Separation's map is "who to ask next".** It skips anyone you've already asked or
   already know. Send requests to its ten and the next ten come up. The list below
   still shows everyone, marked *Request sent* or *Connected*, with their rarity.

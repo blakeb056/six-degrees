@@ -104,7 +104,7 @@ export default function CompanyScores({ onRescored }) {
         <LegacyScoresCard onAnswered={legacyAnswered} />
         <div style={{ padding: 14, borderRadius: 10, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#cfd8d8', lineHeight: 1.6 }}>
           <b style={{ color: '#fff' }}>How a power score works.</b> power = <b>title</b> × <b>company weight</b> + bonus.
-          The title (student 1 … founder or C-suite 10) comes from someone&rsquo;s current role, with former roles at 70%.
+          The title (student 1 … founder or C-suite 10) comes from someone&rsquo;s roles, with former roles at 70%; an audience of their own counts like a title (1M+ followers like a director).
           The company weight runs from 0.725 for a company we don’t know (or none found), the middle of the scale, to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
           The bonus is at most +1.5, for investor, YC, an audience in the millions or the top award of any field, and counts half at an unknown company.
           A 1st-degree person whose circle is unusually strong gets up to +1 more.
