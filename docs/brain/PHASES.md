@@ -41,7 +41,7 @@ tick an item in the same change that finishes it.
 - [x] README leads with installing; running from source is in CONTRIBUTING;
       `Start 6 Degrees.command` removed
 - [x] Packaging: no `.git` or logs traced into the bundle, and a local build lists any
-      uncommitted files it is about to ship (TRAPS §27)
+      uncommitted files it is about to ship, ignored ones included (TRAPS §27)
 - [x] `npm pack` run through `npx` from the tarball: starts, every route answers,
       the scraper's files are found from npm's cache
 - [x] 0.1.2 — hovering a Galaxy dot no longer rebuilds the scene in a loop (TRAPS §29).
@@ -142,6 +142,6 @@ tick an item in the same change that finishes it.
 - [ ] GitHub Actions warns that `checkout`, `setup-node` and the artifact actions at v4
       run on deprecated Node 20. Current majors are v7/v8 — upgrade deliberately, one at
       a time, not in passing
-- [ ] A local build's "uncommitted files" warning lists untracked files only; a modified
+- [ ] A local build's "uncommitted files" warning lists files git doesn't track; a modified
       tracked file ships silently. Releases build from a clean checkout, so this only
       matters for a hand-made build

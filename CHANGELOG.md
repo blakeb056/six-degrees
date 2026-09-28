@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trusted publishing, with no token to set, and that `npm run build:desktop` builds the app
   releases ship (`build:app` is the old launcher). `.gitignore` keeps a LinkedIn export, a
   database, a saved copy of a network and the scanner's signed-in browser profile out of a
-  commit, wherever they sit in the tree.
+  commit, wherever they sit in the tree. A local build keeps them out of the app too, and
+  its list of uncommitted files inside the app now names ignored ones as well.
 
 ### Added
 - **A release checks the website's version lines.** Before building anything, the release
