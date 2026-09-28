@@ -87,6 +87,14 @@ where their place says so:
   city's ("State of Florida", "City of Orlando", "Orange County"), a department, a court, a
   legislature, an agency in full or with its field office ("FBI Miami Field Office", not
   "SBA Lending"), a tribal nation (not "Tribe Capital" or "Cherokee Nation Businesses");
+- **precision first** (the fourth review round): a title that names its government ("U.S.
+  Senator", "County Sheriff", "Mayor of Tampa", "Ohio State Treasurer") reads the other parts
+  as its bio ("| Podcast Host", "| Swim Dad", "| Former Police Chief") unless they name an
+  employer or a club; a bare title ("Mayor", "Police Chief", "Ambassador", "School Board
+  Chair") needs its government named, or to be the whole headline. A county, a district or a
+  ward named alone is a place, a government only for a local office. A missed official stays
+  "Title unclear" (a neutral 4); a realtor read as a mayor would jump to A, so a doubtful
+  case is left out;
 - a title others hold too needs that government named, or to be the whole headline:
   "Mayor of Orlando" alone is a mayor, "Realtor at Compass | Mayor of Midtown" isn't; "City
   Manager" is also Uber's and Lime's, "Controller" and "Auditor" every company's, "Trade
@@ -106,7 +114,10 @@ where their place says so:
   A service in a part of its own is the rank's only when nothing but units and places is
   named beside the rank, and one further off only past a serving officer's job ("LTC |
   Acquisition Officer | U.S. Army"), not past an employer ("Captain | Delta Air Lines |
-  Retired USAF" is an airline captain);
+  Retired USAF" is an airline captain), and only with nothing civilian on the rank's other
+  side ("Claims Handler | Admiral | Royal Navy Reserve" isn't). A short form that is also a
+  credential or a company (LTC long-term care, CPT a personal trainer, CSM a ScrumMaster,
+  ADM) needs its service in the same part, or a headline that is all military;
 - a police or fire department's numbered division or battalion, a veterans' group, a
   museum, a boating club, a credit union, a cadet, a team, a mariner's licence or an
   honorary rank is no commission (`NOT_MILITARY`: "Kentucky Colonel", "Commander, VFW Post
@@ -982,12 +993,14 @@ save); since the rule tables joined the list stamp (Staleness, above) the next l
 them, as it does a focus stamped before industries included their sectors. The Queue and the
 person panel read the stored scores, so they change with them.
 
-**Government and military titles (still `SCORING_VERSION` 6, and new rule tables):** three
-rounds of adversarial review ran about 5,800 invented headlines through the reader
+**Government and military titles (still `SCORING_VERSION` 6, and new rule tables):**
+four rounds of adversarial review ran about 8,500 invented headlines through the reader
 (officials, officers, and the ordinary headlines that share their words) and compared
 ordinary ones with scoring 5. The first two found titles read inside office names and
 clubs; the third (63 findings) found that a government word anywhere nearby was enough,
-which is why a title now needs its own organization to be a government's (`where()`).
+which is why a title now needs its own organization to be a government's (`where()`); the
+fourth (59) found look-alikes on both sides, which is why a doubtful title is now left out
+(precision first) and a named one reads its bio as bio.
 Every case the rounds found is a test in `tests/scoring-misses.test.mjs`. The rule
 tables' fingerprint includes the code that applies them, so a change to it rescores. The
 sample network doesn't move (0 of 873 tiers or title points): it has no officials or

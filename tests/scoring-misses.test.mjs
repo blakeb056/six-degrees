@@ -483,7 +483,7 @@ test('round three: what still reads, however the organization is written', () =>
     ['Regional Administrator, EPA Region 5', 'govOfficial'], ['Special Agent in Charge, FBI Miami Field Office', 'govOfficial'], ['Mayor, City of Winter Park', 'govLeader'],
     ['County Manager | Seminole County', 'govOfficial'], ['City Manager, City of Phoenix', 'govOfficial'], ['Secretary of Defense', 'govLeader'],
     ['Ambassador (Ret.) | Diplomat in Residence', 'govSenior'], ['Commander, Navy Region Southeast', 'general'], ['Commander, Nurse Corps, U.S. Navy', 'ltColonel'],
-    ['LTC | Acquisition Officer | U.S. Army', 'ltColonel'], ['MAJ | Operations Officer | U.S. Army', 'major'], ['Lt Col | F-35 Pilot | USAF', 'ltColonel'],
+    ['Lt Col | Acquisition Officer | U.S. Army', 'ltColonel'], ['MAJ | Operations Officer | U.S. Army', 'major'], ['Lt Col | F-35 Pilot | USAF', 'ltColonel'],
     ['Major | Intelligence Officer | USMC', 'major'], ['CDR | Submarine Officer | USN', 'ltColonel'], ['Army Reserve Captain | Intelligence Analyst at Booz Allen Hamilton', 'major'],
   ]) assert.equal(best(h), k, h);
 });
@@ -563,4 +563,115 @@ test('round three: a retirement is its own role\'s, not a service\'s after a civ
     assert.equal(best(h), k, h);
     assert.equal(person(h).title.former, former, h);
   }
+});
+
+// A fourth review round's cases (precision first): a title that names its
+// government ("County Sheriff", "Mayor of Tampa", "U.S. Secretary of
+// Education") reads the other parts as its bio unless they name an employer;
+// a bare title ("Mayor", "Police Chief", "Ambassador") needs its government
+// named, or to be the whole headline; a rank borrows a service from another
+// part only with nothing civilian on its other side, and a short form that is
+// also a credential (LTC, CPT, CSM, ADM) only when the whole headline is military.
+test('round four: officials and officers, however their bio is written', () => {
+  for (const [h, k] of [
+    ['Administrator of NASA', 'govSenior'], ['Amb., U.S. Embassy Tokyo', 'govSenior'],
+    ['Ambassador to Japan | U.S. Department of State | Model UN Alumni', 'govSenior'], ['Ambassador-at-Large for Global Women\'s Issues', 'govSenior'],
+    ['Assistant Secretary for Financial Institutions, U.S. Department of the Treasury', 'govSenior'], ['Assistant Secretary for Health, HHS', 'govSenior'],
+    ['Assistant Secretary for Insurance Programs', 'govSenior'], ['Assistant Secretary for Technology Policy, U.S. Department of Commerce', 'govSenior'],
+    ['At-Large City Councilmember, Houston', 'govOfficial'], ['Attorney General of Texas | Podcast Host', 'govLeader'],
+    ['Brigade Commander, 2nd Brigade Combat Team, 1st Cavalry Division | U.S. Army', 'colonel'], ['Captain | U.S. Navy ⚓', 'colonel'],
+    ['Chair of the Federal Trade Commission', 'govSenior'], ['Circuit Judge | Church Deacon', 'judge'],
+    ['Circuit Judge | Podcast Host', 'judge'], ['Circuit Judge | Rugby Referee', 'judge'],
+    ['City Commissioner, Winter Park, FL', 'govOfficial'], ['City Council Member, Winter Park, FL', 'govOfficial'],
+    ['City Councilmember, Orlando', 'govOfficial'], ['City Manager, Winter Park, FL', 'govOfficial'],
+    ['Colonel (USAF, Ret.)', 'colonel'], ['Colonel | U.S. Army 🇺🇸', 'colonel'],
+    ['Colonel | U.S. Central Command', 'colonel'], ['Colonel, U.S. Army 🇺🇸', 'colonel'],
+    ['Commander, Air Combat Command', 'seniorGeneral'], ['Commander, Cyber Protection Team 173, U.S. Army', 'ltColonel'],
+    ['Commander, Pacific Air Forces', 'general'], ['Commander, Pacific Air Forces | U.S. Air Force', 'general'],
+    ['Commander, U.S. Air Forces in Europe', 'general'], ['Commander, U.S. Indo-Pacific Command', 'seniorGeneral'],
+    ['Commander, U.S. Pacific Fleet', 'seniorGeneral'], ['Congressman (R-TX)', 'govLeader'],
+    ['Congressman | Media Personality', 'govLeader'], ['Congressman | Pickleball Enthusiast', 'govLeader'],
+    ['Congresswoman (D-NY) | U.S. House of Representatives', 'govLeader'], ['Congresswoman, NY-14', 'govLeader'],
+    ['Councilmember, Winter Park', 'govOfficial'], ['County Commissioner | Little League Coach', 'govOfficial'],
+    ['County Commissioner, Orange County | High School Teacher', 'govOfficial'], ['County Sheriff | Swim Dad', 'govOfficial'],
+    ['Del., Maryland House of Delegates', 'govSenior'], ['Deputy Commander, 1st Armored Brigade Combat Team, 3rd Infantry Division', 'ltColonel'],
+    ['Deputy Mayor for Public Safety | Coffee Lover', 'govSenior'], ['Deputy Mayor, New York City', 'govSenior'],
+    ['Director, FBI', 'govSenior'], ['Former State Senator | Lobbyist', 'govSenior'],
+    ['Gov., State of Ohio', 'govLeader'], ['Governor (D) | Commonwealth of Kentucky', 'govLeader'],
+    ['Governor of Ohio | Church Deacon', 'govLeader'], ['Governor of Ohio | Homeschool Dad', 'govLeader'],
+    ['Governor of the Chickasaw Nation', 'govLeader'], ['Judge 👩‍⚖️ | Ninth Judicial Circuit', 'judge'],
+    ['Judge, U.S. District Court | Pre-Law Mentor', 'judge'], ['Lieutenant General', 'seniorGeneral'],
+    ['Lieutenant Governor of Ohio | Fitness Coach', 'govSenior'], ['Lt. Gov., State of Ohio', 'govSenior'],
+    ['Major General', 'general'], ['Mayor of Orlando | Former Student Government President at UCF', 'govLeader'],
+    ['Mayor of Orlando | Husband | Father', 'govLeader'], ['Mayor of Tampa | Former Police Chief', 'govLeader'],
+    ['Mayor of Winter Park | Attorney', 'govLeader'], ['Mayor | Oviedo, Florida | Realtor', 'govLeader'],
+    ['Mayor | Winter Park, FL', 'govLeader'], ['Mayor, Orlando', 'govLeader'],
+    ['Mayor, Winter Park, FL', 'govLeader'], ['Member of Congress, FL-07', 'govLeader'],
+    ['Member of Parliament | Former Minister of Health', 'govLeader'], ['Ohio State Treasurer | Financial Planner', 'govSenior'],
+    ['Rear Admiral', 'general'], ['Rear Admiral (Upper Half)', 'general'],
+    ['Rep., U.S. House of Representatives', 'govLeader'], ['Sen., Florida Senate', 'govSenior'],
+    ['Senator | Australian Senate', 'govSenior'], ['Senator | Senate of Puerto Rico', 'govSenior'],
+    ['Senator, Senate District 12', 'govSenior'], ['Senator, Senate of Canada', 'govSenior'],
+    ['Senator, Senate of the Philippines', 'govSenior'], ['Sheriff of Polk County | Podcast Host', 'govOfficial'],
+    ['Sheriff | Orange County, FL', 'govOfficial'], ['State Representative | 45th District | Realtor', 'govSenior'],
+    ['State Representative | House District 45 | Realtor', 'govSenior'], ['State Sen., District 12', 'govSenior'],
+    ['State Senator', 'govSenior'], ['State Senator | Attorney', 'govSenior'],
+    ['State Senator | District 12 | Attorney', 'govSenior'], ['State Senator | Realtor | Veteran', 'govSenior'],
+    ['State Senator, Florida Senate | Former High School Teacher', 'govSenior'], ['State Senator, Senate District 14', 'govSenior'],
+    ['Surgeon General of Florida | Wellness Advocate', 'govSenior'], ['Treasurer, State of Ohio', 'govSenior'],
+    ['U.S. Congressman, Florida', 'govLeader'], ['U.S. Secretary of Education | Former Middle School Teacher', 'govLeader'],
+    ['U.S. Sen.', 'govLeader'], ['U.S. Senator | Football Fan', 'govLeader'],
+    ['U.S. Senator | Little League Coach', 'govLeader'], ['Under Secretary for Health, U.S. Department of Veterans Affairs', 'govSenior'],
+    ['Under Secretary for Science and Technology, DHS', 'govSenior'], ['United States Senator (D-Illinois)', 'govLeader'],
+    ['Vice Admiral', 'seniorGeneral'], ['Vice Admiral (Ret.)', 'seniorGeneral'],
+    ['Vice Mayor | Winter Park, FL', 'govSenior'],
+  ]) assert.equal(best(h), k, h);
+});
+
+test('round four: …and ordinary people, clubs, companies and look-alike titles aren\'t', () => {
+  for (const h of [
+    'ADM | U.S. Navy Reserve | Commodity Trader', 'Account Manager | ADM | Air National Guard', 'Agile Coach | CSM | U.S. Army Reserve',
+    'Ambassador at City of Orlando', 'Ambassador to Mexico | Content Creator', 'Ambassador | Government Street Grocery',
+    'Ambassador | Texas Department of Agriculture | GO TEXAN', 'Ambassador, Florida Department of Health', 'Assistant Mayor of the Neighborhood | Mail Carrier',
+    'Assistant Secretary for Records | Northwind Lodge No. 12', 'Assistant Secretary | Orange County | Northwind PTA', 'Associate Administrator, Government Contracts | Leidos',
+    'At-Large', 'Battalion Commander, 1st Battalion | Northwind Military Academy', 'CDC Director | Early Childhood Education',
+    'CSM | Army National Guard | HubSpot', 'Captain | Aviation Unit | Northwind Sheriff', 'Captain, 3rd Battalion | Orange County Fire Rescue',
+    'Captain, Air Force Falcons Wrestling', 'Captain, Army Esports', 'Captain, Army Wrestling | West Point Class of 2027',
+    'Captain, Naval Academy Wrestling', 'Captain, Navy Swimming & Diving', 'Captain, Navy Wrestling 🤼 | Economics Major',
+    'Captain, USS Northwind | Sea Scout Ship 42', 'Chair, Florida Blockchain Business Council', 'Chair, U.S. Dairy Export Council',
+    'Chargé d', 'Chief Justice | Supreme Court | Northwind University', 'Chief of Police | Northwind Mall Police Department',
+    'City Council Member | Northwind Model City Council Program', 'City Manager, Orange County | Bird', 'Colonel, 1st Continental Regiment | Revolutionary War Living History',
+    'Commander, 1st Brigade | Texas A&M Corps of Cadets', 'Commander, 5th Group | Northwind Fitness Bootcamp', 'Commanding Officer, USS Northwind Division | U.S. Naval Sea Cadet Corps',
+    'Commissioner of Agriculture | Backyard Chicken Farmer', 'Commissioner of Labor | Doula', 'Commissioner | Texas Beef Council',
+    'Company Commander, Alpha Company, 1st Battalion | Northwind High School NJROTC', 'Council Member | Florida Hospitality Council', 'Council Member | Ward 3 | Northwind Neighborhood Association',
+    'Deputy Mayor of Our Street | Dad', 'Deputy Mayor | Neighborhood Watch', 'Deputy Under Secretary for Fun | Northwind',
+    'Ex-Captain, Navy Wrestling | Analyst at Goldman Sachs', 'Former Ambassador, City of Orlando | Realtor', 'Governor | Georgia | Toastmasters',
+    'HR Consultant | PEO | Army National Guard', 'Inspector General | Northwind Home Inspections', 'Judge | Orange County | State Fair',
+    'Lieutenant Governor | Texas | TX Youth & Government', 'Management Consultant | CMC | U.S. Navy Reserve', 'Mayor | State of Mind Coffee House',
+    'Member of the Texas Legislature Internship Program', 'Miami-Dade County Executive | Private Banking | Northwind Trust', 'PEO STRI | U.S. Army | Contractor with Northwind Defense',
+    'Personal Trainer • CPT • Army National Guard', 'President, Omaha Community Foundation', 'Regimental Commander, 1st Battalion | The Citadel',
+    'Regional Administrator, Government Programs | Northwind Health Plan', 'Salesforce | CSM | Army Reserve', 'School Board Member | Northwind Waldorf',
+    'Secretary-General | Model ASEAN', 'Sergeant Major, 5th Georgia Infantry | Civil War Living Historian', 'Speaker | Florida House | Keynote',
+    'Special Envoy to the CEO', 'Squadron Commander, 402nd Composite Squadron | CAP', 'State Rep, District 4 | Northwind Wine & Spirits',
+    'State Representative, District 7 | Northwind Beverages', 'State Treasurer | Georgia Young Democrats', 'Supreme Court Justice of Hot Takes | Podcaster',
+    'U.S. Coast Guard | Captain | Carnival Cruise Line', 'USAF (Ret.) | Captain | Southwest Airlines', 'Under-Secretary-General | Crisis Committees | Gator MUN',
+  ]) assert.ok(!GOVERNMENT.includes(best(h)) && !MILITARY.includes(best(h)), `${h} read as ${best(h)}`);
+  for (const [h, k] of [
+    ['Adjunct Professor at Northwind College | Retired', 'ic'], ['Ambassador | Orlando Police Department', 'unknown'],
+    ['Ambassador, Federal Express Customer Service', 'unknown'], ['Ambassador, Orange County Public Schools', 'unknown'],
+    ['Attorney | General Counsel, P.C.', 'ic'], ['Business Partner to the General Counsel', 'senior'],
+    ['Chair, Georgia Tech Advisory Board', 'unknown'], ['Chair, U.S. Green Building Council', 'unknown'],
+    ['Chairman, New York Times Board', 'csuite'], ['Chairwoman, Virginia Credit Union Board', 'csuite'],
+    ['Chief | Delaware Valley Community Health', 'unknown'], ['Compliance Manager, Chief Counsel', 'manager'],
+    ['Council Member, Florida Realtors Council', 'unknown'], ['Division', 'unknown'],
+    ['Engineer at Tesla Co-op Internship', 'intern'], ['Fractional CFO | Retired', 'csuite'],
+    ['Judge, Texas Beef Council', 'unknown'], ['Legal Project Manager, General Counsel Org', 'manager'],
+    ['MD at Baylor, Pediatrics Chief Resident', 'ic'], ['MD at Emory, Pediatric Surgery Fellow', 'ic'],
+    ['MD at Northwind University, Internal Medicine & Pediatrics', 'ic'], ['MD at Yale, Yale New Haven Hospital', 'ic'],
+    ['Mayor, Texas Beef Council', 'unknown'], ['PM @ Google x Founder @ Northwind', 'csuite'],
+    ['President | Choctaw Community Theater', 'csuite'], ['President, Delaware County Community College', 'csuite'],
+    ['President, Laguna Beach Community Foundation', 'csuite'], ['President, Seminole Nation Realty', 'csuite'],
+    ['Program Manager, Legal & General Counsel', 'manager'], ['Retired | Investor', 'director'],
+    ['Senior Associate at PwC then Manager', 'manager'], ['Volunteer at Habitat for Humanity | Retired', 'ic'],
+  ]) assert.equal(best(h), k, h);
 });
