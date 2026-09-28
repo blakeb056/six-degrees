@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Resume beside Rescan on a profile card.** When someone's list was only partly read (a
+  page limit, a stop, LinkedIn pushing back), their card offers *Resume from page N* next
+  to *Rescan from the start*: the same carry-on as the Scan page's Paused list, for that
+  one person. LinkedIn lists other people's connections in its own order, with no dates,
+  so anyone new can be on any page: Rescan reads the whole list again from page 1, and
+  Resume picks up where the last read stopped. A list read to the end says so instead.
+
+### Fixed
+- **One scan at a time, and every Scan button knows it.** A scan started on one profile
+  card left the Scan button on every other card clickable, and *Auto-Bridge Next*, the ↻
+  refresh and Paths' company scan too. Pressing one was refused, and the card then said
+  *"Scan failed — connections may be private"* about a scan that had never started. Now
+  they all grey out while anything runs and say what does ("Ada Park's circle is being
+  scanned. One scan at a time…"), even a scan started on the Scan page or in another
+  window. Close a card mid-scan and open it again and its progress is still there; when it
+  ends, the card says so. The page asks the scanner once for all of them
+  (`/api/scraper?job=1`, which reads only memory), not once per button.
+
+### Removed
+- **The Revolver view.** Degrees keeps Separation, Orbit, Bridge Chains, Pyramid and List.
+
 ## [0.3.0] - 2026-09-26
 
 ### Changed

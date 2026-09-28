@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { scraperStatus, startScrape, notReadyMessage } from '../lib/scraper-client';
+import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../lib/scraper-client';
+import useScanner from './components/useScanner';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import Sidebar from './components/Sidebar';
@@ -316,28 +317,7 @@ function HomeInner() {
             )}
           </div>}
           {/* Refresh button — checks connections + notifies */}
-          {!IS_DEMO && !csvMode && <button
-            onClick={async () => {
-              try {
-                const status = await scraperStatus();
-                const blocked = notReadyMessage(status);
-                if (blocked) { alert(blocked); return; }
-                if (status.running) { alert('The scanner is already busy.'); return; }
-                await startScrape('refresh');
-                alert('Checking for new connections — watch it on the Scan page.');
-              } catch (e) {
-                alert(e.message);
-              }
-            }}
-            title="Refresh connections + bridges"
-            style={{
-              width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
-              display: isMobile ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
-            }}
-          >
-            ↻
-          </button>}
+          {!IS_DEMO && !csvMode && <RefreshButton isMobile={isMobile} />}
           {/* Profile icon — top right */}
           <a href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} style={{
             width: isMobile ? 30 : 36, height: isMobile ? 30 : 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -499,5 +479,36 @@ function HomeInner() {
         )}
       </div>
     </div>
+  );
+}
+
+// Its own component so the scanner's answer, which changes every second or two
+// while a scan runs, re-renders this button and not the whole map.
+function RefreshButton({ isMobile }) {
+  const scan = useScanner();
+  const busy = busyReason(scan);
+  return (
+    <button
+      onClick={async () => {
+        try {
+          const blocked = notReadyMessage(await scraperStatus());
+          if (blocked) { alert(blocked); return; }
+          await beginScrape('refresh');
+          alert('Checking for new connections — watch it on the Scan page.');
+        } catch (e) {
+          alert(e.message);
+        }
+      }}
+      disabled={Boolean(busy)}
+      title={busy ? `${busy}. One scan at a time.` : 'Refresh connections + bridges'}
+      style={{
+        width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none',
+        cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.4 : 1,
+        background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
+        display: isMobile ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+      }}
+    >
+      ↻
+    </button>
   );
 }
