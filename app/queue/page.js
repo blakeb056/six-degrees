@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OutlinkQuest from '../components/OutlinkQuest';
@@ -8,6 +8,9 @@ import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import { rowCompanyScore, TOP_COMPANY } from '../../lib/scoring';
 import Link from 'next/link';
+import useRequests from '../components/useRequests';
+import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
+import { keyFor } from '../../lib/separation';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -38,8 +41,12 @@ function QueueInner() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(new Set());
-  const [sentIds, setSentIds] = useState(new Set());
-  const [pendingList, setPendingList] = useState([]);
+  // Requests out come from the one list every view shares (lib/requests-client.js),
+  // per person, so a request sent on the map shows here and one sent here shows
+  // there. What this page loads is only the rows to draw them with.
+  const requests = useRequests();
+  const [serverPending, setServerPending] = useState([]);
+  const [bridgeById, setBridgeById] = useState({});
   // Circles is the game (lib/quest.js); the list and Pending are still here.
   const [view, setView] = useState('quest'); // quest | recs | pending
   const [added, setAdded] = useState([]);
@@ -80,13 +87,8 @@ function QueueInner() {
       const bridgeById = {};
       d1.forEach(c => { bridgeById[c.id] = c; });
 
-      // Pre-load sent IDs
-      const sentSet = new Set((pendingRes.pending || []).map(p => p.id));
-      setSentIds(sentSet);
-      setPendingList((pendingRes.pending || []).map(p => ({
-        ...p,
-        bridge: bridgeById[p.source_connection_id] || null,
-      })));
+      setServerPending(pendingRes.pending || []);
+      setBridgeById(bridgeById);
 
       const recommendations = d2
         .filter(c => (c.tier === 'S' || c.tier === 'A' || c.tier === 'B') && !d1Urls.has(c.profile_url))
@@ -103,6 +105,24 @@ function QueueInner() {
     }
     load();
   }, [userId]);
+
+  // Every row of anyone with a request out (a person's copies all count), and
+  // the people themselves, once each, for the Pending tab.
+  const sentIds = useMemo(
+    () => new Set([...serverPending, ...recs].filter((r) => hasRequest(r, requests)).map((r) => r.id)),
+    [serverPending, recs, requests],
+  );
+  const pendingList = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const r of [...serverPending, ...recs]) {
+      const key = keyFor(r);
+      if (seen.has(key) || !hasRequest(r, requests)) continue;
+      seen.add(key);
+      out.push({ ...r, bridge: bridgeById[r.source_connection_id] || r.bridge || null });
+    }
+    return out;
+  }, [serverPending, recs, requests, bridgeById]);
 
   // Demo builds: this page is excluded from the public demo
   if (IS_DEMO) {
@@ -303,22 +323,8 @@ function QueueInner() {
             sentIds={sentIds}
             added={added}
             mappedIds={mappedIds}
-            onSend={async (r) => {
-              try {
-                await fetch('/api/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'mark-sent', connectionId: r.id, profileUrl: r.profile_url, userId }) });
-                setSentIds(prev => new Set([...prev, r.id]));
-                setPendingList(prev => (prev.some(x => x.id === r.id) ? prev : [...prev, r]));
-              } catch {}
-            }}
-            onUndo={async (r) => {
-              try {
-                await fetch('/api/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'undo', connectionId: r.id, userId }) });
-                setSentIds(prev => { const next = new Set(prev); next.delete(r.id); return next; });
-                setPendingList(prev => prev.filter(x => x.id !== r.id));
-              } catch {}
-            }}
+            onSend={(r) => markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {})}
+            onUndo={(r) => undoRequest(r).catch(() => {})}
           />
         </div>
       )}
@@ -391,14 +397,7 @@ function QueueInner() {
                           style={{ padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none' }}>
                           View
                         </a>
-                        <button onClick={async () => {
-                          await fetch('/api/outreach', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'undo', connectionId: p.id }),
-                          });
-                          setPendingList(prev => prev.filter(x => x.id !== p.id));
-                          setSentIds(prev => { const next = new Set(prev); next.delete(p.id); return next; });
-                        }} style={{
+                        <button onClick={() => { undoRequest(p).catch(() => {}); }} style={{
                           padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 600,
                           background: 'rgba(255,255,255,0.06)', color: '#666', border: 'none', cursor: 'pointer',
                         }}>Undo</button>
@@ -585,13 +584,9 @@ function QueueInner() {
                           <span style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: 'rgba(255,107,53,0.15)', color: '#FF6B35', flexShrink: 0 }}>Sent</span>
                         ) : (
                           <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                            onClick={async (e) => {
+                            onClick={(e) => {
                               e.stopPropagation();
-                              try {
-                                await fetch('/api/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ action: 'mark-sent', connectionId: r.id, profileUrl: r.profile_url }) });
-                                setSentIds(prev => new Set([...prev, r.id]));
-                              } catch {}
+                              markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
                             }}
                             style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>Add</a>
                         )}
@@ -659,17 +654,10 @@ function QueueInner() {
                     }}>⏳ Sent</span>
                   ) : (
                     <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-                        // Mark as sent in DB after opening LinkedIn
-                        try {
-                          await fetch('/api/outreach', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'mark-sent', connectionId: r.id, profileUrl: r.profile_url }),
-                          });
-                          setSentIds(prev => new Set([...prev, r.id]));
-                        } catch {}
+                        // Opens LinkedIn, and marks the request sent everywhere.
+                        markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
                       }}
                       style={{
                         padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
