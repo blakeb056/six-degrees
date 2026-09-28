@@ -1,11 +1,10 @@
 'use client';
 
-// Paths → Scores: every company in your network, the score it carries into
+// The Scores tab's company scores (app/scores): every company in your network, the score it carries into
 // people's power, where that score comes from, and a control to set your own.
 // Setting a score rescores everyone (app/api/company-scores → lib/scoring.js).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import LegacyScoresCard from './LegacyScoresCard';
 
 const LINE = '1px solid rgba(255,255,255,0.1)';
@@ -60,8 +59,14 @@ export function ScorePicker({ company, onSet, compact }) {
   );
 }
 
-export default function CompanyScores({ onRescored }) {
+export default function CompanyScores({ onRescored, version = 0 }) {
   const { companies, error, setScore, reload } = useCompanyScores();
+  // A save beside the list (your sector or tiers, on the Scores tab) rescores
+  // everyone: `version` changes, and the list is read again, keeping what you
+  // searched and filtered.
+  useEffect(() => {
+    if (version) reload().catch(() => {});
+  }, [version, reload]);
   const [query, setQuery] = useState('');
   const [only, setOnly] = useState('all');
   const [limit, setLimit] = useState(150);
@@ -108,11 +113,11 @@ export default function CompanyScores({ onRescored }) {
           The company weight runs from 0.725 for a company we don’t know (or none found), the middle of the scale, to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
           The bonus is at most +1.5, for investor, YC, an audience in the millions or the top award of any field, and counts half at an unknown company.
           A 1st-degree person whose circle is unusually strong gets up to +2 more: up to +1 for a high share of it at A or S, or +1 for every 25 people there.
-          Tiers are graded on your network’s curve unless you choose the fixed scale in <Link href="/settings#tiers" style={{ color: '#3498DB' }}>Settings</Link>: your top 3% are S, the next 12% A, the next 25% B (it only lifts, and never lifts anyone under 4 into S or A). On the fixed scale, S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
+          Tiers are graded on your network’s curve unless you choose the fixed scale (<a href="#tiers" style={{ color: '#3498DB' }}>Tiers</a>, above): your top 3% are S, the next 12% A, the next 25% B (it only lifts, and never lifts anyone under 4 into S or A). On the fixed scale, S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
           <div style={{ marginTop: 6, color: '#8b9a9a' }}>
             So a VP at a 10 scores 9.0, a founder at an unknown company 7.3, a director at an unknown company 5.4, and an intern at a 10 scores 2.0.
             Set a company&rsquo;s score below and everyone there is rescored.
-            Companies in the sectors you pick in <Link href="/settings#sector" style={{ color: '#3498DB' }}>Settings</Link> get +1 or +2; a score you set is never changed.
+            Companies in the sectors you pick (<a href="#sector" style={{ color: '#3498DB' }}>Your sector</a>, above) get +1 or +2; a score you set is never changed.
           </div>
         </div>
 

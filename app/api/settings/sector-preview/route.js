@@ -2,7 +2,7 @@ import { getDb } from '../../../../lib/db-client';
 import { companyOverrides, readForScoring, scoringRows, sectorFocusOf, tierScaleOf } from '../../../../lib/rpc';
 import { parseSectorFocus, previewSectorFocus } from '../../../../lib/sector-focus';
 
-// Settings → Your sector, before you save: what a sector focus would change,
+// Scores → Your sector, before you save: what a sector focus would change,
 // against the one saved now. It reads the network once and scores it twice in
 // memory, with the inputs rescoreAll() uses (readForScoring: each company's
 // industry and its sectors from the directory), and writes nothing. A save

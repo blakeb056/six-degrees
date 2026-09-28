@@ -126,6 +126,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Your network is rescored once, the first time the map loads after updating. The sample
   network's tiers don't change.
+- **Scores has a tab of its own.** How a power score is worked out and the three things you
+  can change about it are in one place: your field (*Your sector*), how tiers are graded
+  (*Tiers*) and every company's score. Company scores used to be a tab inside Paths, and the
+  other two were in Settings. Old links (*Paths → Scores*, *Settings → Your sector*,
+  *Settings → Tiers*) forward there, and Settings says where they went.
 - **Separation's map is "who to ask next".** It skips anyone you've already asked or
   already know. Send requests to its ten and the next ten come up. The list below
   still shows everyone, marked *Request sent* or *Connected*, with their rarity.

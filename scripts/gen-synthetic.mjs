@@ -80,7 +80,7 @@ const TITLES = [
 
 // ── scoring: the app's own model (lib/scoring.js), nothing copied ──
 // Invented companies are unknown to its list of real ones, so they get scores
-// the way a user sets their own (Paths → Scores), spread across the ladder so
+// the way a user sets their own (the Scores tab), spread across the ladder so
 // the tier mix looks like a real network.
 const COMPANY_SCORES = new Map(Object.entries({
   'Northwind Labs': 9, 'Halcyon': 9, 'Verity Systems': 8, 'Lumen Robotics': 8,

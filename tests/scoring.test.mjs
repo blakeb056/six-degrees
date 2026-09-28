@@ -679,7 +679,7 @@ test('on the curve a network the list barely knows has a top; on the fixed scale
   assert.equal(fixed.scores.get('two').tier, 'A');
 });
 
-test('Settings → Tiers is the curve unless you choose the fixed scale', () => {
+test('Scores → Tiers is the curve unless you choose the fixed scale', () => {
   assert.equal(TIER_SCALE_SETTING.default, 'curve');
   assert.equal(TIER_SCALE_SETTING.parse('fixed'), 'fixed');
   assert.throws(() => TIER_SCALE_SETTING.parse('relative'), /curve.*fixed/);

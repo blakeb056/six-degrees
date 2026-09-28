@@ -1,21 +1,20 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
-import CompanyScores from '../components/CompanyScores';
 import { useUser } from '../components/UserProvider';
 import useScanner from '../components/useScanner';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-const TABS = [['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies'], ['scores', 'Scores']];
+const TABS = [['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies']];
 
 export default function PathsPage() {
   // Suspense because PathsInner reads the address's ?tab= (useSearchParams),
@@ -33,11 +32,14 @@ function PathsInner() {
   const [d2Data, setD2Data] = useState([]);
   const [d3Data, setD3Data] = useState([]);
   // Map and Industries are the analyzer; Companies is the list it grew from.
-  // A link can open a tab (/paths?tab=scores, from Settings → Your sector).
+  // A link can open a tab (/paths?tab=companies). Company scores have a tab of
+  // their own now (app/scores): an old link to /paths?tab=scores goes there.
   // The router's search params rather than window.location: on a click from
   // another page the address bar only changes after this page has rendered.
   const asked = useSearchParams().get('tab');
   const [tab, setTab] = useState(() => (TABS.some(([k]) => k === asked) ? asked : 'map'));
+  const router = useRouter();
+  useEffect(() => { if (asked === 'scores') router.replace('/scores#companies'); }, [asked, router]);
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -280,9 +282,7 @@ function PathsInner() {
         </div>
       </header>
 
-      {!selectedCompany && tab === 'scores' ? (
-        <CompanyScores onRescored={() => setReloadKey((k) => k + 1)} />
-      ) : !selectedCompany && tab !== 'companies' ? (
+      {!selectedCompany && tab !== 'companies' ? (
         <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}
           onOpenCompany={(co) => selectCompany({ ...co, sCount: co.S, aCount: co.A })} />
       ) : (

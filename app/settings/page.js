@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import UpdatePanel from '../components/UpdatePanel';
-import SectorSection from '../components/settings/SectorSection';
-import TierSection from '../components/settings/TierSection';
 import DataSection from '../components/settings/DataSection';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -29,6 +28,13 @@ const KIND_LABEL = {
 function SettingsInner() {
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
+  const router = useRouter();
+  // Your field and tiers moved to the Scores tab (app/scores): old links to
+  // /settings#sector and /settings#tiers go there.
+  useEffect(() => {
+    const at = window.location.hash;
+    if (at === '#sector' || at === '#tiers') router.replace(`/scores${at}`);
+  }, [router]);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -72,9 +78,13 @@ function SettingsInner() {
         {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
-        <SectorSection />
-        <TierSection />
-
+        <Section id="scoring" title="Your field and tiers">
+          <Body>
+            They&rsquo;re on the <Link href="/scores" style={{ color: '#3498DB' }}>Scores</Link> tab now, beside every
+            company&rsquo;s score: <Link href="/scores#sector" style={{ color: '#3498DB' }}>your field</Link> and{' '}
+            <Link href="/scores#tiers" style={{ color: '#3498DB' }}>how tiers are graded</Link>.
+          </Body>
+        </Section>
         <DataSection />
 
         <Section id="about" title="About this copy">

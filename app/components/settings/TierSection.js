@@ -1,6 +1,6 @@
 'use client';
 
-// Settings → Tiers. How the S to D rings are drawn: on your network's curve
+// Scores → Tiers (app/scores; it was Settings → Tiers). How the S to D rings are drawn: on your network's curve
 // (your top 3% are S, and so on down), or on the fixed scale, the same lines
 // for everyone. The curve only lifts, so a network full of companies the
 // curated list knows keeps its tiers. The model is lib/scoring.js (CURVE,
@@ -29,7 +29,7 @@ const OPTIONS = [
   },
 ];
 
-export default function TierSection() {
+export default function TierSection({ onSaved } = {}) {
   const [saved, setSaved] = useState(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
@@ -62,6 +62,7 @@ export default function TierSection() {
       if (!r.ok) { setResult({ tone: 'bad', text: d.error || 'Could not save.' }); return; }
       const e = d.effects?.tierScale;
       setResult({ tone: 'ok', text: e ? `Saved. ${plural(e.moved, 'person', 'people')} changed tier.` : 'Saved.' });
+      onSaved?.();
     } catch {
       setResult({ tone: 'bad', text: 'Could not reach the app. Reload this page to see what is saved.' });
     } finally {

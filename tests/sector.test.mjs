@@ -1,4 +1,4 @@
-// Settings → Your sector: the setting around the model's sector lean
+// Scores → Your sector: the setting around the model's sector lean
 // (lib/sector-focus.js), and the database paths that apply it (lib/rpc.js,
 // lib/settings-effects.js). The lean itself is pinned in scoring.test.mjs,
 // the one-industry-per-company rule in companies.test.mjs.
@@ -183,7 +183,7 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
   assert.equal(meta('scoring_version'), '6');
   assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
-  assert.equal(meta('scoring_tiers'), 'curve');                           // Settings → Tiers, as saved (the default)
+  assert.equal(meta('scoring_tiers'), 'curve');                           // Scores → Tiers, as saved (the default)
 });
 
 test('turning it off gives back exactly the scores from before: nothing ratchets', () => {
@@ -418,7 +418,7 @@ test('a sector from the directory leans the companies it places, and the working
   assert.equal(meta('scoring_focus'), `lean:health@${DIRECTORY_VERSION}`);
 });
 
-test('a broad industry that includes its sectors: the preview, the save and Paths → Scores agree', () => {
+test('a broad industry that includes its sectors: the preview, the save and the Scores tab agree', () => {
   fixedScale();                                            // about the lean, not the curve
   insert(dentalNetwork());
   rescoreAll();
@@ -429,7 +429,7 @@ test('a broad industry that includes its sectors: the preview, the save and Path
   assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]),
     [['Bright Smiles', 5, 6, 'health'], ['Smith Family Dental', 5, 6, 'health'], ['Smith Family Practice', 5, 6, 'health']]);
   assert.deepEqual(save(db, lean('health')).sectorFocus, { scored: 5, people: 5, moved: 1, up: preview.up, down: preview.down });
-  // Paths → Scores scores each company from the same read (app/api/company-scores).
+  // the Scores tab scores each company from the same read (app/api/company-scores).
   const rows = scoringRows(db);
   const read = readForScoring(rows);
   for (const r of rows) {
@@ -522,7 +522,7 @@ function jobTitleNetwork() {
   ];
 }
 
-test('a broad pick doesn\'t count an industry voted by job titles: the preview, the save and Paths → Scores agree', () => {
+test('a broad pick doesn\'t count an industry voted by job titles: the preview, the save and the Scores tab agree', () => {
   fixedScale();                                            // about the lean, not the curve
   insert(jobTitleNetwork());
   rescoreAll();
@@ -540,7 +540,7 @@ test('a broad pick doesn\'t count an industry voted by job titles: the preview, 
   assert.deepEqual([preview.up, preview.down], [2, 0]);
   assert.deepEqual(save(db, strong('consulting')).sectorFocus, { scored: 5, people: 5, moved: 2, up: 2, down: 0 });
   assert.deepEqual(['r', 't', 'c', 'u'].map((id) => row(id).company_prestige_score), [5, 5, 7, 7]);
-  // Paths → Scores scores each company from the same read, through the same function.
+  // the Scores tab scores each company from the same read, through the same function.
   const rows = scoringRows(db);
   const again = readForScoring(rows);
   for (const r of rows) {

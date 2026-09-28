@@ -6,7 +6,7 @@ import { industryByKey } from '../../../lib/companies';
 // Every company in your network with the score it gets and where that score
 // comes from — and the one place to set your own. Setting or clearing a score
 // rescores everyone, since a person's power depends on their company's.
-// Industries and the sector lean (Settings → Your sector) come from the same
+// Industries and the sector lean (Scores → Your sector) come from the same
 // read rescoring uses (lib/rpc.js readForScoring), so a score here is the one
 // people carry.
 

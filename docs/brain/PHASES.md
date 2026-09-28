@@ -100,7 +100,7 @@ tick an item in the same change that finishes it.
       analyzer panel), Outlink as Circles (stages of five, next best moves, levels, new doors),
       and Orbit in Degrees. Checked on a copy of real data
 - [x] 0.1.10 — Scoring audit and rebuild: one model (title × company weight + capped bonuses),
-      company scores you can set (Paths → Scores), score explanations. Checked on a copy of real data
+      company scores you can set (the Scores tab), score explanations. Checked on a copy of real data
 - [x] 0.1.11 — Security: Next.js 16.3.6 (two critical RCE advisories and a middleware bypass
       fixed; `npm audit` clean). Also the data backup before each new version and betas as
       pre-releases (DESKTOP.md D0). Checked on a copy of real data: every page, the
