@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
+
 ### Added
 - **Their circle, on every card.** Open one of your connections and the top of their card
   is a small map of their circle. Their scanned connections sit round them (D2). Anyone
@@ -48,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Universities ranked 21–100 by U.S. News:** 77 of them.
   - **64 more, researched one by one,** among them Anduril, CoreWeave, MLB, WWE, UF and UCF.
 
-  Someone there is scored from those facts, not as an unknown company, and Paths → Scores
+  Someone there is scored from those facts, not as an unknown company, and the Scores tab
   labels the score *public data*. The list is built from public sources only, never from
   anyone's scan, and grows each release. The built-in list itself is unchanged: household
   names only, 7 and up.
@@ -96,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Information Officer". "Executive Assistant to the General Manager" scored as a VP.
 
 ### Changed
-- **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
+- **Tiers are graded on your own network's curve** (new: *Scores → Tiers*, and the default).
   Your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C, so
   the first scan of any network has a top, not only a network full of companies the app
   knows. The curve only lifts: nobody drops a tier because their network is strong, and
