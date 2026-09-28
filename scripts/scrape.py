@@ -37,7 +37,7 @@ from urllib.parse import parse_qs, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
-from image_store import localize_images
+from image_store import localize_images, store_avatar
 
 # --- Config ---
 def _load_env_local():
@@ -777,6 +777,64 @@ def push_company(people, company_name):
                 print(f"  Images {i+1}-{min(i+100, len(images_to_update))}: {r.json().get('updated', 0)} updated")
 
     return inserted
+
+
+def save_waiting_photos(say_none=False):
+    """Save the photos still kept as links, once each. Returns how many were saved.
+
+    The app shows only photos saved on this computer, never LinkedIn's link, so
+    browsing never goes online. Older versions stored the link until a scan
+    replaced it, and a copy of a network made by one carries them too; those
+    people show initials until this runs, at the end of a scan or from Save
+    photos on the Scan page (--save-photos). Each link is tried once: saved, it
+    becomes the file's path; not (expired, not LinkedIn's, or the same picture
+    as someone else's), the app forgets it. A photo already saved for that
+    person is used without fetching anything.
+    """
+    try:
+        resp = requests.get(f"{APP_URL}/api/update-images", headers=app_headers(json_body=False), timeout=30)
+    except requests.RequestException as e:
+        raise SaveFailed(f"the app could not be reached ({e})")
+    if resp.status_code != 200:
+        raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
+    waiting = resp.json().get("waiting", [])
+    if not waiting:
+        if say_none:
+            print("No photos are waiting to be saved.")
+        return 0
+
+    people = len({w.get("profileUrl") for w in waiting})
+    print(f"\nSaving {people} profile photo{'s' if people != 1 else ''} kept as links to LinkedIn...")
+    saved, forget = [], []
+    for w in waiting:
+        if stop_requested():
+            break
+        purl, iurl = w.get("profileUrl"), w.get("imageUrl")
+        if not purl or not iurl:
+            continue
+        local = store_avatar(iurl, purl, overwrite=False)
+        if local:
+            saved.append({"profileUrl": purl, "imageUrl": local})
+        else:
+            forget.append({"profileUrl": purl, "imageUrl": iurl})
+
+    # What was tried is recorded even after a stop, so it isn't tried again.
+    for i in range(0, max(len(saved), len(forget)), 100):
+        r = requests.post(
+            f"{APP_URL}/api/update-images",
+            headers=app_headers(),
+            json={"images": saved[i:i+100], "forget": forget[i:i+100]},
+            timeout=60,
+        )
+        if r.status_code != 200:
+            raise SaveFailed(f"the app answered {r.status_code}: {r.text[:160]}")
+
+    done = len({x["profileUrl"] for x in saved})
+    lost = len({x["profileUrl"] for x in forget} - {x["profileUrl"] for x in saved})
+    print(f"  Saved {done} photo{'s' if done != 1 else ''} to this computer"
+          + (f"; {lost} couldn't be (an expired link, a link that isn't LinkedIn's, or the same "
+             "picture as someone else's), so those people show initials" if lost else "") + ".")
+    return done
 
 
 def scrape_full(headless=False):
@@ -3547,6 +3605,9 @@ Examples:
                         help="Carry on with one person, found by their LinkedIn profile URL (implies --deeper)")
     parser.add_argument("--only-unfinished", action="store_true",
                         help="With --auto-bridge: only people whose read was cut short (Resume all)")
+    parser.add_argument("--save-photos", action="store_true",
+                        help="Save the profile photos still kept as links to LinkedIn, then exit "
+                             "(every scan also does this at its end)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
@@ -3580,6 +3641,10 @@ Examples:
 
     if args.login:
         raise SystemExit(0 if open_login_window() else 1)
+
+    if args.save_photos:
+        save_waiting_photos(say_none=True)
+        raise SystemExit(0)
 
     if not args.server:
         resolve_active_user()
@@ -3631,6 +3696,15 @@ Examples:
                 print("\nNo connections yet — walking your whole connections list.")
                 print("This takes a couple of minutes and captures photos.\n")
                 scrape_connections(headless=args.headless, full_walk=True)
+
+        # Photos an older version kept as links, saved once the scan's own are
+        # (so a photo it just read wins). Not after a stop, which ends the run
+        # now, and a failure here doesn't undo a scan that worked.
+        if not args.server and not stop_requested():
+            try:
+                save_waiting_photos()
+            except SaveFailed as e:
+                print(f"  The photos kept as links weren't saved this time: {e}")
     except (BudgetReached, CoolingDown) as exc:
         print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)))
         raise SystemExit(0)

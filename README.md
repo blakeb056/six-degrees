@@ -277,8 +277,10 @@ It estimates **network position**, not what anyone is worth as a person.
 - A CSV import is read on your machine and never added to your network. It's held only
   in the app window's own storage, and you import it again next time.
 - The app contacts only these, and only when you act:
-  - **LinkedIn**, while you scan. Also, until a profile photo has been saved to your
-    computer, the app shows it straight from LinkedIn's image server.
+  - **LinkedIn**, while you scan. Each profile photo is saved on your computer as the
+    scan reads it, and the app shows photos only from there, so looking at your network
+    never contacts LinkedIn. (Photos an older version kept as links to LinkedIn show
+    initials until the next scan, or *Save photos* on the Scan page, saves them.)
   - Only without the Mac app (which carries the scanner's Python and add-ons inside it),
     once, when you set the scanner up: **PyPI** (the Python package library) for the
     scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**

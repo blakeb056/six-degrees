@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 5: '#00ff88', 6: '#ff5050' };
@@ -112,6 +113,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   if (focusedBridge) {
     const bridge = bridges.find(b => b.id === focusedBridge);
     if (!bridge) { setFocusedBridge(null); return null; }
+    const bridgePhoto = localPhoto(bridge.profile_image_url);
     const cluster = (bridgeMap[bridge.id] || [])
       .sort((a, b) => {
         const to = { S: 0, A: 1, B: 2, C: 3, D: 4 };
@@ -297,10 +299,10 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 
           {/* Center: bridge node */}
           <circle cx={cx} cy={cy} r={28} fill="#0a0a1a" stroke={TIER_COLORS[bridge.tier]} strokeWidth={3} filter="url(#focusGlow)" />
-          {bridge.profile_image_url ? (
+          {bridgePhoto ? (
             <>
               <clipPath id="focus-clip"><circle cx={cx} cy={cy} r={24} /></clipPath>
-              <image href={bridge.profile_image_url} x={cx - 24} y={cy - 24} width={48} height={48} clipPath="url(#focus-clip)" />
+              <image href={bridgePhoto} x={cx - 24} y={cy - 24} width={48} height={48} clipPath="url(#focus-clip)" />
             </>
           ) : (
             <text x={cx} y={cy + 5} textAnchor="middle" fill={TIER_COLORS[bridge.tier]} fontSize={16} fontWeight={800}>
@@ -515,6 +517,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
           const sCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'S').length;
           const aCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'A').length;
           const hasD3 = promoted.some(p => degree2.some(d => d.profile_url === p.profile_url && d.source_connection_id === b.id));
+          const photo = localPhoto(b.profile_image_url);
           return (
             <g key={'b-' + b.id}
               onClick={() => setFocusedBridge(b.id)}
@@ -534,7 +537,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               )}
               {/* Node */}
               <circle cx={b.x} cy={b.y} r={isHov ? 13 : 11}
-                fill={b.profile_image_url ? '#1a1a2e' : TIER_COLORS[b.tier]}
+                fill={photo ? '#1a1a2e' : TIER_COLORS[b.tier]}
                 stroke={isHov ? '#fff' : (hasD3 ? '#3498DB' : TIER_COLORS[b.tier])}
                 strokeWidth={isHov ? 2.5 : 2}>
                 {hasD3 && !isHov && (
@@ -542,14 +545,14 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
                 )}
               </circle>
               {/* Photo */}
-              {b.profile_image_url && (
+              {photo && (
                 <>
                   <clipPath id={'bc-' + b.id}><circle cx={b.x} cy={b.y} r={isHov ? 11 : 9} /></clipPath>
-                  <image href={b.profile_image_url} x={b.x - (isHov ? 11 : 9)} y={b.y - (isHov ? 11 : 9)}
+                  <image href={photo} x={b.x - (isHov ? 11 : 9)} y={b.y - (isHov ? 11 : 9)}
                     width={isHov ? 22 : 18} height={isHov ? 22 : 18} clipPath={`url(#bc-${b.id})`} />
                 </>
               )}
-              {!b.profile_image_url && (
+              {!photo && (
                 <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.tier === 'S' ? '#000' : '#fff'}
                   fontSize={11} fontWeight={700}>{b.name?.charAt(0)}</text>
               )}

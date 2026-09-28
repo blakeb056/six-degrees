@@ -46,6 +46,13 @@ in the data directory while its URL is still fresh, and the database stores that
 path. Capture happens **at push time**, not lazily, because a lazy fetch is a fetch
 against an already-expired URL.
 
+A link is never shown either, even a fresh one: loading it would contact LinkedIn while
+someone only browses, which the privacy promise rules out (Blake's call, 2026-09-28:
+"Keep photos on your Mac"). Every view goes through `lib/photos.js` `localPhoto()`, and
+`img-src 'self' data: blob:` has the browser refuse anything a view might miss. The links
+older versions stored are saved once each by the scanner, at the end of the next scan or
+from *Save photos*, never by a page while browsing.
+
 ---
 
 ## 4. `readFileSync(process.cwd() + ...)` breaks in an installed package
@@ -141,8 +148,9 @@ names and headlines from LinkedIn, i.e. attacker-controllable — straight into 
 
 Chained with a cross-site write, this was a working end-to-end exploit; it was
 reproduced before being fixed. All six sinks are escaped via `esc()`, and images are
-built with `.append('img').attr('src', src)` through `safeImageUrl()`, which allows only
-a local `/avatars/` path or an `https:` URL — never string concatenation.
+built with `.append('img').attr('src', src)` through `localPhoto()` (`lib/photos.js`),
+which allows only a saved `/avatars/` file (it used to allow any `https:` URL too) —
+never string concatenation.
 
 Treat every scraped field as hostile input. It came from a web page.
 

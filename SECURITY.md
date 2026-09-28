@@ -99,6 +99,14 @@ This app is designed to run **on your own machine, against your own network**.
 - Values stored in the database are treated as untrusted text and escaped
   before rendering. Do not reintroduce `innerHTML` (including d3's `.html()`)
   for anything data-bearing.
+- **Profile photos come from this computer only.** A page shows a photo only
+  from a file saved in the data folder (`/avatars/<name>`, `lib/photos.js`),
+  never from a link, and every page carries
+  `Content-Security-Policy: img-src 'self' data: blob:`, so the browser won't
+  load a picture from anywhere else. The scanner fetches photos only from
+  LinkedIn's image servers (`*.licdn.com`, over https): while it scans, and
+  once each for links older versions stored, which a crafted import could also
+  carry.
 - Do not bind this app to `0.0.0.0` or expose it through a tunnel.
 
 ## Your data
@@ -108,6 +116,8 @@ Everything stays local:
 - A CSV import is parsed in the browser and held for that tab only. It is never
   uploaded and never written to a database.
 - Scanned data and cached avatars are written to your machine and are gitignored.
+  The app shows photos only from those files, so looking at your network never
+  contacts LinkedIn.
 - There is no telemetry, no analytics, and no crash reporting.
 
 If you run the scanner, `chrome-profile/` in the data directory holds a live

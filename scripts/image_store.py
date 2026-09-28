@@ -17,6 +17,7 @@ Typical output: 96x96 WebP ~2-4 KB per person (vs ~15-40 KB for the original).
 import io
 import hashlib
 import pathlib
+from urllib.parse import urlsplit
 
 import requests
 from PIL import Image, ImageOps
@@ -38,6 +39,22 @@ def _slug(key):
     return hashlib.sha1(key.strip().encode("utf-8")).hexdigest()[:16]
 
 
+def is_linkedin_image(url):
+    """Only LinkedIn's own image servers (media.licdn.com and the like), over https.
+
+    Saving a photo is the only time the app fetches one, and a row can hold a
+    link that no scan read: one from a copy of a network made by an older
+    version, or from the bulk import. A link to anywhere else is never fetched,
+    and that person shows initials.
+    """
+    try:
+        parts = urlsplit(str(url or ""))
+        host = (parts.hostname or "").lower()
+    except ValueError:
+        return False
+    return parts.scheme == "https" and (host == "licdn.com" or host.endswith(".licdn.com"))
+
+
 # Pictures already claimed by somebody, keyed by the hash of the downloaded
 # bytes. Filled as a run proceeds and consulted before anything is written.
 _claimed = {}
@@ -52,8 +69,10 @@ def store_avatar(image_url, key, overwrite=True):
     """Download image_url, compress to a small square WebP, save under the data dir.
 
     Returns the local web path ("/avatars/<slug>.webp") or None if the fetch/decode
-    fails (e.g. the signed URL already expired -> 403), or if this exact picture
-    already belongs to somebody else.
+    fails (e.g. the signed URL already expired -> 403), if image_url isn't one of
+    LinkedIn's image servers (is_linkedin_image), or if this exact picture
+    already belongs to somebody else. With overwrite=False, a photo already saved
+    for this person is kept and nothing is fetched.
 
     That last case matters more than it sounds. Files are named after the PERSON —
     sha1(profile_url) — so one photograph handed to fifty people used to become fifty
@@ -69,6 +88,8 @@ def store_avatar(image_url, key, overwrite=True):
     out = AVATAR_DIR / f"{slug}.webp"
     if out.exists() and not overwrite:
         return "/avatars/%s.webp" % slug
+    if not is_linkedin_image(image_url):
+        return None
     try:
         resp = requests.get(image_url, timeout=TIMEOUT)
         if resp.status_code != 200 or not resp.content:

@@ -9,6 +9,7 @@ import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
+import { waitingPhotoCount } from '../../../lib/photos';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
@@ -227,6 +228,10 @@ async function status() {
     me = resolveProfile({ create: false });
     if (me) network = networkCounts(me.id);
   } catch {}
+  // People whose photo is still a link, which the app doesn't load: Save
+  // photos appears while there are any (lib/photos.js).
+  let photosWaiting = 0;
+  try { photosWaiting = waitingPhotoCount(getDb()); } catch {}
 
   const py = m.python;
   return {
@@ -253,6 +258,7 @@ async function status() {
       signedIn: m.signedIn,
     },
     network,
+    photosWaiting,
     ...job(),
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
@@ -339,6 +345,9 @@ const ACTIONS = {
   'resume-all':  { flag: '--auto-bridge --only-unfinished', label: 'Carrying on with every paused list', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
+  // Photos an older version kept as links to LinkedIn: saved here, once each.
+  // No browser, no search; every scan does the same at its end.
+  photos:        { flag: '--save-photos', label: 'Saving profile photos to this computer' },
 };
 
 /** Only a plain linkedin.com/in/ profile URL becomes an argument. */

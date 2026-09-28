@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
@@ -58,8 +59,8 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                       boxShadow: hoveredId === cl.bridge.id ? `0 0 20px ${TIER_COLORS[cl.bridge.tier]}60` : `0 0 10px ${TIER_COLORS[cl.bridge.tier]}20`,
                       transition: 'box-shadow 0.2s',
                     }}>
-                      {cl.bridge.profile_image_url ? (
-                        <img src={cl.bridge.profile_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {localPhoto(cl.bridge.profile_image_url) ? (
+                        <img src={localPhoto(cl.bridge.profile_image_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: TIER_COLORS[cl.bridge.tier], color: cl.bridge.tier === 'S' ? '#000' : '#fff', fontSize: 20, fontWeight: 800 }}>
@@ -95,13 +96,13 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                               <div style={{
                                 width: size, height: size, borderRadius: '50%',
                                 border: `2px solid ${TIER_COLORS[tier]}`,
-                                overflow: 'hidden', background: p.profile_image_url ? '#111' : TIER_COLORS[tier],
+                                overflow: 'hidden', background: localPhoto(p.profile_image_url) ? '#111' : TIER_COLORS[tier],
                                 transition: 'transform 0.15s, box-shadow 0.15s',
                                 transform: isHov ? 'scale(1.3)' : 'scale(1)',
                                 boxShadow: isHov ? `0 0 12px ${TIER_COLORS[tier]}60` : 'none',
                               }}>
-                                {p.profile_image_url ? (
-                                  <img src={p.profile_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                {localPhoto(p.profile_image_url) ? (
+                                  <img src={localPhoto(p.profile_image_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.background = TIER_COLORS[tier]; }} />
                                 ) : (
                                   <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
@@ -202,7 +203,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                         width: size, height: size, borderRadius: '50%',
                         border: `2px solid ${TIER_COLORS[tier]}`,
                         overflow: 'hidden',
-                        background: c.profile_image_url ? '#111' : TIER_COLORS[tier],
+                        background: localPhoto(c.profile_image_url) ? '#111' : TIER_COLORS[tier],
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'transform 0.15s, box-shadow 0.15s',
                         transform: isHovered ? 'scale(1.3)' : 'scale(1)',
@@ -210,8 +211,8 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                         zIndex: isHovered ? 10 : 1,
                         position: 'relative',
                       }}>
-                        {c.profile_image_url ? (
-                          <img src={c.profile_image_url} alt="" style={{
+                        {localPhoto(c.profile_image_url) ? (
+                          <img src={localPhoto(c.profile_image_url)} alt="" style={{
                             width: '100%', height: '100%', objectFit: 'cover',
                           }} onError={e => {
                             e.target.style.display = 'none';

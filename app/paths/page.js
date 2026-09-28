@@ -12,6 +12,7 @@ import { useUser } from '../components/UserProvider';
 import useScanner from '../components/useScanner';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
+import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TABS = [['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies']];
@@ -466,8 +467,8 @@ function PathPersonRow({ p, level, companyPeople, d1Data, selectedCompany }) {
         }}>{p.connected ? '✓' : '🔒'}</div>
 
         {/* Photo */}
-        {(p.profile_image_url || p.imageUrl) ? (
-          <img src={p.profile_image_url || p.imageUrl} alt="" style={{
+        {localPhoto(p.profile_image_url || p.imageUrl) ? (
+          <img src={localPhoto(p.profile_image_url || p.imageUrl)} alt="" style={{
             width: 26, height: 26, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
           }} onError={e => e.target.style.display = 'none'} />
         ) : (

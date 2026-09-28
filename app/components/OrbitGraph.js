@@ -32,6 +32,7 @@ import {
   zoomTransform,
 } from 'd3';
 import { TIER_COLORS, TIER_ORDER, TIER_RING_RADIUS, initialsFor } from '../../lib/tiers';
+import { localPhoto } from '../../lib/photos';
 
 const GOLDEN_ANGLE = 2.399963;
 const LABEL_ZOOM_THRESHOLD = 1.1;
@@ -374,7 +375,8 @@ const OrbitGraph = forwardRef(function OrbitGraph(
         .attr('font-size', d.r * 0.8).attr('font-weight', 700)
         .attr('fill', '#0b0b16').style('pointer-events', 'none');
 
-      const imageUrl = isUser ? userImage : (conn?.profile_image_url ?? null);
+      // Only a photo saved on this computer (lib/photos.js).
+      const imageUrl = localPhoto(isUser ? userImage : conn?.profile_image_url);
       if (imageUrl) {
         const clipId = `og-clip-${safeId(d.id)}`;
         defs.append('clipPath').attr('id', clipId).append('circle').attr('r', d.r);

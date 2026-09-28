@@ -23,9 +23,9 @@ const eslintConfig = defineConfig([
       // surface in review.
       "react-hooks/set-state-in-effect": "warn",
 
-      // Avatars are user-supplied remote URLs (or local files captured by the
-      // scraper) with graceful initial-letter fallbacks. next/image would add a
-      // loader and per-request cost for no benefit here.
+      // Avatars are small local files the scanner saved (lib/photos.js), with
+      // graceful initial-letter fallbacks. next/image would add a loader and
+      // per-request cost for no benefit here.
       "@next/next/no-img-element": "off",
     },
   },

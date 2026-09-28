@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { dataDir } from '../../../lib/db-client';
-import { AVATAR_FILE } from '../../../lib/data-folder';
+import { AVATAR_FILE } from '../../../lib/photos';
 
 // Avatars are captured by the scraper and live in the user's data directory,
 // never inside the app package — an installed copy must not write into its own
 // files, and real faces must never end up in the repo. Rows store the path
 // `/avatars/<name>.webp`, so this route resolves that to ~/.six-degrees/avatars.
+// It is the only place a page gets a photo from (lib/photos.js): reading one
+// never goes online.
 
 export async function GET(_request, { params }) {
   const { file } = await params;
@@ -26,6 +28,9 @@ export async function GET(_request, { params }) {
         'Content-Type': type,
         // Content-addressed filenames, so they can be cached indefinitely.
         'Cache-Control': 'public, max-age=31536000, immutable',
+        // A photo that came in with an import is only as good as its name: never
+        // let the browser read one as anything but the image type it claims.
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch {

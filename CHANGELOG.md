@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Photos stay on your Mac.** The app shows a profile photo only from the copy saved on
+  your computer, so looking at your network never contacts LinkedIn. It used to load a
+  photo from LinkedIn until a scan had saved it, and a rescan could put LinkedIn's link
+  back in place of a saved photo. Every page now also tells the browser to load pictures
+  from the app alone, and the scanner fetches photos from LinkedIn's image servers only.
+- **Photos an older version kept as links are saved once.** Until then those people show
+  initials. The next scan saves them at its end, or *Save photos* on the Scan page does it
+  now, without opening a browser. A link more than a few weeks old has expired: that
+  person's photo comes back when they're next scanned.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added

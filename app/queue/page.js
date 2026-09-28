@@ -11,6 +11,7 @@ import Link from 'next/link';
 import useRequests from '../components/useRequests';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { keyFor } from '../../lib/separation';
+import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -355,8 +356,8 @@ function QueueInner() {
                       border: '1px solid rgba(255,107,53,0.1)',
                     }}>
                       {/* Photo */}
-                      {p.profile_image_url ? (
-                        <img src={p.profile_image_url} alt="" style={{
+                      {localPhoto(p.profile_image_url) ? (
+                        <img src={localPhoto(p.profile_image_url)} alt="" style={{
                           width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                           border: `2px solid ${TIER_COLORS[p.tier] || '#555'}`,
                         }} onError={e => { e.target.style.display = 'none'; }} />
@@ -436,8 +437,8 @@ function QueueInner() {
                     border: `1px solid ${TIER_COLORS[bridge.tier] || '#555'}20`,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {bridge.profile_image_url ? (
-                        <img src={bridge.profile_image_url} alt="" style={{
+                      {localPhoto(bridge.profile_image_url) ? (
+                        <img src={localPhoto(bridge.profile_image_url)} alt="" style={{
                           width: 36, height: 36, borderRadius: '50%', objectFit: 'cover',
                           border: `2px solid ${TIER_COLORS[bridge.tier]}`,
                         }} onError={e => { e.target.style.display = 'none'; }} />
@@ -563,8 +564,8 @@ function QueueInner() {
                         <input type="checkbox" checked={selected.has(r.id)}
                           onChange={() => toggleSelect(r.id)} onClick={e => e.stopPropagation()}
                           style={{ cursor: 'pointer', flexShrink: 0 }} />
-                        {r.profile_image_url ? (
-                          <img src={r.profile_image_url} alt="" style={{
+                        {localPhoto(r.profile_image_url) ? (
+                          <img src={localPhoto(r.profile_image_url)} alt="" style={{
                             width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                             border: `1.5px solid ${TIER_COLORS[r.tier] || '#555'}`,
                           }} onError={e => { e.target.style.display = 'none'; }} />
@@ -610,8 +611,8 @@ function QueueInner() {
                     style={{ cursor: 'pointer', flexShrink: 0 }} />
 
                   {/* Photo */}
-                  {r.profile_image_url ? (
-                    <img src={r.profile_image_url} alt="" style={{
+                  {localPhoto(r.profile_image_url) ? (
+                    <img src={localPhoto(r.profile_image_url)} alt="" style={{
                       width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                       border: `1.5px solid ${TIER_COLORS[r.tier] || '#555'}`,
                     }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -619,7 +620,7 @@ function QueueInner() {
                   <div style={{
                     width: 32, height: 32, borderRadius: '50%', flexShrink: 0, fontSize: 12, fontWeight: 700,
                     background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : '#fff',
-                    display: r.profile_image_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                    display: localPhoto(r.profile_image_url) ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>{r.name?.charAt(0)}</div>
 
                   {/* Info */}
