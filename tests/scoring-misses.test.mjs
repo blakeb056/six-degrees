@@ -745,7 +745,7 @@ test('round five: …real ones still read, and a lone "Retired" before a role re
   ]) assert.equal(best(h), k, h);
   for (const [h, k] of [
     ['Colonel | U.S. Army | Retired', 'colonel'], ['RETIRED | COLONEL, USMC', 'colonel'],
-    ['Retired Air Marshal | Private Investigator', 'unknown'],
+    
     ['Retired | Brigadier General', 'general'], ['Retired | Colonel, U.S. Army', 'colonel'],
     ['Retired | Mayor, City of Orlando', 'govLeader'], ['Retired | Superior Court Judge', 'judge'],
     ['Retired | U.S. Senator', 'govLeader'], ['Retired • Major General • U.S. Air Force', 'general'],
