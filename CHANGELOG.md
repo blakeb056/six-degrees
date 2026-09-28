@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-28
+
+### Changed
+- **0.4.0-beta.1, promoted: this is now the Mac app and npm package everyone gets.** It adds:
+  - **Their circle, on every card,** with rarity beside the tier and LinkedIn's own mutual count.
+  - **One scan at a time,** and *Resume* beside *Rescan*.
+  - **Tiers on your own network's curve,** with unknown companies at a neutral 5.
+  - **631 public organizations** the built-in list leaves off, and **scoring 6.**
+  - **Scores, a tab of its own.**
+
+  The details are under 0.4.0-beta.1 below.
+- **The download page** says what's new in 0.4.0.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added
