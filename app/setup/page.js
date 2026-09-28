@@ -183,9 +183,13 @@ function SetupInner() {
           This reads your own LinkedIn connections in a real Chrome window on this
           machine and saves them here. Nothing leaves your computer, and you will never
           be asked for your password — you sign in yourself, once.
-          {!mapped && ' Three steps and your galaxy appears; each one ticks itself off.'}
+          {!mapped && (askField
+            ? ' One optional question, then three steps and your galaxy appears.'
+            : ' Three steps and your galaxy appears; each one ticks itself off.')}
         </p>
 
+        {/* The first look at the scanner can take a while (it looks for Python): say so, never a blank page. */}
+        {askField === null && <p style={{ color: '#778', fontSize: 13 }}>Checking your setup…</p>}
         {askField && <FieldStep onDone={answered} />}
         {field && <FieldAnswer sectors={field.sectors} />}
 

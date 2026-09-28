@@ -23,7 +23,7 @@
 | `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
 | `app/components/settings/DataSection.js` | Settings → Your data: the data folder (path, *Copy*, *Show in Finder*), what it takes up, the backups, and moving the network to another computer (save a copy, import one, restart to finish). Only asks the server, on a click; the work is in `lib/data-*.js`. |
 | `lib/settings.js` | What the user chose, as one JSON object in `app_meta` 'settings', so it travels with the data. Each setting declares a default and a `parse()`; undeclared keys are refused. A save rewrites only the keys it changes, so an older copy never erases a newer one's settings. |
-| `lib/settings-client.js` | The browser's one way to save settings (`saveSettings`, `POST /api/settings`): Scores → Your sector and the Scan page's field question. |
+| `lib/settings-client.js` | The browser's one way to save settings (`saveSettings`, `POST /api/settings`): Scores → Your sector and Tiers, and the Scan page's field question. |
 | `lib/settings-effects.js` | What saving a setting sets in motion (a new sector focus rescores everyone and counts who moved, as the preview does). Each changed setting's work runs even if another's fails. Kept apart from the store because rescoring reads the settings: the store importing it would go in a circle. |
 | `app/api/*` | 27 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
