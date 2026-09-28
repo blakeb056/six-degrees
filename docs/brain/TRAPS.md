@@ -565,8 +565,10 @@ It needs visible scrollbars, so a trackpad-only laptop never shows it. The rules
 
 - **Anything a component appends to `<body>` is `position: fixed`**, placed with
   `clientX`/`clientY`. A fixed element cannot change the page's size.
-- **A resize that rebuilds the scene is debounced** (`ForceGraph.js`, 150 ms), so no
-  flicker can drive a rebuild loop again.
+- **A resize never rebuilds the Galaxy.** It re-fits the view at the same zoom
+  (`ForceGraph.js`, `lib/galaxy.js`), so a flicker in size can only nudge the view, never
+  start a rebuild loop. It used to rebuild after a 150 ms wait. Anything that does
+  rebuild on a resize should wait for the size to settle first.
 - **What a scene-rebuilding component receives must be stable.** `app/page.js` memoises
   the filtered lists and the click handler; an inline `[]` or arrow function is a new
   value every render, and each one was a full rebuild. `ForceGraph` reads `onSelect`

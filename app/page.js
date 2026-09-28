@@ -6,7 +6,7 @@ import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
-import { resolveView } from './components/views';
+import { VIEWS, resolveView } from './components/views';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import OnboardingGate from './components/OnboardingGate';
@@ -144,7 +144,7 @@ function HomeInner() {
     );
   }
 
-  // Resolved once, because two places care: the renderer below, and the Galaxy
+  // Resolved once, because two places care: the renderer below, and the Orbit
   // toggle, which hides over Separation.
   const view = resolveView(visualMode, mode);
 
@@ -441,10 +441,10 @@ function HomeInner() {
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
         />
 
-        {/* Galaxy experimental toggle — bottom right, Degrees mode only.
-            Hidden over Separation: Galaxy isn't a Degrees view, so from there
-            the toggle could only fall back to Separation itself, and on a
-            phone it sat on top of the score column. */}
+        {/* Orbit, one tap from Bridge Chains — bottom right, Degrees mode only.
+            It used to say "Galaxy" and show Orbit: the Galaxy is a Network
+            Circle view, so asking for it here fell back to Orbit. Hidden over
+            Separation, where on a phone it sat on top of the score column. */}
         {isDegreesMode && view.key !== 'separation' && (
           <div style={{
             position: 'absolute', bottom: 20, right: 20, zIndex: 20,
@@ -452,19 +452,19 @@ function HomeInner() {
             background: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: '6px 14px',
             backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)',
           }}>
-            <span style={{ fontSize: 10, color: '#666' }}>🧪 Galaxy</span>
+            <span style={{ fontSize: 10, color: '#666' }}>{VIEWS.orbit.icon} {VIEWS.orbit.label}</span>
             <div
-              onClick={() => setVisualMode(visualMode === 'galaxy' ? 'chain' : 'galaxy')}
+              onClick={() => setVisualMode(view.key === 'orbit' ? 'chain' : 'orbit')}
               style={{
                 width: 32, height: 18, borderRadius: 9, cursor: 'pointer',
-                background: visualMode === 'galaxy' ? '#FF6B35' : 'rgba(255,255,255,0.15)',
+                background: view.key === 'orbit' ? '#FF6B35' : 'rgba(255,255,255,0.15)',
                 position: 'relative', transition: 'background 0.2s',
               }}
             >
               <div style={{
                 width: 14, height: 14, borderRadius: '50%', background: '#fff',
                 position: 'absolute', top: 2,
-                left: visualMode === 'galaxy' ? 16 : 2,
+                left: view.key === 'orbit' ? 16 : 2,
                 transition: 'left 0.2s',
               }} />
             </div>

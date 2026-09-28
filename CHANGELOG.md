@@ -14,6 +14,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   look through the list. It's asked once, and never if you already have a network or picked
   a sector. Change it anytime on the Scores tab.
 
+### Fixed
+- **Opening a panel no longer rebuilds the Galaxy.** Opening or closing the side panel or
+  the Filter panel used to draw the Galaxy again from scratch: the layout started over,
+  the selection ring vanished, and a big network stalled the page. Now the view slides
+  over at the same zoom, so what was in the middle stays in the middle.
+- **The selection ring stays on the person you picked.** It is tied to their dot, and it
+  comes back after a tier filter that still shows them. It used to follow the first dot
+  it found near its old spot, which could be someone else, even You. *Back to list*
+  clears it.
+- **The selection ring pulses gently, as it was always meant to.** Its animation had only
+  ever been written in code that never ran. With Reduce Motion on, it holds still.
+- **Hovering a dot eases it up to 1.5 times its size,** instead of jumping. With Reduce
+  Motion on, it still changes at once.
+- **The Galaxy draws faster on a big network.** Colouring its lines searched every person
+  for every line: about 1.4 s at 30,000 people, on every draw. It now takes under a
+  millisecond.
+- **The main screen no longer stalls when nothing is selected on a big network.** The
+  side panel's Power Rankings counted every tier again for each person in the list, even
+  with the panel closed. At 30,000 people that took about 20 s each time the screen
+  redrew, opening the Filter panel included.
+- **On a laptop, the Galaxy keeps its usual layout with a panel open.** Its fixed phone
+  layout used to switch on whenever the graph was under 768 pixels wide, which a tier
+  filter picked with a panel open could do. It now follows the window, as the page does.
+
+### Changed
+- **Degrees' corner toggle says Orbit, which is what it shows.** It said "Galaxy", but
+  the Galaxy is a Network Circle view, so Degrees fell back to Orbit. It switches
+  between Orbit and Bridge Chains, and it's on whenever Orbit is showing.
+
+### Removed
+- **About 630 lines of Galaxy code that never ran:** a Degrees drawing from before Orbit
+  and Bridge Chains. Nothing could open it. The Galaxy draws Network Circle only.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added
