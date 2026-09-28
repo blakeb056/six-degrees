@@ -1,5 +1,5 @@
 import { db as supabase } from '../../../lib/db';
-import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications } from '../../../lib/ingest';
+import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf } from '../../../lib/ingest';
 import { promoteToFirstDegree } from '../../../lib/promote';
 
 function parseHeadline(h) {
@@ -31,6 +31,8 @@ export async function POST(request) {
         profile_url: c.profileUrl?.trim(),
         profile_image_url: c.imageUrl || null,
         connected_date: toIsoDate(c.connectedDate),
+        // LinkedIn's own count, read off a circle's result card; nothing else sends one.
+        mutual_count: degree === 2 ? mutualCountOf(c.mutualCount) : null,
       };
       if (degree === 2 && bridgeId) {
         rec.source_connection_id = bridgeId;
@@ -162,6 +164,20 @@ export async function POST(request) {
     if (insertError) {
       console.error('Supabase insert error:', insertError);
       return Response.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // How many mutual connections you share with someone is one fact about
+    // the two of you, whichever bridge's circle turned them up. Every copy of
+    // them gets the newest count read (a re-scan brings it up to date), and a
+    // scan that didn't read one leaves the count alone.
+    if (degree === 2) {
+      for (const rec of records) {
+        if (rec.mutual_count == null) continue;
+        let q = supabase.from('linkedin_connections').update({ mutual_count: rec.mutual_count })
+          .eq('profile_url', rec.profile_url).eq('degree', 2);
+        if (userId) q = q.eq('user_id', userId);
+        await q;
+      }
     }
 
     // Image updates handled separately via /api/update-images (avoids timeout)

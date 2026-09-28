@@ -364,16 +364,16 @@ test('a file changed since it was exported (rows or files added or taken out) is
 
 test('an export from before a table or a column was added still imports, and what it lacks starts empty', () => {
   // As an older version would have written it: no user_profile table, no
-  // score_why column, and counts that never name the missing table.
-  const file = tampered(goodExport('o', 2), 'DROP TABLE user_profile; ALTER TABLE linkedin_connections DROP COLUMN score_why;', recount);
+  // score_why or mutual_count column, and counts that never name the missing table.
+  const file = tampered(goodExport('o', 2), 'DROP TABLE user_profile; ALTER TABLE linkedin_connections DROP COLUMN score_why; ALTER TABLE linkedin_connections DROP COLUMN mutual_count;', recount);
   assert.equal(validateImport(file, checks).people, 2);
   const here = folder('older');
   stageImport(uploadInto(here, file), { dir: here, ...checks });
   applyPendingImport({ dir: here, dbFile: dbIn(here) });
   const db = new DatabaseSync(dbIn(here), { readOnly: true });
   assert.equal(db.prepare('SELECT count(*) AS n FROM user_profile').get().n, 0);
-  assert.deepEqual(db.prepare('SELECT id, score_why FROM linkedin_connections ORDER BY id').all().map((r) => ({ ...r })),
-    [{ id: 'o-0', score_why: null }, { id: 'o-1', score_why: null }]);
+  assert.deepEqual(db.prepare('SELECT id, score_why, mutual_count FROM linkedin_connections ORDER BY id').all().map((r) => ({ ...r })),
+    [{ id: 'o-0', score_why: null, mutual_count: null }, { id: 'o-1', score_why: null, mutual_count: null }]);
   db.close();
 
   // But never without the network itself.

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
+import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
@@ -10,6 +10,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
 import CompanyScores from '../components/CompanyScores';
 import { useUser } from '../components/UserProvider';
+import useScanner from '../components/useScanner';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 
@@ -92,6 +93,9 @@ function PathsInner() {
 
   const [scanning, setScanning] = useState(false);
   const [scanLog, setScanLog] = useState([]);
+  // Anything else the scanner runs (a profile card's scan, say) greys this out too.
+  const scan = useScanner();
+  const busy = !scanning && scan.running ? busyReason(scan) : null;
 
   function enrichPeople(people) {
     const d1Urls = new Set(d1Data.map(c => c.profile_url));
@@ -255,13 +259,14 @@ function PathsInner() {
               <span style={{ fontSize: 11, color: '#888' }}>
                 {connectedCount}/{companyPeople.length} connected
               </span>
-              <button onClick={scanFullCompany} disabled={scanning}
+              <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
+                title={busy ? `${busy}. One scan at a time.` : undefined}
                 style={{
-                  marginLeft: 'auto', padding: '5px 12px', borderRadius: 6, border: 'none', cursor: scanning ? 'not-allowed' : 'pointer',
-                  background: scanning ? '#333' : 'rgba(0,255,136,0.15)', color: scanning ? '#555' : '#00ff88',
+                  marginLeft: 'auto', padding: '5px 12px', borderRadius: 6, border: 'none', cursor: scanning || busy ? 'not-allowed' : 'pointer',
+                  background: scanning || busy ? '#333' : 'rgba(0,255,136,0.15)', color: scanning || busy ? '#555' : '#00ff88',
                   fontSize: 11, fontWeight: 600,
                 }}>
-                {scanning ? 'Scanning...' : '+ Scan Full Company'}
+                {scanning ? 'Scanning...' : busy ? 'Scanner busy' : '+ Scan Full Company'}
               </button>
               <span
                 title="Not yet tested against live LinkedIn. Results may be incomplete."

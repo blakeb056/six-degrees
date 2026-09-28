@@ -13,7 +13,6 @@
 import ForceGraph from './ForceGraph';
 import OrbitGraph from './OrbitGraph';
 import ChainView from './ChainView';
-import BridgeRing from './BridgeRing';
 import GridView from './GridView';
 import ListView from './ListView';
 import RingsView from './RingsView';
@@ -31,7 +30,6 @@ export const VIEWS = {
   orbit:    { component: OrbitGraph, modes: ['network', 'degrees'], label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots; in Degrees, every mapped circle fanned out', allDegree2: true },
   separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
-  revolver: { component: BridgeRing, modes: ['degrees'],            label: 'Revolver',      icon: '🎯', desc: 'Rotary dial · spin to switch' },
   rings:    { component: RingsView,  modes: ['network', 'degrees'], label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
   list:     { component: ListView,   modes: ['network', 'degrees'], label: 'List',          icon: '☰', desc: 'Ranked power list' },
   grid:     { component: GridView,   modes: ['network', 'degrees'], label: 'Grid',          icon: '▦', desc: 'Cards' },
@@ -42,7 +40,7 @@ export const VIEWS = {
  * it is also where resolveView lands when the chosen view isn't a Degrees one
  * (Galaxy, say, carried over from Network Circle).
  */
-const ORDER = ['galaxy', 'orbit', 'separation', 'chain', 'revolver', 'rings', 'list'];
+const ORDER = ['galaxy', 'orbit', 'separation', 'chain', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

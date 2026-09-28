@@ -1751,6 +1751,68 @@ BRIDGE_RESULTS_JS = r"""
             }
           });
 
+          // How many mutual connections each result shares with you: the line
+          // under its card, "Maya Chen and 23 other mutual connections". Read
+          // from the page's text in order, each count going to the result named
+          // above it. A name two results share ("LinkedIn Member") takes none:
+          // no count is better than someone else's. English only; any other
+          // wording reads as no count, never a wrong one.
+          // mutualCount: begin
+          const mutualCount = (text) => {
+            const l = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!/\bmutual connections?$/i.test(l) || l.length > 300) return null;
+            const num = (s) => Number(String(s).replace(/,/g, ''));
+            const names = (s) => s.split(/\s*,\s*|\s+and\s+/).filter(Boolean).length;
+            let m = l.match(/^([\d,]+) mutual connections?$/i);
+            if (m) return num(m[1]);
+            m = l.match(/^(.*?)\s*\band ([\d,]+) others? mutual connections?$/i);
+            if (m) return Math.max(1, names(m[1])) + num(m[2]);
+            if (/\bis a mutual connection$/i.test(l)) return 1;
+            m = l.match(/^(.+?)\s+are mutual connections$/i);
+            if (m) return names(m[1]);
+            return null;
+          };
+          // mutualCount: end
+          const byName = new Map();
+          for (const r of byHref.values()) {
+            if (r.name) byName.set(r.name, byName.has(r.name) ? null : r);
+          }
+          const nameAt = (l) => {
+            if (byName.has(l)) return byName.get(l);
+            for (const [name, r] of byName) {
+              if (l.startsWith(name) && /^\s*[\u2022\u00b7|,(]/.test(l.slice(name.length))) return r;
+            }
+            return undefined;
+          };
+          // The rest of a mutual line when the names are drawn above it, each on
+          // a line of its own ("Maya Chen" / "and 23 other mutual connections").
+          const tailOf = (l) => /^(and [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
+          let current = null;
+          const give = (n) => {
+            if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
+          };
+          const lines = (root.innerText || '').split('\n').map(clean).filter(Boolean);
+          for (let i = 0; i < lines.length; i++) {
+            const l = lines[i];
+            // Those names are links to your own connections, so they're on the
+            // page as people too, but they are the line, not a new result: read
+            // them with the rest of it, and the count stays with the card it's on.
+            let j = i;
+            while (j < lines.length && j - i < 3 && !tailOf(lines[j]) && nameAt(lines[j]) !== undefined) j++;
+            if (j > i && j < lines.length && tailOf(lines[j])) {
+              give(mutualCount(`${lines.slice(i, j).join(', ')} ${lines[j]}`));
+              i = j;
+              continue;
+            }
+            const n = mutualCount(l);
+            if (n != null) {
+              give(n);
+              continue;
+            }
+            const hit = nameAt(l);
+            if (hit !== undefined) current = hit;
+          }
+
           const results = [...byHref.values()]
             .filter((r) => r.name && r.name.length >= 2)
             .map(({ named, ...r }) => r);

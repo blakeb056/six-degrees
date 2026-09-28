@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { runScrape, scraperStatus, notReadyMessage } from '../../lib/scraper-client';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason } from '../../lib/scraper-client';
+import useScanner from './useScanner';
+import useRequests from './useRequests';
+import TheirCircle from './TheirCircle';
+import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
@@ -26,9 +30,13 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   }, [degree2]);
   // Who reaches whom, from the FULL lists this panel is given — so every route
   // shows even while a tier chip is narrowing the view, and a person picked in
-  // Chains, Revolver or Galaxy gets every route too.
+  // Chains or Galaxy gets every route too.
   const routeIdx = useMemo(() => routeIndex(degree2), [degree2]);
   const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
+  // Who you've asked, shared with every view: a request sent here shows in
+  // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
+  const requests = useRequests();
+  const isRequested = useCallback((row) => hasRequest(row, requests), [requests]);
 
   if (selected) {
     const isBridge = selected.degree === 1 && bridgeMap[selected.id];
@@ -113,6 +121,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             )}
           </div>
         </div>
+
+        {/* Their circle, out to six degrees: who they know, who you added from
+            it, and who those people know (TheirCircle.js). Your connections only:
+            a 2nd-degree person's circle isn't yours to scan until they accept. */}
+        {selected.degree === 1 && (
+          <TheirCircle
+            person={selected} connections={connections} degree2={degree2}
+            tierColors={tierColors} onSelect={onSelect} isRequested={isRequested}
+          />
+        )}
 
         {selected.is_catalyst && (
           <div style={{
@@ -294,61 +312,65 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           </button>
         )}
 
-        {/* Connect to Unlock — for ALL degree-2 connections */}
-        {(selected.degree === 2 || selected.source_connection_id) && selected.degree !== 1 && selected.unlock_status !== 'unlocked' && (
-          <div style={{
-            background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
-            borderRadius: 10, padding: 16, marginTop: 16, textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
-              {selected.unlock_status === 'pending' ? 'CONNECTION PENDING' : 'LOCKED PATH'}
-            </div>
-            <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
-              {selected.unlock_status === 'pending'
-                ? `Waiting for ${selected.name} to accept. Run a scan to check.`
-                : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
-              }
-            </div>
+        {/* Connect to Unlock — for ALL degree-2 connections. A request sent here
+            is the person's, everywhere at once (lib/requests-client.js). */}
+        {(selected.degree === 2 || selected.source_connection_id) && selected.degree !== 1 && selected.unlock_status !== 'unlocked' && (() => {
+          const asked = isRequested(selected);
+          return (
             <div style={{
-              width: '100%', height: 60, background: 'rgba(255,255,255,0.03)',
-              borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, color: '#444', marginBottom: 12,
+              background: 'rgba(255,215,0,0.06)', border: `1px ${asked ? 'dashed' : 'solid'} rgba(255,215,0,${asked ? 0.45 : 0.25})`,
+              borderRadius: 10, padding: 16, marginTop: 16, textAlign: 'center',
             }}>
-              {selected.unlock_status === 'pending' ? '[ Cluster Pending... ]' : '[ Hidden Network ]'}
+              <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
+                {asked ? 'REQUEST SENT' : 'LOCKED PATH'}
+              </div>
+              <div style={{ fontSize: 13, color: '#ccc', marginBottom: 12 }}>
+                {asked
+                  ? `Waiting for ${selected.name} to accept. The next scan of your own connections notices when they do.`
+                  : `Connect with ${selected.name} to unlock their network and extend your 6 degrees.`
+                }
+              </div>
+              <div style={{
+                width: '100%', height: 60, background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, color: '#444', marginBottom: 12,
+              }}>
+                {asked ? '[ Cluster Pending... ]' : '[ Hidden Network ]'}
+              </div>
+              {asked ? (
+                <button
+                  onClick={() => { undoRequest(selected).catch(() => {}); }}
+                  style={{
+                    background: 'none', border: 'none', color: '#888', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Didn&apos;t send it? Undo
+                </button>
+              ) : (
+                <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'block', padding: '10px 16px',
+                    background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+                    color: '#000', borderRadius: 8, textDecoration: 'none',
+                    fontWeight: 700, fontSize: 13,
+                  }}
+                  onClick={() => {
+                    // Opens their profile to connect, and marks the request
+                    // sent, through the bridge whose circle you found them in.
+                    markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
+                  }}
+                >
+                  Connect to Unlock Path
+                </a>
+              )}
             </div>
-            {selected.unlock_status !== 'pending' && (
-              <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: 'block', padding: '10px 16px',
-                  background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-                  color: '#000', borderRadius: 8, textDecoration: 'none',
-                  fontWeight: 700, fontSize: 13,
-                }}
-                onClick={() => {
-                  // Mark as pending in unlock system
-                  fetch('/api/unlock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ connectionId: selected.id }),
-                  }).catch(() => {});
-                  // Sync to outreach/pending system (Outlink)
-                  fetch('/api/outreach', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'mark-sent', connectionId: selected.id, profileUrl: selected.profile_url, userId }),
-                  }).catch(() => {});
-                }}
-              >
-                Connect to Unlock Path
-              </a>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {/* Create Cluster — for D1 connections OR accepted D2 (promoted, ready to bridge for D3) */}
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
-          <CreateClusterCard selected={selected} degree2={degree2} />
+          <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} />
         )}
 
         {selected.profile_url && (
@@ -916,146 +938,165 @@ function PathBox({ routes, selected, tierColors, onSelect }) {
   );
 }
 
+// Scan one person's circle, or carry on with it.
+//
+// LinkedIn lists someone else's connections in its own order, with no dates,
+// so anyone new can turn up on any page: Rescan reads the whole list again from
+// page 1. Resume carries on from the page the last read stopped at, for a list
+// that was only partly read. Both show when there is something to resume.
+//
+// Whether a scan is running comes from the scanner (useScanner), not from this
+// card: close the card mid-scan and open it again and the scan is still here,
+// and every other card greys its buttons out until it ends.
 function CreateClusterCard({ selected, degree2 }) {
-  const { userId } = useUser();
-  const [status, setStatus] = useState('idle'); // idle, checking, scraping, done, error, offline
-  const [log, setLog] = useState([]);
-  const hasCluster = degree2?.some(d => d.source_connection_id === selected.id);
+  const scan = useScanner();
+  const [checking, setChecking] = useState(false);
+  const [problem, setProblem] = useState(null);      // why a scan didn't start: { text, offline }
+  const [resume, setResume] = useState(undefined);   // where Resume carries on; null: nothing to resume
   const clusterCount = degree2?.filter(d => d.source_connection_id === selected.id).length || 0;
+  const hasCluster = clusterCount > 0;
 
-  if (hasCluster && status === 'idle') {
-    return (
-      <div style={{
-        background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)',
-        borderRadius: 10, padding: 16, marginTop: 16, textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 10, color: '#00ff88', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>
-          CLUSTER ACTIVE
-        </div>
-        <div style={{ fontSize: 13, color: '#aaa' }}>
-          {clusterCount} connections mapped in 6 Degrees
-        </div>
-        <button
-          onClick={startScrape}
-          style={{
-            marginTop: 10, padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: 'rgba(0,255,136,0.12)', color: '#00ff88', fontWeight: 600, fontSize: 11,
-          }}
-        >
-          Rescan Cluster
-        </button>
-      </div>
-    );
-  }
+  const mine = scan.running && scansCircleOf(scan, selected);
+  const busy = scan.running && !mine ? busyReason(scan) : null;
+  const last = scan.finished.find((j) => scansCircleOf(j, selected));
 
-  async function startScrape() {
-    setStatus('checking');
-    setLog(['Checking the scanner...']);
+  // Every read moves where Resume would carry on, so ask again whenever one ends.
+  const lastEnded = scan.finished[0]?.startedAt ?? null;
+  useEffect(() => {
+    let live = true;
+    resumePoint(selected.id).then((r) => { if (live) setResume(r); }, () => { if (live) setResume(null); });
+    return () => { live = false; };
+  }, [selected.id, lastEnded]);
+
+  async function start(action) {
+    setProblem(null);
+    setChecking(true);
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    setChecking(false);
     if (blocked) {
-      setStatus('offline');
-      setLog([blocked]);
+      setProblem({ text: blocked, offline: true });
       return;
     }
-
-    setStatus('scraping');
-    setLog(['Mapping the circle behind ' + selected.name + '...']);
-
     try {
-      const final = await runScrape('bridge', { name: selected.name, onLog: setLog });
-      if (final.exitCode === 0) {
-        setStatus('done');
-        setLog(prev => [...prev, 'Done. Refresh to see the cluster.']);
-      } else {
-        setStatus('error');
-      }
-    } catch {
-      setStatus('error');
-      setLog(['Failed to start the scan']);
+      await beginScrape(action, action === 'resume' ? { id: selected.id } : { name: selected.name, id: selected.id });
+    } catch (e) {
+      setProblem({ text: e.message || 'Could not start the scan.' });
     }
   }
+
+  const read = hasCluster || Boolean(resume);
+  const accent = hasCluster ? '#00ff88' : '#9B59B6';
+  const off = Boolean(busy) || checking;
+  const button = (primary) => ({
+    flex: 1, padding: '11px 8px', borderRadius: 8, fontWeight: 700, fontSize: primary ? 13 : 12,
+    cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
+    ...(primary
+      ? { border: 'none', background: 'linear-gradient(135deg, #9B59B6, #3498DB)', color: '#fff' }
+      : { border: `1px solid ${accent}55`, background: `${accent}14`, color: accent }),
+  });
 
   return (
     <div style={{
-      background: 'rgba(155,89,182,0.08)', border: '1px solid rgba(155,89,182,0.3)',
+      background: hasCluster ? 'rgba(0,255,136,0.06)' : 'rgba(155,89,182,0.08)',
+      border: `1px solid ${hasCluster ? 'rgba(0,255,136,0.2)' : 'rgba(155,89,182,0.3)'}`,
       borderRadius: 10, padding: 16, marginTop: 16,
     }}>
-      <div style={{ fontSize: 10, color: '#9B59B6', fontWeight: 700, letterSpacing: 1, marginBottom: 6, textAlign: 'center' }}>
-        CREATE CLUSTER
+      <div style={{ fontSize: 10, color: accent, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: 'center' }}>
+        {hasCluster ? 'CLUSTER ACTIVE' : 'CREATE CLUSTER'}
       </div>
-      <div style={{ fontSize: 12, color: '#ccc', marginBottom: 12, textAlign: 'center' }}>
-        Scan {selected.name}&apos;s connections to map their network
+      <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12, textAlign: 'center' }}>
+        {hasCluster
+          ? `${clusterCount} connections mapped in 6 Degrees`
+          : <>Scan {selected.name}&apos;s connections to map their network</>}
       </div>
 
-      {status === 'idle' && (
-        <button
-          onClick={startScrape}
-          style={{
-            width: '100%', padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #9B59B6, #3498DB)',
-            color: '#fff', fontWeight: 700, fontSize: 14,
-          }}
-        >
-          Scan {selected.name}&apos;s Network
-        </button>
-      )}
-
-      {status === 'offline' && (
+      {mine ? (
+        <ScanLog title={scan.pending ? 'Starting…' : `Scanning ${selected.name}’s circle…`} log={scan.log} />
+      ) : problem?.offline ? (
         <>
           <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>
             Scanner offline
           </div>
           <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 8 }}>
-            Open the <strong>Scan</strong> page to finish setting the scanner up
+            {problem.text} Open the <strong>Scan</strong> page to finish setting the scanner up.
           </div>
-          <button onClick={() => { setStatus('idle'); }} style={{
+          <button onClick={() => setProblem(null)} style={{
             width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
             background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
           }}>
             Retry
           </button>
         </>
-      )}
-
-      {(status === 'checking' || status === 'scraping') && (
-        <div>
-          <div style={{
-            padding: '10px', borderRadius: 8, background: 'rgba(155,89,182,0.1)',
-            border: '1px solid rgba(155,89,182,0.3)', marginBottom: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#9B59B6', animation: 'pulse 1s infinite' }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#9B59B6' }}>Scanning...</span>
-            </div>
-            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#888', maxHeight: 100, overflow: 'auto' }}>
-              {log.map((l, i) => <div key={i}>{l}</div>)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {status === 'done' && (
-        <div style={{
-          padding: '10px', borderRadius: 8, background: 'rgba(0,255,136,0.1)',
-          border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88', fontSize: 12, fontWeight: 600, textAlign: 'center',
-        }}>
-          Cluster created! Refresh the page to see it.
-        </div>
-      )}
-
-      {status === 'error' && (
+      ) : (
         <>
-          <div style={{ padding: '10px', borderRadius: 8, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', color: '#ff5050', fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
-            Scan failed — connections may be private
+          {last && <LastRead job={last} />}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {resume && (
+              <button onClick={() => start('resume')} disabled={off} style={button(true)}>
+                Resume from page {resume.nextPage}
+              </button>
+            )}
+            <button onClick={() => start('bridge')} disabled={off} style={button(!resume && !hasCluster)}>
+              {read ? 'Rescan from the start' : <>Scan {selected.name}&apos;s Network</>}
+            </button>
           </div>
-          <button onClick={() => { setStatus('idle'); setLog([]); }} style={{
-            width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.1)', color: '#aaa', fontWeight: 600, fontSize: 12,
-          }}>
-            Try Again
-          </button>
+          {resume && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
+              Read to page {resume.pagesRead} so far. Resume carries on from page {resume.nextPage}. LinkedIn
+              lists their connections in its own order, not by date, so Rescan reads them all again from page 1.
+            </div>
+          )}
+          {hasCluster && resume === null && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
+              Their whole list has been read. LinkedIn doesn&apos;t date other people&apos;s connections, so a
+              rescan reads it all again to find anyone new.
+            </div>
+          )}
+          {busy && (
+            <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, textAlign: 'center' }}>
+              {busy}. One scan at a time: this one can start when it finishes.
+            </div>
+          )}
+          {problem && (
+            <div style={{ fontSize: 11, color: '#ff8080', marginTop: 8, textAlign: 'center' }}>{problem.text}</div>
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+/** A running scan's log, newest at the bottom. */
+function ScanLog({ title, log, small = false }) {
+  return (
+    <div style={{
+      padding: '10px', borderRadius: 8, background: 'rgba(155,89,182,0.1)', border: '1px solid rgba(155,89,182,0.3)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <div style={{ width: small ? 6 : 8, height: small ? 6 : 8, borderRadius: '50%', background: '#9B59B6', animation: 'pulse 1s infinite' }} />
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#9B59B6' }}>{title}</span>
+      </div>
+      <div style={{ fontFamily: 'monospace', fontSize: small ? 9 : 10, color: '#888', maxHeight: small ? 80 : 100, overflow: 'auto' }}>
+        {log.slice(-40).map((l, i) => <div key={i}>{l}</div>)}
+      </div>
+    </div>
+  );
+}
+
+/** How a scan this page watched ended. */
+function LastRead({ job, who = null }) {
+  const ok = job.exitCode === 0;
+  const why = !ok && Array.isArray(job.failure) && job.failure.length ? job.failure[job.failure.length - 1] : null;
+  return (
+    <div style={{
+      padding: '8px 10px', borderRadius: 8, marginBottom: 10, fontSize: 11, textAlign: 'center', lineHeight: 1.4,
+      background: ok ? 'rgba(0,255,136,0.08)' : 'rgba(255,80,80,0.08)',
+      border: `1px solid ${ok ? 'rgba(0,255,136,0.25)' : 'rgba(255,80,80,0.25)'}`,
+      color: ok ? '#00ff88' : '#ff8080',
+    }}>
+      {ok
+        ? `${who ? `${who}’s circle` : 'The scan'} finished. Refresh the page to see what it found.`
+        : `${who ? `${who}’s scan` : 'The scan'} stopped before the end${why ? `: ${why}` : '.'}`}
     </div>
   );
 }
@@ -1277,18 +1318,27 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
   return insights.slice(0, 5); // Max 5 insights
 }
 
+// The bridge section's "map the next one" button. Any circle being read shows
+// here, whoever started it; anything else running greys the button out.
 function AutoBridgeButton({ connections, degree2 }) {
-  const [status, setStatus] = useState('idle');
-  const [log, setLog] = useState([]);
-  const [target, setTarget] = useState(null);
+  const scan = useScanner();
+  const [checking, setChecking] = useState(false);
+  const [problem, setProblem] = useState(null);
 
+  // Read since the page loaded, so their circle isn't on screen until a
+  // refresh: never offered as next again meanwhile.
+  const readHere = new Set(scan.finished.filter(isCircleScan).map((j) => j.target?.id).filter(Boolean));
   // Find the top S-tier person without a cluster
   const bridgedIds = new Set(degree2.map(d => d.source_connection_id).filter(Boolean));
   const unbridged = (connections || [])
-    .filter(c => (c.tier === 'S' || c.tier === 'A') && !bridgedIds.has(c.id))
+    .filter(c => (c.tier === 'S' || c.tier === 'A') && !bridgedIds.has(c.id) && !readHere.has(c.id))
     .sort((a, b) => (parseFloat(b.power_score) || 0) - (parseFloat(a.power_score) || 0));
 
-  if (unbridged.length === 0 && status === 'idle') {
+  const circle = scan.running && isCircleScan(scan);
+  const busy = scan.running && !circle ? busyReason(scan) : null;
+  const last = scan.finished.find(isCircleScan);
+
+  if (unbridged.length === 0 && !scan.running && !last) {
     return (
       <div style={{
         padding: '10px', borderRadius: 8, marginBottom: 16,
@@ -1303,95 +1353,64 @@ function AutoBridgeButton({ connections, degree2 }) {
   async function startAutoBridge() {
     const next = unbridged[0];
     if (!next) return;
-    setTarget(next);
-    setStatus('checking');
-    setLog([`Scanning ${next.name}'s network...`]);
-
+    setProblem(null);
+    setChecking(true);
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    setChecking(false);
     if (blocked) {
-      setStatus('offline');
-      setLog([blocked]);
+      setProblem(blocked);
       return;
     }
-
-    setStatus('scraping');
     try {
-      const final = await runScrape('bridge', { name: next.name, onLog: setLog });
-      setStatus(final.exitCode === 0 ? 'done' : 'error');
-    } catch {
-      setStatus('error');
+      await beginScrape('bridge', { name: next.name, id: next.id });
+    } catch (e) {
+      setProblem(e.message || 'Could not start the scan.');
     }
   }
 
+  const off = Boolean(busy) || checking;
   return (
     <div style={{
       background: 'rgba(155,89,182,0.08)', border: '1px solid rgba(155,89,182,0.2)',
       borderRadius: 10, padding: 14, marginBottom: 16,
     }}>
-      {status === 'idle' && (
+      {circle ? (
+        <ScanLog small title={scan.pending ? 'Starting…' : `Scanning ${scan.target?.name || 'a circle'}…`} log={scan.log} />
+      ) : (
         <>
-          <div style={{ fontSize: 11, color: '#9B59B6', fontWeight: 700, marginBottom: 6 }}>
-            {unbridged.length} bridges unmapped
-          </div>
-          <div style={{ fontSize: 11, color: '#aaa', marginBottom: 8 }}>
-            Next: <strong>{unbridged[0]?.name}</strong> ({unbridged[0]?.tier}-tier, {parseFloat(unbridged[0]?.power_score).toFixed(1)})
-          </div>
-          <button onClick={startAutoBridge} style={{
-            width: '100%', padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #9B59B6, #FF6B35)',
-            color: '#fff', fontWeight: 700, fontSize: 13,
-          }}>
-            Auto-Bridge Next
-          </button>
-        </>
-      )}
-
-      {status === 'offline' && (
-        <>
-          <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(255,80,80,0.1)', color: '#ff5050', fontSize: 11, marginBottom: 6, textAlign: 'center' }}>
-            Scanner offline
-          </div>
-          <button onClick={() => setStatus('idle')} style={{
-            width: '100%', padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.1)', color: '#aaa', fontSize: 11,
-          }}>Retry</button>
-        </>
-      )}
-
-      {(status === 'checking' || status === 'scraping') && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9B59B6', animation: 'pulse 1s infinite' }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#9B59B6' }}>Scanning {target?.name}...</span>
-          </div>
-          <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#777', maxHeight: 80, overflow: 'auto' }}>
-            {log.map((l, i) => <div key={i}>{l}</div>)}
-          </div>
-        </div>
-      )}
-
-      {status === 'done' && (
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
-            {target?.name}&rsquo;s bridge mapped! Refresh to see.
-          </div>
-          <button onClick={() => { setStatus('idle'); setTarget(null); setLog([]); }} style={{
-            width: '100%', padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #9B59B6, #FF6B35)',
-            color: '#fff', fontWeight: 600, fontSize: 11,
-          }}>Bridge Next</button>
-        </div>
-      )}
-
-      {status === 'error' && (
-        <>
-          <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(255,80,80,0.1)', color: '#ff5050', fontSize: 11, marginBottom: 6, textAlign: 'center' }}>
-            Failed — connections may be private
-          </div>
-          <button onClick={() => { setStatus('idle'); setTarget(null); setLog([]); }} style={{
-            width: '100%', padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.1)', color: '#aaa', fontSize: 11,
-          }}>Try Next</button>
+          {last && <LastRead job={last} who={last.target?.name} />}
+          {unbridged.length > 0 ? (
+            <>
+              <div style={{ fontSize: 11, color: '#9B59B6', fontWeight: 700, marginBottom: 6 }}>
+                {unbridged.length} bridges unmapped
+              </div>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 8 }}>
+                Next: <strong>{unbridged[0].name}</strong> ({unbridged[0].tier}-tier, {parseFloat(unbridged[0].power_score).toFixed(1)})
+              </div>
+              <button onClick={startAutoBridge} disabled={off} style={{
+                width: '100%', padding: '10px', borderRadius: 8, border: 'none',
+                cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
+                background: 'linear-gradient(135deg, #9B59B6, #FF6B35)',
+                color: '#fff', fontWeight: 700, fontSize: 13,
+              }}>
+                Auto-Bridge Next
+              </button>
+            </>
+          ) : (
+            <div style={{ color: '#00ff88', fontSize: 11, fontWeight: 600, textAlign: 'center' }}>
+              All S/A-tier bridges mapped
+            </div>
+          )}
+          {busy && (
+            <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, textAlign: 'center' }}>
+              {busy}. One scan at a time: this one can start when it finishes.
+            </div>
+          )}
+          {problem && (
+            <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(255,80,80,0.1)', color: '#ff5050', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+              {problem}
+            </div>
+          )}
         </>
       )}
     </div>
