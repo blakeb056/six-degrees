@@ -204,6 +204,9 @@ Two fixes, and the first is the one that matters:
 - **Record the attempt, not just the result.** `bridge-skips.json` in the data
   directory remembers who was hidden; `--retry-private` (or the app's retry action)
   is the way back in. Absence of a result is not the same as absence of an attempt.
+  Record it where the read ends (`scrape_bridge`), not in one caller: until 0.4.0 only
+  the batch did, so a card's Scan that found a hidden list left the person "not
+  scanned yet", and offered again, forever (`tests/one-person-scan.test.mjs`).
 - **Price the cooldown by what actually happened.** A real scrape walks many search
   pages and earns the full pause. A hidden profile was one page view — charging it
   two minutes is what turned a run of them into an apparent hang.

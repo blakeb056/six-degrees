@@ -2568,6 +2568,17 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         # link; a profile that didn't render is "unclear" and marks nothing.
         mark_bridge_hidden(profile_url, bridge_name)
         print("  Their connections are not visible any more — keeping what is mapped.")
+    elif status in ("private", "empty") and profile_url and not stop_requested():
+        # A read from page 1 that found their list hidden, or LinkedIn showing no
+        # one in it. Noted here rather than by the batch alone: a one-person scan
+        # (a card's Scan or Rescan, the Degrees panel's Ready to scan) that found
+        # it and said nothing left them "not scanned yet", offered again forever.
+        # A stop that landed meanwhile concludes nothing, as in the batch. TRAPS §15.
+        record_bridge_skip(profile_url, bridge_name,
+                           "no visible connections" if status == "private"
+                           else "LinkedIn showed no one in their list")
+        print("  Their connections are hidden — noted, and skipped from now on."
+              if status == "private" else "  LinkedIn shows no one in their list — noted, and skipped from now on.")
 
     if status == "stopped" or stop_requested():
         return _read(read, "stopped")
@@ -3157,15 +3168,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
                 if from_page > 1:
                     log("  Their connections are hidden now — keeping what's mapped")
-                elif url:
-                    record_bridge_skip(url, name, "no visible connections")
-                    log("  Connections are hidden — noted, and skipped from now on")
+                # From page 1, scrape_bridge has noted them in bridge-skips.json.
             elif status == "empty":
+                # scrape_bridge has noted them in bridge-skips.json, and said so.
                 healthy = True
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
-                if url:
-                    record_bridge_skip(url, name, "LinkedIn showed no one in their list")
-                log("  LinkedIn shows no one in their list — noted, and skipped from now on")
             elif status == "finished":
                 healthy = True
                 results.append({"name": name, "tier": tier, "found": 0, "status": "finished"})

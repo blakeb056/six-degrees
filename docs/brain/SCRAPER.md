@@ -97,7 +97,9 @@ end to end on 2026-09-09.
 `--auto-bridge` walks every unbridged person, highest tier first. What it must survive
 is the common case, not the happy one: **most people's connections are hidden.** Those
 return `[], "private"`, are written to `bridge-skips.json`, and are not tried again
-unless asked. See TRAPS §15 for why recording the attempt is the whole fix.
+unless asked. See TRAPS §15 for why recording the attempt is the whole fix. The note is
+made in `scrape_bridge` itself, so a one-person scan from page 1 (`--bridge`,
+`--rescrape`: a card's Scan or Rescan) makes it too; until 0.4.0 only the batch did.
 
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.
