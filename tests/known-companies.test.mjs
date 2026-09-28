@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { KNOWN_COMPANIES, cleanCompany, companyScore, knownIndustry, currentCompany, scoreNetwork, scorePerson } from '../lib/scoring.js';
+import { KNOWN_COMPANIES, COMPANY_DATA, cleanCompany, companyScore, knownIndustry, currentCompany, scoreNetwork, scorePerson } from '../lib/scoring.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIST = new Map(KNOWN_COMPANIES.map(([name, score, alias, industry]) => [name, { score, alias, industry }]));
@@ -302,9 +302,15 @@ test('no two entries claim one name: every listed name and spelling has one entr
 });
 
 test('a name that only starts like a listed company keeps its own', () => {
+  // Kept from the public dataset too: it is read after the list, so it could
+  // claim what the list is careful to leave alone. Except where the list left a
+  // name alone because it is a company of its own, which the dataset now lists.
+  const data = new Set(COMPANY_DATA.map(([name]) => name));
+  const ownInData = new Map([['Siemens Energy', 'Siemens Energy'], ['Siemens Gamesa', 'Siemens Energy']]);
   for (const n of NOT_LISTED) {
     const c = cleanCompany(n);
-    assert.ok(!c || !LIST.has(c), `${n} read as ${c}`);
+    if (ownInData.get(n) === c) continue;
+    assert.ok(!c || (!LIST.has(c) && !data.has(c)), `${n} read as ${c}`);
   }
 });
 

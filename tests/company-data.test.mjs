@@ -193,3 +193,31 @@ test('the dataset\'s rule is written above it, and it never speaks for one perso
   const comments = text.split('\n').map((line) => line.split('//')[1]).filter(Boolean);
   for (const c of comments) assert.doesNotMatch(c, /\byou(r|rs|'re)?\b/i, c.trim());
 });
+
+// Words that are many companies' first word, first names and job titles. An
+// alias that matches one alone would score strangers' employers (or a title
+// read as a company) as that entry.
+const COMMON = [
+  'united', 'national', 'american', 'america', 'general', 'global', 'international', 'first', 'southern', 'northern', 'western',
+  'eastern', 'pacific', 'atlantic', 'central', 'midwest', 'principal', 'discover', 'progressive', 'target', 'ally', 'dominion',
+  'express', 'capital', 'continental', 'liberty', 'freedom', 'pioneer', 'summit', 'apex', 'alpha', 'delta', 'omega', 'prime',
+  'premier', 'advanced', 'applied', 'integrated', 'universal', 'standard', 'sterling', 'heritage', 'legacy', 'guardian', 'patriot',
+  'eagle', 'phoenix', 'titan', 'atlas', 'mercury', 'apollo', 'orion', 'horizon', 'frontier', 'pinnacle', 'keystone', 'cornerstone',
+  'anchor', 'harbor', 'bridge', 'beacon', 'compass', 'catalyst', 'momentum', 'insight', 'vision', 'genesis', 'spark', 'pulse', 'nova',
+  'citizen', 'citizens', 'community', 'state', 'federal', 'county', 'city', 'energy', 'health', 'healthcare', 'medical', 'bank',
+  'insurance', 'financial', 'services', 'group', 'holdings', 'partners', 'solutions', 'systems', 'technologies', 'labs', 'studio',
+  'media', 'digital', 'foods', 'motors', 'airlines', 'army', 'navy', 'air force', 'marines', 'treasury', 'labor', 'commerce',
+  'justice', 'defense', 'interior', 'education', 'transportation', 'agriculture', 'va', 'doe', 'dot', 'ed', 'fed', 'census', 'usc',
+  'uw', 'osu', 'unc', 'um', 'msu', 'miami', 'georgia', 'michigan', 'texas', 'california', 'florida', 'penn', 'ohio', 'washington',
+  'james', 'john', 'robert', 'michael', 'william', 'david', 'richard', 'joseph', 'thomas', 'charles', 'mary', 'patricia', 'jennifer',
+  'linda', 'elizabeth', 'susan', 'jessica', 'sarah', 'karen', 'simon', 'paul', 'mark', 'george', 'kelly', 'morgan', 'jordan',
+  'director', 'manager', 'engineer', 'president', 'founder', 'partner', 'consultant', 'analyst', 'associate', 'lead', 'head',
+  'chief', 'officer', 'specialist', 'coordinator', 'student', 'intern', 'freelance', 'self-employed', 'retired', 'owner', 'investor',
+  'advisor', 'stealth', 'stealth startup', 'startup', 'company', 'confidential', 'later on', 'whatnot else',
+];
+
+test('no dataset name matches a common word, a first name or a job title alone', () => {
+  for (const [name, , alias] of COMPANY_DATA) {
+    for (const w of COMMON) assert.ok(!alias.test(w), `${name} would claim "${w}"`);
+  }
+});
