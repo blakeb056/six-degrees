@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   labels the score *public data*. The list is built from public sources only, never from
   anyone's scan, and grows each release. The built-in list itself is unchanged: household
   names only, 7 and up.
+- **A card says when a score is a guess, and what would firm it up.** When someone's headline
+  gives the app no title to read, or no company it knows, the top of their card says so
+  ("Their score is a guess. The app couldn't find where they work.") and offers *Scan their
+  circle*, which brings the scan button into view. Who you can reach through them is what the
+  score can read instead, and a strong circle adds up to +2.
 
 ### Fixed
 - **A request you send shows everywhere, at once.**
@@ -130,9 +135,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Officers by rank: a 3–4 star general or admiral 10, a 1–2 star 9, a colonel 7.5, a
   lieutenant colonel 6.5, a major 5, and a commander by their unit. "(Ret.)" and
   "Retired" make a role former. They count only where a title is written, and only where
-  their place is a government's or a service's: a staffer in an Office of the Secretary, a
-  veteran's civilian job, a Rotary district governor, a team captain or a Kentucky colonel
-  isn't one. Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
+  their own organization is a government's or a service's: a staffer in an Office of the
+  Secretary, a veteran's civilian job, a city manager at Uber, a Rotary district governor,
+  a team captain or a Kentucky colonel isn't one. Until now all of them were "Title
+  unclear" (a U.S. senator scored 2.9, C).
+- **Scores has a tab of its own.** How a power score is worked out and the three things you
+  can change about it are in one place: your field (*Your sector*), how tiers are graded
+  (*Tiers*) and every company's score. Company scores used to be a tab inside Paths, and the
+  other two were in Settings. Old links (*Paths → Scores*, *Settings → Your sector*,
+  *Settings → Tiers*) forward there, and Settings says where they went.
 - **Separation's map is "who to ask next".** It skips anyone you've already asked or
   already know. Send requests to its ten and the next ten come up. The list below
   still shows everyone, marked *Request sent* or *Connected*, with their rarity.

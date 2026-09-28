@@ -1,6 +1,6 @@
 import { legacyOffer, answerLegacyOffer, parseLegacyAnswer } from '../../../../lib/legacy-offer';
 
-// Paths → Scores' one-time offer to keep the curated list's old scores as your
+// the Scores tab's one-time offer to keep the curated list's old scores as your
 // own, after the list was made neutral (lib/legacy-offer.js). GET says what is
 // offered: {offer: null} or {offer: {companies}}. POST answers it:
 // {keep: [names]} keeps those old scores, {keep: []} is No thanks, and either

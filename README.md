@@ -197,12 +197,15 @@ InMaps:
   where your connections at one know people at another.
 - **Industries**: a card per industry.
 - **Companies**: pick one to see its people level by level, up to the top.
-- **Scores**: every scanned company's score, which you can change.
 
 Click a company for its analyzer: who you know there, who you can reach, the warmest way
 in, and its most powerful people.
 
 <img src="docs/img/paths.png" alt="Paths → Map with the company analyzer open: companies grouped by industry, and one company's people by level and ways in" width="100%">
+
+**Scores.** How a power score is worked out, and the three things you can change about
+it, in one place: your field (the sectors you work in), how tiers are graded (on your
+network's curve or the fixed scale), and every scanned company's score.
 
 **Outlink** *(needs a scan)*. Getting introduced, as a game. Each mapped connection's
 circle offers its best five people at a time; mark invites as sent to fill the ring and
@@ -227,7 +230,7 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
   where a title is written. An audience of their own counts like a title (100K+
   followers 6.5, 1M+ 7.5, 10M+ 9), and a title it can't read counts as an individual
   contributor's (4).
-- **Company score (1–10)** is the one you set (Paths → Scores) if there is one. Otherwise
+- **Company score (1–10)** is the one you set (the Scores tab) if there is one. Otherwise
   it comes from a built-in list of well-known companies, or from how many of your people
   work there. The built-in list is the same for everyone and follows one rule: only
   companies most US professionals would recognise (household names, the largest companies,
@@ -235,9 +238,9 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
   scored 7 to 10. Anything else is estimated from your network: a company it doesn't
   know counts as 5, the middle of the scale, a little more when several of your people
   work there. If you scanned with an
-  earlier version, Paths → Scores offers once to keep its old scores for the companies in
+  earlier version, the Scores tab offers once to keep its old scores for the companies in
   your network whose score changed.
-- **Your sector (Settings, optional):** pick up to three sectors you work in, and companies
+- **Your sector (Scores, optional):** pick up to three sectors you work in, and companies
   in them get +1 ("lean") or +2 ("strong") on that score, once, never above 10 and never on
   a score you set. A pick is one of twelve broad industries or a narrower sector from a
   built-in list of about fifty (Dental, Real Estate, Software & SaaS…). A sector matches by a
@@ -255,7 +258,7 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
   that).
 - **Bridge boost (up to 2)**: someone whose mapped circle is unusually strong: a high
   share of it at A or S (up to +1), or many people there (+1 for every 25, up to +2).
-- **Tiers (Settings):** graded on your own network's curve by default, so any network has a
+- **Tiers (Scores):** graded on your own network's curve by default, so any network has a
   top: your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C.
   The curve only lifts, so a network full of well-known companies keeps its tiers, and it
   never lifts anyone under 4 into S or A. People tied at a line all come in or all stay out.

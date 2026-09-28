@@ -33,7 +33,7 @@ function ProfileInner() {
   const [notifications, setNotifications] = useState([]);
   const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
-  // "Your Sectors" is what you picked in Settings → Your sector. (users.sectors,
+  // "Your Sectors" is what you picked in Scores → Your sector. (users.sectors,
   // which this card used to show, is never written by anything; the Sidebar
   // and Outlink still read it as free text.) null while it loads; a load that
   // fails says so rather than showing "none picked" (TRAPS §7).
@@ -376,8 +376,8 @@ function ProfileInner() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Your Sectors</h3>
-            <Link href="/settings#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
-              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick in Settings' : 'Settings'} &rarr;
+            <Link href="/scores#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
+              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick on Scores' : 'Scores'} &rarr;
             </Link>
           </div>
           {!sectorFocus ? (

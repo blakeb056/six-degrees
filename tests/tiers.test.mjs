@@ -1,4 +1,4 @@
-// Settings → Tiers, in the database: tiers graded on your network's curve (the
+// Scores → Tiers, in the database: tiers graded on your network's curve (the
 // default) or on the fixed scale, stamped with the scores, and redone when the
 // choice changes. The model itself is pinned in tests/scoring.test.mjs.
 

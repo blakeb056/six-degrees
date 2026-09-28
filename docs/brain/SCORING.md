@@ -9,10 +9,10 @@ pinning it down. Everything scores through it:
 | `lib/rpc.js` `rescoreAll()` | After every import (`score_new_connections`), when a company score changes, when *Your sector* or *Tiers* changes in Settings, and once on the first load after the stored scores go stale (`SCORING_VERSION`, the curated list, the industries' words and scoring's rule tables, the sector focus they were computed with, the sector directory's version included, or the tier scale no longer matches; all four stamped in `app_meta`). It reads the rows with `readForScoring()`: each company's industry and where it came from, its sectors from the directory and the industries those sit under |
 | `lib/csv.js` `scoreRecord()` | CSV imports, in the browser, from the export's bare position and company |
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
-| `lib/sector-focus.js` `previewSectorFocus()` | Settings → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
-| `lib/legacy-offer.js` `legacyOffer()` | Paths → Scores' one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
+| `lib/sector-focus.js` `previewSectorFocus()` | Scores → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
+| `lib/legacy-offer.js` `legacyOffer()` | The Scores tab's one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
 | `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Adobe (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
-| `app/api/company-scores/route.js` | Paths → Scores: each company scored from the same read as rescoring, through `companyScoreIn()` |
+| `app/api/company-scores/route.js` | The Scores tab: each company scored from the same read as rescoring, through `companyScoreIn()` |
 
 Until 0.1.10 there were three scorers that disagreed. The hosted era's SQL scorers
 (`scripts/score_new_connections.sql`, `scripts/score-connections.sql`) were kept for history
@@ -30,7 +30,7 @@ tiers, on your network's curve (the default)   top 3% S · to 15% A · to 40% B 
 tiers, on the fixed scale                      S ≥ 7.5    A ≥ 5.5    B ≥ 4.0    C ≥ 2.5    D < 2.5
 ```
 
-Which one is Settings → Tiers ([below](#tiers-on-your-networks-curve)).
+Which one is Scores → Tiers ([below](#tiers-on-your-networks-curve)).
 
 It's a **product, not a sum**: a title is worth more at a bigger company, and a big
 company is worth more the higher someone sits in it. A VP at a company scored 10 gets 9.0,
@@ -201,7 +201,7 @@ school's in "Marketing @ …". Until September 2026 the rules named UCF and UF, 
 students and clubs were caught and other schools' weren't; the first rule that replaced them
 also read "Finance @ UBS" as a student and the UAW local's president as a student's club role.
 
-**Company (1–10)** comes, in order, from the score you set (Paths → Scores, table
+**Company (1–10)** comes, in order, from the score you set (the Scores tab, table
 `company_scores`), then the curated `KNOWN_COMPANIES` list (245 companies, on it by the
 rule [below](#the-curated-list)). Otherwise it's an estimate from how many of your people
 work there: 5.5 at 5+, 6 at 15+, but never for schools (a company whose one industry, below,
@@ -261,7 +261,7 @@ The person panel shows the working as `score_why`, e.g.
 
 ## Tiers on your network's curve
 
-**Settings → Tiers** (`tierScale`, lib/settings.js; `TIER_SCALE_SETTING` in lib/scoring.js)
+**Scores → Tiers** (`tierScale`, lib/settings.js; `TIER_SCALE_SETTING` in lib/scoring.js)
 is `curve` unless the user chooses `fixed`. On the fixed scale everyone gets the same lines
 (`tierFor`). They were tuned on a network full of companies the curated list knows, where S
 is about the top 3–4%; in a network the list barely knows (most networks), almost nobody
@@ -288,11 +288,11 @@ reaches S or A, and a first scan looks bleak. The curve fixes that:
 `scoreNetwork(rows, { tierScale })` grades on the curve only when asked (called without one,
 on the fixed scale, as the sample's generator does). A CSV import (lib/csv.js) is always graded
 on its own curve, on the parse and on every load: it uses the app's defaults, never your
-settings, as with company scores and sectors, and Settings → Tiers says so while one is open. `rescoreAll()` passes the saved choice
+settings, as with company scores and sectors, and Scores → Tiers says so while one is open. `rescoreAll()` passes the saved choice
 and stamps it (`app_meta` `scoring_tiers`); `rescoreIfStale()` rescores once when the stamp
 and the saved choice differ. Saving a new choice rescores everyone and reports how many
 people changed tier, each person once at their closest degree (lib/settings-effects.js, with
-the sector focus's own `tierMoves`). Settings → Your sector's preview grades both sides on
+the sector focus's own `tierMoves`). Scores → Your sector's preview grades both sides on
 the saved scale, so the preview and the save agree.
 
 ## The curated list
@@ -311,7 +311,7 @@ recognise it:**
 (the most sought-after employers in tech, finance, consulting, investing and consumer
 brands), 8 major, 7 well-known. Nothing on the list is below 7. Regional picks, picks from
 one person's career or network, and small startups are not on it: they're estimated from
-the network like any other company, and anyone can score them on Paths → Scores. **When in
+the network like any other company, and anyone can score them on the Scores tab. **When in
 doubt, a company stays off**: the estimate is the neutral default. No comment in the list
 speaks for one person (it used to say "home turf" and "local institutions"); a test checks.
 
@@ -520,7 +520,7 @@ Left off, and why:
 A list change shouldn't take anyone's view away silently. Scores computed with the old list
 carry no 'scoring_list' stamp; the first time `rescoreAll()` replaces them (and some row was
 already scored, so the database isn't new), it opens an offer: `app_meta`
-'legacy_scores_offer' = `open`. Paths → Scores then shows one card at the top: "Built-in
+'legacy_scores_offer' = `open`. The Scores tab then shows one card at the top: "Built-in
 scores changed in this version: Snap 9 → 8, UCF 5 → estimated. Keep any of the old ones as
 your own?", with *Keep all*, *Choose…* and *No thanks* (`app/components/LegacyScoresCard.js`,
 `/api/company-scores/legacy`).
@@ -528,7 +528,7 @@ your own?", with *Keep all*, *Choose…* and *No thanks* (`app/components/Legacy
 - **What it lists** (`lib/legacy-offer.js` `legacyOffer()`): each old entry that someone in
   this network works at now, whose built-in score is different now (the list or the
   estimate, before any sector lean), and that you haven't scored yourself. Current
-  employers only, because those are what Paths → Scores lists: a kept score shows there as
+  employers only, because those are what the Scores tab lists: a kept score shows there as
   yours and *Auto* can hand it back. (A company only in former roles would get a score
   nothing lists; a former role counts at 70%, so it moves people little.) A removed entry
   no longer canonicalises ("University of Central Florida" isn't "UCF" any more), so its
@@ -540,12 +540,12 @@ your own?", with *Keep all*, *Choose…* and *No thanks* (`app/components/Legacy
   (UCF's colleges, AdventHealth's hospitals, Havas's agencies); a test checks.
 - **Keep** writes the old score to `company_scores` under every name scoring uses for those
   rows (UCF's covers "UCF" and "University of Central Florida"), with the same
-  `setCompanyScores()` that Paths → Scores uses, then rescores everyone once for the whole
+  `setCompanyScores()` that the Scores tab uses, then rescores everyone once for the whole
   batch. A kept score is yours like any other: *Auto* hands it back.
 - **Once:** *Keep* or *No thanks* sets the offer to `kept` or `declined`, and nothing
   reopens it. An open offer whose first look finds nothing to offer closes itself (`none`):
   the network the old list scored is the one it reads, so nothing could turn up later, and
-  every visit to Paths → Scores would otherwise read the whole network again to find
+  every visit to the Scores tab would otherwise read the whole network again to find
   nothing.
 - **Never** for a fresh database (nothing was scored with the old list), and never while a
   CSV import or the sample is on screen: those are scored in the browser, not the server.
@@ -572,7 +572,7 @@ beside the score.
 5. the neutral 5 (`default`).
 
 A company on the dataset is a fact, not an estimate. Many of your people working there
-don't move it, and the legacy offer doesn't call it "estimated". Paths → Scores labels it
+don't move it, and the legacy offer doesn't call it "estimated". The Scores tab labels it
 *public data*.
 
 **The scale.** 8 for Fortune 500 / Global 2000 / S&P 500 scale (about $20B+, or 20,000+
@@ -769,7 +769,7 @@ them (Dental, Real Estate, Software & SaaS, Insurance, K-12 Education, Beauty & 
 Care, Agriculture & Farming, Veterinary & Animal Care, Social Work & Human Services,
 Security Services…), each under one of the twelve industries and each with its words. It is
 a list, not a model: no AI, nothing sent anywhere, the same answer on every computer every
-time. Settings → Your sector shows each industry with its sectors, searches them by name,
+time. Scores → Your sector shows each industry with its sectors, searches them by name,
 word or company, and suggests the ones your network is in.
 
 A sector is `{key, label, group, kind, words, roles?, names?, companies, not?}`. `key` is
@@ -781,7 +781,7 @@ industry's colour: Paths' colours don't change. `kind` is `industry` or `functio
 
 Worked out once per read of the network: `lib/rpc.js` `readForScoring()` passes
 `sectorMatcher()` to `readNetwork()` as `sectorsOf`, beside `industryOf`, and each company's
-matches ride along to `companyScore()`. Rescoring, the preview, Paths → Scores and the
+matches ride along to `companyScore()`. Rescoring, the preview, the Scores tab and the
 suggestions all read through it, so they agree. A company matches a sector when:
 
 1. **its name** has one of the sector's `words` (or `names`, or a function sector's
