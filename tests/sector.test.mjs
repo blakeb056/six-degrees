@@ -20,13 +20,13 @@ const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-sector-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
-let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, afterSettingsChange;
+let getDb, readSettings, writeSettings, SETTINGS, SettingsError, rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, tierScaleOf, readForScoring, afterSettingsChange;
 let KNOWN_LIST_STAMP, scoringStamp;
 
 before(async () => {
   ({ getDb } = await import('../lib/db-client.js'));
   ({ readSettings, writeSettings, SETTINGS, SettingsError } = await import('../lib/settings.js'));
-  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, readForScoring, KNOWN_LIST_STAMP, scoringStamp } = await import('../lib/rpc.js'));
+  ({ rescoreAll, rescoreIfStale, companyOverrides, scoringRows, sectorFocusOf, tierScaleOf, readForScoring, KNOWN_LIST_STAMP, scoringStamp } = await import('../lib/rpc.js'));
   ({ afterSettingsChange } = await import('../lib/settings-effects.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
@@ -111,7 +111,7 @@ test('the preview counts companies and people that would move, against what is s
   // Quillon Labs 4 → 6 and Adobe 8 → 10; Google is already 10, YouTube is media.
   assert.equal(p.companies, 2);
   assert.deepEqual([p.companiesUp, p.companiesDown], [2, 0]);
-  assert.deepEqual(p.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]).sort(), [['Adobe', 8, 10, 'tech'], ['Quillon Labs', 4, 6, 'tech']]);
+  assert.deepEqual(p.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]).sort(), [['Adobe', 8, 10, 'tech'], ['Quillon Labs', 5, 7, 'tech']]);
   assert.deepEqual([p.up, p.down], [2, 0]);
   assert.deepEqual(p.examples.map((e) => [e.name, e.degree, e.company, e.from, e.to]), [
     ['Ada Farrow', 1, 'Quillon Labs', 'A', 'S'],
@@ -181,8 +181,9 @@ test('rescoring applies the saved sector focus, reading it itself', () => {
   rescoreAll();
   assert.deepEqual([row('s').company_prestige_score, row('s').power_score, row('s').tier], [10, 7.5, 'S']);
   assert.match(row('s').score_why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
-  assert.equal(meta('scoring_version'), '3');
+  assert.equal(meta('scoring_version'), '4');
   assert.equal(meta('scoring_focus'), `lean:media@${DIRECTORY_VERSION}`);
+  assert.equal(meta('scoring_tiers'), 'curve');                           // Settings → Tiers, as saved (the default)
 });
 
 test('turning it off gives back exactly the scores from before: nothing ratchets', () => {
@@ -230,7 +231,7 @@ test('stored scores from another sector focus are stale, and are redone once', (
 // What the page does: the preview route's call, then a save through the settings route's path.
 const previewAsRoute = (db, to) => {
   const rows = scoringRows(db, { withPeople: true });
-  return previewSectorFocus(rows, { overrides: companyOverrides(db), read: readForScoring(rows), from: sectorFocusOf(db), to });
+  return previewSectorFocus(rows, { overrides: companyOverrides(db), read: readForScoring(rows), from: sectorFocusOf(db), to, tierScale: tierScaleOf(db) });
 };
 const save = (db, focus) => {
   const before = readSettings(db);
@@ -381,6 +382,11 @@ test('the fingerprint carries the directory\'s version, for an industry too: it 
 //   Quinn  Founder at Smith Family Dental   its name says dental (and so health).
 //   Rae    Engineer at Quillon              not dental.
 //   Nia    5.4 (B) → 5.8 (A) at lean, 6.2 at strong; Quinn 6.7 (A) → 7.3 (A) at lean, 7.8 (S) at strong.
+// Tier moves in a five-person network, graded on the fixed scale: these tests are
+// about the sector lean, and the curve (the default) reshuffles a network that
+// small on its own. The curve with a sector focus has its own test below.
+const fixedScale = () => writeSettings(getDb(), { tierScale: 'fixed' });
+
 function dentalNetwork() {
   const p = (id, degree, name, headline, extra = {}) => ({ id, degree, name, headline, profile_url: `/in/${id}`, source_connection_id: null, ...extra });
   return [
@@ -396,23 +402,24 @@ test('a sector from the directory leans the companies it places, and the working
   insert(dentalNetwork());
   writeSettings(getDb(), { sectorFocus: lean('dental') });
   rescoreAll();
-  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [5, 5, 5, 5, 4]);
-  assert.deepEqual([row('nia').power_score, row('nia').tier], [5.8, 'A']);
-  assert.match(row('nia').score_why, /Smith Family Practice \(5\/10: 4 \+ 1 your sector: Dental\)/);
-  assert.match(row('rae').score_why, /Quillon \(4\/10\)/);
+  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [6, 6, 6, 6, 5]);
+  assert.deepEqual([row('nia').power_score, row('nia').tier], [6.2, 'A']);
+  assert.match(row('nia').score_why, /Smith Family Practice \(6\/10: 5 \+ 1 your sector: Dental\)/);
+  assert.match(row('rae').score_why, /Quillon \(5\/10\)/);
   assert.equal(meta('scoring_focus'), `lean:dental@${DIRECTORY_VERSION}`);
   // The broad industry includes its sectors. Only Smith Family Dental's one industry
   // is health, but the directory places all three practices in Dental, so all three
   // count, once each; Quillon doesn't.
   writeSettings(getDb(), { sectorFocus: lean('health') });
   rescoreAll();
-  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [5, 5, 5, 5, 4]);
-  assert.match(row('nia').score_why, /Smith Family Practice \(5\/10: 4 \+ 1 your sector: Healthcare & Biotech\)/);
-  assert.match(row('quinn').score_why, /Smith Family Dental \(5\/10: 4 \+ 1 your sector: Healthcare & Biotech\)/);
+  assert.deepEqual(['nia', 'omar', 'pia', 'quinn', 'rae'].map((id) => row(id).company_prestige_score), [6, 6, 6, 6, 5]);
+  assert.match(row('nia').score_why, /Smith Family Practice \(6\/10: 5 \+ 1 your sector: Healthcare & Biotech\)/);
+  assert.match(row('quinn').score_why, /Smith Family Dental \(6\/10: 5 \+ 1 your sector: Healthcare & Biotech\)/);
   assert.equal(meta('scoring_focus'), `lean:health@${DIRECTORY_VERSION}`);
 });
 
 test('a broad industry that includes its sectors: the preview, the save and Paths → Scores agree', () => {
+  fixedScale();                                            // about the lean, not the curve
   insert(dentalNetwork());
   rescoreAll();
   const db = getDb();
@@ -420,7 +427,7 @@ test('a broad industry that includes its sectors: the preview, the save and Path
   // Smith Family Practice, Bright Smiles and Smith Family Dental each 4 → 5; Nia moves B → A.
   assert.deepEqual([preview.companies, preview.companiesUp, preview.up, preview.down], [3, 3, 1, 0]);
   assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]),
-    [['Bright Smiles', 4, 5, 'health'], ['Smith Family Dental', 4, 5, 'health'], ['Smith Family Practice', 4, 5, 'health']]);
+    [['Bright Smiles', 5, 6, 'health'], ['Smith Family Dental', 5, 6, 'health'], ['Smith Family Practice', 5, 6, 'health']]);
   assert.deepEqual(save(db, lean('health')).sectorFocus, { scored: 5, people: 5, moved: 1, up: preview.up, down: preview.down });
   // Paths → Scores scores each company from the same read (app/api/company-scores).
   const rows = scoringRows(db);
@@ -441,28 +448,40 @@ test('several picks that match one company lean it once', () => {
   // Smith Family Dental is health by its industry and dental by the directory.
   writeSettings(getDb(), { sectorFocus: strong('health', 'hospitals', 'dental') });
   rescoreAll();
-  assert.equal(row('quinn').company_prestige_score, 6);                  // 4 + 2, once
-  assert.match(row('quinn').score_why, /\(6\/10: 4 \+ 2 your sector: Dental\)/);
-  assert.equal(row('nia').company_prestige_score, 6);
+  assert.equal(row('quinn').company_prestige_score, 7);                  // 5 + 2, once
+  assert.match(row('quinn').score_why, /\(7\/10: 5 \+ 2 your sector: Dental\)/);
+  assert.equal(row('nia').company_prestige_score, 7);
 });
 
 test('the preview and the save agree for a pick from the directory', () => {
+  fixedScale();                                            // about the lean, not the curve
   insert(dentalNetwork());
   rescoreAll();
   const db = getDb();
   const preview = previewAsRoute(db, lean('dental'));
   assert.deepEqual([preview.companies, preview.companiesUp, preview.up, preview.down], [3, 3, 1, 0]);
   assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to, c.sector]),
-    [['Bright Smiles', 4, 5, 'dental'], ['Smith Family Dental', 4, 5, 'dental'], ['Smith Family Practice', 4, 5, 'dental']]);
-  assert.deepEqual(preview.examples.map((e) => [e.name, e.from, e.to]), [['Nia Okafor', 'B', 'A']]);
+    [['Bright Smiles', 5, 6, 'dental'], ['Smith Family Dental', 5, 6, 'dental'], ['Smith Family Practice', 5, 6, 'dental']]);
+  // Nia's practice is neutral before any lean, so she is A already; Quinn's founder role reaches S.
+  assert.deepEqual(preview.examples.map((e) => [e.name, e.from, e.to]), [['Quinn Tate', 'A', 'S']]);
   const effects = save(db, lean('dental'));
   assert.deepEqual(effects.sectorFocus, { scored: 5, people: 5, moved: 1, up: preview.up, down: preview.down });
-  // From lean on to strong: Nia is already A, and Quinn reaches S.
+  // From lean on to strong nobody moves: Nia stays A, and Quinn is S already.
   const harder = previewAsRoute(db, strong('dental'));
-  assert.deepEqual([harder.up, harder.down], [1, 0]);
-  assert.deepEqual(harder.examples.map((e) => [e.name, e.from, e.to]), [['Quinn Tate', 'A', 'S']]);
-  assert.deepEqual(save(db, strong('dental')).sectorFocus, { scored: 5, people: 5, moved: 1, up: 1, down: 0 });
+  assert.deepEqual([harder.up, harder.down], [0, 0]);
+  assert.deepEqual(harder.examples, []);
+  assert.deepEqual(save(db, strong('dental')).sectorFocus, { scored: 5, people: 5, moved: 0, up: 0, down: 0 });
   assert.deepEqual([row('nia').tier, row('quinn').tier], ['A', 'S']);
+});
+
+test('on the curve (the default), the preview and the save still agree', () => {
+  insert(dentalNetwork());
+  rescoreAll();
+  const db = getDb();
+  const preview = previewAsRoute(db, strong('dental'));
+  const effects = save(db, strong('dental'));
+  assert.deepEqual(effects.sectorFocus, { scored: 5, people: preview.people, moved: preview.up + preview.down, up: preview.up, down: preview.down });
+  assert.equal(meta('scoring_tiers'), 'curve');
 });
 
 test('an edited word list makes stored scores stale, and they are redone once', () => {
@@ -504,6 +523,7 @@ function jobTitleNetwork() {
 }
 
 test('a broad pick doesn\'t count an industry voted by job titles: the preview, the save and Paths → Scores agree', () => {
+  fixedScale();                                            // about the lean, not the curve
   insert(jobTitleNetwork());
   rescoreAll();
   const db = getDb();
@@ -516,10 +536,10 @@ test('a broad pick doesn\'t count an industry voted by job titles: the preview, 
   const preview = previewAsRoute(db, strong('consulting'));
   // Only the two whose names say so move, 4 → 6.
   assert.deepEqual(preview.companyExamples.map((c) => [c.name, c.from, c.to]).sort(),
-    [['Northwind Consulting', 4, 6], ['Umbrella Staffing', 4, 6]]);
+    [['Northwind Consulting', 5, 7], ['Umbrella Staffing', 5, 7]]);
   assert.deepEqual([preview.up, preview.down], [2, 0]);
   assert.deepEqual(save(db, strong('consulting')).sectorFocus, { scored: 5, people: 5, moved: 2, up: 2, down: 0 });
-  assert.deepEqual(['r', 't', 'c', 'u'].map((id) => row(id).company_prestige_score), [4, 4, 6, 6]);
+  assert.deepEqual(['r', 't', 'c', 'u'].map((id) => row(id).company_prestige_score), [5, 5, 7, 7]);
   // Paths → Scores scores each company from the same read, through the same function.
   const rows = scoringRows(db);
   const again = readForScoring(rows);

@@ -315,8 +315,8 @@ test('entries closed because other companies share their first word still read i
   }
   // …and a person there reads as working there, at its score.
   assert.deepEqual([currentCompany({ headline: 'Engineer at Snap Inc.' }), scorePersonAt('Director at Snap Inc.')], ['Snap', 8]);
-  assert.deepEqual([currentCompany({ headline: 'Territory Manager at Snap-on' }), scorePersonAt('Territory Manager at Snap-on')], ['Snap-on', 4]);
-  assert.deepEqual([currentCompany({ headline: 'Salesperson at Toyota of Dallas' }), scorePersonAt('Salesperson at Toyota of Dallas')], ['Toyota of Dallas', 4]);
+  assert.deepEqual([currentCompany({ headline: 'Territory Manager at Snap-on' }), scorePersonAt('Territory Manager at Snap-on')], ['Snap-on', 5]);
+  assert.deepEqual([currentCompany({ headline: 'Salesperson at Toyota of Dallas' }), scorePersonAt('Salesperson at Toyota of Dallas')], ['Toyota of Dallas', 5]);
 });
 
 test('a credential, a program or gig work on a listed company\'s platform is not a job there', () => {
@@ -335,7 +335,7 @@ test('a credential, a program or gig work on a listed company\'s platform is not
   const at = (h) => currentCompany({ headline: h });
   // It read as a current role at Amazon (10): 5.0 for a senior IC anywhere.
   const aws = scorePerson({ headline: 'AWS Certified Solutions Architect | DevOps Engineer at Northwind Labs' });
-  assert.deepEqual([aws.company, aws.companyScore, aws.tier], [null, 3, 'C']);
+  assert.deepEqual([aws.company, aws.companyScore, aws.tier], [null, 5, 'C']);
   assert.equal(at('LinkedIn Top Voice | Marketing Specialist at Pinecrest Foods'), 'Pinecrest Foods');
   assert.equal(at('Google Alum | Founder at Quillon'), 'Quillon');
   assert.equal(at('Uber Driver'), null);
@@ -422,4 +422,8 @@ test('no company in the invented sample network reads as a listed one, so the li
   const overrides = new Map(rows.filter((r) => r.company).map((r) => [r.company, r.company_prestige_score]));
   const { scores } = scoreNetwork(rows, { overrides });
   for (const r of rows) assert.equal(scores.get(r.id).companyScore, r.company_prestige_score, r.id);
+  // A strong network keeps its tiers on the curve (it only lifts), so the sample's
+  // tiers, which the tutorials and the films show, are the same on either scale.
+  const curve = scoreNetwork(rows, { overrides, tierScale: 'curve' });
+  for (const r of rows) assert.equal(curve.scores.get(r.id).tier, r.tier, r.id);
 });

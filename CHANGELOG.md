@@ -65,6 +65,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`/api/scraper?job=1`, which reads only memory), not once per button.
 
 ### Changed
+- **Tiers are graded on your own network's curve** (new: *Settings → Tiers*, and the default).
+  Your top 3% of connections are S, the next 12% A, the next 25% B and the next 30% C, so
+  the first scan of any network has a top, not only a network full of companies the app
+  knows. The curve only lifts: nobody drops a tier because their network is strong, and
+  nobody under 4 is lifted into S or A. People tied at a line all come in or all stay out.
+  Choose *On the fixed scale* for the lines as they were (S ≥ 7.5, A ≥ 5.5, B ≥ 4, C ≥ 2.5).
+  A LinkedIn CSV import opened in the app is always graded on its own curve.
+- **A company the app doesn't know is neutral.** It counts as 5, the middle of the scale
+  (it was 4, and 3 when no company was found), so the people the built-in list doesn't
+  know aren't pushed down a tier for it. A founder at an unknown company scores 7.3 (was
+  6.7), a director 5.4 (was 5.0). Claims in their headlines still count half. Your network
+  is rescored once, the first time the map loads after updating.
 - **Separation's map is "who to ask next".** It skips anyone you've already asked or
   already know. Send requests to its ten and the next ten come up. The list below
   still shows everyone, marked *Request sent* or *Connected*, with their rarity.
