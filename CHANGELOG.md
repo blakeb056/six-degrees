@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The live messages sync keeps what it finds.** It read your conversations but matched none of
+  them: the pattern for a profile link never matched, and LinkedIn's messaging gives a member
+  link your connections list doesn't have. It now matches each person to your connections by
+  link, or by a name only one connection has (the name isn't kept), and scrolls the list's own
+  panel so more than the first 20 conversations load.
+- **Messaging samples keep no words.** The sync's saved samples of LinkedIn's data (for tuning
+  the reader) now drop every piece of writing and every name before they're saved.
+
 ## [0.4.8] - 2026-09-29
 
 ### Changed

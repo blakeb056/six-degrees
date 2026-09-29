@@ -59,7 +59,7 @@ _ENV_LOCAL = _load_env_local()
 # a server they don't control.
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 MESSAGING_URL = "https://www.linkedin.com/messaging/"
-MESSAGE_SCROLLS = 6               # scrolls down the conversation list, a few seconds apart
+MESSAGE_SCROLLS = 15
 
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
 
@@ -1899,6 +1899,18 @@ def voyager_total(payload):
     return None
 
 
+_WORDS = {"body", "text", "subject", "attributedBody", "snippet", "messages", "headline", "firstName", "lastName", "rootUrl", "artifacts", "sponsoredPreviewText", "customPronoun", "advertiserLabel"}
+
+
+def _redact_words(x):
+    """A copy of a LinkedIn response with every piece of writing and every name removed."""
+    if isinstance(x, dict):
+        return {k: ("<removed>" if k in _WORDS else _redact_words(v)) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_redact_words(v) for v in x]
+    return x
+
+
 def _wire_sample(data, prefix="search"):
     if EXPERIMENT["wire"] >= WIRE_SAMPLES:
         return
@@ -1908,6 +1920,10 @@ def _wire_sample(data, prefix="search"):
             return
         folder = _home() / "wire-samples"
         folder.mkdir(parents=True, exist_ok=True)
+        if prefix == "messages":
+            # Messaging responses carry what people wrote, and their names: a sample
+            # keeps only the shape (keys, links, dates, counts), never the words.
+            raw = json.dumps(_redact_words(data))
         (folder / f"{prefix}-{int(time.time() * 1000)}.json").write_text(raw)
         EXPERIMENT["wire"] += 1
     except Exception:
@@ -1948,7 +1964,7 @@ def _wire_merge(page, profile_url, page_results):
     return page_results
 
 
-_PROFILE_LINK = re.compile(r"https://www\\.linkedin\\.com/in/[^/?#\\s\"']+")
+_PROFILE_LINK = re.compile(r"https://www\.linkedin\.com/in/[^/?#\s\"']+")
 
 
 def voyager_conversations(payload):
@@ -1956,6 +1972,10 @@ def voyager_conversations(payload):
     everyone in it (profile links), when it was last active, and unread messages.
     Anything with a lastActivityAt and participants, wherever it sits. Never the text."""
     out = []
+    names = {}
+
+    def text_of(v):
+        return v.get("text", "") if isinstance(v, dict) else (v if isinstance(v, str) else "")
 
     def people(x):
         found = set()
@@ -1966,6 +1986,15 @@ def voyager_conversations(payload):
                 pid = v.get("publicIdentifier")
                 if isinstance(pid, str) and pid and pid != "UNKNOWN":
                     found.add(f"https://www.linkedin.com/in/{pid}/")
+                # Messaging gives a member's link as /in/ACoA… (their member id), not
+                # the /in/name link your connections list has, so their name comes
+                # along to match them up (the app keeps the match, not the name).
+                link = v.get("profileUrl")
+                if isinstance(link, str) and "/in/" in link:
+                    key = link.split("?")[0].rstrip("/") + "/"
+                    name = f"{text_of(v.get('firstName'))} {text_of(v.get('lastName'))}".strip()
+                    if name:
+                        names[key] = name
                 stack.extend(v.values())
             elif isinstance(v, list):
                 stack.extend(v)
@@ -1984,7 +2013,8 @@ def voyager_conversations(payload):
                     who |= people(v)
                 if who:
                     unread = x.get("unreadCount")
-                    out.append({"people": sorted(who), "at": int(at), "unread": int(unread) if isinstance(unread, (int, float)) else None})
+                    out.append({"people": sorted(who), "at": int(at), "unread": int(unread) if isinstance(unread, (int, float)) else None,
+                                "names": {u: names[u] for u in who if u in names}})
             for v in x.values():
                 walk(v)
         elif isinstance(x, list):
@@ -2021,7 +2051,12 @@ def sync_messages(headless=False):
             if stop_requested() or _window_closed(page):
                 break
             try:
-                page.evaluate("""() => { const l = document.querySelector('.msg-conversations-container__conversations-list, [class*="conversations-list"]');
+                # The list scrolls inside its own panel, not the window: find the panel
+                # that holds the conversation links and scroll that to its end.
+                page.evaluate("""() => {
+                  let l = document.querySelector('.msg-conversations-container__conversations-list, [class*="conversations-list"]');
+                  const a = document.querySelector('a[href*="/messaging/thread/"], li[class*="conversation-listitem"]');
+                  for (let e = a; !l && e; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 20) l = e;
                   if (l) l.scrollTop = l.scrollHeight; }""")
             except Exception:
                 pass
@@ -2049,11 +2084,13 @@ def sync_messages(headless=False):
             continue
         cur = people.get(others[0])
         if not cur or c["at"] > cur["last"]:
-            people[others[0]] = {"last": c["at"], "unread": c["unread"]}
+            people[others[0]] = {"last": c["at"], "unread": c["unread"], "name": c.get("names", {}).get(others[0])}
     print(f"  Found {len(convos)} conversations in LinkedIn's data, {len(people)} with one person.")
     try:
-        requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
-        print("  Saved for the Social tab.")
+        r = requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
+        got = r.json() if r.ok else {}
+        matched, unmatched = got.get("people", 0), got.get("unmatched", 0)
+        print(f"  Saved for the Social tab: {matched} matched to your connections, {unmatched} not.")
     except Exception as e:
         print(f"  Couldn't save them: {e}")
 

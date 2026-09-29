@@ -65,3 +65,23 @@ Ada,Me,"9/1/26, 10:00 AM",,INCOMING
 Me,Ben,"9/2/26, 11:00 AM",,OUTGOING
 Cy,Me,"9/3/26, 12:00 PM",,INCOMING`, 'direction')), { incoming: 2, outgoing: 1, total: 3 });
 });
+
+test('the live sync matches people by link, else by a name only one connection has', async () => {
+  const { matchLive } = await import('../lib/linkedin-export.js');
+  const conns = [
+    { name: 'Ana Ruiz', profile_url: 'https://www.linkedin.com/in/ana-ruiz' },
+    { name: 'Ben Ode, MBA', profile_url: 'https://www.linkedin.com/in/ben-ode' },
+    { name: 'Cy Lee', profile_url: 'https://www.linkedin.com/in/cy-lee-1' },
+    { name: 'Cy Lee', profile_url: 'https://www.linkedin.com/in/cy-lee-2' },
+  ];
+  const { live, unmatched } = matchLive({
+    'https://www.linkedin.com/in/ana-ruiz/': { last: 5, unread: 1, name: 'Someone Else' },
+    'https://www.linkedin.com/in/ACoAAB1/': { last: 7, unread: 0, name: 'Ben Ode' },
+    'https://www.linkedin.com/in/ACoAAB2/': { last: 9, unread: 2, name: 'Cy Lee' },
+    'https://www.linkedin.com/in/ACoAAB3/': { last: 9, unread: 2, name: 'Nobody Here' },
+  }, conns);
+  assert.deepEqual(Object.keys(live).sort(), ['https://www.linkedin.com/in/ana-ruiz', 'https://www.linkedin.com/in/ben-ode']);
+  assert.equal(live['https://www.linkedin.com/in/ben-ode'].last, 7);
+  assert.equal(unmatched, 2);   // Cy Lee is two people; Nobody Here isn't a connection
+  assert.ok(!JSON.stringify(live).includes('Ben'));   // names aren't kept
+});
