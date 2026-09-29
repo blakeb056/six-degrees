@@ -259,8 +259,12 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
     heading = to;
     viewRef.current = { transform: to, size: box };
+    // Stopped before its first frame, by a wheel or a click at that moment, a
+    // slide reports "cancel" rather than "interrupt". Missing that left heading
+    // set, and every zoom after it was saved as this destination. A scroll
+    // already under way doesn't stop a slide, which lands here all the same.
     svg.transition().duration(duration).call(zoomBehavior.transform, to)
-      .on('end interrupt', () => { if (heading === to) heading = null; });
+      .on('end interrupt cancel', () => { if (heading === to) heading = null; });
   };
 
   // The selection ring, tied to the selected person's dot. It is drawn again
