@@ -16,7 +16,7 @@ import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
 import { localPhoto } from '../../lib/photos';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation }) {
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
@@ -178,6 +178,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     <span style={{ flex: 1 }}>
                       {i.circle ? <><b style={{ color: '#00ff88' }}>{i.only.toLocaleString()}</b> ({Math.round(i.onlyShare * 100)}%): none of your other connections reach them</> : '—'}
                     </span>
+                    {i.only > 0 && onShowInSeparation && (
+                      <button style={act} onClick={() => onShowInSeparation({ query: selected.name, rarity: 'only' })}>Show them →</button>
+                    )}
                   </div>
                   <div style={row}>
                     <span style={label}>Closest overlap</span>
@@ -194,6 +197,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                       ))}
                     </span>
                     <span style={{ fontSize: 10.5, color: '#8b9a9a' }}>{i.circle ? `${i.mix.S} S · ${i.mix.A} A` : ''}</span>
+                    {i.mix.S > 0 && onShowInSeparation && (
+                      <button style={act} onClick={() => onShowInSeparation({ query: selected.name, tier: 'S' })}>S only →</button>
+                    )}
                   </div>
                   {i.companies.length > 0 && (
                     <div style={row}>
@@ -208,6 +214,20 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                       <a href={`/setup?scan=${encodeURIComponent(selected.id)}`} style={act}>{i.bars == null ? 'Scan →' : 'Finish →'}</a>
                     )}
                   </div>
+                  {(() => {
+                    const since = selected.connected_date ? new Date(selected.connected_date) : null;
+                    const asked = (bridgeMap[selected.id] || []).filter((p) => hasRequest(p, requests)).length;
+                    if (!(since && !Number.isNaN(since.getTime())) && !asked) return null;
+                    return (
+                      <div style={row}>
+                        <span style={label}>You and {first}</span>
+                        <span style={{ flex: 1 }}>
+                          {since && !Number.isNaN(since.getTime()) ? `Connected ${since.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}
+                          {asked ? `${since ? ' · ' : ''}${asked} request${asked === 1 ? '' : 's'} out through them` : ''}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div style={row}>
                     <span style={label}>Rank</span>
                     <span style={{ flex: 1 }}>{i.rank ? `#${i.rank} of ${i.of} by who only they reach` : 'Ranked once their circle is scanned'}</span>

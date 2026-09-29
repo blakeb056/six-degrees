@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Insights on a connection's card.** A collapsible panel with their circle's size (*Explore →*
   opens it in Bridge Chains), how many only they reach, whose circle overlaps theirs most
   (*Open →*), the tier mix of their circle, where most of it works, how much is scanned (*Scan →*
-  or *Finish →*), and their rank by who only they reach. All from what the app already keeps. It
-  replaces the *Only through …* box.
+  or *Finish →*), when you connected and how many requests you have out through them, and their
+  rank by who only they reach. *Show them →* opens Separation filtered to the people only they
+  reach, and *S only →* to the S-tier people in their circle. All from what the app already
+  keeps. It replaces the *Only through …* box.
 
 ## [0.4.3] - 2026-09-29
 
