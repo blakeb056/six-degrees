@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **A new app icon: Orbits.** Your tier rings round you, with one bridge reaching out through
+  them. It's the Mac app's icon, the website's tab icon and its home-screen icon.
 - **The Scan page asks before a risky search budget.** Picking more than 100 searches a
   day, or no monthly cap, now asks first, because a real account was restricted after 373
   searches in 24 hours, run back to back (it had opened only 7 profiles that day). While
