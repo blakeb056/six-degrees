@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   messages is on. It still opens no conversation, and its saved samples still keep no words.
 
 ### Changed
+- **Auto scan is slower and has its own ceilings.** Sittings of 8 pages, then an hour's rest;
+  searches only from 9:00 to 18:00; never more than 40 searches in 24 hours or 200 in 7 days,
+  however high the daily budget is set (the account restricted on 28 September did 373 in a
+  day with the budget at 500); and two days with no searches after any check from LinkedIn.
 - **The scan status bar sits under the buttons.** On each page it now sits in its own row
   under the header, pushing the page down instead of covering it. On Network Circle it floats
   just under the header, measured, so a header that wraps to two rows no longer hides it.

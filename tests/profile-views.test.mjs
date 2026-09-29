@@ -354,16 +354,16 @@ out['entry'] = {k: mine[A][k] for k in ('pages', 'more', 'total')}`);
 
 // ── Experimental Auto-Bridge (--experimental) ───────────────────────────────
 
-test('experimental pacing: after a sitting of 10 pages, a 45-minute rest', (t) => {
+test('experimental pacing: after a sitting of 8 pages, an hour\'s rest', (t) => {
   const r = run(t, `
 from datetime import datetime
 clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
-ns['EXPERIMENT'].update(on=True, pages=10)
+ns['EXPERIMENT'].update(on=True, pages=8)
 start = clock.t
 ok = ns['_drip_before_search']()
 out.update(ok=ok, waited=round(clock.t - start), pages=ns['EXPERIMENT']['pages'])`);
   if (!r) return;
-  assert.deepEqual(r.out, { ok: true, waited: 2700, pages: 0 });
+  assert.deepEqual(r.out, { ok: true, waited: 3600, pages: 0 });
 });
 
 test('experimental pacing: no searches at night; it waits for 09:00', (t) => {
@@ -412,4 +412,15 @@ out['counts'] = [ns['mutual_count_text'](s) for s in ('23 mutual connections', '
   assert.deepEqual(r.out.people, [{ name: 'Ada Quill', headline: 'Founder at Hooli', profileUrl: 'https://www.linkedin.com/in/ada-quill-0000/', imageUrl: 'https://media.example/a400', mutualCount: 24 }]);
   assert.equal(r.out.total, 312);
   assert.deepEqual(r.out.counts, [23, 1, 2, null]);
+});
+
+test('experimental pacing: Auto scan stops at its own 40 a day, however high the budget', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
+ns['EXPERIMENT'].update(on=True, pages=0)
+ns['_read_activity'] = lambda: {"searches": [clock.t - 60 * i for i in range(1, 41)]}
+out.update(wait=ns['_auto_ceiling_wait'](clock.t) is not None, day=ns['AUTO_DAY_CAP'], week=ns['AUTO_WEEK_CAP'])`);
+  if (!r) return;
+  assert.deepEqual(r.out, { wait: true, day: 40, week: 200 });
 });

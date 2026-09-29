@@ -330,7 +330,7 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     if stop_on_checkpoint and signed_out:
         reason = "a security check" if wall == "checkpoint" else "being signed out"
         _keep_pushback_evidence(page, reason)
-        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {reason}")
+        set_cooldown(seconds=AUTO_PUSHBACK_REST if EXPERIMENT["on"] else DAY_SECONDS, reason=f"LinkedIn pushed back: {reason}")
         raise LinkedInPushedBack(0, reason)
 
     if _has_session_cookie(context) and not _looks_logged_out(page) and not wall:
@@ -1282,10 +1282,17 @@ LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at mos
 # A sitting of SESSION_PAGES searches, then a long rest; searches only in the
 # daytime on this computer's clock; and at the daily budget it waits for the
 # budget to free up instead of stopping. Pages are saved one at a time.
+#
+# Its own ceilings sit under whatever budget is set on the Scan page: the account
+# restricted on 2026-09-28 did 373 searches in 24 hours with the budget raised to
+# 500. Auto scan stays far below that however high the budget is set.
 EXPERIMENT = {"on": False, "pages": 0, "wire": 0}
-SESSION_PAGES = 10                # searches in one sitting
-SESSION_REST = 45 * 60            # the rest after each sitting
-DRIP_HOURS = (9, 19)              # searches only from 09:00 to 19:00, local time
+SESSION_PAGES = 8                 # searches in one sitting
+SESSION_REST = 60 * 60            # the rest after each sitting
+DRIP_HOURS = (9, 18)              # searches only from 09:00 to 18:00, local time
+AUTO_DAY_CAP = 40                 # at most this many searches in any 24 hours
+AUTO_WEEK_CAP = 200               # and this many in any 7 days
+AUTO_PUSHBACK_REST = 2 * 24 * 3600   # after any LinkedIn check, nothing for two days
 WIRE_SAMPLES = 5                  # raw LinkedIn responses kept per run, for research
 
 
@@ -2202,7 +2209,26 @@ def _drip_before_search():
             if not _drip_wait("Today's searches are used", _seconds_until_search_frees()):
                 return False
             continue
+        wait = _auto_ceiling_wait()
+        if wait:
+            label, seconds = wait
+            if not _drip_wait(label, seconds):
+                return False
+            continue
         return True
+
+
+def _auto_ceiling_wait(now=None):
+    """Auto scan's own ceilings (AUTO_DAY_CAP in 24 hours, AUTO_WEEK_CAP in 7 days):
+    None to go ahead, or (why, seconds until the oldest counted search drops out)."""
+    now = now if now is not None else time.time()
+    searches = sorted(t for t in _read_activity()["searches"] if now - 7 * DAY_SECONDS < t <= now)
+    day = [t for t in searches if now - DAY_SECONDS < t]
+    if len(day) >= AUTO_DAY_CAP:
+        return (f"Auto scan's {AUTO_DAY_CAP} searches for today are used", day[-AUTO_DAY_CAP] + DAY_SECONDS - now + 5)
+    if len(searches) >= AUTO_WEEK_CAP:
+        return (f"Auto scan's {AUTO_WEEK_CAP} searches for this week are used", searches[-AUTO_WEEK_CAP] + 7 * DAY_SECONDS - now + 5)
+    return None
 
 
 def interruptible_sleep(seconds, on_tick=None, step=5):

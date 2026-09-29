@@ -450,9 +450,10 @@ function SetupInner() {
                   <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
                     onChange={(e) => { setExperimental(e.target.checked); window.dispatchEvent(new Event('six-degrees:experimental')); }} />
                   <span>
-                    <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 10 pages in a sitting,
-                    then a 45-minute rest; searches only from 9:00 to 19:00; at the daily budget it waits for it to
-                    free up instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
+                    <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 8 pages in a sitting,
+                    then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40 searches in a day
+                    or 200 in a week, however high your budget; two days&rsquo; rest after any check from LinkedIn; at
+                    the budget it waits instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
                     the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
                   </span>
                 </label>
