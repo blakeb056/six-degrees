@@ -46,6 +46,7 @@
 | `lib/search-risk.js` | When a search budget is risky (over 100 a day, or no monthly cap) and what the budget picker asks and says about it. No Node imports, so the page and tests share it. |
 | `lib/degrees.js` | Everyone the app knows by degree (1st, 2nd in a scanned circle, 3rd from company scans), each once at the nearest; Network Circle's Degree filter. |
 | `lib/brokerage.js` | Exclusive reach per connection: 1 ÷ how many of your connections reach each person in their circle, summed, and how many only they reach (ego betweenness). |
+| `lib/network-health.js` | Network health for the Scores tab: circles scanned, reach two or more ways, effective size N − 2t/N from `connection_ties`, top five by who only they reach. |
 | `lib/insights.js` | The Insights panel on a connection's card: circle size, only-through, closest overlap, tier mix, where they work, scanned, rank. |
 | `lib/gate.js` | Pure, testable auth decisions — `isRebound()`, `isCrossSiteWrite()`, `gateDecision()`, and `requestRefusal()`, all three in order: what `middleware.js` and the import route both call. |
 | `lib/scoring.js` | **The scoring model: the only one.** Titles, companies (each with one industry), the sector lean, bonuses, bridge boost, tiers, and the `score_why` wording. See [`SCORING.md`](SCORING.md). |

@@ -12,6 +12,7 @@ import Link from 'next/link';
 import OnboardingGate from '../components/OnboardingGate';
 import SectorSection from '../components/settings/SectorSection';
 import TierSection from '../components/settings/TierSection';
+import NetworkHealthSection from '../components/settings/NetworkHealthSection';
 import CompanyScores from '../components/CompanyScores';
 import { Body, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -60,7 +61,9 @@ function ScoresInner() {
           How someone&rsquo;s power score is worked out, and the three things you can change about it:{' '}
           <a href="#sector" style={jump}>your field</a>, <a href="#tiers" style={jump}>how tiers are graded</a> and{' '}
           <a href="#companies" style={jump}>any company&rsquo;s score</a>. A change here rescores everyone.
+          {' '}First, <a href="#health" style={jump}>how your network holds together</a>.
         </Body>
+        <NetworkHealthSection />
         <SectorSection onSaved={saved} />
         <TierSection onSaved={saved} />
         <div id="companies" style={{ marginTop: 28 }}>

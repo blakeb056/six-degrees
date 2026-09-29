@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rank by who only they reach. *Show them →* opens Separation filtered to the people only they
   reach, and *S only →* to the S-tier people in their circle. All from what the app already
   keeps. It replaces the *Only through …* box.
+- **Network health on the Scores tab.** How much of your 2nd degree you reach two or more ways,
+  the effective reach of your own network (Burt's effective size, from the ties between your
+  connections that circle scans keep), and your five connections who reach the most people no
+  one else does, each with *Explore →*. With fewer than five circles scanned it says it's an
+  early estimate. Only your own numbers: never a percentile against other people.
 
 ## [0.4.3] - 2026-09-29
 
