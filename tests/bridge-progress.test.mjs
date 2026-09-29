@@ -29,7 +29,7 @@ tree = ast.parse(open(sys.argv[1]).read())
 names = {'_progress_path', '_progress_owner', '_read_progress_file', 'load_bridge_progress',
          '_change_progress', 'record_bridge_progress', 'mark_bridge_hidden',
          'forget_bridge_progress', 'next_page_to_read', '_url_page'}
-consts = {'LINKEDIN_MAX_PAGES', 'LEGACY_PAGES_READ'}
+consts = {'LINKEDIN_MAX_PAGES', 'LEGACY_PAGES_READ', '_LIST_TOTALS'}
 body = [n for n in tree.body
         if (isinstance(n, ast.FunctionDef) and n.name in names)
         or (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in consts for t in n.targets))]

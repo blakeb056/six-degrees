@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A ring round each connection's dot.** Five thin bars show how much of their circle is
+  scanned: all five once their list is read to the end, and part-way the pages read against
+  LinkedIn's own count of the list, which scans now keep (no extra traffic). Lists read before
+  scans kept a count show two. A small badge counts the people in their circle ready to scan,
+  and a catalyst is the green outline on the dot. It's on the Galaxy and on Bridge Chains'
+  bridges.
+
 ## [0.4.1] - 2026-09-29
 
 ### Added

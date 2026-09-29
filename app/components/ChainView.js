@@ -31,7 +31,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
-import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
+import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
+import { ringSegments, RING } from '../../lib/dot-rings';
 import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
 import { exclusiveReach, redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
@@ -294,6 +295,20 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               <circle cx={b.x} cy={b.y} r={isHov ? 20 : 16}
                 fill={`${TIER_COLORS[b.tier]}08`}
                 stroke={`${TIER_COLORS[b.tier]}${isHov ? '60' : '25'}`} strokeWidth={1} />
+              {/* How much of their circle is scanned: five thin bars (design C) */}
+              {(() => {
+                const bars = scanBars(b, reach);
+                if (bars == null) return null;
+                return (
+                  <g transform={`translate(${b.x} ${b.y})`} pointerEvents="none">
+                    {ringSegments((isHov ? 20 : 16) + 3.5).map((seg) => (
+                      <path key={seg.i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={1.6}
+                        stroke={seg.i < bars ? RING.filled : RING.empty} />
+                    ))}
+                    <title>{bars === 5 ? 'Their whole list is scanned' : `About ${bars * 20}% of their list is scanned`}</title>
+                  </g>
+                );
+              })()}
               {/* Node */}
               <circle cx={b.x} cy={b.y} r={isHov ? 13 : 11}
                 fill={localPhoto(b.profile_image_url) ? '#1a1a2e' : TIER_COLORS[b.tier]}

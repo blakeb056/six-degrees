@@ -339,3 +339,15 @@ out.update(deleted=deleted, waited=clock.t - NOW)`);
   if (!r) return;
   assert.deepEqual(r.out, { deleted: ['Ada Quill'], waited: 0 });
 });
+
+test('a list\'s length from LinkedIn\'s count is kept with its progress, and survives later saves', (t) => {
+  const r = run(t, `
+ns['_LIST_TOTALS'][A] = 310
+ns['record_bridge_progress'](A, 'Ada Quill', 5, True)
+ns['_LIST_TOTALS'].clear()
+ns['record_bridge_progress'](A, 'Ada Quill', 10, True)
+mine = ns['load_bridge_progress']()
+out['entry'] = {k: mine[A][k] for k in ('pages', 'more', 'total')}`);
+  if (!r) return;
+  assert.deepEqual(r.out.entry, { pages: 10, more: true, total: 310 });
+});

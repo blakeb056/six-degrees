@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
 import { recentre } from '../../lib/galaxy';
+import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
+import { ringSegments, RING } from '../../lib/dot-rings';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -57,7 +59,21 @@ const RING_CSS = `
   .galaxy-ring-pulse { animation: none; opacity: 0.8; }
 }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null }) {
+export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2 }) {
+  // The ring round a connection's dot (design C): how much of their circle is
+  // scanned, and how many in it are ready to scan (lib/reach.js).
+  const marks = useMemo(() => {
+    const reach = reachIndex(fullDegree1 || connections, fullDegree2 || [], scanNotes || {});
+    const ready = readyByCircle(reach);
+    const out = new Map();
+    for (const c of connections) {
+      if ((c.degree || 1) !== 1) continue;
+      const bars = scanBars(c, reach);
+      const r = ready.get(c.id) || 0;
+      if (bars != null || r) out.set(c.id, { bars, ready: r });
+    }
+    return out;
+  }, [connections, fullDegree1, fullDegree2, scanNotes]);
   const svgRef = useRef(null);
   const ringRef = useRef(null);
   const sceneRef = useRef(null);  // The scene on screen: { resize, select }
@@ -123,7 +139,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? recentre(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName);
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks);
     sceneRef.current = scene;
     scene.select(selectedIdRef.current);
 
@@ -145,7 +161,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     // why onSelect is not a dependency. The size is read through sizeRef: a new
     // size re-fits the view rather than rebuilding.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connections, tierColors, measured]);
+  }, [connections, tierColors, measured, marks]);
 
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -200,7 +216,7 @@ function easeRadius(el, r) {
 // Graph coordinates put you at 0,0, whatever the size of the box; the zoom
 // transform places that in the box. So a new size only moves the view, and a
 // rebuild can start from the view as it was.
-function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName) {
+function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map()) {
   const centerNode = {
     id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
     power_score: 10, fx: 0, fy: 0,
@@ -380,7 +396,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .attr('stroke-opacity', 0.15).attr('stroke-width', 0.5);
 
   // Catalyst outer glow rings (rendered behind the nodes)
-  const catalysts = nodes.filter(n => n.is_catalyst);
+  // A catalyst is the green outline on their dot (design C, with the scan
+  // bars round it); the dashed glow ring that used to sit here hid the bars,
+  // so it's only drawn for a catalyst with no bars.
+  const catalysts = nodes.filter(n => n.is_catalyst && marks.get(n.id)?.bars == null);
   if (catalysts.length) {
     const defs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
     if (!defs.select('#catalyst-glow-nm').size()) {
@@ -396,6 +415,30 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('cx', d => d.x || 0).attr('cy', d => d.y || 0)
       .attr('class', 'catalyst-ring');
   }
+
+  // Design C round a connection's dot: five thin bars for how much of their
+  // circle is scanned, and a small badge for how many in it are ready to scan.
+  const ringed = nodes.filter((n) => marks.has(n.id));
+  const dotRings = g.append('g').attr('class', 'dot-rings').style('pointer-events', 'none')
+    .selectAll('g').data(ringed).join('g')
+    .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+  dotRings.each(function (d) {
+    const { bars, ready } = marks.get(d.id);
+    const r = nodeRadius(d) + 3.5;
+    const el = d3.select(this);
+    if (bars != null) {
+      for (const seg of ringSegments(r)) {
+        el.append('path').attr('d', seg.d).attr('fill', 'none').attr('stroke-linecap', 'round')
+          .attr('stroke-width', 1.6).attr('stroke', seg.i < bars ? RING.filled : RING.empty);
+      }
+    }
+    if (ready > 0) {
+      const at = r * 0.72;
+      el.append('circle').attr('cx', at).attr('cy', at).attr('r', 5.5).attr('fill', RING.badge);
+      el.append('text').attr('x', at).attr('y', at + 2.5).attr('text-anchor', 'middle')
+        .attr('font-size', 7).attr('font-weight', 700).attr('fill', '#fff').text(ready > 9 ? '9+' : ready);
+    }
+  });
 
   const node = g.append('g').selectAll('circle').data(nodes).join('circle')
     .attr('r', nodeRadius)
@@ -483,6 +526,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
     node.attr('cx', d => d.x).attr('cy', d => d.y);
     catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
+    dotRings.attr('transform', d => `translate(${d.x},${d.y})`);
     labels.attr('x', d => d.x).attr('y', d => d.y);
     placeRing();
   });
