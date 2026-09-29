@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-28
+
 ### Added
 - **A cap on profile views.** A circle scan opens the person's profile once, and profile
   views are what LinkedIn restricted an account for. They now have a cap of their own: 50
