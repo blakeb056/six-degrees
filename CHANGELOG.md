@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Network Circle's Filter picks degrees.** *1st*, *2nd* and *3rd* chips choose who the
+  Galaxy draws: your connections, anyone in a scanned circle, and anyone only a company scan
+  found. Any mix works, and 2nd without 1st shows who's valuable outside your own
+  connections. Each person counts once, at the nearest degree. Further out is drawn a little
+  smaller and fainter, gathered near the connection whose circle they're in, and the tier
+  counts follow what's drawn. It opens on your connections alone, as before.
+
 ### Changed
 - **Degrees opens on Bridge Chains,** then Separation, then Orbit, in the menu too. Orbit
   used to come first.

@@ -8,6 +8,7 @@ import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { VIEWS, resolveView } from './components/views';
+import { peopleByDegree, tierCountsOf } from '../lib/degrees';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import OnboardingGate from './components/OnboardingGate';
@@ -68,6 +69,10 @@ function HomeInner() {
   const isMobile = useIsMobile();
   const [degree1, setDegree1] = useState([]);
   const [degree2, setDegree2] = useState([]);
+  // People found only by company scans: 3rd degree in Network Circle's filter.
+  const [degree3, setDegree3] = useState([]);
+  // Which degrees Network Circle draws: your connections alone until you pick more.
+  const [degrees, setDegrees] = useState([1]);
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
   const [filter, setFilter] = useState('all');
@@ -102,7 +107,7 @@ function HomeInner() {
       // imported in this tab (1st-degree only, never persisted), or Supabase.
       const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
       if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
-      const { degree1: d1, degree2: d2 } = IS_DEMO
+      const { degree1: d1, degree2: d2, degree3: d3 = [] } = IS_DEMO
         ? await loadDemoNetwork()
         : csv
         ? csv
@@ -112,6 +117,7 @@ function HomeInner() {
 
       setDegree1(d1);
       setDegree2(d2);
+      setDegree3(d3 || []);
       shapeRef.current = networkShape(d1, d2);
       setStats(statsFor(d1, d2));
       setLoading(false);
@@ -131,8 +137,9 @@ function HomeInner() {
   const reload = useCallback(async () => {
     if (IS_DEMO || hasCsvNetwork() || !userId) return;
     try {
-      const [{ degree1: d1, degree2: d2 }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
+      const [{ degree1: d1, degree2: d2, degree3: d3 = [] }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
       setScanNotes((prev) => (JSON.stringify(prev) === JSON.stringify(notes) ? prev : notes));
+      setDegree3((prev) => (prev.length === (d3 || []).length ? prev : d3 || []));
       const shape = networkShape(d1, d2);
       if (shape === shapeRef.current) return;
       shapeRef.current = shape;
@@ -156,9 +163,16 @@ function HomeInner() {
   // scene when these change identity: computed inline, every re-render — a click,
   // the sidebar opening, notifications arriving — reset the galaxy's layout. The
   // empty list in network mode was a new [] each time, which was enough on its own.
+  // Network Circle draws the degrees picked in the Filter panel, each person
+  // once, at the nearest degree they're found (lib/degrees.js).
+  const byDegree = useMemo(() => peopleByDegree(degree1, degree2, degree3), [degree1, degree2, degree3]);
+  const networkRows = useMemo(
+    () => (isDegreesMode ? connections : degrees.flatMap((d) => byDegree[d] || [])),
+    [isDegreesMode, connections, degrees, byDegree],
+  );
   const filtered = useMemo(
-    () => (filter === 'all' ? connections : connections.filter(c => c.tier === filter)),
-    [connections, filter],
+    () => (filter === 'all' ? networkRows : networkRows.filter(c => c.tier === filter)),
+    [networkRows, filter],
   );
   // Lookups built once per load. Every click re-renders this component, and the
   // three places below used to scan one list inside another — degree1.find per
@@ -421,7 +435,10 @@ function HomeInner() {
           onFilterChange={setFilter}
           visualMode={view.key}
           onVisualModeChange={setVisualMode}
-          tierCounts={stats?.tiers || {}}
+          tierCounts={isDegreesMode ? stats?.tiers || {} : tierCountsOf(networkRows)}
+          degrees={degrees}
+          onDegreesChange={setDegrees}
+          degreeCounts={{ 1: byDegree[1].length, 2: byDegree[2].length, 3: byDegree[3].length }}
           bridgeTierCounts={bridgeTierCounts}
         />
         {/* Visualization — switches based on visualMode */}

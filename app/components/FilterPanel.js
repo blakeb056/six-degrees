@@ -12,7 +12,7 @@ function useIsMobile() {
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 
-export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilterChange, visualMode, onVisualModeChange, tierCounts, bridgeTierCounts }) {
+export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilterChange, visualMode, onVisualModeChange, tierCounts, bridgeTierCounts, degrees = [1], onDegreesChange, degreeCounts = {} }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees';
   // Same source of truth the renderer uses, so the menu can never offer a
@@ -105,6 +105,42 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
         </div>
 
         {/* Tier Filters */}
+        {/* Network Circle: which degrees to draw. Any mix, never none: 2nd and
+            3rd without your own connections shows who's valuable outside them. */}
+        {!isDegreesMode && onDegreesChange && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+              Degree
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[[1, '1st', 'Your connections'], [2, '2nd', 'In a scanned circle'], [3, '3rd', 'Found by a company scan']].map(([d, label, what]) => {
+                const on = degrees.includes(d);
+                const count = degreeCounts[d] || 0;
+                const last = on && degrees.length === 1;
+                return (
+                  <button
+                    key={d}
+                    title={`${what}: ${count.toLocaleString()}${last ? ' (keep at least one)' : ''}`}
+                    aria-pressed={on}
+                    disabled={last || (!on && !count)}
+                    onClick={() => onDegreesChange(on ? degrees.filter((x) => x !== d) : [...degrees, d].sort())}
+                    style={{
+                      flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 11.5, fontWeight: 700,
+                      cursor: last || (!on && !count) ? 'default' : 'pointer',
+                      border: on ? '1px solid rgba(52,152,219,0.6)' : '1px solid rgba(255,255,255,0.08)',
+                      background: on ? 'rgba(52,152,219,0.18)' : 'rgba(255,255,255,0.03)',
+                      color: on ? '#cfe6f7' : count ? '#888' : '#444',
+                    }}
+                  >
+                    {label}
+                    <div style={{ fontSize: 9.5, fontWeight: 500, opacity: 0.8, marginTop: 2 }}>{count.toLocaleString()}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div style={{ marginBottom: 18 }}>
           {/* In Degrees these chips filter by the tier of the connection who
               introduces you, not the person reached — Separation has its own
