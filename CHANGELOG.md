@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   250 a month. Lowering a budget, or anything up to 100 a day, is never asked about.
 
 ### Fixed
+- **Bridge Chains: a hover preview no longer draws over the bridges.** With many bridges the
+  overview grows extra rings, and a bridge's circle, previewed on hover, landed on top of
+  them. It now starts beyond the outermost ring of bridges.
 - **Stop during a re-map's wait keeps the circle.** Re-mapping someone deleted their circle
   first and then waited out the minute between profile views, so a Stop in that minute left
   it deleted and unread. It now waits first and deletes only once the read can start.

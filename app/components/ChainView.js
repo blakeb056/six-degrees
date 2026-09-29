@@ -32,7 +32,7 @@ import { useRouter } from 'next/navigation';
 import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
-import { ringLayout, dotRadius } from '../../lib/chain-layout';
+import { ringLayout, dotRadius, previewBand } from '../../lib/chain-layout';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
@@ -271,7 +271,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
         {hovBridge && (
           <CirclePreview bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
-            cx={cx} cy={cy} maxR={maxR} still={still} />
+            cx={cx} cy={cy} maxR={maxR} still={still} band={previewBand(maxR, bridgeLayout.rings)} />
         )}
 
         {/* Bridge nodes — hover to preview their circle, click to open it */}
@@ -379,13 +379,13 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 }
 
 /** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
-function CirclePreview({ bridge, members, reach, cx, cy, maxR, still }) {
+function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band }) {
   const shown = members.filter((m) => m.degree === 1 || m.tier === 'S' || m.tier === 'A' || m.tier === 'B');
-  // Beyond the ring of bridges, inside the window at the overview's zoom.
-  const inner = maxR * 0.66;
-  const sweep = Math.min(Math.PI * 0.9, Math.max(Math.PI * 0.2, (shown.length * 11) / (maxR * 0.75)));
+  // Beyond every ring of bridges (lib/chain-layout.js previewBand).
+  const { inner, outer } = band;
+  const sweep = Math.min(Math.PI * 0.9, Math.max(Math.PI * 0.2, (shown.length * 11) / inner));
   const layout = ringLayout(shown.length, {
-    inner, outer: maxR * 0.8, spacing: 11, minSpacing: 3.5, start: bridge.angle - sweep / 2, sweep,
+    inner, outer, spacing: 11, minSpacing: 3.5, start: bridge.angle - sweep / 2, sweep,
   });
   return (
     <g>
