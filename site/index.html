@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Six Degrees — see your LinkedIn network as a galaxy</title>
-  <meta name="description" content="A free Mac app that maps your LinkedIn network: who you know, who they know, and the shortest path to someone you haven't met. Runs on your own computer; nothing is uploaded.">
+  <meta name="description" content="A free, open-source app that maps your LinkedIn network: who can introduce you, who only one connection reaches, and the shortest path to someone you haven't met. Runs on your own computer; nothing is uploaded.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="author" content="Blake Burford">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="color-scheme" content="dark">
   <link rel="canonical" href="https://sixdegreesapp.com/">
+  <link rel="alternate" type="application/atom+xml" title="Six Degrees releases" href="https://github.com/blakeb056/six-degrees/releases.atom">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Six Degrees">
   <meta property="og:url" content="https://sixdegreesapp.com/">
@@ -68,6 +70,9 @@
         "Degrees: people two steps away, ranked, with who can introduce you",
         "Paths: your network by company and industry",
         "Outlink: getting introduced, as a game",
+        "Who only one connection reaches: each connection's exclusive reach",
+        "Network health: how much of your 2nd degree you reach two or more ways",
+        "A physics lab for the Galaxy, and a replay of your network growing",
         "Import LinkedIn's Connections.csv",
         "Optional scanning of your own LinkedIn in a Chrome window you sign into",
         "Updates in one click",
@@ -187,53 +192,467 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="style.css?v=2026-09-29">
-  <script src="app.js?v=2026-09-28" defer></script>
+  <link rel="stylesheet" href="style.css?v=2026-09-29-2">
+  <script src="app.js?v=2026-09-29-2" defer></script>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to the page</a>
+
   <header class="top">
-    <a class="brand" href="./"><img src="img/icon.svg" alt="" width="32" height="32"> Six Degrees</a>
+    <a class="brand" href="./"><img src="img/icon.svg" alt="" width="30" height="30"> Six Degrees</a>
     <nav aria-label="Sections">
-      <a href="#install">Install</a>
-      <a href="#network">Scanning</a>
-      <a href="#what">What it does</a>
-      <a href="#privacy">Privacy</a>
-      <a href="#linux">Linux</a>
-      <a href="https://github.com/blakeb056/six-degrees">GitHub</a>
+      <a href="#why">Why</a>
+      <a href="#what">Features</a>
+      <a href="#compare">Compare</a>
+      <a href="#download">Download</a>
+      <a href="#news">News</a>
+      <a href="#docs">Docs</a>
+      <a href="#community">Community</a>
     </nav>
+    <a class="gh" href="https://github.com/blakeb056/six-degrees">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      GitHub
+    </a>
   </header>
 
-  <main>
+  <main id="main">
     <section class="hero">
-      <img class="app-icon" src="img/icon.svg" alt="" width="96" height="96">
-      <h1>See your LinkedIn network <br>as a galaxy.</h1>
-      <p class="lede">Who you know, who <em>they</em> know, and the shortest path to someone you haven't met.
-        A free Mac app that runs on your own computer. Nothing is uploaded.</p>
+      <div class="sky" aria-hidden="true"><span></span><span></span><span></span></div>
+      <a class="badge" href="#news">
+        <span class="badge-dot" aria-hidden="true"></span>
+        <span>v<!-- gen:latest-version -->0.4.5<!-- /gen:latest-version --> · <!-- gen:latest-date --><time datetime="2026-09-29">29 September 2026</time><!-- /gen:latest-date --></span>
+        <span class="badge-cta"><span class="badge-cta-text">What's new </span>→</span>
+      </a>
+      <h1>See your LinkedIn network <br>as a <span class="glow">galaxy</span>.</h1>
+      <p class="lede">Who can introduce you, who only one of your connections can reach, and the shortest path to someone you
+        haven't met. A free, open-source app that runs on your own computer. Nothing is uploaded.</p>
 
       <p class="not-mac" id="not-mac" role="status" hidden>
-        Six Degrees is a Mac app. On Linux, run <code>npx six-degrees</code> (Node 22.13 or later;
-        <a href="#linux">details</a>).
-        Windows isn't supported yet.
+        Six Degrees runs on a Mac. On Linux, run <code>npx six-degrees</code> (Node 22.13 or later;
+        <a href="#linux">details</a>). Windows is coming soon.
       </p>
 
-      <div class="downloads" id="download">
-        <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
-          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <!-- The download button for this visitor's computer: app.js shows one of these
+           three and hides the others. Without JavaScript the Mac one shows. -->
+      <div class="cta-row">
+        <div class="cta-main" data-for="mac">
+          <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Mac</span>
+              <span class="dl-sub" id="dl-main-sub">Apple Silicon (M1 or newer)</span>
+            </span>
+          </a>
+        </div>
+        <div class="cta-main" data-for="linux" hidden>
+          <button type="button" class="dl primary is-soon" data-soon="linux" data-ready-title="Download for Linux" data-ready-sub="The Linux app" aria-disabled="true">
+            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Linux app: coming soon</span>
+              <span class="dl-sub">Not ready to download yet</span>
+            </span>
+          </button>
+        </div>
+        <div class="cta-main" data-for="windows" hidden>
+          <button type="button" class="dl primary is-soon" data-soon="windows" data-ready-title="Download for Windows" data-ready-sub="The Windows app" aria-disabled="true">
+            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Windows: coming soon</span>
+              <span class="dl-sub">Not ready to download yet</span>
+            </span>
+          </button>
+        </div>
+        <a class="dl ghost" href="https://github.com/blakeb056/six-degrees">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="dl-text">
-            <span class="dl-title">Download for Mac</span>
-            <span class="dl-sub" id="dl-main-sub">Apple Silicon (M1 or newer)</span>
+            <span class="dl-title">View on GitHub</span>
+            <span class="dl-sub">MIT licence · read every line</span>
           </span>
         </a>
-        <p class="dl-alt"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a></p>
       </div>
-      <p class="fine" id="version-line">macOS 13.5 or later · about 195–210 MB · free and open source</p>
-      <p class="guess" id="chip-guess" hidden></p>
+      <p class="dl-alt" data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a> · <a href="#download">All downloads</a></p>
+      <p class="dl-alt" data-for="linux" hidden><span data-when-soon="linux">Or run it today from the Terminal: <code>npx six-degrees</code> · <a href="#linux">How</a> · </span><a href="#download">All downloads</a></p>
+      <p class="dl-alt" data-for="windows" hidden><span data-when-soon="windows"><a href="https://github.com/blakeb056/six-degrees">Watch releases on GitHub</a> to hear when it's out · </span><a href="#download">Mac and Linux downloads</a></p>
+      <p class="fine" id="version-line">macOS 13.5 or later · Linux from the Terminal · free and open source</p>
+
+      <figure class="hero-shot">
+        <img src="img/app-window.png" srcset="img/app-window-1200.png 1200w, img/app-window.png 3136w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Six Degrees on a Mac: a sample network drawn as rings around you, the most powerful people closest" width="3136" height="2118" fetchpriority="high">
+      </figure>
+    </section>
+
+    <!-- The numbers. Releases and tests are counted by scripts/build-site-news.mjs;
+         30,000 is LinkedIn's cap, which CHANGELOG 0.2.1 records an import of. -->
+    <section class="numbers" aria-labelledby="numbers-h">
+      <h2 class="sr-only" id="numbers-h">Six Degrees in numbers</h2>
+      <ul class="stats" role="list">
+        <li>
+          <span class="stat-n"><!-- gen:release-count -->21<!-- /gen:release-count --></span>
+          <span class="stat-l">releases shipped</span>
+          <span class="stat-s">since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></span>
+        </li>
+        <li>
+          <span class="stat-n"><!-- gen:test-count -->732<!-- /gen:test-count --></span>
+          <span class="stat-l">automated tests</span>
+          <span class="stat-s">run on Node 22 and 24 for every change</span>
+        </li>
+        <li>
+          <span class="stat-n">30,000</span>
+          <span class="stat-l">connections</span>
+          <span class="stat-s">LinkedIn's own maximum, imported and drawn</span>
+        </li>
+        <li>
+          <span class="stat-n">0</span>
+          <span class="stat-l">accounts, servers or trackers</span>
+          <span class="stat-s">no telemetry, analytics or crash reports</span>
+        </li>
+        <li>
+          <span class="stat-n">MIT</span>
+          <span class="stat-l">licence</span>
+          <span class="stat-s">free, no paid tier, every line on GitHub</span>
+        </li>
+        <li>
+          <span class="stat-n">2</span>
+          <span class="stat-l">platforms today</span>
+          <span class="stat-s">macOS, and Linux from the Terminal</span>
+        </li>
+      </ul>
+      <p class="fine center">Releases and tests are counted from the code each time this site is published
+        (<a href="https://github.com/blakeb056/six-degrees/blob/main/scripts/build-site-news.mjs">how</a>).</p>
+    </section>
+
+    <section class="why" id="why">
+      <p class="kicker"><span class="num">01</span> Why Six Degrees</p>
+      <h2>Your network is bigger than your list of connections</h2>
+      <p class="intro">A connections list tells you who you know. Six Degrees shows what that network can do: who can
+        introduce you to whom, where one connection is your only way in, and how it all grew.</p>
+
+      <div class="edges">
+        <article class="edge">
+          <p class="edge-where">Degrees → Separation</p>
+          <h3>Who can introduce you, ranked</h3>
+          <p>Everyone two steps away, ranked, each with every way in: which of your connections knows them, and how
+            many do.</p>
+        </article>
+        <article class="edge">
+          <p class="edge-where">Bridge Chains · a card's Insights</p>
+          <h3>Who only one connection reaches</h3>
+          <p>For each connection whose circle you've scanned, the people none of your other connections reach.
+            <em>Show them</em> lists exactly who.</p>
+        </article>
+        <article class="edge">
+          <p class="edge-where">Scores → Network health</p>
+          <h3>Your network's health</h3>
+          <p>How much of your 2nd degree you reach two or more ways, your effective reach, and the five connections who
+            reach the most people no one else does. Only your own numbers, never a percentile against anyone.</p>
+        </article>
+        <article class="edge">
+          <p class="edge-where">Galaxy → Filters · experimental</p>
+          <h3>A physics lab, and a replay</h3>
+          <p>Sliders for gravity, rings, push and pull. Colour by tier, degree, company or warmth. Replay your network
+            growing by the day you connected, and save it as a picture or a video.</p>
+        </article>
+        <article class="edge">
+          <p class="edge-where">Everywhere</p>
+          <h3>All on your own computer</h3>
+          <p>No account, no server, no telemetry. Your network is a folder in your home folder, and the app goes online
+            only when you ask it to.</p>
+        </article>
+      </div>
+
+      <div class="panel sample chart-group">
+        <div class="panel-head">
+          <h3>What that looks like, in the sample network</h3>
+          <p class="fine">The app ships with a network of invented people, so you can try every view first. These are
+            its numbers, counted from
+            <a href="https://github.com/blakeb056/six-degrees/blob/main/public/demo-data.json">the sample's file</a>.
+            Yours will differ.</p>
+        </div>
+        <div class="sample-grid">
+          <div class="big">
+            <p class="big-n"><!-- gen:sample-degree2 -->598<!-- /gen:sample-degree2 --></p>
+            <p class="big-l">people two steps away</p>
+            <p class="fine">from <!-- gen:sample-connections -->150<!-- /gen:sample-connections --> connections, through the
+              <!-- gen:sample-bridges -->14<!-- /gen:sample-bridges --> whose circles were scanned</p>
+          </div>
+          <div class="chart ways">
+            <p class="chart-title">How many ways in</p>
+            <!-- gen:sample-ways-bar --><svg class="stack" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="Of 598 people two steps away: 503 through one connection only, 65 through two, 30 through three or more"><rect class="k-one" x="0" y="0" width="84.11" height="10"/><rect class="k-two" x="84.11" y="0" width="10.87" height="10"/><rect class="k-more" x="94.98" y="0" width="5.02" height="10"/></svg><!-- /gen:sample-ways-bar -->
+            <ul class="legend" role="list">
+              <li class="k-one"><b><!-- gen:sample-one-way -->503<!-- /gen:sample-one-way --></b> through one connection only (<!-- gen:sample-one-way-share -->84%<!-- /gen:sample-one-way-share -->)</li>
+              <li class="k-two"><b><!-- gen:sample-two-way -->65<!-- /gen:sample-two-way --></b> through two</li>
+              <li class="k-more"><b><!-- gen:sample-more-way -->30<!-- /gen:sample-more-way --></b> through three or more</li>
+            </ul>
+          </div>
+          <div class="chart exclusive">
+            <p class="chart-title">People only they reach, for each scanned connection</p>
+            <div class="bars-box"><!-- gen:sample-exclusive-chart -->
+            <svg class="bars" viewBox="0 0 140 100" preserveAspectRatio="none" role="img" aria-label="The 14 connections with a scanned circle in the sample network, by how many people only they reach: from 51 down to 15"><g><title>Connection 1: 51 people only they reach</title><rect class="k-top" x="1.5" y="0" width="7" height="100"/></g><g><title>Connection 2: 48 people only they reach</title><rect class="k-bridge" x="11.5" y="5.88" width="7" height="94.12"/></g><g><title>Connection 3: 46 people only they reach</title><rect class="k-bridge" x="21.5" y="9.8" width="7" height="90.2"/></g><g><title>Connection 4: 44 people only they reach</title><rect class="k-bridge" x="31.5" y="13.73" width="7" height="86.27"/></g><g><title>Connection 5: 43 people only they reach</title><rect class="k-bridge" x="41.5" y="15.69" width="7" height="84.31"/></g><g><title>Connection 6: 41 people only they reach</title><rect class="k-bridge" x="51.5" y="19.61" width="7" height="80.39"/></g><g><title>Connection 7: 39 people only they reach</title><rect class="k-bridge" x="61.5" y="23.53" width="7" height="76.47"/></g><g><title>Connection 8: 37 people only they reach</title><rect class="k-bridge" x="71.5" y="27.45" width="7" height="72.55"/></g><g><title>Connection 9: 32 people only they reach</title><rect class="k-bridge" x="81.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 10: 32 people only they reach</title><rect class="k-bridge" x="91.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 11: 28 people only they reach</title><rect class="k-bridge" x="101.5" y="45.1" width="7" height="54.9"/></g><g><title>Connection 12: 26 people only they reach</title><rect class="k-bridge" x="111.5" y="49.02" width="7" height="50.98"/></g><g><title>Connection 13: 21 people only they reach</title><rect class="k-bridge" x="121.5" y="58.82" width="7" height="41.18"/></g><g><title>Connection 14: 15 people only they reach</title><rect class="k-bridge" x="131.5" y="70.59" width="7" height="29.41"/></g></svg>
+            <ol class="bar-labels" aria-hidden="true"><li>51</li><li>48</li><li>46</li><li>44</li><li>43</li><li>41</li><li>39</li><li>37</li><li>32</li><li>32</li><li>28</li><li>26</li><li>21</li><li>15</li></ol>
+            <!-- /gen:sample-exclusive-chart --></div>
+            <p class="fine">One bar per connection. The tallest reaches <!-- gen:sample-top-exclusive -->51<!-- /gen:sample-top-exclusive -->
+              people no one else in the network does.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="what" id="what">
+      <p class="kicker"><span class="num">02</span> Features</p>
+      <h2>What it shows you</h2>
+      <div class="features">
+        <article>
+          <h3>Network Circle</h3>
+          <p>Everyone you know on rings by how much they can open up for you, the most powerful closest to you.</p>
+        </article>
+        <article>
+          <h3>Degrees</h3>
+          <p>The people two steps away, ranked, each with every way in: which of your connections can introduce you.
+            Needs a scan, or try it with the sample.</p>
+        </article>
+        <article>
+          <h3>Paths</h3>
+          <p>Your network by company and industry: who you know at each company, who you can reach, and the warmest way in.</p>
+        </article>
+        <article>
+          <h3>Outlink</h3>
+          <p>Getting introduced, as a game: work through each connection's circle five people at a time. Needs a scan.</p>
+        </article>
+      </div>
+      <div class="features minor">
+        <article>
+          <h3>Scores</h3>
+          <p>How every power score is worked out, in one place, and the three things you can change: your field, how
+            tiers are graded, and any company's score.</p>
+        </article>
+        <article>
+          <h3>Scan</h3>
+          <p>The guided scanner: its progress, the budget left today, a cooldown lock, and a Paused list to carry on from.</p>
+        </article>
+        <article>
+          <h3>Social <span class="pill">experimental</span></h3>
+          <p>From your own LinkedIn data: who's warm, dormant or waiting on a reply, and your career chapters. Message
+            text is never kept.</p>
+        </article>
+        <article>
+          <h3>Updates and moving</h3>
+          <p>Install and restart updates in one click, checked against the release's checksums. Save a copy of your
+            network to take to another computer.</p>
+        </article>
+      </div>
+
+      <h3 class="new-in">New in 0.4.5</h3>
+      <div class="features three">
+        <article>
+          <h3>A physics lab for the Galaxy</h3>
+          <p>Sliders for gravity, rings, push, pull and distance, in the spirit of Obsidian's graph. Let the rings go
+            and each connection pulls their circle round them.</p>
+        </article>
+        <article>
+          <h3>Watch your network grow</h3>
+          <p>Replay your connections by the day you made them, with a time slider, your job changes marked along
+            it, and a video you can save.</p>
+        </article>
+        <article>
+          <h3>Colour, find and names</h3>
+          <p>Colour the Galaxy by tier, degree, company or warmth, light up a name or company, and switch names on
+            or off.</p>
+        </article>
+      </div>
+
+      <div class="gallery">
+        <figure>
+          <img src="img/degrees.png" srcset="img/degrees-1200.png 1200w, img/degrees.png 2880w" sizes="(max-width: 860px) calc(100vw - 32px), 530px" alt="Screenshot of the Degrees view" width="2880" height="1800" loading="lazy">
+          <figcaption><strong>Degrees.</strong> Everyone two steps away, ranked, with the connection who can introduce you.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/paths.png" srcset="img/paths-1200.png 1200w, img/paths.png 2880w" sizes="(max-width: 860px) calc(100vw - 32px), 530px" alt="Screenshot of the Paths view" width="2880" height="1800" loading="lazy">
+          <figcaption><strong>Paths.</strong> Companies grouped by industry, and for any one of them, who's there and how to reach them.</figcaption>
+        </figure>
+      </div>
+      <p class="caption center">Every person shown on this page is invented.</p>
+    </section>
+
+    <section class="compare" id="compare">
+      <p class="kicker"><span class="num">03</span> How it compares</p>
+      <h2>Built for one job: your own LinkedIn network</h2>
+      <p class="intro">Good tools, each made for something different. This is what each does out of the box, put as
+        fairly as we can.</p>
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">Six Degrees compared with LinkedIn's own search, spreadsheets and CRMs, and general network-analysis tools</caption>
+          <thead>
+            <tr>
+              <th scope="col">What you want</th>
+              <th scope="col" class="us">Six Degrees</th>
+              <th scope="col">LinkedIn's own search</th>
+              <th scope="col">Spreadsheets and CRMs</th>
+              <th scope="col">Network tools (SocNetV, Gephi)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Your connections, from LinkedIn's export</th>
+              <td class="us yes" data-label="Six Degrees">Yes: drop in <code>Connections.csv</code></td>
+              <td class="yes" data-label="LinkedIn's own search">Yes: it's where they live</td>
+              <td class="yes" data-label="Spreadsheets and CRMs">Yes: import the CSV</td>
+              <td class="partly" data-label="Network tools">Partly: as nodes, with no ties between them</td>
+            </tr>
+            <tr>
+              <th scope="row">Everyone two steps away, ranked, with who can introduce you</th>
+              <td class="us yes" data-label="Six Degrees">Yes: Degrees (needs a scan, or the sample)</td>
+              <td class="partly" data-label="LinkedIn's own search">Partly: search 2nd-degree people, and see mutual connections on each</td>
+              <td class="no" data-label="Spreadsheets and CRMs">No: the export holds 1st degree only</td>
+              <td class="partly" data-label="Network tools">If you bring the ties yourself</td>
+            </tr>
+            <tr>
+              <th scope="row">Who only one of your connections reaches</th>
+              <td class="us yes" data-label="Six Degrees">Yes: for every scanned circle</td>
+              <td class="no" data-label="LinkedIn's own search">Not shown</td>
+              <td class="no" data-label="Spreadsheets and CRMs">No</td>
+              <td class="partly" data-label="Network tools">Partly: brokerage measures, on data you bring</td>
+            </tr>
+            <tr>
+              <th scope="row">A score per person, with the working shown</th>
+              <td class="us yes" data-label="Six Degrees">Yes: title × company, and the formula is open</td>
+              <td class="no" data-label="LinkedIn's own search">Not shown</td>
+              <td class="partly" data-label="Spreadsheets and CRMs">Your own formulas</td>
+              <td class="partly" data-label="Network tools">General centrality measures</td>
+            </tr>
+            <tr>
+              <th scope="row">Your network by company and industry</th>
+              <td class="us yes" data-label="Six Degrees">Yes: Paths</td>
+              <td class="partly" data-label="LinkedIn's own search">Partly: filter a search by company</td>
+              <td class="partly" data-label="Spreadsheets and CRMs">Pivot tables, by hand</td>
+              <td class="partly" data-label="Network tools">Partly: by any attribute you import</td>
+            </tr>
+            <tr>
+              <th scope="row">A layout you can tune, and a replay by date</th>
+              <td class="us yes" data-label="Six Degrees">Yes: the Galaxy's physics lab (experimental)</td>
+              <td class="no" data-label="LinkedIn's own search">No</td>
+              <td class="no" data-label="Spreadsheets and CRMs">No</td>
+              <td class="yes" data-label="Network tools">Yes: many layouts, and Gephi's timeline</td>
+            </tr>
+            <tr>
+              <th scope="row">Any network, any data, research-grade statistics</th>
+              <td class="us no" data-label="Six Degrees">No: LinkedIn networks only</td>
+              <td class="no" data-label="LinkedIn's own search">No</td>
+              <td class="partly" data-label="Spreadsheets and CRMs">Any data, few network tools</td>
+              <td class="yes" data-label="Network tools">Yes: what they're built for</td>
+            </tr>
+            <tr>
+              <th scope="row">Runs on your computer, with no account</th>
+              <td class="us yes" data-label="Six Degrees">Yes</td>
+              <td class="no" data-label="LinkedIn's own search">No: an online service with your account</td>
+              <td class="partly" data-label="Spreadsheets and CRMs">Varies: most CRMs are online</td>
+              <td class="yes" data-label="Network tools">Yes: desktop apps</td>
+            </tr>
+            <tr>
+              <th scope="row">Price</th>
+              <td class="us yes" data-label="Six Degrees">Free, MIT licence</td>
+              <td class="partly" data-label="LinkedIn's own search">Free, with paid plans</td>
+              <td class="partly" data-label="Spreadsheets and CRMs">Free to paid</td>
+              <td class="yes" data-label="Network tools">Free, open source</td>
+            </tr>
+            <tr>
+              <th scope="row">Windows</th>
+              <td class="us partly" data-label="Six Degrees">Coming soon</td>
+              <td class="yes" data-label="LinkedIn's own search">Yes, in a browser</td>
+              <td class="yes" data-label="Spreadsheets and CRMs">Yes</td>
+              <td class="yes" data-label="Network tools">Yes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine center">Something here out of date, or unfair to another tool?
+        <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a> and it'll be put right.</p>
+    </section>
+
+    <section class="download" id="download">
+      <p class="kicker"><span class="num">04</span> Download</p>
+      <h2>Get Six Degrees</h2>
+      <p class="intro">Free for Mac today. Apps for Linux and Windows are on the way, and on Linux it already runs from
+        the Terminal.</p>
+      <div class="os-grid">
+        <article class="os" id="os-mac">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M1.5 19.5h21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <h3>macOS</h3>
+            <span class="os-req">13.5 or later</span>
+          </header>
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+            <span class="dl-text">
+              <span class="dl-title">Apple Silicon</span>
+              <span class="dl-sub">M1 or newer · .dmg<span data-asset="Six-Degrees-Mac-Apple-Silicon.dmg"></span></span>
+            </span>
+          </a>
+          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">
+            <span class="dl-text">
+              <span class="dl-title">Intel</span>
+              <span class="dl-sub">Older Macs · .dmg<span data-asset="Six-Degrees-Mac-Intel.dmg"></span></span>
+            </span>
+          </a>
+          <p class="fine">Which one? Apple menu → About This Mac. "Chip: Apple M…" is Apple Silicon; "Processor: …Intel…"
+            is Intel.</p>
+          <p class="os-links"><a href="#install">Install guide</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS">Checksums</a></p>
+        </article>
+
+        <article class="os" id="os-linux">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m6.5 9.5 3 2.5-3 2.5M11.5 15h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Linux</h3>
+            <span class="os-req soon" data-when-soon="linux">Coming soon</span>
+          </header>
+          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
+               download is one line in app.js: DOWNLOADS.linux. -->
+          <button type="button" class="dl is-soon" data-soon="linux" data-ready-title="Download for Linux" data-ready-sub="The Linux app" aria-disabled="true">
+            <span class="dl-text">
+              <span class="dl-title">Linux app</span>
+              <span class="dl-sub">Coming soon</span>
+            </span>
+          </button>
+          <div class="os-note">
+            <p><strong>Or run it today from the Terminal</strong>, with Node 22.13 or later:</p>
+            <div class="cmd">
+              <code id="cmd-npx">npx six-degrees</code>
+              <button type="button" class="copy" data-copy="cmd-npx" aria-label="Copy the Linux command">Copy</button>
+            </div>
+            <p class="os-links"><a href="#linux">Linux guide</a> · <a href="https://www.npmjs.com/package/six-degrees">On npm</a></p>
+          </div>
+        </article>
+
+        <article class="os" id="os-windows">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.8"/></svg>
+            <h3>Windows</h3>
+            <span class="os-req soon" data-when-soon="windows">Coming soon</span>
+          </header>
+          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
+               download is one line in app.js: DOWNLOADS.windows. -->
+          <button type="button" class="dl is-soon" data-soon="windows" data-ready-title="Download for Windows" data-ready-sub="The Windows app" aria-disabled="true">
+            <span class="dl-text">
+              <span class="dl-title">Windows app</span>
+              <span class="dl-sub">Coming soon</span>
+            </span>
+          </button>
+          <p class="fine" data-when-soon="windows">There's no Windows version yet, and <code>npx six-degrees</code> doesn't run
+            on Windows either.</p>
+          <p class="os-links" data-when-soon="windows"><a href="https://github.com/blakeb056/six-degrees">Watch releases on GitHub</a>
+            (Watch → Custom → Releases) to hear when it's out.</p>
+        </article>
+      </div>
+      <p class="fine center">Every release is on <a href="https://github.com/blakeb056/six-degrees/releases">GitHub
+        Releases</a> with a <code>SHA256SUMS</code> file, and the Terminal install checks the download against it before
+        opening anything.</p>
+    </section>
+
+    <section class="start" id="start">
+      <p class="kicker"><span class="num">05</span> Get started</p>
+      <h2>Three steps to your galaxy</h2>
       <ol class="roadmap" role="list" aria-label="Three steps">
         <li><a href="#install"><span class="step">1</span> Install it</a></li>
         <li><a href="#network"><span class="step">2</span> Bring your network in</a></li>
         <li><a href="#what"><span class="step">3</span> Explore it</a></li>
       </ol>
-
     </section>
 
     <section class="install" id="install">
@@ -276,9 +695,8 @@
         <p>Press <kbd>⌘</kbd> <kbd>Space</kbd>, type <em>Terminal</em> and press Return. Paste this line and press Return:</p>
         <div class="cmd">
           <code id="cmd">curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash</code>
-          <button type="button" id="copy" aria-label="Copy the install command">Copy</button>
+          <button type="button" class="copy" data-copy="cmd" aria-label="Copy the install command">Copy</button>
         </div>
-        <span id="copy-status" class="sr-only" role="status"></span>
         <p class="fine">It downloads the right version for your Mac, checks the file is exactly the one published,
           puts Six Degrees in Applications and opens it. Running it again updates the app.
           <a href="https://github.com/blakeb056/six-degrees/blob/main/install.sh">Read the script</a>.</p>
@@ -291,15 +709,18 @@
       <p class="intro">Three ways, from no risk at all to the full picture. Scanning is the only one that shows who <em>your connections</em> know.</p>
       <div class="cards">
         <article>
+          <p class="risk none">No LinkedIn risk</p>
           <h3>Explore a sample</h3>
           <p>150 invented connections and the 598 people they know. Every view except Outlink, which needs your own scan.</p>
         </article>
         <article>
+          <p class="risk none">No LinkedIn risk</p>
           <h3>Import LinkedIn's export</h3>
           <p>LinkedIn's own <code>Connections.csv</code>, read on your Mac. It shows the people you know, not who they
             know (so no Degrees or Outlink), and there's no risk to your LinkedIn account.</p>
         </article>
         <article>
+          <p class="risk some">Your account, your risk</p>
           <h3>Scan your LinkedIn</h3>
           <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
             own, you sign into LinkedIn there yourself, and it reads slowly with daily limits. Needs Google Chrome (in
@@ -326,61 +747,35 @@
       </figure>
     </section>
 
-    <section class="what" id="what">
-      <p class="kicker">Step 3 of 3</p>
-      <h2>What it shows you</h2>
-      <div class="features">
-        <article>
-          <h3>Network Circle</h3>
-          <p>Everyone you know on rings by how much they can open up for you, the most powerful closest to you.</p>
-        </article>
-        <article>
-          <h3>Degrees</h3>
-          <p>The people two steps away, ranked, each with every way in: which of your connections can introduce you.
-            Needs a scan, or try it with the sample.</p>
-        </article>
-        <article>
-          <h3>Paths</h3>
-          <p>Your network by company and industry: who you know at each company, who you can reach, and the warmest way in.</p>
-        </article>
-        <article>
-          <h3>Outlink</h3>
-          <p>Getting introduced, as a game: work through each connection's circle five people at a time. Needs a scan.</p>
-        </article>
-      </div>
-
-      <h3 class="new-in">New in 0.4.5</h3>
-      <div class="features three">
-        <article>
-          <h3>A physics lab for the Galaxy</h3>
-          <p>Sliders for gravity, rings, push, pull and distance, in the spirit of Obsidian's graph. Let the rings go
-            and each connection pulls their circle round them.</p>
-        </article>
-        <article>
-          <h3>Watch your network grow</h3>
-          <p>Replay your connections by the day you made them, with a time slider, your job changes marked along
-            it, and a video you can save.</p>
-        </article>
-        <article>
-          <h3>Colour, find and names</h3>
-          <p>Colour the Galaxy by tier, degree, company or warmth, light up a name or company, and switch names on
-            or off.</p>
-        </article>
-      </div>
-
-      <figure>
-        <img src="img/degrees.png" srcset="img/degrees-1200.png 1200w, img/degrees.png 2880w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Screenshot of the Degrees view" width="2880" height="1800" loading="lazy">
-        <figcaption><strong>Degrees.</strong> Everyone two steps away, ranked, with the connection who can introduce you.</figcaption>
+    <section class="linux" id="linux">
+      <p class="kicker">On Linux</p>
+      <h2>Run it on Linux today</h2>
+      <p class="intro">Six Degrees runs on Linux from the Terminal with <code>npx</code>, which comes with Node.js: it downloads Six Degrees from <strong>npm</strong>, the public library of Node.js programs, and runs it in your browser. A Linux app to download is coming soon.</p>
+      <figure class="video">
+        <video controls muted playsinline preload="metadata" poster="video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
+          <source src="video/linux.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
       </figure>
-      <figure>
-        <img src="img/paths.png" srcset="img/paths-1200.png 1200w, img/paths.png 2880w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Screenshot of the Paths view" width="2880" height="1800" loading="lazy">
-        <figcaption><strong>Paths.</strong> Companies grouped by industry, and for any one of them, who's there and how to reach them.</figcaption>
-      </figure>
-      <p class="caption center">Every person shown on this page is invented.</p>
+      <div class="terminal">
+        <h3>One command</h3>
+        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
+          too old), then run:</p>
+        <div class="cmd">
+          <code id="cmd-linux">npx six-degrees</code>
+          <button type="button" class="copy" data-copy="cmd-linux" aria-label="Copy the Linux command">Copy</button>
+        </div>
+        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
+          <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
+          also needs Google Chrome (not Chromium), and Python 3.10 to 3.14 with venv, or the Scan page's
+          <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
+          yet.</p>
+      </div>
     </section>
 
     <section class="privacy" id="privacy">
-      <h2>Your network stays on your Mac</h2>
+      <p class="kicker"><span class="num">06</span> Privacy</p>
+      <h2>Your network stays on your computer</h2>
       <ul role="list">
         <li><strong>No account, no server.</strong> Everything stays on your computer: your network in a hidden
           <code>.six-degrees</code> folder, and the app window's own storage (including an imported CSV) in
@@ -392,78 +787,181 @@
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
           under the MIT licence.</li>
       </ul>
-      <p class="fine">This page has no trackers either. To show the latest version number, it asks GitHub once.</p>
+      <p class="fine center">This page has no trackers either. To show the latest version number, it asks GitHub once.</p>
+    </section>
+
+    <section class="news" id="news">
+      <p class="kicker"><span class="num">07</span> News</p>
+      <h2>Releases</h2>
+      <p class="intro">Newest first, from the <a href="https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md">changelog</a>.
+        Every release says what was added, changed and fixed.</p>
+      <div class="posts"><!-- gen:news -->
+        <article class="post featured">
+          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.5</span><span class="tag latest">Latest</span></p>
+          <h3><a href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.5">Physics lab for the Galaxy (experimental)</a></h3>
+          <p class="post-more">Also: More in the physics lab · Names on or off</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">3 added</li></ul>
+          <a class="more" href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.5">Release notes<span class="sr-only"> for 0.4.5</span> →</a>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.4</span></p>
+          <h3><a href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.4">Social (experimental): a tab for your relationships</a></h3>
+          <p class="post-more">Also: Auto scan · Insights on a connection's card · Network health on the Scores tab</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">4 added</li></ul>
+          <a class="more" href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.4">Release notes<span class="sr-only"> for 0.4.4</span> →</a>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.3</span></p>
+          <h3><a href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.3">Experimental Auto-Bridge</a></h3>
+          <p class="post-more">Also: A status bar while a scan runs, on every page · Network Circle's tiers switch on and off · Orbit: the circles behind added people sit behind their bridge</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">2 added</li><li class="k-changed">2 changed</li></ul>
+          <a class="more" href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.3">Release notes<span class="sr-only"> for 0.4.3</span> →</a>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.2</span></p>
+          <h3><a href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.2">Orbit goes past 2nd degree</a></h3>
+          <p class="post-more">Also: A ring round each connection's dot · The Galaxy in bands when more than your connections are drawn · The &quot;N only here&quot; line under each bridge in Bridge Chains</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">2 added</li><li class="k-changed">1 changed</li><li class="k-removed">1 removed</li></ul>
+          <a class="more" href="https://github.com/blakeb056/six-degrees/releases/tag/v0.4.2">Release notes<span class="sr-only"> for 0.4.2</span> →</a>
+        </article>
+        <!-- /gen:news --></div>
+      <div class="panel chart-group releases-chart">
+        <div class="panel-head">
+          <h3>Every release, by what it changed</h3>
+          <p class="fine"><!-- gen:change-count -->258<!-- /gen:change-count --> changes in
+            <!-- gen:release-count -->21<!-- /gen:release-count --> releases since
+            <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release -->,
+            counted from the changelog. Betas are counted in the release they became.</p>
+        </div>
+        <div class="chart">
+          <div class="bars-box tall"><!-- gen:release-chart -->
+          <svg class="bars" viewBox="0 0 210 100" preserveAspectRatio="none" role="img" aria-label="Changes per release, 21 releases from 0.1.0 to 0.4.5, 258 in all"><g><title>0.1.0 · 24 September 2026: 64 changes (22 added, 10 changed, 28 fixed, 4 security)</title><rect class="k-added" x="1.5" y="65.63" width="7" height="34.38"/><rect class="k-changed" x="1.5" y="50" width="7" height="15.63"/><rect class="k-fixed" x="1.5" y="6.25" width="7" height="43.75"/><rect class="k-security" x="1.5" y="0" width="7" height="6.25"/></g><g><title>0.1.1 · 24 September 2026: 2 changes (1 added, 1 fixed)</title><rect class="k-added" x="11.5" y="98.44" width="7" height="1.56"/><rect class="k-fixed" x="11.5" y="96.88" width="7" height="1.56"/></g><g><title>0.1.2 · 24 September 2026: 3 changes (3 fixed)</title><rect class="k-fixed" x="21.5" y="95.31" width="7" height="4.69"/></g><g><title>0.1.3 · 24 September 2026: 3 changes (3 fixed)</title><rect class="k-fixed" x="31.5" y="95.31" width="7" height="4.69"/></g><g><title>0.1.4 · 24 September 2026: 3 changes (3 fixed)</title><rect class="k-fixed" x="41.5" y="95.31" width="7" height="4.69"/></g><g><title>0.1.5 · 24 September 2026: 11 changes (4 added, 7 fixed)</title><rect class="k-added" x="51.5" y="93.75" width="7" height="6.25"/><rect class="k-fixed" x="51.5" y="82.81" width="7" height="10.94"/></g><g><title>0.1.6 · 24 September 2026: 7 changes (3 added, 2 changed, 2 fixed)</title><rect class="k-added" x="61.5" y="95.31" width="7" height="4.69"/><rect class="k-changed" x="61.5" y="92.19" width="7" height="3.13"/><rect class="k-fixed" x="61.5" y="89.06" width="7" height="3.13"/></g><g><title>0.1.7 · 24 September 2026: 12 changes (2 added, 3 changed, 7 fixed)</title><rect class="k-added" x="71.5" y="96.88" width="7" height="3.13"/><rect class="k-changed" x="71.5" y="92.19" width="7" height="4.69"/><rect class="k-fixed" x="71.5" y="81.25" width="7" height="10.94"/></g><g><title>0.1.8 · 24 September 2026: 6 changes (4 added, 2 fixed)</title><rect class="k-added" x="81.5" y="93.75" width="7" height="6.25"/><rect class="k-fixed" x="81.5" y="90.63" width="7" height="3.13"/></g><g><title>0.1.9 · 24 September 2026: 3 changes (3 added)</title><rect class="k-added" x="91.5" y="95.31" width="7" height="4.69"/></g><g><title>0.1.10 · 24 September 2026: 4 changes (2 added, 2 changed)</title><rect class="k-added" x="101.5" y="96.88" width="7" height="3.13"/><rect class="k-changed" x="101.5" y="93.75" width="7" height="3.13"/></g><g><title>0.1.11 · 24 September 2026: 4 changes (2 added, 1 fixed, 1 security)</title><rect class="k-added" x="111.5" y="96.88" width="7" height="3.13"/><rect class="k-fixed" x="111.5" y="95.31" width="7" height="1.56"/><rect class="k-security" x="111.5" y="93.75" width="7" height="1.56"/></g><g><title>0.2.0 · 24 September 2026: 10 changes (3 added, 3 changed, 4 fixed)</title><rect class="k-added" x="121.5" y="95.31" width="7" height="4.69"/><rect class="k-changed" x="121.5" y="90.63" width="7" height="4.69"/><rect class="k-fixed" x="121.5" y="84.38" width="7" height="6.25"/></g><g><title>0.2.1 · 25 September 2026: 16 changes (2 added, 4 changed, 10 fixed)</title><rect class="k-added" x="131.5" y="96.88" width="7" height="3.13"/><rect class="k-changed" x="131.5" y="90.63" width="7" height="6.25"/><rect class="k-fixed" x="131.5" y="75" width="7" height="15.63"/></g><g><title>0.3.0 · 26 September 2026: 32 changes (7 added, 11 changed, 10 fixed, 1 removed, 3 security)</title><rect class="k-added" x="141.5" y="89.06" width="7" height="10.94"/><rect class="k-changed" x="141.5" y="71.88" width="7" height="17.19"/><rect class="k-fixed" x="141.5" y="56.25" width="7" height="15.63"/><rect class="k-removed" x="141.5" y="54.69" width="7" height="1.56"/><rect class="k-security" x="141.5" y="50" width="7" height="4.69"/></g><g><title>0.4.0 · 28 September 2026: 48 changes (13 added, 16 changed, 17 fixed, 2 removed)</title><rect class="k-added" x="151.5" y="79.69" width="7" height="20.31"/><rect class="k-changed" x="151.5" y="54.69" width="7" height="25"/><rect class="k-fixed" x="151.5" y="28.13" width="7" height="26.56"/><rect class="k-removed" x="151.5" y="25" width="7" height="3.13"/></g><g><title>0.4.1 · 29 September 2026: 15 changes (4 added, 5 changed, 6 fixed)</title><rect class="k-added" x="161.5" y="93.75" width="7" height="6.25"/><rect class="k-changed" x="161.5" y="85.94" width="7" height="7.81"/><rect class="k-fixed" x="161.5" y="76.56" width="7" height="9.38"/></g><g><title>0.4.2 · 29 September 2026: 4 changes (2 added, 1 changed, 1 removed)</title><rect class="k-added" x="171.5" y="96.88" width="7" height="3.13"/><rect class="k-changed" x="171.5" y="95.31" width="7" height="1.56"/><rect class="k-removed" x="171.5" y="93.75" width="7" height="1.56"/></g><g><title>0.4.3 · 29 September 2026: 4 changes (2 added, 2 changed)</title><rect class="k-added" x="181.5" y="96.88" width="7" height="3.13"/><rect class="k-changed" x="181.5" y="93.75" width="7" height="3.13"/></g><g><title>0.4.4 · 29 September 2026: 4 changes (4 added)</title><rect class="k-added" x="191.5" y="93.75" width="7" height="6.25"/></g><g><title>0.4.5 · 29 September 2026: 3 changes (3 added)</title><rect class="k-added" x="201.5" y="95.31" width="7" height="4.69"/></g></svg>
+          <ol class="bar-labels" aria-hidden="true"><li>0.1.0 · 24 Sep</li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li>0.4.5 · 29 Sep</li></ol>
+          <!-- /gen:release-chart --></div>
+          <ul class="legend inline" role="list">
+            <li class="k-added">Added</li>
+            <li class="k-changed">Changed</li>
+            <li class="k-fixed">Fixed</li>
+            <li class="k-removed">Removed</li>
+            <li class="k-security">Security</li>
+          </ul>
+        </div>
+      </div>
+      <p class="more-links">
+        <a class="button" href="https://github.com/blakeb056/six-degrees/releases">All releases →</a>
+        <a href="https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md">Full changelog</a>
+        <a href="https://github.com/blakeb056/six-degrees/releases.atom">Releases feed (Atom)</a>
+      </p>
+    </section>
+
+    <section class="docs" id="docs">
+      <p class="kicker"><span class="num">08</span> Docs</p>
+      <h2>Guides and answers</h2>
+      <ul class="doc-grid" role="list">
+        <li><a href="#install"><strong>Install guide</strong><span>Download, the one-time macOS approval, or the Terminal line.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/docs/SCRAPING.md"><strong>How scanning works</strong><span>What the scanner reads, its budgets, and what it risks.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#how-scoring-works"><strong>How scoring works</strong><span>The power score, the tiers, and what you can change.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored"><strong>Your data</strong><span>Where it lives, moving to a new computer, undoing an import.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md"><strong>Security model</strong><span>What the app trusts, and how to report a problem.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#readme"><strong>The README</strong><span>Everything in one page, including running it from source.</span></a></li>
+      </ul>
+
+      <div class="faq" id="faq">
+        <h3 class="faq-h">Questions people ask</h3>
+        <dl>
+          <div>
+            <dt>Is Six Degrees free?</dt>
+            <dd>Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub.</dd>
+          </div>
+          <div>
+            <dt>Does it upload my LinkedIn data anywhere?</dt>
+            <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan, and GitHub when you check for an update.</dd>
+          </div>
+          <div>
+            <dt>Does it work on Windows?</dt>
+            <dd>Not yet. Six Degrees is a Mac app for Apple Silicon and Intel Macs on macOS 13.5 or later, and it runs on Linux with <code>npx six-degrees</code>. A Windows version is planned, without a date.</dd>
+          </div>
+          <div>
+            <dt>Why does macOS say it can't check the app for malware?</dt>
+            <dd>Because the app isn't signed with Apple's paid developer certificate yet. Allow it once in System Settings → Privacy &amp; Security → Open Anyway, or use the one-line Terminal install, which checks the download against the published checksums before opening it.</dd>
+          </div>
+          <div>
+            <dt>Is scanning LinkedIn against LinkedIn's rules?</dt>
+            <dd>Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account.</dd>
+          </div>
+          <div>
+            <dt>What do I need to get started?</dt>
+            <dd>A Mac and, optionally, LinkedIn's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+          </div>
+          <div>
+            <dt>What does “six degrees” mean here?</dt>
+            <dd>The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="community" id="community">
+      <p class="kicker"><span class="num">09</span> Community</p>
+      <h2>Built in the open</h2>
+      <p class="intro">Bug reports, ideas and pull requests are welcome. The bar is "does it work, and is it honest."</p>
+      <ul class="doc-grid" role="list">
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/CONTRIBUTING.md"><strong>Contribute</strong><span>Run it from source and send a change. Never commit real network data.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/issues"><strong>Issues</strong><span>Report a bug or ask for something. Redact names before attaching anything.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/security/advisories/new"><strong>Report a security problem</strong><span>Privately, through GitHub's security advisories.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/CODE_OF_CONDUCT.md"><strong>Code of conduct</strong><span>How we treat each other here.</span></a></li>
+      </ul>
+      <div class="licence" id="licence">
+        <h3>MIT licence</h3>
+        <p>Use it, change it and share it, for anything, as long as the copyright notice goes with it.
+          <a href="https://github.com/blakeb056/six-degrees/blob/main/LICENSE">Read the licence</a>.</p>
+      </div>
     </section>
 
     <section class="again">
-      <a class="dl primary" href="#download">
-        <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="dl-text">
-          <span class="dl-title">Get Six Degrees</span>
-          <span class="dl-sub">Free for Mac</span>
-        </span>
-      </a>
-    </section>
-
-    <section class="linux" id="linux">
-      <h2>On Linux</h2>
-      <p class="intro">Six Degrees runs on Linux from the Terminal with <code>npx</code>, which comes with Node.js: it downloads Six Degrees from <strong>npm</strong>, the public library of Node.js programs, and runs it in your browser. Windows isn't supported yet.</p>
-      <figure class="video">
-        <video controls muted playsinline preload="metadata" poster="video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
-          <source src="video/linux.mp4?v=0.2.1" type="video/mp4">
-        </video>
-        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
-      </figure>
-      <div class="terminal">
-        <h3>One command</h3>
-        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
-          too old), then run:</p>
-        <div class="cmd"><code>npx six-degrees</code></div>
-        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
-          <code>~/.six-degrees</code>. Stop it with Ctrl-C; update it with <code>npx six-degrees@latest</code>. Scanning
-          also needs Google Chrome (not Chromium), and Python 3.10 to 3.14 with venv, or the Scan page's
-          <strong>Set up the scanner</strong>, which downloads a private copy with one click. Windows isn't supported
-          yet.</p>
+      <h2>See the shape of your network</h2>
+      <p class="intro">Start with the sample, then bring your own in when you're ready.</p>
+      <div class="cta-row">
+        <a class="dl primary" href="#download">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Get Six Degrees</span>
+            <span class="dl-sub">Free for Mac</span>
+          </span>
+        </a>
       </div>
-    </section>
-    <section class="faq" id="faq">
-      <h2>Questions people ask</h2>
-      <dl>
-        <div>
-          <dt>Is Six Degrees free?</dt>
-          <dd>Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub.</dd>
-        </div>
-        <div>
-          <dt>Does it upload my LinkedIn data anywhere?</dt>
-          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan, and GitHub when you check for an update.</dd>
-        </div>
-        <div>
-          <dt>Does it work on Windows?</dt>
-          <dd>Not yet. Six Degrees is a Mac app for Apple Silicon and Intel Macs on macOS 13.5 or later, and it runs on Linux with <code>npx six-degrees</code>. A Windows version is planned, without a date.</dd>
-        </div>
-        <div>
-          <dt>Why does macOS say it can't check the app for malware?</dt>
-          <dd>Because the app isn't signed with Apple's paid developer certificate yet. Allow it once in System Settings → Privacy &amp; Security → Open Anyway, or use the one-line Terminal install, which checks the download against the published checksums before opening it.</dd>
-        </div>
-        <div>
-          <dt>Is scanning LinkedIn against LinkedIn's rules?</dt>
-          <dd>Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account.</dd>
-        </div>
-        <div>
-          <dt>What do I need to get started?</dt>
-          <dd>A Mac and, optionally, LinkedIn's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
-        </div>
-        <div>
-          <dt>What does “six degrees” mean here?</dt>
-          <dd>The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met.</dd>
-        </div>
-      </dl>
     </section>
   </main>
 
   <footer>
-    <p>Six Degrees · MIT licence · <a href="https://github.com/blakeb056/six-degrees">Source on GitHub</a> ·
-      <a href="https://github.com/blakeb056/six-degrees/releases">All releases</a></p>
+    <div class="foot-cols">
+      <div class="foot-brand">
+        <a class="brand" href="./"><img src="img/icon.svg" alt="" width="26" height="26"> Six Degrees</a>
+        <p>See your LinkedIn network as a galaxy. Free and open source.</p>
+      </div>
+      <nav aria-label="Product">
+        <h2>Product</h2>
+        <a href="#download">Download</a>
+        <a href="#what">Features</a>
+        <a href="#compare">Compare</a>
+        <a href="#linux">Linux</a>
+      </nav>
+      <nav aria-label="Docs">
+        <h2>Docs</h2>
+        <a href="#install">Install guide</a>
+        <a href="https://github.com/blakeb056/six-degrees/blob/main/docs/SCRAPING.md">Scanning</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">Questions</a>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <a href="https://github.com/blakeb056/six-degrees">Source on GitHub</a>
+        <a href="https://github.com/blakeb056/six-degrees/releases">All releases</a>
+        <a href="https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://www.npmjs.com/package/six-degrees">npm</a>
+      </nav>
+    </div>
+    <p class="fine">MIT licence · Every person shown on this site is invented · No trackers</p>
     <p class="fine">It estimates network position, not what anyone is worth as a person.</p>
   </footer>
 </body>

@@ -1,13 +1,25 @@
 name: Website
 
-# The download page at https://blakeb056.github.io/six-degrees/ — site/ plus the
-# README's screenshots and the app icon, published with GitHub Pages. It has no
-# build step and no dependencies: what is in site/ is what is served.
+# The website at https://sixdegreesapp.com/ — site/ plus the README's screenshots
+# and the app icon, published with GitHub Pages. No dependencies. One step writes
+# into the published copy: scripts/build-site-news.mjs fills the News section, the
+# numbers strip and the sample-network charts from CHANGELOG.md, tests/ and
+# public/demo-data.json, so the live site's news is never older than the changelog.
+# Everything else in site/ is served as it is.
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'docs/img/**', 'desktop/icon/**', '.github/workflows/pages.yml']
+    paths:
+      - 'site/**'
+      - 'docs/img/**'
+      - 'desktop/icon/**'
+      - '.github/workflows/pages.yml'
+      # What the generated parts are counted from (scripts/build-site-news.mjs).
+      - 'CHANGELOG.md'
+      - 'scripts/build-site-news.mjs'
+      - 'tests/*.test.mjs'
+      - 'public/demo-data.json'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +39,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Assemble the site
         run: |
           mkdir -p _site/img
@@ -37,6 +52,11 @@ jobs:
           command -v convert >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick; }
           for f in app-window degrees paths; do convert "_site/img/$f.png" -resize 1200x "_site/img/$f-1200.png"; done
           ls -la _site _site/img
+      # News, the numbers and the sample charts, from the files they're counted
+      # from. Only the copy being published changes; site/index.html in the repo
+      # keeps whatever was last committed (run the script locally to refresh it).
+      - name: News and numbers
+        run: node scripts/build-site-news.mjs _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

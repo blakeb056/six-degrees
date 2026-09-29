@@ -1,24 +1,66 @@
 <p align="center">
-  <a href="https://sixdegreesapp.com/"><img src="desktop/icon/icon.svg" width="128" height="128" alt="Six Degrees website"></a>
+  <a href="https://sixdegreesapp.com/"><img src="desktop/icon/icon.svg" width="112" height="112" alt="Six Degrees website"></a>
 </p>
 
 <h1 align="center">Six Degrees</h1>
 
 <p align="center">
-  <em>Map your LinkedIn network as a galaxy — see who bridges you to everyone else,<br />
-  and find the shortest path to someone you haven't met.</em>
+  <strong>See your LinkedIn network as a galaxy.</strong><br>
+  Who can introduce you, who only one of your connections can reach, and the shortest path to<br>
+  someone you haven't met. Free, open source, and it runs on your own computer.
 </p>
 
-## Install it
+<p align="center">
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/v/release/blakeb056/six-degrees?label=release&color=ffd700" alt="Latest release"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/release-date/blakeb056/six-degrees?label=released&color=3ee08f" alt="Release date"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/blakeb056/six-degrees?color=9b59b6" alt="MIT licence"></a>
+  <a href="https://www.npmjs.com/package/six-degrees"><img src="https://img.shields.io/npm/v/six-degrees?label=npm&color=3498db" alt="npm version"></a>
+  <a href="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-<p align="center"><strong>Click the button for your Mac to download the app.</strong></p>
+<p align="center">
+  <a href="https://sixdegreesapp.com/"><strong>Website</strong></a> ·
+  <a href="#download">Download</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#latest-news">News</a> ·
+  <a href="#why-six-degrees">Why Six Degrees</a> ·
+  <a href="#docs">Docs</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <a href="https://sixdegreesapp.com/"><img src="site/img/og-image.jpg" alt="Six Degrees on a Mac: a sample network drawn as rings around you, the most powerful people closest" width="100%"></a>
+</p>
+
+<p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
+
+Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
+know placed on rings by how much they can open up for you, the handful of people
+whose own circles reach the furthest, and the shortest chain from you to a stranger
+worth meeting.
+
+It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
+no server.
+
+## Download
 
 <p align="center">
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Six Degrees for a Mac with Apple Silicon (M1 or newer)"></a>
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a>
 </p>
 
-<p align="center"><sub>Free Mac app · macOS 13.5 or later · <a href="https://sixdegreesapp.com/">website</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest">what's new</a></sub></p>
+| Platform | Download | Needs |
+|---|---|---|
+| **macOS**, Apple Silicon (M1 or newer) | [Six-Degrees-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
+| **macOS**, Intel | [Six-Degrees-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
+| **Linux** | App: *coming soon.* Run it today from the Terminal: `npx six-degrees` ([how](#install-it)) | Node 22.13 or later |
+| **Windows** | *Coming soon.* [Watch releases](https://github.com/blakeb056/six-degrees) (Watch → Custom → Releases) to hear when it's out | — |
+
+<sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
+`SHA256SUMS` file ([latest](https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS)); the Terminal install below checks the download against it.
+The links above always fetch the newest release.</sub>
+
+## Install it
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
@@ -109,21 +151,102 @@ Scanning LinkedIn also needs Google Chrome, and Python 3.10 to 3.14 or the Scan 
 **Set up the scanner** (see below).
 </details>
 
-## What it is
+## Features
 
-<p align="center">
-  <img src="docs/img/app-window.png" alt="Six Degrees on a Mac: your network drawn as circles around you, the most powerful people closest" width="100%">
+**Network Circle.** Everyone you know, on rings by tier, the most powerful closest to
+you. Switch the drawing between **Galaxy**, **Orbit**, **Pyramid** and **List** in the
+panel on the left.
+
+**Degrees** *(needs a scan or the sample)*. The people two steps away. **Separation**
+ranks every one of them with every way in: which of your connections knows them, and
+how many do. **Orbit**, **Bridge Chains**, **Pyramid** and **List** draw the same people
+differently.
+
+<img src="docs/img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="100%">
+
+**Paths.** Your network by company and industry, in the spirit of LinkedIn's old
+InMaps:
+- **Map**: your companies as bubbles (the 140 largest), grouped by industry and linked
+  where your connections at one know people at another.
+- **Industries**: a card per industry.
+- **Companies**: pick one to see its people level by level, up to the top.
+
+Click a company for its analyzer: who you know there, who you can reach, the warmest way
+in, and its most powerful people.
+
+<img src="docs/img/paths.png" alt="Paths → Map with the company analyzer open: companies grouped by industry, and one company's people by level and ways in" width="100%">
+
+**Scores.** How a power score is worked out, and the three things you can change about
+it, in one place: your field (the sectors you work in), how tiers are graded (on your
+network's curve or the fixed scale), and every scanned company's score.
+
+**Outlink** *(needs a scan)*. Getting introduced, as a game. Each mapped connection's
+circle offers its best five people at a time; mark invites as sent to fill the ring and
+unlock the next five. It also shows the next best moves, levels and points (from
+invites sent and people who accepted, never from browsing).
+
+**Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
+lock, and a **Paused** list you can carry on from.
+
+**Also in the app:**
+- **Who only one connection reaches.** For every connection whose circle you've scanned,
+  the people none of your other connections reach: in Bridge Chains, and in the
+  *Insights* on their card, with *Show them* to list exactly who.
+- **Network health** (Scores). How much of your 2nd degree you reach two or more ways,
+  your effective reach, and the five connections who reach the most people no one else
+  does. Only your own numbers, never a percentile against other people.
+- **A physics lab for the Galaxy** (experimental, in Filters). Sliders for gravity, rings,
+  push, pull and distance; colour by tier, degree, company or warmth; find anyone; and a
+  **replay** of your network growing by the date you connected, saved as a picture or a
+  video.
+- **Social** (experimental). From your own LinkedIn data: who's warm, dormant or waiting
+  on a reply, and your career chapters. Message text is never kept.
+
+## Latest news
+
+<p>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/v/release/blakeb056/six-degrees?label=latest&color=ffd700" alt="Latest release"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/release-date/blakeb056/six-degrees?label=released&color=3ee08f" alt="Release date"></a>
 </p>
 
-<p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
+Six Degrees ships often, and every release says what it added, changed and fixed:
 
-Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
-know placed on rings by how much they can open up for you, the handful of people
-whose own circles reach the furthest, and the shortest chain from you to a stranger
-worth meeting.
+- **[Releases](https://github.com/blakeb056/six-degrees/releases)**: each version's
+  downloads and notes ([Atom feed](https://github.com/blakeb056/six-degrees/releases.atom)).
+- **[CHANGELOG.md](CHANGELOG.md)**: everything, newest first, including what's
+  coming in the next release.
+- **[The website's News](https://sixdegreesapp.com/#news)**: the latest releases at a
+  glance, built from the changelog each time the site is published.
 
-It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
-no server.
+## Why Six Degrees
+
+A connections list tells you who you know. Six Degrees shows what that network can do:
+
+- **Who can introduce you, ranked.** Everyone two steps away, each with every way in.
+- **Who only one connection reaches.** Where a single person is your only door.
+- **Your network's health.** How much of it you reach more than one way.
+- **A physics lab and a replay.** Tune the Galaxy's layout, and watch your network grow.
+- **All on your own computer.** No account, no server, no telemetry.
+
+In the sample network that ships with the app (150 invented connections), 598 people are
+two steps away, and 503 of them, 84%, are reached through only one connection.
+
+**How it compares**, as fairly as we can put it
+([the full table](https://sixdegreesapp.com/#compare)):
+
+| | Six Degrees | LinkedIn's own search | Spreadsheets and CRMs | Network tools (SocNetV, Gephi) |
+|---|---|---|---|---|
+| Your connections, from LinkedIn's export | ✓ | ✓ | ✓ | as nodes, with no ties |
+| Everyone two steps away, with who can introduce you | ✓ (needs a scan, or the sample) | 2nd-degree search, mutual connections on each | — (the export is 1st degree only) | if you bring the ties |
+| Who only one connection reaches | ✓ | not shown | — | brokerage measures, on your data |
+| A score per person, with the working shown | ✓ | not shown | your own formulas | general centrality |
+| A layout you can tune, and a replay by date | ✓ (experimental) | — | — | ✓ many layouts; Gephi's timeline |
+| Any network, any data, research-grade statistics | — (LinkedIn networks only) | — | any data | ✓ what they're built for |
+| Runs on your computer, with no account | ✓ | — (online, with your account) | varies | ✓ |
+| Price | free, MIT | free, with paid plans | free to paid | free, open source |
+| Windows | coming soon | ✓ | ✓ | ✓ |
+
+Something out of date, or unfair to another tool? [Open an issue](https://github.com/blakeb056/six-degrees/issues).
 
 ## Before you scan LinkedIn
 
@@ -178,43 +301,6 @@ the scanner is the only way to it, and it's opt-in for that reason.
 While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Your CSV
 ×* (click × to go back), and Outlink and Scan are hidden. Neither is ever added to your
 network: they last as long as the app's window is open.
-
-## What it does
-
-**Network Circle.** Everyone you know, on rings by tier, the most powerful closest to
-you. Switch the drawing between **Galaxy**, **Orbit**, **Pyramid** and **List** in the
-panel on the left.
-
-**Degrees** *(needs a scan or the sample)*. The people two steps away. **Separation**
-ranks every one of them with every way in: which of your connections knows them, and
-how many do. **Orbit**, **Bridge Chains**, **Pyramid** and **List** draw the same people
-differently.
-
-<img src="docs/img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="100%">
-
-**Paths.** Your network by company and industry, in the spirit of LinkedIn's old
-InMaps:
-- **Map**: your companies as bubbles (the 140 largest), grouped by industry and linked
-  where your connections at one know people at another.
-- **Industries**: a card per industry.
-- **Companies**: pick one to see its people level by level, up to the top.
-
-Click a company for its analyzer: who you know there, who you can reach, the warmest way
-in, and its most powerful people.
-
-<img src="docs/img/paths.png" alt="Paths → Map with the company analyzer open: companies grouped by industry, and one company's people by level and ways in" width="100%">
-
-**Scores.** How a power score is worked out, and the three things you can change about
-it, in one place: your field (the sectors you work in), how tiers are graded (on your
-network's curve or the fixed scale), and every scanned company's score.
-
-**Outlink** *(needs a scan)*. Getting introduced, as a game. Each mapped connection's
-circle offers its best five people at a time; mark invites as sent to fill the ring and
-unlock the next five. It also shows the next best moves, levels and points (from
-invites sent and people who accepted, never from browsing).
-
-**Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
-lock, and a **Paused** list you can carry on from.
 
 ## How scoring works
 
@@ -403,11 +489,30 @@ Nothing to configure. Two optional environment variables exist:
 | `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. A relative folder is taken from the folder you run the command in. |
 | `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the ten routes that delete, replace or hand over your data, run the scanner, open the data folder or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
+## Docs
+
+| You want | Read |
+|---|---|
+| To install it, step by step | [Install it](#install-it), or [the website's guide](https://sixdegreesapp.com/#install) with videos |
+| How scanning works, and what it risks | [docs/SCRAPING.md](docs/SCRAPING.md) |
+| How a power score is worked out | [How scoring works](#how-scoring-works), and [docs/brain/SCORING.md](docs/brain/SCORING.md) |
+| Where your data lives, moving computers | [How your data is stored](#how-your-data-is-stored) |
+| The security model, and reporting a problem | [SECURITY.md](SECURITY.md) |
+| What changed in each version | [CHANGELOG.md](CHANGELOG.md) |
+| To change the code | [CONTRIBUTING.md](CONTRIBUTING.md), then [docs/brain/](docs/brain/00-START-HERE.md) |
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The rule that matters most: **never commit real
-network data**. That means no exported CSVs, no avatars, and no screenshots of real
-people.
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+to run it from source, and the [code of conduct](CODE_OF_CONDUCT.md). Report a security
+problem privately, through
+[GitHub's security advisories](https://github.com/blakeb056/six-degrees/security/advisories/new)
+([SECURITY.md](SECURITY.md)), not in an issue.
+
+The rule that matters most: **never commit real network data**. That means no exported
+CSVs, no avatars, and no screenshots of real people. When you file an
+[issue](https://github.com/blakeb056/six-degrees/issues), redact names before attaching
+anything.
 
 ## License
 
