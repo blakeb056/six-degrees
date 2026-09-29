@@ -29,7 +29,7 @@ before(async () => {
 });
 
 beforeEach(() => {
-  for (const t of ['linkedin_connections', 'notifications', 'app_meta']) getDb().exec(`DELETE FROM ${t}`);
+  for (const t of ['linkedin_connections', 'notifications', 'app_meta', 'connection_ties']) getDb().exec(`DELETE FROM ${t}`);
 });
 
 const person = (i, headline) => ({ name: `Person ${i}`, headline, profileUrl: `https://www.linkedin.com/in/person-${i}` });
@@ -131,4 +131,24 @@ test('a save that is refused, or can\'t reach the app, comes back as a message t
   assert.deepEqual(await answer({ fieldAsked: true }, async () => { throw new TypeError('fetch failed'); }),
     { settings: null, effects: null, error: 'Could not reach the app. Reload this page to see what is saved.' });
   assert.equal(getDb().prepare("SELECT value FROM app_meta WHERE key = 'settings'").get(), undefined);
+});
+
+// ── Ties between your own connections (lib/ties.js) ─────────────────────────
+
+test('your connections in someone\'s circle are kept as ties to them, once each, and go with a deleted person', async () => {
+  await send([person(1, 'Founder at Hooli'), person(2, 'Engineer at Initech'), person(3, 'Nurse at Mercy Hospital')]);
+  const bridgeId = getDb().prepare("SELECT id FROM linkedin_connections WHERE profile_url = ?").get('https://www.linkedin.com/in/person-1').id;
+  const ties = () => getDb().prepare('SELECT a_url, b_url FROM connection_ties ORDER BY a_url, b_url').all()
+    .map((t) => `${t.a_url.slice(-8)}~${t.b_url.slice(-8)}`);
+  const got = await circle(bridgeId, [person(2, 'Engineer at Initech'), person(3, 'Nurse at Mercy Hospital'), person(50, 'VP at Globex')]);
+  assert.equal(got.saved, 1, 'only the stranger is saved as 2nd degree');
+  assert.deepEqual(ties(), ['person-1~person-2', 'person-1~person-3']);
+  await circle(bridgeId, [person(2, 'Engineer at Initech')]);
+  assert.equal(ties().length, 2, 'a rescan adds no second copy');
+  const { POST: adminDelete } = await import('../app/api/admin-delete/route.js');
+  await adminDelete(new Request('http://127.0.0.1/api/admin-delete', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ profileUrl: 'https://www.linkedin.com/in/person-2' }),
+  }));
+  assert.deepEqual(ties(), ['person-1~person-3']);
 });

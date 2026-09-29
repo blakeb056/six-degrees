@@ -1,5 +1,6 @@
 import { db as supabase } from '../../../lib/db';
 import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf } from '../../../lib/ingest';
+import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { localPhoto } from '../../../lib/photos';
 
@@ -74,6 +75,18 @@ export async function POST(request) {
       const split = splitAlreadyConnected(records, firstDegree);
       records = split.keep;
       alreadyConnected = split.alreadyConnected;
+      // Each of your connections in someone's circle is a tie between the two
+      // (lib/ties.js). Kept quietly: a failure here never costs the scan's save.
+      if (degree === 2 && bridgeId && split.connected.length) {
+        try {
+          const { data: owner } = await supabase.from('linkedin_connections')
+            .select('profile_url').eq('id', bridgeId).eq('user_id', userId).limit(1);
+          const pairs = tiePairs(owner?.[0]?.profile_url, split.connected).map((p) => ({ user_id: userId, ...p }));
+          if (pairs.length) {
+            await supabase.from('connection_ties').upsert(pairs, { onConflict: 'user_id,a_url,b_url', ignoreDuplicates: true });
+          }
+        } catch { /* ties are extra; the circle is what matters */ }
+      }
     }
 
     // Pre-filter: find which profile_urls already exist for this specific context

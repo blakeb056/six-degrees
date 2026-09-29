@@ -84,3 +84,12 @@ test('a refresh that added nobody says the network is up to date', () => {
   assert.deepEqual(refreshNotifications({ added: [], checked: 110 }).map((n) => [n.title, n.message]),
     [['Network up to date', 'Checked 110 connections — no new additions']]);
 });
+
+test('ties: the circle\'s person with each of your connections in it, each pair once, smaller URL first', async () => {
+  const { tiePairs } = await import('../lib/ties.js');
+  assert.deepEqual(tiePairs('/in/m', ['/in/z', '/in/a', '/in/z', '/in/m', null]),
+    [{ a_url: '/in/m', b_url: '/in/z' }, { a_url: '/in/a', b_url: '/in/m' }]);
+  assert.deepEqual(tiePairs(null, ['/in/a']), []);
+  const { connected } = splitAlreadyConnected([{ profile_url: '/in/a' }, { profile_url: '/in/b' }], new Set(['/in/b']));
+  assert.deepEqual(connected, ['/in/b']);
+});
