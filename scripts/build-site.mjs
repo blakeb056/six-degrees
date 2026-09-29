@@ -324,6 +324,13 @@ ${notes}
     <nav class="release-toc" aria-label="Versions"><span>Jump to</span> ${toc}</nav>
     <div class="releases">
 ${entries}
+      <article class="release archive" id="first-build">
+        <header>
+          <h2><a href="#first-build">The first build</a> <span class="tag">archive</span></h2>
+          <p class="post-meta"><span>June 2026</span></p>
+          <p class="release-links"><a href="https://six-degrees-linkedin.vercel.app/">Archive: the original prototype (June 2026), kept as it was</a></p>
+        </header>
+      </article>
     </div>
     <p class="feed-line"><a href="/releases/feed.xml">Follow releases (Atom feed)</a> · <a href="${REPO}/releases">All releases on GitHub</a></p>`;
   const graph = [
