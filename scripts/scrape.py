@@ -1967,15 +1967,48 @@ def _wire_merge(page, profile_url, page_results):
 _PROFILE_LINK = re.compile(r"https://www\.linkedin\.com/in/[^/?#\s\"']+")
 
 
+def _dig(x, *keys):
+    """x[k1][k2]..., or None as soon as a step isn't there."""
+    for k in keys:
+        if not isinstance(x, dict):
+            return None
+        x = x.get(k)
+    return x
+
+
+def _link_key(link):
+    """A profile link as the messages sync compares them: no query, one closing slash."""
+    return link.split("?")[0].rstrip("/") + "/" if isinstance(link, str) and "/in/" in link else None
+
+
 def voyager_conversations(payload):
     """Conversations in a LinkedIn messaging response (experimental): per conversation,
-    everyone in it (profile links), when it was last active, and unread messages.
-    Anything with a lastActivityAt and participants, wherever it sits. Never the text."""
+    everyone in it (profile links), when it was last active, unread messages, its link,
+    whether it's a group, and the newest message LinkedIn sent along with it (when,
+    from whom, and its words). Anything with a lastActivityAt and participants,
+    wherever it sits. The words are handed to the app only while Keep my messages is
+    on there (sync_messages); a wire sample never has them (_redact_words)."""
     out = []
     names = {}
 
     def text_of(v):
         return v.get("text", "") if isinstance(v, dict) else (v if isinstance(v, str) else "")
+
+    def latest_of(x):
+        # conversation.messages.elements[]: body.text, deliveredAt, and who sent it
+        # (actor.participantType.member.profileUrl, the same /in/ACoA... link the
+        # participants have, so it tells you from them).
+        msgs = x.get("messages")
+        elements = msgs.get("elements") if isinstance(msgs, dict) else msgs
+        best = None
+        for m in elements if isinstance(elements, list) else []:
+            t = _dig(m, "deliveredAt")
+            if not isinstance(t, (int, float)) or t < 1e12 or (best and t <= best["t"]):
+                continue
+            text = text_of(_dig(m, "body")).strip()
+            best = {"t": int(t), "from": _link_key(_dig(m, "actor", "participantType", "member", "profileUrl")),
+                    "text": text or None}
+        return best
 
     def people(x):
         found = set()
@@ -1989,9 +2022,8 @@ def voyager_conversations(payload):
                 # Messaging gives a member's link as /in/ACoA… (their member id), not
                 # the /in/name link your connections list has, so their name comes
                 # along to match them up (the app keeps the match, not the name).
-                link = v.get("profileUrl")
-                if isinstance(link, str) and "/in/" in link:
-                    key = link.split("?")[0].rstrip("/") + "/"
+                key = _link_key(v.get("profileUrl"))
+                if key:
                     name = f"{text_of(v.get('firstName'))} {text_of(v.get('lastName'))}".strip()
                     if name:
                         names[key] = name
@@ -2013,8 +2045,13 @@ def voyager_conversations(payload):
                     who |= people(v)
                 if who:
                     unread = x.get("unreadCount")
+                    link = x.get("conversationUrl")
+                    group = x.get("groupChat")
                     out.append({"people": sorted(who), "at": int(at), "unread": int(unread) if isinstance(unread, (int, float)) else None,
-                                "names": {u: names[u] for u in who if u in names}})
+                                "names": {u: names[u] for u in who if u in names},
+                                "url": link if isinstance(link, str) and link.startswith("https://www.linkedin.com/messaging/") else None,
+                                "group": group if isinstance(group, bool) else None,
+                                "latest": latest_of(x)})
             for v in x.values():
                 walk(v)
         elif isinstance(x, list):
@@ -2027,8 +2064,9 @@ def voyager_conversations(payload):
 def sync_messages(headless=False):
     """Experimental: read your LinkedIn messages list once, for the Social tab. Opens
     Messaging in your own Chrome, scrolls the list a few times, and keeps from LinkedIn's
-    own data only who each 1:1 conversation is with, when it was last active and whether
-    it has unread messages. No search budget; no message text is read or kept."""
+    own data who each 1:1 conversation is with, when it was last active, whether it has
+    unread messages, its link and who wrote last. The newest message's words go to the
+    app only while Keep my messages is on there. No search budget."""
     from playwright.sync_api import sync_playwright
     kept = []
     with sync_playwright() as p:
@@ -2071,7 +2109,35 @@ def sync_messages(headless=False):
             _wire_sample(data, prefix="messages")
             convos.extend(voyager_conversations(data))
         browser.close()
-    # You are the one in the most conversations; keep the 1:1 ones.
+    _me, people = live_people(convos)
+    print(f"  Found {len(convos)} conversations in LinkedIn's data, {len(people)} with one person.")
+    # The newest message's words go to the app only if Keep my messages is on
+    # there. The app checks too; this way they don't even leave the scanner.
+    keep = False
+    try:
+        r = requests.get(f"{APP_URL}/api/social", headers=app_headers(json_body=False), timeout=15)
+        keep = r.ok and ((r.json() or {}).get("social") or {}).get("keepMessages") is True
+    except Exception:
+        pass
+    if not keep:
+        for v in people.values():
+            if v.get("preview"):
+                v["preview"]["text"] = None
+    try:
+        r = requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
+        got = r.json() if r.ok else {}
+        matched, unmatched = got.get("people", 0), got.get("unmatched", 0)
+        print(f"  Saved for the Social tab: {matched} matched to your connections, {unmatched} not.")
+    except Exception as e:
+        print(f"  Couldn't save them: {e}")
+
+
+def live_people(convos):
+    """The messages sync's conversations, per person: you are the one in the most
+    conversations, and only the 1:1 ones are kept. For each person, their newest
+    conversation's last activity, unread count, name (for the app to match them to
+    a connection; it keeps the match, not the name), link, who wrote last and the
+    newest message. Returns (you, {profile link: ...})."""
     counts = {}
     for c in convos:
         for u in c["people"]:
@@ -2080,19 +2146,23 @@ def sync_messages(headless=False):
     people = {}
     for c in convos:
         others = [u for u in c["people"] if u != me]
-        if len(others) != 1:
+        if len(others) != 1 or c.get("group") is True:
             continue
         cur = people.get(others[0])
-        if not cur or c["at"] > cur["last"]:
-            people[others[0]] = {"last": c["at"], "unread": c["unread"], "name": c.get("names", {}).get(others[0])}
-    print(f"  Found {len(convos)} conversations in LinkedIn's data, {len(people)} with one person.")
-    try:
-        r = requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
-        got = r.json() if r.ok else {}
-        matched, unmatched = got.get("people", 0), got.get("unmatched", 0)
-        print(f"  Saved for the Social tab: {matched} matched to your connections, {unmatched} not.")
-    except Exception as e:
-        print(f"  Couldn't save them: {e}")
+        if cur and c["at"] <= cur["last"]:
+            continue
+        entry = {"last": c["at"], "unread": c["unread"], "name": c.get("names", {}).get(others[0]),
+                 "threadUrl": c.get("url"), "lastFromThem": None, "preview": None}
+        latest = c.get("latest")
+        # Who sent it is known only when their link is one of the two in the
+        # conversation; a link in some other form says nothing either way.
+        sender = latest.get("from") if latest else None
+        if sender in (me, others[0]):
+            from_me = sender == me
+            entry["lastFromThem"] = not from_me
+            entry["preview"] = {"t": latest["t"], "fromMe": from_me, "text": latest.get("text")}
+        people[others[0]] = entry
+    return me, people
 
 
 def _drip_wait(label, seconds):
@@ -4110,7 +4180,7 @@ Examples:
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
     parser.add_argument("--messages", action="store_true",
-                        help="Experimental: read your messages list once for the Social tab (who, when, unread; never text)")
+                        help="Experimental: read your messages list once for the Social tab (who, when, unread; the newest message's words only if Keep my messages is on)")
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
                              "waits for the daily budget) and reading LinkedIn's own data beside the page text")
