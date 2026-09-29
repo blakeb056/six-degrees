@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { viewsForMode } from './views';
+import GalaxyLab from './GalaxyLab';
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -219,6 +220,9 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
             ))}
           </div>
         </div>
+
+        {/* The Galaxy's physics lab (experimental): sliders and a replay, on a computer. */}
+        {!isDegreesMode && visualMode === 'galaxy' && !isMobile && <GalaxyLab />}
 
         {/* Stats */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>

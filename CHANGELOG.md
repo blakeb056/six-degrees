@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Physics lab for the Galaxy (experimental, in Filters).** Sliders for the forces that lay the
+  Galaxy out, in the spirit of Obsidian's graph: *Gravity* (a pull in towards you), *Rings* (how
+  hard each tier holds its ring; at 0 the Galaxy finds its own shape), *Push*, *Pull* (how hard
+  each person pulls the people who came through them) and *Distance*, plus dot size, line
+  thickness, names, and dots sized by power score or by how many hang off them. *Clusters* sets
+  it up so each connection bunches their circle round them. Hovering a dot lights up its branch,
+  everyone behind it and the chain back to you. **Replay** plays your network growing by the
+  date you connected, with a time slider; each circle arrives with its connection. Everything
+  moves the Galaxy in place, and *Reset* puts today's layout back. The replay needs "connected
+  on" dates, so the sample network has nothing to replay.
+
 ## [0.4.4] - 2026-09-29
 
 ### Added
