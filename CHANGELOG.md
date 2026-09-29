@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Network Circle's tiers switch on and off.** In the Filter panel, click a tier to hide it or
+  show it again, so C and D can go while S, A and B stay. *All* shows everyone. Degrees still
+  picks one bridge tier at a time.
+- **Orbit: the circles behind added people sit behind their bridge.** They're centred on the
+  bridge's slice, side by side, with a line back to whoever they came through, wherever that
+  person sits. Before, each was centred on that person and could spill into the next bridge's
+  space.
+
 ## [0.4.2] - 2026-09-29
 
 ### Added

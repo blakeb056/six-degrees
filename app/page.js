@@ -73,6 +73,8 @@ function HomeInner() {
   const [degree3, setDegree3] = useState([]);
   // Which degrees Network Circle draws: your connections alone until you pick more.
   const [degrees, setDegrees] = useState([1]);
+  // Tiers switched off in Network Circle's Filter panel (C and D make a lot of noise).
+  const [hiddenTiers, setHiddenTiers] = useState([]);
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
   const [filter, setFilter] = useState('all');
@@ -170,10 +172,10 @@ function HomeInner() {
     () => (isDegreesMode ? connections : degrees.flatMap((d) => byDegree[d] || [])),
     [isDegreesMode, connections, degrees, byDegree],
   );
-  const filtered = useMemo(
-    () => (filter === 'all' ? networkRows : networkRows.filter(c => c.tier === filter)),
-    [networkRows, filter],
-  );
+  const filtered = useMemo(() => {
+    if (!isDegreesMode) return hiddenTiers.length ? networkRows.filter(c => !hiddenTiers.includes(c.tier)) : networkRows;
+    return filter === 'all' ? networkRows : networkRows.filter(c => c.tier === filter);
+  }, [isDegreesMode, networkRows, filter, hiddenTiers]);
   // Lookups built once per load. Every click re-renders this component, and the
   // three places below used to scan one list inside another — degree1.find per
   // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
@@ -438,6 +440,8 @@ function HomeInner() {
           tierCounts={isDegreesMode ? stats?.tiers || {} : tierCountsOf(networkRows)}
           degrees={degrees}
           onDegreesChange={setDegrees}
+          hiddenTiers={hiddenTiers}
+          onHiddenTiersChange={setHiddenTiers}
           degreeCounts={{ 1: byDegree[1].length, 2: byDegree[2].length, 3: byDegree[3].length }}
           bridgeTierCounts={bridgeTierCounts}
         />
