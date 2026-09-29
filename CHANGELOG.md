@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-09-29
+
 ### Added
 - **Physics lab for the Galaxy (experimental, in Filters).** Sliders for the forces that lay the
   Galaxy out, in the spirit of Obsidian's graph: *Gravity* (a pull in towards you), *Rings* (how
