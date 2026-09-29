@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Hide the Chrome window while scanning** (Scan page). Scans run with no window popping up;
+  the status bar and Stop work as before, and signing in always opens the window. The Scan page
+  says the risks: a hidden Chrome is easier for LinkedIn to tell from a person, and a check
+  LinkedIn asks for (a code, a puzzle, signing in again) can't be seen, so the scan stops instead
+  of waiting. Off by default.
+
 ## [0.4.6] - 2026-09-29
 
 ### Changed

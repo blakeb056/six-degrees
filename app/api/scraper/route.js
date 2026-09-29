@@ -656,6 +656,9 @@ export async function POST(request) {
       // otherwise leave everyone paused at page 11 and do nothing.
       ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
       ...(deeper ? ['--deeper'] : []),
+      // Scan page → "Hide the Chrome window": no window at all. Never for
+      // signing in, which needs you at the window.
+      ...(body.headless === true && action !== 'login' ? ['--headless'] : []),
     ])];
   }
 
