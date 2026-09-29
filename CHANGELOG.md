@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A cap on profile views.** A circle scan opens the person's profile once, and profile
+  views are what LinkedIn restricted an account for. They now have a cap of their own: 50
+  in any 24 hours by default. The Scan page offers 10, 25, 50 or 100, and there is no "no
+  limit".
+  - **A minute apart:** at least 60 seconds pass between any two profile opens. It's timed
+    from the last one written down, so scans started back to back can't open profiles back
+    to back. The log counts down while it waits, and Stop ends the wait.
+  - **Checked before the profile opens:** at the cap, a scan opens nothing and records
+    nothing about that person. Auto-Bridge stops, as it does at the search budget, and the
+    next run starts with the same person.
+  - **On the Scan page:** "3 of 50 profile views today", with a bar and the picker.
+  - **Re-mapping someone** checks it before deleting their circle. A damaged record counts
+    the day's views as used. An import brings the other computer's setting only when this
+    one has none, like the search budget.
 - **The Scan page asks what field you're in, before your first scan.** One optional step,
   with the same picks as *Scores → Your sector*: tech, government and defense, dental, and
   the rest. Companies in your field count for more, so your first scores already use it.

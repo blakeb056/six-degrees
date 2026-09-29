@@ -109,6 +109,32 @@ continuous auto-bridging — roughly 20–25 profile views at the two-minute coo
 Lifted the same day. See TRAPS §16. Treat that as a ceiling seen once, not a safe
 budget: batch the work, keep the cooldown, and stop at the first warning.
 
+**Profile views have a cap of their own.** It is one cap for everything that opens a
+profile. Today that is a circle scan whose search id isn't known yet: it opens the
+person's profile once, and that is a profile view. Reading someone's profile on its own
+(planned) will count against the same cap.
+
+- **The cap:** 50 in any 24 hours by default (`scan-limits.json` `profiles`; the Scan
+  page offers 10, 25, 50 and 100). There is no "no limit": a 0 in the file reads as 50.
+- **The gap:** at least 60 seconds between any two opens (`PROFILE_GAP`). It is timed from
+  the last view in `linkedin-activity.json`, not from the last run, so scans started back
+  to back can't open profiles back to back. The job prints a countdown while it waits,
+  and Stop ends the wait.
+- **Where it's checked:** `take_profile_view()` checks the cap and the gap and writes the
+  view down in one step, under the record's lock, just before `_scrape_one_bridge` opens
+  the profile. With none left, the read returns `"budget"` with the reason `"profiles"`
+  and opens nothing. `scrape_bridge` raises `BudgetReached(0, "profiles")`, which ends
+  Auto-Bridge like the search budget does. Nothing about that person is recorded (no
+  progress, skip or unclear note), so the next run tries them again.
+- **Earlier checks:** `scrape_bridge` and `rescrape_bridge` check `profiles_left()` first,
+  so no browser opens and no circle is deleted when none are left.
+- **Not a profile view:** a read that carries on with a known search id doesn't open the
+  profile, so the cap doesn't stop it.
+- **A damaged record** counts the day's profile views as used, like its searches.
+
+`tests/profile-views.test.mjs` runs this code with a stand-in page and clock. It shows
+no `page.goto` happens once the cap is reached, and that the gap holds.
+
 ## Posture
 
 Automating LinkedIn may violate its User Agreement and accounts have been restricted for
