@@ -66,7 +66,7 @@ function subline(person) {
   return person.headline || person.role || person.company || '';
 }
 
-export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC }) {
+export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
   const isMobile = useIsMobile();
   const ROW_H = isMobile ? 68 : 56;
   const K = isMobile ? 5 : 10;
@@ -78,6 +78,14 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const [tier, setTier] = useState('all');
   // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
   const [rarities, setRarities] = useState(() => new Set());
+  // Filters a card's Insights asked for ("Show them", "S only"): applied once each.
+  const [presetFor, setPresetFor] = useState(null);
+  if (preset && preset.id !== presetFor) {
+    setPresetFor(preset.id);
+    setQuery(preset.query || '');
+    setTier(preset.tier || 'all');
+    setRarities(new Set(preset.rarity ? [preset.rarity] : []));
+  }
   const requests = useRequests();
   const [scrollY, setScrollY] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 800 });

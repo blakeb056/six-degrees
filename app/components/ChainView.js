@@ -110,6 +110,13 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // The circles opened, outermost last: [bridge id, person id, …]; [] is the overview.
   const [path, setPath] = useState(() => trailTo(chainOpen, all1));
   // A link is followed once: coming back to this view later starts from the overview.
+  // One asked for while this view is already showing (a card's Insights) opens too.
+  const [openedFor, setOpenedFor] = useState(chainOpen);
+  if (chainOpen && chainOpen !== openedFor) {
+    setOpenedFor(chainOpen);
+    const trail = trailTo(chainOpen, all1);
+    if (trail.length) setPath(trail);
+  }
   useEffect(() => {
     if (chainOpen) onChainOpened?.();
   }, [chainOpen, onChainOpened]);
