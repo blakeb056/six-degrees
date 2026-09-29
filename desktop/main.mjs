@@ -25,7 +25,13 @@
 // For CI: SIX_DEGREES_SMOKE=1 prints "SIX_DEGREES_READY <address>" once the app
 // has drawn, and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
 
-import { app, BrowserWindow, Menu, dialog, shell, session } from 'electron';
+import { app, BrowserWindow, Menu, dialog, shell, session, nativeTheme } from 'electron';
+
+// The window's frame follows the app, not the Mac's appearance setting: the app
+// is a dark sky, so the title bar, menus and dialogs are dark too, even when the
+// Mac is set to Light. Setting it before any window exists means no light frame
+// ever shows.
+nativeTheme.themeSource = 'dark';
 import { spawn } from 'node:child_process';
 import { openSync, closeSync, writeFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
