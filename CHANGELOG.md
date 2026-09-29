@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   LinkedIn asks for (a code, a puzzle, signing in again) can't be seen, so the scan stops instead
   of waiting. Off by default.
 
+## [0.4.6] - 2026-09-29
+
 ### Changed
 - **The window's frame matches the app.** The title bar, menus and dialogs are dark by default,
   even when your Mac is set to Light, so the frame no longer shows as a pale bar above the dark
