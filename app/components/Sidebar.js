@@ -12,10 +12,11 @@ import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
 import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from '../../lib/reach';
 import { exclusiveReach, bridgeOverlap } from '../../lib/brokerage';
+import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
 import { localPhoto } from '../../lib/photos';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation }) {
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
@@ -43,6 +44,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // Who only each connection reaches (lib/brokerage.js), for their card.
   const exclusive = useMemo(() => exclusiveReach(degree2, connections), [degree2, connections]);
   const overlap = useMemo(() => bridgeOverlap(degree2, connections), [degree2, connections]);
+  const insightReach = useMemo(() => reachIndex(connections, degree2, scanNotes), [connections, degree2, scanNotes]);
+  // The Insights panel on a connection's card: open or closed, kept as you move between cards.
+  const [showInsights, setShowInsights] = useState(false);
   const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
   // Who you've asked, shared with every view: a request sent here shows in
   // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
@@ -143,33 +147,91 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           />
         )}
 
-        {selected.degree !== 2 && (exclusive.get(selected.id)?.only > 0 || (overlap.get(selected.id)?.share >= 0.15 && overlap.get(selected.id)?.shared >= 3)) && (() => {
-          const ex = exclusive.get(selected.id);
-          const ov = overlap.get(selected.id);
-          // A twin only when it's real: at least 15% of either's people, and 3 of them.
-          const twin = ov && ov.share >= 0.15 && ov.shared >= 3 && connections.find((c) => c.id === ov.with);
+        {selected.degree !== 2 && (() => {
+          const i = profileInsights(selected, { degree2, exclusive, overlap, reach: insightReach });
+          if (!i) return null;
           const first = selected.name?.split(' ')[0] || 'them';
+          const twin = i.twin && connections.find((c) => c.id === i.twin.id);
+          const row = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderTop: '1px solid rgba(255,255,255,0.05)' };
+          const label = { fontSize: 10.5, color: '#8b9a9a', minWidth: 92 };
+          const act = { background: 'none', border: 'none', padding: 0, color: '#3498DB', cursor: 'pointer', fontSize: 11.5, whiteSpace: 'nowrap' };
+          const scanned = i.bars == null ? 'Not scanned yet' : i.bars === 5 ? 'Their whole list' : `About ${i.bars * 20}% of their list`;
           return (
-            <div style={{
-              background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)',
-              borderRadius: 8, padding: 12, marginBottom: 16,
-            }}>
-              <div style={{ fontSize: 10, color: '#00ff88', fontWeight: 700, marginBottom: 4, letterSpacing: 1 }}>
-                {ex?.only > 0 ? `ONLY THROUGH ${first.toUpperCase()}` : `${first.toUpperCase()}’S CIRCLE`}
-              </div>
-              {ex?.only > 0 && (
-                <div style={{ fontSize: 12, color: '#ccc', lineHeight: 1.5 }}>
-                  <strong style={{ color: '#00ff88' }}>{ex.only.toLocaleString()}</strong> of the {ex.total.toLocaleString()} people in {first}&rsquo;s
-                  circle are reached by none of your other connections. {first} is your only way to them.
-                </div>
-              )}
-              {twin && (
-                <div style={{ fontSize: 12, color: '#aab', lineHeight: 1.5, marginTop: ex?.only > 0 ? 6 : 0 }}>
-                  Opens the same doors as{' '}
-                  <button onClick={() => onSelect?.(twin)} style={{ background: 'none', border: 'none', padding: 0, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
-                    {twin.name}
-                  </button>
-                  : {Math.round(ov.share * 100)}% of the people either reaches, both do ({ov.shared.toLocaleString()}).
+            <div style={{ border: '1px solid rgba(52,152,219,0.25)', borderRadius: 8, marginBottom: 16, background: 'rgba(52,152,219,0.04)' }}>
+              <button onClick={() => setShowInsights((v) => !v)} aria-expanded={showInsights}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', color: '#cfe6f7' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>INSIGHTS</span>
+                <span style={{ fontSize: 11, color: '#8b9a9a' }}>
+                  {!showInsights && i.circle > 0 && `${i.circle.toLocaleString()} in their circle${i.only ? ` · ${i.only.toLocaleString()} only through ${first}` : ''} `}
+                  {showInsights ? '▲' : '▼'}
+                </span>
+              </button>
+              {showInsights && (
+                <div style={{ padding: '0 12px 8px', fontSize: 12, color: '#ccc' }}>
+                  <div style={row}>
+                    <span style={label}>Their circle</span>
+                    <span style={{ flex: 1 }}>{i.circle ? `${i.circle.toLocaleString()} people` : 'None scanned yet'}</span>
+                    {i.circle > 0 && onOpenCircle && <button style={act} onClick={() => onOpenCircle(selected.id)}>Explore →</button>}
+                  </div>
+                  <div style={row}>
+                    <span style={label}>Only through {first}</span>
+                    <span style={{ flex: 1 }}>
+                      {i.circle ? <><b style={{ color: '#00ff88' }}>{i.only.toLocaleString()}</b> ({Math.round(i.onlyShare * 100)}%): none of your other connections reach them</> : '—'}
+                    </span>
+                    {i.only > 0 && onShowInSeparation && (
+                      <button style={act} onClick={() => onShowInSeparation({ query: selected.name, rarity: 'only' })}>Show them →</button>
+                    )}
+                  </div>
+                  <div style={row}>
+                    <span style={label}>Closest overlap</span>
+                    <span style={{ flex: 1 }}>
+                      {twin ? <>Opens the same doors as <b style={{ color: '#fff' }}>{twin.name}</b> ({Math.round(i.twin.share * 100)}%, {i.twin.shared.toLocaleString()} people)</> : 'No one opens the same doors'}
+                    </span>
+                    {twin && <button style={act} onClick={() => onSelect?.(twin)}>Open →</button>}
+                  </div>
+                  <div style={row}>
+                    <span style={label}>Tier mix</span>
+                    <span style={{ flex: 1, display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', alignSelf: 'center' }}>
+                      {i.circle > 0 && ['S', 'A', 'B', 'C', 'D'].map((t) => i.mix[t] > 0 && (
+                        <span key={t} title={`${t}: ${i.mix[t]}`} style={{ width: `${(100 * i.mix[t]) / i.circle}%`, background: tierColors[t] }} />
+                      ))}
+                    </span>
+                    <span style={{ fontSize: 10.5, color: '#8b9a9a' }}>{i.circle ? `${i.mix.S} S · ${i.mix.A} A` : ''}</span>
+                    {i.mix.S > 0 && onShowInSeparation && (
+                      <button style={act} onClick={() => onShowInSeparation({ query: selected.name, tier: 'S' })}>S only →</button>
+                    )}
+                  </div>
+                  {i.companies.length > 0 && (
+                    <div style={row}>
+                      <span style={label}>Where they work</span>
+                      <span style={{ flex: 1 }}>{i.companies.map((c) => `${c.count} at ${c.name}`).join(' · ')}</span>
+                    </div>
+                  )}
+                  <div style={row}>
+                    <span style={label}>Scanned</span>
+                    <span style={{ flex: 1 }}>{scanned}</span>
+                    {i.bars !== 5 && canScan && (
+                      <a href={`/setup?scan=${encodeURIComponent(selected.id)}`} style={act}>{i.bars == null ? 'Scan →' : 'Finish →'}</a>
+                    )}
+                  </div>
+                  {(() => {
+                    const since = selected.connected_date ? new Date(selected.connected_date) : null;
+                    const asked = (bridgeMap[selected.id] || []).filter((p) => hasRequest(p, requests)).length;
+                    if (!(since && !Number.isNaN(since.getTime())) && !asked) return null;
+                    return (
+                      <div style={row}>
+                        <span style={label}>You and {first}</span>
+                        <span style={{ flex: 1 }}>
+                          {since && !Number.isNaN(since.getTime()) ? `Connected ${since.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}
+                          {asked ? `${since ? ' · ' : ''}${asked} request${asked === 1 ? '' : 's'} out through them` : ''}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  <div style={row}>
+                    <span style={label}>Rank</span>
+                    <span style={{ flex: 1 }}>{i.rank ? `#${i.rank} of ${i.of} by who only they reach` : 'Ranked once their circle is scanned'}</span>
+                  </div>
                 </div>
               )}
             </div>

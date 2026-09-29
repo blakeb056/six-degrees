@@ -153,6 +153,19 @@ function HomeInner() {
 
   // Followed once: Bridge Chains has opened it, so leaving that view and coming
   // back, or reloading, starts from the overview.
+  // A card's Insights → Separation, filtered to that person's circle ("Show them", "S only").
+  const [separationPreset, setSeparationPreset] = useState(null);
+  const showInSeparation = useCallback((preset) => {
+    setSeparationPreset({ ...preset, id: `${preset.query}|${preset.tier || ''}|${preset.rarity || ''}|${Math.random()}` });
+    setMode('degrees');
+    setVisualMode('separation');
+  }, []);
+  // A card's Insights → that person's circle in Bridge Chains.
+  const openCircle = useCallback((id) => {
+    setChainOpen(id);
+    setMode('degrees');
+    setVisualMode('chain');
+  }, []);
   const chainOpened = useCallback(() => {
     setChainOpen(null);
     try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
@@ -499,6 +512,7 @@ function HomeInner() {
             canScan,
             chainOpen,
             onChainOpened: chainOpened,
+            preset: separationPreset,
           };
           return <View {...viewProps} />;
         })()}
@@ -514,6 +528,8 @@ function HomeInner() {
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onSelect={(node) => { setSelected(node || null); }}
           onSwitchMode={(newMode) => { setMode(newMode); setFilter('all'); }}
+          onOpenCircle={openCircle}
+          onShowInSeparation={showInSeparation}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
           csvSource={IS_DEMO ? 'sample' : csvMode ? csvSource : null}
           scanNotes={scanNotes}
