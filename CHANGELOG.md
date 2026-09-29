@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-09-29
+
 ### Changed
 - **A new icon.** A 6 drawn in one gold line around you, a glowing core, ending in a degree
   ring, with your tier rings fading behind it. It's the app's icon, the favicon and the
