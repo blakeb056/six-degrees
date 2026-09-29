@@ -79,6 +79,7 @@ export default function DataSection() {
   const [exportNote, setExportNote] = useState(null);
   const [importNote, setImportNote] = useState(null);
   const [photos, setPhotos] = useState(true);
+  const [social, setSocial] = useState(true);
   const [file, setFile] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -137,7 +138,7 @@ export default function DataSection() {
       const res = await fetch('/api/data/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photos }),
+        body: JSON.stringify({ photos, social }),
       });
       if (!res.ok) await answer(res, 'The copy could not be made.');
       const blob = await res.blob();
@@ -324,6 +325,13 @@ export default function DataSection() {
           They can’t be downloaded again without a new scan.
         </span>
       </label>
+      <label style={check}>
+        <input type="checkbox" checked={social} onChange={(e) => setSocial(e.target.checked)} style={{ marginTop: 3 }} />
+        <span>
+          Include the Social tab: its findings, your CRM notes, stages and follow-ups, and any messages you keep
+          there.
+        </span>
+      </label>
       <div style={row}>
         <Btn primary onClick={exportNow} disabled={!!busy || restarting || info.people === 0}>
           {busy === 'export' ? 'Saving…' : 'Save a copy of my network'}
@@ -334,9 +342,9 @@ export default function DataSection() {
       <Body style={small}>
         The copy holds the names, headlines and photos of the people in your network. Keep it private: don’t
         post it or share it, and delete it once it has been imported. A network opened from a LinkedIn CSV lives
-        only in its browser tab, so it isn’t in the copy; import the CSV again on the new computer. The Social
-        tab’s findings, your CRM notes, and any messages you keep there, stay on this computer and aren’t in the
-        copy either.
+        only in its browser tab, so it isn’t in the copy; import the CSV again on the new computer. With the
+        Social tab included, the copy also holds your CRM notes and any messages you keep, so it&rsquo;s as private
+        as your inbox.
       </Body>
 
       <h3 style={subhead}>Bring in a network from another computer</h3>

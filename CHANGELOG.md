@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aren't lost by accident.
 
 ### Changed
+- **"Save a copy of my network" carries the Social tab too.** A new box, ticked by default,
+  adds its findings, your CRM stages, tags, notes and follow-ups, and any messages you keep,
+  so moving to a new computer brings everything. Importing the copy puts them in place and
+  keeps this computer's beside the old network. Untick it to leave them behind.
 - **Waiting on you has become the CRM's Inbox**, and Conversations is part of the CRM.
 - **The Social tab keeps the names of people who aren't your connections**, from your export and the
   sync, since nothing else in the app says who they are. A connection's name still isn't copied: the
