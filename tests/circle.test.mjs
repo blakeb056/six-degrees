@@ -123,3 +123,16 @@ test('tier and rarity filter together: both must match, and an empty filter lets
   assert.deepEqual([...toggle(new Set(['only']), 'rare')], ['only', 'rare']);
   assert.deepEqual([...toggle(new Set(['only']), 'only')], []);
 });
+
+test('a big circle spreads into rows instead of a solid line, each person still behind who they hang off', () => {
+  const people = Array.from({ length: 700 }, (_, i) => ({ row: { id: `p${i}`, name: `p${i}` }, parentId: 'root', state: 'seen' }));
+  const lay = circleLayout([{ degree: 2, people }], 240);
+  const ring = lay.rings[0];
+  assert.ok(ring.rows > 1, `${ring.rows} rows`);
+  const radii = new Set(ring.items.map((it) => Math.round(Math.hypot(it.x - 120, it.y - 120) * 10)));
+  assert.equal(radii.size, ring.rows, 'one radius per row');
+  // Neighbours by angle sit on different rows.
+  const [a, b] = ring.items;
+  assert.notEqual(Math.round(Math.hypot(a.x - 120, a.y - 120)), Math.round(Math.hypot(b.x - 120, b.y - 120)));
+  for (const it of ring.items) assert.ok(it.x >= 0 && it.x <= 240 && it.y >= 0 && it.y <= 240, 'inside the box');
+});

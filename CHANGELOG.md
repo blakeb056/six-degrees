@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   250 a month. Lowering a budget, or anything up to 100 a day, is never asked about.
 
 ### Fixed
+- **A card's circle map never draws a degree as a solid line.** A big circle, or the people
+  behind someone you added packed into their slice, used to run together into one line or
+  band. When a slice holds more than fit, its dots now take a few rows, neighbours
+  alternating between them, each still behind whoever they hang off, and the dots are sized
+  for the most crowded slice.
 - **Bridge Chains: a hover preview no longer draws over the bridges.** With many bridges the
   overview grows extra rings, and a bridge's circle, previewed on hover, landed on top of
   them. It now starts beyond the outermost ring of bridges.
