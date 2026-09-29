@@ -33,6 +33,7 @@ import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
 import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
+import { exclusiveReach } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
@@ -138,6 +139,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const index = useMemo(() => circleIndex(all1, all2), [all1, all2]);
   const reach = useMemo(() => reachIndex(all1, all2, scanNotes), [all1, all2, scanNotes]);
   const readyCount = useMemo(() => readyByCircle(reach), [reach]);
+  // Who only this bridge reaches, across every circle scanned (lib/brokerage.js).
+  const exclusive = useMemo(() => exclusiveReach(fullDegree2 || degree2, fullDegree1 || connections), [fullDegree2, degree2, fullDegree1, connections]);
   const rowById = useMemo(() => {
     const m = new Map();
     for (const r of all2) m.set(r.id, r);
@@ -325,6 +328,12 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               <text x={b.x} y={b.y + (isHov ? 34 : 32)} textAnchor="middle" fill="#888" fontSize={7}>
                 {b.clusterSize} · {sCount > 0 ? sCount + 'S ' : ''}{aCount > 0 ? aCount + 'A' : ''}
               </text>
+              {exclusive.get(b.id)?.only > 0 && (
+                <text x={b.x} y={b.y + (isHov ? 43 : 41)} textAnchor="middle" fill="#00ff88" fillOpacity={0.75} fontSize={6.5}>
+                  {exclusive.get(b.id).only.toLocaleString()} only here
+                  <title>{`${exclusive.get(b.id).only.toLocaleString()} of the people in ${b.name?.split(' ')[0]}’s circle are reached by none of your other connections`}</title>
+                </text>
+              )}
             </g>
           );
         })}
