@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-09-29
+
 ### Added
 - **Conversations, in the Social tab.** Every conversation with one of your connections, from your
   export and the live messages sync: who it's with (name and tier), when it was last active, who
