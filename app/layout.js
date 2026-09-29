@@ -20,6 +20,7 @@ export const metadata = {
 import UserProvider from './components/UserProvider';
 import StaleServerBanner from './components/StaleServerBanner';
 import ScanStatusBar from './components/ScanStatusBar';
+import SocialAutoSync from './components/SocialAutoSync';
 
 export default function RootLayout({ children }) {
   return (
@@ -33,6 +34,8 @@ export default function RootLayout({ children }) {
           <StaleServerBanner />
           {/* While a scan runs: what it's doing and today's budget, with Stop. */}
           <ScanStatusBar />
+          {/* The Social tab's once-a-day messages sync, when switched on. */}
+          <SocialAutoSync />
         </UserProvider>
       </body>
     </html>

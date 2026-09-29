@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Social (experimental): a tab for your relationships.** It works from your own LinkedIn data:
+  - **Your export:** the folder LinkedIn emails you from *Settings → Data privacy → Get a copy
+    of your data*, read in the app window with no traffic to LinkedIn.
+  - **A live messages sync:** reads your messages list once in your own Chrome, by hand or once
+    a day in the daytime, using no search budget.
+
+  It shows:
+  - how many of your connections are warm, cool, dormant or never messaged;
+  - who's waiting on a reply (S and A tier first), or has unread messages;
+  - your career chapters, with the connections made in each and how many you're still in
+    touch with;
+  - whether posting works (new connections the week after a post against a usual week);
+  - how many connection requests came to you and how many you sent.
+
+  Only dates, who wrote last and counts are kept, one file per profile in the data folder, and
+  *Forget it* removes it. Message text is never kept. Email addresses are kept only if you tick
+  the box. The live sync hasn't been tried on a live account yet.
+- **Auto scan.** With the Scan page's experimental all-day box ticked, an *Auto scan* button sits
+  beside Scan and starts the all-day Auto-Bridge with your Scan page choices. The status bar sits
+  under the tabs, dimmed while it's ready, and lights up once it runs.
+
+### Added
 - **Insights on a connection's card.** A collapsible panel with their circle's size (*Explore →*
   opens it in Bridge Chains), how many only they reach, whose circle overlaps theirs most
   (*Open →*), the tier mix of their circle, where most of it works, how much is scanned (*Scan →*

@@ -8,6 +8,7 @@ import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { VIEWS, resolveView } from './components/views';
+import AutoScanButton from './components/AutoScanButton';
 import { peopleByDegree, tierCountsOf } from '../lib/degrees';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
@@ -297,6 +298,17 @@ function HomeInner() {
             >
               Paths
             </Link>}
+            {!IS_DEMO && <Link
+              href="/social"
+              title="Experimental: what your own LinkedIn data says about your relationships"
+              style={{
+                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
+                background: 'rgba(255,255,255,0.06)', color: '#FFD700', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              Social<span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>beta</span>
+            </Link>}
             {!IS_DEMO && !csvMode && <Link
               href="/scores"
               style={{
@@ -331,6 +343,7 @@ function HomeInner() {
             >
               Scan
             </Link>}
+            {!IS_DEMO && !csvMode && <AutoScanButton isMobile={isMobile} />}
           </div>
           {/* Settings — also in CSV/sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <Link

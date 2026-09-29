@@ -444,7 +444,7 @@ function SetupInner() {
                 </label>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
                   <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
-                    onChange={(e) => setExperimental(e.target.checked)} />
+                    onChange={(e) => { setExperimental(e.target.checked); window.dispatchEvent(new Event('six-degrees:experimental')); }} />
                   <span>
                     <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 10 pages in a sitting,
                     then a 45-minute rest; searches only from 9:00 to 19:00; at the daily budget it waits for it to

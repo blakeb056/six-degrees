@@ -58,6 +58,8 @@ _ENV_LOCAL = _load_env_local()
 # default to somebody else's deployment — that would send a user's network to
 # a server they don't control.
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
+MESSAGING_URL = "https://www.linkedin.com/messaging/"
+MESSAGE_SCROLLS = 6               # scrolls down the conversation list, a few seconds apart
 
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
 
@@ -1897,7 +1899,7 @@ def voyager_total(payload):
     return None
 
 
-def _wire_sample(data):
+def _wire_sample(data, prefix="search"):
     if EXPERIMENT["wire"] >= WIRE_SAMPLES:
         return
     try:
@@ -1906,7 +1908,7 @@ def _wire_sample(data):
             return
         folder = _home() / "wire-samples"
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{int(time.time() * 1000)}.json").write_text(raw)
+        (folder / f"{prefix}-{int(time.time() * 1000)}.json").write_text(raw)
         EXPERIMENT["wire"] += 1
     except Exception:
         pass
@@ -1944,6 +1946,116 @@ def _wire_merge(page, profile_url, page_results):
     print(f"    LinkedIn's own data: {len(people)} people, {only_wire} not in the page text"
           + (f", list of about {total:,}" if total else ""), flush=True)
     return page_results
+
+
+_PROFILE_LINK = re.compile(r"https://www\\.linkedin\\.com/in/[^/?#\\s\"']+")
+
+
+def voyager_conversations(payload):
+    """Conversations in a LinkedIn messaging response (experimental): per conversation,
+    everyone in it (profile links), when it was last active, and unread messages.
+    Anything with a lastActivityAt and participants, wherever it sits. Never the text."""
+    out = []
+
+    def people(x):
+        found = set()
+        stack = [x]
+        while stack:
+            v = stack.pop()
+            if isinstance(v, dict):
+                pid = v.get("publicIdentifier")
+                if isinstance(pid, str) and pid and pid != "UNKNOWN":
+                    found.add(f"https://www.linkedin.com/in/{pid}/")
+                stack.extend(v.values())
+            elif isinstance(v, list):
+                stack.extend(v)
+            elif isinstance(v, str):
+                for m in _PROFILE_LINK.findall(v):
+                    found.add(m.rstrip("/") + "/")
+        return found
+
+    def walk(x):
+        if isinstance(x, dict):
+            at = x.get("lastActivityAt")
+            parts = [v for k, v in x.items() if "participant" in k.lower()]
+            if isinstance(at, (int, float)) and at > 1e12 and parts:
+                who = set()
+                for v in parts:
+                    who |= people(v)
+                if who:
+                    unread = x.get("unreadCount")
+                    out.append({"people": sorted(who), "at": int(at), "unread": int(unread) if isinstance(unread, (int, float)) else None})
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    walk(payload)
+    return out
+
+
+def sync_messages(headless=False):
+    """Experimental: read your LinkedIn messages list once, for the Social tab. Opens
+    Messaging in your own Chrome, scrolls the list a few times, and keeps from LinkedIn's
+    own data only who each 1:1 conversation is with, when it was last active and whether
+    it has unread messages. No search budget; no message text is read or kept."""
+    from playwright.sync_api import sync_playwright
+    kept = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch_persistent_context(
+            user_data_dir=get_scraper_profile_path(), headless=headless, channel="chrome",
+            args=["--disable-blink-features=AutomationControlled"], timeout=120000)
+        page = browser.pages[0] if browser.pages else browser.new_page()
+        page.set_default_timeout(120000)
+        if not ensure_logged_in(page):
+            browser.close()
+            return
+        page.on("response", lambda r: kept.append(r) if "/voyager/api/" in r.url and "messag" in r.url.lower() else None)
+        print("Opening your messages list...")
+        try:
+            page.goto(MESSAGING_URL, wait_until="domcontentloaded")
+        except Exception:
+            pass
+        time.sleep(6)
+        for i in range(MESSAGE_SCROLLS):
+            if stop_requested() or _window_closed(page):
+                break
+            try:
+                page.evaluate("""() => { const l = document.querySelector('.msg-conversations-container__conversations-list, [class*="conversations-list"]');
+                  if (l) l.scrollTop = l.scrollHeight; }""")
+            except Exception:
+                pass
+            print(f"  Reading the list ({i + 1} of {MESSAGE_SCROLLS})...", flush=True)
+            time.sleep(4)
+        convos = []
+        for r in kept:
+            try:
+                data = r.json()
+            except Exception:
+                continue
+            _wire_sample(data, prefix="messages")
+            convos.extend(voyager_conversations(data))
+        browser.close()
+    # You are the one in the most conversations; keep the 1:1 ones.
+    counts = {}
+    for c in convos:
+        for u in c["people"]:
+            counts[u] = counts.get(u, 0) + 1
+    me = max(counts, key=counts.get) if counts else None
+    people = {}
+    for c in convos:
+        others = [u for u in c["people"] if u != me]
+        if len(others) != 1:
+            continue
+        cur = people.get(others[0])
+        if not cur or c["at"] > cur["last"]:
+            people[others[0]] = {"last": c["at"], "unread": c["unread"]}
+    print(f"  Found {len(convos)} conversations in LinkedIn's data, {len(people)} with one person.")
+    try:
+        requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
+        print("  Saved for the Social tab.")
+    except Exception as e:
+        print(f"  Couldn't save them: {e}")
 
 
 def _drip_wait(label, seconds):
@@ -3960,6 +4072,8 @@ Examples:
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
+    parser.add_argument("--messages", action="store_true",
+                        help="Experimental: read your messages list once for the Social tab (who, when, unread; never text)")
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
                              "waits for the daily budget) and reading LinkedIn's own data beside the page text")
@@ -4057,6 +4171,8 @@ Examples:
                                       only_unfinished=args.only_unfinished)
             done = sum(1 for r in results if r.get("status") == "done")
             print(f"\nDone. {done}/{len(results)} bridges mapped.")
+        elif args.messages:
+            sync_messages(headless=args.headless)
         elif args.search:
             scrape_full(headless=args.headless)
         elif args.full:
