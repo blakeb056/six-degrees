@@ -301,8 +301,6 @@ function QueueInner() {
           ))}
         </div>
       </header>
-      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
-      <div id="scan-bar-slot" />
 
       {/* Batch action bar — recs view only */}
       {view === 'recs' && selected.size > 0 && (

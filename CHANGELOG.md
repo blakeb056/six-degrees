@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The scan status bar is now a notch.** A small pill hangs from the bottom of the header,
+  centred, on every page. It shows nothing while nothing runs, only a tiny dimmed *Auto scan*
+  while the all-day mode waits, and while a scan runs, what it's doing with a thin progress
+  line. Hover or click to open it: who, today's searches, the latest line, *Details* and
+  *Stop*. Other long jobs show there too, starting with recording the Galaxy's replay.
+
 ## [0.4.9] - 2026-09-29
 
 ### Added
