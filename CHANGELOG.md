@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-29
+
 ### Added
 - **Which connections open the same doors.** A card says whose circle overlaps theirs most, when
   it's real (15% or more, and at least 3 people): "Opens the same doors as Tom: 62% of the
