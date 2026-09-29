@@ -146,3 +146,22 @@ Automating LinkedIn may violate its User Agreement and accounts have been restri
 it. This runs locally, against the user's own account, at their own risk, and the README
 and `docs/SCRAPING.md` both say so plainly. LinkedIn's official CSV export is the
 supported path and needs none of this.
+
+## Experimental Auto-Bridge (`--experimental`)
+
+The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Openly slow, never disguised:** fixed waits only.
+
+- `_drip_before_search()` runs before every circle search:
+  - a sitting of `SESSION_PAGES` (10), then `SESSION_REST` (45 min);
+  - searches only inside `DRIP_HOURS` (09–19, local time);
+  - at the daily budget it waits until the oldest search in the last 24 h ages out (`_seconds_until_search_frees`).
+
+  Every wait prints "… Carrying on at HH:MM" and a line a minute, which the status bar shows. A monthly budget or a cooldown still stops the run.
+- Each page is saved as it's read, and the 60 s after every 10 pages gives way to the sitting rest.
+- **LinkedIn's own data:** `_wire_tap` keeps `/voyager/api/` search responses, and `_wire_merge` reads them after each page:
+  - `voyager_people` takes anything with a title and a `/in/` link; `voyager_total` reads `totalResultCount`;
+  - it fills blanks (headline, photo, mutual count) for people the page text found, and records the total;
+  - people only LinkedIn's data shows are logged, not added;
+  - it keeps up to `WIRE_SAMPLES` raw responses per run in `wire-samples/`.
+
+  Bodies are read in the main flow after each page, not inside the event handler.

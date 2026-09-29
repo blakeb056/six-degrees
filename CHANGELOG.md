@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Experimental Auto-Bridge (a switch on the Scan page).** All-day pacing that stays openly
+  slow: up to 10 pages in a sitting, then a 45-minute rest; searches only from 09:00 to 19:00 on
+  this computer's clock; at the daily budget it waits for it to free up instead of stopping;
+  and every page is saved as it's read. It also reads the data LinkedIn already sends for each
+  page of results (no extra requests) beside the page text. That fills in headlines, photos and
+  mutual counts the page text missed, and gives each list's real length for the scan bars. Each
+  page logs how the two compare, and a few raw responses are kept in the data folder
+  (`wire-samples/`) to tune it. People only LinkedIn's data shows are logged, not added. The
+  timing is never randomised to look like a person. Not yet tried on a live account.
 - **A status bar while a scan runs, on every page.** It shows what's running and for whom, how
   far it's got, today's LinkedIn searches against your daily budget (green, then amber past 60%,
   red past 90%), what the scanner is doing right now (for example the wait before the next

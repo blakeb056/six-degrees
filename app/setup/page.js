@@ -65,6 +65,8 @@ function SetupInner() {
   const [pages, setPages] = useRemembered('six-degrees-bridge-pages-v2', 100);
   // Also finish people mapped before, from the page each one's read stopped at.
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
+  // Experimental Auto-Bridge: all-day pacing and LinkedIn's own data (scripts/scrape.py --experimental).
+  const [experimental, setExperimental] = useRemembered('six-degrees-experimental-auto', false);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
@@ -440,6 +442,16 @@ function SetupInner() {
                   <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
                   Also finish people already mapped, from the page each one stopped at
                 </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
+                  <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
+                    onChange={(e) => setExperimental(e.target.checked)} />
+                  <span>
+                    <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 10 pages in a sitting,
+                    then a 45-minute rest; searches only from 9:00 to 19:00; at the daily budget it waits for it to
+                    free up instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
+                    the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
+                  </span>
+                </label>
                 <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
                   Every page is a LinkedIn search, so it rests 20 seconds before each one and a
                   minute after every 10, and a long list can take
@@ -449,7 +461,7 @@ function SetupInner() {
                   what it read and stops, and carries on from that page next time. Keep batches small.
                 </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
+                <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
                   {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
                 </Btn>
                 <select
