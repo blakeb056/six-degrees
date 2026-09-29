@@ -74,6 +74,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The details are under 0.4.0-beta.1 below.
 - **The download page** says what's new in 0.4.0.
+- **Degrees' corner toggle says Orbit, which is what it shows.** It said "Galaxy", but
+  the Galaxy is a Network Circle view, so Degrees fell back to Orbit. It switches
+  between Orbit and Bridge Chains, and it's on whenever Orbit is showing.
+
+### Removed
+- **About 630 lines of Galaxy code that never ran:** a Degrees drawing from before Orbit
+  and Bridge Chains. Nothing could open it. The Galaxy draws Network Circle only.
 
 ### Fixed
 - **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
@@ -91,8 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   On" date landed a day early (28 Sep 2026 became 27 Sep). The import now reads it as the
   calendar date it is, the way a scan already did, and a date it can't read is left blank
   rather than guessed.
-
-### Fixed
 - **Opening a panel no longer rebuilds the Galaxy.** Opening or closing the side panel or
   the Filter panel used to draw the Galaxy again from scratch: the layout started over,
   the selection ring vanished, and a big network stalled the page. Now the view slides
@@ -115,15 +120,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **On a laptop, the Galaxy keeps its usual layout with a panel open.** Its fixed phone
   layout used to switch on whenever the graph was under 768 pixels wide, which a tier
   filter picked with a panel open could do. It now follows the window, as the page does.
-
-### Changed
-- **Degrees' corner toggle says Orbit, which is what it shows.** It said "Galaxy", but
-  the Galaxy is a Network Circle view, so Degrees fell back to Orbit. It switches
-  between Orbit and Bridge Chains, and it's on whenever Orbit is showing.
-
-### Removed
-- **About 630 lines of Galaxy code that never ran:** a Degrees drawing from before Orbit
-  and Bridge Chains. Nothing could open it. The Galaxy draws Network Circle only.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
