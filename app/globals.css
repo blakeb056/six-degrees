@@ -38,3 +38,7 @@ html:has([data-field-question]) {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 3px;
 }
+
+/* Where the scan status bar sits: just under the header (app/components/ScanStatusBar.js). */
+:root { --scan-bar-top: 94px; }
+@media (max-width: 767px) { :root { --scan-bar-top: 66px; } }
