@@ -6,9 +6,11 @@
 //     your data), read here in the browser: full history, no traffic to LinkedIn;
 //   - an experimental live sync (the scanner's --messages): your messages list,
 //     read once in your own Chrome, by hand or once a day.
-// Kept on this computer: dates, who wrote last and counts, and the messages
-// themselves only if you turn on Keep my messages (Conversations.js), in a file
-// of their own that switching it off deletes.
+// Kept on this computer: dates, who wrote last and counts, the names of people
+// who aren't your connections, and the messages themselves (and the notes sent
+// with requests) only if you turn on Keep my messages, in a file of their own
+// that switching it off deletes. The CRM (Crm.js) is the main section: everyone
+// you've been in touch with, and your own stage, tags, notes and follow-ups.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -16,20 +18,18 @@ import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import { loadNetwork } from '../../lib/network';
 import {
-  readTable, messageStats, careerChapters, postingEffect, invitationSplit, warmthOf, repliesWaiting, buildConversations, conversationSummary,
+  readTable, messageStats, careerChapters, postingEffect, invitationSplit, warmthOf, buildConversations, conversationSummary, buildInvitations,
 } from '../../lib/linkedin-export';
 import { mergeSocial } from '../../lib/galaxy-lab';
 import { keyFor } from '../../lib/separation';
 import { runScrape, watchScanner, scannerNow } from '../../lib/scraper-client';
 import { Body, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
-import Conversations from './Conversations';
+import Crm from './Crm';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const WARMTH = { warm: ['Warm', '#ff9f43'], cool: ['Cool', '#3498DB'], dormant: ['Dormant', '#8899aa'], never: ['Never messaged', '#556'] };
 const FILES = { 'connections.csv': 'first name', 'messages.csv': 'conversation id', 'invitations.csv': 'direction', 'positions.csv': 'company name', 'shares.csv': 'date' };
 const day = (t) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-const slug = (u) => String(u || '').replace(/\/+$/, '').split('/').pop();
 // Messages go to the server in parts of about this many characters: a request
 // here can carry 10 MB, and a character can take up to 3 bytes.
 const PART_CHARS = 2_500_000;
@@ -55,6 +55,14 @@ async function sendMessages(conversations) {
   }
 }
 
+/** The notes sent with requests, when the messages are kept: they ride in the same file and go with it. */
+async function sendInviteNotes(invitations) {
+  const invites = {};
+  for (const i of invitations) if (i.note) invites[i.id] = i.note;
+  const r = await fetch('/api/social/messages', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invites }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'The requests’ notes couldn’t be saved.');
+}
+
 export default function SocialPage() {
   return <OnboardingGate><SocialInner /></OnboardingGate>;
 }
@@ -69,9 +77,11 @@ function SocialInner() {
   const [job, setJob] = useState(() => scannerNow());
   const [switching, setSwitching] = useState(false);
   const [listToken, setListToken] = useState(0);
-  // The last export's messages.csv, in this window only, so turning Keep my
-  // messages on right after an import needn't ask for the folder again.
+  const [crmToken, setCrmToken] = useState(0);
+  // The last export's messages.csv and Invitations.csv, in this window only, so
+  // turning Keep my messages on right after an import needn't ask for the folder again.
   const lastMessages = useRef(null);
+  const lastInvites = useRef(null);
   const keep = social?.keepMessages === true;
 
   // The Conversations list reads again whenever this does (listToken).
@@ -85,14 +95,6 @@ function SocialInner() {
     loadNetwork(userId).then((n) => { if (live) setNet(n); }).catch(() => {});
     return () => { live = false; };
   }, [userId]);
-
-  // Everyone you know, by profile: name and tier for the lists below.
-  const byKey = useMemo(() => {
-    const m = new Map();
-    for (const r of [...(net?.degree1 || []), ...(net?.degree2 || [])]) if (!m.has(keyFor(r))) m.set(keyFor(r), r);
-    return m;
-  }, [net]);
-  const connected = useMemo(() => new Set((net?.degree1 || []).map(keyFor)), [net]);
 
   async function importFolder(list) {
     setBusy(true);
@@ -108,7 +110,9 @@ function SocialInner() {
       const stats = found['messages.csv'] ? messageStats(found['messages.csv']) : { asOf: null, people: new Map() };
       // The words are read out of messages.csv only when Keep my messages is on.
       const built = found['messages.csv'] ? buildConversations(found['messages.csv'], { keepText: keep }) : null;
+      const invitations = found['invitations.csv'] ? buildInvitations(found['invitations.csv'], { keepText: keep }) : null;
       lastMessages.current = found['messages.csv'] || null;
+      lastInvites.current = found['invitations.csv'] || null;
       const people = {};
       for (const [url, v] of stats.people) people[url] = { last: v.last, lastFromThem: v.lastFromThem, total: v.total, recent: v.recent };
       if (keepEmails) {
@@ -127,15 +131,26 @@ function SocialInner() {
         chapters: careerChapters(found['positions.csv'] || [], conns, asOf),
         posts: found['shares.csv'] ? postingEffect(found['shares.csv'], conns) : null,
         invites: found['invitations.csv'] ? invitationSplit(found['invitations.csv']) : null,
+        // One record per request, without the notes: those go with the messages, below.
+        invitations: (invitations || []).map(({ note, ...rest }) => rest),
+        // Names as the export spells them, so people who aren't connections can be listed.
+        names: built ? built.names : {},
         emails: keepEmails,
       };
       const r = await fetch('/api/social', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'It couldn’t be saved.');
       if (built && keep) await sendMessages(built.conversations);
+      if (invitations && keep) await sendInviteNotes(invitations);
+      const odd = built ? [
+        built.drafts ? `${built.drafts.toLocaleString()} unsent ${built.drafts === 1 ? 'draft' : 'drafts'} left out` : '',
+        built.skipped ? `${built.skipped.toLocaleString()} ${built.skipped === 1 ? 'row' : 'rows'} with no conversation or date left out` : '',
+      ].filter(Boolean) : [];
       setNote({
         good: true,
         text: `Read ${Object.keys(found).length} of LinkedIn’s files: ${stats.people.size.toLocaleString()} people you’ve messaged one to one`
-          + (built ? `, ${built.conversations.length.toLocaleString()} conversations${keep ? ', their messages kept on this computer' : ''}.` : '.'),
+          + (built ? `, ${built.conversations.length.toLocaleString()} conversations${keep ? ', their messages kept on this computer' : ''}` : '')
+          + (invitations ? `, ${invitations.length.toLocaleString()} connection requests` : '')
+          + `.${odd.length ? ` (${odd.join('; ')}.)` : ''}`,
       });
       await reload();
     } catch (e) {
@@ -145,11 +160,15 @@ function SocialInner() {
     }
   }
 
-  async function syncNow() {
+  // The daily sync reads the top of the list; `full` scrolls until the whole
+  // history has loaded (scripts/scrape.py --full-history), at the same pace.
+  async function syncNow(full = false) {
     setNote(null);
     try {
-      const end = await runScrape('messages');
-      setNote(end?.exitCode === 0 ? { good: true, text: 'Your messages list is read.' } : { good: false, text: 'The sync stopped before it finished. The Scan page has the log.' });
+      const end = await runScrape(full ? 'messages-full' : 'messages');
+      setNote(end?.exitCode === 0
+        ? { good: true, text: full ? 'Your whole messages history is read.' : 'Your messages list is read.' }
+        : { good: false, text: 'The sync stopped before it finished. The Scan page has the log.' });
       await reload();
     } catch (e) {
       setNote({ good: false, text: e.message });
@@ -172,8 +191,9 @@ function SocialInner() {
       if (!on) await fetch('/api/social/messages', { method: 'DELETE' });
       const r = await fetch('/api/social', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keepMessages: on }) });
       if (!r.ok) throw new Error('The switch couldn’t be saved.');
-      if (on && lastMessages.current) {
-        await sendMessages(buildConversations(lastMessages.current, { keepText: true }).conversations);
+      if (on && (lastMessages.current || lastInvites.current)) {
+        if (lastMessages.current) await sendMessages(buildConversations(lastMessages.current, { keepText: true }).conversations);
+        if (lastInvites.current) await sendInviteNotes(buildInvitations(lastInvites.current, { keepText: true }));
         setNote({ good: true, text: 'Your messages are kept on this computer now.' });
       } else if (on) {
         setNote({ good: true, text: 'On. Choose your export folder again, or sync your messages, to bring the messages in.' });
@@ -188,10 +208,21 @@ function SocialInner() {
     }
   }
 
+  // Forget it: the export's and the sync's findings, and the messages. Your CRM
+  // notes are your own work, so they're a question of their own, asked after.
   async function forget() {
     await fetch('/api/social', { method: 'DELETE' });
     lastMessages.current = null;
-    setNote({ good: true, text: 'Forgotten. Nothing from your export or messages is kept here now, the messages themselves included.' });
+    lastInvites.current = null;
+    let text = 'Forgotten. Nothing from your export or messages is kept here now, the messages themselves included.';
+    if (window.confirm('Also delete your CRM: the stages, tags, notes and follow-up dates you added? This can’t be undone. Cancel keeps them.')) {
+      await fetch('/api/social/crm', { method: 'DELETE' });
+      setCrmToken((n) => n + 1);
+      text += ' Your CRM notes are deleted too.';
+    } else {
+      text += ' Your CRM notes are kept.';
+    }
+    setNote({ good: true, text });
     reload();
   }
 
@@ -205,16 +236,6 @@ function SocialInner() {
     return counts;
   }, [net, merged, asOf]);
 
-  const waiting = useMemo(() => {
-    const stats = { asOf, people: new Map([...merged].filter(([, v]) => v.lastFromThem != null)) };
-    const list = repliesWaiting(stats).map((w) => ({ ...w, person: byKey.get(w.url) }));
-    for (const [k, v] of merged) {
-      if (v.unread > 0 && !list.some((w) => w.url === k)) list.push({ url: k, unread: v.unread, person: byKey.get(k) });
-    }
-    const rank = (w) => ({ S: 0, A: 1 }[w.person?.tier] ?? 2);
-    return list.sort((a, b) => rank(a) - rank(b) || (a.days ?? 0) - (b.days ?? 0)).slice(0, 15);
-  }, [merged, asOf, byKey]);
-
   if (IS_DEMO) return <div style={{ minHeight: '100vh', background: '#0a0a1a', color: '#aaa', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
   const running = job?.running;
   const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', marginTop: 10 };
@@ -226,11 +247,12 @@ function SocialInner() {
         <Link href="/" style={{ color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: LINE }}>← Back to Map</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#FFD700' }}>Social <span style={{ fontSize: 12, color: '#8b9a9a', fontWeight: 600 }}>experimental</span></h1>
       </header>
-      <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '8px 16px 64px' }}>
         <Body style={{ marginTop: 16 }}>
-          Who you&rsquo;re warm with, who&rsquo;s waiting on a reply, and how each chapter of your career built your network,
-          from your own LinkedIn data. Only dates, who wrote last and counts are kept on this computer, and what
-          messages say only if you turn on <i>Keep my messages</i> under Conversations.
+          Everyone you&rsquo;ve been in touch with on LinkedIn, connections or not: who&rsquo;s waiting on you, who
+          hasn&rsquo;t answered, what you&rsquo;ve sent and received, and your own notes and follow-ups on each, from
+          your own LinkedIn data. Only dates, who wrote last, counts and names are kept on this computer, and what
+          messages say only if you turn on <i>Keep my messages</i> below.
         </Body>
 
         <h2 style={h2}>Your LinkedIn export</h2>
@@ -256,13 +278,18 @@ function SocialInner() {
         <h2 style={h2}>Live messages sync <span style={{ fontSize: 11, color: '#FFD700' }}>experimental</span></h2>
         <div style={box}>
           <Body style={{ margin: 0 }}>
-            Reads your messages list once, in your own Chrome: who each one-to-one conversation is with, when it was last
-            active, whether it&rsquo;s unread and who wrote last. It uses no search budget and opens no conversation. The
-            newest message&rsquo;s words are kept only if <i>Keep my messages</i> is on.
+            Reads your messages list once, in your own Chrome: who each conversation is with, connections or not, when it
+            was last active, whether it&rsquo;s unread and who wrote last. It uses no search budget and opens no
+            conversation. The newest message&rsquo;s words are kept only if <i>Keep my messages</i> is on. The daily sync
+            reads the top of the list; <i>Read my whole history</i> keeps scrolling until no more conversations load
+            (at most 60 scrolls, about 1,000 conversations), at the same slow, fixed pace, so it takes a few minutes.
           </Body>
           <div style={{ marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={syncNow} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: running ? '#333' : 'rgba(0,255,136,0.15)', color: running ? '#777' : '#00ff88', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
+            <button onClick={() => syncNow(false)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: running ? '#333' : 'rgba(0,255,136,0.15)', color: running ? '#777' : '#00ff88', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
               {running ? 'The scanner is busy' : 'Sync messages now'}
+            </button>
+            <button onClick={() => syncNow(true)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: LINE, background: 'none', color: running ? '#777' : '#cfe6f7', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
+              Read my whole history
             </button>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: '#b8c4c4' }}>
               <input type="checkbox" checked={social?.autoSync === true} onChange={(e) => setAuto(e.target.checked)} />
@@ -272,8 +299,8 @@ function SocialInner() {
         </div>
         {note && <div style={{ marginTop: 10, fontSize: 13, color: note.good ? '#00ff88' : '#ff9b9b' }}>{note.text}</div>}
 
-        <h2 style={h2}>Conversations</h2>
-        <Conversations byKey={byKey} connected={connected} ready={!!net} keep={keep} onKeep={setKeep} switching={switching || busy} token={listToken} />
+        <h2 style={h2}>People</h2>
+        <Crm net={net} asOf={social ? asOf : null} keep={keep} onKeep={setKeep} switching={switching || busy} token={listToken} crmToken={crmToken} />
 
         {social && (
           <>
@@ -288,22 +315,6 @@ function SocialInner() {
             </div>
             <div style={{ fontSize: 11.5, color: '#778', marginTop: 6 }}>
               Of your connections. Warm: messaged in the last 30 days, or 3+ messages in 90. Cool: within a year. Dormant: longer ago.
-            </div>
-
-            <h2 style={h2}>Waiting on you</h2>
-            <div style={{ ...box, padding: 0 }}>
-              {waiting.length === 0 && <div style={{ padding: 12, fontSize: 13, color: '#8b9a9a' }}>No one is waiting on a reply.</div>}
-              {waiting.map((w) => (
-                <div key={w.url} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER[w.person?.tier] || '#556', flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <b>{w.person?.name || slug(w.url)}</b>
-                    {w.person?.company ? <span style={{ color: '#8b9a9a' }}> · {w.person.company}</span> : null}
-                  </span>
-                  <span style={{ color: '#b8c4c4' }}>{w.unread ? `${w.unread} unread` : `wrote ${w.days} days before your export`}</span>
-                  <a href={w.url} target="_blank" rel="noreferrer" style={{ color: '#3498DB', textDecoration: 'none' }}>Open ↗</a>
-                </div>
-              ))}
             </div>
 
             {social.chapters?.length > 0 && (

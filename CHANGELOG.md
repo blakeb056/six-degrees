@@ -6,12 +6,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The Social tab is a personal CRM.** Everyone you've been in touch with on LinkedIn is one contact,
+  connection or not: a list on the left with views and a search box, the person on the right (stacked
+  on a phone). The views:
+  - **Inbox:** they wrote last, or there's something unread. Unread first.
+  - **Awaiting reply:** you wrote last and nothing came back for 7 days or more (you can change the 7).
+  - **Follow-ups due:** a follow-up date of today or before.
+  - **Pipeline:** a board of the people you've given a stage.
+  - **Sent:** connection requests you sent (from your export's Invitations.csv, with the date, and the
+    note you wrote if Keep my messages is on), requests the app tracked (*Mark sent*), each accepted
+    once they're a connection and pending until then, and messages awaiting a reply.
+  - **Received:** requests to you from people who aren't connections yet.
+  - **All:** everyone and every group conversation, newest first.
+
+  Each person's panel shows their tier, company and how you're connected (and who can introduce you,
+  for 2nd degree), their conversations (the messages themselves if you keep them), requests both ways,
+  and **your own stage** (New, Contacted, Replied, Meeting, Won/Partner, Not now; it suggests one),
+  **tags**, **notes** and **next follow-up date**. Those are yours, so they're always kept, in a file of
+  their own per profile in the app's data folder, and never sent anywhere. Search covers names,
+  companies, tags and notes, and what was said while the messages are kept; in All it finds anyone in
+  your network, so you can add a note before you've written to them. **Export CSV** saves the table
+  (name, company, profile, connection, stage, tags, last contact, who wrote last, next follow-up,
+  notes) as a spreadsheet file. The list shows 100 at a time, so thousands of conversations stay quick.
+- **Every conversation in your export, not just your connections'.** People who aren't connections
+  are listed by the name the export gives them, marked *Not a connection*, with their profile link when
+  it has one. Past (archived), current and ones only you wrote in are all there, from every folder;
+  group conversations are listed and marked; Sponsored Messages and InMails are marked, and adverts are
+  kept out of the Inbox. Unsent drafts are left out and said so.
+- **Read my whole history**, beside *Sync messages now*: the live messages sync keeps scrolling your
+  messages list until no new conversations load (at most 60 scrolls, about 1,000 conversations), at the
+  same slow, fixed pace, with no random waits. The daily sync still reads just the top. The sync now
+  also brings in people who aren't your connections (with their name) and group conversations (without
+  any words), and each sync adds to what earlier ones found instead of replacing it.
+- **Delete my CRM notes**, and *Forget it* asks, separately, whether to delete them too, so notes
+  aren't lost by accident.
+
 ### Changed
 - **The scan status bar is now a notch.** A small pill hangs from the bottom of the header,
   centred, on every page. It shows nothing while nothing runs, only a tiny dimmed *Auto scan*
   while the all-day mode waits, and while a scan runs, what it's doing with a thin progress
   line. Hover or click to open it: who, today's searches, the latest line, *Details* and
   *Stop*. Other long jobs show there too, starting with recording the Galaxy's replay.
+- **Waiting on you has become the CRM's Inbox**, and Conversations is part of the CRM.
+- **The Social tab keeps the names of people who aren't your connections**, from your export and the
+  sync, since nothing else in the app says who they are. A connection's name still isn't copied: the
+  app has it already.
 
 ## [0.4.9] - 2026-09-29
 

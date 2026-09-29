@@ -31,6 +31,7 @@ const WHAT = {
   company: 'Scanning a company',
   photos: 'Saving photos',
   messages: 'Reading your messages list',
+  'messages-full': 'Reading your whole messages history',
 };
 
 // Green while there's plenty left, amber past 60%, red past 90%.
