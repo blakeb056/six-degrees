@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-29
+
 ### Added
 - **Social (experimental): a tab for your relationships.** It works from your own LinkedIn data:
   - **Your export:** the folder LinkedIn emails you from *Settings → Data privacy → Get a copy
@@ -27,8 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto scan.** With the Scan page's experimental all-day box ticked, an *Auto scan* button sits
   beside Scan and starts the all-day Auto-Bridge with your Scan page choices. The status bar sits
   under the tabs, dimmed while it's ready, and lights up once it runs.
-
-### Added
 - **Insights on a connection's card.** A collapsible panel with their circle's size (*Explore →*
   opens it in Bridge Chains), how many only they reach, whose circle overlaps theirs most
   (*Open →*), the tier mix of their circle, where most of it works, how much is scanned (*Scan →*
