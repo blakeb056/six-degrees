@@ -7,9 +7,10 @@
 // page, the Scan page too (Blake, 2026-09-29). It only reports: the
 // pacing and the caps live in the scanner (scripts/scrape.py, lib/linkedin-limits.js).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
+import { watchAllDay, allDayNow } from '../../lib/experimental-client';
 
 const WHAT = {
   full: 'Scanning your network',
@@ -24,6 +25,7 @@ const WHAT = {
   setup: 'Setting up the scanner',
   company: 'Scanning a company',
   photos: 'Saving photos',
+  messages: 'Reading your messages list',
 };
 
 // Green while there's plenty left, amber past 60%, red past 90%.
@@ -32,12 +34,29 @@ const tone = (used, cap) => (!cap ? '#8b9a9a' : used / cap >= 0.9 ? '#ff6b6b' : 
 export default function ScanStatusBar() {
   const [job, setJob] = useState(() => scannerNow());
   const [stopping, setStopping] = useState(false);
+  // The Scan page's experimental all-day Auto-Bridge switch: with it on, the bar
+  // stays under the tabs even while nothing runs, so you can see the mode is on.
+  const allDay = useSyncExternalStore(watchAllDay, allDayNow, () => false);
   useEffect(() => watchScanner(() => {
     const now = scannerNow();
     setJob(now);
     if (!now.running) setStopping(false);
   }), []);
-  if (!job?.running) return null;
+  const place = {
+    position: 'fixed', left: '50%', top: 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
+    maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', whiteSpace: 'nowrap',
+    padding: '8px 12px', borderRadius: 12, fontSize: 12, color: '#cfd8d8', background: 'rgba(14,16,32,0.94)',
+  };
+  if (!job?.running) {
+    if (!allDay) return null;
+    return (
+      <div role="status" style={{ ...place, opacity: 0.55, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#556', flexShrink: 0 }} />
+        <b style={{ color: '#b8c4c4' }}>Auto scan</b>
+        <span style={{ color: '#8b9a9a' }}>ready · press Auto scan beside Scan to start</span>
+      </div>
+    );
+  }
 
   const p = job.progress;
   const step = p?.kind === 'batch' && p.total ? `${p.current || p.done || 0} of ${p.total}`
@@ -47,12 +66,7 @@ export default function ScanStatusBar() {
   const last = [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim();
 
   return (
-    <div role="status" aria-live="polite" style={{
-      position: 'fixed', left: '50%', top: 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
-      maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', whiteSpace: 'nowrap',
-      padding: '8px 12px', borderRadius: 12, fontSize: 12, color: '#cfd8d8',
-      background: 'rgba(14,16,32,0.94)', border: '1px solid rgba(0,255,136,0.25)',
-    }}>
+    <div role="status" aria-live="polite" style={{ ...place, border: '1px solid rgba(0,255,136,0.25)' }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ff88', flexShrink: 0 }} />
       <b style={{ color: '#fff' }}>{WHAT[job.action] || 'Scanning'}</b>
       {job.target?.name && <span>{job.target.name}</span>}
