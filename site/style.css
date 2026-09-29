@@ -119,6 +119,7 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 .sky span:nth-child(2)::after { color: var(--purple); top: 58.7%; left: 99.2%; }
 .sky span:nth-child(3)::after { color: var(--blue); top: 32.9%; left: 3%; }
 
+.app-icon { display: block; margin: 0 auto 20px; border-radius: 22%; filter: drop-shadow(0 12px 32px rgba(255, 215, 0, 0.22)); }
 .badge {
   display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
   margin: 0 0 22px; padding: 6px 8px 6px 14px; border-radius: 999px;
@@ -535,7 +536,8 @@ main.page { padding-bottom: 40px; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .timeline li { display: grid; grid-template-columns: 9em 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .timeline li:last-child { border-bottom: 0; }
-.timeline a { font-family: var(--mono); font-weight: 700; }
+.timeline a, .timeline .when { font-family: var(--mono); font-weight: 700; }
+.timeline .when { color: var(--faint); }
 .timeline span { color: var(--muted); }
 .principles { padding-top: 48px; }
 .doc-grid.plain > li > div { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 16px 18px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }

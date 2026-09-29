@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **A new icon.** A 6 drawn in one gold line around you, a glowing core, ending in a degree
+  ring, with your tier rings fading behind it. It's the app's icon, the favicon and the
+  website's.
 - **The website is a proper site now, and the README matches.** The home page tells one story,
   feature by feature, each with a real screenshot of the invented sample network: see your
   network, find your way in, know your network, watch it grow, and scan carefully, then privacy,

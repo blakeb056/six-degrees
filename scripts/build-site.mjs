@@ -15,7 +15,9 @@
 //   /blog/feed.xml /releases/feed.xml      Atom feeds
 //   /sitemap.xml                           site/sitemap.xml plus every generated page
 // Everything else in site/ is copied as it is, except names starting with "_"
-// and site/README.md. pages.yml runs this and publishes the folder. No dependencies.
+// and site/README.md. The README's screenshots (docs/img) come in too, and the
+// app's icon as img/icon.svg unless site/img/icon.svg exists. pages.yml runs
+// this and publishes the folder. No dependencies.
 
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync, cpSync, existsSync, copyFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -413,7 +415,8 @@ export function build(root, out, { images = true } = {}) {
   const img = path.join(out, 'img');
   mkdirSync(img, { recursive: true });
   for (const f of ['app-window', 'degrees', 'paths']) copyFileSync(path.join(root, 'docs/img', `${f}.png`), path.join(img, `${f}.png`));
-  copyFileSync(path.join(root, 'desktop/icon/icon.svg'), path.join(img, 'icon.svg'));
+  // The site's own mark (site/img/icon.svg) when it has one; else the app's icon.
+  if (!existsSync(path.join(root, 'site/img/icon.svg'))) copyFileSync(path.join(root, 'desktop/icon/icon.svg'), path.join(img, 'icon.svg'));
   if (images) {
     for (const f of ['app-window', 'degrees', 'paths']) resize(path.join(img, `${f}.png`), path.join(img, `${f}-1200.png`));
     const appDir = path.join(img, 'app');
