@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ringLayout, dotRadius } from '../lib/chain-layout.js';
+import { ringLayout, dotRadius, previewBand } from '../lib/chain-layout.js';
 
 // The focused view's numbers on a 800×600 window (lib/chain-layout.js is told
 // them by ChainView's CircleFocus): maxR = 270.
@@ -123,4 +123,16 @@ test('dots are bigger for higher tiers and never wider than the gap to a neighbo
     assert.ok(sizes[0] >= sizes[1] && sizes[1] >= sizes[2] && sizes[2] >= sizes[3]);
     assert.ok(sizes[0] * 2 <= Math.max(s, 2.8) + 1e-9, `S at ${s}: ${sizes[0]}`);
   }
+});
+
+test('the hover preview starts beyond every ring of bridges, however many there are', () => {
+  const maxR = 400;
+  assert.deepEqual(previewBand(maxR, []), { inner: 264, outer: 320 }, 'no bridges: where it always was');
+  const few = ringLayout(12, { inner: maxR * 0.55, innerMin: maxR * 0.4, outer: maxR * 0.62, spacing: 46, minSpacing: 20 });
+  assert.equal(previewBand(maxR, few.rings).inner, 264, 'one ring of bridges leaves it where it was');
+  const many = ringLayout(160, { inner: maxR * 0.55, innerMin: maxR * 0.4, outer: maxR * 0.62, spacing: 46, minSpacing: 20 });
+  const edge = Math.max(...many.rings.map((r) => r.radius));
+  const band = previewBand(maxR, many.rings);
+  assert.ok(band.inner >= edge + 34, `starts past the outermost bridge ring (${edge})`);
+  assert.ok(band.outer - band.inner >= maxR * 0.14 - 1e-9, 'and keeps its depth');
 });
