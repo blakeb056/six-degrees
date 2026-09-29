@@ -138,10 +138,19 @@ if (existsSync(path.join(SERVER_DIR, '.git'))) {
 // Anything not committed is somebody's local file, and it is about to be handed
 // to whoever gets this app. Releases build from a clean checkout; a local build
 // should at least say what it is shipping.
+//
+// Ignored files most of all. .gitignore keeps a LinkedIn export, a database or
+// the scanner's signed-in Chrome profile out of a commit, not out of the trace,
+// and git leaves them out of its list of untracked files unless asked. The
+// bundle's own .next and node_modules are Next's output, not the checkout's.
 try {
-  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--directory'], { cwd: ROOT })
-    .toString().split('\n').map((l) => l.trim().replace(/\/$/, '')).filter(Boolean)
+  const others = (...flags) => execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--directory', ...flags], { cwd: ROOT })
+    .toString().split('\n').map((l) => l.trim().replace(/\/$/, '')).filter(Boolean);
+  const found = [...new Set([...others(), ...others('--ignored')])]
+    .filter((rel) => rel !== '.next' && rel !== 'node_modules')
     .filter((rel) => existsSync(path.join(SERVER_DIR, rel)));
+  // A folder is named once, not again for each file in it.
+  const untracked = found.filter((rel) => !found.some((dir) => rel.startsWith(`${dir}/`))).sort();
   if (untracked.length) {
     console.log('  ⚠ uncommitted files are inside this app — commit them or move them out if they should not ship:');
     for (const rel of untracked) console.log(`      ${rel}`);

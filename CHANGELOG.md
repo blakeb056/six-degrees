@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Skip for now* carries on without one. Both stay at the bottom of the window while you
   look through the list. It's asked once, and never if you already have a network or picked
   a sector. Change it anytime on the Scores tab.
+- **A release checks the website's version lines.** Before building anything, the release
+  workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
+  `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
+  older than the release's date in the changelog. A stale site stops the release with a
+  line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
 
 ### Changed
 - **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
@@ -27,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("Mayor", "Police Chief", "Ambassador") needs its government named, or stays "Title
   unclear": a missed official is a neutral 4, a realtor read as a mayor would be an A.
   Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
+- **One name: Six Degrees.** The header, the welcome screen, the loading and launch pages,
+  the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
+  the window title and the app in Applications already did.
+- **Contributor docs and `.gitignore`.** CONTRIBUTING says npm releases go out through
+  trusted publishing, with no token to set, and that `npm run build:desktop` builds the app
+  releases ship (`build:app` is the old launcher). `.gitignore` keeps a LinkedIn export, a
+  database, a saved copy of a network and the scanner's signed-in browser profile out of a
+  commit, wherever they sit in the tree. A local build keeps them out of the app too, and
+  its list of uncommitted files inside the app now names ignored ones as well.
 - **0.4.0-beta.1, promoted: this is now the Mac app and npm package everyone gets.** It adds:
   - **Their circle, on every card,** with rarity beside the tier and LinkedIn's own mutual count.
   - **One scan at a time,** and *Resume* beside *Rescan*.
@@ -41,6 +55,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
   scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
   Information Officer". "Executive Assistant to the General Manager" scored as a VP.
+- **↻ asks before it scans.** The round button in the header started *Check for new* the
+  moment it was clicked. It now says what it will do (open Chrome on your connections list
+  and read it until it reaches people already saved) and what it costs (no search budget,
+  but it is LinkedIn traffic from your account), and waits for OK.
+- **No Scan buttons on the sample or a CSV import.** Every card there offered a scan of
+  that person's circle, and Degrees offered *Auto-Bridge Next*, but both networks live
+  only in the window, so the scan could only fail ("Bridge '…' not found in database").
+  In their place a line says scanning needs your own network.
+- **A CSV import's dates are the day LinkedIn says.** Anywhere east of London, each "Connected
+  On" date landed a day early (28 Sep 2026 became 27 Sep). The import now reads it as the
+  calendar date it is, the way a scan already did, and a date it can't read is left blank
+  rather than guessed.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 

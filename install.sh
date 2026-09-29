@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install 6 Degrees on a Mac with one line:
+# Install Six Degrees on a Mac with one line:
 #
 #   curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
 #
@@ -108,7 +108,7 @@ stop_running_copy() {
 }
 
 main() {
-  printf '\n  6 Degrees — installer\n\n'
+  printf '\n  Six Degrees — installer\n\n'
 
   [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run: npx six-degrees (needs Node 22.13 or later). Windows isn't supported yet."
 
@@ -182,7 +182,7 @@ main() {
 
   if [ -z "${SIX_DEGREES_NO_OPEN:-}" ]; then
     open "$target"
-    printf '\n  ✓ Opening 6 Degrees. Next time, open it from Applications or Spotlight.\n'
+    printf '\n  ✓ Opening Six Degrees. Next time, open it from Applications or Spotlight.\n'
   else
     printf '\n  ✓ Done.\n'
   fi

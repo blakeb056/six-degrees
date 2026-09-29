@@ -515,6 +515,13 @@ dangerous); `build-app.mjs` removes a `.git` that slips through anyway, and list
 uncommitted files it is about to ship. Releases build from a clean checkout; a local
 build is the one that can carry somebody's personal file out of the folder.
 
+**`.gitignore` is not an exclude.** Ignoring `*.csv`, `*.sqlite*`, `*.sixdegrees` and
+`chrome-profile/` kept a LinkedIn export out of a commit and still traced it into the
+app, and it silenced the warning: `git ls-files --others` leaves ignored files out. The
+same four are now named in `outputFileTracingExcludes` (in contains mode they match at
+any depth; no dependency has such a file), and the warning asks git for ignored files
+too. Checked with an invented export, database and Chrome profile in the checkout.
+
 ---
 
 ## 28. Three things about a `.dmg` window that are not obvious
@@ -668,6 +675,11 @@ returns every one. The date is now read by climbing from each profile link to th
 block holding exactly one "Connected on" line (more than one means the climb reached the
 list and would take a neighbour's date), and `lib/ingest.js` `toIsoDate` parses it by hand —
 `new Date(text).toISOString()` shifts the day east of Greenwich and throws on bad text.
+
+The CSV import kept its own copy of that mistake (`lib/csv.js`): the export's "28 Sep 2026"
+was saved as the 27th anywhere east of London, and nothing failed, because every test ran
+west of it. It reads through `toIsoDate` now, and `tests/csv.test.mjs` imports the same
+export under six time zones, each in a process of its own (TZ is read when a process starts).
 
 ---
 
