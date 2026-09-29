@@ -324,12 +324,21 @@ ${notes}
     <nav class="release-toc" aria-label="Versions"><span>Jump to</span> ${toc}</nav>
     <div class="releases">
 ${entries}
+      <article class="release archive" id="static-version">
+        <header>
+          <h2><a href="#static-version">The static version</a> <span class="tag">before 0.1.0</span></h2>
+          <p class="post-meta"><span>12–15 July 2026</span></p>
+        </header>
+        <div class="prose release-notes"><p>Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data stayed on your device.</p></div>
+      </article>
       <article class="release archive" id="first-build">
         <header>
           <h2><a href="#first-build">The first build</a> <span class="tag">archive</span></h2>
-          <p class="post-meta"><span>June 2026</span></p>
+          <p class="post-meta"><span>11 June 2026</span></p>
           <p class="release-links"><a href="https://six-degrees-linkedin.vercel.app/">Archive: the original prototype (June 2026), kept as it was</a></p>
         </header>
+        <div class="prose release-notes"><p>"6 Degrees of Separation": a LinkedIn network research tool with a force-directed graph, hosted online. Where Six Degrees started. The open-source rebuild began on 21 August 2026. <a href="/roadmap/#how-it-started">How it started</a>.</p></div>
+        <figure class="archive-shot"><a href="https://six-degrees-linkedin.vercel.app/"><img src="/img/first-build-june-2026.jpg" alt="The first build's welcome screen: 6 Degrees of Separation, Map your LinkedIn power network" width="800" height="500" loading="lazy"></a><figcaption>The first build, June 2026</figcaption></figure>
       </article>
     </div>
     <p class="feed-line"><a href="/releases/feed.xml">Follow releases (Atom feed)</a> · <a href="${REPO}/releases">All releases on GitHub</a></p>`;

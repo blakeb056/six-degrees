@@ -536,7 +536,7 @@ main.page { padding-bottom: 40px; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .timeline li { display: grid; grid-template-columns: 9em 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .timeline li:last-child { border-bottom: 0; }
-.timeline a, .timeline .when { font-family: var(--mono); font-weight: 700; }
+.timeline li > a, .timeline .when { font-family: var(--mono); font-weight: 700; }
 .timeline .when { color: var(--faint); }
 .timeline span { color: var(--muted); }
 .principles { padding-top: 48px; }
@@ -644,3 +644,7 @@ main.page { padding-bottom: 40px; }
 }
 .moment .panel h3 { font-size: 20px; letter-spacing: -0.01em; text-align: left; margin: 0; max-width: none; }
 .prose li > p { margin: 0.5em 0 0; }
+.archive-shot { max-width: 560px; margin: 18px auto 0; }
+.archive-shot img { display: block; width: 100%; border-radius: 12px; border: 1px solid var(--line-2); }
+.road.history { --c: var(--purple); margin-top: 18px; }
+.road-sub { color: var(--muted); margin: -6px 0 10px; }
