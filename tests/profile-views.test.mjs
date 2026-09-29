@@ -304,3 +304,38 @@ out['got'] = got`);
   if (!r) return;
   assert.deepEqual(r.out.got, [50, 50, 50, 50, 25]);
 });
+
+test('a limit typed in by hand counts as the largest choice under it, never past 100', (t) => {
+  const r = run(t, `
+got = []
+for value in (1000, 70, 5, 100):
+    limits(daily=50, monthly=250, profiles=value)
+    got.append(ns['search_limits']()['profiles'])
+out['got'] = got`);
+  if (!r) return;
+  assert.deepEqual(r.out.got, [100, 50, 10, 100]);
+});
+
+test('re-mapping waits out the minute before deleting, and Stop during it deletes nothing', (t) => {
+  const r = run(t, `
+record(profiles=[NOW - 5])
+deleted = []
+ns['delete_bridge_cluster'] = lambda name: deleted.append(name) or None
+clock.on_sleep = lambda: ns.__setitem__('_stop_requested', True)
+ns['rescrape_bridge']('Ada Quill')
+out.update(deleted=deleted, launched=len(launched), views=len(views()))`);
+  if (!r) return;
+  assert.deepEqual(r.out, { deleted: [], launched: 0, views: 1 });
+  assert.match(r.log, /Stopped before anything was deleted\./);
+});
+
+test('re-mapping with the minute already passed deletes and reads without waiting', (t) => {
+  const r = run(t, `
+record(profiles=[NOW - 120])
+deleted = []
+ns['delete_bridge_cluster'] = lambda name: deleted.append(name) or None
+ns['rescrape_bridge']('Ada Quill')
+out.update(deleted=deleted, waited=clock.t - NOW)`);
+  if (!r) return;
+  assert.deepEqual(r.out, { deleted: ['Ada Quill'], waited: 0 });
+});

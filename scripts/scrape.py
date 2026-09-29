@@ -1504,16 +1504,29 @@ def take_profile_view(now=None):
     with _Locked("linkedin-activity"):
         now = now if now is not None else time.time()
         data = _read_activity()
-        views = [t for t in data["profiles"] if t > now - DAY_SECONDS]
-        if len(views) >= search_limits()["profiles"]:
-            return None
-        # A time ahead of this clock (another computer's, imported) is left
-        # out of the gap: waiting for it could never end.
-        last = max((t for t in views if t <= now), default=None)
-        if last is not None and now - last < PROFILE_GAP:
-            return int(last + PROFILE_GAP - now) + 1
-        _charge(data, "profiles", 1, now)
-        return 0
+        wait = _profile_wait(data, now)
+        if wait == 0:
+            _charge(data, "profiles", 1, now)
+        return wait
+
+
+def profile_wait(now=None):
+    """take_profile_view's answer, writing nothing down: 0, seconds to wait, or None."""
+    with _Locked("linkedin-activity"):
+        now = now if now is not None else time.time()
+        return _profile_wait(_read_activity(), now)
+
+
+def _profile_wait(data, now):
+    views = [t for t in data["profiles"] if t > now - DAY_SECONDS]
+    if len(views) >= search_limits()["profiles"]:
+        return None
+    # A time ahead of this clock (another computer's, imported) is left
+    # out of the gap: waiting for it could never end.
+    last = max((t for t in views if t <= now), default=None)
+    if last is not None and now - last < PROFILE_GAP:
+        return int(last + PROFILE_GAP - now) + 1
+    return 0
 
 
 def search_limits():
@@ -1529,8 +1542,12 @@ def search_limits():
             return default
     return {"daily": num(data.get("daily"), DEFAULT_DAILY_SEARCHES),
             "monthly": num(data.get("monthly"), DEFAULT_MONTHLY_SEARCHES),
-            # 0 is no cap for searches, never for profile views.
-            "profiles": num(data.get("profiles"), DEFAULT_DAILY_PROFILES) or DEFAULT_DAILY_PROFILES}
+            # 0 is no cap for searches, never for profile views. A number typed
+            # in by hand counts as the largest choice under it: never past 100,
+            # and the Scan page shows the same one.
+            "profiles": max((c for c in (10, 25, 50, 100)
+                             if c <= (num(data.get("profiles"), DEFAULT_DAILY_PROFILES) or DEFAULT_DAILY_PROFILES)),
+                            default=10)}
 
 
 def linkedin_usage(now=None):
@@ -3475,6 +3492,17 @@ def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
         raise BudgetReached(0, searches_left()[1])
     if profiles_left() <= 0:              # a fresh read opens their profile
         raise BudgetReached(0, "profiles")
+    # The minute between profile views is waited out before anything is
+    # deleted: a Stop during it would otherwise leave the circle deleted and unread.
+    wait = profile_wait()
+    if wait is None:
+        raise BudgetReached(0, "profiles")
+    if wait:
+        print(f"  Waiting {wait}s before re-mapping: at least {PROFILE_GAP}s pass between any "
+              f"two profile views.", flush=True)
+        if not interruptible_sleep(wait, on_tick=lambda left: print(f"    {left}s to go", flush=True), step=10):
+            print("  Stopped before anything was deleted.")
+            return
 
     print(f"Deleting old cluster data...")
     bridge_id = delete_bridge_cluster(bridge_name)
