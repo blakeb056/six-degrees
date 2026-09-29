@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-29
+
 ### Added
 - **Experimental Auto-Bridge (a switch on the Scan page).** All-day pacing that stays openly
   slow: up to 10 pages in a sitting, then a 45-minute rest; searches only from 09:00 to 19:00 on
