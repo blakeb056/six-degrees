@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-09-29
+
 ### Added
 - **Hide the Chrome window while scanning** (Scan page). Scans run with no window popping up;
   the status bar and Stop work as before, and signing in always opens the window. The Scan page
