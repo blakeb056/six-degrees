@@ -714,6 +714,11 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {(() => {
           // Track per-tier rank numbering
           const tierRankCounter = {};
+          // Counted once. It used to be counted again for every person in the
+          // list: 900 million steps at 30,000 people, about 20 s on every render
+          // of the page while nothing was selected (opening the Filter panel, say).
+          const tierCounts = {};
+          allRanked.forEach(r => { tierCounts[r.tier] = (tierCounts[r.tier] || 0) + 1; });
           return allRanked.map((c, i) => {
           const prevTier = i > 0 ? allRanked[i - 1].tier : null;
           const showHeader = c.tier !== prevTier;
@@ -721,8 +726,6 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           tierRankCounter[c.tier] = (tierRankCounter[c.tier] || 0) + 1;
           const tierRank = tierRankCounter[c.tier];
           const tierNames = { S: 'S-Tier — Elite', A: 'A-Tier — High Value', B: 'B-Tier — Notable', C: 'C-Tier — Standard', D: 'D-Tier — Entry' };
-          const tierCounts = {};
-          allRanked.forEach(r => { tierCounts[r.tier] = (tierCounts[r.tier] || 0) + 1; });
           return (
           <div key={c.id}>
             {showHeader && (

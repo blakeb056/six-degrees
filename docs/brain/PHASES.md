@@ -134,9 +134,8 @@ tick an item in the same change that finishes it.
 - [ ] A one-click update from inside the Mac app, instead of a line to paste →
       [`DESKTOP.md`](DESKTOP.md) D4. Built on the draft branch `settings-updater`: waiting
       on Blake's approval of the spec change and a test on a real Mac
-- [ ] Opening the sidebar resizes the Galaxy and rebuilds it once (its layout restarts).
-      Re-centring the existing scene on a resize, instead of rebuilding it, would make
-      that smooth too
+- [x] Opening the sidebar resized the Galaxy and rebuilt it (its layout restarted). A
+      resize now re-fits the view instead: the layout and the selection ring stay put
 - [ ] Next.js deprecation warnings in the build: `middleware` → `proxy`, and `viewport`
       moved out of `metadata`
 - [ ] GitHub Actions warns that `checkout`, `setup-node` and the artifact actions at v4
