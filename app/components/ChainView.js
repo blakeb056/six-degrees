@@ -16,7 +16,9 @@
 //   the chain), from the two facts lib/circle.js reads. With none yet it says
 //   why, and what gets them. The trail at the top, and Esc, go back. The page
 //   looks at the network again while a circle is being scanned, so an open
-//   circle fills in as the scanner saves (app/page.js, NetworkRefresh).
+//   circle fills in as the scanner saves (app/page.js, NetworkRefresh). A dot
+//   ready for a scan goes to the Scan page with them picked instead: their
+//   circle is empty until it's scanned.
 // - People you reached through a circle are marked by lib/reach.js: a soft
 //   breathing halo when their own circle is ready for a scan (still, with
 //   Reduce Motion on), greyed with a lock when their list is hidden. Each
@@ -26,6 +28,7 @@
 
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { circleIndex } from '../../lib/circle';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
 import { ringLayout, dotRadius } from '../../lib/chain-layout';
@@ -44,6 +47,8 @@ const byTierThenScore = (a, b) => (TIER_RANK[a.tier] ?? 9) - (TIER_RANK[b.tier] 
   || score(b) - score(a)
   || String(a.name || '').localeCompare(String(b.name || ''));
 const firstName = (row) => String(row?.name || '').trim().split(/\s+/)[0] || 'them';
+// The Scan page with them picked; nothing starts until it's confirmed there.
+const scanPageFor = (row) => `/setup?scan=${encodeURIComponent(row.id)}`;
 const ordinal = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 // Whose circle is being scanned now, by id: a string, so the view re-renders
@@ -462,6 +467,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   const [view, setView] = useState({ k: 1, x: 0, y: 0 });
   const drag = useRef(null);
   const svgRef = useRef(null);
+  const router = useRouter();
 
   const cx = dims.w / 2;
   const cy = dims.h / 2;
@@ -481,6 +487,10 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
       own: row.degree === 1 ? (index.circles.get(row.id)?.length || 0) + (index.introduced.get(row.id)?.length || 0) : 0,
     };
   }), [members, reach, requests, index]);
+  // Someone ready for a scan has nobody in their circle yet, so a click on them
+  // goes to the Scan page with them picked (backlog 2.4, pick 3). Everyone else
+  // opens in place, and so do they while their circle is scanned, to watch it fill in.
+  const goesToScan = (i) => canScan && facts[i].reached === 'ready' && members[i].id !== scanningId;
 
   const k = view.k;
   // The dots, drawn once per layout and zoom; hovering only draws on top of them.
@@ -564,6 +574,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
     if (!d || d.moved) return;
     const hit = hitAt(e.clientX, e.clientY);
     if (hit === 'center') onSelect?.(person);
+    else if (hit != null && goesToScan(hit)) router.push(scanPageFor(members[hit]));
     else if (hit != null) onOpen(members[hit].id);
   };
   const zoomBy = (f, at = { x: 0, y: 0 }) => setView((v) => {
@@ -626,7 +637,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
         </g>
         {hovered && (
           <Tip x={cx + view.x + hp.x * k} y={cy + view.y + hp.y * k} w={dims.w}
-            lines={tipFor(hovered, facts[hover], scanningId, depth)} accent={facts[hover].reached ? GREEN : TIER_COLORS[hovered.tier]} />
+            lines={tipFor(hovered, facts[hover], scanningId, depth, goesToScan(hover))} accent={facts[hover].reached ? GREEN : TIER_COLORS[hovered.tier]} />
         )}
         {hover === 'center' && (
           <Tip x={cx + view.x} y={cy + view.y - 28 * k} w={dims.w} lines={[person.name, 'Open their card']} accent={TIER_COLORS[person.tier]} />
@@ -692,7 +703,9 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
               {asked > 0 && <div><span style={{ color: '#FFD700' }}>◌ </span>{asked} {asked === 1 ? 'request' : 'requests'} out</div>}
             </div>
           )}
-          <div style={{ marginTop: 6, color: '#555' }}>Click anyone for their circle · drag to move · scroll to zoom</div>
+          <div style={{ marginTop: 6, color: '#555' }}>
+            Click anyone for their circle{ready > 0 && canScan ? ', or someone ready to scan theirs' : ''} · drag to move · scroll to zoom
+          </div>
         </div>
       )}
 
@@ -701,8 +714,8 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   );
 }
 
-/** The lines of a dot's tooltip. */
-function tipFor(row, f, scanningId, depth) {
+/** The lines of a dot's tooltip. `toScan`: a click goes to the Scan page with them picked. */
+function tipFor(row, f, scanningId, depth, toScan) {
   const first = firstName(row);
   const status = row.id === scanningId ? 'Their circle is being scanned now'
     : f.reached === 'ready' ? 'You added them · their circle is ready to scan'
@@ -710,7 +723,8 @@ function tipFor(row, f, scanningId, depth) {
     : f.reached === 'scanned' ? `You added them · ${f.own.toLocaleString('en-US')} in their circle`
     : f.requested ? 'Request sent'
     : 'Not connected yet';
-  const next = f.own > 0 ? `Click to open ${first}’s circle (${ordinal(depth + 2)} degree)` : `Click to open ${first}’s circle`;
+  const next = toScan ? `Click to scan ${first}’s circle on the Scan page`
+    : f.own > 0 ? `Click to open ${first}’s circle (${ordinal(depth + 2)} degree)` : `Click to open ${first}’s circle`;
   return [row.name, `${row.tier}-tier · ${score(row).toFixed(1)}`, status, next];
 }
 
@@ -761,7 +775,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
     if (canScan) {
       action = (
         <>
-          <Link href={`/setup?scan=${encodeURIComponent(person.id)}`} style={primary}>Scan {first}’s circle →</Link>
+          <Link href={scanPageFor(person)} style={primary}>Scan {first}’s circle →</Link>
           <div style={{ fontSize: 10.5, color: '#888', marginTop: 8 }}>
             {cost.profileViews} profile view, then one LinkedIn search per page of their list (up to {cost.searches}, about {cost.minutes} min).
             It starts only once you confirm it on the Scan page.

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { scraperStatus, beginScrape, notReadyMessage, busyReason, isCircleScan, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
@@ -31,12 +32,6 @@ function statsFor(d1, d2) {
   return { total: d1.length, tiers: tierCounts, d2Total: d2.length, d2Tiers: d2TierCounts };
 }
 
-/** Where Bridge Chains opens from a link, `/?chain=<id>` (the Scan page's "watch it fill in"). */
-function chainLink() {
-  if (typeof window === 'undefined') return null;
-  return new URLSearchParams(window.location.search).get('chain');
-}
-
 const TIER_COLORS = {
   S: '#FFD700',
   A: '#9B59B6',
@@ -46,9 +41,13 @@ const TIER_COLORS = {
 };
 
 export default function Home() {
+  // Suspense because HomeInner reads the address's ?chain= (useSearchParams),
+  // which Next requires to sit inside one for the page to build.
   return (
     <OnboardingGate>
-      <HomeInner />
+      <Suspense>
+        <HomeInner />
+      </Suspense>
     </OnboardingGate>
   );
 }
@@ -72,10 +71,12 @@ function HomeInner() {
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
   const [filter, setFilter] = useState('all');
-  // A link to someone's circle in Bridge Chains opens Degrees on it. Read once:
-  // the page shows "Loading" until the network is in, so the first render is
-  // the same on the server and here.
-  const [chainOpen, setChainOpen] = useState(chainLink);
+  // A link to someone's circle in Bridge Chains, /?chain=<id> (the Scan page's
+  // "watch it fill in"), opens Degrees on it. The router's search params rather
+  // than window.location: on a click from another page the address bar only
+  // changes after this page has rendered, and the map opened on the Galaxy.
+  const linkedChain = useSearchParams().get('chain');
+  const [chainOpen, setChainOpen] = useState(linkedChain);
   const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : 'network'));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);

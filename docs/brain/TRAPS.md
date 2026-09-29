@@ -893,3 +893,27 @@ Node inside them: a shell in the app's folder and a `tail -f` survive, the app's
 programs are stopped, a folder named "Programmes Été" works, and one that keeps coming
 back leaves the app as it was and reopens it. (A copy of a system program can't stand
 in: macOS kills a copy of `/bin/sleep` that runs from anywhere else.)
+
+## 41. A page that reads `window.location` while it renders sees the page it came from
+
+Every way into the Scan page with someone picked (a *Ready to scan* row, an empty circle's
+*Scan X's circle →*, a ready dot in Bridge Chains) landed on `/setup?scan=<id>` with nobody
+picked, and the Scan page's *Bridge Chains shows it filling in →* opened the map on the Galaxy
+instead of their circle. Reloading the same address worked every time.
+
+- **Why.** Next's router changes the address bar in an effect that runs once the new page has
+  committed, after its first render. A `useState` initializer that reads
+  `window.location.search` runs in that first render, so after a click (`<Link>`,
+  `router.push`) it reads the address of the page just left.
+- **Why nothing noticed.** A full load has the new address from the start: a reload, a
+  bookmark, and a browser check that opens the URL with `page.goto` all work. Only a click
+  shows it.
+- **It was known.** `app/paths/page.js` already read its `?tab=` with `useSearchParams`, with a
+  comment saying why, but nothing here said so, and the next two pages read `window.location`.
+
+What holds it now: `app/setup/page.js` and `app/page.js` read `?scan=` and `?chain=` with
+`useSearchParams()`, inside `<Suspense>` (Next requires one for the page to build), as Paths
+does. Next follows `history.replaceState`, so clearing the address there clears the parameter
+too. `app/queue/page.js` still reads `?groupBy=` in an initializer; its one link is a plain
+`<a href>`, which loads the page, so it works, but a `<Link>` there would break it. A browser
+check of a link has to click it.

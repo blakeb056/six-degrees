@@ -4,7 +4,8 @@
 // Scan or Rescan, which read from page 1, found the list hidden, printed it and
 // recorded nothing: the person stayed "not scanned yet" and was offered again
 // on every look, the queue-by-absence of TRAPS §15. The note is now made where
-// the read ends, so every way in makes it.
+// the read ends, so every way in makes it. And a read by profile URL, which
+// every Scan button now asks for, is of that person, from the page it should be.
 //
 // These run the real scrape_bridge, lifted out of scrape.py without its imports,
 // with the browser and LinkedIn's answer stubbed: nothing opens, and every
@@ -37,7 +38,7 @@ found = {n.name for n in body if isinstance(n, (ast.FunctionDef, ast.ClassDef))}
 assert found == names | classes, sorted((names | classes) - found)
 
 case = json.loads(sys.argv[2])
-calls = {'hidden': [], 'progress': []}
+calls = {'hidden': [], 'progress': [], 'lookups': [], 'pages': []}
 
 # The browser: opened, handed to the (stubbed) reader, closed. Nothing loads.
 class Page:
@@ -67,7 +68,7 @@ ns.update({
     'searches_left': lambda: (50, 'daily'),
     'profiles_left': lambda: 5,
     'budget_message': lambda kind: kind,
-    'read_connections': lambda params=None: [{'id': 'c1', 'name': 'Ada Quill', 'profile_url': URL}],
+    'read_connections': lambda params=None: calls['lookups'].append(params) or [{'id': 'c1', 'name': 'Ada Quill', 'profile_url': URL}],
     'forget_bridge_progress': lambda url: None,
     'load_bridge_progress': lambda: case.get('progress', {}),
     'record_bridge_progress': lambda *a: calls['progress'].append(a[0]),
@@ -76,17 +77,18 @@ ns.update({
     'get_scraper_profile_path': lambda: '/nonexistent',
     'ensure_logged_in': lambda page, **kw: True,
     'stop_requested': lambda: case.get('stop', False),
-    '_scrape_one_bridge': lambda *a, **kw: ([], case['status'], {'last': 0, 'more': False, 'urn': None,
-                                                                  'found': 0, 'limited': False}),
+    '_scrape_one_bridge': lambda *a, **kw: calls['pages'].append(kw.get('start_page')) or (
+        [], case['status'], {'last': 0, 'more': False, 'urn': None, 'found': 0, 'limited': False}),
     'set_cooldown': lambda **kw: None,
 })
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
-result = ns['scrape_bridge']('Ada Quill', deeper=case.get('deeper', False))
+result = ns['scrape_bridge'](case.get('name', 'Ada Quill'), deeper=case.get('deeper', False),
+                             profile_url=case.get('profileUrl'))
 print(json.dumps({'status': getattr(result, 'status', None), 'skips': ns['load_bridge_skips'](),
-                  'hidden': calls['hidden']}))
+                  'hidden': calls['hidden'], 'lookups': calls['lookups'], 'pages': calls['pages']}))
 `;
 
-/** { status, skips, hidden } after one scrape_bridge, or null when python3 is missing. */
+/** { status, skips, hidden, lookups, pages } after one scrape_bridge, or null when python3 is missing. */
 function scan(t, c) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-one-scan-'));
   const r = spawnSync(PYTHON, ['-c', LIFT, SCRAPER, JSON.stringify(c)], {
@@ -134,4 +136,16 @@ test('carrying on with a list that has gone hidden keeps what is mapped, and ski
   if (!out) return;
   assert.deepEqual(out.hidden, [URL]);
   assert.deepEqual(out.skips, {});
+});
+
+// The app's Scan buttons send --bridge-url with --from-start, and Resume sends
+// it alone: two connections can share a name, and by name the first one saved
+// is who gets read.
+test('a read by profile URL finds them by it, from page 1 unless it carries on', (t) => {
+  const picked = scan(t, { status: 'success', name: null, profileUrl: URL });
+  if (!picked) return;
+  assert.deepEqual(picked.lookups, [{ profile_url: `eq.${URL}`, degree: 'eq.1', limit: '1', user_id: 'eq.me' }]);
+  assert.deepEqual(picked.pages, [1]);
+  const resume = scan(t, { status: 'success', name: null, profileUrl: URL, deeper: true, progress: { [URL]: { pages: 20, more: true } } });
+  assert.deepEqual(resume.pages, [21]);
 });

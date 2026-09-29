@@ -381,7 +381,10 @@ const ACTIONS = {
   // Hidden profiles are remembered so they are not retried forever; this is
   // the way back in without a terminal.
   'auto-bridge-retry': { flag: '--auto-bridge --retry-private', label: 'Mapping every bridge, hidden ones included' },
-  bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
+  // One person's circle, from page 1. By profile URL when the page sends their
+  // id, as every Scan button does: two connections can share a name, and by name
+  // the scanner reads whichever was saved first. By name for a caller with no id.
+  bridge:        { flag: '--bridge',   needsName: true, byId: true, label: 'Mapping the circle behind' },
   // Carry on with one person whose read was cut short. By profile URL, not name:
   // two connections can share a name, and Resume must reach the one clicked.
   resume:        { flag: '--bridge-url', needsId: true, label: 'Carrying on with', searches: true },
@@ -529,16 +532,19 @@ export async function POST(request) {
   const readsCircles = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all'].includes(action);
   // Carry on with people already mapped, from the page each one stopped at.
   const deeper = body.deeper === true && (action.startsWith('auto-bridge') || action === 'bridge');
+  // Resume, and a circle scan of someone picked by id, go by the connection's
+  // profile URL rather than a name.
+  const byId = spec.needsId || (spec.byId && Boolean(body.id));
   let name = null;
-  if (spec.needsName) {
+  if (spec.needsName && !byId) {
     name = cleanName(body.name);
     if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
   }
-  // Resume sends the connection's id; the URL is looked up here, for this
-  // profile, so nothing from the request itself reaches the command line.
+  // The id comes from the page; the URL is looked up here, for this profile, so
+  // nothing from the request itself reaches the command line.
   let profileUrl = null;
   let person = null;
-  if (spec.needsId) {
+  if (byId) {
     try {
       const me = resolveProfile({ create: false });
       person = me && getDb().prepare(
@@ -550,8 +556,8 @@ export async function POST(request) {
   }
   // Who the job is of, so every Scan button can say whose scan is running and a
   // profile card can show its own person's progress. Only ever shown: the id
-  // sent alongside a name never reaches the command line (the name does, as
-  // always), and anything not shaped like one of our ids is dropped.
+  // never reaches the command line (a name or the URL looked up for it does),
+  // and anything not shaped like one of our ids is dropped.
   const hintId = typeof body.id === 'string' && /^[\w-]{1,64}$/.test(body.id) ? body.id : null;
   const target = name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
@@ -602,8 +608,11 @@ export async function POST(request) {
     // app is inside the signed app (lib/scanner-python.js scannerCommand).
     plan = [scannerCommand(found.run, path.join(root, 'scripts', 'scrape.py'), [
       // `--flag=value` is one token on purpose: a name beginning with
-      // "-" can then never be read as a flag of its own.
-      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`${spec.flag}=${profileUrl}`] : spec.flag.split(' ')),
+      // "-" can then never be read as a flag of its own. Anyone found by
+      // id is --bridge-url, which carries on where their last read stopped
+      // unless told to start at page 1.
+      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
+      ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
@@ -625,7 +634,7 @@ export async function POST(request) {
   state.target = target;
   state.exitCode = null;
   state.startedAt = Date.now();
-  state.log = [spec.label + (name ? ` ${name}…` : '…')];
+  state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
   state.stderrTail = [];
   state.failure = null;
   forgetChecks();

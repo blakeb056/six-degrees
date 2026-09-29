@@ -19,6 +19,7 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--login` | Signs in, confirms the session saved, exits. |
 | `--search` | Legacy: collects via the people-search pages instead. |
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
+| `--bridge-url URL` | The same, for the person with that profile URL: two connections can share a name, and by name the first one saved is read. Carries on where their last read stopped (Resume); with `--from-start`, from page 1 (every Scan button in the app). |
 | `--company "Name"` | Everyone visible at one company. |
 | `--auto-bridge` | Map every bridge in turn, highest tier first. Hidden profiles are recorded and skipped on later runs. |
 | `--retry-private` | With `--auto-bridge`: try the people previously found to be hidden. |
@@ -98,8 +99,9 @@ end to end on 2026-09-09.
 is the common case, not the happy one: **most people's connections are hidden.** Those
 return `[], "private"`, are written to `bridge-skips.json`, and are not tried again
 unless asked. See TRAPS §15 for why recording the attempt is the whole fix. The note is
-made in `scrape_bridge` itself, so a one-person scan from page 1 (`--bridge`,
-`--rescrape`: a card's Scan or Rescan) makes it too; until 0.4.0 only the batch did.
+made in `scrape_bridge` itself, so a one-person scan from page 1 (`--bridge-url
+--from-start`, `--bridge`, `--rescrape`: a card's Scan or Rescan, the Scan page's Scan one
+circle) makes it too; until 0.4.0 only the batch did.
 
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.

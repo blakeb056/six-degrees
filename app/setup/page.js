@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape, pickedPerson } from '../../lib/scraper-client';
@@ -30,7 +31,9 @@ const ACTION_LABELS = {
 };
 
 export default function SetupPage() {
-  return <OnboardingGate><SetupInner /></OnboardingGate>;
+  // Suspense because SetupInner reads the address's ?scan= (useSearchParams),
+  // which Next requires to sit inside one for the page to build.
+  return <OnboardingGate><Suspense><SetupInner /></Suspense></OnboardingGate>;
 }
 
 function SetupInner() {
@@ -69,7 +72,10 @@ function SetupInner() {
   const [field, setField] = useState(null);
   // Someone sent here to have their circle scanned (Bridge Chains, the Degrees
   // panel's Ready to scan): /setup?scan=<id>. Nothing starts until it's confirmed.
-  const [pickId, setPickId] = useState(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('scan')));
+  // The router's search params rather than window.location: every way here is a
+  // click, and the address bar only changes after this page has rendered, so the
+  // pick was lost on all of them and only a reload showed it.
+  const pickId = useSearchParams().get('scan');
   const [pick, setPick] = useState(null);
   useEffect(() => {
     if (!pickId) return undefined;
@@ -77,8 +83,8 @@ function SetupInner() {
     pickedPerson(pickId).then((d) => { if (live) setPick(d?.person ? d : null); }, () => {});
     return () => { live = false; };
   }, [pickId]);
+  // Next's router follows history.replaceState, so pickId drops ?scan= as well.
   function unpick() {
-    setPickId(null);
     setPick(null);
     try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
   }
@@ -210,11 +216,12 @@ function SetupInner() {
         {field && <FieldAnswer sectors={field.sectors} />}
 
         {askField === false && <>
-          {pick && (
+          {/* By id: the server finds them by their profile, since two connections can share a name. */}
+          {pick?.person.id === pickId && (
             <ScanOne
               pick={pick} pages={pages} setPages={setPages} li={li} running={running} s={s}
               canSearch={canSearch} busy={busy} onUnpick={unpick}
-              onStart={() => run('bridge', { name: pick.person.name, id: pick.person.id, maxPages: pages })}
+              onStart={() => run('bridge', { id: pick.person.id, maxPages: pages })}
             />
           )}
 

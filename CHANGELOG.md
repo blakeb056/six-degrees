@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connected and scanned it (3rd degree, counted along the chain), and on from there. A
   trail at the top, and Esc, go back. An empty circle says why and what gets it: connect,
   then scan their circle. While one is being scanned, it fills in as the scan saves.
+  Someone ready for a scan goes to the Scan page with them picked instead, since their
+  circle is empty until then.
 - **A soft glow on people ready for a scan.** In Bridge Chains, someone you added through
   a circle whose own circle isn't scanned yet has a soft breathing halo, and their bridge
   says how many are "ready". A hidden list is greyed with a lock instead. The halo stays
@@ -47,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A one-person scan notes a hidden list.** A card's Scan or Rescan that found someone's
   list hidden said so and noted nothing, so they stayed "not scanned yet" and were offered
   again forever. Only a batch noted it. Now every read from page 1 does.
+- **A scan reads the list of the person you picked.** A card's Scan and Rescan went by
+  name, so with two connections of the same name the scanner could read the other one's
+  list. Every Scan button now goes by that person's profile, as Resume already did.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 

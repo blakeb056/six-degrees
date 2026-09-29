@@ -3551,7 +3551,11 @@ Examples:
                         help="Carry on with people already mapped, from the page their last read "
                              "stopped at. With --auto-bridge: alongside new people. With --bridge: that person.")
     parser.add_argument("--bridge-url", type=str,
-                        help="Carry on with one person, found by their LinkedIn profile URL (implies --deeper)")
+                        help="Carry on with one person, found by their LinkedIn profile URL (implies "
+                             "--deeper, unless --from-start)")
+    parser.add_argument("--from-start", action="store_true",
+                        help="With --bridge-url: read their list from page 1 instead, as --bridge does. "
+                             "The app's Scan buttons use it, since two connections can share a name")
     parser.add_argument("--only-unfinished", action="store_true",
                         help="With --auto-bridge: only people whose read was cut short (Resume all)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
@@ -3621,7 +3625,10 @@ Examples:
         elif args.rescrape:
             rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
         elif args.bridge_url:
-            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=True,
+            # Carries on unless --from-start. A server started before a pull (TRAPS §22)
+            # still sends Resume as a bare --bridge-url, and a read from page 1 would
+            # spend searches on pages already read.
+            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=not args.from_start,
                           profile_url=args.bridge_url)
         elif args.bridge:
             scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
