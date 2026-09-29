@@ -859,6 +859,22 @@ test('only the photos of people still in the network travel', () => {
   assert.equal(report.photosInCopy.count, 2);
 });
 
+test('the Social tab\'s files, the kept messages above all, never go into a copy', () => {
+  // Keep my messages promises the words stay on this computer, and Settings
+  // says a copy doesn't carry them. The allow-list is what keeps that true.
+  const dir = folder('social');
+  const db = seedNetwork(dir, { people: 1, tag: 's' });
+  writeFileSync(path.join(dir, 'social-s-me.json'), JSON.stringify({ keepMessages: true, people: {} }));
+  writeFileSync(path.join(dir, 'social-messages-s-me.json'), JSON.stringify({ threads: { t1: { messages: [{ t: 1, fromMe: false, text: 'INVENTED-KEPT-MESSAGE' }] } } }));
+  writeFileSync(path.join(dir, 'social-messages-s-me.json.incoming'), 'INVENTED-HALF-IMPORT');
+  assert.equal(travellingFiles(dir).some((f) => f.rel.startsWith('social')), false);
+  const { out } = exportOf(dir, db);
+  db.close();
+  assert.equal(pathsIn(out).some((p) => p.startsWith('social')), false);
+  assert.equal(readFileSync(out).includes('INVENTED-KEPT-MESSAGE'), false);
+  assert.equal(readFileSync(out).includes('INVENTED-HALF-IMPORT'), false);
+});
+
 test('REGRESSION: an avatars folder that is a link to somewhere else is not followed', () => {
   // SECURITY.md: links are never followed out of the data folder. That held for
   // each file, but a link standing in for avatars/ itself was read through (review R8).

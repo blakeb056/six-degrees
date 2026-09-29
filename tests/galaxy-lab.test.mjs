@@ -85,3 +85,28 @@ test('milestones and the job you were at', () => {
   assert.equal(chapterAt(social, 250), null);
   assert.equal(chapterAt(social, 900).company, 'Initech');
 });
+
+test('who wrote last comes from the live sync where the export is missing or older', async () => {
+  const { repliesWaiting } = await import('../lib/linkedin-export.js');
+  const day = 86400000;
+  const { merged, asOf } = mergeSocial({
+    asOf: 100 * day,
+    people: {
+      [url('ana')]: { last: 90 * day, lastFromThem: false, total: 3, recent: 1 },
+      [url('ben')]: { last: 95 * day, lastFromThem: true, total: 2, recent: 1 },
+    },
+    live: {
+      [url('ana')]: { last: 110 * day, unread: 1, lastFromThem: true },        // newer: Ana wrote since
+      [url('ben')]: { last: 80 * day, unread: 0, lastFromThem: false },        // older: the export's word stands
+      [url('cy')]: { last: 105 * day, unread: 0, lastFromThem: true },         // not in the export at all
+      [url('dee')]: { last: 104 * day, unread: 0, lastFromThem: null },        // unknown stays unknown
+    },
+  });
+  assert.equal(merged.get(url('ana')).lastFromThem, true);
+  assert.equal(merged.get(url('ben')).lastFromThem, true);
+  assert.equal(merged.get(url('cy')).lastFromThem, true);
+  assert.equal(merged.get(url('dee')).lastFromThem, undefined);
+  const waiting = repliesWaiting({ asOf, people: new Map([...merged].filter(([, v]) => v.lastFromThem != null)) });
+  // As of Ana's newest message: Cy wrote 5 days before, Ben 15; Ana's is too fresh to owe.
+  assert.deepEqual(waiting.map((w) => [w.url, w.days]), [[url('cy'), 5], [url('ben'), 15]]);
+});

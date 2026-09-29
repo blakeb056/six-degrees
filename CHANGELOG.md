@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Conversations, in the Social tab.** Every conversation with one of your connections, from your
+  export and the live messages sync: who it's with (name and tier), when it was last active, who
+  wrote last, unread, how many messages, and *Open on LinkedIn* (the thread when the sync found
+  its link, else their profile). Waiting on you comes first, then S and A tier, then the most
+  recent. Group conversations are shown and marked, and aren't counted in warmth. A search box
+  finds people by name.
+- **Keep my messages on this computer**, a switch that's off unless you turn it on. When it's on,
+  the messages themselves, what other people wrote to you included, are kept in the app's data
+  folder (a file of their own beside the Social tab's), and a conversation opens as a thread,
+  newest at the bottom, a page at a time so a thread of thousands opens as fast as a short one.
+  The search box then finds what was said, too. They're never sent anywhere, and "Save a copy of
+  my network" doesn't carry them (Settings says so). Switching it off asks first, then deletes
+  them; *Forget it* deletes them with everything else.
+- **The live messages sync reads a little more of the list.** Each conversation's link, whether
+  it's a group, and its newest message: who wrote last, which now feeds warmth and Waiting on you
+  where your export is missing or older, and its words, which go to the app only while Keep my
+  messages is on. It still opens no conversation, and its saved samples still keep no words.
+
 ### Changed
 - **The scan status bar sits under the buttons.** On each page it now sits in its own row
   under the header, pushing the page down instead of covering it. On Network Circle it floats
