@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   date you connected, with a time slider; each circle arrives with its connection. Everything
   moves the Galaxy in place, and *Reset* puts today's layout back. The replay needs "connected
   on" dates, so the sample network has nothing to replay.
+- **More in the physics lab.** *Colour by* tier, degree, company (the eight most common) or
+  warmth (from the Social tab), with a legend to match. *Find* lights up everyone whose name,
+  company or role matches and dims the rest; Enter flies to the best one and opens their card.
+  The replay has a length (5 s to 1 min), *Loop*, your job starts and posts from the Social tab
+  marked on its timeline, and the job you were at in its date. *Saved layouts* keep slider
+  settings under a name. *Save a picture* makes a PNG of the Galaxy at twice the size, and
+  *Record the replay* saves it as a video.
+- **Names on or off** for the Galaxy, in Filters.
 
 ## [0.4.4] - 2026-09-29
 

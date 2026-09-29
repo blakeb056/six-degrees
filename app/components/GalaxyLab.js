@@ -5,11 +5,15 @@
 // growing by the date you connected. Everything moves the Galaxy in place;
 // lib/galaxy-lab.js holds the settings and the clock.
 
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import {
   LAB_DEFAULTS, CLUSTERS, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
+  layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
+import { savePicture, recordReplay, canRecord } from '../../lib/galaxy-export';
+
+const noLayouts = [];
 
 const DAY = 86400000;
 
@@ -59,11 +63,34 @@ function Choice({ options, value, onPick }) {
   );
 }
 
+/** Filter → Names: every name on the Galaxy on or off, with or without the lab. */
+export function NamesSwitch() {
+  const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Names</div>
+      <Choice value={lab.labels} options={[[true, 'On'], [false, 'Off']]} onPick={(v) => setLab({ labels: v })} />
+    </div>
+  );
+}
+
 const month = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
 export default function GalaxyLab() {
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
   const clock = useSyncExternalStore(watchClock, clockNow, clockNow);
+  const layouts = useSyncExternalStore(watchLayouts, layoutsNow, () => noLayouts);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(null);     // 'picture' | 'video' while saving
+  const [note, setNote] = useState(null);
+  const recordable = useSyncExternalStore(() => () => {}, canRecord, () => false);
+  const marks = clock.min != null && clock.max > clock.min
+    ? milestones(clock.social).filter((m) => m.t >= clock.min && m.t <= clock.max) : [];
+  const run = async (what, job) => {
+    setBusy(what);
+    setNote(null);
+    try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); }
+  };
   const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
   const preset = FORCES.every((f) => lab[f.key] === LAB_DEFAULTS[f.key]) ? 'rings'
     : Object.entries(CLUSTERS).every(([k, v]) => lab[k] === v) ? 'clusters' : null;
@@ -73,7 +100,7 @@ export default function GalaxyLab() {
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input
           type="checkbox" checked={lab.on}
-          onChange={(e) => { if (!e.target.checked) stopReplay(); setLab({ on: e.target.checked }); }}
+          onChange={(e) => { if (!e.target.checked) { stopReplay(); setClock({ find: '' }); } setLab({ on: e.target.checked }); }}
           style={{ accentColor: '#D4AF37' }}
         />
         <span style={{ fontSize: 11.5, fontWeight: 700, color: '#e6d7a0' }}>Physics lab</span>
@@ -81,13 +108,29 @@ export default function GalaxyLab() {
       </label>
       {!lab.on && (
         <div style={{ ...small, marginTop: 6 }}>
-          Sliders for the forces that lay the Galaxy out, a branch that lights up on hover, and a replay of your
-          network growing.
+          Sliders for the forces that lay the Galaxy out, colours by company or warmth, find, a branch that lights
+          up on hover, and a replay of your network growing that you can save as a video.
         </div>
       )}
 
       {lab.on && (
         <>
+          <div style={heading}>Find</div>
+          <input
+            type="search" value={clock.find} placeholder="A name, company or role"
+            onChange={(e) => setClock({ find: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') setClock({ fly: clock.fly + 1 }); }}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '6px 9px', borderRadius: 6, fontSize: 11.5,
+              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.25)', color: '#dde',
+            }}
+          />
+          {clock.find.trim().length >= 2 && (
+            <div style={{ ...small, marginTop: 4 }}>
+              {clock.found ? `${clock.found.toLocaleString()} found · Enter flies to the best one` : 'No one on screen matches.'}
+            </div>
+          )}
+
           <div style={heading}>Layout</div>
           <Choice
             value={preset}
@@ -107,8 +150,19 @@ export default function GalaxyLab() {
           {DISPLAY.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
           <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Size dots by</div>
           <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
-          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Names</div>
-          <Choice value={lab.names} options={[['key', 'S + catalysts'], ['all', 'All 1st'], ['none', 'None']]} onPick={(v) => setLab({ names: v })} />
+          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Colour by</div>
+          <Choice
+            value={lab.colourBy}
+            options={[['tier', 'Tier'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
+            onPick={(v) => setLab({ colourBy: v })}
+          />
+          {lab.colourBy === 'warmth' && clock.social === null && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+              Warmth comes from the Social tab: import your LinkedIn export there first. Until then it&rsquo;s by tier.
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
+          <Choice value={lab.names === 'all' ? 'all' : 'key'} options={[['key', 'S + catalysts'], ['all', 'All 1st']]} onPick={(v) => setLab({ names: v })} />
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#aab', cursor: 'pointer' }}>
             <input type="checkbox" checked={lab.branch} onChange={(e) => setLab({ branch: e.target.checked })} style={{ accentColor: '#3498DB' }} />
             Light up a branch on hover
@@ -132,18 +186,44 @@ export default function GalaxyLab() {
                   {month(clock.at ?? clock.max)}
                 </span>
               </div>
-              <input
-                type="range" min={clock.min} max={clock.max} step={DAY} value={clock.at ?? clock.max}
-                onChange={(e) => { pause(); setClock({ at: Number(e.target.value) }); }}
-                style={{ width: '100%', accentColor: '#3498DB' }}
-                aria-label="Time"
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="range" min={clock.min} max={clock.max} step={DAY} value={clock.at ?? clock.max}
+                  onChange={(e) => { pause(); setClock({ at: Number(e.target.value) }); }}
+                  style={{ width: '100%', accentColor: '#3498DB' }}
+                  aria-label="Time"
+                />
+                {/* Milestones from the Social tab: a job start (gold) or a post (blue). */}
+                <div style={{ position: 'absolute', left: 7, right: 7, top: -3, height: 6, pointerEvents: 'none' }}>
+                  {marks.map((m) => (
+                    <span key={`${m.kind}-${m.t}`} title={`${m.label} · ${month(m.t)}`} style={{
+                      position: 'absolute', left: `${((m.t - clock.min) / (clock.max - clock.min)) * 100}%`,
+                      width: m.kind === 'job' ? 3 : 2, height: m.kind === 'job' ? 8 : 5, borderRadius: 1, transform: 'translateX(-50%)',
+                      background: m.kind === 'job' ? '#D4AF37' : '#74B9FF', opacity: m.kind === 'job' ? 0.95 : 0.7,
+                    }} />
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', ...small }}>
                 <span>{month(clock.min)}</span><span>{month(clock.max)}</span>
               </div>
+              <div style={{ fontSize: 11, color: '#aab', margin: '8px 0 4px' }}>Length</div>
+              <Choice value={lab.speed} options={[[5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '1 min']]} onPick={(v) => setLab({ speed: v })} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#aab', cursor: 'pointer' }}>
+                <input type="checkbox" checked={lab.loop} onChange={(e) => setLab({ loop: e.target.checked })} style={{ accentColor: '#3498DB' }} />
+                Loop
+              </label>
               <div style={{ ...small, marginTop: 4 }}>
                 Your connections appear on the day you connected; their circles come with them.
+                {marks.length > 0 ? ' Gold marks are your job starts and blue ones your posts, from the Social tab.' : ''}
               </div>
+              {recordable && (
+                <button disabled={!!busy} onClick={() => run('video', recordReplay)} style={{
+                  marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                  cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(231,76,60,0.5)',
+                  background: 'rgba(231,76,60,0.12)', color: '#f5b7b1',
+                }}>{busy === 'video' ? '● Recording…' : '● Record the replay as a video'}</button>
+              )}
             </>
           ) : (
             <div style={small}>
@@ -152,7 +232,39 @@ export default function GalaxyLab() {
             </div>
           )}
 
-          <button onClick={() => { stopReplay(); setLab(null); }} style={{
+          <div style={heading}>Saved layouts</div>
+          {layouts.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+              {layouts.map((l) => (
+                <span key={l.name} style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 12, border: '1px solid rgba(52,152,219,0.4)', background: 'rgba(52,152,219,0.1)' }}>
+                  <button onClick={() => applyLayout(l.name)} style={{ padding: '3px 4px 3px 9px', border: 'none', background: 'none', color: '#cfe6f7', fontSize: 10.5, cursor: 'pointer' }}>{l.name}</button>
+                  <button onClick={() => forgetLayout(l.name)} aria-label={`Forget ${l.name}`} title="Forget this layout" style={{ padding: '3px 8px 3px 3px', border: 'none', background: 'none', color: '#667', fontSize: 11, cursor: 'pointer' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form onSubmit={(e) => { e.preventDefault(); saveLayout(name); setName(''); }} style={{ display: 'flex', gap: 4 }}>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name this layout" maxLength={40} style={{
+              flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 6, fontSize: 11,
+              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.25)', color: '#dde',
+            }} />
+            <button type="submit" disabled={!name.trim()} style={{
+              padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default',
+              border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: name.trim() ? '#cfe6f7' : '#667',
+            }}>Save</button>
+          </form>
+
+          <div style={heading}>Share</div>
+          <button disabled={!!busy} onClick={() => run('picture', savePicture)} style={{
+            width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? 'default' : 'pointer',
+            border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: '#cfe6f7',
+          }}>{busy === 'picture' ? 'Saving…' : 'Save a picture of the Galaxy'}</button>
+          <div style={{ ...small, marginTop: 4 }}>
+            A PNG of what&rsquo;s on screen, at twice the size. It shows real names, so check it before you post it.
+          </div>
+          {note && <div style={{ ...small, color: '#e67e73', marginTop: 4 }}>{note}</div>}
+
+          <button onClick={() => { stopReplay(); setClock({ find: '' }); setLab(null); }} style={{
             marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
             border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aaa',
           }}>Reset to today&rsquo;s layout</button>
