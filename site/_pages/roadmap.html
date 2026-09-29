@@ -1,0 +1,66 @@
+<!--
+title: Six Degrees roadmap: what's shipped, what's next, what's being explored
+description: The plan for Six Degrees: every milestone shipped so far, the Windows and Linux apps and a signed Mac app coming next, and what's being tested before it loses its experimental label.
+crumb: Roadmap
+path: /roadmap/
+type: WebPage
+updated: 2026-09-29
+-->
+    <header class="page-hero">
+      <p class="kicker">Roadmap</p>
+      <h1>Where it's going</h1>
+      <p class="lede">What's shipped, what's next, and what's being tested. No dates: things ship when they work, and
+        every release is in the <a href="/releases/">release notes</a>.</p>
+    </header>
+
+    <div class="roadmap-cols">
+      <section class="road next" aria-labelledby="road-next">
+        <h2 id="road-next"><span class="road-dot" aria-hidden="true"></span>Next</h2>
+        <ul role="list">
+          <li><strong>A Windows app</strong><span>With a one-click installer. Until then, Windows has no version at all.</span></li>
+          <li><strong>A Linux app to download</strong><span>It runs on Linux today from the Terminal with <code>npx six-degrees</code>.</span></li>
+          <li><strong>A Mac app signed and notarised by Apple</strong><span>So there's no Open Anyway step the first time you open it.</span></li>
+          <li><strong>Clusters and communities</strong><span>Groups in your network, found from the ties between your connections that circle scans already keep.</span></li>
+          <li><strong>Hide the Chrome window while scanning</strong><span>Done, and in the next release: it's in the changelog's Unreleased section.</span></li>
+        </ul>
+      </section>
+
+      <section class="road exploring" aria-labelledby="road-exploring">
+        <h2 id="road-exploring"><span class="road-dot" aria-hidden="true"></span>Being tested</h2>
+        <ul role="list">
+          <li><strong>Auto-Bridge and Auto scan</strong><span>All-day pacing, tried on real accounts before it loses its experimental label.</span></li>
+          <li><strong>The Social tab's live sync</strong><span>Reading your messages list in your own Chrome, once a day. Not yet tried on a live account.</span></li>
+          <li><strong>Company and bridge scans</strong><span>Re-checked end to end against LinkedIn's current pages.</span></li>
+          <li><strong>The Intel Mac build</strong><span>Opened and checked on an Intel Mac, not just built for one.</span></li>
+          <li><strong>Searching only your 2nd degree</strong><span>Fewer searches for the same picture.</span></li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="road shipped" aria-labelledby="road-shipped">
+      <h2 id="road-shipped"><span class="road-dot" aria-hidden="true"></span>Shipped</h2>
+      <ol class="timeline" role="list">
+        <li><a href="/releases/#v0.4.6">0.4.6</a><span>The window's frame matches the dark app.</span></li>
+        <li><a href="/releases/#v0.4.5">0.4.5</a><span>The Galaxy physics lab: forces, colour by, find, a replay of your network growing, pictures and video.</span></li>
+        <li><a href="/releases/#v0.4.4">0.4.4</a><span>Insights on every card, network health, the Social tab and Auto scan.</span></li>
+        <li><a href="/releases/#v0.4.3">0.4.3</a><span>A status bar on every page while a scan runs, and experimental all-day pacing.</span></li>
+        <li><a href="/releases/#v0.4.2">0.4.2</a><span>Orbit out to 6th degree, and scan progress rings on every dot.</span></li>
+        <li><a href="/releases/#v0.4.1">0.4.1</a><span>Who only one connection reaches, which connections open the same doors, and degree filters.</span></li>
+        <li><a href="/releases/#v0.4.0">0.4.0</a><span>The Scores tab and your sector, rarity, a circle on every card, and a cap on profile views.</span></li>
+        <li><a href="/releases/#v0.3.0">0.3.0</a><span>The Mac app scans with nothing to install, Settings, and updates in one click.</span></li>
+        <li><a href="/releases/#v0.2.1">0.2.1</a><span><code>npx six-degrees</code> on Linux, tutorial videos, and LinkedIn exports up to 30,000 connections.</span></li>
+        <li><a href="/releases/#v0.2.0">0.2.0</a><span>Six Degrees becomes a real Mac app for everyone.</span></li>
+        <li><a href="/releases/#v0.1.0">0.1.0 – 0.1.11</a><span>The first releases: one-line install, Separation, a search budget and cooldown lock, Paths and Outlink.</span></li>
+      </ol>
+    </section>
+
+    <section class="principles" aria-labelledby="principles">
+      <h2 id="principles">What won't change</h2>
+      <ul class="doc-grid plain" role="list">
+        <li><div><strong>It runs on your computer</strong><span>No account, no server, no telemetry.</span></div></li>
+        <li><div><strong>It's free and open</strong><span>MIT licence, every line on GitHub, no paid tier.</span></div></li>
+        <li><div><strong>Scanning stays slow</strong><span>Budgets, rests and a stop at the first push-back. The risk is always spelled out.</span></div></li>
+        <li><div><strong>Honest numbers</strong><span>Your own network, never a percentile against anyone else's.</span></div></li>
+      </ul>
+      <p class="fine center">Want something on this list? <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a>.</p>
+    </section>

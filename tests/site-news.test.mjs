@@ -1,14 +1,19 @@
-// The website's News, numbers and sample charts are generated from the repository
-// (scripts/build-site-news.mjs, run by pages.yml on the copy it publishes).
+// The website is built from the repository by scripts/build-site.mjs (run by
+// pages.yml): News, the numbers, the sample charts, the release notes, the blog
+// and the feeds all come from CHANGELOG.md, tests/, public/demo-data.json and site/.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseChangelog, fullReleases, changeCounts, highlights, leadOf, longDate, plainText,
-  sampleStats, countTests, generate, fill, newsHtml,
-} from '../scripts/build-site-news.mjs';
+  sampleStats, fill, newsHtml,
+} from '../scripts/site-news.mjs';
+import { markdown, frontMatter, htmlFrontMatter, slugify } from '../scripts/site-markdown.mjs';
+import { build, loadSite, slotValues, faqFrom, header } from '../scripts/build-site.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
@@ -107,18 +112,52 @@ test('slots are filled between their markers, and an unknown slot is an error', 
   assert.throws(() => fill('<!-- gen:nope --><!-- /gen:nope -->', {}), /gen:nope/);
 });
 
-test('the real changelog, tests and sample fill every slot on the real page', () => {
-  const values = generate({
-    changelog: read('CHANGELOG.md'),
-    testCount: countTests(`${REPO}/tests`),
-    sample: JSON.parse(read('public/demo-data.json')),
-  });
-  const { version } = JSON.parse(read('package.json'));
-  if (!version.includes('-')) assert.equal(values['latest-version'], version, 'the newest release in the changelog is package.json\'s');
-  assert.ok(Number(values['release-count']) > 0);
-  assert.ok(Number(values['test-count'].replace(/,/g, '')) > 0);
-  const page = read('site/index.html');
-  assert.doesNotThrow(() => fill(page, values));
-  const missing = Object.keys(values).filter((name) => !page.includes(`<!-- gen:${name} -->`));
-  assert.deepEqual(missing, [], 'every generated value has a slot on the page');
+test('the real site builds: every page, both feeds and the sitemap, each page with its own title and canonical', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'sd-site-'));
+  try {
+    const { pages, values } = build(REPO, out, { images: false });
+    const { version } = JSON.parse(read('package.json'));
+    if (!version.includes('-')) assert.equal(values['latest-version'], version, 'the newest release in the changelog is package.json\'s');
+    for (const p of ['/', '/download/', '/docs/', '/roadmap/', '/about/', '/releases/', '/blog/']) assert.ok(pages.includes(p), p);
+    const titles = new Set();
+    for (const p of pages) {
+      const html = readFileSync(path.join(out, p, 'index.html'), 'utf8');
+      const title = html.match(/<title>([^<]+)<\/title>/)[1];
+      assert.ok(!titles.has(title), `${p} has a title of its own`);
+      titles.add(title);
+      assert.match(html, new RegExp(`<link rel="canonical" href="https://sixdegreesapp.com${p.replace(/[/]/g, '\\/')}">`), `${p} canonical`);
+      assert.doesNotMatch(html, /<!-- gen:[a-z0-9-]+ --><!-- \/gen:/, `${p} has no empty slot`);
+      for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(block[1]);
+    }
+    for (const f of ['blog/feed.xml', 'releases/feed.xml', 'sitemap.xml']) assert.ok(existsSync(path.join(out, f)), f);
+    const sitemap = readFileSync(path.join(out, 'sitemap.xml'), 'utf8');
+    for (const p of pages) assert.ok(sitemap.includes(`<loc>https://sixdegreesapp.com${p}</loc>`), `${p} is in the sitemap`);
+    assert.ok(!existsSync(path.join(out, '_posts')) && !existsSync(path.join(out, 'README.md')), 'sources are not published');
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('the committed home page has every slot filled from the repository', () => {
+  const site = loadSite(REPO);
+  assert.doesNotThrow(() => fill(site.indexHtml, slotValues(site)));
+});
+
+test('Markdown: headings with ids, lists that nest in order, and no raw HTML', () => {
+  const html = markdown('## What it does\n\n- **A.** one\n  two\n  - sub\n\n  After.\n- B\n\n<script>x</script> and `<b>`');
+  assert.match(html, /<h2 id="what-it-does">What it does<\/h2>/);
+  assert.match(html, /<li><strong>A\.<\/strong> one two<ul>\n<li>sub<\/li>\n<\/ul><p>After\.<\/p><\/li>/);
+  assert.match(html, /&lt;script&gt;x&lt;\/script&gt; and <code>&lt;b&gt;<\/code>/);
+  assert.match(markdown('[x](javascript:alert(1))'), /href="#"/, 'no script links');
+  assert.equal(slugify('Who can introduce you?'), 'who-can-introduce-you');
+  assert.deepEqual(frontMatter('---\ntitle: Hi\ntags: [a, b]\n---\nBody').data, { title: 'Hi', tags: ['a', 'b'] });
+  assert.equal(htmlFrontMatter('<!--\ntitle: Page\n-->\n<p>x</p>').data.title, 'Page');
+});
+
+test('the FAQ data mirrors the questions on the page, and the nav marks where you are', () => {
+  assert.deepEqual(faqFrom('<dl><div><dt>Is it free?</dt>\n<dd>Yes. <code>MIT</code> &amp; more.</dd></div></dl>'),
+    [{ '@type': 'Question', name: 'Is it free?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. MIT & more.' } }]);
+  const nav = header('<a href="/">Home</a><a href="/blog/">Blog</a><a href="/#features">Features</a>', '/blog/some-post/');
+  assert.match(nav, /<a href="\/blog\/" aria-current="page">/);
+  assert.doesNotMatch(nav, /href="\/" aria-current/);
 });

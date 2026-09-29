@@ -1,15 +1,17 @@
-// The website's small helpers. The page works fully without them.
+// The website's small helpers, on every page. Each page works fully without them.
+//   0. Old links to parts of the home page that moved (/#install, /#faq…) go
+//      to their new pages.
 //   1. The download button for this computer: the Mac download on a Mac (with a
 //      guess at the chip), and on Linux or Windows that platform's dimmed
 //      "Coming soon" button, with the way to run it today where there is one.
-//   2. The latest version and download sizes, asked of GitHub once. If that
-//      fails, the page keeps its fallback lines.
+//   2. The latest version and download sizes, and on /about/ the number of
+//      stars, asked of GitHub. If that fails, the page keeps its fallback lines.
 //   3. Copy buttons for the Terminal lines.
 //   4. Videos play by themselves, silently, while they're on screen, and pause
 //      when scrolled away. Pausing one yourself keeps it paused. Not when the
 //      computer asks for reduced motion.
-//   5. The charts grow in as they come on screen (CSS does it, and skips it for
-//      reduced motion).
+//   5. The charts grow in, and the home page's sections fade in, as they come on
+//      screen (CSS does it, and skips it for reduced motion).
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
@@ -25,6 +27,18 @@ const DOWNLOADS = {
   const $ = (id) => document.getElementById(id);
   const all = (sel) => [...document.querySelectorAll(sel)];
   document.documentElement.classList.add('js');
+
+  // 0. The home page used to hold the install guide, the FAQ and the news.
+  const MOVED = {
+    '#install': '/download/#install', '#linux': '/download/#linux', '#download': '/download/',
+    '#faq': '/docs/#faq', '#network': '/docs/#get-started', '#export': '/docs/#export',
+    '#scanning': '/docs/#scanning', '#news': '/releases/', '#what': '#features', '#docs': '/docs/',
+    '#community': '/about/#open', '#licence': '/about/#open', '#start': '/docs/#get-started',
+  };
+  if (location.pathname === '/' && MOVED[location.hash] && !document.getElementById(location.hash.slice(1))) {
+    location.replace(MOVED[location.hash]);
+    return;
+  }
 
   // 1. Which computer is this?
   const ua = navigator.userAgent || '';
@@ -43,8 +57,8 @@ const DOWNLOADS = {
   if (os === 'linux' || os === 'windows') {
     for (const el of all('.hero [data-for]')) el.hidden = el.dataset.for !== os;
   }
-  if (os === 'phone' || os === 'other') {
-    const note = $('not-mac');
+  const note = $('not-mac');
+  if (note && (os === 'phone' || os === 'other')) {
     if (os === 'phone') {
       note.textContent = "You're on a phone or tablet. Six Degrees runs on a computer: open this page on your Mac to download it.";
     }
@@ -52,18 +66,18 @@ const DOWNLOADS = {
   }
 
   let chip = null;
-  if (os === 'mac') {
+  if (os === 'mac' && $('dl-main')) {
     chip = guessChip();
     if (chip === 'intel') {
       // The main button becomes Intel's; the link offers Apple Silicon.
       const main = $('dl-main');
       const alt = $('dl-alt');
       [main.href, alt.href] = [alt.href, main.href];
-      $('dl-main-sub').textContent = 'Intel · for this Mac';
+      $('dl-main-sub').textContent = 'Free · Intel · for this Mac';
       $('dl-alt-label').textContent = 'Apple Silicon Mac?';
       alt.textContent = 'Download for Apple Silicon';
     } else if (chip === 'silicon') {
-      $('dl-main-sub').textContent = 'Apple Silicon · for this Mac';
+      $('dl-main-sub').textContent = 'Free · Apple Silicon · for this Mac';
     }
   }
 
@@ -112,8 +126,10 @@ const DOWNLOADS = {
         const size = mb(el.dataset.asset);
         if (size) el.textContent = ` · ${size} MB`;
       }
+      const line = $('version-line');
+      if (!line) return;
       if (os !== 'mac') {
-        $('version-line').textContent = `Version ${version} · macOS 13.5 or later · Linux from the Terminal · free and open source`;
+        line.textContent = `Version ${version} · macOS 13.5 or later · Linux from the Terminal · free and open source`;
         return;
       }
       const silicon = mb('Six-Degrees-Mac-Apple-Silicon.dmg');
@@ -123,9 +139,20 @@ const DOWNLOADS = {
       if (chip === 'silicon' && silicon) size = ` · ${silicon} MB`;
       else if (chip === 'intel' && intel) size = ` · ${intel} MB`;
       else if (silicon && intel) size = ` · ${silicon} MB (Apple Silicon), ${intel} MB (Intel)`;
-      $('version-line').textContent = `Version ${version} · macOS 13.5 or later${size} · free and open source`;
+      line.textContent = `Version ${version} · macOS 13.5 or later${size} · free and open source`;
     })
     .catch(() => { /* keep the fallback lines */ });
+
+  const stars = all('[data-gh-stars]');
+  if (stars.length) {
+    fetch('https://api.github.com/repos/blakeb056/six-degrees', { headers: { Accept: 'application/vnd.github+json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((repo) => {
+        if (typeof repo.stargazers_count !== 'number') return;
+        for (const el of stars) el.textContent = repo.stargazers_count.toLocaleString('en-US');
+      })
+      .catch(() => { /* keep the star */ });
+  }
 
   // 3. Copy buttons: data-copy names the <code> whose text they copy.
   const status = document.createElement('span');
@@ -156,7 +183,7 @@ const DOWNLOADS = {
   // 4 and 5: things that happen as they come on screen.
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!('IntersectionObserver' in window)) {
-    for (const g of all('.chart-group')) g.classList.add('seen');
+    for (const g of all('.chart-group, .reveal')) g.classList.add('seen');
     return;
   }
   const charts = new IntersectionObserver((entries) => {
@@ -166,8 +193,8 @@ const DOWNLOADS = {
         charts.unobserve(target);
       }
     }
-  }, { threshold: 0.25 });
-  for (const g of all('.chart-group')) charts.observe(g);
+  }, { threshold: 0.15 });
+  for (const g of all('.chart-group, .reveal')) charts.observe(g);
 
   if (!reduceMotion) {
     const seen = new IntersectionObserver((entries) => {

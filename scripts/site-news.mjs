@@ -1,29 +1,21 @@
-#!/usr/bin/env node
-// The website's generated parts: News, the numbers strip and the sample-network
-// charts, written into site/index.html from files in this repository.
-//
-//   node scripts/build-site-news.mjs                  # rewrite site/index.html
-//   node scripts/build-site-news.mjs --check          # exit 1 if it's out of date
-//   node scripts/build-site-news.mjs _site/index.html # rewrite another copy
+// The website's numbers and news, from files in this repository: used by
+// scripts/build-site.mjs, which builds the site (see site/README.md).
 //
 // Where each number comes from, so every one of them can be checked:
 //   - releases, their dates, what each changed: CHANGELOG.md's "## [x.y.z] - date"
 //     headings and the top-level bullets under their "### Added/Changed/…" headings.
 //     A pre-release (x.y.z-beta.n) is folded into the full release it became;
-//     one that hasn't become a full release yet isn't shown.
+//     one that hasn't become a full release yet isn't counted.
 //   - tests: every line starting "test(" in tests/*.test.mjs, which is what
 //     `npm test` counts.
 //   - the sample network: public/demo-data.json, the invented network that ships
 //     with the app (read only; scripts/gen-synthetic.mjs makes it).
 //
-// In index.html each generated part sits between <!-- gen:NAME --> and
-// <!-- /gen:NAME -->; everything else on the page is written by hand. pages.yml
-// runs this on the copy it publishes, so the live site's news is never older than
-// CHANGELOG.md, whether or not anyone ran it before committing. No dependencies.
+// In site/index.html each generated part sits between <!-- gen:NAME --> and
+// <!-- /gen:NAME -->; everything else on the page is written by hand.
 
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -80,7 +72,7 @@ export function parseChangelog(md) {
   for (const line of md.split('\n')) {
     const head = line.match(/^## \[(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)\] - (\d{4}-\d{2}-\d{2})/);
     if (head) {
-      release = { version: head[1], date: head[2], prerelease: head[1].includes('-'), intro: '', bullets: [] };
+      release = { version: head[1], date: head[2], prerelease: head[1].includes('-'), intro: '', bullets: [], body: '' };
       releases.push(release);
       kind = null;
       end();
@@ -88,6 +80,7 @@ export function parseChangelog(md) {
     }
     if (/^## /.test(line)) { release = null; kind = null; end(); continue; }
     if (!release) continue;
+    release.body += `${line}\n`;
     const sub = line.match(/^### (\w+)/);
     if (sub) { kind = sub[1].toLowerCase(); end(); continue; }
     if (!kind) {
@@ -309,41 +302,10 @@ export function generate({ changelog, testCount, sample }) {
   };
 }
 
-/** The page with every gen slot filled; throws on a slot this script doesn't know. */
+/** The page with every gen slot filled; throws on a slot nothing fills. */
 export function fill(html, values) {
   return html.replace(/<!-- gen:([a-z0-9-]+) -->([\s\S]*?)<!-- \/gen:\1 -->/g, (_, name) => {
-    if (!(name in values)) throw new Error(`index.html has a slot this script doesn't fill: gen:${name}`);
+    if (!(name in values)) throw new Error(`a page has a slot nothing fills: gen:${name}`);
     return `<!-- gen:${name} -->${values[name]}<!-- /gen:${name} -->`;
   });
-}
-
-function main() {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const args = process.argv.slice(2);
-  const check = args.includes('--check');
-  const target = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(root, 'site/index.html'));
-  const values = generate({
-    changelog: readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'),
-    testCount: countTests(path.join(root, 'tests')),
-    sample: JSON.parse(readFileSync(path.join(root, 'public/demo-data.json'), 'utf8')),
-  });
-  const before = readFileSync(target, 'utf8');
-  const after = fill(before, values);
-  const rel = path.relative(process.cwd(), target) || target;
-  if (check) {
-    if (before === after) { console.log(`  ✓ ${rel}'s news and numbers are current.`); return; }
-    console.error(`\n  ✗ ${rel}'s news or numbers are out of date. Run: node scripts/build-site-news.mjs\n`);
-    process.exit(1);
-  }
-  if (before !== after) writeFileSync(target, after);
-  console.log(`  ✓ ${rel}: v${values['latest-version']}, ${values['release-count']} releases, ${values['test-count']} tests${before === after ? ' (no change)' : ''}.`);
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    main();
-  } catch (err) {
-    console.error(`\n  ✗ ${err.message}\n`);
-    process.exit(1);
-  }
 }
