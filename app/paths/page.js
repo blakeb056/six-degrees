@@ -106,12 +106,22 @@ function PathsInner() {
   function enrichPeople(people) {
     const d1Urls = new Set(d1Data.map(c => c.profile_url));
     const knownUrls = new Set([...d1Data, ...d2Data].map(c => c.profile_url));
+    // A person's mutuals are everyone here you're connected to but them. Counted
+    // once, then less their own, rather than a pass over everyone per person:
+    // that was 3.7 million checks at a company of 1,900.
+    const connectedById = new Map();
+    let connectedHere = 0;
+    for (const op of people) {
+      if (!d1Urls.has(op.profile_url || op.profileUrl)) continue;
+      connectedHere++;
+      connectedById.set(op.id, (connectedById.get(op.id) || 0) + 1);
+    }
     return people.map(p => ({
       ...p,
       connected: d1Urls.has(p.profile_url || p.profileUrl),
       known: knownUrls.has(p.profile_url || p.profileUrl),
       seniority: getSeniority(p.headline),
-      mutualCount: people.filter(op => d1Urls.has(op.profile_url || op.profileUrl) && op.id !== p.id).length,
+      mutualCount: connectedHere - (connectedById.get(p.id) || 0),
     }));
   }
 
@@ -177,6 +187,9 @@ function PathsInner() {
   }
 
   // Build hierarchy for selected company
+  const d1ById = new Map();
+  for (const d of d1Data) if (!d1ById.has(d.id)) d1ById.set(d.id, d);
+  const d1Urls = new Set(d1Data.map(c => c.profile_url));
   const hierarchy = {};
   let connectedCount = 0;
   companyPeople.forEach(p => {
@@ -195,7 +208,7 @@ function PathsInner() {
     // Find the bridge path for degree-2 people
     let bridgeName = null;
     if (p.degree === 2 && p.source_connection_id) {
-      const bridge = d1Data.find(d => d.id === p.source_connection_id);
+      const bridge = d1ById.get(p.source_connection_id);
       if (bridge) bridgeName = bridge.name;
     }
 
@@ -380,7 +393,7 @@ function PathsInner() {
               </div>
 
               {level.people.map((p, pi) => (
-                <PathPersonRow key={p.id || pi} p={p} level={level} companyPeople={companyPeople} d1Data={d1Data} selectedCompany={selectedCompany} />
+                <PathPersonRow key={p.id || pi} p={p} level={level} companyPeople={companyPeople} d1Urls={d1Urls} selectedCompany={selectedCompany} />
               ))}
             </div>
           ))}
@@ -391,24 +404,18 @@ function PathsInner() {
   );
 }
 
-function PathPersonRow({ p, level, companyPeople, d1Data, selectedCompany }) {
+function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Calculate strategic insights
-  const d1Urls = new Set(d1Data.map(c => c.profile_url));
-  const connectedAtCompany = companyPeople.filter(op => d1Urls.has(op.profile_url || op.profileUrl));
-  const aboveMe = companyPeople.filter(op => {
-    const s = getSeniority(op.headline);
-    return s.level > p.seniority.level && !d1Urls.has(op.profile_url || op.profileUrl);
-  });
-  const sameLevel = companyPeople.filter(op => {
-    const s = getSeniority(op.headline);
-    return s.level === p.seniority.level && op.id !== p.id;
-  });
-
-  // What happens if you add this person
+  // What happens if you add this person. Only worked out for a row that's open,
+  // since only an open row shows it: every row comparing itself with everyone
+  // at the company, each time the page drew, took minutes at a company of 1,900.
+  // Everyone's level is read once already (enrichPeople's seniority).
   const unlockInsights = [];
-  if (!p.connected) {
+  if (expanded && !p.connected) {
+    const aboveMe = companyPeople.filter(op => op.seniority.level > p.seniority.level && !d1Urls.has(op.profile_url || op.profileUrl));
+    const sameLevel = companyPeople.filter(op => op.seniority.level === p.seniority.level && op.id !== p.id);
+
     // How many people above would gain a mutual
     const aboveCount = aboveMe.length;
     if (aboveCount > 0) {
