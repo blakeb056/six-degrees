@@ -37,7 +37,7 @@ const ask = async (query) => (await GET(new Request(`http://127.0.0.1/api/scrape
 test('?job=1 says what runs and whose scan it is, and how the last jobs ended', async () => {
   assert.deepEqual(await ask('?job=1'), {
     running: false, action: null, target: null, startedAt: null, exitCode: null,
-    failure: null, progress: null, log: [], recent: [],
+    failure: null, progress: null, log: [], recent: [], budget: null,
   });
 
   const state = registerScanState({});
