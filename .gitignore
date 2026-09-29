@@ -44,3 +44,6 @@ yarn-error.log*
 .sandbox
 
 dist
+
+# the website, built by scripts/build-site.mjs
+/_site
