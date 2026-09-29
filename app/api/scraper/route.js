@@ -342,7 +342,21 @@ function job() {
     progress: state.running ? scanProgress(state.log, state.action) : null,
     log: state.log.slice(-120),
     recent: state.recent,
+    budget: state.running ? budgetNow() : null,
   };
+}
+
+/** Today's LinkedIn budget, for the status bar every page shows while a scan runs. */
+function budgetNow() {
+  try {
+    const li = linkedinState(dataDir());
+    return {
+      searches: li.searchesToday ?? 0, cap: li.limits?.daily ?? null,
+      profiles: li.profilesToday ?? 0, profileCap: li.limits?.profiles ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

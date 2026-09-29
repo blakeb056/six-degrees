@@ -19,6 +19,7 @@ export const metadata = {
 
 import UserProvider from './components/UserProvider';
 import StaleServerBanner from './components/StaleServerBanner';
+import ScanStatusBar from './components/ScanStatusBar';
 
 export default function RootLayout({ children }) {
   return (
@@ -30,6 +31,8 @@ export default function RootLayout({ children }) {
               is running. Every page, because the answer to "did my update
               work?" should not require finding the right screen. */}
           <StaleServerBanner />
+          {/* While a scan runs: what it's doing and today's budget, with Stop. */}
+          <ScanStatusBar />
         </UserProvider>
       </body>
     </html>
