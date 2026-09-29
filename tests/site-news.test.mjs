@@ -13,7 +13,7 @@ import {
   sampleStats, fill, newsHtml,
 } from '../scripts/site-news.mjs';
 import { markdown, frontMatter, htmlFrontMatter, slugify } from '../scripts/site-markdown.mjs';
-import { build, loadSite, slotValues, faqFrom, header } from '../scripts/build-site.mjs';
+import { build, loadSite, slotValues, faqFrom, header, scanWording, BEFORE } from '../scripts/build-site.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
@@ -160,4 +160,24 @@ test('the FAQ data mirrors the questions on the page, and the nav marks where yo
   const nav = header('<a href="/">Home</a><a href="/blog/">Blog</a><a href="/#features">Features</a>', '/blog/some-post/');
   assert.match(nav, /<a href="\/blog\/" aria-current="page">/);
   assert.doesNotMatch(nav, /href="\/" aria-current/);
+});
+
+test('published notes say scanning, and keep file and route names as they are', () => {
+  assert.equal(scanWording('The scraper scrapes; a Scrape was scraped by `scripts/scrape.py` and `/api/scraper`.'),
+    'The scanner scans; a Scan was scanned by `scripts/scrape.py` and `/api/scraper`.');
+});
+
+test('the generations before 0.1 are on /releases/, below 0.1.0, with their stage', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'sd-site-'));
+  try {
+    build(REPO, out, { images: false });
+    const html = readFileSync(path.join(out, 'releases/index.html'), 'utf8');
+    for (const b of BEFORE) {
+      assert.ok(html.indexOf(`id="${b.id}"`) > html.indexOf('id="v0.1.0"'), `${b.id} comes after 0.1.0`);
+      assert.match(html, new RegExp(`id="${b.id}"[\\s\\S]*?class="tag stage">${b.stage}<`));
+    }
+    assert.doesNotMatch(readFileSync(path.join(out, 'releases/feed.xml'), 'utf8'), /Before 0\.1|The first build/, 'not in the feed');
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
 });

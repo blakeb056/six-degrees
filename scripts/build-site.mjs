@@ -65,7 +65,7 @@ export function loadSite(root) {
   const indexHtml = read(root, 'site/index.html');
   return {
     root,
-    changelog: read(root, 'CHANGELOG.md'),
+    changelog: scanWording(read(root, 'CHANGELOG.md')),
     testCount: countTests(path.join(root, 'tests')),
     sample: JSON.parse(read(root, 'public/demo-data.json')),
     partials: { header: partial('header'), footer: partial('footer'), downloads: partial('downloads') },
@@ -288,13 +288,61 @@ ${post.html}
   return layout(site, { path: post.path, title: `${post.title} · Six Degrees`, description: post.description, graph, main, image: post.image, type: 'article' });
 }
 
+/**
+ * The generations before this codebase, shown on /releases/ under "Before 0.1".
+ * Dates and one line each: their repositories are private, so they're never
+ * linked. Not in the releases feed: they aren't releases of this app.
+ */
+export const BEFORE = [
+  {
+    id: 'beta-static', stage: 'Beta', date: '2026-07-12', title: 'The static version',
+    text: 'Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data never left your device.',
+  },
+  {
+    id: 'alpha-first-build', stage: 'Alpha', date: '2026-06-11', title: 'The first build',
+    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online. Where Six Degrees started.',
+    archive: 'https://six-degrees-linkedin.vercel.app/',
+    image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation, Map your LinkedIn power network', width: 800, height: 500, caption: 'The first build, June 2026' },
+  },
+];
+
+export function beforeHtml() {
+  const entries = BEFORE.map((b) => `      <article class="release archive" id="${b.id}">
+        <header>
+          <h2><a href="#${b.id}">${escapeHtml(b.title)}</a> <span class="tag stage">${b.stage}</span></h2>
+          <p class="post-meta"><time datetime="${b.date}">${longDate(b.date)}</time></p>${b.archive ? `
+          <p class="release-links"><a href="${b.archive}">Archive: the original prototype (June 2026), kept as it was</a></p>` : ''}
+        </header>
+        <div class="prose release-notes"><p>${escapeHtml(b.text)}</p></div>${b.image ? `
+        <figure class="archive-shot"><a href="${b.archive}"><img src="${b.image.src}" alt="${escapeHtml(b.image.alt)}" width="${b.image.width}" height="${b.image.height}" loading="lazy"></a><figcaption>${escapeHtml(b.image.caption)}</figcaption></figure>` : ''}
+      </article>`).join('\n');
+  return `      <section class="before" id="before-0-1" aria-labelledby="before-h">
+        <h2 id="before-h">Before 0.1</h2>
+        <p class="fine">The generations before this codebase. The open-source rebuild began on
+          <time datetime="2026-08-21">21 August 2026</time> and led to 0.1.0. <a href="/roadmap/#how-it-started">How it started</a>.</p>
+${entries}
+      </section>`;
+}
+
+/**
+ * The site says "scanning", never "scraping": older changelog entries used the
+ * other word. Outside `code` (file and route names stay as they are), each form
+ * is swapped for its "scan" form when the notes are published.
+ */
+export function scanWording(md) {
+  const forms = [[/\bscraping\b/g, 'scanning'], [/\bScraping\b/g, 'Scanning'], [/\bscraper(s?)\b/g, 'scanner$1'], [/\bScraper(s?)\b/g, 'Scanner$1'],
+    [/\bscraped\b/g, 'scanned'], [/\bScraped\b/g, 'Scanned'], [/\bscrapes\b/g, 'scans'], [/\bScrapes\b/g, 'Scans'],
+    [/\bscrape\b/g, 'scan'], [/\bScrape\b/g, 'Scan']];
+  return md.split(/(`[^`]*`)/).map((part, i) => (i % 2 ? part : forms.reduce((t, [re, to]) => t.replace(re, to), part))).join('');
+}
+
 /** Every version in the changelog, newest first, with its notes in full. */
 export function renderReleases(site, values) {
   const all = parseChangelog(site.changelog);
   const full = fullReleases(all);
   const entries = all.map((r) => {
     const counts = r.prerelease ? changeCounts({ ...r, betas: [] }) : changeCounts(full.find((f) => f.version === r.version));
-    const notes = markdown(r.body.replace(/^\s+|\s+$/g, ''), { headingOffset: 0, ids: false });
+    const notes = markdown(scanWording(r.body.replace(/^\s+|\s+$/g, '')), { headingOffset: 0, ids: false });
     return `      <article class="release${r.prerelease ? ' beta' : ''}" id="${anchor(r.version)}">
         <header>
           <h2><a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>${r.prerelease ? ' <span class="tag">beta</span>' : ''}${r === full[0] ? ' <span class="tag latest">Latest</span>' : ''}</h2>
@@ -307,7 +355,7 @@ ${notes}
         </div>
       </article>`;
   }).join('\n');
-  const toc = full.map((r) => `<a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>`).join(' ');
+  const toc = `${full.map((r) => `<a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>`).join(' ')} <a href="#before-0-1">Before 0.1</a>`;
   const title = 'Release notes: every version of Six Degrees';
   const description = `Everything added, changed and fixed in each of Six Degrees' ${full.length} releases, from ${full.at(-1).version} to ${full[0].version}, newest first.`;
   const main = `${pageHead({ kicker: 'Releases', title: 'Release notes', lede: `Every version, newest first, from the <a href="${REPO}/blob/main/CHANGELOG.md">changelog</a>. Downloads for each are on <a href="${REPO}/releases">GitHub Releases</a>.` })}
@@ -324,22 +372,8 @@ ${notes}
     <nav class="release-toc" aria-label="Versions"><span>Jump to</span> ${toc}</nav>
     <div class="releases">
 ${entries}
-      <article class="release archive" id="static-version">
-        <header>
-          <h2><a href="#static-version">The static version</a> <span class="tag">before 0.1.0</span></h2>
-          <p class="post-meta"><span>12–15 July 2026</span></p>
-        </header>
-        <div class="prose release-notes"><p>Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data stayed on your device.</p></div>
-      </article>
-      <article class="release archive" id="first-build">
-        <header>
-          <h2><a href="#first-build">The first build</a> <span class="tag">archive</span></h2>
-          <p class="post-meta"><span>11 June 2026</span></p>
-          <p class="release-links"><a href="https://six-degrees-linkedin.vercel.app/">Archive: the original prototype (June 2026), kept as it was</a></p>
-        </header>
-        <div class="prose release-notes"><p>"6 Degrees of Separation": a LinkedIn network research tool with a force-directed graph, hosted online. Where Six Degrees started. The open-source rebuild began on 21 August 2026. <a href="/roadmap/#how-it-started">How it started</a>.</p></div>
-        <figure class="archive-shot"><a href="https://six-degrees-linkedin.vercel.app/"><img src="/img/first-build-june-2026.jpg" alt="The first build's welcome screen: 6 Degrees of Separation, Map your LinkedIn power network" width="800" height="500" loading="lazy"></a><figcaption>The first build, June 2026</figcaption></figure>
-      </article>
+${beforeHtml()}
+
     </div>
     <p class="feed-line"><a href="/releases/feed.xml">Follow releases (Atom feed)</a> · <a href="${REPO}/releases">All releases on GitHub</a></p>`;
   const graph = [
@@ -394,7 +428,7 @@ export function releaseFeed(site) {
       id: `${SITE}/releases/#${anchor(r.version)}`, title: `Six Degrees ${r.version}: ${highlights(r).title}`,
       url: `${SITE}/releases/#${anchor(r.version)}`, published: r.date, updated: r.date,
       summary: KINDS.filter((k) => changeCounts(r)[k]).map((k) => `${changeCounts(r)[k]} ${k}`).join(', '),
-      html: markdown(r.body.trim(), { ids: false }),
+      html: markdown(scanWording(r.body.trim()), { ids: false }),
     })),
   });
 }

@@ -648,3 +648,7 @@ main.page { padding-bottom: 40px; }
 .archive-shot img { display: block; width: 100%; border-radius: 12px; border: 1px solid var(--line-2); }
 .road.history { --c: var(--purple); margin-top: 18px; }
 .road-sub { color: var(--muted); margin: -6px 0 10px; }
+.before { margin-top: 48px; padding: 8px 24px 12px; border-radius: 18px; border: 1px dashed rgba(181, 126, 220, 0.4); background: rgba(155, 89, 182, 0.05); }
+.before > h2 { text-align: left; font-size: 24px; margin: 18px 0 4px; }
+.before .release:last-child { border-bottom: 0; }
+.tag.stage { font-family: inherit; font-weight: 700; color: #1b0f24; background: var(--purple); border-color: transparent; }
