@@ -203,8 +203,6 @@ function SetupInner() {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>Scan your network</h1>
       </header>
-      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
-      <div id="scan-bar-slot" />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px' }}>
 

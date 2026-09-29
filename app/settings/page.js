@@ -73,8 +73,6 @@ function SettingsInner() {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>Settings</h1>
       </header>
-      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
-      <div id="scan-bar-slot" />
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '8px 24px 64px' }}>
         {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}

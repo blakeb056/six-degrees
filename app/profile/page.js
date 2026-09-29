@@ -164,8 +164,6 @@ function ProfileInner() {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>Profile</h1>
       </header>
-      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
-      <div id="scan-bar-slot" />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '30px 20px' }}>
       <div style={{ maxWidth: 700, margin: '0 auto' }}>

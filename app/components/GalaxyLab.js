@@ -12,6 +12,7 @@ import {
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
 import { savePicture, recordReplay, canRecord } from '../../lib/galaxy-export';
+import { showActivity } from '../../lib/island';
 
 const noLayouts = [];
 
@@ -89,7 +90,9 @@ export default function GalaxyLab() {
   const run = async (what, job) => {
     setBusy(what);
     setNote(null);
-    try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); }
+    // A recording runs for the whole replay: the notch under the header shows it.
+    const done = what === 'video' ? showActivity({ id: 'replay-video', label: 'Recording the replay', detail: 'The video saves when it ends' }) : () => {};
+    try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); done(); }
   };
   const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
   const preset = FORCES.every((f) => lab[f.key] === LAB_DEFAULTS[f.key]) ? 'rings'

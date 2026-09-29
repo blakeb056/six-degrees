@@ -1,18 +1,21 @@
 'use client';
 
-// The scan status bar: while a scan runs, every page shows what it's doing,
-// for whom, how far it's got, and today's LinkedIn budget, with Stop. Stop
-// saves what was read, and the Scan page's Resume carries on from that page.
-// It sits just under the header's tabs (Network Circle, Degrees…), on every
-// page, the Scan page too (Blake, 2026-09-29). It only reports: the
-// pacing and the caps live in the scanner (scripts/scrape.py, lib/linkedin-limits.js).
+// The notch: a small pill hanging from the bottom of the header, centred, on
+// every page (Blake, 2026-09-29: "a notch ui of the thing scanning"). It stays
+// out of the way: nothing at all while nothing runs; a tiny dimmed "Auto scan"
+// when the all-day mode is on but idle; while a scan runs, what it's doing and
+// how far it's got. Hover or click it to open it: who, today's LinkedIn budget,
+// the latest line, Details and Stop. Stop saves what was read, and the Scan
+// page's Resume carries on from that page. Other long jobs can show here too
+// (lib/island.js). It only reports: the pacing and the caps live in the scanner
+// (scripts/scrape.py, lib/linkedin-limits.js).
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
+import { watchActivities, activitiesNow, noActivities } from '../../lib/island';
 
 const WHAT = {
   full: 'Scanning your network',
@@ -36,33 +39,35 @@ const tone = (used, cap) => (!cap ? '#8b9a9a' : used / cap >= 0.9 ? '#ff6b6b' : 
 export default function ScanStatusBar() {
   const [job, setJob] = useState(() => scannerNow());
   const [stopping, setStopping] = useState(false);
-  // The Scan page's experimental all-day Auto-Bridge switch: with it on, the bar
-  // stays under the tabs even while nothing runs, so you can see the mode is on.
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const allDay = useSyncExternalStore(watchAllDay, allDayNow, () => false);
-  // Where it sits: in the page's own slot under its header when the page has one
-  // (it then pushes the page down rather than covering it), otherwise fixed just
-  // under the header's buttons, measured, since a header can wrap to two rows.
+  const others = useSyncExternalStore(watchActivities, activitiesNow, noActivities);
+  useEffect(() => watchScanner(() => {
+    const now = scannerNow();
+    setJob(now);
+    if (!now.running) setStopping(false);
+  }), []);
+
+  // Hangs from the header's bottom edge, measured: the header can load late,
+  // be swapped for a new one, or wrap to two rows.
   const pathname = usePathname();
-  const [spot, setSpot] = useState({ slot: null, top: null });
+  const [top, setTop] = useState(null);
   useEffect(() => {
-    // The header can load late or be swapped for a new one (a page that shows
-    // "Loading…" first), so it's found again whenever the page's elements change,
-    // and its size is watched for a wrap to two rows.
     let header = null;
     let ro = null;
     let queued = 0;
     const measure = () => {
       queued = 0;
-      const slot = document.getElementById('scan-bar-slot');
-      const now = slot ? null : document.querySelector('header');
+      const now = document.querySelector('header');
       if (now !== header) {
         ro?.disconnect();
         ro = null;
         header = now;
         if (header) { ro = new ResizeObserver(later); ro.observe(header); }
       }
-      const top = header ? Math.round(header.getBoundingClientRect().bottom) + 6 : null;
-      setSpot((was) => (was.slot === slot && was.top === top ? was : { slot, top }));
+      const at = header ? Math.round(header.getBoundingClientRect().bottom) : null;
+      setTop((was) => (was === at ? was : at));
     };
     const later = () => { if (!queued) queued = requestAnimationFrame(measure); };
     later();
@@ -71,63 +76,83 @@ export default function ScanStatusBar() {
     window.addEventListener('resize', later);
     return () => { cancelAnimationFrame(queued); ro?.disconnect(); mo.disconnect(); window.removeEventListener('resize', later); };
   }, [pathname]);
-  useEffect(() => watchScanner(() => {
-    const now = scannerNow();
-    setJob(now);
-    if (!now.running) setStopping(false);
-  }), []);
-  const place = {
-    ...(spot.slot
-      ? { position: 'relative', margin: '8px auto 12px', width: 'fit-content' }
-      : { position: 'fixed', left: '50%', top: spot.top != null ? spot.top : 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60 }),
-    maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', whiteSpace: 'nowrap',
-    padding: '8px 12px', borderRadius: 12, fontSize: 12, color: '#cfd8d8', background: 'rgba(14,16,32,0.94)',
-  };
-  const put = (bar) => (spot.slot && document.body.contains(spot.slot) ? createPortal(bar, spot.slot) : bar);
-  if (!job?.running) {
-    if (!allDay) return null;
-    return put(
-      <div role="status" style={{ ...place, opacity: 0.55, border: '1px solid rgba(255,255,255,0.1)' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#556', flexShrink: 0 }} />
-        <b style={{ color: '#b8c4c4' }}>Auto scan</b>
-        <span style={{ color: '#8b9a9a' }}>ready · press Auto scan beside Scan to start</span>
-      </div>
-    );
-  }
 
-  const p = job.progress;
+  const running = !!job?.running;
+  const other = others[others.length - 1] || null;
+  if (!running && !other && !allDay) return null;
+
+  const p = job?.progress;
   const step = p?.kind === 'batch' && p.total ? `${p.current || p.done || 0} of ${p.total}`
-    : p?.kind === 'walk' && p.total ? `${(p.done || 0).toLocaleString()} of ${p.total.toLocaleString()} read`
+    : p?.kind === 'walk' && p.total ? `${(p.done || 0).toLocaleString()} of ${p.total.toLocaleString()}`
     : p?.kind === 'saving' ? 'saving' : null;
-  const b = job.budget;
-  const last = [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim();
+  const fraction = p?.total ? Math.min(1, (p.current || p.done || 0) / p.total) : other?.progress ?? null;
+  const b = job?.budget;
+  const last = running ? [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim() : null;
+  const expanded = open || pinned;
 
-  return put(
-    <div role="status" aria-live="polite" style={{ ...place, border: '1px solid rgba(0,255,136,0.25)' }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ff88', flexShrink: 0 }} />
-      <b style={{ color: '#fff' }}>{WHAT[job.action] || 'Scanning'}</b>
-      {job.target?.name && <span>{job.target.name}</span>}
-      {step && <span style={{ color: '#8b9a9a' }}>{step}</span>}
-      {b && (
-        <span style={{ color: tone(b.searches, b.cap) }} title="Searches on your LinkedIn account in the last 24 hours, and your daily budget">
-          {b.searches}{b.cap ? ` of ${b.cap}` : ''} searches today
-        </span>
-      )}
-      {last && (
-        <span style={{ color: '#667', flex: '0 1 240px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>
-          {last}
-        </span>
-      )}
-      <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Details</Link>
+  // What the pill says, smallest first.
+  const dot = running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB') : '#556';
+  const label = running ? (WHAT[job.action] || 'Scanning') : other ? other.label : 'Auto scan';
+  const short = running ? step : other ? other.detail : null;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      style={{
+        position: 'fixed', left: '50%', top: top ?? 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
+        maxWidth: 'calc(100vw - 32px)', minWidth: running || other ? 180 : 0,
+        padding: expanded ? '8px 14px 10px' : '4px 12px 6px',
+        borderRadius: '0 0 16px 16px', borderTop: 'none',
+        border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(255,255,255,0.1)'}`,
+        background: 'rgba(8,10,22,0.96)', color: '#cfd8d8', fontSize: 12,
+        opacity: running || other || expanded ? 1 : 0.55,
+        boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',
+        transition: 'padding 0.18s ease, opacity 0.18s ease',
+      }}
+    >
       <button
-        onClick={async () => { setStopping(true); try { await stopScrape(); } catch { setStopping(false); } }}
-        disabled={stopping}
-        title="Stops after saving what's been read; Resume on the Scan page carries on from the same page"
-        style={{
-          padding: '4px 10px', borderRadius: 8, fontSize: 12, cursor: stopping ? 'default' : 'pointer',
-          background: 'rgba(255,107,107,0.12)', color: '#ff9b9b', border: '1px solid rgba(255,107,107,0.35)',
-        }}
-      >{stopping ? 'Stopping…' : 'Stop'}</button>
+        onClick={() => setPinned((v) => !v)}
+        aria-expanded={expanded}
+        title={expanded ? 'Close' : 'Open'}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}
+      >
+        <span className={running ? 'notch-pulse' : undefined} style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+        <b style={{ color: running || other ? '#fff' : '#b8c4c4', fontWeight: 600 }}>{label}</b>
+        {short && <span style={{ color: '#8b9a9a' }}>{short}</span>}
+        {!running && !other && expanded && <span style={{ color: '#8b9a9a' }}>ready · press Auto scan beside Scan to start</span>}
+      </button>
+      {fraction != null && (
+        <div style={{ height: 2, marginTop: 5, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+          <div style={{ width: `${Math.round(fraction * 100)}%`, height: '100%', background: running ? '#00ff88' : '#3498DB', transition: 'width 0.4s ease' }} />
+        </div>
+      )}
+      {expanded && running && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+          {job.target?.name && <span>{job.target.name}</span>}
+          {b && (
+            <span style={{ color: tone(b.searches, b.cap) }} title="Searches on your LinkedIn account in the last 24 hours, and your daily budget">
+              {b.searches}{b.cap ? ` of ${b.cap}` : ''} searches today
+            </span>
+          )}
+          {last && (
+            <span style={{ color: '#667', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>
+          )}
+          <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Details</Link>
+          <button
+            onClick={async () => { setStopping(true); try { await stopScrape(); } catch { setStopping(false); } }}
+            disabled={stopping}
+            title="Stops after saving what's been read; Resume on the Scan page carries on from the same page"
+            style={{
+              padding: '3px 10px', borderRadius: 8, fontSize: 12, cursor: stopping ? 'default' : 'pointer',
+              background: 'rgba(255,107,107,0.12)', color: '#ff9b9b', border: '1px solid rgba(255,107,107,0.35)',
+            }}
+          >{stopping ? 'Stopping…' : 'Stop'}</button>
+        </div>
+      )}
+      {expanded && !running && other?.detail && <div style={{ marginTop: 6, color: '#8b9a9a' }}>{other.detail}</div>}
     </div>
   );
 }
