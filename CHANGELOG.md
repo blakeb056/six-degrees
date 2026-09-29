@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Paths opens about 9× faster on a large network** (Map 19.8 s → 2.2 s, Industries 25.8 s →
+  1.7 s, at 1,500 connections and 25,000 people in their circles). Each headline and company
+  name is now read once, not once per pass: Paths read everyone's headline five or more times,
+  and each read tries the whole company list. The same fix makes Scores open in under a
+  second (was 11 s), and setting a company's score rescores everyone in a third of a second
+  (was 6 s). Scores themselves are unchanged.
+- **Opening a company's path to the top in Paths no longer hangs.** Every row compared itself
+  with everyone at the company each time the page drew: at a company of 1,900 people that took
+  minutes. It now opens in a fifth of a second, and a row works out what adding them would do
+  only when you open it.
+
 ## [0.4.7] - 2026-09-29
 
 ### Added
