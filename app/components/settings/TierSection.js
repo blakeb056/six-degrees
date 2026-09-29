@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Section, Body, Status, LINE } from '../ui';
 import { CURVE, CURVE_FLOOR } from '../../../lib/scoring';
 import { csvNetworkSource } from '../../../lib/csv';
+import { saveSettings } from '../../../lib/settings-client';
 
 const pct = (x) => `${Math.round(x * 100)}%`;
 const [S, A, B] = CURVE.map(([, share]) => share);
@@ -53,21 +54,15 @@ export default function TierSection({ onSaved } = {}) {
     if (saving || key === saved) return;
     setSaving(true);
     setResult(null);
-    try {
-      const r = await fetch('/api/settings', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { tierScale: key } }),
-      });
-      const d = await r.json();
-      if (d.settings) setSaved(d.settings.tierScale);
-      if (!r.ok) { setResult({ tone: 'bad', text: d.error || 'Could not save.' }); return; }
-      const e = d.effects?.tierScale;
+    const { settings, effects, error } = await saveSettings({ tierScale: key });
+    if (settings) setSaved(settings.tierScale);
+    if (error) setResult({ tone: 'bad', text: error });
+    else {
+      const e = effects?.tierScale;
       setResult({ tone: 'ok', text: e ? `Saved. ${plural(e.moved, 'person', 'people')} changed tier.` : 'Saved.' });
       onSaved?.();
-    } catch {
-      setResult({ tone: 'bad', text: 'Could not reach the app. Reload this page to see what is saved.' });
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   }
 
   return (

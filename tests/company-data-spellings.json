@@ -2251,7 +2251,8 @@
   "u.s. department of the navy",
   "us department of the navy",
   "united states department of the navy",
-  "office of naval research"
+  "office of naval research",
+  "usn"
  ],
  "U.S. Air Force": [
   "u.s. air force",
@@ -2288,7 +2289,8 @@
   "space systems command",
   "space operations command",
   "space training and readiness command",
-  "space development agency"
+  "space development agency",
+  "ussf"
  ],
  "U.S. Coast Guard": [
   "u.s. coast guard",
