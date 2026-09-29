@@ -26,7 +26,7 @@ let buildExport, exportFileName, countPeople, appTables;
 let validateImport, stageImport, applyPendingImport, pendingImport, cancelPendingImport;
 let importPreflight, receiveUpload, ImportError, restartCodeFrom, restartAdvice, lastImport, recordImport;
 let admitImport, keptCopyMatches, vacuumCopy, MAX_IMPORT_BYTES, travellingFiles, referencedPhotos, linkedinState, durable;
-let folderReport, sweepLeftovers, revealFolder, folderOpener, UPLOAD_WORK_PREFIX, EXPORT_WORK_PREFIX;
+let folderReport, sweepLeftovers, revealFolder, folderOpener, UPLOAD_WORK_PREFIX, EXPORT_WORK_PREFIX, exportedFileKind;
 
 before(async () => {
   ({ applySchema, backupOnNewVersion } = await import('../lib/db-client.js'));
@@ -34,7 +34,7 @@ before(async () => {
   ({
     validateImport, stageImport, applyPendingImport, pendingImport, cancelPendingImport,
     importPreflight, receiveUpload, ImportError, restartCodeFrom, restartAdvice, lastImport, recordImport,
-    admitImport, keptCopyMatches, vacuumCopy, MAX_IMPORT_BYTES,
+    admitImport, keptCopyMatches, vacuumCopy, MAX_IMPORT_BYTES, exportedFileKind,
   } = await import('../lib/data-import.js'));
   ({ linkedinState } = await import('../lib/linkedin-limits.js'));
   ({ durable } = await import('../lib/durable.js'));
@@ -859,22 +859,26 @@ test('only the photos of people still in the network travel', () => {
   assert.equal(report.photosInCopy.count, 2);
 });
 
-test('the Social tab\'s files, the kept messages and the CRM notes above all, never go into a copy', () => {
-  // Keep my messages promises the words stay on this computer, and Settings
-  // says a copy doesn't carry them. The allow-list is what keeps that true.
+test('the Social tab\'s files go into a copy when asked, and only then; half-written files never', () => {
+  // Blake, 2026-09-29: everything travels with the network, the CRM notes and
+  // kept messages too, unless the Social box is unticked.
   const dir = folder('social');
   const db = seedNetwork(dir, { people: 1, tag: 's' });
   writeFileSync(path.join(dir, 'social-s-me.json'), JSON.stringify({ keepMessages: true, people: {} }));
   writeFileSync(path.join(dir, 'social-messages-s-me.json'), JSON.stringify({ threads: { t1: { messages: [{ t: 1, fromMe: false, text: 'INVENTED-KEPT-MESSAGE' }] } } }));
   writeFileSync(path.join(dir, 'social-messages-s-me.json.incoming'), 'INVENTED-HALF-IMPORT');
   writeFileSync(path.join(dir, 'crm-s-me.json'), JSON.stringify({ people: { 'https://www.linkedin.com/in/x': { notes: 'INVENTED-CRM-NOTE' } } }));
-  assert.equal(travellingFiles(dir).some((f) => f.rel.startsWith('social') || f.rel.startsWith('crm')), false);
+  const rels = travellingFiles(dir).map((f) => f.rel);
+  assert.ok(rels.includes('crm-s-me.json') && rels.includes('social-s-me.json') && rels.includes('social-messages-s-me.json'));
+  assert.equal(rels.some((r) => r.endsWith('.incoming')), false);
+  assert.equal(travellingFiles(dir, { includeSocial: false }).some((f) => f.rel.startsWith('social') || f.rel.startsWith('crm')), false);
   const { out } = exportOf(dir, db);
   db.close();
-  assert.equal(pathsIn(out).some((p) => p.startsWith('social') || p.startsWith('crm')), false);
-  assert.equal(readFileSync(out).includes('INVENTED-CRM-NOTE'), false);
-  assert.equal(readFileSync(out).includes('INVENTED-KEPT-MESSAGE'), false);
+  assert.ok(pathsIn(out).includes('crm-s-me.json'));
   assert.equal(readFileSync(out).includes('INVENTED-HALF-IMPORT'), false);
+  assert.equal(exportedFileKind('crm-s-me.json'), 'social');
+  assert.equal(exportedFileKind('../crm-s-me.json'), null);
+  assert.equal(exportedFileKind('social-messages-x.json.incoming'), null);
 });
 
 test('REGRESSION: an avatars folder that is a link to somewhere else is not followed', () => {

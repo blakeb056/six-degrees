@@ -20,6 +20,7 @@ export async function POST(request) {
   let body = {};
   try { body = await request.json(); } catch { /* no options: the defaults */ }
   const includePhotos = body?.photos !== false;
+  const includeSocial = body?.social !== false;
 
   const dir = dataDir();
   sweepLeftovers(dir);
@@ -27,7 +28,7 @@ export async function POST(request) {
   try {
     const file = path.join(work, 'export.sixdegrees');
     const made = buildExport(getDb(), {
-      dir, outFile: file, includePhotos, appVersion: APP_VERSION, schemaSql: SCHEMA_SQL,
+      dir, outFile: file, includePhotos, includeSocial, appVersion: APP_VERSION, schemaSql: SCHEMA_SQL,
     });
     const fd = openSync(file, 'r');
     rmSync(work, { recursive: true, force: true });
