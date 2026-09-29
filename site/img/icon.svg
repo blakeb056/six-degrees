@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Six Degrees mark: a 6 in one gold line around you, ending in a degree ring. -->
+  <defs><radialGradient id="core" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="0.45" stop-color="#FFD700" stop-opacity="0.45"/><stop offset="1" stop-color="#FFD700" stop-opacity="0"/></radialGradient></defs>
+  <rect width="1024" height="1024" rx="230" fill="#14142e"/>
+  <circle cx="470" cy="560" r="330" fill="none" stroke="#9B59B6" stroke-opacity="0.2" stroke-width="12"/><circle cx="470" cy="560" r="410" fill="none" stroke="#3498DB" stroke-opacity="0.13" stroke-width="12"/><circle cx="470" cy="620" r="210" fill="none" stroke="#FFD700" stroke-width="18"/><path d="M 260 620 C 260 400, 400 248, 601 238" fill="none" stroke="#FFD700" stroke-width="18" stroke-linecap="round"/><circle cx="655" cy="236" r="54" fill="none" stroke="#FFD700" stroke-width="18"/><circle cx="470" cy="620" r="95" fill="url(#core)"/>
+</svg>
