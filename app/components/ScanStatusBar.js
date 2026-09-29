@@ -3,12 +3,12 @@
 // The scan status bar: while a scan runs, every page shows what it's doing,
 // for whom, how far it's got, and today's LinkedIn budget, with Stop. Stop
 // saves what was read, and the Scan page's Resume carries on from that page.
-// Not on the Scan page, which shows all of this itself. It only reports: the
+// It sits just under the header's tabs (Network Circle, Degrees…), on every
+// page, the Scan page too (Blake, 2026-09-29). It only reports: the
 // pacing and the caps live in the scanner (scripts/scrape.py, lib/linkedin-limits.js).
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
 
 const WHAT = {
@@ -32,13 +32,12 @@ const tone = (used, cap) => (!cap ? '#8b9a9a' : used / cap >= 0.9 ? '#ff6b6b' : 
 export default function ScanStatusBar() {
   const [job, setJob] = useState(() => scannerNow());
   const [stopping, setStopping] = useState(false);
-  const path = usePathname();
   useEffect(() => watchScanner(() => {
     const now = scannerNow();
     setJob(now);
     if (!now.running) setStopping(false);
   }), []);
-  if (!job?.running || path?.startsWith('/setup')) return null;
+  if (!job?.running) return null;
 
   const p = job.progress;
   const step = p?.kind === 'batch' && p.total ? `${p.current || p.done || 0} of ${p.total}`
@@ -49,8 +48,8 @@ export default function ScanStatusBar() {
 
   return (
     <div role="status" aria-live="polite" style={{
-      position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 60,
-      maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      position: 'fixed', left: '50%', top: 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
+      maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', whiteSpace: 'nowrap',
       padding: '8px 12px', borderRadius: 12, fontSize: 12, color: '#cfd8d8',
       background: 'rgba(14,16,32,0.94)', border: '1px solid rgba(0,255,136,0.25)',
     }}>
@@ -64,7 +63,7 @@ export default function ScanStatusBar() {
         </span>
       )}
       {last && (
-        <span style={{ color: '#667', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>
+        <span style={{ color: '#667', flex: '0 1 240px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>
           {last}
         </span>
       )}

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   far it's got, today's LinkedIn searches against your daily budget (green, then amber past 60%,
   red past 90%), what the scanner is doing right now (for example the wait before the next
   profile), a link to the Scan page and Stop. Stop saves what was read, and Resume carries on
-  from the same page. The Scan page already shows all of this, so the bar isn't there.
+  from the same page. It sits just under the header's tabs, on every page, the Scan page too.
 
 ### Changed
 - **Network Circle's tiers switch on and off.** In the Filter panel, click a tier to hide it or
