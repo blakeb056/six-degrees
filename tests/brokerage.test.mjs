@@ -23,3 +23,22 @@ test('your own connections need no bridge; the same person twice in one circle c
   assert.equal(r.get('tom'), undefined);
   assert.equal(exclusiveReach().size, 0);
 });
+
+test('bridge overlap: each connection\'s closest twin, by the share of doors both open', async () => {
+  const { bridgeOverlap, redundancy } = await import('../lib/brokerage.js');
+  const rows = [
+    d2('maya', 'ann'), d2('maya', 'bo'), d2('maya', 'cy'), d2('maya', 'di'),
+    d2('tom', 'bo'), d2('tom', 'cy'), d2('tom', 'di'), d2('tom', 'ed'),
+    d2('lee', 'di'), d2('lee', 'fay'),
+  ];
+  const o = bridgeOverlap(rows, []);
+  assert.equal(o.get('maya').with, 'tom');
+  assert.equal(o.get('maya').shared, 3);
+  assert.ok(Math.abs(o.get('maya').share - 3 / 5) < 1e-9, 'maya ∩ tom = 3 of 5 people either reaches');
+  assert.equal(o.get('lee').with, 'maya');
+  assert.equal(o.get('lee').shared, 1);
+  // People: ann, bo, cy, di, ed, fay = 6; reached 2+ ways: bo, cy, di = 3.
+  assert.ok(Math.abs(redundancy(rows, []) - 0.5) < 1e-9);
+  assert.equal(bridgeOverlap([], []).size, 0);
+  assert.equal(redundancy(), 0);
+});
