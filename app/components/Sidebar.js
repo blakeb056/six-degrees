@@ -11,6 +11,7 @@ import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
 import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from '../../lib/reach';
+import { exclusiveReach } from '../../lib/brokerage';
 import Avatar from './Avatar';
 import { localPhoto } from '../../lib/photos';
 
@@ -39,6 +40,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // shows even while a tier chip is narrowing the view, and a person picked in
   // Chains or Galaxy gets every route too.
   const routeIdx = useMemo(() => routeIndex(degree2), [degree2]);
+  // Who only each connection reaches (lib/brokerage.js), for their card.
+  const exclusive = useMemo(() => exclusiveReach(degree2, connections), [degree2, connections]);
   const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
   // Who you've asked, shared with every view: a request sent here shows in
   // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
@@ -138,6 +141,23 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             tierColors={tierColors} onSelect={onSelect} isRequested={isRequested} canScan={canScan}
           />
         )}
+
+        {selected.degree !== 2 && exclusive.get(selected.id)?.only > 0 && (() => {
+          const ex = exclusive.get(selected.id);
+          const first = selected.name?.split(' ')[0] || 'them';
+          return (
+            <div style={{
+              background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)',
+              borderRadius: 8, padding: 12, marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 10, color: '#00ff88', fontWeight: 700, marginBottom: 4, letterSpacing: 1 }}>ONLY THROUGH {first.toUpperCase()}</div>
+              <div style={{ fontSize: 12, color: '#ccc', lineHeight: 1.5 }}>
+                <strong style={{ color: '#00ff88' }}>{ex.only.toLocaleString()}</strong> of the {ex.total.toLocaleString()} people in {first}&rsquo;s
+                circle are reached by none of your other connections. {first} is your only way to them.
+              </div>
+            </div>
+          );
+        })()}
 
         {selected.is_catalyst && (
           <div style={{
