@@ -218,7 +218,7 @@ function HomeInner() {
               {isMobile ? 'Circle' : 'Network Circle'}
             </button>
             <button
-              onClick={() => { setMode('degrees'); setSelected(null); setFilter('all'); setVisualMode('separation'); }}
+              onClick={() => { setMode('degrees'); setSelected(null); setFilter('all'); setVisualMode('chain'); }}
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
                 background: mode === 'degrees' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'rgba(255,255,255,0.12)',
