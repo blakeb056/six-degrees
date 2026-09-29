@@ -105,7 +105,9 @@ test('conversations from messages.csv: 1:1 and groups, you found as in messageSt
     assert.equal('title' in c, false);
     for (const m of c.messages) assert.deepEqual(Object.keys(m).sort(), ['fromMe', 't']);
   }
-  assert.deepEqual(conversationSummary(byId.c1), { id: 'c1', people: [ADA], group: false, last: Date.UTC(2026, 8, 20, 9), lastFromThem: true, count: 2 });
+  assert.deepEqual(conversationSummary(byId.c1), {
+    id: 'c1', people: [ADA], group: false, kind: null, folder: 'inbox', last: Date.UTC(2026, 8, 20, 9), lastFromThem: true, count: 2, mine: 1,
+  });
 
   const on = buildConversations(rows, { keepText: true });
   const c1 = on.conversations.find((c) => c.id === 'c1');
@@ -146,7 +148,9 @@ test('the Conversations list: the live sync adds unread, the link and a newer la
   assert.equal(by.c1.threadUrl, 'https://www.linkedin.com/messaging/thread/2-abc/');
   assert.deepEqual([by.c2.last, by.c2.lastFromThem], [50, false], 'an older live word doesn\'t override the export');
   assert.equal(by.c4.unread, null, 'groups aren\'t matched to one person\'s sync');
-  assert.deepEqual(by[`live:${CY}`], { id: `live:${CY}`, people: [CY], group: false, last: 150, lastFromThem: null, count: null, unread: 1, threadUrl: null });
+  assert.deepEqual(by[`live:${CY}`], {
+    id: `live:${CY}`, people: [CY], group: false, kind: null, folder: '', last: 150, lastFromThem: null, count: null, mine: null, unread: 1, threadUrl: null,
+  });
 
   const tiers = { [ADA]: 'B', [BEN]: 'S', [CY]: 'A' };
   const order = sortConversations(out, (c) => tiers[c.people[0]]).map((c) => c.id);
@@ -174,4 +178,126 @@ test('the live sync carries the thread\'s link, who wrote last and the newest me
   const dee = live['https://www.linkedin.com/in/dee-park'];
   assert.deepEqual([dee.threadUrl, dee.lastFromThem, dee.unread, dee.preview], [null, null, null, null], 'only LinkedIn messaging links, only true or false');
   assert.ok(!JSON.stringify(live).includes('Ruiz') && !JSON.stringify(live).includes('Dee Park'));
+});
+
+// ── Every conversation, not only connections' (the Social tab's CRM) ──────
+
+const DEE = 'https://www.linkedin.com/in/dee-park';
+const ACME = 'https://www.linkedin.com/company/invented-acme';
+
+const everyFolder = `CONVERSATION ID,CONVERSATION TITLE,FROM,SENDER PROFILE URL,TO,RECIPIENT PROFILE URLS,DATE,SUBJECT,CONTENT,FOLDER,IS MESSAGE DRAFT
+a1,,Ada Quill,${ADA},Moe Self,${ME},2024-03-01 10:00:00 UTC,,Invented old hello,ARCHIVE,No
+a1,,Moe Self,${ME},Ada Quill,${ADA},2024-03-02 10:00:00 UTC,,Invented old reply,ARCHIVE,No
+s1,,Moe Self,${ME},Ben Ostrander,${BEN},2026-09-10 10:00:00 UTC,,Invented pitch,SENT,No
+s1,,Moe Self,${ME},Ben Ostrander,${BEN},2026-09-12 10:00:00 UTC,,Invented nudge,SENT,No
+s1,,Moe Self,${ME},Ben Ostrander,${BEN},2026-09-13 10:00:00 UTC,,Unsent invented draft,DRAFT,Yes
+n1,,Dee Park,${DEE},Moe Self,${ME},2026-09-15 10:00:00 UTC,,Invented intro from a stranger,INBOX,No
+sp1,Sponsored Conversation,Invented Acme,${ACME},Moe Self,${ME},2026-09-16 10:00:00 UTC,Try Acme,Invented advert,INBOX,No
+im1,,Cy Marsh,${CY},Moe Self,${ME},2026-09-17 10:00:00 UTC,Opportunity,Invented InMail,INMAIL,No
+x1,,Moe Self,${ME},Ezra Vale,,2026-09-18 10:00:00 UTC,,Invented note to someone with no link,SPAM,No
+g2,,Moe Self,${ME},"Ada Quill, Dee Park","${ADA},${DEE}",2026-09-19 10:00:00 UTC,,Invented group hello,INBOX,No
+,,Moe Self,${ME},Ada Quill,${ADA},2026-09-19 11:00:00 UTC,,Invented orphan,INBOX,No`;
+
+test('the builder keeps every conversation: every folder, strangers, only-you-wrote, groups; drafts and broken rows counted', async () => {
+  const { buildConversations, conversationSummary } = await import('../lib/linkedin-export.js');
+  const built = buildConversations(readTable(everyFolder, 'conversation id'));
+  const by = Object.fromEntries(built.conversations.map((c) => [c.id, conversationSummary(c)]));
+  assert.deepEqual(Object.keys(by).sort(), ['a1', 'g2', 'im1', 'n1', 's1', 'sp1', 'x1']);
+  assert.deepEqual([by.a1.folder, by.s1.folder, by.n1.folder, by.x1.folder], ['archive', 'sent', 'inbox', 'spam']);
+  assert.deepEqual([by.a1.lastFromThem, by.a1.count, by.a1.mine], [false, 2, 1], 'a dormant conversation from 2024 is kept');
+  assert.deepEqual([by.s1.count, by.s1.mine, by.s1.lastFromThem], [2, 2, false], 'only you wrote; the draft is not a message');
+  assert.deepEqual(by.n1.people, [DEE], 'someone who isn\'t a connection is listed');
+  assert.deepEqual(by.x1.people, ['name:ezra vale'], 'no link: known by name');
+  assert.equal(by.g2.group, true);
+  assert.equal(built.drafts, 1);
+  assert.equal(built.skipped, 1, 'a row with no conversation id');
+  assert.equal(built.names[DEE], 'Dee Park');
+  assert.equal(built.names['name:ezra vale'], 'Ezra Vale');
+  assert.equal(built.names[ME], undefined, 'not you');
+  const all = JSON.stringify(built);
+  for (const words of ['old hello', 'pitch', 'Unsent invented', 'stranger', 'advert', 'Invented InMail', 'no link', 'group hello', 'Try Acme', 'Sponsored Conversation']) {
+    assert.ok(!all.includes(words), `no words without Keep my messages: ${words}`);
+  }
+});
+
+test('Sponsored Messages and InMails are marked, not dropped', async () => {
+  const { buildConversations, conversationSummary } = await import('../lib/linkedin-export.js');
+  const { conversations } = buildConversations(readTable(everyFolder, 'conversation id'));
+  const by = Object.fromEntries(conversations.map((c) => [c.id, conversationSummary(c)]));
+  assert.equal(by.sp1.kind, 'sponsored');
+  assert.deepEqual(by.sp1.people, [ACME]);
+  assert.equal(by.im1.kind, 'inmail');
+  assert.equal(by.n1.kind, null);
+  // The same from a sponsored folder or an InMail title, whatever the case.
+  const more = buildConversations(readTable(`CONVERSATION ID,CONVERSATION TITLE,FROM,SENDER PROFILE URL,TO,RECIPIENT PROFILE URLS,DATE,SUBJECT,CONTENT,FOLDER
+q1,,Invented Brand,,Moe Self,${ME},2026-09-01 10:00:00 UTC,,Ad,sponsored
+q2,LinkedIn InMail,Dee Park,${DEE},Moe Self,${ME},2026-09-01 10:00:00 UTC,,Hi,INBOX
+q3,,Moe Self,${ME},Dee Park,${DEE},2026-09-02 10:00:00 UTC,,Back,INBOX`, 'conversation id')).conversations;
+  const kinds = Object.fromEntries(more.map((c) => [c.id, c.kind]));
+  assert.deepEqual(kinds, { q1: 'sponsored', q2: 'inmail', q3: null });
+});
+
+test('requests both ways, one record each, the note only with the words kept', async () => {
+  const { buildInvitations } = await import('../lib/linkedin-export.js');
+  const csv = `From,To,Sent At,Message,Direction,inviterProfileUrl,inviteeProfileUrl
+Ada Quill,Moe Self,"9/1/26, 10:00 AM",Invented hello from Ada,INCOMING,${ADA},${ME}
+Moe Self,Dee Park,"9/5/26, 11:00 AM",Invented note to Dee,OUTGOING,${ME},${DEE}
+Moe Self,Ezra Vale,"9/6/26, 12:00 PM",,OUTGOING,,
+Nobody,Moe Self,"9/7/26, 12:00 PM",,SIDEWAYS,,`;
+  const off = buildInvitations(readTable(csv, 'direction'));
+  assert.deepEqual(off.map((i) => [i.dir, i.key, i.name]), [
+    ['out', 'name:ezra vale', 'Ezra Vale'],
+    ['out', DEE, 'Dee Park'],
+    ['in', ADA, 'Ada Quill'],
+  ]);
+  assert.equal(off[1].t, Date.UTC(2026, 8, 5, 11));
+  assert.ok(!JSON.stringify(off).includes('Invented'), 'no note without Keep my messages');
+  const on = buildInvitations(readTable(csv, 'direction'), { keepText: true });
+  assert.equal(on.find((i) => i.key === DEE).note, 'Invented note to Dee');
+  assert.equal('note' in on.find((i) => i.key === 'name:ezra vale'), false);
+});
+
+test('the live sync: people who aren\'t connections are kept with their name, groups by member, newer wins', async () => {
+  const { matchLive, matchLiveGroups, mergeLive, conversationList } = await import('../lib/linkedin-export.js');
+  const conns = [{ name: 'Ada Quill', profile_url: ADA }];
+  const { live, others, unmatched } = matchLive({
+    'https://www.linkedin.com/in/ACoAADA/': { last: 5, name: 'Ada Quill' },
+    'https://www.linkedin.com/in/ACoADEE/': { last: 7, unread: 1, name: 'Dee Park', lastFromThem: true },
+    'javascript:alert(1)': { last: 9, name: 'Not A Link' },
+  }, conns);
+  assert.deepEqual(Object.keys(live), [ADA]);
+  assert.deepEqual(others, {
+    'https://www.linkedin.com/in/ACoADEE': { name: 'Dee Park', last: 7, unread: 1, threadUrl: null, lastFromThem: true, preview: null },
+  });
+  assert.equal(unmatched, 1);
+
+  const groups = matchLiveGroups([{
+    threadUrl: 'https://www.linkedin.com/messaging/thread/2-G/', last: 20, unread: 2,
+    people: ['https://www.linkedin.com/in/ACoAADA/', 'https://www.linkedin.com/in/ACoADEE/'],
+    names: { 'https://www.linkedin.com/in/ACoAADA/': 'Ada Quill', 'https://www.linkedin.com/in/ACoADEE/': 'Dee Park' },
+  }], conns);
+  assert.deepEqual(groups[0].people, [ADA, 'https://www.linkedin.com/in/ACoADEE'].sort());
+  assert.deepEqual(groups[0].names, { 'https://www.linkedin.com/in/ACoADEE': 'Dee Park' }, 'a connection\'s name isn\'t kept');
+
+  assert.deepEqual(mergeLive({ a: { last: 5 }, b: { last: 9 } }, { b: { last: 3 }, c: { last: 1 } }), { a: { last: 5 }, b: { last: 9 }, c: { last: 1 } });
+
+  // Joined to the export by name: Dee's export conversation and the group with the same people.
+  const list = conversationList(
+    [
+      { id: 'n1', people: [DEE], group: false, last: 4, lastFromThem: false, count: 1 },
+      { id: 'g2', people: [ADA, DEE], group: true, last: 10, lastFromThem: false, count: 3 },
+    ],
+    {},
+    { others, groups, names: { [DEE]: 'Dee Park', [ADA]: 'Ada Quill' } },
+  );
+  const by = Object.fromEntries(list.map((c) => [c.id, c]));
+  assert.deepEqual(Object.keys(by).sort(), ['g2', 'n1']);
+  assert.deepEqual([by.n1.last, by.n1.unread, by.n1.lastFromThem, by.n1.liveKey], [7, 1, true, 'https://www.linkedin.com/in/ACoADEE']);
+  assert.deepEqual([by.g2.last, by.g2.unread, by.g2.threadUrl], [20, 2, 'https://www.linkedin.com/messaging/thread/2-G/']);
+  // With no export to join, each is a conversation of its own.
+  const alone = conversationList([], {}, { others, groups });
+  assert.deepEqual(alone.map((c) => [c.id, c.group]).sort(), [
+    ['live:https://www.linkedin.com/in/ACoADEE', false],
+    ['live:https://www.linkedin.com/messaging/thread/2-G/', true],
+  ]);
 });

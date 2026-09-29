@@ -422,8 +422,12 @@ const ACTIONS = {
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
   // Photos an older version kept as links to LinkedIn: saved here, once each.
   // No browser, no search; every scan does the same at its end.
-  // Experimental, for the Social tab: your messages list, once (who, when, unread; never text).
+  // Experimental, for the Social tab: your messages list, once (who, when, unread; the
+  // newest message's words only while Keep my messages is on).
   messages:      { flag: '--messages',    label: 'Reading your messages list' },
+  // The same, scrolling until the whole list has loaded (60 scrolls or about
+  // 1,000 conversations at most), for the Social tab's "Read my whole history".
+  'messages-full': { flag: '--messages --full-history', label: 'Reading your whole messages history' },
   photos:        { flag: '--save-photos', label: 'Saving profile photos to this computer' },
 };
 

@@ -1,35 +1,68 @@
 import { rmSync } from 'node:fs';
 import { db } from '../../../lib/db';
 import { resolveProfile } from '../../../lib/profile';
-import { matchLive } from '../../../lib/linkedin-export';
+import { matchLive, matchLiveGroups, mergeLive } from '../../../lib/linkedin-export';
 import { socialFiles, readJson, writeJsonAtomic, readMessages, deleteMessages } from '../../../lib/social-store';
 
 // The Social tab's saved findings (lib/linkedin-export.js): numbers and dates
 // from your own LinkedIn export and the live messages sync, one file per
-// profile in the data folder. No message text is kept in this file: the words,
-// when Keep my messages is on, go to their own file (lib/social-store.js,
-// app/api/social/messages). GET reads it, POST replaces it, PUT takes a live
-// sync, PATCH flips a switch, DELETE forgets it all.
+// profile in the data folder, and the names of people who aren't your
+// connections (nothing else in the app says who they are). No message text is
+// kept in this file: the words, when Keep my messages is on, go to their own
+// file (lib/social-store.js, app/api/social/messages). GET reads it, POST
+// replaces it, PUT takes a live sync, PATCH flips a switch, DELETE forgets it
+// all. Your CRM notes are a file of their own (app/api/social/crm), which
+// Forget it leaves alone: the page asks about them separately.
 
 // A person's key: their profile link, as lib/separation.js keyFor makes it.
 const KEY_OK = (k) => typeof k === 'string' && k.length > 0 && k.length < 300;
+const num = (n) => (Number.isFinite(Number(n)) && n !== null ? Number(n) : null);
+const name = (s) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 120) : '');
 
-/** An import's list of conversations, with nothing but the fields the list shows. */
+/**
+ * An import's list of conversations, with nothing but the fields the list
+ * shows. A conversation with no one but you in it (the export didn't say to
+ * whom) stays, with no people: nothing is dropped.
+ */
 function cleanConversations(list) {
   if (!Array.isArray(list)) return [];
   const out = [];
   for (const c of list) {
     if (!c || typeof c.id !== 'string' || !c.id || c.id.length > 200 || !Array.isArray(c.people)) continue;
     const people = c.people.filter(KEY_OK).slice(0, 200);
-    if (!people.length) continue;
     out.push({
       id: c.id,
       people,
       group: c.group === true,
+      kind: ['sponsored', 'inmail'].includes(c.kind) ? c.kind : null,
+      folder: typeof c.folder === 'string' && /^[\w -]{0,30}$/.test(c.folder) ? c.folder.toLowerCase() : '',
       last: Number(c.last) || null,
       lastFromThem: typeof c.lastFromThem === 'boolean' ? c.lastFromThem : null,
-      count: Number.isFinite(Number(c.count)) ? Number(c.count) : null,
+      count: num(c.count),
+      mine: num(c.mine),
     });
+  }
+  return out;
+}
+
+/** An import's requests (buildInvitations), without their notes: those go with the messages, and only while they're kept. */
+function cleanInvitations(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const i of list.slice(0, 50000)) {
+    if (!i || !['in', 'out'].includes(i.dir) || !KEY_OK(i.key) || typeof i.id !== 'string' || i.id.length > 400) continue;
+    out.push({ id: i.id, dir: i.dir, key: i.key, name: name(i.name), t: Number(i.t) || null });
+  }
+  return out;
+}
+
+/** Names by key, as the export spells them. */
+function cleanNames(names) {
+  const out = {};
+  if (!names || typeof names !== 'object') return out;
+  for (const [k, v] of Object.entries(names).slice(0, 200000)) {
+    const n = name(v);
+    if (KEY_OK(k) && n) out[k] = n;
   }
   return out;
 }
@@ -39,9 +72,10 @@ export async function GET() {
   if (!files) return Response.json({ social: null });
   const social = readJson(files.social, null);
   if (!social) return Response.json({ social: null });
-  // The list of conversations can run to thousands; the Galaxy and the tab's
-  // counts don't need it, and GET /api/social/messages serves it.
-  const { conversations, ...rest } = social;
+  // The lists (conversations, requests, names, what the sync found beyond your
+  // connections) can run to thousands; the Galaxy and the tab's counts don't
+  // need them, and GET /api/social/messages serves them.
+  const { conversations, invitations, names, liveOthers, liveGroups, ...rest } = social;
   return Response.json({ social: { ...rest, conversationCount: Array.isArray(conversations) ? conversations.length : 0 } });
 }
 
@@ -55,6 +89,8 @@ export async function POST(request) {
   const clean = {
     live: before.live || {},
     liveAt: before.liveAt || null,
+    liveOthers: before.liveOthers || {},
+    liveGroups: before.liveGroups || [],
     autoSync: before.autoSync === true,
     keepMessages: before.keepMessages === true,
     importedAt: new Date().toISOString(),
@@ -64,6 +100,8 @@ export async function POST(request) {
     chapters: Array.isArray(body?.chapters) ? body.chapters : [],
     posts: body?.posts && typeof body.posts === 'object' ? body.posts : null,
     invites: body?.invites && typeof body.invites === 'object' ? body.invites : null,
+    invitations: cleanInvitations(body?.invitations),
+    names: cleanNames(body?.names),
     emails: body?.emails === true,
   };
   for (const p of Object.values(clean.people)) {
@@ -73,14 +111,18 @@ export async function POST(request) {
     }
   }
   writeJsonAtomic(files.social, clean);
-  return Response.json({ ok: true, people: Object.keys(clean.people).length, conversations: clean.conversations.length });
+  return Response.json({ ok: true, people: Object.keys(clean.people).length, conversations: clean.conversations.length, invitations: clean.invitations.length });
 }
 
 // From the scanner's experimental messages sync (scripts/scrape.py sync_messages):
 // per person, when your 1:1 conversation was last active, unread count, the
-// thread's link, who wrote last and the newest message. Merged in beside what
-// the export gave, kept under `live`. The newest message's words go to the
-// messages file, and only while Keep my messages is on.
+// thread's link, who wrote last and the newest message; and the group
+// conversations, without any words. Kept beside what the export gave: your
+// connections under `live`, everyone else (with their name) under
+// `liveOthers`, groups under `liveGroups`, each merged with what earlier syncs
+// found, so a quick sync doesn't forget what a full-history one read further
+// down. The newest message's words go to the messages file, and only while
+// Keep my messages is on.
 export async function PUT(request) {
   const files = socialFiles();
   if (!files) return Response.json({ error: 'Pick a profile first.' }, { status: 400 });
@@ -95,19 +137,34 @@ export async function PUT(request) {
     if (me?.id) q.eq('user_id', me.id);
     conns = (await q).data || [];
   } catch { /* no connections yet */ }
-  const { live: matched, unmatched } = matchLive(body?.live || {}, conns);
+  const { live: matched, others: found, unmatched } = matchLive(body?.live || {}, conns);
   const live = {};
+  const others = {};
   const previews = {};
-  for (const [key, { preview, ...rest }] of Object.entries(matched)) {
-    live[key] = rest;
-    if (saved.keepMessages === true && preview?.text) previews[key] = preview;
+  for (const [into, from] of [[live, matched], [others, found]]) {
+    for (const [key, { preview, ...rest }] of Object.entries(from)) {
+      into[key] = rest;
+      if (saved.keepMessages === true && preview?.text) previews[key] = preview;
+    }
   }
-  writeJsonAtomic(files.social, { ...saved, live, liveAt: new Date().toISOString() });
+  const groups = {};
+  for (const g of saved.liveGroups || []) groups[g.threadUrl || g.people.join(',')] = g;
+  for (const g of matchLiveGroups(body?.groups || [], conns)) {
+    const k = g.threadUrl || g.people.join(',');
+    if (!groups[k] || (g.last || 0) >= (groups[k].last || 0)) groups[k] = g;
+  }
+  writeJsonAtomic(files.social, {
+    ...saved,
+    live: mergeLive(saved.live, live),
+    liveOthers: mergeLive(saved.liveOthers, others),
+    liveGroups: Object.values(groups),
+    liveAt: new Date().toISOString(),
+  });
   if (Object.keys(previews).length) {
     const kept = readJson(files.messages, {}) || {};
     writeJsonAtomic(files.messages, { ...kept, previews: { ...(kept.previews || {}), ...previews } });
   }
-  return Response.json({ ok: true, people: Object.keys(live).length, unmatched, previews: Object.keys(previews).length });
+  return Response.json({ ok: true, people: Object.keys(live).length, unmatched, groups: Object.keys(groups).length, previews: Object.keys(previews).length });
 }
 
 // The Social tab's switches: "once a day" for the live messages sync, and
@@ -127,7 +184,8 @@ export async function PATCH(request) {
   return Response.json({ ok: true, autoSync: next.autoSync === true, keepMessages: next.keepMessages === true });
 }
 
-// Forget it: both files, the numbers and the words.
+// Forget it: both files, the numbers and the words. Not your CRM notes: the
+// page asks about those on their own (DELETE /api/social/crm).
 export async function DELETE() {
   const files = socialFiles();
   if (files) {

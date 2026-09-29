@@ -7,11 +7,14 @@ import { socialFiles, readJson, writeJsonAtomic, readMessages, deleteMessages } 
 // two files and why they're apart).
 //
 //   GET                       the list, no words: who, when, who wrote last,
-//                             unread, how many, the thread's link
+//                             unread, how many, the thread's link; with the
+//                             requests both ways and people's names, and the
+//                             requests' notes when the messages are kept
 //   GET ?id=<id> | ?with=<key> one thread, a page at a time (before, limit):
 //                             its messages only if they're kept
 //   GET ?q=<words>            the conversations whose kept messages say that
 //   POST                      an import's messages, in parts
+//   PUT                       an import's request notes
 //   DELETE                    the messages gone, the list kept
 //
 // Nothing here goes anywhere but this computer's browser: no route of the app
@@ -25,14 +28,20 @@ function state() {
   if (!files) return null;
   const social = readJson(files.social, {}) || {};
   const keep = social.keepMessages === true;
-  const kept = keep ? readMessages(files.messages) : { threads: {}, previews: {} };
-  return { files, social, keep, kept, list: conversationList(social.conversations, social.live) };
+  const kept = keep ? readMessages(files.messages) : { threads: {}, previews: {}, invites: {} };
+  const names = { ...(social.names || {}) };
+  for (const [link, v] of Object.entries(social.liveOthers || {})) if (v?.name && !names[link]) names[link] = v.name;
+  for (const g of social.liveGroups || []) for (const [link, n] of Object.entries(g.names || {})) if (!names[link]) names[link] = n;
+  const list = conversationList(social.conversations, social.live, { others: social.liveOthers, groups: social.liveGroups, names: social.names });
+  return { files, social, keep, kept, names, list };
 }
 
 /** A conversation's kept messages, oldest first, with the live sync's newest one after them when it's newer. */
 function messagesOf(c, kept) {
   const msgs = kept.threads[c.id]?.messages || [];
-  const preview = !c.group && c.people.length === 1 ? kept.previews[c.people[0]] : null;
+  // The sync's newest message is kept by the link it gave: for someone who
+  // isn't a connection that can differ from the export's (liveKey).
+  const preview = !c.group && c.people.length === 1 ? kept.previews[c.people[0]] || (c.liveKey && kept.previews[c.liveKey]) : null;
   if (preview?.text && (!msgs.length || (preview.t || 0) > (msgs[msgs.length - 1].t || 0))) return [...msgs, preview];
   return msgs;
 }
@@ -70,7 +79,13 @@ export async function GET(request) {
     title: s.kept.threads[c.id]?.title || '',
     hasText: s.keep && messagesOf(c, s.kept).length > 0,
   }));
-  return Response.json({ keepMessages: s.keep, conversations });
+  return Response.json({
+    keepMessages: s.keep,
+    conversations,
+    invitations: Array.isArray(s.social.invitations) ? s.social.invitations : [],
+    names: s.names,
+    inviteNotes: s.keep ? s.kept.invites || {} : {},
+  });
 }
 
 /** One message as it's kept, or null when it isn't one. */
@@ -97,8 +112,9 @@ export async function POST(request) {
   }
   let into;
   if (part === 0) {
-    // A new import replaces the export's messages; the live sync's previews stay.
-    into = { threads: {}, previews: s.kept.previews || {} };
+    // A new import replaces the export's messages; the live sync's previews
+    // and the requests' notes (PUT) stay.
+    into = { threads: {}, previews: s.kept.previews || {}, invites: s.kept.invites || {} };
   } else {
     into = readJson(s.files.incoming, null);
     if (!into?.threads) return Response.json({ error: 'The start of this import is missing. Choose the export folder again.' }, { status: 409 });
@@ -114,12 +130,32 @@ export async function POST(request) {
     }
   }
   if (part === parts - 1) {
-    writeJsonAtomic(s.files.messages, into);
+    // The notes may have changed while the parts came in: the file's win.
+    writeJsonAtomic(s.files.messages, { ...into, invites: readMessages(s.files.messages).invites || into.invites || {} });
     rmSync(s.files.incoming, { force: true });
   } else {
     writeJsonAtomic(s.files.incoming, into);
   }
   return Response.json({ ok: true, part, parts, done: part === parts - 1 });
+}
+
+// An import's request notes: { invites: { id: note } }, the words sent with a
+// connection request (Invitations.csv's Message). Written by a person like a
+// message, so kept only while Keep my messages is on, in the same file, and
+// gone with it. They replace the notes kept before: an export has all of them.
+export async function PUT(request) {
+  const s = state();
+  if (!s) return Response.json({ error: 'Pick a profile first.' }, { status: 400 });
+  if (!s.keep) return Response.json({ error: 'Keep my messages is off, so nothing was saved.' }, { status: 409 });
+  let body;
+  try { body = await request.json(); } catch { return Response.json({ error: 'That isn’t readable.' }, { status: 400 }); }
+  const invites = {};
+  for (const [id, note] of Object.entries(body?.invites && typeof body.invites === 'object' ? body.invites : {}).slice(0, 50000)) {
+    if (id && id.length <= 400 && typeof note === 'string' && note.trim()) invites[id] = note.slice(0, 2000);
+  }
+  const kept = readJson(s.files.messages, {}) || {};
+  writeJsonAtomic(s.files.messages, { threads: kept.threads || {}, previews: kept.previews || {}, invites });
+  return Response.json({ ok: true, notes: Object.keys(invites).length });
 }
 
 // The words gone, the list and the numbers kept: what switching Keep my

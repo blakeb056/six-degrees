@@ -46,3 +46,14 @@ html:has([data-field-question]) {
 /* The notch's running dot (app/components/ScanStatusBar.js). */
 @keyframes notch-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: no-preference) { .notch-pulse { animation: notch-pulse 1.6s ease-in-out infinite; } }
+
+/* The Social tab's CRM (app/social/Crm.js): the list and the person side by
+   side, stacked on a phone. In Pipeline the board takes the whole width and
+   the person sits under it. */
+.crm-grid { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 10px; align-items: start; }
+.crm-grid > .crm-wide { grid-column: 1 / -1; }
+.crm-board { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 10px; padding: 10px; overflow-x: auto; }
+@media (max-width: 760px) {
+  .crm-grid { grid-template-columns: minmax(0, 1fr); }
+  .crm-board { grid-template-columns: minmax(0, 1fr); }
+}

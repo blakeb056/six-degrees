@@ -59,7 +59,18 @@ _ENV_LOCAL = _load_env_local()
 # a server they don't control.
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 MESSAGING_URL = "https://www.linkedin.com/messaging/"
+# The daily sync reads the top of your messages list: this many scrolls.
 MESSAGE_SCROLLS = 15
+# Full history (--messages --full-history, the Social tab's "Read my whole
+# history"): keep scrolling until the list stops growing, but never past these
+# ceilings, at the same fixed pace as everything else the scanner does.
+MESSAGE_HISTORY_SCROLLS = 60
+MESSAGE_HISTORY_MAX = 1000
+# Scrolls in a row that bring no conversation it hadn't seen: the end of the list.
+MESSAGE_HISTORY_STILL = 3
+# Seconds after each scroll for the list to load. Fixed, on purpose: the
+# scanner is openly slow, never made to look like a person with random waits.
+MESSAGE_WAIT = 4
 
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
 
@@ -2068,14 +2079,54 @@ def voyager_conversations(payload):
     return out
 
 
-def sync_messages(headless=False):
+def conversation_id(c):
+    """One conversation, however many of LinkedIn's responses mention it: its link, else who's in it."""
+    return c.get("url") or ",".join(c.get("people") or [])
+
+
+def tally_conversations(seen, convos):
+    """Add these conversations to `seen` (id -> conversation, the newest activity
+    kept) and say how many it didn't have before. The full-history read stops
+    when scrolling stops bringing new ones."""
+    new = 0
+    for c in convos:
+        k = conversation_id(c)
+        if not k:
+            continue
+        if k not in seen:
+            new += 1
+            seen[k] = c
+        elif c.get("at", 0) >= seen[k].get("at", 0):
+            seen[k] = c
+    return new
+
+
+def history_done(new_per_scroll, found, max_scrolls=MESSAGE_HISTORY_SCROLLS,
+                 max_found=MESSAGE_HISTORY_MAX, still=MESSAGE_HISTORY_STILL):
+    """Why a full-history read should stop now, or None to scroll again.
+    `new_per_scroll` is how many new conversations each scroll so far brought;
+    `found` how many there are in all."""
+    if found >= max_found:
+        return f"reached {max_found:,} conversations, the most one read takes"
+    if len(new_per_scroll) >= max_scrolls:
+        return f"reached {max_scrolls} scrolls, the most one read takes"
+    if len(new_per_scroll) >= still and not any(new_per_scroll[-still:]):
+        return "the list stopped growing: that's the whole history"
+    return None
+
+
+def sync_messages(headless=False, full_history=False):
     """Experimental: read your LinkedIn messages list once, for the Social tab. Opens
     Messaging in your own Chrome, scrolls the list a few times, and keeps from LinkedIn's
-    own data who each 1:1 conversation is with, when it was last active, whether it has
-    unread messages, its link and who wrote last. The newest message's words go to the
-    app only while Keep my messages is on there. No search budget."""
+    own data who each conversation is with, when it was last active, whether it has
+    unread messages, its link and who wrote last. The newest message's words (1:1 only)
+    go to the app only while Keep my messages is on there. No search budget.
+
+    full_history: keep scrolling until no new conversations load (history_done), for
+    the whole list rather than its top. Same fixed waits; opens no conversation."""
     from playwright.sync_api import sync_playwright
     kept = []
+    seen = {}
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
             user_data_dir=get_scraper_profile_path(), headless=headless, channel="chrome",
@@ -2086,13 +2137,38 @@ def sync_messages(headless=False):
             browser.close()
             return
         page.on("response", lambda r: kept.append(r) if "/voyager/api/" in r.url and "messag" in r.url.lower() else None)
-        print("Opening your messages list...")
+
+        def wait(seconds):
+            # Playwright hands over the responses that came in only while it's
+            # being called, so wait through it, not with time.sleep.
+            try:
+                page.wait_for_timeout(seconds * 1000)
+            except Exception:
+                time.sleep(seconds)
+
+        def read_new():
+            got = kept[:]
+            del kept[:len(got)]
+            convos = []
+            for r in got:
+                try:
+                    data = r.json()
+                except Exception:
+                    continue
+                _wire_sample(data, prefix="messages")
+                convos.extend(voyager_conversations(data))
+            return tally_conversations(seen, convos)
+
+        print("Opening your messages list" + (", to read its whole history..." if full_history else "..."))
         try:
             page.goto(MESSAGING_URL, wait_until="domcontentloaded")
         except Exception:
             pass
-        time.sleep(6)
-        for i in range(MESSAGE_SCROLLS):
+        wait(6)
+        read_new()
+        scrolls = MESSAGE_HISTORY_SCROLLS if full_history else MESSAGE_SCROLLS
+        new_per_scroll = []
+        for i in range(scrolls):
             if stop_requested() or _window_closed(page):
                 break
             try:
@@ -2105,19 +2181,21 @@ def sync_messages(headless=False):
                   if (l) l.scrollTop = l.scrollHeight; }""")
             except Exception:
                 pass
-            print(f"  Reading the list ({i + 1} of {MESSAGE_SCROLLS})...", flush=True)
-            time.sleep(4)
-        convos = []
-        for r in kept:
-            try:
-                data = r.json()
-            except Exception:
-                continue
-            _wire_sample(data, prefix="messages")
-            convos.extend(voyager_conversations(data))
+            wait(MESSAGE_WAIT)
+            new_per_scroll.append(read_new())
+            if full_history:
+                print(f"  Reading the list (scroll {i + 1}, {len(seen):,} conversations so far)...", flush=True)
+                why = history_done(new_per_scroll, len(seen))
+                if why:
+                    print(f"  Stopping: {why}.", flush=True)
+                    break
+            else:
+                print(f"  Reading the list ({i + 1} of {scrolls})...", flush=True)
         browser.close()
-    _me, people = live_people(convos)
-    print(f"  Found {len(convos)} conversations in LinkedIn's data, {len(people)} with one person.")
+    convos = list(seen.values())
+    me, people = live_people(convos)
+    groups = live_groups(convos, me)
+    print(f"  Found {len(convos)} conversations in LinkedIn's data: {len(people)} with one person, {len(groups)} groups.")
     # The newest message's words go to the app only if Keep my messages is on
     # there. The app checks too; this way they don't even leave the scanner.
     keep = False
@@ -2131,12 +2209,35 @@ def sync_messages(headless=False):
             if v.get("preview"):
                 v["preview"]["text"] = None
     try:
-        r = requests.put(f"{APP_URL}/api/social", json={"live": people}, headers=app_headers(), timeout=30)
+        r = requests.put(f"{APP_URL}/api/social", json={"live": people, "groups": groups}, headers=app_headers(), timeout=60)
         got = r.json() if r.ok else {}
         matched, unmatched = got.get("people", 0), got.get("unmatched", 0)
-        print(f"  Saved for the Social tab: {matched} matched to your connections, {unmatched} not.")
+        print(f"  Saved for the Social tab: {matched} of your connections, {unmatched} people who aren't connections, "
+              f"{len(groups)} groups.")
     except Exception as e:
         print(f"  Couldn't save them: {e}")
+
+
+def live_groups(convos, me):
+    """The messages sync's group conversations: who's in them (everyone but you,
+    with their names for the app to match to your connections; it keeps the names
+    only of people who aren't), when each was last active, unread, its link and
+    whether someone else wrote last. No words: a group's newest message isn't sent."""
+    groups = {}
+    for c in convos:
+        others = [u for u in c["people"] if u != me]
+        if len(others) < 2:
+            continue
+        k = conversation_id(c)
+        if k in groups and c["at"] <= groups[k]["last"]:
+            continue
+        latest = c.get("latest")
+        sender = latest.get("from") if latest else None
+        groups[k] = {"threadUrl": c.get("url"), "people": others,
+                     "names": {u: n for u, n in (c.get("names") or {}).items() if u in others},
+                     "last": c["at"], "unread": c["unread"],
+                     "lastFromThem": (sender != me) if sender in c["people"] else None}
+    return list(groups.values())
 
 
 def live_people(convos):
@@ -4207,6 +4308,9 @@ Examples:
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
     parser.add_argument("--messages", action="store_true",
                         help="Experimental: read your messages list once for the Social tab (who, when, unread; the newest message's words only if Keep my messages is on)")
+    parser.add_argument("--full-history", action="store_true",
+                        help=f"With --messages: keep scrolling until the whole list has loaded (at most {MESSAGE_HISTORY_SCROLLS} scrolls "
+                             f"or {MESSAGE_HISTORY_MAX:,} conversations), not just its top")
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
                              "waits for the daily budget) and reading LinkedIn's own data beside the page text")
@@ -4305,7 +4409,7 @@ Examples:
             done = sum(1 for r in results if r.get("status") == "done")
             print(f"\nDone. {done}/{len(results)} bridges mapped.")
         elif args.messages:
-            sync_messages(headless=args.headless)
+            sync_messages(headless=args.headless, full_history=args.full_history)
         elif args.search:
             scrape_full(headless=args.headless)
         elif args.full:

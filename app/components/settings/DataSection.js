@@ -335,7 +335,8 @@ export default function DataSection() {
         The copy holds the names, headlines and photos of the people in your network. Keep it private: don’t
         post it or share it, and delete it once it has been imported. A network opened from a LinkedIn CSV lives
         only in its browser tab, so it isn’t in the copy; import the CSV again on the new computer. The Social
-        tab’s findings, and any messages you keep there, stay on this computer and aren’t in the copy either.
+        tab’s findings, your CRM notes, and any messages you keep there, stay on this computer and aren’t in the
+        copy either.
       </Body>
 
       <h3 style={subhead}>Bring in a network from another computer</h3>

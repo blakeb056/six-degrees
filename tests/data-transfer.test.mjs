@@ -859,7 +859,7 @@ test('only the photos of people still in the network travel', () => {
   assert.equal(report.photosInCopy.count, 2);
 });
 
-test('the Social tab\'s files, the kept messages above all, never go into a copy', () => {
+test('the Social tab\'s files, the kept messages and the CRM notes above all, never go into a copy', () => {
   // Keep my messages promises the words stay on this computer, and Settings
   // says a copy doesn't carry them. The allow-list is what keeps that true.
   const dir = folder('social');
@@ -867,10 +867,12 @@ test('the Social tab\'s files, the kept messages above all, never go into a copy
   writeFileSync(path.join(dir, 'social-s-me.json'), JSON.stringify({ keepMessages: true, people: {} }));
   writeFileSync(path.join(dir, 'social-messages-s-me.json'), JSON.stringify({ threads: { t1: { messages: [{ t: 1, fromMe: false, text: 'INVENTED-KEPT-MESSAGE' }] } } }));
   writeFileSync(path.join(dir, 'social-messages-s-me.json.incoming'), 'INVENTED-HALF-IMPORT');
-  assert.equal(travellingFiles(dir).some((f) => f.rel.startsWith('social')), false);
+  writeFileSync(path.join(dir, 'crm-s-me.json'), JSON.stringify({ people: { 'https://www.linkedin.com/in/x': { notes: 'INVENTED-CRM-NOTE' } } }));
+  assert.equal(travellingFiles(dir).some((f) => f.rel.startsWith('social') || f.rel.startsWith('crm')), false);
   const { out } = exportOf(dir, db);
   db.close();
-  assert.equal(pathsIn(out).some((p) => p.startsWith('social')), false);
+  assert.equal(pathsIn(out).some((p) => p.startsWith('social') || p.startsWith('crm')), false);
+  assert.equal(readFileSync(out).includes('INVENTED-CRM-NOTE'), false);
   assert.equal(readFileSync(out).includes('INVENTED-KEPT-MESSAGE'), false);
   assert.equal(readFileSync(out).includes('INVENTED-HALF-IMPORT'), false);
 });
