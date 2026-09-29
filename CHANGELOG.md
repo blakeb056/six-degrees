@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The Scan page asks before a risky search budget.** Picking more than 100 searches a
+  day, or no monthly cap, now asks first, because a real account was restricted after 373
+  searches in 24 hours, run back to back (it had opened only 7 profiles that day). While
+  the budget stays that high, a note under it says so, with a button back to 50 a day and
+  250 a month. Lowering a budget, or anything up to 100 a day, is never asked about.
+
 ## [0.4.0] - 2026-09-28
 
 ### Added

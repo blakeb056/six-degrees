@@ -7,6 +7,7 @@
 // files the scanner writes.
 
 import { useState } from 'react';
+import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
 
 const LINE = '1px solid rgba(255,255,255,0.1)';
 const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
@@ -59,6 +60,13 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
   const today = li.unreadable ? '?' : li.searchesToday;
   const views = li.unreadable ? '?' : li.profilesToday;
   const set = (change) => onSetLimits({ ...limits, ...change });
+  // A budget past what LinkedIn has put up with is asked about first (lib/search-risk.js).
+  const ask = (change) => {
+    const q = limitQuestion(limits, { ...limits, ...change });
+    if (q && !window.confirm(q)) return;
+    set(change);
+  };
+  const note = limitNote(limits);
   return (
     <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#b8c4c4' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
@@ -77,10 +85,10 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
         <span>Budget:</span>
-        <select value={limits.daily} disabled={disabled} onChange={(e) => set({ daily: Number(e.target.value) })} style={sel}>
+        <select value={limits.daily} disabled={disabled} onChange={(e) => ask({ daily: Number(e.target.value) })} style={sel}>
           {DAILY.map((n) => <option key={n} value={n}>{n} a day</option>)}
         </select>
-        <select value={limits.monthly} disabled={disabled} onChange={(e) => set({ monthly: Number(e.target.value) })} style={sel}>
+        <select value={limits.monthly} disabled={disabled} onChange={(e) => ask({ monthly: Number(e.target.value) })} style={sel}>
           {MONTHLY.map((n) => <option key={n} value={n}>{n ? `${n} a month` : 'no monthly cap (Premium)'}</option>)}
         </select>
         <select value={limits.profiles} disabled={disabled} onChange={(e) => set({ profiles: Number(e.target.value) })} style={sel}>
@@ -91,8 +99,17 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
         Every page of someone&rsquo;s connections is one search. LinkedIn limits a free account&rsquo;s people
         searches by the month (it doesn&rsquo;t say how many; reports put it around 250–350), resetting on the 1st.
         When a budget is used, a scan saves what it read and stops; the next one carries on from the same page.
-        {limits.daily > 100 && <b style={{ color: '#FFD700' }}> {limits.daily} a day can use up a free account&rsquo;s month in a day or two.</b>}
       </div>
+      {note && (
+        <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: '#FFD700', lineHeight: 1.6 }}>
+          <b style={{ flex: 1, minWidth: 200 }}>{note}</b>
+          <button
+            onClick={() => set(SAFE_LIMITS)}
+            disabled={disabled}
+            style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: '#FFD700', borderColor: 'rgba(255,215,0,0.4)' }}
+          >Back to {SAFE_LIMITS.daily} a day, {SAFE_LIMITS.monthly} a month</button>
+        </div>
+      )}
       <div style={{ marginTop: 6, color: '#778', lineHeight: 1.6 }}>
         Each circle scan opens the person&rsquo;s profile once, which is one profile view. Profile views are what
         LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
