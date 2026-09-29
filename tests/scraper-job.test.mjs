@@ -54,7 +54,7 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
   // A second scan is refused while it runs, naming what does.
   const res = await POST(new Request('http://127.0.0.1/api/scraper', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ action: 'bridge', name: 'Ben Ortiz', id: 'p-ben' }),
+    body: JSON.stringify({ action: 'bridge', name: 'Ben Ortiz' }),
   }));
   assert.equal(res.status, 409);
   assert.deepEqual(await res.json(), { error: 'Something is already running.', action: 'bridge' });

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../lib/scraper-client';
+import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { scraperStatus, beginScrape, notReadyMessage, busyReason, isCircleScan, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
@@ -19,6 +20,18 @@ import Link from 'next/link';
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
 
+// A job that changes the network. Setting the scanner up and signing in don't.
+const CHANGES_NETWORK = (job) => Boolean(job) && !['install', 'setup', 'login'].includes(job.action);
+
+/** Counts for the header and panels, from the two lists. */
+function statsFor(d1, d2) {
+  const tierCounts = {};
+  d1.forEach(c => { tierCounts[c.tier] = (tierCounts[c.tier] || 0) + 1; });
+  const d2TierCounts = {};
+  d2.forEach(c => { d2TierCounts[c.tier] = (d2TierCounts[c.tier] || 0) + 1; });
+  return { total: d1.length, tiers: tierCounts, d2Total: d2.length, d2Tiers: d2TierCounts };
+}
+
 const TIER_COLORS = {
   S: '#FFD700',
   A: '#9B59B6',
@@ -28,9 +41,13 @@ const TIER_COLORS = {
 };
 
 export default function Home() {
+  // Suspense because HomeInner reads the address's ?chain= (useSearchParams),
+  // which Next requires to sit inside one for the page to build.
   return (
     <OnboardingGate>
-      <HomeInner />
+      <Suspense>
+        <HomeInner />
+      </Suspense>
     </OnboardingGate>
   );
 }
@@ -54,16 +71,26 @@ function HomeInner() {
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
   const [filter, setFilter] = useState('all');
-  const [mode, setMode] = useState('network');
+  // A link to someone's circle in Bridge Chains, /?chain=<id> (the Scan page's
+  // "watch it fill in"), opens Degrees on it. The router's search params rather
+  // than window.location: on a click from another page the address bar only
+  // changes after this page has rendered, and the map opened on the Galaxy.
+  const linkedChain = useSearchParams().get('chain');
+  const [chainOpen, setChainOpen] = useState(linkedChain);
+  const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : 'network'));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(true);
-  const [visualMode, setVisualMode] = useState('galaxy');
+  const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : 'galaxy'));
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [csvMode, setCsvMode] = useState(false);
   const [csvSource, setCsvSource] = useState('csv');
+  // What the scanner noted: hidden lists, and lists read with nothing new in
+  // them. With the network, they say who is ready for a circle scan (lib/reach.js).
+  const [scanNotes, setScanNotes] = useState(NO_SCAN_NOTES);
+  const shapeRef = useRef('');
   // Everyone with a request out, shared with every view (lib/requests-client.js).
   const pendingCount = requestCount(useRequests());
 
@@ -85,20 +112,42 @@ function HomeInner() {
 
       setDegree1(d1);
       setDegree2(d2);
-
-      const tierCounts = {};
-      d1.forEach(c => { tierCounts[c.tier] = (tierCounts[c.tier] || 0) + 1; });
-      const d2TierCounts = {};
-      d2.forEach(c => { d2TierCounts[c.tier] = (d2TierCounts[c.tier] || 0) + 1; });
-      setStats({ total: d1.length, tiers: tierCounts, d2Total: d2.length, d2Tiers: d2TierCounts });
+      shapeRef.current = networkShape(d1, d2);
+      setStats(statsFor(d1, d2));
       setLoading(false);
     }
     load();
     if (!IS_DEMO && !hasCsvNetwork()) {
+      loadScanNotes().then(setScanNotes);
       // Fetch notifications
       fetch(`/api/notifications?userId=${userId}`).then(r => r.json()).then(d => setNotifications(d.notifications || [])).catch(() => {});
     }
   }, [userId]);
+
+  // The network again, after a scan: circles fill in while they're scanned
+  // (Blake, 2026-09-28: "the d3 dots as it builds more in"). Only a real change
+  // is published, because the graph views rebuild their scene whenever these
+  // lists change identity (TRAPS §29).
+  const reload = useCallback(async () => {
+    if (IS_DEMO || hasCsvNetwork() || !userId) return;
+    try {
+      const [{ degree1: d1, degree2: d2 }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
+      setScanNotes((prev) => (JSON.stringify(prev) === JSON.stringify(notes) ? prev : notes));
+      const shape = networkShape(d1, d2);
+      if (shape === shapeRef.current) return;
+      shapeRef.current = shape;
+      setDegree1(d1);
+      setDegree2(d2);
+      setStats(statsFor(d1, d2));
+    } catch { /* the app restarting, say: keep what's on screen */ }
+  }, [userId]);
+
+  // Followed once: Bridge Chains has opened it, so leaving that view and coming
+  // back, or reloading, starts from the overview.
+  const chainOpened = useCallback(() => {
+    setChainOpen(null);
+    try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
+  }, []);
 
   const isDegreesMode = mode === 'degrees';
   const connections = degree1;
@@ -147,6 +196,8 @@ function HomeInner() {
   // Resolved once, because two places care: the renderer below, and the Orbit
   // toggle, which hides over Separation.
   const view = resolveView(visualMode, mode);
+  // Scanning and the Scan page belong to your own network, not the sample or a CSV.
+  const canScan = !IS_DEMO && !csvMode;
 
   return (
     <div data-map style={{ height: '100vh', overflow: 'hidden', background: '#0a0a1a', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -423,6 +474,10 @@ function HomeInner() {
             // all your scanned circles, and "already connected" needs everyone.
             fullDegree1: degree1,
             fullDegree2: degree2,
+            scanNotes,
+            canScan,
+            chainOpen,
+            onChainOpened: chainOpened,
           };
           return <View {...viewProps} />;
         })()}
@@ -440,7 +495,10 @@ function HomeInner() {
           onSwitchMode={(newMode) => { setMode(newMode); setFilter('all'); }}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
           csvSource={IS_DEMO ? 'sample' : csvMode ? csvSource : null}
+          scanNotes={scanNotes}
+          canScan={canScan}
         />
+        {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain'} />}
 
         {/* Orbit, one tap from Bridge Chains — bottom right, Degrees mode only.
             It used to say "Galaxy" and show Orbit: the Galaxy is a Network
@@ -474,6 +532,41 @@ function HomeInner() {
       </div>
     </div>
   );
+}
+
+/**
+ * A cheap fingerprint of the network: who is in it, at which degree and in
+ * whose circle, and how they're marked. Equal fingerprints mean nothing a view
+ * draws has changed.
+ */
+function networkShape(d1, d2) {
+  let h = 0x811c9dc5;
+  const mix = (text) => {
+    for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  };
+  for (const r of [...d1, ...d2]) {
+    mix(`${r.id}|${r.degree}|${r.source_connection_id ?? ''}|${r.unlocked_from_bridge_id ?? ''}|${r.tier}|${r.power_score}|${r.unlock_status ?? ''}|${r.profile_image_url ?? ''};`);
+  }
+  return `${d1.length}:${d2.length}:${h >>> 0}`;
+}
+
+// Looks at the network again when a scan has changed it: once when any scan
+// ends, and every 20 seconds while a circle is being scanned with Bridge Chains
+// open, since the scanner saves every 10 pages and the circle fills in as it
+// does. Its own component for the same reason as RefreshButton below.
+function NetworkRefresh({ onChange, live }) {
+  const scan = useScanner();
+  const ended = scan.finished.find(CHANGES_NETWORK)?.startedAt ?? null;
+  const filling = live && scan.running && isCircleScan(scan);
+  useEffect(() => {
+    if (ended != null) onChange();
+  }, [ended, onChange]);
+  useEffect(() => {
+    if (!filling) return undefined;
+    const timer = setInterval(onChange, 20000);
+    return () => clearInterval(timer);
+  }, [filling, onChange]);
+  return null;
 }
 
 // Its own component so the scanner's answer, which changes every second or two

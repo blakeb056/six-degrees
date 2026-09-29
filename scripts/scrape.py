@@ -2743,6 +2743,17 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         # link; a profile that didn't render is "unclear" and marks nothing.
         mark_bridge_hidden(profile_url, bridge_name)
         print("  Their connections are not visible any more — keeping what is mapped.")
+    elif status in ("private", "empty") and profile_url and not stop_requested():
+        # A read from page 1 that found their list hidden, or LinkedIn showing no
+        # one in it. Noted here rather than by the batch alone: a one-person scan
+        # (a card's Scan or Rescan, the Degrees panel's Ready to scan) that found
+        # it and said nothing left them "not scanned yet", offered again forever.
+        # A stop that landed meanwhile concludes nothing, as in the batch. TRAPS §15.
+        record_bridge_skip(profile_url, bridge_name,
+                           "no visible connections" if status == "private"
+                           else "LinkedIn showed no one in their list")
+        print("  Their connections are hidden — noted, and skipped from now on."
+              if status == "private" else "  LinkedIn shows no one in their list — noted, and skipped from now on.")
 
     if status == "stopped" or stop_requested():
         return _read(read, "stopped")
@@ -3334,15 +3345,11 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
                 if from_page > 1:
                     log("  Their connections are hidden now — keeping what's mapped")
-                elif url:
-                    record_bridge_skip(url, name, "no visible connections")
-                    log("  Connections are hidden — noted, and skipped from now on")
+                # From page 1, scrape_bridge has noted them in bridge-skips.json.
             elif status == "empty":
+                # scrape_bridge has noted them in bridge-skips.json, and said so.
                 healthy = True
                 results.append({"name": name, "tier": tier, "found": 0, "status": "private"})
-                if url:
-                    record_bridge_skip(url, name, "LinkedIn showed no one in their list")
-                log("  LinkedIn shows no one in their list — noted, and skipped from now on")
             elif status == "finished":
                 healthy = True
                 results.append({"name": name, "tier": tier, "found": 0, "status": "finished"})
@@ -3726,7 +3733,11 @@ Examples:
                         help="Carry on with people already mapped, from the page their last read "
                              "stopped at. With --auto-bridge: alongside new people. With --bridge: that person.")
     parser.add_argument("--bridge-url", type=str,
-                        help="Carry on with one person, found by their LinkedIn profile URL (implies --deeper)")
+                        help="Carry on with one person, found by their LinkedIn profile URL (implies "
+                             "--deeper, unless --from-start)")
+    parser.add_argument("--from-start", action="store_true",
+                        help="With --bridge-url: read their list from page 1 instead, as --bridge does. "
+                             "The app's Scan buttons use it, since two connections can share a name")
     parser.add_argument("--only-unfinished", action="store_true",
                         help="With --auto-bridge: only people whose read was cut short (Resume all)")
     parser.add_argument("--save-photos", action="store_true",
@@ -3805,7 +3816,10 @@ Examples:
         elif args.rescrape:
             rescrape_bridge(args.rescrape, headless=args.headless, max_pages=args.max_pages)
         elif args.bridge_url:
-            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=True,
+            # Carries on unless --from-start. A server started before a pull (TRAPS §22)
+            # still sends Resume as a bare --bridge-url, and a read from page 1 would
+            # spend searches on pages already read.
+            scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=not args.from_start,
                           profile_url=args.bridge_url)
         elif args.bridge:
             scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)

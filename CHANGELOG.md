@@ -27,6 +27,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Skip for now* carries on without one. Both stay at the bottom of the window while you
   look through the list. It's asked once, and never if you already have a network or picked
   a sector. Change it anytime on the Scores tab.
+- **Bridge Chains opens any circle, as far as your scans reach.** Click someone in a
+  bridge's circle and their own circle opens in place: the people found in it once you
+  connected and scanned it (3rd degree, counted along the chain), and on from there. A
+  trail at the top, and Esc, go back. An empty circle says why and what gets it: connect,
+  then scan their circle. While one is being scanned, it fills in as the scan saves.
+  Someone ready for a scan goes to the Scan page with them picked instead, since their
+  circle is empty until then.
+- **A soft glow on people ready for a scan.** In Bridge Chains, someone you added through
+  a circle whose own circle isn't scanned yet has a soft breathing halo, and their bridge
+  says how many are "ready". A hidden list is greyed with a lock instead. The halo stays
+  still with Reduce Motion on. The old rainbow glow is gone: it looked for them inside the
+  circle they came from, which accepting takes them out of, so it never showed.
+- **Ready to scan (N), in the Degrees panel.** It replaces *Auto-Bridge Next*, which
+  started a scan in one click, by name, with no cost shown, and offered hidden lists again
+  and again. The list is everyone you added through a circle whose circle can be scanned,
+  strongest first, with the circle you found them in and what a scan costs. Hidden lists
+  stay in view, greyed with a lock.
+- **Scan one circle, on the Scan page.** A ready person, from the list or Bridge Chains,
+  opens the Scan page with them picked: the cost (a profile view, then a search a page, up
+  to 100), what's left of the day's budget, how deep to read, and a button. Nothing starts
+  until it's pressed.
 - **A release checks the website's version lines.** Before building anything, the release
   workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
   `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
@@ -34,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
 
 ### Changed
+- **A big circle spreads out.** A bridge's circle used to sit on one ring, so a few hundred
+  people were almost a solid line. It now fills rings from the inside out, as many as it
+  needs, with the highest tiers nearest the middle; drag to move, scroll or +/− to zoom.
+  Lots of bridges spread the same way, and so does the preview on hover.
+- **The map picks up a finished scan by itself.** No refresh needed.
+- **One rule for "ready".** Bridge Chains, the Degrees panel, Outlink's new doors and the
+  profile page's mapping bar now agree on who can be scanned next, and all leave hidden
+  lists out.
 - **Photos stay on your Mac.** The app shows a profile photo only from the copy saved on
   your computer, so looking at your network never contacts LinkedIn. It used to load a
   photo from LinkedIn until a scan had saved it, and a rescan could put LinkedIn's link
@@ -83,6 +112,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Bridge Chains. Nothing could open it. The Galaxy draws Network Circle only.
 
 ### Fixed
+- **A one-person scan notes a hidden list.** A card's Scan or Rescan that found someone's
+  list hidden said so and noted nothing, so they stayed "not scanned yet" and were offered
+  again forever. Only a batch noted it. Now every read from page 1 does.
+- **A scan reads the list of the person you picked.** A card's Scan and Rescan went by
+  name, so with two connections of the same name the scanner could read the other one's
+  list. Every Scan button now goes by that person's profile, as Resume already did.
 - **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
   scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
   Information Officer". "Executive Assistant to the General Manager" scored as a VP.

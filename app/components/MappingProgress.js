@@ -1,6 +1,7 @@
 'use client';
 
 import { TIER_COLORS_CLASSIC as TIER_COLORS } from '../../lib/tiers';
+import { reachIndex, circleState } from '../../lib/reach';
 
 // How much of your 1st degree has had its circle opened.
 //
@@ -19,13 +20,11 @@ const CARD = {
 };
 
 export function computeMapping(degree1 = [], degree2 = [], skips = []) {
-  const mappedIds = new Set(degree2.map((c) => c.source_connection_id).filter(Boolean));
-  const hiddenUrls = new Set(skips.map((s) => s.profileUrl).filter(Boolean));
-
+  // One rule for whose circle is open, hidden or still to do: lib/reach.js.
+  const reach = reachIndex(degree1, degree2, { skips });
   const state = (c) => {
-    if (mappedIds.has(c.id)) return 'mapped';
-    if (c.profile_url && hiddenUrls.has(c.profile_url)) return 'hidden';
-    return 'todo';
+    const s = circleState(c, reach);
+    return s === 'scanned' ? 'mapped' : s;
   };
 
   const counts = { mapped: 0, hidden: 0, todo: 0 };
