@@ -213,18 +213,97 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     const links = [];
     let sceneRadius = TIER_RING_RADIUS.B + 70;
     if (degreesMode) {
-      // One ring of the people you've mapped, biggest circle first, each given
-      // an equal wedge. Their circle fans outward in arcs: the most powerful
-      // closest to them, dot size and colour by their own power and tier.
-      const ordered = [...d1Nodes].sort((a, b) =>
-        (clusters.get(b.id)?.length || 0) - (clusters.get(a.id)?.length || 0));
+      // Someone you added through a circle, whose own circle is scanned, sits in
+      // the fan of the circle they came from, and their people fan out behind
+      // them a band further out, and theirs behind them, to 6th degree (Blake,
+      // 2026-09-29: Orbit stopped at each connection's 2nd degree).
+      const nestedIn = new Map();
+      const nested = new Set();
+      for (const d of d1Nodes) {
+        const from = d.connection?.unlocked_from_bridge_id;
+        if (from == null || from === d.id || !d1NodeById.has(from)) continue;
+        nested.add(d.id);
+        const list = nestedIn.get(from);
+        if (list) list.push(d); else nestedIn.set(from, [d]);
+      }
+      // Everyone reachable from someone on the ring is drawn in a fan; anyone
+      // else (a loop of introductions) goes on the ring.
+      const onRing = d1Nodes.filter((d) => !nested.has(d.id));
+      const inFans = new Set();
+      const walk = (d) => { for (const p of nestedIn.get(d.id) || []) if (!inFans.has(p.id)) { inFans.add(p.id); walk(p); } };
+      onRing.forEach(walk);
+      for (const d of d1Nodes) if (nested.has(d.id) && !inFans.has(d.id)) onRing.push(d);
+      const behind = new Map();
+      const reachOf = (d, stack = new Set()) => {
+        if (behind.has(d.id)) return behind.get(d.id);
+        if (stack.has(d.id)) return 0;
+        stack.add(d.id);
+        let count = clusters.get(d.id)?.length || 0;
+        for (const p of nestedIn.get(d.id) || []) count += 1 + reachOf(p, stack);
+        stack.delete(d.id);
+        behind.set(d.id, count);
+        return count;
+      };
+
+      // One ring of the people you've mapped, biggest reach first, each given
+      // a wedge; their circle fans outward in arcs, the most powerful closest.
+      const ordered = [...onRing].sort((a, b) => reachOf(b) - reachOf(a));
       const n = Math.max(1, ordered.length);
       const R = Math.max(140, n * 9);
       // Room in proportion to how many are behind each person (square-rooted,
       // so one huge circle can't take the whole ring): big circles spread into
       // fans instead of shooting out as thin spikes.
-      const weight = (d) => Math.sqrt((clusters.get(d.id)?.length || 0) + 4);
+      const weight = (d) => Math.sqrt(reachOf(d) + 4);
       const total = ordered.reduce((sum, d) => sum + weight(d), 0) || 1;
+
+      // `owner`'s people in rows across `wedge`, from rStart out; someone they
+      // added gets their own narrower fan behind them. Returns the outer edge.
+      const placeFan = (owner, angle, wedge, rStart, depth) => {
+        const people = [
+          ...(clusters.get(owner.id) || []).map((c) => ({ c })),
+          ...(nestedIn.get(owner.id) || []).filter((p) => inFans.has(p.id)).map((p) => ({ added: p, c: p.connection })),
+        ].sort((p, q) => (Number(q.c?.power_score) || 0) - (Number(p.c?.power_score) || 0));
+        const far = depth > 2;
+        const step = far ? 8 : 9;
+        const subs = [];
+        let placed = 0;
+        let r = rStart;
+        while (placed < people.length) {
+          const fit = Math.max(1, Math.floor((r * wedge) / step));
+          const row = people.slice(placed, placed + fit);
+          row.forEach((p, j) => {
+            const a = angle + (row.length === 1 ? 0 : (j / (row.length - 1) - 0.5) * wedge);
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (p.added) {
+              const d = p.added;
+              d.x = d.fx = x; d.y = d.fy = y;
+              d.hub = false; d.added = true;
+              d.r = 5 + Math.min(5, reachOf(d) / 60);
+              subs.push({ d, a });
+              return;
+            }
+            const node = {
+              id: p.c.id, kind: 'd2', depth, tier: p.c.tier || 'D',
+              r: (far ? 1.3 : 1.8) + Math.min(10, Number(p.c.power_score) || 0) * (far ? 0.24 : 0.32),
+              connection: p.c, x, y,
+            };
+            node.fx = node.x; node.fy = node.y;
+            d2Nodes.push(node);
+            if (owner.added) links.push({ source: owner, target: node, faint: true });
+          });
+          placed += row.length;
+          r += step;
+        }
+        let edge = r;
+        for (const { d, a } of subs) {
+          if (depth >= 6 || !reachOf(d)) continue;
+          const sub = Math.min(wedge * 0.6, Math.max(0.12, (Math.min(reachOf(d), 60) * 8) / (r + 24)));
+          edge = Math.max(edge, placeFan(d, a, sub, r + 24, depth + 1));
+        }
+        return edge;
+      };
+
       let cursor = -Math.PI / 2;
       ordered.forEach((b) => {
         const share = (weight(b) / total) * Math.PI * 2;
@@ -235,27 +314,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
         b.y = b.fy = Math.sin(angle) * R;
         b.hub = true;
         b.r = 9 + Math.min(10, (clusters.get(b.id)?.length || 0) / 40);
-        const people = [...(clusters.get(b.id) || [])]
-          .sort((p, q) => (Number(q.power_score) || 0) - (Number(p.power_score) || 0));
-        let placed = 0;
-        let r = R + b.r + 16;
-        while (placed < people.length) {
-          const fit = Math.max(1, Math.floor((r * wedge) / 9));
-          const row = people.slice(placed, placed + fit);
-          row.forEach((c, j) => {
-            const a = angle + (row.length === 1 ? 0 : (j / (row.length - 1) - 0.5) * wedge);
-            const node = {
-              id: c.id, kind: 'd2', tier: c.tier || 'D',
-              r: 1.8 + Math.min(10, Number(c.power_score) || 0) * 0.32,
-              connection: c, x: Math.cos(a) * r, y: Math.sin(a) * r,
-            };
-            node.fx = node.x; node.fy = node.y;
-            d2Nodes.push(node);
-          });
-          placed += row.length;
-          r += 9;
-        }
-        sceneRadius = Math.max(sceneRadius, r + 10);
+        sceneRadius = Math.max(sceneRadius, placeFan(b, angle, wedge, R + b.r + 16, 2) + 10);
       });
     }
     for (const [bridgeId, cluster] of degreesMode ? [] : clusters) {
@@ -324,7 +383,8 @@ const OrbitGraph = forwardRef(function OrbitGraph(
     }
 
     const link = linksLayer.selectAll('line').data(links).join('line')
-      .attr('stroke', 'rgba(255,255,255,0.08)').attr('stroke-width', 1);
+      .attr('stroke', (l) => (l.faint ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.08)'))
+      .attr('stroke-width', (l) => (l.faint ? 0.5 : 1));
 
     const node = nodesLayer.selectAll('g').data(renderNodes, (d) => d.id).join('g')
       .attr('cursor', 'pointer');
@@ -333,7 +393,7 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       const g = select(this);
 
       if (d.kind === 'd2') {
-        g.attr('opacity', degreesMode ? 0.85 : 0.55);
+        g.attr('opacity', degreesMode ? (d.depth > 2 ? 0.6 : 0.85) : 0.55);
         g.append('circle').attr('class', 'og-base').attr('r', d.r)
           .attr('fill', TIER_COLORS[d.tier] || TIER_COLORS.D);
         return;   // selection ring is created on demand, see applySelection
@@ -347,8 +407,10 @@ const OrbitGraph = forwardRef(function OrbitGraph(
       // selecting promotes it — the tooltip carries the detail, so nothing is
       // hidden, it is just not all shouted at once.
       if (!isUser && !d.hub) {
-        g.attr('opacity', 0.75);
-        g.append('circle').attr('class', 'og-base').attr('r', d.r).attr('fill', color);
+        g.attr('opacity', d.added ? 1 : 0.75);
+        // Someone you added through a circle: green-ringed, with their own fan behind them.
+        g.append('circle').attr('class', 'og-base').attr('r', d.r).attr('fill', color)
+          .attr('stroke', d.added ? '#00ff88' : 'none').attr('stroke-width', d.added ? 1.5 : 0);
         return;   // selection ring is created on demand, see applySelection
       }
 

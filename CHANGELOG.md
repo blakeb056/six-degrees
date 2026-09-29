@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reached only through them.
 
 ### Added
+- **Orbit goes past 2nd degree.** Someone you added through a circle, whose own circle is
+  scanned, now sits in the fan of the circle they came from, green-ringed, and their people fan
+  out behind them a band further out, fainter, with a faint line to each. Their added people's
+  circles go further out again, to 6th degree. Before, they sat on the ring as one more bridge,
+  and Orbit showed only 2nd degree.
 - **A ring round each connection's dot.** Five thin bars show how much of their circle is
   scanned: all five once their list is read to the end, and part-way the pages read against
   LinkedIn's own count of the list, which scans now keep (no extra traffic). Lists read before
