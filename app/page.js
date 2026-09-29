@@ -419,7 +419,7 @@ function HomeInner() {
           mode={mode}
           filter={filter}
           onFilterChange={setFilter}
-          visualMode={visualMode}
+          visualMode={view.key}
           onVisualModeChange={setVisualMode}
           tierCounts={stats?.tiers || {}}
           bridgeTierCounts={bridgeTierCounts}

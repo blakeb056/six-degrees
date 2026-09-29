@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the budget stays that high, a note under it says so, with a button back to 50 a day and
   250 a month. Lowering a budget, or anything up to 100 a day, is never asked about.
 
+### Fixed
+- **Stop during a re-map's wait keeps the circle.** Re-mapping someone deleted their circle
+  first and then waited out the minute between profile views, so a Stop in that minute left
+  it deleted and unread. It now waits first and deletes only once the read can start.
+- **A profile-view cap typed into `scan-limits.json` by hand stays within the choices.** It
+  counts as the largest offered choice under it (10, 25, 50 or 100), in the scanner and on
+  the Scan page alike; before, 1,000 was honoured and the picker showed a different number.
+- **The Filter menu highlights the view that's showing.** After *View Bridge →* from the
+  Galaxy, Orbit showed but no view was highlighted.
+- **No *Scan Full Company* on the sample or a CSV import.** Paths offered it there, and it
+  searched LinkedIn for a network that isn't saved. A line says scanning needs your own network.
+
 ## [0.4.0] - 2026-09-28
 
 ### Added

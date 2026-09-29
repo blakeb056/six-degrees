@@ -43,6 +43,8 @@ function PathsInner() {
   useEffect(() => { if (asked === 'scores') router.replace('/scores#companies'); }, [asked, router]);
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
+  // The sample or a CSV import: they live only in this tab, so a company scan could only fail.
+  const [localOnly, setLocalOnly] = useState(false);
 
   useEffect(() => {
     if (IS_DEMO) return;
@@ -52,6 +54,7 @@ function PathsInner() {
       // in this tab, not the database. Keep the sample's 2nd degree: without it
       // the company map has no links and nobody is "reachable".
       const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
+      setLocalOnly(Boolean(csv));
       let d1 = [], d2 = [], d3 = [];
       if (csv) {
         d1 = csv.degree1;
@@ -118,7 +121,7 @@ function PathsInner() {
   }
 
   async function scanFullCompany() {
-    if (IS_DEMO) return;
+    if (IS_DEMO || localOnly) return;
     if (!selectedCompany) return;
     // Company scans shipped in 0.1.0 without ever having been run against live
     // LinkedIn (docs/brain/PHASES.md). Say so once per browser before the first
@@ -262,6 +265,9 @@ function PathsInner() {
               <span style={{ fontSize: 11, color: '#888' }}>
                 {connectedCount}/{companyPeople.length} connected
               </span>
+              {localOnly ? (
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>Scanning needs your own network</span>
+              ) : (
               <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
                 title={busy ? `${busy}. One scan at a time.` : undefined}
                 style={{
@@ -271,6 +277,7 @@ function PathsInner() {
                 }}>
                 {scanning ? 'Scanning...' : busy ? 'Scanner busy' : '+ Scan Full Company'}
               </button>
+              )}
               <span
                 title="Not yet tested against live LinkedIn. Results may be incomplete."
                 style={{
