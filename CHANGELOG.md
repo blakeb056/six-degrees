@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Which connections open the same doors.** A card says whose circle overlaps theirs most, when
+  it's real (15% or more, and at least 3 people): "Opens the same doors as Tom: 62% of the
+  people either reaches, both do". Bridge Chains' Degrees box adds how much of your 2nd degree
+  you reach two or more ways.
 - **Who only one connection reaches.** In Bridge Chains, each connection with a scanned circle
   shows how many of its people none of your other connections reach ("746 only here"), and
   their card says it in a line: those people are reached through them alone. It's their

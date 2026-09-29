@@ -33,7 +33,7 @@ import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
 import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
-import { exclusiveReach } from '../../lib/brokerage';
+import { exclusiveReach, redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
@@ -141,6 +141,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const readyCount = useMemo(() => readyByCircle(reach), [reach]);
   // Who only this bridge reaches, across every circle scanned (lib/brokerage.js).
   const exclusive = useMemo(() => exclusiveReach(fullDegree2 || degree2, fullDegree1 || connections), [fullDegree2, degree2, fullDegree1, connections]);
+  const twoWays = useMemo(() => redundancy(fullDegree2 || degree2, fullDegree1 || connections), [fullDegree2, degree2, fullDegree1, connections]);
   const rowById = useMemo(() => {
     const m = new Map();
     for (const r of all2) m.set(r.id, r);
@@ -381,6 +382,12 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         <div style={{ fontSize: 9, color: '#555', marginTop: 8 }}>
           {bridges.length} bridges · {d2S} S + {d2A} A at 2nd degree
         </div>
+        {twoWays > 0 && (
+          <div style={{ fontSize: 9, color: '#555', marginTop: 4 }}
+            title="The share of everyone you reach through a circle that more than one of your connections reaches">
+            {Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways
+          </div>
+        )}
         <div style={{ fontSize: 8, color: '#444', marginTop: 4 }}>Click a bridge to open their circle, then anyone in it to open theirs</div>
       </div>
     </div>
