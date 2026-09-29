@@ -224,6 +224,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   const nodes = [centerNode, ...connections.map(c => ({
     id: c.id, name: c.name, tier: c.tier, degree: c.degree || 1, source_connection_id: c.source_connection_id,
+    unlocked_from_bridge_id: c.unlocked_from_bridge_id,
     power_score: parseFloat(c.power_score) || 1,
     company: c.company, role: c.role, headline: c.headline,
     profile_url: c.profile_url, profile_image_url: localPhoto(c.profile_image_url),
@@ -235,17 +236,53 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }))];
   const nodeById = new Map(nodes.map(n => [n.id, n]));
 
-  // Your connections hang off you; someone further out (Filter → Degree) off the
-  // connection whose circle they're in, when that one is drawn too, so they
-  // gather near them.
+  // Who hangs off whom. Your connections hang off you; someone in a circle off
+  // the connection whose circle it is, when that one is drawn too; and with
+  // more than your connections drawn (Filter → Degree), someone you added
+  // through a circle off the one they came from, so a chain reads as a chain.
   const drawnD1 = new Set(connections.filter(c => (c.degree || 1) === 1).map(c => c.id));
+  const multi = connections.some(c => (c.degree || 1) > 1);
+  const parentOf = new Map();
+  for (const n of nodes) {
+    if (n.id === CENTER_ID) continue;
+    const from = n.unlocked_from_bridge_id;
+    if (n.degree === 1 && multi && from != null && from !== n.id && drawnD1.has(from)) parentOf.set(n.id, from);
+    else if (n.degree === 2 && drawnD1.has(n.source_connection_id)) parentOf.set(n.id, n.source_connection_id);
+  }
+  // How far along the chain: 1 for your connections, one more past each person
+  // you came through, to 6.
+  const bandMemo = new Map();
+  const bandOf = (n, seen = new Set()) => {
+    if (n.id === CENTER_ID) return 0;
+    if (bandMemo.has(n.id)) return bandMemo.get(n.id);
+    const p = parentOf.get(n.id);
+    let b = n.degree >= 3 ? 3 : n.degree;
+    if (p != null && !seen.has(n.id)) { seen.add(n.id); b = bandOf(nodeById.get(p), seen) + 1; }
+    b = Math.min(b, 6);
+    bandMemo.set(n.id, b);
+    return b;
+  };
   const links = connections.map(c => {
-    const via = (c.degree || 1) > 1 && drawnD1.has(c.source_connection_id) ? c.source_connection_id : CENTER_ID;
+    const via = parentOf.get(c.id) ?? CENTER_ID;
     return { source: via, target: c.id, near: via !== CENTER_ID };
   });
 
   const tierRadius = (tier) => {
     switch (tier) { case 'S': return 150; case 'A': return 250; case 'B': return 350; case 'C': return 450; default: return 520; }
+  };
+  // More than one band drawn: a band for each step along the chain, the first
+  // (your connections) a tighter ring, each sorted by tier with S nearest, close
+  // enough to read as layers and far enough apart not to clump. One band alone
+  // keeps the roomier tier rings.
+  const TIERS = ['S', 'A', 'B', 'C', 'D'];
+  const SLOTS = [[115, 135, 155, 175, 192], [265, 300, 335, 370, 398], [465, 500, 535, 565, 590], [660, 690, 720, 745, 765]];
+  const bands = [...new Set(nodes.filter(n => n.id !== CENTER_ID).map(n => bandOf(n)))].sort((a, b) => a - b);
+  const layered = multi && bands.length > 1;
+  const radiusOf = (d) => {
+    if (!layered) return tierRadius(d.tier);
+    const slot = Math.min(bands.indexOf(bandOf(d)), SLOTS.length - 1);
+    const t = TIERS.indexOf(d.tier);
+    return SLOTS[slot][t < 0 ? 4 : t];
   };
 
   const nodeRadius = (d) => {
@@ -265,7 +302,19 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Once the layout settles they move to where each tier's dots actually sit
   // (the median distance out), which the other forces push past that radius.
   const guideRings = new Map();
-  if (!isMobileGraph) {
+  if (!isMobileGraph && layered) {
+    // In bands: a faint ring and a label for each step along the chain instead.
+    const guides = g.append('g').attr('class', 'degree-guides').style('pointer-events', 'none');
+    const names = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
+    bands.slice(0, SLOTS.length).forEach((b, slot) => {
+      const r = SLOTS[slot][2];
+      guides.append('circle').attr('r', r).attr('fill', 'none').attr('stroke', '#8899aa')
+        .attr('stroke-opacity', 0.12).attr('stroke-width', 1).attr('stroke-dasharray', '2 4');
+      guides.append('text').attr('x', 0).attr('y', -SLOTS[slot][4] - 8).attr('text-anchor', 'middle')
+        .attr('font-size', 10).attr('font-weight', 700).attr('fill', '#8899aa').attr('fill-opacity', 0.55)
+        .text(names[b] || `${b}th`);
+    });
+  } else if (!isMobileGraph) {
     const guides = g.append('g').attr('class', 'tier-guides').style('pointer-events', 'none');
     for (const tier of ['S', 'A', 'B', 'C', 'D']) {
       const r = tierRadius(tier);
@@ -373,11 +422,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }
 
   const simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(d => (d.near ? 45 : tierRadius(d.target.tier || 'D'))).strength(isMobileGraph ? 0 : 0.1))
+    .force('link', d3.forceLink(links).id(d => d.id).distance(d => (d.near ? Math.max(40, radiusOf(d.target) - radiusOf(d.source)) : radiusOf(d.target))).strength(isMobileGraph ? 0 : layered ? 0.06 : 0.1))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : (d => d.id === CENTER_ID ? -300 : -15)))
     .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
-    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : tierRadius(d.tier), 0, 0).strength(0.3));
+    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : radiusOf(d), 0, 0).strength(layered ? 0.45 : 0.3));
   simulation.on('end.guides', () => {
     for (const [tier, { ring, label }] of guideRings) {
       const out = nodes.filter((n) => n.tier === tier && n.id !== CENTER_ID).map((n) => Math.hypot(n.x || 0, n.y || 0)).sort((x, y) => x - y);
