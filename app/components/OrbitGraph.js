@@ -295,11 +295,24 @@ const OrbitGraph = forwardRef(function OrbitGraph(
           placed += row.length;
           r += step;
         }
+        // Their people go behind this fan, centred on it (not on wherever the
+        // person they came through sits), side by side in the order those people
+        // sit, so no fan spills into the next one's space; a line runs back to
+        // each. Wider than the wedge, they close up to fit it.
         let edge = r;
-        for (const { d, a } of subs) {
-          if (depth >= 6 || !reachOf(d)) continue;
-          const sub = Math.min(wedge * 0.6, Math.max(0.12, (Math.min(reachOf(d), 60) * 8) / (r + 24)));
-          edge = Math.max(edge, placeFan(d, a, sub, r + 24, depth + 1));
+        const next = subs.filter(({ d }) => depth < 6 && reachOf(d)).sort((x, y) => x.a - y.a);
+        if (next.length) {
+          const from = r + 24;
+          const gap = 10 / from;
+          const want = next.map(({ d }) => Math.max(0.12, (Math.min(reachOf(d), 60) * 8) / from));
+          const need = want.reduce((sum, w) => sum + w, 0) + gap * (next.length - 1);
+          const scale = need > wedge ? wedge / need : 1;
+          let at = angle - (need * scale) / 2;
+          next.forEach(({ d }, k) => {
+            const w = want[k] * scale;
+            edge = Math.max(edge, placeFan(d, at + w / 2, w, from, depth + 1));
+            at += w + gap * scale;
+          });
         }
         return edge;
       };

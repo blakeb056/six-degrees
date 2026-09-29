@@ -12,9 +12,12 @@ function useIsMobile() {
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 
-export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilterChange, visualMode, onVisualModeChange, tierCounts, bridgeTierCounts, degrees = [1], onDegreesChange, degreeCounts = {} }) {
+export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilterChange, visualMode, onVisualModeChange, tierCounts, bridgeTierCounts, degrees = [1], onDegreesChange, degreeCounts = {}, hiddenTiers = [], onHiddenTiersChange }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees';
+  // Network Circle: each tier switches on and off, so the noisy ones (C, D) can go
+  // while the rest stay. Degrees keeps one tier at a time.
+  const toggles = !isDegreesMode && !!onHiddenTiersChange;
   // Same source of truth the renderer uses, so the menu can never offer a
   // view that does not exist or miss one that does.
   const modes = viewsForMode(isDegreesMode ? 'degrees' : 'network');
@@ -151,19 +154,48 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* All button */}
             <button
-              onClick={() => onFilterChange && onFilterChange('all')}
+              onClick={() => (toggles ? onHiddenTiersChange([]) : onFilterChange && onFilterChange('all'))}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '7px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', width: '100%',
-                background: filter === 'all' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)',
-                color: filter === 'all' ? '#fff' : '#888',
+                background: (toggles ? !hiddenTiers.length : filter === 'all') ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)',
+                color: (toggles ? !hiddenTiers.length : filter === 'all') ? '#fff' : '#888',
               }}
             >
               <span style={{ fontSize: 11, fontWeight: 600 }}>All</span>
               <span style={{ fontSize: 10, color: '#555' }}>{allCount}</span>
             </button>
             {/* Tier buttons */}
-            {['S', 'A', 'B', 'C', 'D'].map(t => (
+            {toggles && (
+              <div style={{ fontSize: 10, color: '#667', margin: '2px 2px 4px' }}>Click a tier to hide or show it</div>
+            )}
+            {toggles && ['S', 'A', 'B', 'C', 'D'].map(t => {
+              const on = !hiddenTiers.includes(t);
+              const last = on && hiddenTiers.length >= 4;
+              return (
+                <button
+                  key={t}
+                  aria-pressed={on}
+                  title={last ? 'Keep at least one tier showing' : on ? `Hide ${t}-Tier` : `Show ${t}-Tier`}
+                  onClick={() => !last && onHiddenTiersChange(on ? [...hiddenTiers, t] : hiddenTiers.filter(x => x !== t))}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '7px 10px', borderRadius: 6, border: 'none', cursor: last ? 'default' : 'pointer', width: '100%',
+                    background: on ? `${TIER_COLORS[t]}14` : 'rgba(255,255,255,0.02)',
+                    color: on ? TIER_COLORS[t] : '#555',
+                    borderLeft: on ? `3px solid ${TIER_COLORS[t]}` : '3px solid transparent',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLORS[t], opacity: on ? 1 : 0.2 }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, textDecoration: on ? 'none' : 'line-through' }}>{t}-Tier</span>
+                    {!on && <span style={{ fontSize: 9.5, color: '#667' }}>hidden</span>}
+                  </div>
+                  <span style={{ fontSize: 10, color: '#555' }}>{counts[t] || 0}</span>
+                </button>
+              );
+            })}
+            {!toggles && ['S', 'A', 'B', 'C', 'D'].map(t => (
               <button
                 key={t}
                 onClick={() => onFilterChange && onFilterChange(t)}
