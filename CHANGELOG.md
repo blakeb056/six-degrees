@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **The "N only here" line under each bridge in Bridge Chains.** Their card still says who is
+  reached only through them.
+
 ### Added
 - **A ring round each connection's dot.** Five thin bars show how much of their circle is
   scanned: all five once their list is read to the end, and part-way the pages read against
