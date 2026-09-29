@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **The "N only here" line under each bridge in Bridge Chains.** Their card still says who is
+  reached only through them.
+
 ### Added
 - **Orbit goes past 2nd degree.** Someone you added through a circle, whose own circle is
   scanned, now sits in the fan of the circle they came from, green-ringed, and their people fan
