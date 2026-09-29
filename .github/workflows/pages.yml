@@ -1,13 +1,28 @@
 name: Website
 
-# The download page at https://blakeb056.github.io/six-degrees/ — site/ plus the
-# README's screenshots and the app icon, published with GitHub Pages. It has no
-# build step and no dependencies: what is in site/ is what is served.
+# The website at https://sixdegreesapp.com/, built by scripts/build-site.mjs from
+# site/ (see site/README.md) and published with GitHub Pages. The build has no
+# dependencies: it fills the home page's generated parts, renders /download/,
+# /docs/, /roadmap/, /about/, /releases/ and the blog, writes the feeds and the
+# sitemap, and copies in the README's screenshots and the app icon. News and
+# numbers come from CHANGELOG.md, tests/ and public/demo-data.json at build time,
+# so the live site is never older than the changelog.
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'docs/img/**', 'desktop/icon/**', '.github/workflows/pages.yml']
+    paths:
+      - 'site/**'
+      - 'docs/img/**'
+      - 'desktop/icon/**'
+      - '.github/workflows/pages.yml'
+      # What the build reads (scripts/build-site.mjs and the modules beside it).
+      - 'CHANGELOG.md'
+      - 'scripts/build-site.mjs'
+      - 'scripts/site-news.mjs'
+      - 'scripts/site-markdown.mjs'
+      - 'tests/*.test.mjs'
+      - 'public/demo-data.json'
   workflow_dispatch:
 
 permissions:
@@ -27,15 +42,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble the site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # ImageMagick makes the 1200px copies of the screenshots, for phones.
+      - name: Build the site
         run: |
-          mkdir -p _site/img
-          cp -R site/. _site/
-          cp docs/img/app-window.png docs/img/degrees.png docs/img/paths.png _site/img/
-          cp desktop/icon/icon.svg _site/img/icon.svg
-          # 1200px copies for phones and small screens (the originals are 2880–3136px).
           command -v convert >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick; }
-          for f in app-window degrees paths; do convert "_site/img/$f.png" -resize 1200x "_site/img/$f-1200.png"; done
+          node scripts/build-site.mjs _site
           ls -la _site _site/img
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

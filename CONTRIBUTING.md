@@ -38,6 +38,11 @@ Read `docs/SCRAPING.md` and `docs/brain/TRAPS.md` first. The scanner's packages 
 pinned by hash in `scripts/requirements.txt`: to change one, edit its version there and
 run `node scripts/pin-python-packages.mjs`.
 
+## The website
+
+https://sixdegreesapp.com/ is built from `site/` by `scripts/build-site.mjs`. To add a
+blog post or a page, or to preview the site, see [site/README.md](site/README.md).
+
 ## Releasing
 
 Bump the version, tag it, push the tag. `.github/workflows/release.yml` builds the

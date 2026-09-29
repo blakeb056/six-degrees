@@ -1,0 +1,162 @@
+<!--
+title: Six Degrees docs: getting started, your data, privacy and questions
+description: How to bring your LinkedIn network into Six Degrees (sample, CSV export or scan), where your data lives, what the app contacts and when, and answers to common questions.
+crumb: Docs
+path: /docs/
+type: WebPage
+faq: true
+updated: 2026-09-29
+-->
+    <header class="page-hero">
+      <p class="kicker">Docs</p>
+      <h1>Getting started, and questions</h1>
+      <p class="lede">Everything you need once it's <a href="/download/">installed</a>: how to bring your network in, where it
+        lives, and what the app does and doesn't do.</p>
+    </header>
+
+    <nav class="on-page" aria-label="On this page">
+      <a href="#get-started">Get started</a>
+      <a href="#your-data">Your data</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">Questions</a>
+      <a href="#more">Go deeper</a>
+    </nav>
+
+    <section class="ways" id="get-started">
+      <p class="kicker">Get started</p>
+      <h2>Bring your network in</h2>
+      <p class="intro">The app opens on three ways in, from no risk at all to the full picture. Scanning is the only one
+        that shows who <em>your connections</em> know.</p>
+      <div class="cards" id="network">
+        <article>
+          <p class="risk none">No LinkedIn risk</p>
+          <h3>Explore a sample</h3>
+          <p>150 invented connections and the 598 people they know. Every view except Outlink and Scores, which need your
+            own scan.</p>
+        </article>
+        <article>
+          <p class="risk none">No LinkedIn risk</p>
+          <h3>Import LinkedIn's export</h3>
+          <p>LinkedIn's own <code>Connections.csv</code>, read on your computer: Settings &amp; Privacy → Data privacy → Get
+            a copy of your data → Connections. It shows the people you know, not who they know, so there's no Degrees or
+            Outlink.</p>
+        </article>
+        <article>
+          <p class="risk some">Your account, your risk</p>
+          <h3>Scan your LinkedIn</h3>
+          <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
+            own, you sign into LinkedIn there yourself, and it reads slowly with daily limits.</p>
+        </article>
+      </div>
+      <figure class="video" id="export">
+        <video controls muted playsinline preload="metadata" poster="/video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing LinkedIn's export">
+          <source src="/video/export.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>Importing LinkedIn's export</strong> (half a minute): ask LinkedIn for your Connections file,
+          then drop it on the app. No sign-in, and no risk to your account.</figcaption>
+      </figure>
+      <p class="warning"><strong>Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that
+        automate it.</strong> Automating LinkedIn may break its User Agreement. The scanner reads slowly, keeps to a
+        budget and stops at the first push-back, but the risk is yours. The sample and the CSV import carry no LinkedIn
+        risk at all. <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
+      <figure class="video" id="scanning">
+        <video controls muted playsinline preload="metadata" poster="/video/scan-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: how scanning works">
+          <source src="/video/scan.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>How scanning works</strong> (under a minute): sign into LinkedIn in the Chrome window it opens,
+          scan the people you know, then map who they know a few at a time.</figcaption>
+      </figure>
+    </section>
+
+    <section class="your-data" id="your-data">
+      <p class="kicker">Your data</p>
+      <h2>One folder, on your computer</h2>
+      <div class="prose narrow">
+        <p>Your network lives in a hidden folder in your home folder, <code>.six-degrees</code>. Open it any time with
+          <em>Help → Show the Data Folder</em>, and see what each part takes up in <strong>Settings → Your data</strong>.</p>
+        <ul>
+          <li><strong>Backups.</strong> Each new version copies your network into <code>backups/</code> before it first
+            opens it, and so does an import.</li>
+          <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Save a copy of my network</em> makes
+            one file. Move it yourself, and import it on the other computer. Your LinkedIn sign-in never goes into a copy.</li>
+          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in LinkedIn
+            session. Never copy, sync or share it; deleting it just means signing in again.</li>
+        </ul>
+        <p>Every detail, including how to undo an import, is in the
+          <a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored">README</a>.</p>
+      </div>
+    </section>
+
+    <section class="privacy-list" id="privacy">
+      <p class="kicker">Privacy</p>
+      <h2>What it contacts, and when</h2>
+      <ul role="list">
+        <li><strong>No account, no server.</strong> Everything stays on your computer: your network in the hidden
+          <code>.six-degrees</code> folder, and the app window's own storage (including an imported CSV) in
+          <code>~/Library/Application Support/Six Degrees</code>.</li>
+        <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
+        <li><strong>It only goes online when you act:</strong> LinkedIn while you scan (profile photos are saved on your
+          computer as they're read, and shown only from there), and GitHub when you check for updates (and to download
+          one, if you click Install). The Mac app carries the scanner's Python inside it, so setting it up downloads
+          nothing.</li>
+        <li><strong>One thing that runs on a timer, if you turn it on:</strong> the experimental Social tab's daily
+          messages sync opens LinkedIn once a day, in the daytime, while the app is open. It's off until you tick it.</li>
+        <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
+          under the MIT licence, and <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>
+          describes what the app trusts.</li>
+      </ul>
+      <p class="fine center">This website has no trackers either. To show the latest version and the number of stars, it
+        asks GitHub.</p>
+    </section>
+
+    <section class="faq" id="faq">
+      <p class="kicker">Questions</p>
+      <h2>Questions people ask</h2>
+      <dl>
+        <div>
+          <dt>Is Six Degrees free?</dt>
+          <dd>Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub.</dd>
+        </div>
+        <div>
+          <dt>Does it upload my LinkedIn data anywhere?</dt>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan, and GitHub when you check for an update.</dd>
+        </div>
+        <div>
+          <dt>Does it work on Windows?</dt>
+          <dd>Not yet. Six Degrees is a Mac app for Apple Silicon and Intel Macs on macOS 13.5 or later, and it runs on Linux with <code>npx six-degrees</code>. A Windows version is planned, without a date.</dd>
+        </div>
+        <div>
+          <dt>Why does macOS say it can't check the app for malware?</dt>
+          <dd>Because the app isn't signed with Apple's paid developer certificate yet. Allow it once in System Settings → Privacy &amp; Security → Open Anyway, or use the one-line Terminal install, which checks the download against the published checksums before opening it.</dd>
+        </div>
+        <div>
+          <dt>Is scanning LinkedIn against LinkedIn's rules?</dt>
+          <dd>Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account.</dd>
+        </div>
+        <div>
+          <dt>What do I need to get started?</dt>
+          <dd>A Mac and, optionally, LinkedIn's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+        </div>
+        <div>
+          <dt>What does “six degrees” mean here?</dt>
+          <dd>The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met.</dd>
+        </div>
+        <div>
+          <dt>How is someone's score worked out?</dt>
+          <dd>From their title and their company: power = title × (0.45 + 0.055 × company score), plus a small bonus for reach and for a strong circle. It estimates network position, not what anyone is worth as a person. Scanned and sample people show the working on their card.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="docs" id="more">
+      <p class="kicker">Go deeper</p>
+      <h2>The full documentation</h2>
+      <ul class="doc-grid" role="list">
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/docs/SCRAPING.md"><strong>How scanning works</strong><span>What the scanner reads, its budgets, and what it risks.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#how-scoring-works"><strong>How scoring works</strong><span>The power score, the tiers, and what you can change.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored"><strong>Your data, in detail</strong><span>Where it lives, moving computers, undoing an import.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md"><strong>Security model</strong><span>What the app trusts, and how to report a problem.</span></a></li>
+        <li><a href="/blog/"><strong>The blog</strong><span>How it ranks who can introduce you, local-first, the physics lab, scanning.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/CONTRIBUTING.md"><strong>Run it from source</strong><span>Clone it, change it, and send a pull request.</span></a></li>
+      </ul>
+    </section>

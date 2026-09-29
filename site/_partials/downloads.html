@@ -1,0 +1,73 @@
+<!-- The three download cards on /download/ (gen:downloads). The Linux and Windows
+     buttons are dimmed "Coming soon" buttons; DOWNLOADS at the top of site/app.js turns them on. -->
+      <div class="os-grid">
+        <article class="os" id="os-mac">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M1.5 19.5h21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <h3>macOS</h3>
+            <span class="os-req">13.5 or later</span>
+          </header>
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg">
+            <span class="dl-text">
+              <span class="dl-title">Apple Silicon</span>
+              <span class="dl-sub">M1 or newer · .dmg<span data-asset="Six-Degrees-Mac-Apple-Silicon.dmg"></span></span>
+            </span>
+          </a>
+          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">
+            <span class="dl-text">
+              <span class="dl-title">Intel</span>
+              <span class="dl-sub">Older Macs · .dmg<span data-asset="Six-Degrees-Mac-Intel.dmg"></span></span>
+            </span>
+          </a>
+          <p class="fine">Which one? Apple menu → About This Mac. "Chip: Apple M…" is Apple Silicon; "Processor: …Intel…"
+            is Intel.</p>
+          <p class="os-links"><a href="/download/#install">Install guide</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS">Checksums</a></p>
+        </article>
+
+        <article class="os" id="os-linux">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m6.5 9.5 3 2.5-3 2.5M11.5 15h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Linux</h3>
+            <span class="os-req soon" data-when-soon="linux">Coming soon</span>
+          </header>
+          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
+               download is one line in app.js: DOWNLOADS.linux. -->
+          <button type="button" class="dl is-soon" data-soon="linux" data-ready-title="Download for Linux" data-ready-sub="The Linux app" aria-disabled="true">
+            <span class="dl-text">
+              <span class="dl-title">Linux app</span>
+              <span class="dl-sub">Coming soon</span>
+            </span>
+          </button>
+          <div class="os-note">
+            <p><strong>Or run it today from the Terminal</strong>, with Node 22.13 or later:</p>
+            <div class="cmd">
+              <code id="cmd-npx">npx six-degrees</code>
+              <button type="button" class="copy" data-copy="cmd-npx" aria-label="Copy the Linux command">Copy</button>
+            </div>
+            <p class="os-links"><a href="/download/#linux">Linux guide</a> · <a href="https://www.npmjs.com/package/six-degrees">On npm</a></p>
+          </div>
+        </article>
+
+        <article class="os" id="os-windows">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.8"/></svg>
+            <h3>Windows</h3>
+            <span class="os-req soon" data-when-soon="windows">Coming soon</span>
+          </header>
+          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
+               download is one line in app.js: DOWNLOADS.windows. -->
+          <button type="button" class="dl is-soon" data-soon="windows" data-ready-title="Download for Windows" data-ready-sub="The Windows app" aria-disabled="true">
+            <span class="dl-text">
+              <span class="dl-title">Windows app</span>
+              <span class="dl-sub">Coming soon</span>
+            </span>
+          </button>
+          <p class="fine" data-when-soon="windows">There's no Windows version yet, and <code>npx six-degrees</code> doesn't run
+            on Windows either.</p>
+          <p class="os-links" data-when-soon="windows"><a href="https://github.com/blakeb056/six-degrees">Watch releases on GitHub</a>
+            (Watch → Custom → Releases) to hear when it's out.</p>
+        </article>
+      </div>
+      <p class="fine center">Every release is on <a href="https://github.com/blakeb056/six-degrees/releases">GitHub
+        Releases</a> with a <code>SHA256SUMS</code> file, and the Terminal install checks the download against it before
+        opening anything.</p>

@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A new icon.** A 6 drawn in one gold line around you, a glowing core, ending in a degree
+  ring, with your tier rings fading behind it. It's the app's icon, the favicon and the
+  website's.
+- **The website is a proper site now, and the README matches.** The home page tells one story,
+  feature by feature, each with a real screenshot of the invented sample network: see your
+  network, find your way in, know your network, watch it grow, and scan carefully, then privacy,
+  a fair comparison with LinkedIn's own search, spreadsheets and CRMs, and SocNetV and Gephi,
+  and a strip of true, checkable numbers. It has one download button, for your computer: the Mac
+  download on a Mac, and on Linux and Windows a dimmed *Coming soon* button, never a link, with
+  `npx six-degrees` offered on Linux. New pages: **/download/** (every platform, install steps,
+  checksums, requirements, troubleshooting), **/docs/** (getting started, your data, privacy,
+  questions), **/releases/** (every version in this changelog), **/blog/** with four posts on how
+  it works, **/roadmap/** and **/about/**, with Atom feeds for the blog and releases and every
+  page in the sitemap. `scripts/build-site.mjs` builds it all from `site/`, and the website's
+  deploy runs it, so the news and numbers never go stale (`site/README.md` says how to add a
+  post or a page). The README has badges, a download table for all three platforms, features,
+  latest news and why Six Degrees.
+
 ### Fixed
 - **Paths opens about 9× faster on a large network** (Map 19.8 s → 2.2 s, Industries 25.8 s →
   1.7 s, at 1,500 connections and 25,000 people in their circles). Each headline and company
