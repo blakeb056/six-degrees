@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-09-29
+
 ### Added
 - **The Social tab is a personal CRM.** Everyone you've been in touch with on LinkedIn is one contact,
   connection or not: a list on the left with views and a search box, the person on the right (stacked
