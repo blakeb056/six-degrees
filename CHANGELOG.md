@@ -6,7 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The Scan page asks what field you're in, before your first scan.** One optional step,
+  with the same picks as *Scores → Your sector*: tech, government and defense, dental, and
+  the rest. Companies in your field count for more, so your first scores already use it.
+  *Skip for now* carries on without one. Both stay at the bottom of the window while you
+  look through the list. It's asked once, and never if you already have a network or picked
+  a sector. Change it anytime on the Scores tab.
+- **A release checks the website's version lines.** Before building anything, the release
+  workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
+  `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
+  older than the release's date in the changelog. A stale site stops the release with a
+  line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
+
 ### Changed
+- **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
+  secretary score like a C-suite; their deputies, state legislators, commissioners,
+  ambassadors and judges like a VP; a city councilmember or a sheriff like a director.
+  Officers by rank: a 3–4 star general or admiral 10, a 1–2 star 9, a colonel 7.5, a
+  lieutenant colonel 6.5, a major 5, and a commander by their unit. "(Ret.)" and
+  "Retired" make a role former. They count only where a title is written, and only where
+  their own organization is a government's or a service's: a staffer in an Office of the
+  Secretary, a veteran's civilian job, a city manager at Uber, a Rotary district governor,
+  a team captain or a Kentucky colonel isn't one. A title that doesn't say whose it is
+  ("Mayor", "Police Chief", "Ambassador") needs its government named, or stays "Title
+  unclear": a missed official is a neutral 4, a realtor read as a mayor would be an A.
+  Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
 - **One name: Six Degrees.** The header, the welcome screen, the loading and launch pages,
   the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
   the window title and the app in Applications already did.
@@ -17,14 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commit, wherever they sit in the tree. A local build keeps them out of the app too, and
   its list of uncommitted files inside the app now names ignored ones as well.
 
-### Added
-- **A release checks the website's version lines.** Before building anything, the release
-  workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
-  `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
-  older than the release's date in the changelog. A stale site stops the release with a
-  line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
-
 ### Fixed
+- **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
+  scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
+  Information Officer". "Executive Assistant to the General Manager" scored as a VP.
 - **↻ asks before it scans.** The round button in the header started *Check for new* the
   moment it was clicked. It now says what it will do (open Chrome on your connections list
   and read it until it reaches people already saved) and what it costs (no search budget,

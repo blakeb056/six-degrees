@@ -1,7 +1,9 @@
 // A scan's batch through the ingest route (app/api/ingest/route.js), on a
-// temporary database: what a refresh of your own connections says afterwards.
-// The route imports as Next resolves it (tests/helpers/extensionless.mjs).
-// Invented people and companies.
+// temporary database: what a refresh of your own connections says afterwards,
+// and how the first scan is scored after the Scan page's question about your
+// field (saved as the page saves it, lib/settings-client.js, through
+// app/api/settings/route.js). The routes import as Next resolves them
+// (tests/helpers/extensionless.mjs). Invented people and companies.
 
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,10 +18,12 @@ const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-ingest-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 
-let POST, getDb;
+let POST, settingsRoute, saveSettings, getDb;
 
 before(async () => {
   ({ POST } = await import('../app/api/ingest/route.js'));
+  ({ POST: settingsRoute } = await import('../app/api/settings/route.js'));
+  ({ saveSettings } = await import('../lib/settings-client.js'));
   ({ getDb } = await import('../lib/db-client.js'));
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
@@ -86,4 +90,45 @@ test('only a circle scan brings a mutual count: your own connections never get o
   await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 12 }]);
   const row = getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-900');
   assert.equal(row.mutual_count, null);
+});
+
+// ── your field, asked before the first scan ─────────────────────────────────
+
+// What the Scan page's question sends (app/components/FieldStep.js), through
+// the page's own save (lib/settings-client.js), answered by the settings route.
+const answer = async (patch, route = (url, opts) => settingsRoute(new Request(`http://127.0.0.1${url}`, opts))) => {
+  const real = globalThis.fetch;
+  globalThis.fetch = route;
+  try { return await saveSettings(patch); } finally { globalThis.fetch = real; }
+};
+const scored = (i) => getDb().prepare('SELECT company_prestige_score AS company, score_why AS why FROM linkedin_connections WHERE profile_url = ?')
+  .get(`https://www.linkedin.com/in/person-${i}`);
+
+test('a field picked before the first scan is saved with nobody to rescore, and the first scan is already scored with it', async () => {
+  const saved = await answer({ sectorFocus: { sectors: ['media'], strength: 'lean' }, fieldAsked: true });
+  assert.equal(saved.error, null);
+  assert.deepEqual([saved.settings.sectorFocus, saved.settings.fieldAsked], [{ sectors: ['media'], strength: 'lean' }, true]);
+  assert.equal(saved.effects.sectorFocus.scored, 0);
+  await send([person(1, 'Director of Partnerships at YouTube'), person(2, 'VP Sales at Hooli')]);
+  // YouTube is 9 on the known list; lean media makes it 10.
+  assert.equal(scored(1).company, 10);
+  assert.match(scored(1).why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
+});
+
+test('skipping saves only that it was asked, and the first scan is scored as it always was', async () => {
+  const skipped = await answer({ fieldAsked: true });
+  assert.equal(skipped.error, null);
+  assert.deepEqual([skipped.settings.sectorFocus, skipped.settings.fieldAsked], [{ sectors: [], strength: 'lean' }, true]);
+  assert.equal(skipped.effects, null);
+  await send([person(1, 'Director of Partnerships at YouTube')]);
+  assert.equal(scored(1).company, 9);
+  assert.doesNotMatch(scored(1).why, /your sector/);
+});
+
+test('a save that is refused, or can\'t reach the app, comes back as a message to show, and nothing is saved', async () => {
+  assert.deepEqual(await answer({ sectorFocus: { sectors: ['astrology'] }, fieldAsked: true }),
+    { settings: null, effects: null, error: "There is no sector called 'astrology'." });
+  assert.deepEqual(await answer({ fieldAsked: true }, async () => { throw new TypeError('fetch failed'); }),
+    { settings: null, effects: null, error: 'Could not reach the app. Reload this page to see what is saved.' });
+  assert.equal(getDb().prepare("SELECT value FROM app_meta WHERE key = 'settings'").get(), undefined);
 });

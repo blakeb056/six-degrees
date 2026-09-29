@@ -62,6 +62,93 @@ lecturers are ICs. "Dean" counts only as a title (before "of", "for", a comma or
 part's end), never in a company's name (Dean Foods). Until scoring 6 a professor was an
 entry-level IC (4), and a dean or a chancellor only someone who works there (4 as well).
 
+**Government and the services** (`officeTitle`) have their ladders too, on the same points:
+
+| Level | Government | The services |
+|---|---|---|
+| 10 | a senator or U.S. representative, a governor, a mayor, a county executive, a cabinet secretary, an attorney general, the chief justice, a tribal nation's elected head | a 3–4 star general or admiral, the services' chiefs |
+| 9 | a deputy, under or assistant secretary, a state legislator, a lieutenant governor, a commissioner of an agency, an ambassador or envoy, an inspector general, a U.S. or district attorney, a PEO or an SES member, a police chief, a judge | a 1–2 star general or admiral, a commanding general |
+| 7.5 | a deputy assistant secretary, a city or county councilmember or commissioner, a county legislator, a sheriff, a school-board member, a special agent in charge | a colonel, a Navy or Coast Guard captain, a brigade or garrison commander |
+| 6.5 | | a lieutenant colonel, a Navy commander, a battalion or squadron commander; a command sergeant major or master chief |
+| 5 | | a major, an Army or Marine captain, a Navy lieutenant commander or lieutenant; a senior NCO or a warrant officer |
+
+A commander's level is their unit's, the first one their title names (a company's is a
+major, a division's a general, a fleet's or a corps' a 3–4 star); a deputy or an executive
+officer is one below. They're read only **where a title is written**, the start of a part
+before its comma, "at", "@" or bracket, so the office, the company or the club named after
+it is only context: "Staff Assistant, Office of the Secretary of Defense", "Store Manager
+at Dollar General" and "Law Clerk to Chief Judge…" aren't the office. And they count only
+where their place says so:
+
+- the title's organization must be a government's (`where()`): the one after its comma or
+  "at", or else the next part when that is an organization ("Governor | State of Florida",
+  not "Florida State Representative | Northwind Pharmaceuticals"), or the headline's first
+  part ("State of Ohio | Governor"). A government is one by its own name: a state's or a
+  city's ("State of Florida", "City of Orlando", "Orange County"), a department, a court, a
+  legislature, an agency in full or with its field office ("FBI Miami Field Office", not
+  "SBA Lending"), a tribal nation (not "Tribe Capital" or "Cherokee Nation Businesses");
+- **precision first** (the fourth review round): a title that names its government ("U.S.
+  Senator", "County Sheriff", "Mayor of Tampa", "Ohio State Treasurer") reads the other parts
+  as its bio ("| Podcast Host", "| Swim Dad", "| Former Police Chief") unless they name an
+  employer or a club; a bare title ("Mayor", "Police Chief", "Ambassador", "School Board
+  Chair") needs its government named, or to be the whole headline. A county, a district or a
+  ward named alone is a place, a government only for a local office. A missed official stays
+  "Title unclear" (a neutral 4); a realtor read as a mayor would jump to A, so a doubtful
+  case is left out;
+- a title others hold too needs that government named, or to be the whole headline:
+  "Mayor of Orlando" alone is a mayor, "Realtor at Compass | Mayor of Midtown" isn't; "City
+  Manager" is also Uber's and Lime's, "Controller" and "Auditor" every company's, "Trade
+  Representative" a beverage brand's, "Assistant to the President" a university's, "US
+  Attorney" a U.S.-qualified lawyer's abroad, "Administrator" a systems administrator's.
+  A title nobody else holds ("State Senator", "Special Agent in Charge", "U.S. Trade
+  Representative") needs only no other organization beside it;
+- never a club's, a church's, a school's or students', a profession's, a mock government's,
+  a league, a fraternity's council, an honorary or a joke title (`CIVIC`: "Rotary District
+  Governor", "Delegate, AMA House of Delegates", "Attorney General, SGA", "Commissioner,
+  Orange County Pickleball League", "Mayor of Fun"), and nothing in a headline that names a
+  mock government anywhere (`MOCK`: "Secretary of State | Florida Girls State", "Member of
+  Parliament | UK Youth Parliament");
+- every rank but the flag ranks spelled out needs its service in the same part or as a part
+  of its own ("Captain | U.S. Navy"), and "Army" or "Navy" alone must be the whole
+  organization or qualified ("U.S. Army"), since "Church Army" and "Brand Army" are crowds.
+  A service in a part of its own is the rank's only when nothing but units and places is
+  named beside the rank, and one further off only past a serving officer's job ("LTC |
+  Acquisition Officer | U.S. Army"), not past an employer ("Captain | Delta Air Lines |
+  Retired USAF" is an airline captain), and only with nothing civilian on the rank's other
+  side ("Claims Handler | Admiral | Royal Navy Reserve" isn't). A short form that is also a
+  credential or a company (LTC long-term care, CPT a personal trainer, CSM a ScrumMaster,
+  ADM) needs its service in the same part, or a headline that is all military;
+- a police or fire department's numbered division or battalion, a veterans' group, a
+  museum, a boating club, a credit union, a cadet, a team, a mariner's licence or an
+  honorary rank is no commission (`NOT_MILITARY`: "Kentucky Colonel", "Commander, VFW Post
+  42", "Commander, 77th Street Division, LAPD", "Captain, Navy Rugby", "Master Chief | Halo
+  Cosplayer");
+- a veteran's civilian job scores as that job ("Army Veteran | Store Manager" is the manager).
+
+"(Ret.)", "(Retd)", ", Retired", "Ret." and a part that says only "Retired" make a role
+former, as "Ex-" does; "(R)" does only beside a rank, since CRPC(R) and REALTOR(R) are
+marks. A retirement is its own role's: a service's after a civilian job ("Program Manager
+at Leidos, U.S. Army (Ret.)") or a second role's ("Realtor at Compass, Firefighter (Ret.)")
+leaves the job current, and a lone "Retired" part retires the role just before it (or a
+rank with its service between), not a civilian job further back. A war or staff college's students are serving officers, not students. Until
+scoring 6 none of this was read: a U.S. senator, a lieutenant general and the Secretary of
+Commerce were all "Title unclear" (2.9, C).
+
+**The company after "at" is where someone works, not what they do** (`AT_COMPANY`): its
+words aren't read as a title, so "Server at President Hotel" and "Driver at Executive Limo"
+are what they are (on scoring 5 the server was a C-suite, A). The company ends at a comma,
+a bracket, an emoji, "and", "&" or "/" between words, or what says what they do there, so a
+second title still counts ("at Stripe as Head of Growth", "Associate at Goldman Sachs
+(VP)", "Engineer at Google and Founder of Northwind"). "at" is the word alone ("AT&T
+Director" and "At-Large Director" are titles), and a part that starts with it has its title
+in the company's span ("At Home Store Manager"). "MD at" a hospital, or with a specialty
+after it ("MD at Emory, Pediatrics"), stays a doctor; "MD at Lazard, Healthcare M&A" is a
+managing director. An
+office named for its head is also where someone works (`OFFICE_NAME`): "IT Specialist,
+Office of the Chief Information Officer" was a C-suite too. Staff aren't their boss:
+"Executive Assistant to the General Manager" is the assistant, while "Promoted to VP" is
+the VP.
+
 **Where a title is held.** "at" or "@" names the company. So does a company the lists
 know (curated or the public dataset) written after the title without it: after a comma
 ("Corporate VP, Samsung") or as the next part ("Global Category President | The Coca-Cola
@@ -682,6 +769,13 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   where it was 704 and 1,189. Networks are often concentrated in their owner's own sector,
   so expect a broad lift more than a reshuffle, and "S is the top ~3–4%" no longer holds with
   a lean on.
+- **Asked before the first scan.** The Scan page asks for your field once, before anything
+  is scanned, as one optional step (`app/components/FieldStep.js`): the same picks
+  (`SectorPicker`), saved through the same `POST /api/settings` at *lean*, with
+  `fieldAsked: true`. With nobody to rescore, the save's rescore scores no one and stamps
+  the focus; the first scan's `rescoreAll()` reads it, so the first scores already use it.
+  *Skip for now* saves only `fieldAsked`. It isn't asked again, nor of anyone with a
+  network or a sector picked (`lib/scanner-setup.js askForField`), nor in the demo.
 - `users.sectors` (free text, never written by the app) is a different thing: the
   Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
   *Your Sectors* shows the Settings choice.
@@ -905,6 +999,19 @@ kept its old school readings until its next rescore (any import, company score o
 save); since the rule tables joined the list stamp (Staleness, above) the next load redoes
 them, as it does a focus stamped before industries included their sectors. The Queue and the
 person panel read the stored scores, so they change with them.
+
+**Government and military titles (still `SCORING_VERSION` 6, and new rule tables):**
+four rounds of adversarial review ran about 8,500 invented headlines through the reader
+(officials, officers, and the ordinary headlines that share their words) and compared
+ordinary ones with scoring 5. The first two found titles read inside office names and
+clubs; the third (63 findings) found that a government word anywhere nearby was enough,
+which is why a title now needs its own organization to be a government's (`where()`); the
+fourth (59) found look-alikes on both sides, which is why a doubtful title is now left out
+(precision first) and a named one reads its bio as bio.
+Every case the rounds found is a test in `tests/scoring-misses.test.mjs`. The rule
+tables' fingerprint includes the code that applies them, so a change to it rescores. The
+sample network doesn't move (0 of 873 tiers or title points): it has no officials or
+officers.
 
 **`SCORING_VERSION` 6 (what a review found under-rated):** a review of the score in
 September 2026 named the kinds of people it ranked too low, and scoring 6 is its fixes:
