@@ -14,6 +14,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import { loadNetwork } from '../../lib/network';
 import { readTable, messageStats, careerChapters, postingEffect, invitationSplit, warmthOf, repliesWaiting } from '../../lib/linkedin-export';
+import { mergeSocial } from '../../lib/galaxy-lab';
 import { keyFor } from '../../lib/separation';
 import { runScrape, watchScanner, scannerNow } from '../../lib/scraper-client';
 import { Body, LINE, FONT } from '../components/ui';
@@ -119,22 +120,9 @@ function SocialInner() {
     reload();
   }
 
-  // What each person's messages say, the export and the live sync together.
-  const merged = useMemo(() => {
-    const out = new Map();
-    for (const [url, v] of Object.entries(social?.people || {})) out.set(keyFor({ profile_url: url }), { ...v });
-    for (const [url, v] of Object.entries(social?.live || {})) {
-      const k = keyFor({ profile_url: url });
-      const cur = out.get(k) || { total: 0, recent: 0 };
-      if (v.last && (!cur.last || v.last > cur.last)) cur.last = v.last;
-      cur.unread = v.unread;
-      cur.total = Math.max(cur.total || 0, 1);
-      out.set(k, cur);
-    }
-    return out;
-  }, [social]);
-  // "Now" for warmth is the newest thing the data knows, not the clock: an older export reads as it was.
-  const asOf = Math.max(social?.asOf || 0, social?.liveAt ? Date.parse(social.liveAt) : 0, ...[...merged.values()].map((v) => v.last || 0));
+  // What each person's messages say, the export and the live sync together, and
+  // "now" for warmth: the newest thing the data knows, so an older export reads as it was.
+  const { merged, asOf } = useMemo(() => mergeSocial(social), [social]);
 
   const warmth = useMemo(() => {
     const counts = { warm: 0, cool: 0, dormant: 0, never: 0 };

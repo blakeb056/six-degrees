@@ -37,5 +37,51 @@ test('reach counts everyone hanging off a dot, all the way down', () => {
 test('without a browser the lab is off and the layout is today\'s', () => {
   assert.equal(labNow().on, false);
   assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40 }), LAB_DEFAULTS);
+  assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40, labels: false }).labels, false);
+  assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40, labels: false }).push, 15);
   assert.equal(effectiveLab({ ...LAB_DEFAULTS, on: true, push: 40 }).push, 40);
+});
+
+import { colourScheme, findMatches, milestones, chapterAt, mergeSocial } from '../lib/galaxy-lab.js';
+
+const tiers = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const url = (s) => `https://www.linkedin.com/in/${s}`;
+
+test('colour by: tier as always, degree, the most common companies, warmth', () => {
+  const people = [
+    { id: 1, degree: 1, tier: 'S', company: 'Hooli', profile_url: url('ana') },
+    { id: 2, degree: 1, tier: 'A', company: 'hooli ', profile_url: url('ben') },
+    { id: 3, degree: 2, tier: 'B', company: 'Pied Piper' },
+    { id: 4, degree: 2, tier: 'B', company: 'Pied Piper' },
+    { id: 5, degree: 1, tier: 'C', company: 'Initech', profile_url: url('cy') },
+  ];
+  assert.equal(colourScheme('tier', people, tiers).of(people[0]), '#FFD700');
+  const deg = colourScheme('degree', people, tiers);
+  assert.notEqual(deg.of(people[0]), deg.of(people[2]));
+  const co = colourScheme('company', people, tiers);
+  assert.equal(co.of(people[0]), co.of(people[1]));          // Hooli, however it's typed
+  assert.notEqual(co.of(people[0]), co.of(people[2]));
+  assert.equal(co.of(people[4]), co.legend.at(-1)[1]);       // Initech: only one, so Other
+  const day = 86400000;
+  const social = mergeSocial({ asOf: 400 * day, people: { [url('ana')]: { last: 395 * day, total: 4, recent: 2 }, [url('ben')]: { last: 10 * day, total: 1, recent: 0 } } });
+  const warm = colourScheme('warmth', people, tiers, social);
+  assert.equal(warm.of(people[0]), warm.legend[0][1]);       // warm
+  assert.equal(warm.of(people[1]), warm.legend[2][1]);       // dormant
+  assert.equal(warm.of(people[4]), warm.legend[3][1]);       // never messaged
+  assert.equal(colourScheme('warmth', people, tiers, null).of(people[0]), '#FFD700');   // no Social data: tier
+});
+
+test('find matches name, company or role, from two letters', () => {
+  const nodes = [{ id: 'a', name: 'Ana Ruiz', company: 'Hooli' }, { id: 'b', name: 'Ben Ode', role: 'Head of Growth' }];
+  assert.equal(findMatches(nodes, 'h'), null);
+  assert.deepEqual([...findMatches(nodes, 'hoo')], ['a']);
+  assert.deepEqual([...findMatches(nodes, 'GROWTH')], ['b']);
+});
+
+test('milestones and the job you were at', () => {
+  const social = { chapters: [{ company: 'Hooli', from: 100, to: 200 }, { company: 'Initech', from: 300, to: null }], posts: [{ t: 150 }] };
+  assert.deepEqual(milestones(social).map((m) => m.kind), ['job', 'post', 'job']);
+  assert.equal(chapterAt(social, 150).company, 'Hooli');
+  assert.equal(chapterAt(social, 250), null);
+  assert.equal(chapterAt(social, 900).company, 'Initech');
 });

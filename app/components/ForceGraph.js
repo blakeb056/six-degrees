@@ -6,7 +6,8 @@ import { localPhoto } from '../../lib/photos';
 import { recentre } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
-import { LAB_DEFAULTS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt } from '../../lib/galaxy-lab';
+import { registerGalaxy } from '../../lib/galaxy-export';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -59,6 +60,8 @@ const RING_CSS = `
 .lab-focus .gn:not(.lit), .lab-focus .gl:not(.lit) { opacity: 0.06; }
 .lab-focus .gl.lit { stroke-opacity: 0.7; }
 .lab-focus .dot-rings, .lab-focus .catalyst-ring { opacity: 0.15; }
+.lab-find .gn:not(.found), .lab-find .gl:not(.found) { opacity: 0.07; }
+.lab-find .gn.found { stroke: #fff; stroke-width: 2px; }
 @keyframes lab-pop { from { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) { .lab-pop .gn, .lab-pop .gl { animation: lab-pop 0.5s ease-out; } }
 @media (prefers-reduced-motion: reduce) {
@@ -96,9 +99,27 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   useEffect(() => {
     labRef.current = lab;
     sceneRef.current?.setLab(effectiveLab(lab));
+    const c = clockNow();
+    sceneRef.current?.setFind(c.find, c.fly);
+    if (lab.on) loadSocial();
   }, [lab]);
-  useEffect(() => watchClock(() => sceneRef.current?.setTime(clockNow().at)), []);
+  useEffect(() => watchClock(() => {
+    const c = clockNow();
+    sceneRef.current?.setTime(c.at);
+    sceneRef.current?.setFind(c.find, c.fly);
+  }), []);
   useEffect(() => () => stopReplay(), []);
+
+  // The dots' colours (Colour by, in the lab): tier as always, or degree,
+  // company or warmth. A new scheme recolours in place.
+  const social = useSyncExternalStore(watchClock, () => clockNow().social, () => undefined);
+  const colourBy = effectiveLab(lab).colourBy;
+  const scheme = useMemo(() => colourScheme(colourBy, connections, tierColors, social), [colourBy, connections, tierColors, social]);
+  const schemeRef = useRef(scheme);
+  useEffect(() => {
+    schemeRef.current = scheme;
+    sceneRef.current?.setColours(scheme);
+  }, [scheme]);
 
   // The scene is rebuilt from scratch whenever its inputs change, so only real
   // changes should count. A parent re-rendering hands over a new onSelect every
@@ -157,11 +178,18 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? recentre(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current);
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current);
     sceneRef.current = scene;
     scene.select(selectedIdRef.current);
     setClock({ min: scene.range.min, max: scene.range.max, of: scene.range.of });
     scene.setTime(clockNow().at);
+    scene.setFind(clockNow().find, clockNow().fly);
+    // Save picture and Record replay (lib/galaxy-export.js) draw from this <svg>.
+    const unregister = registerGalaxy({
+      svg: svgRef.current,
+      stamp: () => (stampRef.current?.style.display === 'block' ? stampRef.current.textContent : null),
+      legend: () => schemeRef.current.legend,
+    });
 
     return () => {
       // Stop the force simulation this render started.
@@ -171,6 +199,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       // the same nodes, so they fought each other and the graph shook.
       // Refreshing made it worse because nothing ever stopped the old ones.
       scene.simulation.stop();
+      unregister();
       // And any glide or fly-to still under way, which would otherwise go on
       // moving the next scene's view. viewRef already holds where it was going.
       svg.interrupt();
@@ -196,15 +225,15 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       </div>
       {/* The replay's date, written by the scene as it plays. */}
       <div ref={stampRef} style={{
-        position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)', display: 'none',
+        position: 'absolute', bottom: 56, left: '50%', transform: 'translateX(-50%)', display: 'none',
         padding: '6px 14px', borderRadius: 16, background: 'rgba(10,15,30,0.8)', border: '1px solid rgba(255,255,255,0.12)',
         color: '#e6edf5', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
       }} />
-      <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 12, fontSize: 11, color: '#888' }}>
-        {Object.entries(tierColors).map(([tier, color]) => (
-          <span key={tier} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: '#888', pointerEvents: 'none' }}>
+        {scheme.legend.map(([label, color]) => (
+          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
-            {tier}
+            {label}
           </span>
         ))}
       </div>
@@ -242,7 +271,8 @@ function easeRadius(el, r) {
 // Graph coordinates put you at 0,0, whatever the size of the box; the zoom
 // transform places that in the box. So a new size only moves the view, and a
 // rebuild can start from the view as it was.
-function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null) {
+function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null) {
+  let colourOf = scheme?.of ?? ((d) => tierColors[d.tier] || '#666');
   const centerNode = {
     id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
     power_score: 10, fx: 0, fy: 0,
@@ -317,7 +347,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // The physics lab's settings (lib/galaxy-lab.js); today's layout when it's
   // off, and always on a phone, whose layout has no physics.
-  let L = isMobileGraph ? LAB_DEFAULTS : lab;
+  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels } : lab;
   const reach = reachCounts(nodes, parentOf);
 
   const nodeRadius = (d) => {
@@ -406,7 +436,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     const r = nodeRadius(ringNode) + 8;
     pulse.style.width = pulse.style.height = `${2 * r + 2.5}px`;
     pulse.style.margin = `${-(r + 1.25)}px`;
-    pulse.style.borderColor = tierColors[ringNode.tier] || '#FFD700';
+    pulse.style.borderColor = colourOf(ringNode) || '#FFD700';
     placeRing();
   };
 
@@ -485,7 +515,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // about 1.8 s at 30,000 people.
   const link = g.append('g').selectAll('line').data(links).join('line')
     .attr('class', 'gl')
-    .attr('stroke', d => tierColors[d.target.tier] || '#333')
+    .attr('stroke', d => colourOf(d.target) || '#333')
     .attr('stroke-opacity', 0.15).attr('stroke-width', 0.5 * L.lines);
 
   // Catalyst outer glow rings (rendered behind the nodes)
@@ -538,7 +568,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const node = g.append('g').selectAll('circle').data(nodes).join('circle')
     .attr('class', 'gn')
     .attr('r', nodeRadius)
-    .attr('fill', d => d.id === CENTER_ID ? '#fff' : tierColors[d.tier] || '#666')
+    .attr('fill', d => d.id === CENTER_ID ? '#fff' : colourOf(d))
     .attr('fill-opacity', d => (d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
     .attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
@@ -622,8 +652,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Names for you, your S-tier connections and catalysts; further out (the
   // Degree filter) only on hover, or hundreds of S-tier names pile up. The lab
   // can show all your connections' names, or none.
-  const labelled = (n) => n.id === CENTER_ID || (n.degree === 1 && (
-    L.names === 'all' || (L.names !== 'none' && (n.tier === 'S' || n.is_catalyst))));
+  // Filter → Names turns them all off; whoever Find matches (40 or fewer) is
+  // named either way.
+  let findHit = null;
+  const labelled = (n) => {
+    if (findHit && findHit.size <= 40 && findHit.has(n.id)) return true;
+    if (!L.labels) return false;
+    return n.id === CENTER_ID || (n.degree === 1 && (L.names === 'all' || n.tier === 'S' || n.is_catalyst));
+  };
   const labelsG = g.append('g');
   let labels = labelsG.selectAll('text');
   const drawLabels = () => {
@@ -634,7 +670,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('fill', d => {
         if (d.id === CENTER_ID) return '#fff';
         if (d.is_catalyst) return '#00ff88';
-        return tierColors[d.tier];
+        return colourOf(d);
       })
       .attr('text-anchor', 'middle').attr('dy', d => nodeRadius(d) + 14)
       .attr('x', d => d.x || 0).attr('y', d => d.y || 0)
@@ -655,7 +691,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // A slider moved: change the running layout in place and let it settle again.
   const setLab = (next) => {
-    if (isMobileGraph) return;
+    if (isMobileGraph) {
+      if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); showBorn(); }
+      return;
+    }
     const prev = L;
     L = next;
     const sized = prev.dotSize !== L.dotSize || prev.sizeBy !== L.sizeBy;
@@ -667,7 +706,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       if (ringNode) select(ringNode.id);
     }
     if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines);
-    if (sized || prev.names !== L.names) { drawLabels(); showBorn(); }
+    if (sized || prev.names !== L.names || prev.labels !== L.labels) { drawLabels(); showBorn(); }
     if (!L.on || !L.branch) g.classed('lab-focus', false);
     g.classed('lab-pop', L.on && nodes.length < 5000);
     const forces = ['gravity', 'rings', 'push', 'pull', 'distance'].some(k => prev[k] !== L[k]);
@@ -716,11 +755,50 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     stamp.style.display = at == null ? 'none' : 'block';
     if (at != null) {
       const when = new Date(at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-      stamp.textContent = `${when} · ${n1.toLocaleString()} of ${range.of.toLocaleString()} connections`;
+      const job = chapterAt(clockNow().social, at);
+      stamp.textContent = `${when} · ${n1.toLocaleString()} of ${range.of.toLocaleString()} connections${job ? ` · at ${job.company}` : ''}`;
     }
   };
 
-  return { simulation, resize, select, setLab, setTime, range };
+  // A new colour scheme (Colour by): recolour the dots, lines and names in place.
+  const setColours = (next) => {
+    colourOf = next.of;
+    node.attr('fill', d => d.id === CENTER_ID ? '#fff' : colourOf(d));
+    link.attr('stroke', d => colourOf(d.target) || '#333');
+    drawLabels();
+    showBorn();
+    if (ringNode) select(ringNode.id);
+  };
+
+  // Find: whoever matches stays lit and the rest dim; each Enter (a new `fly`)
+  // flies to the best-scored match and opens their card.
+  let lastFind = '';
+  let lastFly = clockNow().fly;
+  const setFind = (query, fly) => {
+    const q = L.on ? String(query || '') : '';
+    if (q !== lastFind) {
+      lastFind = q;
+      findHit = findMatches(nodes.filter(n => n.id !== CENTER_ID), q);
+      node.classed('found', n => !!findHit?.has(n.id));
+      link.classed('found', l => !!findHit?.has(l.target.id));
+      g.classed('lab-find', !!findHit);
+      drawLabels();
+      showBorn();
+      setClock({ found: findHit ? findHit.size : 0 });
+    }
+    if (fly !== lastFly) {
+      lastFly = fly;
+      const best = findHit && nodes.filter(n => findHit.has(n.id)).sort((a, b) => (b.power_score || 0) - (a.power_score || 0))[0];
+      if (best) {
+        const k = 2.5;
+        moveView(d3.zoomIdentity.translate(box.width / 2 - best.x * k, box.height / 2 - best.y * k).scale(k), 750);
+        select(best.id);
+        onSelect(best);
+      }
+    }
+  };
+
+  return { simulation, resize, select, setLab, setTime, setColours, setFind, range };
 }
 
 function setupDrag(node, simulation, fixedId) {

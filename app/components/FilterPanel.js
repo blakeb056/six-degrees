@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { viewsForMode } from './views';
-import GalaxyLab from './GalaxyLab';
+import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -144,6 +144,8 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
             </div>
           </div>
         )}
+
+        {!isDegreesMode && visualMode === 'galaxy' && <NamesSwitch />}
 
         <div style={{ marginBottom: 18 }}>
           {/* In Degrees these chips filter by the tier of the connection who
