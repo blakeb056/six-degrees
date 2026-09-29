@@ -112,3 +112,26 @@ test('what one circle scan costs: a profile view, a search a page, about 0.55 mi
   assert.equal(circleScanCost(5).minutes, 5, 'never less than five minutes');
   assert.equal(circleScanCost(500).searches, 100, 'LinkedIn shows 100 pages at most');
 });
+
+test('scan bars: 5 for a list read to the end, pages against LinkedIn\'s count part-way, 2 with no count, none unscanned or hidden', async () => {
+  const { reachIndex, scanBars } = await import('../lib/reach.js');
+  const { ringSegments } = await import('../lib/dot-rings.js');
+  const u = (s) => `https://www.linkedin.com/in/${s}`;
+  const people = ['done', 'half', 'nocount', 'legacy', 'none', 'hid'].map((s, i) => ({ id: `c${i}`, degree: 1, profile_url: u(s) }));
+  const degree2 = [{ id: 'x', degree: 2, source_connection_id: 'c3', profile_url: u('x') }];
+  const reach = reachIndex(people, degree2, {
+    skips: [{ profileUrl: u('hid') }],
+    read: [u('done'), u('half'), u('nocount')],
+    lists: {
+      [u('done')]: { pages: 30, more: false, total: 290 },
+      [u('half')]: { pages: 15, more: true, total: 300 },
+      [u('nocount')]: { pages: 10, more: true, total: null },
+    },
+  });
+  assert.deepEqual(people.map((p) => scanBars(p, reach)), [5, 3, 2, 2, null, null]);
+  const tiny = reachIndex(people, [], { read: [u('half')], lists: { [u('half')]: { pages: 1, more: true, total: 5000 } } });
+  assert.equal(scanBars(people[1], tiny), 1, 'a list barely started still shows one bar');
+  const segs = ringSegments(10);
+  assert.equal(segs.length, 5);
+  assert.match(segs[0].d, /^M[-\d.]+ [-\d.]+ A10 10 0 0 1 [-\d.]+ [-\d.]+$/);
+});

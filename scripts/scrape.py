@@ -1701,6 +1701,12 @@ def _change_progress(change):
         print(f"  (could not note how far this read got: {exc})")
 
 
+# How long each list is, from LinkedIn's "About N results" line on the first
+# page read (RESULT_COUNT_JS), kept until the read's progress is written: the
+# app's rings round a dot show pages read against it. Approximate, like the line.
+_LIST_TOTALS = {}
+
+
 def record_bridge_progress(profile_url, name, pages, more, urn=None):
     """Note that someone's connections have been read through page `pages`.
 
@@ -1717,6 +1723,9 @@ def record_bridge_progress(profile_url, name, pages, more, urn=None):
                  "at": datetime.now().isoformat(timespec="seconds")}
         if urn or old.get("urn"):
             entry["urn"] = urn or old.get("urn")
+        total = _LIST_TOTALS.get(profile_url) or old.get("total")
+        if total:
+            entry["total"] = int(total)
         mine[profile_url] = entry
     _change_progress(change)
 
@@ -2478,6 +2487,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     except Exception:
         total = None
     if total:
+        _LIST_TOTALS[profile_url] = int(total)
         pages = -(-total // 10)
         print(f"  About {total:,} results in their list: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))

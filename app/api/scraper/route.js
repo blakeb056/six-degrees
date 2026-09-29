@@ -139,11 +139,19 @@ function bridgeSkips() {
  */
 function scanNotes() {
   let read = [];
+  const lists = {};
   try {
     const me = resolveProfile({ create: false });
-    if (me) read = Object.keys(readProgress(dataDir(), me.id));
+    if (me) {
+      const progress = readProgress(dataDir(), me.id);
+      read = Object.keys(progress);
+      // How far each list was read, for the rings round a dot (lib/reach.js scanBars).
+      for (const [url, e] of Object.entries(progress)) {
+        lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null };
+      }
+    }
   } catch {}
-  return { skips: bridgeSkips(), read };
+  return { skips: bridgeSkips(), read, lists };
 }
 
 /**
