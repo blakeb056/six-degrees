@@ -226,6 +226,8 @@ function SocialInner() {
         <Link href="/" style={{ color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: LINE }}>← Back to Map</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#FFD700' }}>Social <span style={{ fontSize: 12, color: '#8b9a9a', fontWeight: 600 }}>experimental</span></h1>
       </header>
+      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
+      <div id="scan-bar-slot" />
       <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
         <Body style={{ marginTop: 16 }}>
           Who you&rsquo;re warm with, who&rsquo;s waiting on a reply, and how each chapter of your career built your network,

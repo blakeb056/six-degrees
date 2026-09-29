@@ -302,6 +302,8 @@ function PathsInner() {
           )}
         </div>
       </header>
+      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
+      <div id="scan-bar-slot" />
 
       {!selectedCompany && tab !== 'companies' ? (
         <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}

@@ -56,6 +56,8 @@ function ScoresInner() {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>Scores</h1>
       </header>
+      {/* The scan status bar sits here, under the header's buttons (ScanStatusBar.js). */}
+      <div id="scan-bar-slot" />
       <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
         <Body style={{ marginTop: 16 }}>
           How someone&rsquo;s power score is worked out, and the three things you can change about it:{' '}

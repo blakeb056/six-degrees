@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where your export is missing or older, and its words, which go to the app only while Keep my
   messages is on. It still opens no conversation, and its saved samples still keep no words.
 
+### Changed
+- **The scan status bar sits under the buttons.** On each page it now sits in its own row
+  under the header, pushing the page down instead of covering it. On Network Circle it floats
+  just under the header, measured, so a header that wraps to two rows no longer hides it.
+
 ### Fixed
 - **The live messages sync keeps what it finds.** It read your conversations but matched none of
   them: the pattern for a profile link never matched, and LinkedIn's messaging gives a member

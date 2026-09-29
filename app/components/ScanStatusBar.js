@@ -8,6 +8,8 @@
 // pacing and the caps live in the scanner (scripts/scrape.py, lib/linkedin-limits.js).
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
@@ -37,19 +39,54 @@ export default function ScanStatusBar() {
   // The Scan page's experimental all-day Auto-Bridge switch: with it on, the bar
   // stays under the tabs even while nothing runs, so you can see the mode is on.
   const allDay = useSyncExternalStore(watchAllDay, allDayNow, () => false);
+  // Where it sits: in the page's own slot under its header when the page has one
+  // (it then pushes the page down rather than covering it), otherwise fixed just
+  // under the header's buttons, measured, since a header can wrap to two rows.
+  const pathname = usePathname();
+  const [spot, setSpot] = useState({ slot: null, top: null });
+  useEffect(() => {
+    // The header can load late or be swapped for a new one (a page that shows
+    // "Loading…" first), so it's found again whenever the page's elements change,
+    // and its size is watched for a wrap to two rows.
+    let header = null;
+    let ro = null;
+    let queued = 0;
+    const measure = () => {
+      queued = 0;
+      const slot = document.getElementById('scan-bar-slot');
+      const now = slot ? null : document.querySelector('header');
+      if (now !== header) {
+        ro?.disconnect();
+        ro = null;
+        header = now;
+        if (header) { ro = new ResizeObserver(later); ro.observe(header); }
+      }
+      const top = header ? Math.round(header.getBoundingClientRect().bottom) + 6 : null;
+      setSpot((was) => (was.slot === slot && was.top === top ? was : { slot, top }));
+    };
+    const later = () => { if (!queued) queued = requestAnimationFrame(measure); };
+    later();
+    const mo = new MutationObserver(later);
+    mo.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', later);
+    return () => { cancelAnimationFrame(queued); ro?.disconnect(); mo.disconnect(); window.removeEventListener('resize', later); };
+  }, [pathname]);
   useEffect(() => watchScanner(() => {
     const now = scannerNow();
     setJob(now);
     if (!now.running) setStopping(false);
   }), []);
   const place = {
-    position: 'fixed', left: '50%', top: 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
+    ...(spot.slot
+      ? { position: 'relative', margin: '8px auto 12px', width: 'fit-content' }
+      : { position: 'fixed', left: '50%', top: spot.top != null ? spot.top : 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60 }),
     maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', whiteSpace: 'nowrap',
     padding: '8px 12px', borderRadius: 12, fontSize: 12, color: '#cfd8d8', background: 'rgba(14,16,32,0.94)',
   };
+  const put = (bar) => (spot.slot && document.body.contains(spot.slot) ? createPortal(bar, spot.slot) : bar);
   if (!job?.running) {
     if (!allDay) return null;
-    return (
+    return put(
       <div role="status" style={{ ...place, opacity: 0.55, border: '1px solid rgba(255,255,255,0.1)' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#556', flexShrink: 0 }} />
         <b style={{ color: '#b8c4c4' }}>Auto scan</b>
@@ -65,7 +102,7 @@ export default function ScanStatusBar() {
   const b = job.budget;
   const last = [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim();
 
-  return (
+  return put(
     <div role="status" aria-live="polite" style={{ ...place, border: '1px solid rgba(0,255,136,0.25)' }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ff88', flexShrink: 0 }} />
       <b style={{ color: '#fff' }}>{WHAT[job.action] || 'Scanning'}</b>
