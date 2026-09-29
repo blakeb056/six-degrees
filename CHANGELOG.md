@@ -6,17 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **The Galaxy in bands when more than your connections are drawn.** With 2nd (or 3rd) degree
-  on, your connections sit on a tighter inner ring, their circles in a band outside it, and past
-  someone you added through a circle, their people further out again. Each band is sorted by
-  tier, S nearest, and has a faint label. Lines follow the chain: from you to your connections,
-  from each connection to their circle, and from someone you added to theirs. Your connections
-  alone keep the roomier tier rings.
-
-### Removed
-- **The "N only here" line under each bridge in Bridge Chains.** Their card still says who is
-  reached only through them.
+## [0.4.2] - 2026-09-29
 
 ### Added
 - **Orbit goes past 2nd degree.** Someone you added through a circle, whose own circle is
@@ -30,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scans kept a count show two. A small badge counts the people in their circle ready to scan,
   and a catalyst is the green outline on the dot. It's on the Galaxy and on Bridge Chains'
   bridges.
+
+### Changed
+- **The Galaxy in bands when more than your connections are drawn.** With 2nd (or 3rd) degree
+  on, your connections sit on a tighter inner ring, their circles in a band outside it, and past
+  someone you added through a circle, their people further out again. Each band is sorted by
+  tier, S nearest, and has a faint label. Lines follow the chain: from you to your connections,
+  from each connection to their circle, and from someone you added to theirs. Your connections
+  alone keep the roomier tier rings.
+
+### Removed
+- **The "N only here" line under each bridge in Bridge Chains.** Their card still says who is
+  reached only through them.
 
 ## [0.4.1] - 2026-09-29
 
