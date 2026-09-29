@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Which connections open the same doors.** A card says whose circle overlaps theirs most, when
+  it's real (15% or more, and at least 3 people): "Opens the same doors as Tom: 62% of the
+  people either reaches, both do". Bridge Chains' Degrees box adds how much of your 2nd degree
+  you reach two or more ways.
 - **Circle scans keep who among your connections knows whom.** Your own connections turn up in
   other people's lists, and were set aside there and forgotten. Each is now kept as a tie
   between the two, in a new table, with no extra LinkedIn traffic, since the scan read them
