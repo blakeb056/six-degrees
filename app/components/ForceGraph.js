@@ -207,7 +207,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   };
 
   const nodes = [centerNode, ...connections.map(c => ({
-    id: c.id, name: c.name, tier: c.tier, degree: 1,
+    id: c.id, name: c.name, tier: c.tier, degree: c.degree || 1, source_connection_id: c.source_connection_id,
     power_score: parseFloat(c.power_score) || 1,
     company: c.company, role: c.role, headline: c.headline,
     profile_url: c.profile_url, profile_image_url: localPhoto(c.profile_image_url),
@@ -219,7 +219,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }))];
   const nodeById = new Map(nodes.map(n => [n.id, n]));
 
-  const links = connections.map(c => ({ source: CENTER_ID, target: c.id }));
+  // Your connections hang off you; someone further out (Filter → Degree) off the
+  // connection whose circle they're in, when that one is drawn too, so they
+  // gather near them.
+  const drawnD1 = new Set(connections.filter(c => (c.degree || 1) === 1).map(c => c.id));
+  const links = connections.map(c => {
+    const via = (c.degree || 1) > 1 && drawnD1.has(c.source_connection_id) ? c.source_connection_id : CENTER_ID;
+    return { source: via, target: c.id, near: via !== CENTER_ID };
+  });
 
   const tierRadius = (tier) => {
     switch (tier) { case 'S': return 150; case 'A': return 250; case 'B': return 350; case 'C': return 450; default: return 520; }
@@ -227,7 +234,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   const nodeRadius = (d) => {
     if (d.id === CENTER_ID) return 18;
-    return Math.max(3, Math.min(12, (d.power_score || 1) * 1.3));
+    const r = Math.max(3, Math.min(12, (d.power_score || 1) * 1.3));
+    return d.degree > 1 ? Math.max(2.5, r * 0.75) : r;   // further out, a little smaller
   };
 
   // A phone. Judged by the window, as the page judges it, not by the graph's
@@ -330,7 +338,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }
 
   const simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(d => tierRadius(d.target.tier || 'D')).strength(isMobileGraph ? 0 : 0.1))
+    .force('link', d3.forceLink(links).id(d => d.id).distance(d => (d.near ? 45 : tierRadius(d.target.tier || 'D'))).strength(isMobileGraph ? 0 : 0.1))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : (d => d.id === CENTER_ID ? -300 : -15)))
     .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
@@ -364,6 +372,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const node = g.append('g').selectAll('circle').data(nodes).join('circle')
     .attr('r', nodeRadius)
     .attr('fill', d => d.id === CENTER_ID ? '#fff' : tierColors[d.tier] || '#666')
+    .attr('fill-opacity', d => (d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
     .attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
       if (d.is_catalyst) return '#00ff88';
@@ -425,7 +434,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   setupDrag(node, simulation, CENTER_ID);
 
   const labels = g.append('g').selectAll('text')
-    .data(nodes.filter(n => n.id === CENTER_ID || n.tier === 'S' || n.is_catalyst))
+    // Names for you, your S-tier connections and catalysts; further out (the
+    // Degree filter) only on hover, or hundreds of S-tier names pile up.
+    .data(nodes.filter(n => n.id === CENTER_ID || (n.degree === 1 && (n.tier === 'S' || n.is_catalyst))))
     .join('text')
     .text(d => d.is_catalyst && d.tier !== 'S' ? d.name + ' ⚡' : d.name)
     .attr('font-size', d => d.id === CENTER_ID ? 14 : 10)
