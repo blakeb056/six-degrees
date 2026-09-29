@@ -27,7 +27,7 @@ import SeparationView from './SeparationView';
  */
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
-  orbit:    { component: OrbitGraph, modes: ['network', 'degrees'], label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots; in Degrees, every mapped circle fanned out', allDegree2: true },
+  orbit:    { component: OrbitGraph, modes: ['degrees'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots; in Degrees, every mapped circle fanned out', allDegree2: true },
   separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
   rings:    { component: RingsView,  modes: ['network', 'degrees'], label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
@@ -36,11 +36,13 @@ export const VIEWS = {
 };
 
 /**
- * The order they appear in the menu. Orbit is the first Degrees view, so it is
- * also where resolveView lands when the chosen view isn't a Degrees one
- * (Galaxy, say, carried over from Network Circle).
+ * The order they appear in the menu. Bridge Chains is the first Degrees view, so
+ * it is also where resolveView lands when the chosen view isn't a Degrees one
+ * (Galaxy, say, carried over from Network Circle); then Separation, then Orbit.
+ * Orbit is a Degrees view only: in Network Circle it was slow and said nothing
+ * the Galaxy doesn't (OrbitGraph still has that branch until Orbit is redrawn).
  */
-const ORDER = ['galaxy', 'orbit', 'separation', 'chain', 'rings', 'list'];
+const ORDER = ['galaxy', 'chain', 'separation', 'orbit', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

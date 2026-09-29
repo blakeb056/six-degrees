@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Degrees opens on Bridge Chains,** then Separation, then Orbit, in the menu too. Orbit
+  used to come first.
+- **Orbit is in Degrees only.** Network Circle's Orbit was slow on a big network and showed
+  nothing the Galaxy doesn't; a Network Circle left on it opens the Galaxy.
 - **A new app icon: Orbits.** Your tier rings round you, with one bridge reaching out through
   them. It's the Mac app's icon, the website's tab icon and its home-screen icon.
 - **The Scan page asks before a risky search budget.** Picking more than 100 searches a
