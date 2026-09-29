@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   look through the list. It's asked once, and never if you already have a network or picked
   a sector. Change it anytime on the Scores tab.
 
+### Changed
+- **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
+  secretary score like a C-suite; their deputies, state legislators, commissioners,
+  ambassadors and judges like a VP; a city councilmember or a sheriff like a director.
+  Officers by rank: a 3–4 star general or admiral 10, a 1–2 star 9, a colonel 7.5, a
+  lieutenant colonel 6.5, a major 5, and a commander by their unit. "(Ret.)" and
+  "Retired" make a role former. They count only where a title is written, and only where
+  their own organization is a government's or a service's: a staffer in an Office of the
+  Secretary, a veteran's civilian job, a city manager at Uber, a Rotary district governor,
+  a team captain or a Kentucky colonel isn't one. A title that doesn't say whose it is
+  ("Mayor", "Police Chief", "Ambassador") needs its government named, or stays "Title
+  unclear": a missed official is a neutral 4, a realtor read as a mayor would be an A.
+  Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
+
+### Fixed
+- **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
+  scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
+  Information Officer". "Executive Assistant to the General Manager" scored as a VP.
+
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 
 ### Added

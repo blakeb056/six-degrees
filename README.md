@@ -226,7 +226,9 @@ tiers, on the fixed scale:                     S ≥ 7.5   A ≥ 5.5   B ≥ 4.0
 
 - **Title (1–10)** comes from someone's roles in their headline, with former roles at
   70%; current students are capped. Academics have their own ladder (an assistant
-  professor 5 up to a dean 9), an audience of their own counts like a title (100K+
+  professor 5 up to a dean 9), and so do government and the services (a city
+  councilmember or a colonel 7.5 up to a senator or a four-star general 10), read only
+  where a title is written. An audience of their own counts like a title (100K+
   followers 6.5, 1M+ 7.5, 10M+ 9), and a title it can't read counts as an individual
   contributor's (4).
 - **Company score (1–10)** is the one you set (the Scores tab) if there is one. Otherwise
