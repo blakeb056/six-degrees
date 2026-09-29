@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ringLayout, dotRadius, previewBand } from '../lib/chain-layout.js';
+import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../lib/chain-layout.js';
 
 // The focused view's numbers on a 800×600 window (lib/chain-layout.js is told
 // them by ChainView's CircleFocus): maxR = 270.
@@ -135,4 +135,59 @@ test('the hover preview starts beyond every ring of bridges, however many there 
   const band = previewBand(maxR, many.rings);
   assert.ok(band.inner >= edge + 34, `starts past the outermost bridge ring (${edge})`);
   assert.ok(band.outer - band.inner >= maxR * 0.14 - 1e-9, 'and keeps its depth');
+});
+
+test('an opened circle sits in tier bands, S nearest, with a gap between bands', () => {
+  const rows = [
+    ...Array.from({ length: 30 }, () => ({ tier: 'C' })),
+    ...Array.from({ length: 12 }, () => ({ tier: 'S' })),
+    ...Array.from({ length: 20 }, () => ({ tier: 'A' })),
+    { tier: undefined },
+  ];
+  const l = tierBandLayout(rows, { inner: 60, outer: 400, spacing: 20, minSpacing: 4, gap: 16 });
+  assert.deepEqual(l.bands.map((b) => b.tier), ['S', 'A', 'C', 'D'], 'no tier goes with D');
+  for (let i = 1; i < l.bands.length; i++) assert.ok(l.bands[i].inner > l.bands[i - 1].outer, 'a gap between bands');
+  const r = (p) => Math.hypot(p.x, p.y);
+  const band = (t) => l.bands.find((b) => b.tier === t);
+  rows.forEach((row, i) => {
+    const b = band(row.tier || 'D');
+    assert.ok(r(l.points[i]) >= b.inner - 1e-6 && r(l.points[i]) <= b.outer + 1e-6, 'each dot in its own tier band');
+    assert.ok(l.points[i].slot > 0);
+  });
+  assert.ok(l.edge <= 400);
+});
+
+test('too many for the room: the bands close up before they spill', () => {
+  const rows = Array.from({ length: 900 }, (_, i) => ({ tier: 'SABCD'[i % 5] }));
+  const roomy = tierBandLayout(rows, { inner: 60, outer: 10000, spacing: 20, minSpacing: 4 });
+  const room = roomy.edge * 0.6;
+  const tight = tierBandLayout(rows, { inner: 60, outer: room, spacing: 20, minSpacing: 4 });
+  assert.equal(roomy.spacing, 20);
+  assert.ok(tight.spacing < 20 && tight.spacing >= 4);
+  assert.ok(tight.edge <= room);
+});
+
+test('fans sit behind their own person, capped, and say how many more', () => {
+  const anchors = [
+    { angle: 0, slot: 0.5, count: 0 },
+    { angle: Math.PI / 2, slot: 0.4, count: 300 },
+    { angle: Math.PI, slot: 0.4, count: 5 },
+  ];
+  const [none, big, small] = outerFans(anchors, { from: 300, cap: 40 });
+  assert.equal(none, null);
+  assert.equal(big.points.length, 40);
+  assert.equal(big.more, 260);
+  assert.equal(small.points.length, 5);
+  assert.equal(small.more, 0);
+  for (const p of big.points) {
+    assert.ok(Math.hypot(p.x, p.y) >= 300 - 1e-6, 'beyond `from`');
+    const off = Math.abs(Math.atan2(p.y, p.x) - Math.PI / 2);
+    assert.ok(off <= 0.4 / 2 + 1e-6, 'within their slot');
+  }
+});
+
+test('a lot of fans share about `total` dots between them', () => {
+  const anchors = Array.from({ length: 100 }, (_, i) => ({ angle: (i / 100) * Math.PI * 2, slot: 0.06, count: 500 }));
+  const drawn = outerFans(anchors, { from: 300, total: 1200 }).reduce((n, f) => n + f.points.length, 0);
+  assert.ok(drawn <= 1200, `${drawn} drawn`);
 });

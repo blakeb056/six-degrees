@@ -32,7 +32,7 @@ import { useRouter } from 'next/navigation';
 import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost } from '../../lib/reach';
-import { ringLayout, dotRadius, previewBand } from '../../lib/chain-layout';
+import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
@@ -473,10 +473,25 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   const cx = dims.w / 2;
   const cy = dims.h / 2;
   const maxR = Math.min(cx, cy) - 30;
-  const layout = useMemo(() => ringLayout(members.length, {
-    inner: maxR * 0.55, innerMin: 62, outer: maxR * 0.94,
-    spacing: Math.max(14, Math.min(24, maxR * 0.085)), minSpacing: 4,
-  }), [members.length, maxR]);
+  // Whose own circle is known, drawn behind them (their people, one degree
+  // further out): anyone you're connected to whose circle was scanned, or who
+  // introduced you to someone.
+  const behind = useMemo(() => members.map((row) => (row.degree === 1 ? membersOf(row, index) : [])), [members, index]);
+  const hasFans = behind.some((people) => people.length > 0);
+  // Tier bands round them, S nearest, like Network Circle's orbits; with fans
+  // to draw, the bands leave the outside of the circle for them.
+  const layout = useMemo(() => tierBandLayout(members, {
+    inner: Math.max(62, maxR * 0.3), outer: maxR * (hasFans ? 0.72 : 0.94),
+    spacing: Math.max(14, Math.min(24, maxR * 0.085)), minSpacing: 4, gap: Math.max(10, maxR * 0.04),
+  }), [members, maxR, hasFans]);
+  const fans = useMemo(() => {
+    if (!hasFans) return [];
+    const placed = outerFans(
+      members.map((row, i) => ({ angle: layout.points[i].angle, slot: layout.points[i].slot, count: behind[i].length })),
+      { from: layout.edge + layout.spacing * 1.5 },
+    );
+    return placed.map((f, i) => f && { ...f, i, people: behind[i].slice(0, f.points.length) }).filter(Boolean);
+  }, [members, behind, hasFans, layout]);
 
   // What each dot is: someone you reached (ready, hidden, scanned) or a
   // 2nd-degree row, maybe with a request out; and how big their own circle is.
@@ -608,10 +623,33 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           <filter id="focusGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
         <g transform={`translate(${cx + view.x} ${cy + view.y}) scale(${k})`}>
-          {/* Ring guides, one per ring of dots */}
-          {layout.rings.map((ring) => (
-            <circle key={ring.radius} r={ring.radius} fill="none" stroke={`${DEGREE_COLORS[2]}10`} strokeWidth={1 / k} />
+          {/* A faint band behind each tier's dots, in its colour */}
+          {layout.bands.map((band) => (
+            <circle key={band.tier} r={(band.inner + band.outer) / 2} fill="none"
+              stroke={TIER_COLORS[band.tier] || '#555'} strokeOpacity={0.07}
+              strokeWidth={Math.max(1 / k, band.outer - band.inner + layout.spacing)} pointerEvents="none" />
           ))}
+          {/* Behind anyone whose circle is known: their people, a faint line to each */}
+          {fans.map((fan) => {
+            const a = layout.points[fan.i];
+            const last = fan.points[fan.points.length - 1];
+            return (
+              <g key={'fan-' + members[fan.i].id} pointerEvents="none">
+                {fan.points.map((p, j) => (
+                  <line key={'l' + j} x1={a.x} y1={a.y} x2={p.x} y2={p.y}
+                    stroke={GREEN} strokeOpacity={0.12} strokeWidth={0.5 / k} />
+                ))}
+                {fan.points.map((p, j) => (
+                  <circle key={'d' + j} cx={p.x} cy={p.y} r={2.2}
+                    fill={TIER_COLORS[fan.people[j]?.tier] || '#555'} fillOpacity={0.75} />
+                ))}
+                {fan.more > 0 && last && (
+                  <text x={last.x * 1.06} y={last.y * 1.06} textAnchor="middle" fontSize={8 / k} fill="#8b9a9a"
+                    stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">+{fan.more.toLocaleString()}</text>
+                )}
+              </g>
+            );
+          })}
           {dots}
           {/* The one under the pointer, on top */}
           {hp && (
