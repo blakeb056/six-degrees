@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-09-29
+
 ### Changed
 - **The scan status bar is now a notch.** A small pill hangs from the bottom of the header,
   centred, on every page. It shows nothing while nothing runs, only a tiny dimmed *Auto scan*
