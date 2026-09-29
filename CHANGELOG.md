@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Network health on the Scores tab.** How much of your 2nd degree you reach two or more ways,
+  the effective reach of your own network (Burt's effective size, from the ties between your
+  connections that circle scans keep), and your five connections who reach the most people no
+  one else does, each with *Explore →*. With fewer than five circles scanned it says it's an
+  early estimate. Only your own numbers: never a percentile against other people.
+
 ## [0.4.3] - 2026-09-29
 
 ### Added

@@ -33,7 +33,18 @@ export async function GET(request) {
       return Response.json({ error: firstError.message }, { status: 500 });
     }
 
+    // How many ties between your own connections circle scans have kept (lib/ties.js),
+    // for network health on the Scores tab.
+    let ties = 0;
+    try {
+      let tq = supabase.from('connection_ties').select('a_url');
+      if (userId) tq = tq.eq('user_id', userId);
+      const { data } = await tq;
+      ties = data?.length || 0;
+    } catch { /* an older database: none yet */ }
+
     return Response.json({
+      ties,
       degree1: d1.data || [],
       degree2: d2.data || [],
       degree3: d3.data || [],
