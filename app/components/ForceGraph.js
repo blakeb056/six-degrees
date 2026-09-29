@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { localPhoto } from '../../lib/photos';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -14,24 +15,18 @@ function esc(value) {
   ));
 }
 
-// Only paths this app itself produces, or ordinary remote images. Anything else
-// (javascript:, data:, an attribute-escaping payload) renders nothing.
-function safeImageUrl(url) {
-  const value = String(url ?? '');
-  return /^\/avatars\/[A-Za-z0-9_-]+\.(webp|png|jpe?g)$/.test(value) || /^https:\/\/[^"'\s<>]+$/.test(value)
-    ? value
-    : null;
-}
-
 // The id of the node at the centre, you. Not a connection's id (those come from
 // the database), and never shown.
 const CENTER_ID = '__center__';
 
 // Builds the avatar tooltip through the DOM rather than a string, so no value
-// can break out of the attribute it is written into.
+// can break out of the attribute it is written into. Only a photo saved on this
+// computer (lib/photos.js): not a link to LinkedIn, and never javascript:, data:
+// or an attribute-escaping payload. Nodes carry nothing else, and this checks
+// again.
 function renderPhoto(sel, d, size, borderColor) {
   sel.selectAll('*').remove();
-  const src = safeImageUrl(d.profile_image_url);
+  const src = localPhoto(d.profile_image_url);
   if (!src) { sel.style('opacity', 0); return; }
   sel.append('img')
     .attr('src', src)
@@ -193,7 +188,7 @@ function renderNetworkMode(svg, width, height, connections, onSelect, tierColors
     id: c.id, name: c.name, tier: c.tier, degree: 1,
     power_score: parseFloat(c.power_score) || 1,
     company: c.company, role: c.role, headline: c.headline,
-    profile_url: c.profile_url, profile_image_url: c.profile_image_url,
+    profile_url: c.profile_url, profile_image_url: localPhoto(c.profile_image_url),
     connected_date: c.connected_date,
     seniority_score: c.seniority_score, company_prestige_score: c.company_prestige_score,
     influence_signals: c.influence_signals,
@@ -446,7 +441,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
       id: c.id, name: c.name, tier: c.tier, degree: 1, nodeType: 'bridge',
       power_score: parseFloat(c.power_score) || 1,
       company: c.company, role: c.role, headline: c.headline,
-      profile_url: c.profile_url, profile_image_url: c.profile_image_url,
+      profile_url: c.profile_url, profile_image_url: localPhoto(c.profile_image_url),
       seniority_score: c.seniority_score,
       company_prestige_score: c.company_prestige_score,
       is_catalyst: c.is_catalyst, catalyst_score: c.catalyst_score,
@@ -475,7 +470,7 @@ function renderDegreesMode(svg, width, height, allD1, degree2, onSelect, tierCol
           id: c.id, name: c.name, tier: c.tier, degree: 2, nodeType: 'degree2',
           power_score: parseFloat(c.power_score) || 1,
           company: c.company, role: c.role, headline: c.headline,
-          profile_url: c.profile_url, profile_image_url: c.profile_image_url,
+          profile_url: c.profile_url, profile_image_url: localPhoto(c.profile_image_url),
           source_connection_id: c.source_connection_id,
           seniority_score: c.seniority_score, company_prestige_score: c.company_prestige_score,
           isMutual, unlock_status: c.unlock_status,

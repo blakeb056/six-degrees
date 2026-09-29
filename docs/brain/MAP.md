@@ -28,7 +28,7 @@
 | `app/api/*` | 27 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
 | `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. Runs it on the Python `lib/scanner-python.js` picks (the Mac app's own first), and sets the scanner up: Install, or Set up the scanner (download a pinned Python first). |
-| `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. Before the first scan, one optional question in their place: your field (`FieldStep`, when `askForField` says so). |
+| `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. Before the first scan, one optional question in their place: your field (`FieldStep`, when `askForField` says so). *Save photos* appears while some people's photos are still links (`photosWaiting`). |
 | `middleware.js` | Refuses requests addressed to another name, then cross-site writes, on all of `/api` and `/avatars`, then applies the destructive-route gate (`lib/gate.js requestRefusal`). Leaves out exactly `/api/data/import`, whose handlers make the same checks themselves before reading the upload (ENDPOINTS.md, "Request bodies over 10 MB"). |
 
 ## Library
@@ -37,7 +37,8 @@
 |---|---|
 | `lib/db.js` | **The keystone.** A Supabase-shaped query builder over `node:sqlite`. |
 | `lib/db-client.js` | The one database handle (`getDb()`), the data folder, the schema step, and the backup before a new version. At the start, before it opens anything, `getDb()` finishes an import staged in `import-pending/` (`lib/data-import.js`), once per server process. |
-| `lib/data-folder.js` | The data folder: what the Settings page shows about it (sizes from `lstat` only; `chrome-profile/` as there or not), the allow-list of what travels (`TRAVELLING_FILES` = `NETWORK_FILES`, replaced by an import, + `BUDGET_FILES`, merged; `AVATAR_FILE`, shared with the `/avatars` route), opening it in Finder, and sweeping the private working folders a stopped run leaves (an export's, an upload's, Set up the scanner's) once an hour old, at each start and before the next run. Never follows a link, even one standing in for `avatars/`. |
+| `lib/photos.js` | **Photos are shown from this computer only.** `localPhoto()` is the one check every view and the routes that store photos make, and the `/avatars` route serves the names it allows: a saved file's path (`/avatars/<name>`, `AVATAR_FILE`), or null, so a person with a link (what older versions stored) shows initials and browsing never loads anything from LinkedIn. `waitingPhotos()` lists those links for the scanner to save once each (`GET /api/update-images`). No imports; the views use it. The `img-src` Content-Security-Policy in `next.config.mjs` backs it up in the browser. |
+| `lib/data-folder.js` | The data folder: what the Settings page shows about it (sizes from `lstat` only; `chrome-profile/` as there or not), the allow-list of what travels (`TRAVELLING_FILES` = `NETWORK_FILES`, replaced by an import, + `BUDGET_FILES`, merged; `AVATAR_FILE`, from `lib/photos.js`, shared with the `/avatars` route), opening it in Finder, and sweeping the private working folders a stopped run leaves (an export's, an upload's, Set up the scanner's) once an hour old, at each start and before the next run. Never follows a link, even one standing in for `avatars/`. |
 | `lib/data-export.js` | Builds the `.sixdegrees` file: `VACUUM INTO`, then the manifest and the allow-listed files with their SHA-256 ([`SCHEMA.md`](SCHEMA.md)). Only the photos a row still points at. |
 | `lib/data-import.js` | Checks an upload before reading it (`admitImport`) and the file after (untrusted: SECURITY.md), rebuilds it into this version's schema in `import-pending/`, and swaps it in at the next start, step by step (a journal on the disk), after keeping what was there in `backups/`: never while another process has the database open, and only once the kept copy is synced and checks out. `RETIRED` lists names older exports may still have. Also what the page says about restarting. |
 | `lib/durable.js` | Writes that must be on the disk before the next step counts on them: sync a file, sync a folder (so a rename is), write a file whole or not at all. Node's fsync is F_FULLFSYNC on a Mac. |
@@ -74,7 +75,7 @@
 |---|---|
 | `db/schema.js` | The schema, **as a JS module** — not a `.sql` file. See TRAPS §4. |
 | `scripts/scrape.py` | The scanner. The only implementation that has ever actually scanned. Stays Python; the desktop plan ships Python inside the app ([`DESKTOP.md`](DESKTOP.md)). |
-| `scripts/image_store.py` | Downloads and re-encodes avatars to permanent local WebP. |
+| `scripts/image_store.py` | Downloads and re-encodes avatars to permanent local WebP, from LinkedIn's image servers only (`is_linkedin_image`). The only place the app fetches a photo. |
 | `scripts/readme_buttons.py` | Draws the README's download buttons (`docs/img/download-*.png`) from HTML in Chrome, with the app icon inside. Rerun after changing `desktop/icon/icon.svg`. |
 | `scripts/gen-synthetic.mjs` | The seeded sample network. Every person invented. |
 | `scripts/prepare-standalone.mjs` | Copies static assets into `.next/standalone`. See TRAPS §8. |

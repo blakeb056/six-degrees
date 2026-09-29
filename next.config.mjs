@@ -47,6 +47,20 @@ const nextConfig = {
   // to be required at runtime.
   serverExternalPackages: ['node:sqlite'],
 
+  // Pictures come only from this app: saved photos through /avatars, and its
+  // own files. Views never put LinkedIn's image links in a page
+  // (lib/photos.js), and this has the browser refuse one if a view ever does,
+  // so browsing can't go online for a picture. The same pages are what the Mac
+  // app's window shows and what a browser gets from npx or a checkout, so this
+  // one header covers all three. img-src only: scripts, styles and fonts stay
+  // as Next needs them.
+  async headers() {
+    return [{
+      source: '/(.*)',
+      headers: [{ key: 'Content-Security-Policy', value: "img-src 'self' data: blob:" }],
+    }];
+  },
+
   // experimental.proxyClientMaxBodySize stays at Next's 10 MB on purpose. Next
   // copies the body of every request middleware.js sees into memory, up to that
   // size, before middleware decides anything, so raising it for the one big

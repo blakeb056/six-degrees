@@ -10,6 +10,7 @@ import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
 import Avatar from './Avatar';
+import { localPhoto } from '../../lib/photos';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, csvSource = null }) {
   const isDegreesMode = mode === 'degrees';
@@ -98,9 +99,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         </div>
         {/* Profile photo + name */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-          {selected.profile_image_url ? (
+          {localPhoto(selected.profile_image_url) ? (
             <img
-              src={selected.profile_image_url}
+              src={localPhoto(selected.profile_image_url)}
               alt={selected.name}
               style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${tierColors[selected.tier] || '#555'}`, flexShrink: 0 }}
               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
@@ -109,7 +110,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           <div style={{
             width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
             background: tierColors[selected.tier] || '#555',
-            display: selected.profile_image_url ? 'none' : 'flex',
+            display: localPhoto(selected.profile_image_url) ? 'none' : 'flex',
             alignItems: 'center', justifyContent: 'center',
             fontSize: 20, fontWeight: 700, color: selected.tier === 'S' ? '#000' : '#fff',
           }}>
@@ -261,8 +262,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                   >
-                    {m.profile_image_url ? (
-                      <img src={m.profile_image_url} alt="" style={{
+                    {localPhoto(m.profile_image_url) ? (
+                      <img src={localPhoto(m.profile_image_url)} alt="" style={{
                         width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                         border: `1px solid ${tierColors[m.tier] || '#555'}`,
                       }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -270,7 +271,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     <div style={{
                       width: 22, height: 22, borderRadius: '50%', flexShrink: 0, fontSize: 9, fontWeight: 700,
                       background: tierColors[m.tier] || '#555', color: m.tier === 'S' ? '#000' : '#fff',
-                      display: m.profile_image_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                      display: localPhoto(m.profile_image_url) ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>{m.name?.charAt(0)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
@@ -465,8 +466,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    {m.profile_image_url ? (
-                      <img src={m.profile_image_url} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                    {localPhoto(m.profile_image_url) ? (
+                      <img src={localPhoto(m.profile_image_url)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: tierColors[m.tier] || '#555', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>{m.name?.charAt(0)}</div>
                     )}
@@ -501,8 +502,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     border: '1px solid rgba(255,107,53,0.12)',
                   }}>
                     {/* Photo */}
-                    {p.profile_image_url ? (
-                      <img src={p.profile_image_url} alt="" style={{
+                    {localPhoto(p.profile_image_url) ? (
+                      <img src={localPhoto(p.profile_image_url)} alt="" style={{
                         width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                         border: `2px solid ${tierColors[p.tier] || '#555'}`,
                       }} onError={e => { e.target.style.display = 'none'; }} />
@@ -683,8 +684,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                {c.profile_image_url ? (
-                  <img src={c.profile_image_url} alt="" style={{
+                {localPhoto(c.profile_image_url) ? (
+                  <img src={localPhoto(c.profile_image_url)} alt="" style={{
                     width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                     border: `1.5px solid ${tierColors[c.tier] || '#555'}`,
                   }} onError={e => { e.target.style.display = 'none'; }} />
@@ -753,9 +754,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
               #{tierRank}
             </span>
             {/* Profile photo or initial */}
-            {c.profile_image_url ? (
+            {localPhoto(c.profile_image_url) ? (
               <img
-                src={c.profile_image_url}
+                src={localPhoto(c.profile_image_url)}
                 alt=""
                 style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                   border: `1.5px solid ${tierColors[c.tier] || '#555'}` }}
@@ -765,7 +766,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             <div style={{
               width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
               background: tierColors[c.tier] || '#555',
-              display: c.profile_image_url ? 'none' : 'flex',
+              display: localPhoto(c.profile_image_url) ? 'none' : 'flex',
               alignItems: 'center', justifyContent: 'center',
               fontSize: 12, fontWeight: 700, color: c.tier === 'S' ? '#000' : '#fff',
             }}>
@@ -1141,8 +1142,8 @@ function ClusterCard({ cs, rank, tierColors, onSelect }) {
           style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {cs.bridge.profile_image_url ? (
-              <img src={cs.bridge.profile_image_url} alt="" style={{
+            {localPhoto(cs.bridge.profile_image_url) ? (
+              <img src={localPhoto(cs.bridge.profile_image_url)} alt="" style={{
                 width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                 border: `1.5px solid ${tierColors[cs.bridge.tier] || '#555'}`,
               }} onError={e => { e.target.style.display = 'none'; }} />
@@ -1185,8 +1186,8 @@ function ClusterCard({ cs, rank, tierColors, onSelect }) {
         {(cs.sTier.length > 0 || cs.aTier.length > 0) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
             {[...cs.sTier, ...cs.aTier].slice(0, 4).map(m => (
-              m.profile_image_url ? (
-                <img key={m.id} src={m.profile_image_url} alt={m.name}
+              localPhoto(m.profile_image_url) ? (
+                <img key={m.id} src={localPhoto(m.profile_image_url)} alt={m.name}
                   style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover',
                     border: `1.5px solid ${tierColors[m.tier] || '#555'}` }}
                   onError={(e) => { e.target.style.display = 'none'; }}
@@ -1236,8 +1237,8 @@ function ClusterCard({ cs, rank, tierColors, onSelect }) {
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              {m.profile_image_url ? (
-                <img src={m.profile_image_url} alt="" style={{
+              {localPhoto(m.profile_image_url) ? (
+                <img src={localPhoto(m.profile_image_url)} alt="" style={{
                   width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                   border: `1px solid ${tierColors[m.tier] || '#555'}`,
                 }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -1245,7 +1246,7 @@ function ClusterCard({ cs, rank, tierColors, onSelect }) {
               <div style={{
                 width: 20, height: 20, borderRadius: '50%', flexShrink: 0, fontSize: 8, fontWeight: 700,
                 background: tierColors[m.tier] || '#555', color: m.tier === 'S' ? '#000' : '#fff',
-                display: m.profile_image_url ? 'none' : 'flex',
+                display: localPhoto(m.profile_image_url) ? 'none' : 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}>{m.name?.charAt(0)}</div>
               <div style={{ minWidth: 0, flex: 1 }}>

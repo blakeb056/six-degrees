@@ -72,6 +72,14 @@ test('on a tied score, the copy with a photo is shown', () => {
   assert.equal(people(rows, [bridge('a', 'B'), bridge('b', 'C')])[0].person.id, '2');
 });
 
+test('a link to LinkedIn is not a photo: the copy with a saved one is shown', () => {
+  const rows = [
+    row('1', '/in/x', 'a', 'B', 5, { profile_image_url: 'https://media.licdn.com/dms/image/x' }),
+    row('2', '/in/x', 'b', 'B', 5, { profile_image_url: '/avatars/x.webp' }),
+  ];
+  assert.equal(people(rows, [bridge('a', 'B'), bridge('b', 'C')])[0].person.id, '2');
+});
+
 test('7.7 and 7.699999999999999 are the same score, and ways in decides between them', () => {
   assert.equal(score1({ power_score: 7.699999999999999 }), 7.7);
   const bridges = [bridge('a', 'B'), bridge('b', 'B')];

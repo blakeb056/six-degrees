@@ -17,6 +17,7 @@ const BG = '#0a0a1a';
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
 const ACTION_LABELS = {
+  photos: 'Saving profile photos to this computer',
   install: 'Installing the scanner',
   setup: 'Setting up the scanner',
   login: 'Waiting for you to sign in',
@@ -209,6 +210,30 @@ function SetupInner() {
                   color: '#0a0a1a', textDecoration: 'none',
                   background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
                 }}>See your network →</Link>
+              </div>
+            </Box>
+          )}
+
+          {/* Photos an older version kept as links to LinkedIn. The app shows
+              only photos saved here (lib/photos.js), so until then those people
+              show initials. Every scan saves them at its end; this is the way
+              without scanning. */}
+          {s?.photosWaiting > 0 && !running && (
+            <Box>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <b>{s.photosWaiting.toLocaleString()} {s.photosWaiting === 1 ? 'photo isn’t' : 'photos aren’t'} saved on this computer yet.</b>{' '}
+                  <span style={{ color: '#9aa' }}>
+                    An older version kept them as links to LinkedIn. The app doesn’t load
+                    photos from LinkedIn while you browse, so those people show initials until
+                    the photos are saved here: now, or at the end of your next scan. An expired
+                    link can’t be saved; that person’s photo comes back when they’re next scanned.
+                  </span>
+                  {s && !c.dependencies && (
+                    <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 6 }}>Set up the scanner first (step 1 below): it saves them.</div>
+                  )}
+                </div>
+                <Btn onClick={() => run('photos')} disabled={busy || !c.dependencies}>Save photos</Btn>
               </div>
             </Box>
           )}

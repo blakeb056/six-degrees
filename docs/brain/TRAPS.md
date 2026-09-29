@@ -46,6 +46,13 @@ in the data directory while its URL is still fresh, and the database stores that
 path. Capture happens **at push time**, not lazily, because a lazy fetch is a fetch
 against an already-expired URL.
 
+A link is never shown either, even a fresh one: loading it would contact LinkedIn while
+someone only browses, which the privacy promise rules out (Blake's call, 2026-09-28:
+"Keep photos on your Mac"). Every view goes through `lib/photos.js` `localPhoto()`, and
+`img-src 'self' data: blob:` has the browser refuse anything a view might miss. The links
+older versions stored are saved once each by the scanner, at the end of the next scan or
+from *Save photos*, never by a page while browsing.
+
 ---
 
 ## 4. `readFileSync(process.cwd() + ...)` breaks in an installed package
@@ -98,6 +105,14 @@ the error and aborts after three consecutive failures.
 Generalise this: any `except`/`catch` that turns a failure into an empty result is a
 place where a bug can hide indefinitely.
 
+It came back in *Save photos* (2026-09-28). `store_avatar()` returned `None` for every
+failure, and Save photos forgets a link on `None`, so a run offline, behind a firewall or
+while LinkedIn's image server was busy cleared links only days old and said they had
+expired. Getting one back means scanning that person again. A definite no (403, 404,
+410, not LinkedIn's, not a picture, someone else's picture) is now told apart from
+`TryLater` (no connection, a timeout, 429, 5xx, a file it couldn't write), which keeps
+the link; three in a row stop the run with the reason.
+
 ---
 
 ## 8. `prepack` re-runs the build and wipes the standalone output
@@ -141,8 +156,9 @@ names and headlines from LinkedIn, i.e. attacker-controllable — straight into 
 
 Chained with a cross-site write, this was a working end-to-end exploit; it was
 reproduced before being fixed. All six sinks are escaped via `esc()`, and images are
-built with `.append('img').attr('src', src)` through `safeImageUrl()`, which allows only
-a local `/avatars/` path or an `https:` URL — never string concatenation.
+built with `.append('img').attr('src', src)` through `localPhoto()` (`lib/photos.js`),
+which allows only a saved `/avatars/` file (it used to allow any `https:` URL too) —
+never string concatenation.
 
 Treat every scraped field as hostile input. It came from a web page.
 

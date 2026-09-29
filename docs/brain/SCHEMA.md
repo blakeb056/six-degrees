@@ -47,9 +47,14 @@ installed rather than run from a checkout. TRAPS §4.
 `lib/promote.js` is the only thing that should move someone between degrees; it keeps
 those two straight and folds away duplicate rows. See TRAPS §19.
 - `profile_image_url` — a **local** `/avatars/*.webp` path after capture, not a CDN URL.
-  See TRAPS §3. Until the scanner saves the photo it is LinkedIn's own signed link, which
-  expires in a few weeks. An export made without photos sets the local paths to NULL, so
-  the other computer shows initials rather than a missing file.
+  See TRAPS §3. The app stores nothing else now: a scan's link is never written
+  (`/api/ingest`), and the scanner attaches the file once it has saved it
+  (`/api/update-images`). Older versions stored LinkedIn's own signed link until then, and
+  a copy of a network made by one carries them: pages never load a link (`lib/photos.js`
+  `localPhoto`, so those people show initials), and the scanner saves each once, at the
+  end of the next scan or from *Save photos*, then sets it to the file's path or NULL. An
+  export made without photos sets the local paths to NULL, so the other computer shows
+  initials rather than a missing file.
 - `user_id` — **every view filters by this.** A row written with NULL lands in the
   database and is invisible forever. TRAPS §9.
 
