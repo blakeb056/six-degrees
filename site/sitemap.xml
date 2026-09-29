@@ -6,7 +6,11 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image><image:loc>https://sixdegreesapp.com/img/app-window.png</image:loc><image:title>Six Degrees on a Mac</image:title></image:image>
-    <image:image><image:loc>https://sixdegreesapp.com/img/degrees.png</image:loc><image:title>The Degrees view</image:title></image:image>
-    <image:image><image:loc>https://sixdegreesapp.com/img/paths.png</image:loc><image:title>The Paths view</image:title></image:image>
+    <image:image><image:loc>https://sixdegreesapp.com/img/app/network-circle.jpg</image:loc><image:title>Network Circle</image:title></image:image>
+    <image:image><image:loc>https://sixdegreesapp.com/img/app/separation.jpg</image:loc><image:title>Degrees: Separation</image:title></image:image>
+    <image:image><image:loc>https://sixdegreesapp.com/img/app/insights.jpg</image:loc><image:title>A connection's card, with Insights</image:title></image:image>
+    <image:image><image:loc>https://sixdegreesapp.com/img/app/paths.jpg</image:loc><image:title>Paths</image:title></image:image>
+    <image:image><image:loc>https://sixdegreesapp.com/img/app/lab-clusters.jpg</image:loc><image:title>The Galaxy physics lab</image:title></image:image>
   </url>
+  <!-- scripts/build-site.mjs adds every other page here when it builds the site. -->
 </urlset>

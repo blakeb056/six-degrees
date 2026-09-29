@@ -25,6 +25,8 @@
   <a href="#latest-news">News</a> ·
   <a href="#why-six-degrees">Why Six Degrees</a> ·
   <a href="#docs">Docs</a> ·
+  <a href="https://sixdegreesapp.com/blog/">Blog</a> ·
+  <a href="https://sixdegreesapp.com/roadmap/">Roadmap</a> ·
   <a href="#contributing">Contributing</a>
 </p>
 
@@ -53,7 +55,7 @@ no server.
 |---|---|---|
 | **macOS**, Apple Silicon (M1 or newer) | [Six-Degrees-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
 | **macOS**, Intel | [Six-Degrees-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
-| **Linux** | App: *coming soon.* Run it today from the Terminal: `npx six-degrees` ([how](#install-it)) | Node 22.13 or later |
+| **Linux** | App: *coming soon.* Run it today from the Terminal: `npx six-degrees` ([how](https://sixdegreesapp.com/download/#linux)) | Node 22.13 or later |
 | **Windows** | *Coming soon.* [Watch releases](https://github.com/blakeb056/six-degrees) (Watch → Custom → Releases) to hear when it's out | — |
 
 <sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
@@ -154,8 +156,8 @@ Scanning LinkedIn also needs Google Chrome, and Python 3.10 to 3.14 or the Scan 
 ## Features
 
 **Network Circle.** Everyone you know, on rings by tier, the most powerful closest to
-you. Switch the drawing between **Galaxy**, **Orbit**, **Pyramid** and **List** in the
-panel on the left.
+you. Switch the drawing between **Galaxy**, **Pyramid** and **List** in the panel on
+the left.
 
 **Degrees** *(needs a scan or the sample)*. The people two steps away. **Separation**
 ranks every one of them with every way in: which of your connections knows them, and
@@ -215,8 +217,10 @@ Six Degrees ships often, and every release says what it added, changed and fixed
   downloads and notes ([Atom feed](https://github.com/blakeb056/six-degrees/releases.atom)).
 - **[CHANGELOG.md](CHANGELOG.md)**: everything, newest first, including what's
   coming in the next release.
-- **[The website's News](https://sixdegreesapp.com/#news)**: the latest releases at a
-  glance, built from the changelog each time the site is published.
+- **[Release notes on the website](https://sixdegreesapp.com/releases/)**: every version,
+  built from the changelog each time the site is published, with a
+  [feed](https://sixdegreesapp.com/releases/feed.xml).
+- **[The blog](https://sixdegreesapp.com/blog/)**: how it works, and why.
 
 ## Why Six Degrees
 
@@ -493,12 +497,15 @@ Nothing to configure. Two optional environment variables exist:
 
 | You want | Read |
 |---|---|
-| To install it, step by step | [Install it](#install-it), or [the website's guide](https://sixdegreesapp.com/#install) with videos |
+| To install it, step by step | [Install it](#install-it), or [the website's guide](https://sixdegreesapp.com/download/#install) with videos |
 | How scanning works, and what it risks | [docs/SCRAPING.md](docs/SCRAPING.md) |
 | How a power score is worked out | [How scoring works](#how-scoring-works), and [docs/brain/SCORING.md](docs/brain/SCORING.md) |
 | Where your data lives, moving computers | [How your data is stored](#how-your-data-is-stored) |
 | The security model, and reporting a problem | [SECURITY.md](SECURITY.md) |
-| What changed in each version | [CHANGELOG.md](CHANGELOG.md) |
+| What changed in each version | [CHANGELOG.md](CHANGELOG.md), or the [release notes](https://sixdegreesapp.com/releases/) on the website |
+| How it works, and why | [The blog](https://sixdegreesapp.com/blog/): who can introduce you, local-first, the physics lab, scanning slowly |
+| What's next | [The roadmap](https://sixdegreesapp.com/roadmap/) |
+| The website itself | [site/README.md](site/README.md): previewing it, adding a post or a page |
 | To change the code | [CONTRIBUTING.md](CONTRIBUTING.md), then [docs/brain/](docs/brain/00-START-HERE.md) |
 
 ## Contributing

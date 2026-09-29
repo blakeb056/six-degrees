@@ -1,11 +1,12 @@
 name: Website
 
-# The website at https://sixdegreesapp.com/ — site/ plus the README's screenshots
-# and the app icon, published with GitHub Pages. No dependencies. One step writes
-# into the published copy: scripts/build-site-news.mjs fills the News section, the
-# numbers strip and the sample-network charts from CHANGELOG.md, tests/ and
-# public/demo-data.json, so the live site's news is never older than the changelog.
-# Everything else in site/ is served as it is.
+# The website at https://sixdegreesapp.com/, built by scripts/build-site.mjs from
+# site/ (see site/README.md) and published with GitHub Pages. The build has no
+# dependencies: it fills the home page's generated parts, renders /download/,
+# /docs/, /roadmap/, /about/, /releases/ and the blog, writes the feeds and the
+# sitemap, and copies in the README's screenshots and the app icon. News and
+# numbers come from CHANGELOG.md, tests/ and public/demo-data.json at build time,
+# so the live site is never older than the changelog.
 
 on:
   push:
@@ -15,9 +16,11 @@ on:
       - 'docs/img/**'
       - 'desktop/icon/**'
       - '.github/workflows/pages.yml'
-      # What the generated parts are counted from (scripts/build-site-news.mjs).
+      # What the build reads (scripts/build-site.mjs and the modules beside it).
       - 'CHANGELOG.md'
-      - 'scripts/build-site-news.mjs'
+      - 'scripts/build-site.mjs'
+      - 'scripts/site-news.mjs'
+      - 'scripts/site-markdown.mjs'
       - 'tests/*.test.mjs'
       - 'public/demo-data.json'
   workflow_dispatch:
@@ -42,21 +45,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Assemble the site
+      # ImageMagick makes the 1200px copies of the screenshots, for phones.
+      - name: Build the site
         run: |
-          mkdir -p _site/img
-          cp -R site/. _site/
-          cp docs/img/app-window.png docs/img/degrees.png docs/img/paths.png _site/img/
-          cp desktop/icon/icon.svg _site/img/icon.svg
-          # 1200px copies for phones and small screens (the originals are 2880–3136px).
           command -v convert >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick; }
-          for f in app-window degrees paths; do convert "_site/img/$f.png" -resize 1200x "_site/img/$f-1200.png"; done
+          node scripts/build-site.mjs _site
           ls -la _site _site/img
-      # News, the numbers and the sample charts, from the files they're counted
-      # from. Only the copy being published changes; site/index.html in the repo
-      # keeps whatever was last committed (run the script locally to refresh it).
-      - name: News and numbers
-        run: node scripts/build-site-news.mjs _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
