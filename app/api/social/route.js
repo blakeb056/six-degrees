@@ -2,6 +2,8 @@ import { readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { dataDir } from '../../../lib/db-client';
 import { resolveProfile } from '../../../lib/profile';
+import { db } from '../../../lib/db';
+import { matchLive } from '../../../lib/linkedin-export';
 
 // The Social tab's saved findings (lib/linkedin-export.js): numbers and dates
 // from your own LinkedIn export, one file per profile in the data folder. No
@@ -62,16 +64,20 @@ export async function PUT(request) {
   try { body = await request.json(); } catch { return Response.json({ error: 'That isn’t readable.' }, { status: 400 }); }
   let saved = {};
   try { saved = JSON.parse(readFileSync(file, 'utf8')) || {}; } catch { /* first sync */ }
-  const live = {};
-  for (const [url, v] of Object.entries(body?.live || {})) {
-    if (typeof url !== 'string' || !url.includes('/in/') || !v || typeof v !== 'object') continue;
-    live[url] = { last: Number(v.last) || null, unread: Number.isFinite(Number(v.unread)) ? Number(v.unread) : null };
-  }
+  // Matched to your connections here, so the names the sync sends go no further.
+  const me = resolveProfile({ create: false });
+  let conns = [];
+  try {
+    const q = db.from('linkedin_connections').select('name, profile_url, id').eq('degree', 1);
+    if (me?.id) q.eq('user_id', me.id);
+    conns = (await q).data || [];
+  } catch { /* no connections yet */ }
+  const { live, unmatched } = matchLive(body?.live || {}, conns);
   const next = { ...saved, live, liveAt: new Date().toISOString() };
   const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, JSON.stringify(next));
   renameSync(tmp, file);
-  return Response.json({ ok: true, people: Object.keys(live).length });
+  return Response.json({ ok: true, people: Object.keys(live).length, unmatched });
 }
 
 // The Social tab's "once a day" switch for the live messages sync.
