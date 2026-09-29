@@ -1,6 +1,7 @@
 import { db as supabase } from '../../../lib/db';
 import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf } from '../../../lib/ingest';
 import { promoteToFirstDegree } from '../../../lib/promote';
+import { localPhoto } from '../../../lib/photos';
 
 function parseHeadline(h) {
   if (!h) return { role: '', company: '' };
@@ -29,7 +30,11 @@ export async function POST(request) {
         company: (company || (type === 'company' ? companyName : '') || '').substring(0, 100),
         role: role.substring(0, 100),
         profile_url: c.profileUrl?.trim(),
-        profile_image_url: c.imageUrl || null,
+        // Only a photo already saved on this computer. The scanner sends
+        // LinkedIn's link here, then saves the picture and attaches its file
+        // through /api/update-images; kept, the link would replace a saved
+        // photo on every rescan, and the app never shows one (lib/photos.js).
+        profile_image_url: localPhoto(c.imageUrl),
         connected_date: toIsoDate(c.connectedDate),
         // LinkedIn's own count, read off a circle's result card; nothing else sends one.
         mutual_count: degree === 2 ? mutualCountOf(c.mutualCount) : null,

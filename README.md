@@ -123,8 +123,7 @@ whose own circles reach the furthest, and the shortest chain from you to a stran
 worth meeting.
 
 It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
-no server. (Inside the app the logo reads *6 Degrees*; in Applications it's **Six
-Degrees**.)
+no server.
 
 ## Before you scan LinkedIn
 
@@ -137,8 +136,9 @@ Degrees**.)
 > - Search was blocked after results were read too fast (2026-09-24).
 >
 > The scanner now reads slowly and keeps to a search budget (by default 50 a day and 250
-> a month; you can change it on the Scan page). It locks itself during a cooldown, and
-> stops at the first sign of push-back. The risk is still yours.
+> a month) and a cap on profile views (50 a day, at least a minute apart). You can change
+> both on the Scan page. It locks itself during a cooldown, and stops at the first sign of
+> push-back. The risk is still yours.
 >
 > **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
@@ -281,8 +281,10 @@ It estimates **network position**, not what anyone is worth as a person.
 - A CSV import is read on your machine and never added to your network. It's held only
   in the app window's own storage, and you import it again next time.
 - The app contacts only these, and only when you act:
-  - **LinkedIn**, while you scan. Also, until a profile photo has been saved to your
-    computer, the app shows it straight from LinkedIn's image server.
+  - **LinkedIn**, while you scan. Each profile photo is saved on your computer as the
+    scan reads it, and the app shows photos only from there, so looking at your network
+    never contacts LinkedIn. (Photos an older version kept as links to LinkedIn show
+    initials until the next scan, or *Save photos* on the Scan page, saves them.)
   - Only without the Mac app (which carries the scanner's Python and add-ons inside it),
     once, when you set the scanner up: **PyPI** (the Python package library) for the
     scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
-import { stopScrape } from '../../lib/scraper-client';
+import { stopScrape, pickedPerson } from '../../lib/scraper-client';
 import { setupStep, askForField } from '../../lib/scanner-setup';
 import { IS_DEMO } from '../../lib/demo';
+import { circleScanCost } from '../../lib/reach';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 
@@ -17,6 +19,7 @@ const BG = '#0a0a1a';
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
 const ACTION_LABELS = {
+  photos: 'Saving profile photos to this computer',
   install: 'Installing the scanner',
   setup: 'Setting up the scanner',
   login: 'Waiting for you to sign in',
@@ -29,7 +32,9 @@ const ACTION_LABELS = {
 };
 
 export default function SetupPage() {
-  return <OnboardingGate><SetupInner /></OnboardingGate>;
+  // Suspense because SetupInner reads the address's ?scan= (useSearchParams),
+  // which Next requires to sit inside one for the page to build.
+  return <OnboardingGate><Suspense><SetupInner /></Suspense></OnboardingGate>;
 }
 
 function SetupInner() {
@@ -66,6 +71,24 @@ function SetupInner() {
   // loads, null when it couldn't be read. And the answer given here, if any.
   const [settings, setSettings] = useState(undefined);
   const [field, setField] = useState(null);
+  // Someone sent here to have their circle scanned (Bridge Chains, the Degrees
+  // panel's Ready to scan): /setup?scan=<id>. Nothing starts until it's confirmed.
+  // The router's search params rather than window.location: every way here is a
+  // click, and the address bar only changes after this page has rendered, so the
+  // pick was lost on all of them and only a reload showed it.
+  const pickId = useSearchParams().get('scan');
+  const [pick, setPick] = useState(null);
+  useEffect(() => {
+    if (!pickId) return undefined;
+    let live = true;
+    pickedPerson(pickId).then((d) => { if (live) setPick(d?.person ? d : null); }, () => {});
+    return () => { live = false; };
+  }, [pickId]);
+  // Next's router follows history.replaceState, so pickId drops ?scan= as well.
+  function unpick() {
+    setPick(null);
+    try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
+  }
 
   const poll = useCallback(async () => {
     try {
@@ -194,6 +217,15 @@ function SetupInner() {
         {field && <FieldAnswer sectors={field.sectors} />}
 
         {askField === false && <>
+          {/* By id: the server finds them by their profile, since two connections can share a name. */}
+          {pick?.person.id === pickId && (
+            <ScanOne
+              pick={pick} pages={pages} setPages={setPages} li={li} running={running} s={s}
+              canSearch={canSearch} busy={busy} onUnpick={unpick}
+              onStart={() => run('bridge', { id: pick.person.id, maxPages: pages })}
+            />
+          )}
+
           {mapped > 0 && !running && (
             <Box>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -209,6 +241,30 @@ function SetupInner() {
                   color: '#0a0a1a', textDecoration: 'none',
                   background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
                 }}>See your network →</Link>
+              </div>
+            </Box>
+          )}
+
+          {/* Photos an older version kept as links to LinkedIn. The app shows
+              only photos saved here (lib/photos.js), so until then those people
+              show initials. Every scan saves them at its end; this is the way
+              without scanning. */}
+          {s?.photosWaiting > 0 && !running && (
+            <Box>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <b>{s.photosWaiting.toLocaleString()} {s.photosWaiting === 1 ? 'photo isn’t' : 'photos aren’t'} saved on this computer yet.</b>{' '}
+                  <span style={{ color: '#9aa' }}>
+                    An older version kept them as links to LinkedIn. The app doesn’t load
+                    photos from LinkedIn while you browse, so those people show initials until
+                    the photos are saved here: now, or at the end of your next scan. An expired
+                    link can’t be saved; that person’s photo comes back when they’re next scanned.
+                  </span>
+                  {s && !c.dependencies && (
+                    <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 6 }}>Set up the scanner first (step 1 below): it saves them.</div>
+                  )}
+                </div>
+                <Btn onClick={() => run('photos')} disabled={busy || !c.dependencies}>Save photos</Btn>
               </div>
             </Box>
           )}
@@ -387,7 +443,7 @@ function SetupInner() {
                 <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
                   Every page is a LinkedIn search, so it rests 20 seconds before each one and a
                   minute after every 10, and a long list can take
-                  {' '}{pages >= 100 ? 'about 55 minutes a person' : `about ${Math.max(5, Math.round(pages * 0.55))} minutes a person`}.
+                  {' '}about {circleScanCost(pages).minutes} minutes a person.
                   LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
                   have a monthly search limit: if LinkedIn says it has been reached, the scan saves
                   what it read and stops, and carries on from that page next time. Keep batches small.
@@ -481,6 +537,78 @@ function SetupInner() {
     </div>
   );
 }
+
+// One person's circle, picked elsewhere and scanned only once it's confirmed
+// here, beside what it costs and what the budget has left (backlog 2.4). Their
+// read goes as deep as "Read up to" below says; Bridge Chains shows it filling in.
+function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onStart, onUnpick }) {
+  const { person, circle } = pick;
+  const first = String(person.name || '').trim().split(/\s+/)[0] || 'them';
+  const cost = circleScanCost(pages);
+  const theirs = running && s?.target?.id === person.id;
+  const short = li?.leftToday != null && li.leftToday < cost.searches;
+  return (
+    <div style={{
+      margin: '16px 0', padding: '16px 18px', borderRadius: 10, fontSize: 13.5, lineHeight: 1.6,
+      background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.3)',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#00ff88', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 }}>
+        Scan one circle
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>
+        {person.name} <span style={{ fontSize: 12, color: TIER[person.tier] || '#888' }}>{person.tier}-tier</span>
+      </div>
+      {person.unlocked_from_name && (
+        <div style={{ fontSize: 12.5, color: '#9aa' }}>Was in {person.unlocked_from_name}&rsquo;s circle</div>
+      )}
+      {theirs ? (
+        <div style={{ marginTop: 10 }}>
+          <b>Scanning {first}&rsquo;s circle.</b> It saves every 10 pages, and{' '}
+          <Link href={`/?chain=${encodeURIComponent(person.id)}`} style={{ color: '#00ff88' }}>Bridge Chains shows it filling in →</Link>
+        </div>
+      ) : (
+        <>
+          <div style={{ color: '#b8c4c4', marginTop: 10 }}>
+            It costs <b>{cost.profileViews} profile view</b> to find their list, then <b>one LinkedIn search for
+            every page</b> of it: up to {cost.searches} {cost.searches === 1 ? 'page' : 'pages'}, about {cost.minutes} minutes.
+            {li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
+          </div>
+          {circle === 'scanned' && (
+            <div style={{ color: '#FFD700', fontSize: 12.5, marginTop: 6 }}>
+              Their circle is already scanned. This reads their whole list again from page 1; to carry on
+              from where a read stopped, use Resume on their card or in the Paused list below.
+            </div>
+          )}
+          {circle === 'hidden' && (
+            <div style={{ color: '#FFD700', fontSize: 12.5, marginTop: 6 }}>
+              Their list was hidden last time it was tried. Trying again costs a profile view.
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <Btn onClick={onStart} disabled={!canSearch || busy} primary>Scan {first}&rsquo;s circle</Btn>
+            <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}
+              aria-label="How many pages of their list to read">
+              <option value={100}>every page, to the end of their list</option>
+              <option value={50}>up to 50 pages</option>
+              <option value={25}>up to 25 pages</option>
+              <option value={10}>up to 10 pages (~100 people)</option>
+            </select>
+            <Btn onClick={onUnpick}>Not now</Btn>
+          </div>
+          {!canSearch && (
+            <div style={{ fontSize: 12.5, color: '#8b9a9a', marginTop: 8 }}>
+              {running ? 'Something else is running. One scan at a time: this one can start when it finishes.'
+                : li?.cooldown ? 'Scanning is paused for now (see below).'
+                : 'The scanner isn’t ready yet: finish the steps below first.'}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 // A setting this browser remembers between visits: the order and depth someone
 // picked should not reset every time the page opens. localStorage can be missing

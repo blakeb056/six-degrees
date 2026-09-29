@@ -11,6 +11,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { buildQuest, XP_SEND, STAGE_SIZE } from '../../lib/quest';
 import { initialsFor } from '../../lib/tiers';
+import { localPhoto } from '../../lib/photos';
 
 const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const LINE = '1px solid rgba(255,255,255,0.1)';
@@ -24,8 +25,8 @@ function Face({ person, size = 36, ring }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.34, fontWeight: 800,
         border: `2px solid ${ring || color}`,
       }}>{initialsFor(person?.name || '?')}</div>
-      {person?.profile_image_url && (
-        <img src={person.profile_image_url} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      {localPhoto(person?.profile_image_url) && (
+        <img src={localPhoto(person.profile_image_url)} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }}
           style={{ position: 'absolute', inset: 0, width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${ring || color}` }} />
       )}
     </div>
@@ -47,8 +48,8 @@ function Ring({ progress, size = 86, color = '#FF6B35', children }) {
   );
 }
 
-export default function OutlinkQuest({ recs, sentIds, added, mappedIds, onSend, onUndo }) {
-  const quest = useMemo(() => buildQuest({ recs, sentIds, added, mappedIds }), [recs, sentIds, added, mappedIds]);
+export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, onSend, onUndo }) {
+  const quest = useMemo(() => buildQuest({ recs, sentIds, added, mappedIds, reach }), [recs, sentIds, added, mappedIds, reach]);
   const [open, setOpen] = useState(null);         // bridge id of the expanded cluster
   const [toast, setToast] = useState(null);
   const { level } = quest;

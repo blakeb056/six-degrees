@@ -1,5 +1,7 @@
 'use client';
 
+import { localPhoto } from '../../lib/photos';
+
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 export default function ListView({ connections, degree2 = [], onSelect, mode }) {
@@ -47,8 +49,8 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
             >
               <span style={{ fontSize: 12, fontWeight: 700, color: '#444' }}>{i + 1}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                {cl.bridge.profile_image_url ? (
-                  <img src={cl.bridge.profile_image_url} alt="" style={{
+                {localPhoto(cl.bridge.profile_image_url) ? (
+                  <img src={localPhoto(cl.bridge.profile_image_url)} alt="" style={{
                     width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                     border: `2px solid ${TIER_COLORS[cl.bridge.tier]}`,
                   }} onError={e => { e.target.style.display = 'none'; }} />
@@ -113,8 +115,8 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
             onMouseLeave={e => e.currentTarget.style.background = i < 3 ? `${TIER_COLORS[c.tier]}08` : 'transparent'}
           >
             <span style={{ fontSize: 12, fontWeight: 700, color: i < 3 ? TIER_COLORS[c.tier] : '#444' }}>{i + 1}</span>
-            {c.profile_image_url ? (
-              <img src={c.profile_image_url} alt="" style={{
+            {localPhoto(c.profile_image_url) ? (
+              <img src={localPhoto(c.profile_image_url)} alt="" style={{
                 width: 28, height: 28, borderRadius: '50%', objectFit: 'cover',
                 border: `2px solid ${TIER_COLORS[c.tier]}`,
               }} onError={e => { e.target.style.display = 'none'; }} />

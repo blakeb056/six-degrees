@@ -19,10 +19,12 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--login` | Signs in, confirms the session saved, exits. |
 | `--search` | Legacy: collects via the people-search pages instead. |
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
+| `--bridge-url URL` | The same, for the person with that profile URL: two connections can share a name, and by name the first one saved is read. Carries on where their last read stopped (Resume); with `--from-start`, from page 1 (every Scan button in the app). |
 | `--company "Name"` | Everyone visible at one company. |
 | `--auto-bridge` | Map every bridge in turn, highest tier first. Hidden profiles are recorded and skipped on later runs. |
 | `--retry-private` | With `--auto-bridge`: try the people previously found to be hidden. |
 | `--clear-skips` | Forget every hidden-profile skip. |
+| `--save-photos` | Saves the photos older versions kept as links (`GET /api/update-images`), once each: the file's path if it saved, and a definite no (expired, not LinkedIn's, not a picture, someone else's) forgets the link. No connection, a timeout, a 429 or 5xx keeps it (`TryLater`); three in a row, or nothing but those, end the run with the reason and exit 1. No browser, no search. Every scan that finishes does the same at its end (`save_waiting_photos`); the Scan page's *Save photos* runs this. |
 | `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
 | `--headless` | Works on every mode once signed in — but headless Chrome is **more** detectable, not less. |
 
@@ -97,7 +99,10 @@ end to end on 2026-09-09.
 `--auto-bridge` walks every unbridged person, highest tier first. What it must survive
 is the common case, not the happy one: **most people's connections are hidden.** Those
 return `[], "private"`, are written to `bridge-skips.json`, and are not tried again
-unless asked. See TRAPS §15 for why recording the attempt is the whole fix.
+unless asked. See TRAPS §15 for why recording the attempt is the whole fix. The note is
+made in `scrape_bridge` itself, so a one-person scan from page 1 (`--bridge-url
+--from-start`, `--bridge`, `--rescrape`: a card's Scan or Rescan, the Scan page's Scan one
+circle) makes it too; until 0.4.0 only the batch did.
 
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.
@@ -108,6 +113,32 @@ A real account was temporarily restricted on 2026-09-09 after about an hour of
 continuous auto-bridging — roughly 20–25 profile views at the two-minute cooldown.
 Lifted the same day. See TRAPS §16. Treat that as a ceiling seen once, not a safe
 budget: batch the work, keep the cooldown, and stop at the first warning.
+
+**Profile views have a cap of their own.** It is one cap for everything that opens a
+profile. Today that is a circle scan whose search id isn't known yet: it opens the
+person's profile once, and that is a profile view. Reading someone's profile on its own
+(planned) will count against the same cap.
+
+- **The cap:** 50 in any 24 hours by default (`scan-limits.json` `profiles`; the Scan
+  page offers 10, 25, 50 and 100). There is no "no limit": a 0 in the file reads as 50.
+- **The gap:** at least 60 seconds between any two opens (`PROFILE_GAP`). It is timed from
+  the last view in `linkedin-activity.json`, not from the last run, so scans started back
+  to back can't open profiles back to back. The job prints a countdown while it waits,
+  and Stop ends the wait.
+- **Where it's checked:** `take_profile_view()` checks the cap and the gap and writes the
+  view down in one step, under the record's lock, just before `_scrape_one_bridge` opens
+  the profile. With none left, the read returns `"budget"` with the reason `"profiles"`
+  and opens nothing. `scrape_bridge` raises `BudgetReached(0, "profiles")`, which ends
+  Auto-Bridge like the search budget does. Nothing about that person is recorded (no
+  progress, skip or unclear note), so the next run tries them again.
+- **Earlier checks:** `scrape_bridge` and `rescrape_bridge` check `profiles_left()` first,
+  so no browser opens and no circle is deleted when none are left.
+- **Not a profile view:** a read that carries on with a known search id doesn't open the
+  profile, so the cap doesn't stop it.
+- **A damaged record** counts the day's profile views as used, like its searches.
+
+`tests/profile-views.test.mjs` runs this code with a stand-in page and clock. It shows
+no `page.goto` happens once the cap is reached, and that the gap holds.
 
 ## Posture
 

@@ -21,6 +21,10 @@ Last checked: 2026-09-27. The download site is `site/`, published by `.github/wo
 
 1. `site/index.html`: `softwareVersion`, `dateModified` in the JSON-LD; the "New in" copy.
 2. `site/sitemap.xml`: `lastmod`. `site/llms.txt`: the version line.
+
+   `node scripts/check-site-version.mjs` checks 1 and 2 (all but the "New in" copy) against
+   `package.json` and the release's date in `CHANGELOG.md`. `release.yml` runs it before
+   building, and a full release whose site doesn't match stops there.
 3. After the Pages deploy: ping IndexNow (command above) and, in Google Search Console, URL inspection → Request indexing for https://sixdegreesapp.com/.
 
 ## How to verify

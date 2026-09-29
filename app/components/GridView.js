@@ -1,5 +1,7 @@
 'use client';
 
+import { localPhoto } from '../../lib/photos';
+
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 
@@ -38,8 +40,8 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
               onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                {cl.bridge.profile_image_url ? (
-                  <img src={cl.bridge.profile_image_url} alt="" style={{
+                {localPhoto(cl.bridge.profile_image_url) ? (
+                  <img src={localPhoto(cl.bridge.profile_image_url)} alt="" style={{
                     width: 40, height: 40, borderRadius: '50%', objectFit: 'cover',
                     border: `2px solid ${TIER_COLORS[cl.bridge.tier]}`,
                   }} onError={e => { e.target.style.display = 'none'; }} />
@@ -67,13 +69,13 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                 {cl.members.slice(0, 8).map((m, i) => (
                   <div key={m.id} style={{
                     width: 22, height: 22, borderRadius: '50%', fontSize: 8, fontWeight: 700,
-                    background: m.profile_image_url ? 'transparent' : (TIER_COLORS[m.tier] || '#333'),
+                    background: localPhoto(m.profile_image_url) ? 'transparent' : (TIER_COLORS[m.tier] || '#333'),
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: '2px solid #0a0a1a', marginLeft: i > 0 ? -6 : 0, position: 'relative', zIndex: 8 - i,
                     overflow: 'hidden',
                   }}>
-                    {m.profile_image_url ? (
-                      <img src={m.profile_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {localPhoto(m.profile_image_url) ? (
+                      <img src={localPhoto(m.profile_image_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : m.name?.charAt(0)}
                   </div>
                 ))}
@@ -131,8 +133,8 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {c.profile_image_url ? (
-                        <img src={c.profile_image_url} alt="" style={{
+                      {localPhoto(c.profile_image_url) ? (
+                        <img src={localPhoto(c.profile_image_url)} alt="" style={{
                           width: 32, height: 32, borderRadius: '50%', objectFit: 'cover',
                           border: `2px solid ${TIER_COLORS[tier]}`,
                         }} onError={e => { e.target.style.display = 'none'; }} />

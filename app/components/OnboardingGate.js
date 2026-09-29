@@ -24,7 +24,7 @@ export default function OnboardingGate({ children }) {
       ) : (
         <div style={{ maxWidth: 420 }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            Can’t reach 6 Degrees’ local server
+            Can’t reach Six Degrees’ local server
           </div>
           <div style={{ color: '#888', fontSize: 14, lineHeight: 1.6 }}>
             The page loaded but the app behind it is not answering. If you started it

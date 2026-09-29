@@ -36,8 +36,8 @@ export const VIEWS = {
 };
 
 /**
- * The order they appear in the menu. Separation is the first Degrees view, so
- * it is also where resolveView lands when the chosen view isn't a Degrees one
+ * The order they appear in the menu. Orbit is the first Degrees view, so it is
+ * also where resolveView lands when the chosen view isn't a Degrees one
  * (Galaxy, say, carried over from Network Circle).
  */
 const ORDER = ['galaxy', 'orbit', 'separation', 'chain', 'rings', 'list'];

@@ -6,15 +6,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-28
+
 ### Added
+- **A cap on profile views.** A circle scan opens the person's profile once, and profile
+  views are what LinkedIn restricted an account for. They now have a cap of their own: 50
+  in any 24 hours by default. The Scan page offers 10, 25, 50 or 100, and there is no "no
+  limit".
+  - **A minute apart:** at least 60 seconds pass between any two profile opens. It's timed
+    from the last one written down, so scans started back to back can't open profiles back
+    to back. The log counts down while it waits, and Stop ends the wait.
+  - **Checked before the profile opens:** at the cap, a scan opens nothing and records
+    nothing about that person. Auto-Bridge stops, as it does at the search budget, and the
+    next run starts with the same person.
+  - **On the Scan page:** "3 of 50 profile views today", with a bar and the picker.
+  - **Re-mapping someone** checks it before deleting their circle. A damaged record counts
+    the day's views as used. An import brings the other computer's setting only when this
+    one has none, like the search budget.
 - **The Scan page asks what field you're in, before your first scan.** One optional step,
   with the same picks as *Scores → Your sector*: tech, government and defense, dental, and
   the rest. Companies in your field count for more, so your first scores already use it.
   *Skip for now* carries on without one. Both stay at the bottom of the window while you
   look through the list. It's asked once, and never if you already have a network or picked
   a sector. Change it anytime on the Scores tab.
+- **Bridge Chains opens any circle, as far as your scans reach.** Click someone in a
+  bridge's circle and their own circle opens in place: the people found in it once you
+  connected and scanned it (3rd degree, counted along the chain), and on from there. A
+  trail at the top, and Esc, go back. An empty circle says why and what gets it: connect,
+  then scan their circle. While one is being scanned, it fills in as the scan saves.
+  Someone ready for a scan goes to the Scan page with them picked instead, since their
+  circle is empty until then.
+- **A soft glow on people ready for a scan.** In Bridge Chains, someone you added through
+  a circle whose own circle isn't scanned yet has a soft breathing halo, and their bridge
+  says how many are "ready". A hidden list is greyed with a lock instead. The halo stays
+  still with Reduce Motion on. The old rainbow glow is gone: it looked for them inside the
+  circle they came from, which accepting takes them out of, so it never showed.
+- **Ready to scan (N), in the Degrees panel.** It replaces *Auto-Bridge Next*, which
+  started a scan in one click, by name, with no cost shown, and offered hidden lists again
+  and again. The list is everyone you added through a circle whose circle can be scanned,
+  strongest first, with the circle you found them in and what a scan costs. Hidden lists
+  stay in view, greyed with a lock.
+- **Scan one circle, on the Scan page.** A ready person, from the list or Bridge Chains,
+  opens the Scan page with them picked: the cost (a profile view, then a search a page, up
+  to 100), what's left of the day's budget, how deep to read, and a button. Nothing starts
+  until it's pressed.
+- **A release checks the website's version lines.** Before building anything, the release
+  workflow runs `scripts/check-site-version.mjs`: the site's `softwareVersion` and
+  `llms.txt` must name the version, and its `dateModified` and sitemap `lastmod` can't be
+  older than the release's date in the changelog. A stale site stops the release with a
+  line for each thing to change. A pre-release skips it. Anyone can run it before tagging.
 
 ### Changed
+- **A big circle spreads out.** A bridge's circle used to sit on one ring, so a few hundred
+  people were almost a solid line. It now fills rings from the inside out, as many as it
+  needs, with the highest tiers nearest the middle; drag to move, scroll or +/− to zoom.
+  Lots of bridges spread the same way, and so does the preview on hover.
+- **The map picks up a finished scan by itself.** No refresh needed.
+- **One rule for "ready".** Bridge Chains, the Degrees panel, Outlink's new doors and the
+  profile page's mapping bar now agree on who can be scanned next, and all leave hidden
+  lists out.
+- **Photos stay on your Mac.** The app shows a profile photo only from the copy saved on
+  your computer, so looking at your network never contacts LinkedIn. It used to load a
+  photo from LinkedIn until a scan had saved it, and a rescan could put LinkedIn's link
+  back in place of a saved photo. Every page now also tells the browser to load pictures
+  from the app alone, and the scanner fetches photos from LinkedIn's image servers only.
+- **Photos an older version kept as links are saved once.** Until then those people show
+  initials. The next scan saves them at its end, or *Save photos* on the Scan page does it
+  now, without opening a browser. A link more than a few weeks old has expired: that
+  person's photo comes back when they're next scanned. Offline, or with LinkedIn's image
+  server busy, nothing is forgotten, and *Save photos* stops and says why.
 - **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
   secretary score like a C-suite; their deputies, state legislators, commissioners,
   ambassadors and judges like a VP; a city councilmember or a sheriff like a director.
@@ -27,11 +87,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("Mayor", "Police Chief", "Ambassador") needs its government named, or stays "Title
   unclear": a missed official is a neutral 4, a realtor read as a mayor would be an A.
   Until now all of them were "Title unclear" (a U.S. senator scored 2.9, C).
+- **One name: Six Degrees.** The header, the welcome screen, the loading and launch pages,
+  the side panel and the Terminal installer said "6 Degrees". They now say Six Degrees, as
+  the window title and the app in Applications already did.
+- **Contributor docs and `.gitignore`.** CONTRIBUTING says npm releases go out through
+  trusted publishing, with no token to set, and that `npm run build:desktop` builds the app
+  releases ship (`build:app` is the old launcher). `.gitignore` keeps a LinkedIn export, a
+  database, a saved copy of a network and the scanner's signed-in browser profile out of a
+  commit, wherever they sit in the tree. A local build keeps them out of the app too, and
+  its list of uncommitted files inside the app now names ignored ones as well.
+- **0.4.0-beta.1, promoted: this is now the Mac app and npm package everyone gets.** It adds:
+  - **Their circle, on every card,** with rarity beside the tier and LinkedIn's own mutual count.
+  - **One scan at a time,** and *Resume* beside *Rescan*.
+  - **Tiers on your own network's curve,** with unknown companies at a neutral 5.
+  - **631 public organizations** the built-in list leaves off, and **scoring 6.**
+  - **Scores, a tab of its own.**
+
+  The details are under 0.4.0-beta.1 below.
+- **The download page** says what's new in 0.4.0.
+- **Degrees' corner toggle says Orbit, which is what it shows.** It said "Galaxy", but
+  the Galaxy is a Network Circle view, so Degrees fell back to Orbit. It switches
+  between Orbit and Bridge Chains, and it's on whenever Orbit is showing.
+
+### Removed
+- **About 630 lines of Galaxy code that never ran:** a Degrees drawing from before Orbit
+  and Bridge Chains. Nothing could open it. The Galaxy draws Network Circle only.
 
 ### Fixed
+- **A one-person scan notes a hidden list.** A card's Scan or Rescan that found someone's
+  list hidden said so and noted nothing, so they stayed "not scanned yet" and were offered
+  again forever. Only a batch noted it. Now every read from page 1 does.
+- **A scan reads the list of the person you picked.** A card's Scan and Rescan went by
+  name, so with two connections of the same name the scanner could read the other one's
+  list. Every Scan button now goes by that person's profile, as Resume already did.
 - **A company's name after "at" is no longer read as a title.** "Server at President Hotel"
   scored as a C-suite (7.3, A), and so did an IT specialist in an "Office of the Chief
   Information Officer". "Executive Assistant to the General Manager" scored as a VP.
+- **↻ asks before it scans.** The round button in the header started *Check for new* the
+  moment it was clicked. It now says what it will do (open Chrome on your connections list
+  and read it until it reaches people already saved) and what it costs (no search budget,
+  but it is LinkedIn traffic from your account), and waits for OK.
+- **No Scan buttons on the sample or a CSV import.** Every card there offered a scan of
+  that person's circle, and Degrees offered *Auto-Bridge Next*, but both networks live
+  only in the window, so the scan could only fail ("Bridge '…' not found in database").
+  In their place a line says scanning needs your own network.
+- **A CSV import's dates are the day LinkedIn says.** Anywhere east of London, each "Connected
+  On" date landed a day early (28 Sep 2026 became 27 Sep). The import now reads it as the
+  calendar date it is, the way a scan already did, and a date it can't read is left blank
+  rather than guessed.
+- **Opening a panel no longer rebuilds the Galaxy.** Opening or closing the side panel or
+  the Filter panel used to draw the Galaxy again from scratch: the layout started over,
+  the selection ring vanished, and a big network stalled the page. Now the view slides
+  over at the same zoom, so what was in the middle stays in the middle.
+- **The selection ring stays on the person you picked.** It is tied to their dot, and it
+  comes back after a tier filter that still shows them. It used to follow the first dot
+  it found near its old spot, which could be someone else, even You. *Back to list*
+  clears it.
+- **The selection ring pulses gently, as it was always meant to.** Its animation had only
+  ever been written in code that never ran. With Reduce Motion on, it holds still.
+- **Hovering a dot eases it up to 1.5 times its size,** instead of jumping. With Reduce
+  Motion on, it still changes at once.
+- **The Galaxy draws faster on a big network.** Colouring its lines searched every person
+  for every line: about 1.4 s at 30,000 people, on every draw. It now takes under a
+  millisecond.
+- **The main screen no longer stalls when nothing is selected on a big network.** The
+  side panel's Power Rankings counted every tier again for each person in the list, even
+  with the panel closed. At 30,000 people that took about 20 s each time the screen
+  redrew, opening the Filter panel included.
+- **On a laptop, the Galaxy keeps its usual layout with a panel open.** Its fixed phone
+  layout used to switch on whenever the graph was under 768 pixels wide, which a tier
+  filter picked with a panel open could do. It now follows the window, as the page does.
 
 ## [0.4.0-beta.1] - 2026-09-28 (beta: a pre-release, never installed automatically)
 

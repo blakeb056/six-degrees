@@ -14,6 +14,12 @@ next-env.d.ts
 /data
 /scripts/connections-raw.txt
 /.playwright-profile
+# Anywhere in the tree: a LinkedIn export, a database, a saved copy of a network,
+# or the scanner's browser profile (a signed-in LinkedIn session).
+*.csv
+*.sqlite*
+*.sixdegrees
+chrome-profile/
 
 # env
 .env*

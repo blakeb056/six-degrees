@@ -9,6 +9,8 @@ import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
+import { waitingPhotoCount } from '../../../lib/photos';
+import { reachIndex, circleState } from '../../../lib/reach';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
@@ -128,6 +130,53 @@ function bridgeSkips() {
   }
 }
 
+/**
+ * What lib/reach.js needs from the scanner's files to tell who is ready for a
+ * circle scan: whose list is hidden, and whose list has been read even though
+ * nothing in it was saved (everyone on it was already yours). Read on its own,
+ * without the machine checks, because the map asks for it when it loads and
+ * again after every scan.
+ */
+function scanNotes() {
+  let read = [];
+  try {
+    const me = resolveProfile({ create: false });
+    if (me) read = Object.keys(readProgress(dataDir(), me.id));
+  } catch {}
+  return { skips: bridgeSkips(), read };
+}
+
+/**
+ * One of your connections, for the Scan page's "Scan one circle" box (Bridge
+ * Chains and the Degrees panel send people there by id): who they are, and how
+ * their circle stands by the same rule the map uses. Null when not found.
+ */
+function pickedPerson(id) {
+  try {
+    const me = resolveProfile({ create: false });
+    if (!me) return { person: null };
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT id, name, tier, power_score, degree, profile_url, unlocked_from_bridge_id, unlocked_from_name
+         FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1`,
+    ).get(String(id ?? ''), me.id);
+    if (!row) return { person: null };
+    const mapped = db.prepare(
+      'SELECT 1 FROM linkedin_connections WHERE user_id = ? AND degree = 2 AND source_connection_id = ? LIMIT 1',
+    ).get(me.id, row.id);
+    const reach = reachIndex([], mapped ? [{ source_connection_id: row.id }] : [], scanNotes());
+    return {
+      person: {
+        id: row.id, name: row.name, tier: row.tier, power_score: row.power_score,
+        unlocked_from_bridge_id: row.unlocked_from_bridge_id, unlocked_from_name: row.unlocked_from_name,
+      },
+      circle: circleState(row, reach),
+    };
+  } catch {
+    return { person: null };
+  }
+}
+
 // The machine checks (Python, Chrome, signed in) spawn processes, so they are
 // cached for a few seconds, and callers that arrive while a look is under way
 // share it rather than each starting their own Pythons. Everything about the
@@ -227,6 +276,10 @@ async function status() {
     me = resolveProfile({ create: false });
     if (me) network = networkCounts(me.id);
   } catch {}
+  // People whose photo is still a link, which the app doesn't load: Save
+  // photos appears while there are any (lib/photos.js).
+  let photosWaiting = 0;
+  try { photosWaiting = waitingPhotoCount(getDb()); } catch {}
 
   const py = m.python;
   return {
@@ -253,6 +306,7 @@ async function status() {
       signedIn: m.signedIn,
     },
     network,
+    photosWaiting,
     ...job(),
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
@@ -313,6 +367,8 @@ export async function GET(request) {
   const q = new URL(request?.url || 'http://127.0.0.1/api/scraper').searchParams;
   if (q.has('job')) return Response.json(job());
   if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
+  if (q.has('reach')) return Response.json(scanNotes());
+  if (q.has('person')) return Response.json(pickedPerson(q.get('person')));
   return Response.json(await status());
 }
 
@@ -331,7 +387,10 @@ const ACTIONS = {
   // Hidden profiles are remembered so they are not retried forever; this is
   // the way back in without a terminal.
   'auto-bridge-retry': { flag: '--auto-bridge --retry-private', label: 'Mapping every bridge, hidden ones included' },
-  bridge:        { flag: '--bridge',   needsName: true, label: 'Mapping the circle behind' },
+  // One person's circle, from page 1. By profile URL when the page sends their
+  // id, as every Scan button does: two connections can share a name, and by name
+  // the scanner reads whichever was saved first. By name for a caller with no id.
+  bridge:        { flag: '--bridge',   needsName: true, byId: true, label: 'Mapping the circle behind' },
   // Carry on with one person whose read was cut short. By profile URL, not name:
   // two connections can share a name, and Resume must reach the one clicked.
   resume:        { flag: '--bridge-url', needsId: true, label: 'Carrying on with', searches: true },
@@ -339,6 +398,9 @@ const ACTIONS = {
   'resume-all':  { flag: '--auto-bridge --only-unfinished', label: 'Carrying on with every paused list', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
+  // Photos an older version kept as links to LinkedIn: saved here, once each.
+  // No browser, no search; every scan does the same at its end.
+  photos:        { flag: '--save-photos', label: 'Saving profile photos to this computer' },
 };
 
 /** Only a plain linkedin.com/in/ profile URL becomes an argument. */
@@ -450,7 +512,7 @@ export async function POST(request) {
 
   // The two settings a person changes here. Neither starts anything.
   if (action === 'set-limits') {
-    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly });
+    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly, profiles: body.profiles });
     return Response.json({ ok: true, limits });
   }
   if (action === 'lift-cooldown') {
@@ -479,16 +541,19 @@ export async function POST(request) {
   const readsCircles = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all'].includes(action);
   // Carry on with people already mapped, from the page each one stopped at.
   const deeper = body.deeper === true && (action.startsWith('auto-bridge') || action === 'bridge');
+  // Resume, and a circle scan of someone picked by id, go by the connection's
+  // profile URL rather than a name.
+  const byId = spec.needsId || (spec.byId && Boolean(body.id));
   let name = null;
-  if (spec.needsName) {
+  if (spec.needsName && !byId) {
     name = cleanName(body.name);
     if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
   }
-  // Resume sends the connection's id; the URL is looked up here, for this
-  // profile, so nothing from the request itself reaches the command line.
+  // The id comes from the page; the URL is looked up here, for this profile, so
+  // nothing from the request itself reaches the command line.
   let profileUrl = null;
   let person = null;
-  if (spec.needsId) {
+  if (byId) {
     try {
       const me = resolveProfile({ create: false });
       person = me && getDb().prepare(
@@ -500,8 +565,8 @@ export async function POST(request) {
   }
   // Who the job is of, so every Scan button can say whose scan is running and a
   // profile card can show its own person's progress. Only ever shown: the id
-  // sent alongside a name never reaches the command line (the name does, as
-  // always), and anything not shaped like one of our ids is dropped.
+  // never reaches the command line (a name or the URL looked up for it does),
+  // and anything not shaped like one of our ids is dropped.
   const hintId = typeof body.id === 'string' && /^[\w-]{1,64}$/.test(body.id) ? body.id : null;
   const target = name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
@@ -552,8 +617,11 @@ export async function POST(request) {
     // app is inside the signed app (lib/scanner-python.js scannerCommand).
     plan = [scannerCommand(found.run, path.join(root, 'scripts', 'scrape.py'), [
       // `--flag=value` is one token on purpose: a name beginning with
-      // "-" can then never be read as a flag of its own.
-      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`${spec.flag}=${profileUrl}`] : spec.flag.split(' ')),
+      // "-" can then never be read as a flag of its own. Anyone found by
+      // id is --bridge-url, which carries on where their last read stopped
+      // unless told to start at page 1.
+      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
+      ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
@@ -575,7 +643,7 @@ export async function POST(request) {
   state.target = target;
   state.exitCode = null;
   state.startedAt = Date.now();
-  state.log = [spec.label + (name ? ` ${name}…` : '…')];
+  state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
   state.stderrTail = [];
   state.failure = null;
   forgetChecks();

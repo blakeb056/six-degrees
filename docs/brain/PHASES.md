@@ -6,10 +6,10 @@
 | 1 — Standalone | ✅ Supabase → `node:sqlite` via the `lib/db.js` adapter; 12 routes changed one import line each |
 | 2 — Security | ✅ Loopback bind, header-proof gate, cross-site write refusal, XSS sinks escaped |
 | 3 — Presentation | ✅ Synthetic sample network, empty state, hydration fix, README screenshots |
-| 4 — Packaging | ✅ standalone output + `npm run build:app` (a bundled-Node `.app` and `.dmg`). The npm `bin` works from a tarball but **`six-degrees` has never been published to npm** — `npx six-degrees` 404s today. |
+| 4 — Packaging | ✅ standalone output + `npm run build:desktop` (the Electron `.app` and `.dmg` releases ship; `npm run build:app` is the classic bundled-Node launcher, kept as a fallback). **`six-degrees` is on npm** since 0.2.0 (`npx six-degrees`, Linux), published by the release workflow through trusted publishing. |
 | 5 — The scraper | ✅ **Fixed and verified live 2026-09-09** — a full walk completed end to end |
 | 6 — Launch | ✅ **Released: v0.1.0 on 2026-09-24**, installable with one line. v0.1.1 fixed the `.dmg` window 0.1.0 shipped without; v0.1.2 fixed the Galaxy rebuilding itself on hover. The checklist below holds what is left. |
-| 7 — Desktop app | 🟡 **Planned 2026-09-24** in [`DESKTOP.md`](DESKTOP.md): Electron on the Mac first (**shipped in 0.2.0**), then Python inside the app (**built for 0.3.0**, one release with Settings; not released), then Windows, then signing. |
+| 7 — Desktop app | 🟡 **Planned 2026-09-24** in [`DESKTOP.md`](DESKTOP.md): Electron on the Mac first (**shipped in 0.2.0**), then Python inside the app (**shipped in 0.3.0**, with Settings and the in-app update), then Windows, then signing. |
 
 ## What "verified live" means for phase 5
 
@@ -28,7 +28,8 @@ tick an item in the same change that finishes it.
       checked, installed and opened; running it again updates, stopping a running copy
       first (TRAPS §26)
 - [x] Release workflow: a `v*` tag builds the arm64 and x64 `.dmg`s on GitHub's Macs
-      and publishes them with `SHA256SUMS`; npm publish runs once `NPM_TOKEN` exists
+      and publishes them with `SHA256SUMS`; it publishes to npm too, since 0.2.1 through
+      npm's trusted publishing (no token stored anywhere)
 - [x] Welcome screen (scan, CSV, sample) and no name prompt — the server picks the
       profile that owns the network (TRAPS §25)
 - [x] Scan page: steps tick themselves off, a progress bar, counts by degree, and a
@@ -40,7 +41,7 @@ tick an item in the same change that finishes it.
 - [x] README leads with installing; running from source is in CONTRIBUTING;
       `Start 6 Degrees.command` removed
 - [x] Packaging: no `.git` or logs traced into the bundle, and a local build lists any
-      uncommitted files it is about to ship (TRAPS §27)
+      uncommitted files it is about to ship, ignored ones included (TRAPS §27)
 - [x] `npm pack` run through `npx` from the tarball: starts, every route answers,
       the scraper's files are found from npm's cache
 - [x] 0.1.2 — hovering a Galaxy dot no longer rebuilds the scene in a loop (TRAPS §29).
@@ -69,8 +70,9 @@ tick an item in the same change that finishes it.
       reported "the newest version"
 - [x] Company scans — shipped labelled **experimental** (Paths page asks before the first
       one; SCRAPING.md says so). Still never run live; 2nd-degree mapping has, since 09-09
-- [ ] Optional: an npm account and an `NPM_TOKEN` repository secret, which turns on
-      `npx six-degrees@latest`. The name was still free on 2026-09-23
+- [x] npm: the package is published (0.2.0 first, by hand; from 0.2.1 the release
+      workflow publishes through npm's trusted publishing, so no `NPM_TOKEN` exists), and
+      `npx six-degrees@latest` works on Linux
 
 ### Not verified yet
 
@@ -132,14 +134,13 @@ tick an item in the same change that finishes it.
 - [ ] A one-click update from inside the Mac app, instead of a line to paste →
       [`DESKTOP.md`](DESKTOP.md) D4. Built on the draft branch `settings-updater`: waiting
       on Blake's approval of the spec change and a test on a real Mac
-- [ ] Opening the sidebar resizes the Galaxy and rebuilds it once (its layout restarts).
-      Re-centring the existing scene on a resize, instead of rebuilding it, would make
-      that smooth too
+- [x] Opening the sidebar resized the Galaxy and rebuilt it (its layout restarted). A
+      resize now re-fits the view instead: the layout and the selection ring stay put
 - [ ] Next.js deprecation warnings in the build: `middleware` → `proxy`, and `viewport`
       moved out of `metadata`
 - [ ] GitHub Actions warns that `checkout`, `setup-node` and the artifact actions at v4
       run on deprecated Node 20. Current majors are v7/v8 — upgrade deliberately, one at
       a time, not in passing
-- [ ] A local build's "uncommitted files" warning lists untracked files only; a modified
+- [ ] A local build's "uncommitted files" warning lists files git doesn't track; a modified
       tracked file ships silently. Releases build from a clean checkout, so this only
       matters for a hand-made build

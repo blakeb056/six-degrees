@@ -46,6 +46,13 @@ in the data directory while its URL is still fresh, and the database stores that
 path. Capture happens **at push time**, not lazily, because a lazy fetch is a fetch
 against an already-expired URL.
 
+A link is never shown either, even a fresh one: loading it would contact LinkedIn while
+someone only browses, which the privacy promise rules out (Blake's call, 2026-09-28:
+"Keep photos on your Mac"). Every view goes through `lib/photos.js` `localPhoto()`, and
+`img-src 'self' data: blob:` has the browser refuse anything a view might miss. The links
+older versions stored are saved once each by the scanner, at the end of the next scan or
+from *Save photos*, never by a page while browsing.
+
 ---
 
 ## 4. `readFileSync(process.cwd() + ...)` breaks in an installed package
@@ -98,6 +105,14 @@ the error and aborts after three consecutive failures.
 Generalise this: any `except`/`catch` that turns a failure into an empty result is a
 place where a bug can hide indefinitely.
 
+It came back in *Save photos* (2026-09-28). `store_avatar()` returned `None` for every
+failure, and Save photos forgets a link on `None`, so a run offline, behind a firewall or
+while LinkedIn's image server was busy cleared links only days old and said they had
+expired. Getting one back means scanning that person again. A definite no (403, 404,
+410, not LinkedIn's, not a picture, someone else's picture) is now told apart from
+`TryLater` (no connection, a timeout, 429, 5xx, a file it couldn't write), which keeps
+the link; three in a row stop the run with the reason.
+
 ---
 
 ## 8. `prepack` re-runs the build and wipes the standalone output
@@ -141,8 +156,9 @@ names and headlines from LinkedIn, i.e. attacker-controllable — straight into 
 
 Chained with a cross-site write, this was a working end-to-end exploit; it was
 reproduced before being fixed. All six sinks are escaped via `esc()`, and images are
-built with `.append('img').attr('src', src)` through `safeImageUrl()`, which allows only
-a local `/avatars/` path or an `https:` URL — never string concatenation.
+built with `.append('img').attr('src', src)` through `localPhoto()` (`lib/photos.js`),
+which allows only a saved `/avatars/` file (it used to allow any `https:` URL too) —
+never string concatenation.
 
 Treat every scraped field as hostile input. It came from a web page.
 
@@ -204,6 +220,9 @@ Two fixes, and the first is the one that matters:
 - **Record the attempt, not just the result.** `bridge-skips.json` in the data
   directory remembers who was hidden; `--retry-private` (or the app's retry action)
   is the way back in. Absence of a result is not the same as absence of an attempt.
+  Record it where the read ends (`scrape_bridge`), not in one caller: until 0.4.0 only
+  the batch did, so a card's Scan that found a hidden list left the person "not
+  scanned yet", and offered again, forever (`tests/one-person-scan.test.mjs`).
 - **Price the cooldown by what actually happened.** A real scrape walks many search
   pages and earns the full pause. A hidden profile was one page view — charging it
   two minutes is what turned a run of them into an apparent hang.
@@ -515,6 +534,13 @@ dangerous); `build-app.mjs` removes a `.git` that slips through anyway, and list
 uncommitted files it is about to ship. Releases build from a clean checkout; a local
 build is the one that can carry somebody's personal file out of the folder.
 
+**`.gitignore` is not an exclude.** Ignoring `*.csv`, `*.sqlite*`, `*.sixdegrees` and
+`chrome-profile/` kept a LinkedIn export out of a commit and still traced it into the
+app, and it silenced the warning: `git ls-files --others` leaves ignored files out. The
+same four are now named in `outputFileTracingExcludes` (in contains mode they match at
+any depth; no dependency has such a file), and the warning asks git for ignored files
+too. Checked with an invented export, database and Chrome profile in the checkout.
+
 ---
 
 ## 28. Three things about a `.dmg` window that are not obvious
@@ -565,8 +591,10 @@ It needs visible scrollbars, so a trackpad-only laptop never shows it. The rules
 
 - **Anything a component appends to `<body>` is `position: fixed`**, placed with
   `clientX`/`clientY`. A fixed element cannot change the page's size.
-- **A resize that rebuilds the scene is debounced** (`ForceGraph.js`, 150 ms), so no
-  flicker can drive a rebuild loop again.
+- **A resize never rebuilds the Galaxy.** It re-fits the view at the same zoom
+  (`ForceGraph.js`, `lib/galaxy.js`), so a flicker in size can only nudge the view, never
+  start a rebuild loop. It used to rebuild after a 150 ms wait. Anything that does
+  rebuild on a resize should wait for the size to settle first.
 - **What a scene-rebuilding component receives must be stable.** `app/page.js` memoises
   the filtered lists and the click handler; an inline `[]` or arrow function is a new
   value every render, and each one was a full rebuild. `ForceGraph` reads `onSelect`
@@ -668,6 +696,11 @@ returns every one. The date is now read by climbing from each profile link to th
 block holding exactly one "Connected on" line (more than one means the climb reached the
 list and would take a neighbour's date), and `lib/ingest.js` `toIsoDate` parses it by hand —
 `new Date(text).toISOString()` shifts the day east of Greenwich and throws on bad text.
+
+The CSV import kept its own copy of that mistake (`lib/csv.js`): the export's "28 Sep 2026"
+was saved as the 27th anywhere east of London, and nothing failed, because every test ran
+west of it. It reads through `toIsoDate` now, and `tests/csv.test.mjs` imports the same
+export under six time zones, each in a process of its own (TZ is read when a process starts).
 
 ---
 
@@ -890,3 +923,27 @@ Node inside them: a shell in the app's folder and a `tail -f` survive, the app's
 programs are stopped, a folder named "Programmes Été" works, and one that keeps coming
 back leaves the app as it was and reopens it. (A copy of a system program can't stand
 in: macOS kills a copy of `/bin/sleep` that runs from anywhere else.)
+
+## 41. A page that reads `window.location` while it renders sees the page it came from
+
+Every way into the Scan page with someone picked (a *Ready to scan* row, an empty circle's
+*Scan X's circle →*, a ready dot in Bridge Chains) landed on `/setup?scan=<id>` with nobody
+picked, and the Scan page's *Bridge Chains shows it filling in →* opened the map on the Galaxy
+instead of their circle. Reloading the same address worked every time.
+
+- **Why.** Next's router changes the address bar in an effect that runs once the new page has
+  committed, after its first render. A `useState` initializer that reads
+  `window.location.search` runs in that first render, so after a click (`<Link>`,
+  `router.push`) it reads the address of the page just left.
+- **Why nothing noticed.** A full load has the new address from the start: a reload, a
+  bookmark, and a browser check that opens the URL with `page.goto` all work. Only a click
+  shows it.
+- **It was known.** `app/paths/page.js` already read its `?tab=` with `useSearchParams`, with a
+  comment saying why, but nothing here said so, and the next two pages read `window.location`.
+
+What holds it now: `app/setup/page.js` and `app/page.js` read `?scan=` and `?chain=` with
+`useSearchParams()`, inside `<Suspense>` (Next requires one for the page to build), as Paths
+does. Next follows `history.replaceState`, so clearing the address there clears the parameter
+too. `app/queue/page.js` still reads `?groupBy=` in an initializer; its one link is a plain
+`<a href>`, which loads the page, so it works, but a `<Link>` there would break it. A browser
+check of a link has to click it.

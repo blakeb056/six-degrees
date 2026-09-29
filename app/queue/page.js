@@ -11,6 +11,9 @@ import Link from 'next/link';
 import useRequests from '../components/useRequests';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { keyFor } from '../../lib/separation';
+import { localPhoto } from '../../lib/photos';
+import { reachIndex } from '../../lib/reach';
+import { loadScanNotes } from '../../lib/scraper-client';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
@@ -51,6 +54,8 @@ function QueueInner() {
   const [view, setView] = useState('quest'); // quest | recs | pending
   const [added, setAdded] = useState([]);
   const [mappedIds, setMappedIds] = useState(() => new Set());
+  // Whose circle can be scanned next, hidden lists known (lib/reach.js).
+  const [reach, setReach] = useState(null);
   const [bridgeFilter, setBridgeFilter] = useState(null);
 
   // Default to bridge view — shows D1 person → their D2 people
@@ -75,14 +80,16 @@ function QueueInner() {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      const [net, pendingRes] = await Promise.all([
+      const [net, pendingRes, notes] = await Promise.all([
         loadNetwork(userId),
         fetch(`/api/outreach?userId=${userId}`).then(r => r.json()).catch(() => ({ pending: [] })),
+        loadScanNotes(),
       ]);
       const d1 = net.degree1;
       const d2 = net.degree2;
       setAdded(d1.filter(c => c.unlocked_from_bridge_id));
       setMappedIds(new Set(d2.map(c => c.source_connection_id).filter(Boolean)));
+      setReach(reachIndex(d1, d2, notes));
       const d1Urls = new Set(d1.map(c => c.profile_url));
       const bridgeById = {};
       d1.forEach(c => { bridgeById[c.id] = c; });
@@ -323,6 +330,7 @@ function QueueInner() {
             sentIds={sentIds}
             added={added}
             mappedIds={mappedIds}
+            reach={reach}
             onSend={(r) => markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {})}
             onUndo={(r) => undoRequest(r).catch(() => {})}
           />
@@ -355,8 +363,8 @@ function QueueInner() {
                       border: '1px solid rgba(255,107,53,0.1)',
                     }}>
                       {/* Photo */}
-                      {p.profile_image_url ? (
-                        <img src={p.profile_image_url} alt="" style={{
+                      {localPhoto(p.profile_image_url) ? (
+                        <img src={localPhoto(p.profile_image_url)} alt="" style={{
                           width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                           border: `2px solid ${TIER_COLORS[p.tier] || '#555'}`,
                         }} onError={e => { e.target.style.display = 'none'; }} />
@@ -436,8 +444,8 @@ function QueueInner() {
                     border: `1px solid ${TIER_COLORS[bridge.tier] || '#555'}20`,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {bridge.profile_image_url ? (
-                        <img src={bridge.profile_image_url} alt="" style={{
+                      {localPhoto(bridge.profile_image_url) ? (
+                        <img src={localPhoto(bridge.profile_image_url)} alt="" style={{
                           width: 36, height: 36, borderRadius: '50%', objectFit: 'cover',
                           border: `2px solid ${TIER_COLORS[bridge.tier]}`,
                         }} onError={e => { e.target.style.display = 'none'; }} />
@@ -563,8 +571,8 @@ function QueueInner() {
                         <input type="checkbox" checked={selected.has(r.id)}
                           onChange={() => toggleSelect(r.id)} onClick={e => e.stopPropagation()}
                           style={{ cursor: 'pointer', flexShrink: 0 }} />
-                        {r.profile_image_url ? (
-                          <img src={r.profile_image_url} alt="" style={{
+                        {localPhoto(r.profile_image_url) ? (
+                          <img src={localPhoto(r.profile_image_url)} alt="" style={{
                             width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                             border: `1.5px solid ${TIER_COLORS[r.tier] || '#555'}`,
                           }} onError={e => { e.target.style.display = 'none'; }} />
@@ -610,8 +618,8 @@ function QueueInner() {
                     style={{ cursor: 'pointer', flexShrink: 0 }} />
 
                   {/* Photo */}
-                  {r.profile_image_url ? (
-                    <img src={r.profile_image_url} alt="" style={{
+                  {localPhoto(r.profile_image_url) ? (
+                    <img src={localPhoto(r.profile_image_url)} alt="" style={{
                       width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
                       border: `1.5px solid ${TIER_COLORS[r.tier] || '#555'}`,
                     }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -619,7 +627,7 @@ function QueueInner() {
                   <div style={{
                     width: 32, height: 32, borderRadius: '50%', flexShrink: 0, fontSize: 12, fontWeight: 700,
                     background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : '#fff',
-                    display: r.profile_image_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                    display: localPhoto(r.profile_image_url) ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>{r.name?.charAt(0)}</div>
 
                   {/* Info */}
