@@ -267,6 +267,14 @@ This entry exists so the warning carries a number and a date instead of being ge
 
 ---
 
+**A second number (2026-09-28): searches alone are enough.** A real account was
+restricted after **373 searches in 24 hours**, run back to back, with the daily
+budget raised to 500 and no monthly cap. It opened 7 profiles that day, so this
+time profile views weren't the cause. The Scan page's budget picker now asks before
+a daily budget above 100 or no monthly cap, names this number, and offers a way
+back to 50 a day and 250 a month (`lib/search-risk.js`). Again: a ceiling seen
+once, not a safe limit.
+
 ## 17. Animation frames do not arrive in a hidden tab — so never commit state in one
 
 Both ported views drove their transitions with `requestAnimationFrame`, which is
