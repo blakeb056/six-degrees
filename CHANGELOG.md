@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it's real (15% or more, and at least 3 people): "Opens the same doors as Tom: 62% of the
   people either reaches, both do". Bridge Chains' Degrees box adds how much of your 2nd degree
   you reach two or more ways.
+- **Circle scans keep who among your connections knows whom.** Your own connections turn up in
+  other people's lists, and were set aside there and forgotten. Each is now kept as a tie
+  between the two, in a new table, with no extra LinkedIn traffic, since the scan read them
+  anyway. Nothing shows them yet: they're what clusters and communities will be built from.
+  Deleting someone deletes their ties too.
 - **Who only one connection reaches.** In Bridge Chains, each connection with a scanned circle
   shows how many of its people none of your other connections reach ("746 only here"), and
   their card says it in a line: those people are reached through them alone. It's their

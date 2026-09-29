@@ -134,6 +134,20 @@ CREATE TABLE IF NOT EXISTS company_scores (
 
 -- Small key/value facts about this install, e.g. which scoring model the
 -- stored scores were computed with.
+-- Two of your own connections who know each other, seen when a circle scan
+-- found one of them in the other's list (they're dropped from that circle,
+-- being yours already). By profile URL, the smaller first, so a pair is one
+-- row whichever circle showed it. No extra LinkedIn traffic: the scan read
+-- them anyway. For clustering and communities later (lib/ties.js).
+CREATE TABLE IF NOT EXISTS connection_ties (
+  id       TEXT,                 -- lib/db.js gives every row one
+  user_id  TEXT NOT NULL,
+  a_url    TEXT NOT NULL,
+  b_url    TEXT NOT NULL,
+  seen_at  TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, a_url, b_url)
+);
+
 CREATE TABLE IF NOT EXISTS app_meta (
   key    TEXT PRIMARY KEY,
   value  TEXT
