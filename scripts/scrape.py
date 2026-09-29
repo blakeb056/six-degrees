@@ -27,11 +27,12 @@ in one session — LinkedIn detects automation and flags your account.
 import argparse
 import json
 import os
+import re
 import signal
 import sys
 import time
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -1274,6 +1275,17 @@ PAGE_PAUSE = 20                   # seconds before each next page of results
 CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES pages
 LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
 
+# Experimental all-day pacing for Auto-Bridge (--experimental; item 44, Graph
+# Study §8). Openly slow, never disguised: fixed waits, no random "human" timing.
+# A sitting of SESSION_PAGES searches, then a long rest; searches only in the
+# daytime on this computer's clock; and at the daily budget it waits for the
+# budget to free up instead of stopping. Pages are saved one at a time.
+EXPERIMENT = {"on": False, "pages": 0, "wire": 0}
+SESSION_PAGES = 10                # searches in one sitting
+SESSION_REST = 45 * 60            # the rest after each sitting
+DRIP_HOURS = (9, 19)              # searches only from 09:00 to 19:00, local time
+WIRE_SAMPLES = 5                  # raw LinkedIn responses kept per run, for research
+
 
 # Someone whose connections are hidden can never produce a 2nd-degree row. The
 # "who still needs bridging" query is "everyone with no 2nd-degree rows", so
@@ -1785,6 +1797,193 @@ def install_stop_handler():
 
 def stop_requested():
     return _stop_requested
+
+
+# LinkedIn's own data (experimental, with --experimental). While a circle is
+# read, the responses the browser already gets from LinkedIn's own API are kept
+# and read for the same people the page shows: the same traffic, no extra
+# requests. The page text stays in charge. This fills blanks for people both
+# found and gives the list's real total; people only in LinkedIn's data are
+# logged, not added, since a results page can carry other boxes ("People you
+# may know"). Each page logs how the two compare, and a few raw responses are
+# kept in the data folder (wire-samples/) to tune it from real ones.
+_WIRE = {"page": None, "responses": []}
+
+
+def _wire_tap(page):
+    if _WIRE["page"] is page:
+        return
+    _WIRE["page"], _WIRE["responses"] = page, []
+
+    def keep(response):
+        url = response.url
+        if "/voyager/api/" in url and ("search" in url.lower() or "graphql" in url):
+            _WIRE["responses"].append(response)
+    page.on("response", keep)
+
+
+def mutual_count_text(text):
+    """LinkedIn's mutual line as a number, as the page reader's mutualCount reads it; None otherwise."""
+    line = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not re.search(r"\bmutual connections?$", line, re.I) or len(line) > 300:
+        return None
+    num = lambda v: int(str(v).replace(",", ""))
+    names = lambda v: len([p for p in re.split(r"\s*,\s*|\s+and\s+", v) if p])
+    m = re.match(r"^([\d,]+) mutual connections?$", line, re.I)
+    if m:
+        return num(m.group(1))
+    m = re.match(r"^(.*?)\s*\band ([\d,]+) others? mutual connections?$", line, re.I)
+    if m:
+        return max(1, names(m.group(1))) + num(m.group(2))
+    if re.search(r"\bis a mutual connection$", line, re.I):
+        return 1
+    m = re.match(r"^(.+?)\s+are mutual connections$", line, re.I)
+    return names(m.group(1)) if m else None
+
+
+def voyager_people(payload):
+    """Everyone in a LinkedIn API response who looks like a search result: anything with a
+    title and a link to a profile, wherever it sits in the response."""
+    out, seen = [], set()
+    text = lambda v: (v.get("text") if isinstance(v, dict) else v if isinstance(v, str) else "") or ""
+
+    def photo(x):
+        try:
+            for a in (x.get("image") or {}).get("attributes") or []:
+                vi = ((a.get("detailData") or {}).get("nonEntityProfilePicture") or {}).get("vectorImage") or a.get("vectorImage")
+                if vi and vi.get("rootUrl") and vi.get("artifacts"):
+                    best = max(vi["artifacts"], key=lambda f: f.get("width") or 0)
+                    return vi["rootUrl"] + (best.get("fileIdentifyingUrlPathSegment") or "")
+        except Exception:
+            pass
+        return ""
+
+    def walk(x):
+        if isinstance(x, dict):
+            nav = x.get("navigationUrl")
+            if isinstance(nav, str) and "/in/" in nav and isinstance(x.get("title"), dict):
+                url = nav.split("?")[0].split("#")[0].rstrip("/") + "/"
+                name = text(x.get("title")).strip()
+                if name and name != "LinkedIn Member" and url not in seen:
+                    seen.add(url)
+                    mutual = None
+                    for ins in x.get("insightsResolutionResults") or []:
+                        mutual = mutual_count_text(text(((ins or {}).get("simpleInsight") or {}).get("title")))
+                        if mutual:
+                            break
+                    out.append({"name": name, "headline": text(x.get("primarySubtitle")).strip(),
+                                "profileUrl": url, "imageUrl": photo(x), "mutualCount": mutual})
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    walk(payload)
+    return out
+
+
+def voyager_total(payload):
+    """The list's length, when a response says it (totalResultCount); None otherwise."""
+    stack = [payload]
+    while stack:
+        x = stack.pop()
+        if isinstance(x, dict):
+            v = x.get("totalResultCount")
+            if isinstance(v, int) and v > 0:
+                return v
+            stack.extend(x.values())
+        elif isinstance(x, list):
+            stack.extend(x)
+    return None
+
+
+def _wire_sample(data):
+    if EXPERIMENT["wire"] >= WIRE_SAMPLES:
+        return
+    try:
+        raw = json.dumps(data)
+        if len(raw) > 500_000:
+            return
+        folder = _home() / "wire-samples"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{int(time.time() * 1000)}.json").write_text(raw)
+        EXPERIMENT["wire"] += 1
+    except Exception:
+        pass
+
+
+def _wire_merge(page, profile_url, page_results):
+    """Fill blanks in this page's people from LinkedIn's own data, and log how the two compare."""
+    got, _WIRE["responses"] = _WIRE["responses"], []
+    people, total = [], None
+    for response in got:
+        try:
+            data = response.json()
+        except Exception:
+            continue
+        _wire_sample(data)
+        people.extend(voyager_people(data))
+        total = total or voyager_total(data)
+    if total:
+        _LIST_TOTALS[profile_url] = int(total)
+    own = (profile_url or "").rstrip("/").split("/")[-1]
+    by_url = {c.get("profileUrl"): c for c in page_results}
+    only_wire = 0
+    for w in people:
+        if own and own in w["profileUrl"]:
+            continue
+        c = by_url.get(w["profileUrl"])
+        if c is None:
+            only_wire += 1
+            continue
+        for k in ("name", "headline", "imageUrl"):
+            if not c.get(k) and w.get(k):
+                c[k] = w[k]
+        if c.get("mutualCount") is None and w.get("mutualCount") is not None:
+            c["mutualCount"] = w["mutualCount"]
+    print(f"    LinkedIn's own data: {len(people)} people, {only_wire} not in the page text"
+          + (f", list of about {total:,}" if total else ""), flush=True)
+    return page_results
+
+
+def _drip_wait(label, seconds):
+    """Wait `seconds` for an experimental rest, saying when it ends, a line a minute. False if stopped."""
+    seconds = max(1, int(seconds))
+    until = datetime.fromtimestamp(time.time() + seconds).strftime("%H:%M")
+    print(f"  {label}. Carrying on at {until}.", flush=True)
+    return interruptible_sleep(seconds, on_tick=lambda left: print(f"    {label}: {max(1, left // 60)} min to go", flush=True), step=60)
+
+
+def _seconds_until_search_frees(now=None):
+    """How long until the oldest search in the last 24 hours drops out of the daily budget."""
+    now = now if now is not None else time.time()
+    recent = sorted(t for t in _read_activity()["searches"] if now - DAY_SECONDS < t <= now)
+    return (recent[0] + DAY_SECONDS - now + 5) if recent else 5
+
+
+def _drip_before_search():
+    """Experimental pacing, before a search: rest after a sitting, sleep through the
+    night, and wait for a used daily budget to free up. True to go ahead, False if stopped."""
+    while True:
+        if EXPERIMENT["pages"] >= SESSION_PAGES:
+            EXPERIMENT["pages"] = 0
+            if not _drip_wait(f"Resting after {SESSION_PAGES} pages", SESSION_REST):
+                return False
+            continue
+        now = datetime.fromtimestamp(time.time())
+        if not (DRIP_HOURS[0] <= now.hour < DRIP_HOURS[1]):
+            start = now.replace(hour=DRIP_HOURS[0], minute=0, second=0, microsecond=0)
+            if now.hour >= DRIP_HOURS[1]:
+                start += timedelta(days=1)
+            if not _drip_wait("Resting overnight", (start - now).total_seconds()):
+                return False
+            continue
+        left, kind = searches_left()
+        if left <= 0 and kind == "daily":
+            if not _drip_wait("Today's searches are used", _seconds_until_search_frees()):
+                return False
+            continue
+        return True
 
 
 def interruptible_sleep(seconds, on_tick=None, step=5):
@@ -2402,6 +2601,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
     # it saves. It used to be announced as a "3rd+ filter", which it never was.
     search_url = f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
+    if EXPERIMENT["on"] and not _drip_before_search():
+        reach["more"] = True
+        print("  Stopped before their list opened; the next run carries on from there.")
+        return [], "stopped", reach
+    if EXPERIMENT["on"]:
+        _wire_tap(page)
     left, kind = searches_left()
     if left <= 0:
         reach["budget"] = kind
@@ -2547,6 +2752,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             break
 
         page_results = [c for c in page_results if slug not in c.get("profileUrl", "")]
+        if EXPERIMENT["on"]:
+            page_results = _wire_merge(page, profile_url, page_results)
+            EXPERIMENT["pages"] += 1
         chunk.extend(page_results)
         chunk_pages += 1
         reach["last"] = pg
@@ -2569,7 +2777,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         # own path: through the page-limit branch, a missing Next button would
         # have marked the list finished.
         left, kind = searches_left()
-        if left <= 0:
+        if left <= 0 and not (EXPERIMENT["on"] and kind == "daily"):
             # Looking for Next costs nothing. No Next on a live page of results
             # means the list is finished — not paused at the next page forever.
             if _find_next(page) is None and not _window_closed(page) and _result_links(page):
@@ -2582,10 +2790,10 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
 
         # Rest before the next search, and longer after every SAVE_EVERY_PAGES.
         rest = PAGE_PAUSE
-        if (pg - start_page + 1) % SAVE_EVERY_PAGES == 0:
+        if not EXPERIMENT["on"] and (pg - start_page + 1) % SAVE_EVERY_PAGES == 0:
             rest += CHUNK_COOLDOWN
             print(f"  {SAVE_EVERY_PAGES} pages read; resting {rest}s before the next search.")
-        if not interruptible_sleep(rest) or _window_closed(page):
+        if not interruptible_sleep(rest) or _window_closed(page) or (EXPERIMENT["on"] and not _drip_before_search()):
             reach["more"] = True
             print(f"  Stopped before page {pg + 1}; the next run carries on from there.")
             break
@@ -2610,7 +2818,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
 
         # Save as it goes, so a stop, a crash or the search limit costs at most
         # the last few pages rather than the whole list.
-        if on_save and chunk_pages >= SAVE_EVERY_PAGES:
+        if on_save and chunk_pages >= (1 if EXPERIMENT["on"] else SAVE_EVERY_PAGES):
             on_save(_dedupe(chunk), reach["last"], True, reach["urn"])
             chunk, chunk_pages = [], 0
 
@@ -3752,6 +3960,9 @@ Examples:
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
+    parser.add_argument("--experimental", action="store_true",
+                        help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
+                             "waits for the daily budget) and reading LinkedIn's own data beside the page text")
     parser.add_argument("--auto-bridge", action="store_true",
                         help="Map every bridge in turn, highest tier first")
     parser.add_argument("--retry-private", action="store_true",
@@ -3783,6 +3994,9 @@ Examples:
                              "(every scan also does this at its end)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     args = parser.parse_args()
+    if getattr(args, "experimental", False):
+        EXPERIMENT["on"] = True
+        print("Experimental Auto-Bridge: all-day pacing, and LinkedIn's own data read beside the page text.")
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
 
     # A failed save ends the run with its reason, not a traceback (TRAPS §32).

@@ -647,6 +647,9 @@ export async function POST(request) {
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
+      // Experimental Auto-Bridge (Scan page switch): all-day pacing and LinkedIn's
+      // own data read beside the page text (scripts/scrape.py EXPERIMENT).
+      ...(body.experimental === true && action.startsWith('auto-bridge') ? ['--experimental'] : []),
       // Resuming always reads to the end: a remembered "10 pages" would
       // otherwise leave everyone paused at page 11 and do nothing.
       ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),

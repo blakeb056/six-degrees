@@ -351,3 +351,65 @@ out['entry'] = {k: mine[A][k] for k in ('pages', 'more', 'total')}`);
   if (!r) return;
   assert.deepEqual(r.out.entry, { pages: 10, more: true, total: 310 });
 });
+
+// ── Experimental Auto-Bridge (--experimental) ───────────────────────────────
+
+test('experimental pacing: after a sitting of 10 pages, a 45-minute rest', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
+ns['EXPERIMENT'].update(on=True, pages=10)
+start = clock.t
+ok = ns['_drip_before_search']()
+out.update(ok=ok, waited=round(clock.t - start), pages=ns['EXPERIMENT']['pages'])`);
+  if (!r) return;
+  assert.deepEqual(r.out, { ok: true, waited: 2700, pages: 0 });
+});
+
+test('experimental pacing: no searches at night; it waits for 09:00', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 9, 21, 21, 0).timestamp()
+ns['EXPERIMENT'].update(on=True, pages=0)
+start = clock.t
+ok = ns['_drip_before_search']()
+out.update(ok=ok, waited=round(clock.t - start), hour=datetime.fromtimestamp(clock.t).hour)`);
+  if (!r) return;
+  assert.deepEqual(r.out, { ok: true, waited: 12 * 3600, hour: 9 });
+});
+
+test('experimental pacing: at the daily budget it waits for the oldest search to age out, then goes on', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
+limits(daily=50, monthly=0, profiles=50)
+record(searches=[clock.t - 23 * 3600 + i for i in range(50)])
+ns['EXPERIMENT'].update(on=True, pages=0)
+start = clock.t
+ok = ns['_drip_before_search']()
+out.update(ok=ok, waited=round(clock.t - start), left=ns['searches_left']()[0])`);
+  if (!r) return;
+  assert.equal(r.out.ok, true);
+  assert.ok(r.out.waited >= 3600 && r.out.waited < 3700, `waited ${r.out.waited}s`);
+  assert.ok(r.out.left >= 1);
+  assert.match(r.log, /Today's searches are used\. Carrying on at \d\d:\d\d\./);
+});
+
+test('LinkedIn\'s own data: people and the list total from a response, wherever they sit', (t) => {
+  const r = run(t, `
+payload = {"data": {"data": {"searchDashClustersByAll": {"metadata": {"totalResultCount": 312}, "elements": [{"items": [
+  {"item": {"entityResult": {"title": {"text": "Ada Quill"}, "primarySubtitle": {"text": "Founder at Hooli"},
+    "navigationUrl": "https://www.linkedin.com/in/ada-quill-0000?miniProfileUrn=x",
+    "insightsResolutionResults": [{"simpleInsight": {"title": {"text": "Ben Ostrander and 23 other mutual connections"}}}],
+    "image": {"attributes": [{"detailData": {"nonEntityProfilePicture": {"vectorImage": {"rootUrl": "https://media.example/",
+      "artifacts": [{"width": 100, "fileIdentifyingUrlPathSegment": "a100"}, {"width": 400, "fileIdentifyingUrlPathSegment": "a400"}]}}}}]}}}},
+  {"item": {"entityResult": {"title": {"text": "LinkedIn Member"}, "navigationUrl": "https://www.linkedin.com/in/hidden"}}}
+]}]}}}}
+out['people'] = ns['voyager_people'](payload)
+out['total'] = ns['voyager_total'](payload)
+out['counts'] = [ns['mutual_count_text'](s) for s in ('23 mutual connections', 'Ada is a mutual connection', 'Ada and Ben are mutual connections', 'nothing')]`);
+  if (!r) return;
+  assert.deepEqual(r.out.people, [{ name: 'Ada Quill', headline: 'Founder at Hooli', profileUrl: 'https://www.linkedin.com/in/ada-quill-0000/', imageUrl: 'https://media.example/a400', mutualCount: 24 }]);
+  assert.equal(r.out.total, 312);
+  assert.deepEqual(r.out.counts, [23, 1, 2, null]);
+});
