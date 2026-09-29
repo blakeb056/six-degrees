@@ -67,6 +67,8 @@ function SetupInner() {
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
   // Experimental Auto-Bridge: all-day pacing and LinkedIn's own data (scripts/scrape.py --experimental).
   const [experimental, setExperimental] = useRemembered('six-degrees-experimental-auto', false);
+  // Scanning with no Chrome window (scripts/scrape.py --headless); lib/scraper-client.js reads it for every scan.
+  const [hideChrome, setHideChrome] = useRemembered('six-degrees-hide-chrome', false);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
@@ -450,6 +452,22 @@ function SetupInner() {
                     then a 45-minute rest; searches only from 9:00 to 19:00; at the daily budget it waits for it to
                     free up instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
                     the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
+                  </span>
+                </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
+                  <input type="checkbox" checked={hideChrome} disabled={running} style={{ marginTop: 3 }}
+                    onChange={(e) => setHideChrome(e.target.checked)} />
+                  <span>
+                    <b style={{ color: '#FFD700' }}>Hide the Chrome window while scanning.</b> Every scan runs with no
+                    window popping up; the status bar still shows what it&rsquo;s doing, and Stop still works. Signing
+                    in always opens the window.
+                    <span style={{ display: 'block', marginTop: 4, color: '#e0a080' }}>
+                      The risks: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a
+                      warning or restriction more likely. If LinkedIn asks you to check it&rsquo;s you (a code, a
+                      puzzle, signing in again) you won&rsquo;t see it, and the scan will stop instead of waiting for
+                      you. Untick this and scan again to see what LinkedIn wants. It changes nothing about pacing or
+                      your daily budget.
+                    </span>
                   </span>
                 </label>
                 <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
