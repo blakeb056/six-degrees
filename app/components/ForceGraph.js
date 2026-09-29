@@ -243,6 +243,25 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const isMobileGraph = window.innerWidth < 768;
 
   const g = svg.append('g');
+
+  // Faint S–D guide rings where each tier settles (the radial force below), so
+  // the tier bands read at a glance. Not on a phone, whose layout has no rings.
+  // Once the layout settles they move to where each tier's dots actually sit
+  // (the median distance out), which the other forces push past that radius.
+  const guideRings = new Map();
+  if (!isMobileGraph) {
+    const guides = g.append('g').attr('class', 'tier-guides').style('pointer-events', 'none');
+    for (const tier of ['S', 'A', 'B', 'C', 'D']) {
+      const r = tierRadius(tier);
+      const ring = guides.append('circle').attr('r', r).attr('fill', 'none')
+        .attr('stroke', tierColors[tier] || '#666').attr('stroke-opacity', 0.16).attr('stroke-width', 1)
+        .attr('stroke-dasharray', '2 4');
+      const label = guides.append('text').attr('x', 0).attr('y', -r - 4).attr('text-anchor', 'middle')
+        .attr('font-size', 10).attr('font-weight', 700).attr('fill', tierColors[tier] || '#666').attr('fill-opacity', 0.5)
+        .text(tier);
+      guideRings.set(tier, { ring, label });
+    }
+  }
   // Where the view is going while a transition takes it there. A resize part-way
   // through re-fits the destination, and a rebuild starts from it, rather than
   // from a point along the way.
@@ -343,6 +362,15 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
     .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : tierRadius(d.tier), 0, 0).strength(0.3));
+  simulation.on('end.guides', () => {
+    for (const [tier, { ring, label }] of guideRings) {
+      const out = nodes.filter((n) => n.tier === tier && n.id !== CENTER_ID).map((n) => Math.hypot(n.x || 0, n.y || 0)).sort((x, y) => x - y);
+      if (!out.length) { ring.attr('opacity', 0); label.attr('opacity', 0); continue; }
+      const r = out[Math.floor(out.length / 2)];
+      ring.attr('r', r).attr('opacity', 1);
+      label.attr('y', -r - 4).attr('opacity', 1);
+    }
+  });
 
   // forceLink has already swapped each link's ids for the nodes themselves, so
   // the colour is one step away. It used to search every node for every link:

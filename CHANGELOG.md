@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   counts follow what's drawn. It opens on your connections alone, as before.
 
 ### Changed
+- **The Galaxy marks its tier bands.** A faint dashed ring, labelled S to D, sits where each
+  tier's dots settle, so the bands read at a glance, most of all with a filter on. Not on a
+  phone, whose layout has no rings.
 - **Degrees opens on Bridge Chains,** then Separation, then Orbit, in the menu too. Orbit
   used to come first.
 - **Orbit is in Degrees only.** Network Circle's Orbit was slow on a big network and showed
