@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clusters share people. Point at someone for their numbers and how their cluster compares to the
   rest you've scanned; click to open it in Bridge Chains. Shows the connections you've scanned,
   or all of them, with the ones not scanned yet as small grey dots.
+- **Separation's map draws connections as pills and people as cards** on a computer (a phone keeps
+  the dots). Each connection shows their initials, tier and what they are to the people on the
+  map: the only door to someone, the best way in for some, or only another way in; the ones with
+  a solid line are lit. Each person is a card with rank, role, score and how many ways in. With
+  the slider all the way to easy, the one person becomes a large card with LinkedIn's mutual
+  count and how many of those are drawn. Everything still glides as the slider moves.
+- **Separation's list is a ledger.** A title bar says how many are shown and that the order
+  follows the slider. The way in shows the connection's face with "only way in" or how many more
+  ways there are under it, a new column shows how rare the way in is as a bar (full and cyan for
+  one door, short and orange for the warmest), and the power score sits beside its bar.
 - **Separation is a tab of its own**, beside Degrees in the header, instead of a view inside
   Degrees. It uses the same Filters grid as Degrees. Degrees keeps Bridge Chains, Pyramid and List.
 - **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in

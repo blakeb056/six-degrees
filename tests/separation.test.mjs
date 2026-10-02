@@ -222,3 +222,23 @@ test('one person on the map: every connection who leads to them, the best first,
   assert.equal(one.bridges[0].y, one.target.y);
   assert.deepEqual(convergeLayout({ routes: [] }, 900).links, []);
 });
+
+test('as cards, the map gives each row room for a card, and says what each connection is to the people on it', async () => {
+  const { summitLayout } = await import('../lib/separation.js');
+  const b = (id, tier) => ({ id, bridge: { id, name: `Bridge ${id}`, tier } });
+  const top = [
+    { key: 'p1', rank: 1, person: { name: 'One' }, waysIn: 1, routes: [b('a', 'S')] },
+    { key: 'p2', rank: 2, person: { name: 'Two' }, waysIn: 2, routes: [b('a', 'S'), b('b', 'C')] },
+    { key: 'p3', rank: 3, person: { name: 'Three' }, waysIn: 1, routes: [b('c', 'B')] },
+  ];
+  const dots = summitLayout(top, 900);
+  const cards = summitLayout(top, 900, false, { cards: true });
+  assert.equal(cards.people[1].y - cards.people[0].y, 50);
+  assert.equal(dots.people[1].y - dots.people[0].y, 26);
+  assert.ok(cards.people.every((pp) => pp.r === 0));
+  const at = (id) => cards.bridges.find((n) => n.id === id);
+  assert.deepEqual([at('a').onlyFor, at('a').bestFor], [1, 2]);
+  assert.deepEqual([at('b').onlyFor, at('b').bestFor], [0, 0]);
+  assert.deepEqual([at('c').onlyFor, at('c').bestFor], [1, 1]);
+  for (let i = 1; i < cards.bridges.length; i++) assert.ok(cards.bridges[i].y - cards.bridges[i - 1].y >= 36 - 1e-9);
+});
