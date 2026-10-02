@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in
+  at one end (strong people only one of your connections knows), the easiest at the other
+  (strong people you share the most mutual connections with), and each person's own score alone
+  in the middle, as the list has always been. The map of who to ask next and the list under it
+  follow the slider live, and a line under it says in words what it is surfacing. It only
+  reorders: scores, tiers and ranks stay as they are, and it claims no odds. Double-click the
+  slider, or tap 50, to go back to the middle. It replaces the Power / Ways in switch. The tier
+  chips and the rarity chips ("Only show") sit in the same card.
+- **Separation's heading no longer sits under the notch.**
 - **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
   and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
   it, joined to that dot by a line, so you can see where each path came from. Inside a cluster,

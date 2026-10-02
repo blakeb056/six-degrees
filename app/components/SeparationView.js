@@ -8,6 +8,11 @@
 // is organised by the PERSON. Someone three of your connections know is one row
 // with three routes, not three rows (lib/separation.js does that merge).
 //
+// The slider (Blake, 2026-10-02: "i want it to be slider ajusted and can be
+// dynmaic") reorders everything as it moves: the rarest ways in at one end,
+// the easiest at the other, each person's own score alone in the middle
+// (lib/rarity.js slideValue). It never changes a score, a tier or a rank.
+//
 // Two parts, one scroll: a small "summit map" of the top of the list, drawn
 // from You through each bridge to each person, and under it the full ranked
 // list. The list is windowed — about thirty rows are mounted whether there are
@@ -20,8 +25,8 @@
 // appearing cannot feed a resize loop.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { separationPeople, compareWaysIn, summitLayout, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
-import { RARITY, rarityOf, rarityInfo, toggle } from '../../lib/rarity';
+import { separationPeople, comparePower, summitLayout, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
@@ -74,7 +79,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 
   const [query, setQuery] = useState('');
   const q = useDeferredValue(query.trim().toLowerCase());
-  const [sort, setSort] = useState('power');     // 'power' | 'ways'
+  // The slider, 0 (rarest ways in first) to 100 (easiest first); 50 is power alone.
+  // The list follows a deferred copy, so the thumb never waits for a sort.
+  const [at, setAt] = useState(SLIDER_MIDDLE);
+  const atSlow = useDeferredValue(at);
   const [tier, setTier] = useState('all');
   // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
   const [rarities, setRarities] = useState(() => new Set());
@@ -100,10 +108,6 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 
   // ── Data: one merge per population, then order, then what's showing ──────
   const model = useMemo(() => separationPeople(degree2, connections), [degree2, connections]);
-  const ordered = useMemo(
-    () => (sort === 'ways' ? [...model.people].sort(compareWaysIn) : model.people),
-    [model, sort],
-  );
   // How rare the way in to each person is, counted across every circle you've
   // scanned (not only the ones a bridge-tier filter leaves): never a score.
   const waysAll = useMemo(() => routeIndex(fullDegree2), [fullDegree2]);
@@ -112,6 +116,12 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
     for (const p of model.people) m.set(p.key, rarityOf(p.person, waysAll.get(p.key)?.size || p.waysIn));
     return m;
   }, [model, waysAll]);
+  const ordered = useMemo(() => {
+    if (atSlow === SLIDER_MIDDLE) return model.people;
+    const value = new Map();
+    for (const p of model.people) value.set(p.key, slideValue(p.score, rarityBy.get(p.key)?.count || p.waysIn, atSlow));
+    return [...model.people].sort((a, b) => value.get(b.key) - value.get(a.key) || comparePower(a, b));
+  }, [model, rarityBy, atSlow]);
   const byRarity = useMemo(() => {
     const out = Object.fromEntries(RARITY.map((r) => [r.key, 0]));
     for (const r of rarityBy.values()) out[r.key]++;
@@ -197,7 +207,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const changeTier = (t) => { setTier(t); toTop(); };
   const changeRarity = (r) => { setRarities((set) => toggle(set, r)); toTop(); };
   const clearAll = () => { setQuery(''); setTier('all'); setRarities(new Set()); toTop(); };
-  const changeSort = (s) => { setSort(s); toTop(); };
+  const changeAt = (v) => { setAt(Math.max(0, Math.min(100, Math.round(Number(v) || 0)))); toTop(); };
   const onSearchKey = (e) => {
     if (e.key === 'Enter') {
       // Read the live text, not the deferred copy the list is still catching up to.
@@ -212,6 +222,8 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 
   const { summary } = model;
   const filtered = !!q || tier !== 'all' || rarities.size > 0;
+  const slide = slideLabel(at);
+  const slideColor = at < 45 ? RARE : at > 55 ? EASY : '#FFD700';
   const youLabel = !userName || /^you$/i.test(String(userName).trim()) ? 'You' : initialsFor(userName);
   const rows = visible.slice(start, end);
 
@@ -221,7 +233,8 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       background: '#0a0a1a', color: '#fff', overflow: 'hidden',
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
-      <div style={{ padding: `10px ${SIDE}px 8px`, flexShrink: 0 }}>
+      {/* (The top padding clears the notch that holds the view buttons.) */}
+      <div style={{ padding: `48px ${SIDE}px 8px`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h2 style={{
             margin: 0, fontSize: 18, fontWeight: 800,
@@ -261,13 +274,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
         )}
       </div>
 
-      {/* ── Controls: search, order, and their tier ── */}
-      <div style={{
-        padding: `0 ${SIDE}px 10px`, flexShrink: 0,
-        display: 'flex', gap: 8, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center',
-        flexWrap: isMobile ? 'nowrap' : 'wrap',   // with the Sidebar open, the chips take a second line
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      {/* ── Controls: search, then the slider with their tier and rarity ── */}
+      <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <style>{SLIDER_CSS}</style>
         <input
           ref={searchRef}
           type="search"
@@ -277,62 +286,96 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           placeholder="Search people, companies, or who knows them"
           aria-label="Search people, companies, or who knows them"
           style={{
-            flex: isMobile ? 'none' : '1 1 260px', minWidth: 0, height: isMobile ? 44 : 34, boxSizing: 'border-box',
+            width: '100%', minWidth: 0, height: isMobile ? 44 : 34, boxSizing: 'border-box',
             padding: '0 12px', borderRadius: 8, outline: 'none', color: '#fff',
             fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
             border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
           }}
         />
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
-          // A phone scrolls this strip sideways, so the page itself never does.
-          overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin', flexShrink: isMobile ? 0 : 1,
+          marginTop: 8, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12,
+          border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)',
         }}>
-          <div role="group" aria-label="Order" style={{ display: 'flex', flexShrink: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 2 }}>
-            {[['power', 'Power'], ['ways', 'Ways in']].map(([key, label]) => (
-              <button key={key} type="button" aria-pressed={sort === key} onClick={() => changeSort(key)} style={{
-                height: isMobile ? 40 : 30, padding: '0 12px', border: 'none', borderRadius: 6, cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                background: sort === key ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'transparent',
-                color: sort === key ? '#000' : '#999',
-              }}>{label}</button>
-            ))}
-          </div>
-          <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
-          {['all', ...TIERS].map((t) => {
-            const on = tier === t;
-            const c = t === 'all' ? '#fff' : tierColors[t] || '#888';
-            const n = t === 'all' ? summary.people : summary.byTier[t];
-            return (
-              <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
-                height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
-                background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
-                color: on ? c : '#999',
-              }}>
-                {t === 'all' ? 'All' : t}
-                <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : '#666', opacity: 0.85 }}>{fmt(n)}</span>
-              </button>
-            );
-          })}
-          <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 6, cursor: 'help' }}>Rarity</span>
-          {RARITY.map((r) => {
-            const on = rarities.has(r.key);
-            return (
-              <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
-                title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
+            // A phone scrolls this strip sideways, so the page itself never does.
+            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
+            <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
+            {['all', ...TIERS].map((t) => {
+              const on = tier === t;
+              const c = t === 'all' ? '#fff' : tierColors[t] || '#888';
+              const n = t === 'all' ? summary.people : summary.byTier[t];
+              return (
+                <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
                   height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
                   fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                  border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
-                  background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
-                  color: on ? r.color : '#999',
+                  border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
+                  background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
+                  color: on ? c : '#999',
                 }}>
-                {r.label}
-                <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
-              </button>
-            );
-          })}
+                  {t === 'all' ? 'All' : t}
+                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : '#666', opacity: 0.85 }}>{fmt(n)}</span>
+                </button>
+              );
+            })}
+            {/* Where the slider is, in words */}
+            <span aria-live="polite" style={{
+              marginLeft: 'auto', flexShrink: 0, height: isMobile ? 40 : 30, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
+              display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              border: `1px solid ${slideColor}66`, background: `${slideColor}14`, color: slideColor,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: slideColor }} />
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{at}</span>
+              {slide.name}
+            </span>
+          </div>
+
+          {/* The slider: the rarest ways in at one end, the easiest at the other, power alone in the middle */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <span style={{ color: RARE }}>Rare{isMobile ? '' : ' · one way in'}</span>
+            <span style={{ color: '#FFD700' }}>Power</span>
+            <span style={{ color: EASY }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
+          </div>
+          <input
+            className="sepslide" type="range" min={0} max={100} step={1} value={at}
+            onChange={(e) => changeAt(e.target.value)}
+            onDoubleClick={() => changeAt(SLIDER_MIDDLE)}
+            aria-label="Order: the rarest ways in, to the easiest"
+            aria-valuetext={`${at}: ${slide.name}`}
+            title="Drag to reorder everyone. Double-click to go back to the middle."
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -2 }}>
+            {[[0, 'Rarest'], [25, ''], [SLIDER_MIDDLE, 'By power'], [75, ''], [100, 'Easiest']].map(([v, name]) => (
+              <button key={v} type="button" onClick={() => changeAt(v)} aria-label={`Set the slider to ${v}${name ? `: ${name}` : ''}`} style={{
+                padding: '2px 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 10,
+                color: at === v ? '#fff' : '#667', fontWeight: at === v ? 700 : 500, fontVariantNumeric: 'tabular-nums',
+              }}>{v}{name && !isMobile ? ` · ${name}` : ''}</button>
+            ))}
+          </div>
+          <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: '#bbb' }}>
+            <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
+            {!isMobile && <span style={{ color: '#667' }}>{' '}It only reorders: scores, tiers and ranks stay as they are.</span>}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
+            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
+            <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
+            {RARITY.map((r) => {
+              const on = rarities.has(r.key);
+              return (
+                <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
+                  title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+                    height: isMobile ? 40 : 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
+                    fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+                    border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
+                    background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+                    color: on ? r.color : '#999',
+                  }}>
+                  {r.label}
+                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -347,7 +390,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''} · every way in drawn
+                  Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn
                 </div>
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
                   {askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
@@ -579,6 +622,17 @@ function Tags({ status, rarity }) {
   );
 }
 
+// The slider's two ends, in the colours rarity already uses for them.
+const RARE = '#00E5FF';
+const EASY = '#FF7043';
+const SLIDER_CSS = `
+.sepslide { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; background: transparent; cursor: pointer; }
+.sepslide::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
+.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
+.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 3px; border-radius: 6px; }
+`;
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
 const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity }) {
