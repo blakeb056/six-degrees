@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Bridge Chains draws the chains.** Someone you met through a bridge's circle, and then scanned,
-  now sits one step further out, beside the bridge they came from, with a line between them.
-  Someone met through *them* sits a step beyond that, so a chain reads outwards from you and
-  grows as you scan. Point at anyone on a chain and the whole way back to you lights up, with
-  "through" and the name of who introduced them. Click them and their circle opens with that
-  trail at the top. Each step out has its own faint ring, in its degree's colour.
-- **A crowded Bridge Chains is easier to read.** When your own bridges need more than one ring,
-  the rings sit further apart, each with its own guide line, and the counts under each name
-  wait until you point at the bridge. The view also zooms to fit whatever it has to show.
+- **An opened circle shows the chains that lead on from it.** Anyone you met through that circle
+  and then scanned now sits outside the tier bands with their own cluster round them, joined to
+  the person in the middle by a line. Anyone you met through *their* circle sits a step beyond,
+  joined to them, and so on for as far as your scans reach, so you can follow a chain outwards
+  from one bridge. Each says how many are in their circle and which degree that is. Point at one
+  and the way back to the middle lights up; click and their circle opens with the whole trail.
+  The view zooms to fit the circle and its chains when it opens.
+- **Bridge Chains shows the bridges you connected with yourself.** Someone you met through a
+  bridge's circle is a link in that bridge's chain, not a bridge of their own: they're inside its
+  circle. A small orange number on a bridge says how many chains lead on from it.
+- **A crowded Bridge Chains is easier to read.** When your bridges need more than one ring, the
+  rings sit further apart, each with its own guide line, and the counts under each name wait
+  until you point at the bridge.
 - **Orbit moved to Network Circle.** It shows the size of every circle at once, which is a
   picture of the network, not a way to follow a chain. The corner switch in Degrees is gone.
 - **Views are in the notch, under the tabs.** Galaxy, Orbit, Pyramid and List in Network Circle,

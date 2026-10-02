@@ -202,43 +202,36 @@ test('ringLayout: ringGap keeps the rings further apart than the dots on them', 
   assert.equal(plain.rings[1].radius - plain.rings[0].radius, 30);
 });
 
-test('chains: someone met through a bridge sits one hop out, beside that bridge', async () => {
-  const { chainLayout } = await import('../lib/chain-layout.js');
-  // 0..5 are your own; 6 came through 2; 7 through 6; 8 and 9 both through 4.
-  const parents = [-1, -1, -1, -1, -1, -1, 2, 6, 4, 4];
-  const l = chainLayout(parents, { inner: 200, outer: 240, spacing: 46, hop: 60 });
-  assert.deepEqual(l.points.map((p) => p.depth), [0, 0, 0, 0, 0, 0, 1, 2, 1, 1]);
-  assert.equal(l.points[6].radius, 260);
-  assert.equal(l.points[7].radius, 320);
+test('chains from an opened circle: each step sits a hop further out, beside who it came from', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  // 0 and 1 came through the person in the middle; 2 through 0; 3 through 2; 4 and 5 both through 1.
+  const l = chainTree([-1, -1, 0, 2, 1, 1], { from: 300, hop: 100, spacing: 90, toward: 0 });
+  assert.deepEqual(l.points.map((p) => p.depth), [1, 1, 2, 3, 2, 2]);
+  assert.deepEqual(l.points.map((p) => p.radius), [300, 300, 400, 500, 400, 400]);
+  assert.deepEqual(l.rings.map((r) => [r.depth, r.count]), [[1, 2], [2, 3], [3, 1]]);
   const near = (a, b) => { const d = Math.abs(a - b) % (2 * Math.PI); return Math.min(d, 2 * Math.PI - d); };
-  // An only child points straight out from its bridge, and so does theirs.
-  assert.ok(near(l.points[6].angle, l.points[2].angle) < 1e-9);
-  assert.ok(near(l.points[7].angle, l.points[2].angle) < 1e-9);
-  // Two from the same bridge sit either side of it, a full spacing apart.
-  const sep = 46 / 260;
-  assert.ok(Math.abs(near(l.points[8].angle, l.points[9].angle) - sep) < 1e-9);
-  assert.ok(Math.abs(near(l.points[8].angle, l.points[4].angle) - sep / 2) < 1e-9);
-  assert.deepEqual(l.rings.map((r) => [r.depth, r.count]), [[0, 6], [1, 3], [2, 1]]);
-  assert.equal(l.points[8].parent, 4);
+  // The first step fans about `toward`, a full spacing apart.
+  assert.ok(Math.abs(near(l.points[0].angle, l.points[1].angle) - 90 / 300) < 1e-9);
+  assert.ok(Math.abs(near(l.points[0].angle, 0) - 45 / 300) < 1e-9);
+  // Nobody on the second ring touches a neighbour, and each stays near who it came from.
+  const second = [2, 4, 5].map((i) => l.points[i].angle).sort((a, b) => a - b);
+  for (let k = 1; k < second.length; k++) assert.ok(second[k] - second[k - 1] >= 90 / 400 - 1e-9);
+  assert.ok(near(l.points[2].angle, l.points[0].angle) < 90 / 400);
+  // The only one on the third ring points straight out from its own.
+  assert.ok(near(l.points[3].angle, l.points[2].angle) < 1e-9);
+  assert.equal(l.points[3].parent, 2);
 });
 
-test('chains: nobody on a ring touches a neighbour, however many came through one bridge', async () => {
-  const { chainLayout } = await import('../lib/chain-layout.js');
-  const parents = [-1, -1, -1, ...new Array(9).fill(0), ...new Array(4).fill(1)];
-  const l = chainLayout(parents, { inner: 180, outer: 220, spacing: 40, hop: 60 });
-  const kids = l.points.filter((p) => p.depth === 1).map((p) => p.angle).sort((a, b) => a - b);
-  const sep = 40 / 240;
-  for (let k = 1; k < kids.length; k++) assert.ok(kids[k] - kids[k - 1] >= sep - 1e-9);
-  assert.ok(kids[0] + 2 * Math.PI - kids[kids.length - 1] >= sep - 1e-9);
-});
-
-test('chains: a ring too full to keep its spacing shares the circle evenly; a loop is cut, not followed for ever', async () => {
-  const { chainLayout } = await import('../lib/chain-layout.js');
-  const full = chainLayout([-1, ...new Array(60).fill(0)], { inner: 100, outer: 120, spacing: 46, hop: 60 });
-  const a = full.points.slice(1).map((p) => p.angle).sort((x, y) => x - y);
-  for (let k = 1; k < a.length; k++) assert.ok(Math.abs(a[k] - a[k - 1] - (2 * Math.PI) / 60) < 1e-9);
-  const loop = chainLayout([1, 0, -1], { inner: 100, outer: 120, spacing: 46 });
+test('chains from an opened circle: a lone link points where it was told; a full ring shares the circle; a loop is cut', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  const one = chainTree([-1], { from: 200, toward: Math.PI / 2 });
+  assert.ok(Math.abs(one.points[0].x) < 1e-9);
+  assert.ok(Math.abs(one.points[0].y - 200) < 1e-9);
+  const full = chainTree(new Array(40).fill(-1), { from: 100, spacing: 90 });
+  const a = full.points.map((p) => p.angle).sort((x, y) => x - y);
+  for (let k = 1; k < a.length; k++) assert.ok(Math.abs(a[k] - a[k - 1] - (2 * Math.PI) / 40) < 1e-9);
+  const loop = chainTree([1, 0, -1], { from: 100, hop: 50 });
   assert.equal(loop.points.length, 3);
-  assert.ok(loop.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
-  assert.deepEqual(chainLayout([], { inner: 100, outer: 120, spacing: 46 }).points, []);
+  assert.ok(loop.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.depth >= 1));
+  assert.deepEqual(chainTree([], { from: 100 }).points, []);
 });
