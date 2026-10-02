@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../lib/chain-layout.js';
+import { ringLayout, dotRadius, previewBand, tierBandLayout } from '../lib/chain-layout.js';
 
 // The focused view's numbers on a 800×600 window (lib/chain-layout.js is told
 // them by ChainView's CircleFocus): maxR = 270.
@@ -167,27 +167,78 @@ test('too many for the room: the bands close up before they spill', () => {
   assert.ok(tight.edge <= room);
 });
 
-test('fans sit behind their own person, capped, and say how many more', () => {
-  const anchors = [
-    { angle: 0, slot: 0.5, count: 0 },
-    { angle: Math.PI / 2, slot: 0.4, count: 300 },
-    { angle: Math.PI, slot: 0.4, count: 5 },
-  ];
-  const [none, big, small] = outerFans(anchors, { from: 300, cap: 40 });
-  assert.equal(none, null);
-  assert.equal(big.points.length, 40);
-  assert.equal(big.more, 260);
-  assert.equal(small.points.length, 5);
-  assert.equal(small.more, 0);
-  for (const p of big.points) {
-    assert.ok(Math.hypot(p.x, p.y) >= 300 - 1e-6, 'beyond `from`');
-    const off = Math.abs(Math.atan2(p.y, p.x) - Math.PI / 2);
-    assert.ok(off <= 0.4 / 2 + 1e-6, 'within their slot');
-  }
+test('ringLayout: ringGap keeps the rings further apart than the dots on them', async () => {
+  const { ringLayout } = await import('../lib/chain-layout.js');
+  const l = ringLayout(60, { inner: 150, outer: 400, spacing: 30, ringGap: 64 });
+  assert.ok(l.rings.length > 1);
+  for (let k = 1; k < l.rings.length; k++) assert.ok(l.rings[k].radius - l.rings[k - 1].radius >= 64 - 1e-9);
+  // Without it nothing changes.
+  const plain = ringLayout(60, { inner: 150, outer: 400, spacing: 30 });
+  assert.equal(plain.rings[1].radius - plain.rings[0].radius, 30);
 });
 
-test('a lot of fans share about `total` dots between them', () => {
-  const anchors = Array.from({ length: 100 }, (_, i) => ({ angle: (i / 100) * Math.PI * 2, slot: 0.06, count: 500 }));
-  const drawn = outerFans(anchors, { from: 300, total: 1200 }).reduce((n, f) => n + f.points.length, 0);
-  assert.ok(drawn <= 1200, `${drawn} drawn`);
+test('chains from an opened circle: each step sits a hop further out, beside who it came from', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  // 0 and 1 came through the person in the middle; 2 through 0; 3 through 2; 4 and 5 both through 1.
+  const l = chainTree([-1, -1, 0, 2, 1, 1], { from: 300, hop: 100, spacing: 90, toward: 0 });
+  assert.deepEqual(l.points.map((p) => p.depth), [1, 1, 2, 3, 2, 2]);
+  assert.deepEqual(l.points.map((p) => p.radius), [300, 300, 400, 500, 400, 400]);
+  assert.deepEqual(l.rings.map((r) => [r.depth, r.count]), [[1, 2], [2, 3], [3, 1]]);
+  const near = (a, b) => { const d = Math.abs(a - b) % (2 * Math.PI); return Math.min(d, 2 * Math.PI - d); };
+  // The first step fans about `toward`, a full spacing apart.
+  assert.ok(Math.abs(near(l.points[0].angle, l.points[1].angle) - 90 / 300) < 1e-9);
+  assert.ok(Math.abs(near(l.points[0].angle, 0) - 45 / 300) < 1e-9);
+  // Nobody on the second ring touches a neighbour, and each stays near who it came from.
+  const second = [2, 4, 5].map((i) => l.points[i].angle).sort((a, b) => a - b);
+  for (let k = 1; k < second.length; k++) assert.ok(second[k] - second[k - 1] >= 90 / 400 - 1e-9);
+  assert.ok(near(l.points[2].angle, l.points[0].angle) < 90 / 400);
+  // The only one on the third ring points straight out from its own.
+  assert.ok(near(l.points[3].angle, l.points[2].angle) < 1e-9);
+  assert.equal(l.points[3].parent, 2);
+});
+
+test('chains from an opened circle: a lone link points where it was told; a full ring shares the circle; a loop is cut', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  const one = chainTree([-1], { from: 200, toward: Math.PI / 2 });
+  assert.ok(Math.abs(one.points[0].x) < 1e-9);
+  assert.ok(Math.abs(one.points[0].y - 200) < 1e-9);
+  const full = chainTree(new Array(40).fill(-1), { from: 100, spacing: 90 });
+  const a = full.points.map((p) => p.angle).sort((x, y) => x - y);
+  for (let k = 1; k < a.length; k++) assert.ok(Math.abs(a[k] - a[k - 1] - (2 * Math.PI) / 40) < 1e-9);
+  const loop = chainTree([1, 0, -1], { from: 100, hop: 50 });
+  assert.equal(loop.points.length, 3);
+  assert.ok(loop.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.depth >= 1));
+  assert.deepEqual(chainTree([], { from: 100 }).points, []);
+});
+
+test('chains from an opened circle: a first link sits out from its own dot in the circle', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  const l = chainTree([-1, -1, 0], { from: 300, hop: 100, spacing: 90, toward: 0, angles: [1, 2.5, undefined] });
+  assert.ok(Math.abs(l.points[0].angle - 1) < 1e-9);
+  assert.ok(Math.abs(l.points[1].angle - 2.5) < 1e-9);
+  assert.ok(Math.abs(l.points[2].angle - 1) < 1e-9);
+  // Two whose dots sit side by side still keep their clusters apart.
+  const close = chainTree([-1, -1], { from: 300, spacing: 90, angles: [1, 1.01] });
+  assert.ok(Math.abs(close.points[1].angle - close.points[0].angle - 90 / 300) < 1e-9);
+});
+
+test('tier bands: `start` turns where each ring begins', async () => {
+  const rows = Array.from({ length: 12 }, () => ({ tier: 'S' }));
+  const top = tierBandLayout(rows, { inner: 100, outer: 300, spacing: 20 });
+  const east = tierBandLayout(rows, { inner: 100, outer: 300, spacing: 20, start: 0 });
+  assert.ok(Math.abs(top.points[0].angle + Math.PI / 2) < 1e-9);
+  assert.ok(Math.abs(east.points[0].angle) < 1e-9);
+});
+
+test('the ring round a bridge: one bar a person you added, clusters formed first, then those ready', async () => {
+  const { reachSegments } = await import('../lib/dot-rings.js');
+  assert.deepEqual(reachSegments(15, {}), []);
+  assert.deepEqual(reachSegments(15, { formed: 2, ready: 3 }).map((s) => s.kind), ['formed', 'formed', 'ready', 'ready', 'ready']);
+  assert.equal(reachSegments(15, { ready: 1 }).length, 1);
+  // Past twelve they share the bars, and neither kind disappears.
+  const many = reachSegments(15, { formed: 1, ready: 40 });
+  assert.equal(many.length, 12);
+  assert.equal(many.filter((s) => s.kind === 'formed').length, 1);
+  const other = reachSegments(15, { formed: 40, ready: 1 });
+  assert.equal(other.filter((s) => s.kind === 'ready').length, 1);
 });

@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
+  and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
+  it, joined to that dot by a line, so you can see where each path came from. Inside a cluster,
+  anyone you added and scanned in turn has their own dot marked and a line on to their cluster,
+  for as far as your scans reach. Every dot in a cluster is joined to its middle by a faint line.
+  Each cluster says whose circle it is, how many are in it and which degree that is. Point at
+  one and the way back to the middle lights up; click and it opens with the whole trail. The
+  people you added sit together on the side the chains lead off to, their names taking turns
+  above and below so they don't overlap, and the view zooms to fit when it opens.
+- **Bridge Chains shows the bridges you connected with yourself.** Someone you met through a
+  bridge's circle is a link in that bridge's chain, not a bridge of their own: they're inside its
+  circle.
+- **A bridge's ring now counts the people you added through it.** The ring sits tight on the
+  dot, with one bar for each person: orange once they've been scanned and have a cluster of
+  their own, green while they're ready for a scan. A small green number at the top right says
+  how many are ready, in place of the "ready" label. How much of a bridge's own list is scanned
+  is in its tooltip.
+- **A crowded Bridge Chains is easier to read.** When your bridges need more than one ring, the
+  rings sit further apart, each with its own guide line, and the counts under each name wait
+  until you point at the bridge.
+- **Orbit moved to Network Circle.** It shows the size of every circle at once, which is a
+  picture of the network, not a way to follow a chain. The corner switch in Degrees is gone.
+- **Views are in the notch, under the tabs.** Galaxy, Orbit, Pyramid and List in Network Circle,
+  and Bridge Chains, Separation, Pyramid and List in Degrees, switch from the notch that hangs
+  under the top tabs, instead of a list at the top of the Filters panel. A scan's progress
+  shows in the same notch, beside them. The Filters panel now only filters.
+
 ## [0.4.11] - 2026-09-29
 
 ### Added

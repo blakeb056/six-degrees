@@ -27,9 +27,12 @@ import SeparationView from './SeparationView';
  */
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
-  orbit:    { component: OrbitGraph, modes: ['degrees'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits + circle dots; in Degrees, every mapped circle fanned out', allDegree2: true },
+  // Orbit shows the volume of every circle at once. It sits in Network Circle
+  // (Blake, 2026-10-02: "this view type should just be in the network circle or
+  // in insights"), not in Degrees: Bridge Chains is for following the chains.
+  orbit:    { component: OrbitGraph, modes: ['network'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits, with every mapped circle fanned out', allDegree2: true },
   separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
-  chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Degree paths' },
+  chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
   rings:    { component: RingsView,  modes: ['network', 'degrees'], label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
   list:     { component: ListView,   modes: ['network', 'degrees'], label: 'List',          icon: '☰', desc: 'Ranked power list' },
   grid:     { component: GridView,   modes: ['network', 'degrees'], label: 'Grid',          icon: '▦', desc: 'Cards' },
@@ -38,11 +41,9 @@ export const VIEWS = {
 /**
  * The order they appear in the menu. Bridge Chains is the first Degrees view, so
  * it is also where resolveView lands when the chosen view isn't a Degrees one
- * (Galaxy, say, carried over from Network Circle); then Separation, then Orbit.
- * Orbit is a Degrees view only: in Network Circle it was slow and said nothing
- * the Galaxy doesn't (OrbitGraph still has that branch until Orbit is redrawn).
+ * (Galaxy, say, carried over from Network Circle); then Separation.
  */
-const ORDER = ['galaxy', 'chain', 'separation', 'orbit', 'rings', 'list'];
+const ORDER = ['galaxy', 'orbit', 'chain', 'separation', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

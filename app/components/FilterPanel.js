@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { viewsForMode } from './views';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 
 function useIsMobile() {
@@ -19,9 +18,6 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
   // Network Circle: each tier switches on and off, so the noisy ones (C, D) can go
   // while the rest stay. Degrees keeps one tier at a time.
   const toggles = !isDegreesMode && !!onHiddenTiersChange;
-  // Same source of truth the renderer uses, so the menu can never offer a
-  // view that does not exist or miss one that does.
-  const modes = viewsForMode(isDegreesMode ? 'degrees' : 'network');
   const counts = isDegreesMode ? (bridgeTierCounts || {}) : (tierCounts || {});
   const allCount = isDegreesMode
     ? Object.values(bridgeTierCounts || {}).reduce((s, v) => s + v, 0)
@@ -79,34 +75,6 @@ export default function FilterPanel({ collapsed, onToggle, mode, filter, onFilte
         >
           <span style={{ fontSize: 16 }}>›</span> Close
         </button>
-
-        {/* Visual Mode */}
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
-            Visual
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {modes.map(m => (
-              <button
-                key={m.key}
-                onClick={() => onVisualModeChange && onVisualModeChange(m.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
-                  borderRadius: 6, border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
-                  background: visualMode === m.key ? 'rgba(52,152,219,0.15)' : 'rgba(255,255,255,0.03)',
-                  color: visualMode === m.key ? '#3498DB' : '#888',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{m.icon}</span>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600 }}>{m.label}</div>
-                  <div style={{ fontSize: 8, color: '#555', marginTop: 1 }}>{m.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Tier Filters */}
         {/* Network Circle: which degrees to draw. Any mix, never none: 2nd and
