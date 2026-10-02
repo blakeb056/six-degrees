@@ -15,7 +15,8 @@ import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-const TABS = [['map', 'Map'], ['industries', 'Industries'], ['companies', 'Companies']];
+// People: the map with your connections as the bubbles, sized by the cluster behind them.
+const TABS = [['map', 'Map'], ['people', 'People'], ['industries', 'Industries'], ['companies', 'Companies']];
 
 export default function PathsPage() {
   // Suspense because PathsInner reads the address's ?tab= (useSearchParams),
