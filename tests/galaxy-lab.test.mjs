@@ -34,12 +34,11 @@ test('reach counts everyone hanging off a dot, all the way down', () => {
   assert.equal(r.get('cy'), 0);
 });
 
-test('without a browser the lab is off and the layout is today\'s', () => {
-  assert.equal(labNow().on, false);
-  assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40 }), LAB_DEFAULTS);
+test('the sliders are always on: with none moved, the layout is today\'s', () => {
+  assert.equal(labNow().on, true);
+  assert.equal(effectiveLab(labNow()), LAB_DEFAULTS);
+  assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40 }).push, 40);
   assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40, labels: false }).labels, false);
-  assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40, labels: false }).push, 15);
-  assert.equal(effectiveLab({ ...LAB_DEFAULTS, on: true, push: 40 }).push, 40);
 });
 
 import { colourScheme, findMatches, milestones, chapterAt, mergeSocial } from '../lib/galaxy-lab.js';

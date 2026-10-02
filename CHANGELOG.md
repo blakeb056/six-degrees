@@ -26,6 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   biggest companies and a box to type in, and goes away once you've picked; the button then
   shows your pick with a × to clear it.
 - **Separation's heading no longer sits under the notch.**
+- **One filter for tiers and degrees, the same in Network Circle and in Degrees.** The Filters
+  panel shows the five tiers as bigger rows, each with six dots, one for each degree. Tap a tier
+  to hide or show it, as before. Tap a dot to show or hide that degree for that tier alone:
+  S tier at 2nd degree without everyone else's, say. Tap a number at the top to switch a degree
+  for every tier at once. A dot with nobody behind it is faint and can't be tapped, each row
+  says how many people it is showing, and the last people on screen can't be switched off.
+  Network Circle starts with your own connections; Degrees starts with everything. In Degrees
+  the rows used to pick one bridge tier at a time; now 1st degree is your bridges and 2nd is
+  the people in their circles, each by their own tier.
+- **The Galaxy's physics is the main thing in Network Circle's Filters panel.** The sliders,
+  layouts, colours, find and replay sit straight in the panel under the tiers, always on, with
+  no switch to turn on first and no "experimental" box. With no slider moved the Galaxy is laid
+  out as before; pointing at a dot now lights up its branch unless you turn that off.
+- **Pyramid and List left Network Circle.** Its views are the Galaxy and Orbit. Pyramid and List
+  stay in Degrees.
 - **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
   and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
   it, joined to that dot by a line, so you can see where each path came from. Inside a cluster,

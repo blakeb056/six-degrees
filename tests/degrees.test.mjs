@@ -1,7 +1,7 @@
 // Network Circle's degree filter: everyone the app knows, by degree, each once.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { peopleByDegree, tierCountsOf } from '../lib/degrees.js';
+import { peopleByDegree } from '../lib/degrees.js';
 
 const url = (s) => `https://www.linkedin.com/in/${s}`;
 
@@ -20,7 +20,6 @@ test('each person counts once, at the nearest degree they are found', () => {
   assert.equal(by[1][0].degree, 1, 'rows carry the degree they are drawn at');
 });
 
-test('nothing loaded, nothing to draw; tier counts count what is drawn', () => {
+test('nothing loaded, nothing to draw', () => {
   assert.deepEqual(peopleByDegree(), { 1: [], 2: [], 3: [] });
-  assert.deepEqual(tierCountsOf([{ tier: 'S' }, { tier: 'S' }, { tier: 'B' }]), { S: 2, B: 1 });
 });

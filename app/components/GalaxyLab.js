@@ -1,9 +1,12 @@
 'use client';
 
-// The Galaxy's physics lab (experimental), in the Filter panel: Obsidian-style
-// sliders for the forces that lay the Galaxy out, and a replay of your network
-// growing by the date you connected. Everything moves the Galaxy in place;
-// lib/galaxy-lab.js holds the settings and the clock.
+// The Galaxy's physics, the main thing in Network Circle's Filters panel
+// (Blake, 2026-10-02: "having the physics tab being the main function"):
+// Obsidian-style sliders for the forces that lay the Galaxy out, and a replay
+// of your network growing by the date you connected. Everything moves the
+// Galaxy in place; lib/galaxy-lab.js holds the settings and the clock. It began
+// as an experimental box with its own on switch; now it is always on, and sits
+// flush in the panel.
 
 import { useState, useSyncExternalStore } from 'react';
 import {
@@ -99,25 +102,13 @@ export default function GalaxyLab() {
     : Object.entries(CLUSTERS).every(([k, v]) => lab[k] === v) ? 'clusters' : null;
 
   return (
-    <div style={{ marginBottom: 18, padding: '10px 10px 8px', borderRadius: 8, border: '1px solid rgba(212,175,55,0.25)', background: 'rgba(212,175,55,0.04)' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-        <input
-          type="checkbox" checked={lab.on}
-          onChange={(e) => { if (!e.target.checked) { stopReplay(); setClock({ find: '' }); } setLab({ on: e.target.checked }); }}
-          style={{ accentColor: '#D4AF37' }}
-        />
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#e6d7a0' }}>Physics lab</span>
-        <span style={{ fontSize: 9, fontWeight: 700, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.4)', borderRadius: 4, padding: '0 4px' }}>EXPERIMENTAL</span>
-      </label>
-      {!lab.on && (
-        <div style={{ ...small, marginTop: 6 }}>
-          Sliders for the forces that lay the Galaxy out, colours by company or warmth, find, a branch that lights
-          up on hover, and a replay of your network growing that you can save as a video.
-        </div>
-      )}
+    <div style={{ marginBottom: 18, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#dde' }}>Physics</div>
+      <div style={{ ...small, marginTop: 3 }}>The forces that lay the Galaxy out. Everything here moves it in place.</div>
 
-      {lab.on && (
-        <>
+          <div style={heading}>Names</div>
+          <Choice value={lab.labels} options={[[true, 'On'], [false, 'Off']]} onPick={(v) => setLab({ labels: v })} />
+
           <div style={heading}>Find</div>
           <input
             type="search" value={clock.find} placeholder="A name, company or role"
@@ -271,8 +262,6 @@ export default function GalaxyLab() {
             marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
             border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aaa',
           }}>Reset to today&rsquo;s layout</button>
-        </>
-      )}
     </div>
   );
 }
