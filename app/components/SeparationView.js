@@ -32,13 +32,14 @@
 // when it changes. The map's height never depends on its width, so a scrollbar
 // appearing cannot feed a resize loop.
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
 import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
+import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
 
 const ORANGE = '#FF6B35';
@@ -82,6 +83,8 @@ function subline(person) {
 
 export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
   const isMobile = useIsMobile();
+  // Room at the top for the notch, only while it's on screen (a scan, or another tab's views).
+  const notch = useSyncExternalStore(watchNotchShown, notchShownNow, noNotch);
   const ROW_H = isMobile ? 68 : 56;
   const K = isMobile ? 5 : 10;
   const sidePad = isMobile ? 8 : 16;
@@ -220,11 +223,15 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const cw = Math.max(0, Math.min(980, box.w - 2 * sidePad));
   // The map's height comes from the layout, never the DOM, so the list below
   // it can be positioned by arithmetic alone.
-  const layout = useMemo(() => summitLayout(single ? [] : top, cw || 800, isMobile), [single, top, cw, isMobile]);
-  const aim = useMemo(() => (target ? convergeLayout(target, cw || 800, isMobile) : null), [target, cw, isMobile]);
+  // One map for both: ten people fanned out, or the one you're aiming at with
+  // everyone who leads to them. The same shape, so it glides from one to the other.
+  const layout = useMemo(
+    () => (single ? convergeLayout(target, cw || 800, isMobile) : summitLayout(top, cw || 800, isMobile)),
+    [single, target, top, cw, isMobile],
+  );
   const captionH = isMobile ? 58 : 40;   // fixed, so HEAD is arithmetic; the phone legend takes two lines
   const NEXT_H = nextUp.length ? 38 : 0;
-  const mapH = single ? (aim ? aim.height + NEXT_H : 0) : layout.height;
+  const mapH = single ? (target ? layout.height + NEXT_H : 0) : layout.height;
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
   const HEAD = mapBlockH + LABEL_ROW;
   const total = HEAD + visible.length * ROW_H + BOTTOM_PAD;
@@ -289,8 +296,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       background: '#0a0a1a', color: '#fff', overflow: 'hidden',
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
-      {/* (The top padding clears the notch that holds the view buttons.) */}
-      <div style={{ padding: `48px ${SIDE}px 8px`, flexShrink: 0 }}>
+      <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h2 style={{
             margin: 0, fontSize: 18, fontWeight: 800,
@@ -476,7 +482,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   {single ? ' · pick anyone in the list to aim at them instead' : ' · dot size = ways in'}
                 </div>
               </div>
-              {cw > 0 && !single && (
+              {cw > 0 && (
                 <SummitMap
                   layout={layout}
                   selectedKey={selectedKey}
@@ -485,13 +491,13 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   isMobile={isMobile}
                   onPick={onPick}
                   onPickBridge={onPickBridge}
+                  mutualsBy={rarityBy}
                   doors={!isMobile && cw >= 640}
                 />
               )}
-              {cw > 0 && single && aim && (
+              {/* Aiming at one person: the next few, to aim at instead */}
+              {cw > 0 && single && (
                 <>
-                  <AimMap layout={aim} p={target} mutuals={rarityBy.get(target.key)} tierColors={tierColors}
-                    youLabel={youLabel} isMobile={isMobile} onPick={onPick} onPickBridge={onPickBridge} />
                   {nextUp.length > 0 && (
                     <div style={{ height: NEXT_H, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                       <span style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Next</span>
@@ -567,6 +573,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 // whatever the network's size. Hover is pure CSS from the scoped <style>, so a
 // still mouse can never re-render anything. aria-hidden because the same people
 // are the first rows of the list, and the list is the accessible path.
+const MOVE = '.38s cubic-bezier(.2,.8,.2,1)';
 const MAP_CSS = `
 .sepmap .sp { cursor: pointer; transition: opacity .12s; }
 .sepmap .ppl:hover .sp { opacity: .28; }
@@ -575,10 +582,33 @@ const MAP_CSS = `
 .sepmap .br { cursor: pointer; }
 .sepmap .br:hover text { text-decoration: underline; }
 .sepmap .rt { pointer-events: none; }
+/* Everything glides to its new place as the slider moves: dots and names by
+   their group's transform, lines by their path. Newcomers fade in. */
+.sepmap .mv { transition: transform ${MOVE}; }
+.sepmap .rt, .sepmap .spk { transition: d ${MOVE}, stroke-opacity .12s; }
+.sepmap .in { animation: sepIn .3s ease-out both; }
+@keyframes sepIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sepmap .mv, .sepmap .rt, .sepmap .spk { transition: none; }
+  .sepmap .in { animation: none; }
+}
 `;
 const HALO = { paintOrder: 'stroke', stroke: '#0a0a1a', strokeWidth: 3, strokeLinejoin: 'round' };
+const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
 
-const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, doors = false }) {
+/**
+ * How many mutual connections lead to someone, said the way the data has it:
+ * the ones drawn are the connections of yours whose circles you've scanned;
+ * LinkedIn's own count, when a scan saved one, can be higher.
+ */
+function waysTag(p, mutuals) {
+  if (mutuals?.from === 'linkedin' && mutuals.count > p.waysIn) {
+    return { text: `${fmt(mutuals.count)} mutuals · ${fmt(p.waysIn)} mapped`, rare: false, more: mutuals.count };
+  }
+  return p.waysIn === 1 ? { text: 'only way in', rare: true, more: 0 } : { text: `${fmt(p.waysIn)} ways in`, rare: false, more: 0 };
+}
+
+const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false }) {
   const { width, height, you, people, bridges, links, spokes } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
@@ -599,7 +629,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
       </defs>
 
       {spokes.map((s) => (
-        <line key={`s-${s.id ?? 'unresolved'}`} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
+        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
       ))}
 
       <g className="ppl">
@@ -608,38 +638,70 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
           const c = tierColors[p.tier] || '#888';
           const sel = pp.key === selectedKey;
           const via = p.routes.map((r) => (r.bridge ? r.bridge.name : CANT_NAME)).join(', ');
+          const tag = waysTag(p, mutualsBy?.get(p.key));
+          const lx = pp.r + 14;
+          const room = Math.max(8, Math.floor((width - pp.x - lx) / 6));
+          const clip = (t) => (String(t || '').length > room ? `${String(t).slice(0, room - 1)}…` : String(t || ''));
           return (
             <g key={pp.key} className={sel ? 'sp sel' : 'sp'} onClick={() => onPick(p)}>
-              <title>{`${p.person.name} · #${p.rank}${p.tied ? '=' : ''} · ${p.tier} · ${p.score.toFixed(1)} · via ${via}`}</title>
+              <title>{`${p.person.name} · #${p.rank}${p.tied ? '=' : ''} · ${p.tier} · ${p.score.toFixed(1)} · ${tag.text} · via ${via}`}</title>
               {(linksBy.get(pp.key) || []).map((l) => {
                 const mx = (l.x1 + l.x2) / 2;
-                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : tierColors[l.tier] || '#888';
+                // Aiming at one person: their other routes are gold; among ten, each bridge's tier colour.
+                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : pp.big ? '#FFD700' : tierColors[l.tier] || '#888';
                 return (
                   <path
                     key={`${l.key}-${l.bridgeId ?? 'u'}`}
-                    className="rt"
-                    d={`M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r},${l.y2}`}
+                    className="rt in"
+                    d={`M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r - (pp.big ? 2 : 0)},${l.y2}`}
                     fill="none"
                     stroke={stroke}
-                    strokeWidth={l.primary ? 1.5 : 1}
-                    strokeOpacity={l.primary ? 0.8 : 0.35}
-                    strokeDasharray={l.primary ? undefined : '3 3'}
+                    strokeWidth={pp.big ? (l.primary ? 2.2 : 1.4) : l.primary ? 1.5 : 1}
+                    strokeOpacity={pp.big ? (l.primary ? 0.95 : 0.6) : l.primary ? 0.8 : 0.35}
+                    strokeDasharray={l.primary ? undefined : pp.big ? '5 4' : '3 3'}
                   />
                 );
               })}
-              <rect x={pp.x - 12} y={pp.y - gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />
-              {sel && <circle cx={pp.x} cy={pp.y} r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
-              <circle cx={pp.x} cy={pp.y} r={pp.r} fill={c} />
-              <text x={pp.x + 14} y={pp.y} dy="0.35em" fontSize={fs} fill="#ddd" style={HALO}>
-                {pp.label}
-                <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
-                {/* How many doors lead to them: one is the rare kind */}
-                {doors && (
-                  <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={p.waysIn === 1 ? RARE : '#778'}>
-                    {p.waysIn === 1 ? 'only way in' : `${p.waysIn} ways in`}
-                  </tspan>
+              <g className="mv in" style={at(pp.x, pp.y)}>
+                {(pp.rings || []).map((r, i) => (
+                  <circle key={r} r={r} fill="none" stroke={c} strokeOpacity={0.28 - i * 0.08} strokeWidth={1} strokeDasharray={i ? '2 5' : undefined} />
+                ))}
+                <rect x={-12} y={-gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />
+                {pp.big ? (
+                  <>
+                    <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} />
+                    <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
+                    <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
+                    <text x={lx} y={-4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
+                    <text x={lx} y={13} fontSize={fs} fontWeight={700} fill={c} style={HALO}>
+                      #{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}
+                    </text>
+                    <text x={lx} y={29} fontSize={fs} fill="#ccc" style={HALO}>
+                      {clip(tag.more
+                        ? `${fmt(tag.more)} mutual connections · ${fmt(p.waysIn)} drawn here`
+                        : p.waysIn === 1 ? '1 mutual connection: the only way in' : `${fmt(p.waysIn)} mutual connections, all drawn`)}
+                    </text>
+                    {tag.more > 0 && (
+                      <text x={lx} y={44} fontSize={fs - 1} fill="#778" style={HALO}>
+                        {clip('The count is LinkedIn’s; the rest are in circles not scanned yet')}
+                      </text>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {sel && <circle r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
+                    <circle r={pp.r} fill={c} />
+                    <text x={14} dy="0.35em" fontSize={fs} fill="#ddd" style={HALO}>
+                      {pp.label}
+                      <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
+                      {/* How many mutual connections lead to them: one is the rare kind */}
+                      {doors && (
+                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? RARE : '#778'}>{tag.text}</tspan>
+                      )}
+                    </text>
+                  </>
                 )}
-              </text>
+              </g>
             </g>
           );
         })}
@@ -655,25 +717,27 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
           >
             <title>{b.unresolved
               ? 'Routes whose connection record doesn’t match anyone in your 1st-degree list, so who introduces you can’t be named'
-              : `${b.bridge.name} · ${b.bridge.tier}-tier · a way in to ${b.count} of these · click to open`}</title>
-            <circle
-              cx={b.x} cy={b.y} r={b.r}
-              fill={b.unresolved ? 'none' : c}
-              stroke={b.unresolved ? '#777' : '#0a0a1a'}
-              strokeWidth={b.unresolved ? 1 : 1.5}
-              strokeDasharray={b.unresolved ? '2 2' : undefined}
-            />
-            <text x={b.x - 9} y={b.y} dy="0.35em" textAnchor="end" fontSize={fs - 1} fill={c}
-              fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : 600} style={HALO}>
-              {b.label}
-            </text>
+              : `${b.bridge.name} · ${b.bridge.tier}-tier${b.count > 1 ? ` · a way in to ${b.count} of these` : ''} · click to open`}</title>
+            <g className="mv in" style={at(b.x, b.y)}>
+              <circle
+                r={b.r}
+                fill={b.unresolved ? 'none' : c}
+                stroke={b.unresolved ? '#777' : '#0a0a1a'}
+                strokeWidth={b.unresolved ? 1 : 1.5}
+                strokeDasharray={b.unresolved ? '2 2' : undefined}
+              />
+              <text x={-9} dy="0.35em" textAnchor="end" fontSize={fs - 1} fill={c}
+                fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : b.primary ? 800 : 600} style={HALO}>
+                {b.label}
+              </text>
+            </g>
           </g>
         );
       })}
 
-      <g>
-        <circle cx={you.x} cy={you.y} r={you.r} fill="url(#sepYouGrad)" />
-        <text x={you.x} y={you.y} dy="0.35em" textAnchor="middle" fontSize={youLabel.length > 2 ? 9 : 10} fontWeight={800} fill="#000">
+      <g className="mv" style={at(you.x, you.y)}>
+        <circle r={you.r} fill="url(#sepYouGrad)" />
+        <text dy="0.35em" textAnchor="middle" fontSize={youLabel.length > 2 ? 9 : 10} fontWeight={800} fill="#000">
           {youLabel}
         </text>
       </g>
@@ -729,89 +793,6 @@ function Tags({ status, rarity }) {
     </>
   );
 }
-
-// ── One person on the map ──────────────────────────────────────────────────
-// The slider all the way to easy: You, every connection of yours who leads to
-// the person you're aiming at, and them, with rings round them. Plain <svg>,
-// CSS hover, like the summit map.
-const AimMap = memo(function AimMap({ layout, p, mutuals, tierColors, youLabel, isMobile, onPick, onPickBridge }) {
-  const { width, height, you, target, bridges, links, spokes } = layout;
-  const c = tierColors[p.tier] || '#888';
-  const fs = isMobile ? 12 : 11;
-  const named = bridges.filter((b) => !b.unresolved).length;
-  // LinkedIn's own count, when a scan saved one and it says more than the app can name.
-  const more = mutuals?.from === 'linkedin' && mutuals.count > p.waysIn ? mutuals.count : 0;
-  const lx = target.x + target.r + 14;
-  const room = Math.max(8, Math.floor((width - lx) / 6));
-  const clip = (t) => (String(t || '').length > room ? `${String(t).slice(0, room - 1)}…` : String(t || ''));
-  return (
-    <svg className="sepmap" width={width} height={height} style={{ display: 'block', overflow: 'visible' }}
-      role="img" aria-label={`${p.person.name}: ${p.waysIn} ${p.waysIn === 1 ? 'way' : 'ways'} in`}>
-      <style>{MAP_CSS}</style>
-      {spokes.map((sp) => (
-        <line key={`s-${sp.id ?? 'unresolved'}`} x1={sp.x1} y1={sp.y1} x2={sp.x2} y2={sp.y2} stroke="#fff" strokeOpacity={0.14} strokeWidth={1} />
-      ))}
-      {target.rings.map((r, i) => (
-        <circle key={r} cx={target.x} cy={target.y} r={r} fill="none" stroke={c} strokeOpacity={0.28 - i * 0.08}
-          strokeWidth={1} strokeDasharray={i ? '2 5' : undefined} />
-      ))}
-      {links.map((l) => {
-        const mx = (l.x1 + l.x2) / 2;
-        return (
-          <path key={`l-${l.bridgeId ?? 'u'}`} fill="none"
-            d={`M${l.x1 + 6},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - target.r - 2},${l.y2}`}
-            stroke={l.unresolved ? '#777' : l.primary ? ORANGE : '#FFD700'}
-            strokeWidth={l.primary ? 2.2 : 1.4} strokeOpacity={l.primary ? 0.95 : 0.6}
-            strokeDasharray={l.primary ? undefined : '5 4'} />
-        );
-      })}
-      {bridges.map((b) => {
-        const bc = b.unresolved ? '#777' : tierColors[b.bridge.tier] || '#888';
-        return (
-          <g key={`b-${b.id ?? 'unresolved'}`} className={b.unresolved ? undefined : 'br'}
-            onClick={b.unresolved ? undefined : () => onPickBridge(b.bridge)}>
-            <title>{b.unresolved
-              ? 'Routes whose connection record doesn’t match anyone in your 1st-degree list, so who introduces you can’t be named'
-              : `${b.bridge.name} · ${b.bridge.tier}-tier${b.primary ? ' · your top-scored way in' : ''} · click to open`}</title>
-            <circle cx={b.x} cy={b.y} r={b.r} fill={b.unresolved ? 'none' : bc} stroke={b.unresolved ? '#777' : '#0a0a1a'}
-              strokeWidth={b.unresolved ? 1 : 1.5} strokeDasharray={b.unresolved ? '2 2' : undefined} />
-            <text x={b.x - 11} y={b.y} dy="0.35em" textAnchor="end" fontSize={fs} fill={bc}
-              fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.primary ? 800 : 600} style={HALO}>
-              {b.label}
-            </text>
-          </g>
-        );
-      })}
-      <g>
-        <circle cx={you.x} cy={you.y} r={you.r} fill="url(#sepYouGradAim)" />
-        <defs>
-          <linearGradient id="sepYouGradAim" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#FFD700" /><stop offset="1" stopColor="#FF6B35" />
-          </linearGradient>
-        </defs>
-        <text x={you.x} y={you.y} dy="0.35em" textAnchor="middle" fontSize={youLabel.length > 2 ? 9 : 10} fontWeight={800} fill="#000">{youLabel}</text>
-      </g>
-      <g style={{ cursor: 'pointer' }} onClick={() => onPick(p)}>
-        <title>{`${p.person.name} · #${p.rank}${p.tied ? '=' : ''} · ${p.tier} · ${p.score.toFixed(1)} · open their card`}</title>
-        <circle cx={target.x} cy={target.y} r={target.r} fill="#0a0a1a" stroke={c} strokeWidth={3} />
-        <text x={target.x} y={target.y} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
-        <text x={lx} y={target.y - 20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
-        <text x={lx} y={target.y - 4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
-        <text x={lx} y={target.y + 13} fontSize={fs} fontWeight={700} fill={c} style={HALO}>
-          #{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}
-        </text>
-        <text x={lx} y={target.y + 29} fontSize={fs} fill="#ccc" style={HALO}>
-          {named === 1 ? '1 connection of yours leads to them' : `${named} connections of yours lead to them`}
-        </text>
-        {more > 0 && (
-          <text x={lx} y={target.y + 44} fontSize={fs - 1} fill="#778" style={HALO}>
-            {clip(`LinkedIn counts ${fmt(more)} mutual connections; the rest are in circles not scanned yet`)}
-          </text>
-        )}
-      </g>
-    </svg>
-  );
-});
 
 // ── Path: pick one sector or one company ───────────────────────────────────
 // Opens under the Path button, over the slider, and closes on a pick, on Esc

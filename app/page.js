@@ -160,7 +160,7 @@ function HomeInner() {
   const [separationPreset, setSeparationPreset] = useState(null);
   const showInSeparation = useCallback((preset) => {
     setSeparationPreset({ ...preset, id: `${preset.query}|${preset.tier || ''}|${preset.rarity || ''}|${Math.random()}` });
-    setMode('degrees');
+    setMode('separation');
     setVisualMode('separation');
   }, []);
   // A card's Insights → that person's circle in Bridge Chains.
@@ -174,7 +174,8 @@ function HomeInner() {
     try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
   }, []);
 
-  const isDegreesMode = mode === 'degrees';
+  // Separation is its own tab, built on the same rows as Degrees: your bridges and their circles.
+  const isDegreesMode = mode === 'degrees' || mode === 'separation';
   const connections = degree1;
 
   // What the views draw. Memoised because the graph views rebuild their whole
@@ -272,6 +273,16 @@ function HomeInner() {
               }}
             >
               Degrees
+            </button>
+            <button
+              onClick={() => { setMode('separation'); setSelected(null); setVisualMode('separation'); }}
+              style={{
+                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
+                background: mode === 'separation' ? 'linear-gradient(135deg, #00E5FF, #FFD700 55%, #FF7043)' : 'rgba(255,255,255,0.12)',
+                color: mode === 'separation' ? '#000' : '#fff',
+              }}
+            >
+              Separation
             </button>
 
             {/* Which network you are looking at, and the way back out of it.
@@ -474,7 +485,7 @@ function HomeInner() {
         <FilterPanel
           collapsed={filterPanelCollapsed}
           onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-          mode={mode}
+          mode={isDegreesMode ? 'degrees' : 'network'}
           visualMode={view.key}
           grid={grid}
           gridCounts={panelCounts}
@@ -544,7 +555,7 @@ function HomeInner() {
           tierColors={TIER_COLORS}
           connections={degree1}
           degree2={degree2}
-          mode={mode}
+          mode={isDegreesMode ? 'degrees' : 'network'}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onSelect={(node) => { setSelected(node || null); }}

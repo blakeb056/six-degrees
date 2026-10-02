@@ -208,6 +208,11 @@ test('one person on the map: every connection who leads to them, the best first,
   assert.ok(l.links.every((k) => k.x2 === l.target.x && k.y2 === l.target.y));
   assert.ok(l.target.x > l.bridges[0].x && l.bridges[0].x > l.you.x);
   assert.equal(l.target.y, l.you.y);
+  // The same shape the ten-person map uses, so one map draws both.
+  assert.equal(l.people.length, 1);
+  assert.equal(l.people[0].big, true);
+  assert.equal(l.people[0].x, l.target.x);
+  assert.ok(l.links.every((k) => k.key === 'k'));
   // Bridges never closer than their gap, and all inside the map.
   for (let i = 1; i < l.bridges.length; i++) assert.ok(l.bridges[i].y - l.bridges[i - 1].y >= 34 - 1e-9);
   assert.ok(l.bridges[0].y > 0 && l.bridges[3].y < l.height);
