@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Bridge Chains shows every circle behind its bridge, quietly.** A block of small, muted dots
   sits behind each bridge, S tier nearest, and grows with the circle: a bigger circle is wider
-  and reaches further out. It dims while a bridge's own preview is showing. On a very large
-  network one dot stands for several people, the same for every bridge, and the key says so.
+  and reaches further out. Point at a bridge and its own block lights up in full colour while
+  the others fade. Anyone ready for a scan of their own is a green dot with a slow pulse, at
+  every moment, so you can see where the next scans are without opening anything. On a large
+  or crowded network one dot stands for several people, the same for every bridge, so the
+  picture stays on screen; the key says how many. With many bridges the blocks take even turns
+  round the circle so none is squeezed out by a neighbour.
   Orbit is no longer a view of its own: this is what it was for.
-- **Views are a row at the top of the map.** Galaxy, Pyramid and List in Network Circle, and
-  Bridge Chains, Separation, Pyramid and List in Degrees, switch from one small row instead of
-  a list at the top of the Filters panel. The Filters panel now only filters.
+- **Views are in the notch, under the tabs.** Galaxy, Pyramid and List in Network Circle, and
+  Bridge Chains, Separation, Pyramid and List in Degrees, switch from the notch that hangs
+  under the top tabs, instead of a list at the top of the Filters panel. A scan's progress
+  shows in the same notch, beside them. The Filters panel now only filters.
 
 ## [0.4.11] - 2026-09-29
 

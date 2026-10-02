@@ -207,28 +207,41 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // scale, shown here "but not bringing so much attention"). A wedge of small
   // dots per bridge, S nearest, reaching further out the bigger the circle is.
   // Built once per layout as a few paths, so hovering never redraws the dots.
-  const backdropKey = `${dims.w}x${dims.h}|${bridgePos.map((b) => `${b.id}:${b.clusterSize}:${b.angle.toFixed(4)}`).join(',')}`;
+  const backdropKey = `${dims.w}x${dims.h}|${bridgePos.map((b) => `${b.id}:${b.angle.toFixed(4)}`).join(',')}`;
   const backdrop = useMemo(() => {
     if (!bridgePos.length) return null;
     const from = previewBand(maxR, bridgeLayout.rings).inner;
+    // The people you reached through each circle come first (the ones ready for
+    // a scan of their own are among them), then everyone its scan found, best first.
+    const circles = bridgePos.map((b) => membersOf(b, index));
     const { fans, spacing, per } = scaleFans(
-      bridgePos.map((b) => ({ angle: b.angle, count: b.clusterSize })), { from, limit: maxR * 0.92 });
+      bridgePos.map((b, i) => ({ angle: b.angle, count: circles[i].length })), { from, limit: maxR * 0.92 });
     const r = Math.max(0.9, spacing * 0.3);
-    const dot = (pt) => `M${(cx + pt.x - r).toFixed(1)},${(cy + pt.y).toFixed(1)}a${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(2 * r).toFixed(2)},0a${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(-2 * r).toFixed(2)},0`;
+    const dot = (pt, k = 1) => {
+      const q = r * k;
+      return `M${(cx + pt.x - q).toFixed(1)},${(cy + pt.y).toFixed(1)}a${q.toFixed(2)},${q.toFixed(2)} 0 1,0 ${(2 * q).toFixed(2)},0a${q.toFixed(2)},${q.toFixed(2)} 0 1,0 ${(-2 * q).toFixed(2)},0`;
+    };
     const wedges = bridgePos.map((b, i) => {
-      // Best first, so S sits nearest the bridge; one dot per `per` people.
-      const tiers = (bridgeMap[b.id] || []).map((m) => m.tier).sort((x, y) => (TIER_RANK[x] ?? 9) - (TIER_RANK[y] ?? 9));
       const paths = {};
+      let ready = '';
+      let halo = '';
       fans[i].points.forEach((pt, k) => {
-        const tier = tiers[Math.min(tiers.length - 1, k * per)] || 'D';
-        paths[tier] = (paths[tier] || '') + dot(pt);
+        // One dot per `per` people: green if any of them is ready to scan.
+        const group = circles[i].slice(k * per, (k + 1) * per);
+        if (group.some((m) => reachState(m, reach) === 'ready')) {
+          ready += dot(pt, 1.7);
+          halo += dot(pt, 3.4);
+        } else {
+          const tier = group[0]?.tier || 'D';
+          paths[tier] = (paths[tier] || '') + dot(pt);
+        }
       });
-      return { id: b.id, paths };
+      return { id: b.id, paths, ready, halo };
     });
     return { wedges, per };
-    // bridgePos, bridgeMap and the layout are rebuilt every render; the key says when they changed.
+    // bridgePos and the layout are rebuilt every render; the key says when they changed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backdropKey]);
+  }, [backdropKey, index, reach]);
 
   // Touch rotary dial on the overview: drag a finger round the circle to pick a bridge.
   const bridgeAnglesRef = useRef([]);
@@ -299,7 +312,6 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const totalD2 = degree2.length;
   const d2S = degree2.filter(d => d.tier === 'S').length;
   const d2A = degree2.filter(d => d.tier === 'A').length;
-  const hovBridge = hovered ? bridgePos.find(b => b.id === hovered) : null;
 
   return (
     <div ref={containerRef} style={{ flex: 1, background: '#0a0a1a', position: 'relative', overflow: 'hidden' }}>
@@ -309,23 +321,31 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         <circle cx={cx} cy={cy} r={maxR * 0.55} fill="none" stroke={`${DEGREE_COLORS[1]}10`} strokeWidth={1} />
 
         {/* Every circle behind its bridge, toned down: the scale, without the noise.
-            It dims further while a bridge's own preview is showing over it. */}
+            Hover a bridge and its own circle lights up in place while the rest
+            fade. Anyone ready for a scan is green at every moment: that's what
+            should catch the eye. */}
         {backdrop && (
-          <g pointerEvents="none" opacity={hovBridge ? 0.25 : 1} style={{ transition: 'opacity 0.2s' }}>
-            {backdrop.wedges.map((w) => (
-              <g key={'bd-' + w.id}>
-                {Object.entries(w.paths).map(([tier, d]) => (
-                  <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={tier === 'S' ? 0.5 : tier === 'A' ? 0.4 : 0.3} />
-                ))}
-              </g>
-            ))}
+          <g pointerEvents="none">
+            {backdrop.wedges.map((w) => {
+              const lit = hovered === w.id;
+              const faded = hovered != null && !lit;
+              return (
+                <g key={'bd-' + w.id} opacity={faded ? 0.3 : 1} style={{ transition: 'opacity 0.2s' }}>
+                  {Object.entries(w.paths).map(([tier, d]) => (
+                    <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'}
+                      fillOpacity={lit ? 0.95 : tier === 'S' ? 0.5 : tier === 'A' ? 0.4 : 0.3}
+                      style={{ transition: 'fill-opacity 0.2s' }} />
+                  ))}
+                  {w.halo && (
+                    <path d={w.halo} fill={GREEN} fillOpacity={0.18}>
+                      {!still && <animate attributeName="fill-opacity" values="0.08;0.28;0.08" dur="2.8s" repeatCount="indefinite" />}
+                    </path>
+                  )}
+                  {w.ready && <path d={w.ready} fill={GREEN} />}
+                </g>
+              );
+            })}
           </g>
-        )}
-
-        {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
-        {hovBridge && (
-          <CirclePreview bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
-            cx={cx} cy={cy} maxR={maxR} still={still} band={previewBand(maxR, bridgeLayout.rings)} />
         )}
 
         {/* Bridge nodes — hover to preview their circle, click to open it */}
@@ -448,51 +468,10 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         )}
         <div style={{ fontSize: 8, color: '#444', marginTop: 4 }}>
           Click a bridge to open their circle, then anyone in it to open theirs
-          {backdrop ? ` · the dots behind each bridge are their circle${backdrop.per > 1 ? `, one dot for every ${backdrop.per} people` : ''}` : ''}
+          {backdrop ? ` · the dots behind each bridge are their circle${backdrop.per > 1 ? `, one dot for every ${backdrop.per} people` : ''}; green ones are ready to scan` : ''}
         </div>
       </div>
     </div>
-  );
-}
-
-/** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
-function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band }) {
-  const shown = members.filter((m) => m.degree === 1 || m.tier === 'S' || m.tier === 'A' || m.tier === 'B');
-  // Beyond every ring of bridges (lib/chain-layout.js previewBand).
-  const { inner, outer } = band;
-  const sweep = Math.min(Math.PI * 0.9, Math.max(Math.PI * 0.2, (shown.length * 11) / inner));
-  const layout = ringLayout(shown.length, {
-    inner, outer, spacing: 11, minSpacing: 3.5, start: bridge.angle - sweep / 2, sweep,
-  });
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={inner} fill="none" stroke={`${DEGREE_COLORS[2]}06`} strokeWidth={1} />
-      {shown.map((d2, j) => {
-        const p = layout.points[j];
-        const x2 = cx + p.x;
-        const y2 = cy + p.y;
-        const state = reachState(d2, reach);
-        const nr = Math.min(dotRadius(layout.spacing, d2.tier), 5) * (state ? 1.3 : 1);
-        const color = state === 'hidden' ? HIDDEN : TIER_COLORS[d2.tier] || '#555';
-        return (
-          <g key={'pv-' + d2.id}>
-            {(state || shown.length <= 40) && (
-              <line x1={bridge.x} y1={bridge.y} x2={x2} y2={y2}
-                stroke={state ? GREEN : color} strokeWidth={0.5} strokeOpacity={state ? 0.35 : 0.15} />
-            )}
-            {state === 'ready' && <Halo x={x2} y={y2} r={nr * 2.3} still={still} />}
-            <circle cx={x2} cy={y2} r={nr}
-              fill={color} fillOpacity={state ? 0.95 : 0.45}
-              stroke={state && state !== 'hidden' ? GREEN : color} strokeWidth={state ? 1 : 0.5} strokeOpacity={state ? 1 : 0.25} />
-            {(d2.tier === 'S' || state) && shown.length <= 60 && (
-              <text x={x2} y={y2 + nr + 9} textAnchor="middle" fill={state && state !== 'hidden' ? GREEN : '#aaa'} fontSize={7}>
-                {firstName(d2)}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </g>
   );
 }
 

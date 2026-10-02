@@ -207,7 +207,15 @@ test('circles behind the bridges: a dot each, a bigger circle reaches further, w
 
 test('circles behind the bridges: a huge network draws one dot for several people, the same for everyone', async () => {
   const { scaleFans } = await import('../lib/chain-layout.js');
-  const { fans, per } = scaleFans([{ angle: 0, count: 60000 }, { angle: 3, count: 600 }], { from: 200, limit: 400 });
-  assert.equal(per, 3);
-  assert.deepEqual(fans.map((f) => f.points.length), [20000, 200]);
+  const big = [{ angle: 0, count: 60000 }, { angle: 3, count: 600 }];
+  // No limit on depth: only the cap on dots in all applies.
+  const free = scaleFans(big, { from: 200 });
+  assert.equal(free.per, 3);
+  assert.deepEqual(free.fans.map((f) => f.points.length), [20000, 200]);
+  // With a limit, a dot stands for more people until the deepest wedge fits it.
+  const fit = scaleFans(big, { from: 200, limit: 400 });
+  assert.ok(fit.per > 3);
+  assert.ok(200 + fit.depth <= 400);
+  assert.equal(fit.fans[0].points.length, Math.ceil(60000 / fit.per));
+  assert.equal(fit.fans[1].points.length, Math.ceil(600 / fit.per));
 });

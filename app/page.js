@@ -12,7 +12,8 @@ import AutoScanButton from './components/AutoScanButton';
 import { peopleByDegree, tierCountsOf } from '../lib/degrees';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
-import ViewTabs from './components/ViewTabs';
+import { viewsForMode } from './components/views';
+import { setNotchTabs } from '../lib/island';
 import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
@@ -215,6 +216,23 @@ function HomeInner() {
     if (node) setSidebarCollapsed(false);
   }, []);
 
+  // Resolved once: the renderer below and the notch's buttons both need it.
+  // (Above the loading screen's early return, because the effect is a hook.)
+  const view = resolveView(visualMode, mode);
+
+  // This tab's views live in the notch under the header (app/components/ScanStatusBar.js);
+  // the Filters panel only filters.
+  const hasNetwork = degree1.length > 0;
+  useEffect(() => {
+    if (!hasNetwork) return undefined;
+    setNotchTabs({
+      items: viewsForMode(mode).map((v) => ({ key: v.key, label: v.label, icon: v.icon, title: v.desc })),
+      current: view.key,
+      onPick: setVisualMode,
+    });
+    return () => setNotchTabs(null);
+  }, [mode, view.key, hasNetwork]);
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a1a', color: '#fff' }}>
@@ -224,9 +242,6 @@ function HomeInner() {
     );
   }
 
-  // Resolved once, because two places care: the renderer below, and the Orbit
-  // toggle, which hides over Separation.
-  const view = resolveView(visualMode, mode);
   // Scanning and the Scan page belong to your own network, not the sample or a CSV.
   const canScan = !IS_DEMO && !csvMode;
 
@@ -237,7 +252,7 @@ function HomeInner() {
           <h1 style={{ fontSize: isMobile ? 16 : 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Six Degrees
           </h1>
-          <div style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <div id="main-tabs" style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <button
               onClick={() => { setMode('network'); setSelected(null); setFilter('all'); setVisualMode('galaxy'); }}
               style={{
@@ -472,13 +487,6 @@ function HomeInner() {
           degreeCounts={{ 1: byDegree[1].length, 2: byDegree[2].length, 3: byDegree[3].length }}
           bridgeTierCounts={bridgeTierCounts}
         />
-        {/* The views of this tab, as a row at the top of the map; the panel on the left only filters. */}
-        {degree1.length > 0 && (
-          <ViewTabs
-            mode={mode} current={view.key} onChange={setVisualMode} isMobile={isMobile}
-            left={!isMobile && !filterPanelCollapsed ? 336 : isMobile ? 12 : 16}
-          />
-        )}
         {/* Visualization — switches based on visualMode */}
         {(() => {
 
