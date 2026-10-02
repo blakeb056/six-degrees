@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Separation is a tab of its own**, beside Degrees in the header, instead of a view inside
+  Degrees. It uses the same Filters grid as Degrees. Degrees keeps Bridge Chains, Pyramid and List.
+- **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in
+  at one end (strong people only one of your connections knows), the easiest at the other
+  (strong people you share the most mutual connections with), and each person's own score alone
+  in the middle, as the list has always been. A line under it says in words what it is
+  surfacing. It only reorders: scores, tiers and ranks stay as they are, and it claims no odds.
+  Double-click the slider, or tap 50, to go back to the middle. It replaces the Power / Ways in
+  switch. The tier chips and the rarity chips ("Only show") sit in the same card.
+- **Separation's map follows the slider, and glides.** From the rare end to the middle it fans out
+  to ten people, each with the one or two doors that lead to them. Towards the easy end it
+  closes in on fewer people, and at the end on one: the person you're aiming at, with rings
+  round them and every connection of yours who leads to them drawn in, the top-scored one solid.
+  As the slider moves, people, connections and lines slide to their new places and newcomers
+  fade in (still, with Reduce Motion on). Pick anyone in the list, or one of the "Next" names
+  under the map, to aim at them instead. Beside each name it says how many mutual connections
+  lead to them: "only way in", "3 ways in", or, where LinkedIn's own count is higher than the
+  connections the app can draw, "37 mutuals · 6 mapped".
+- **Path, in Separation.** A Path button beside the tier chips narrows everyone to one sector or
+  one company. The picker opens under the button with the sectors (inferred, as in Paths), the
+  biggest companies and a box to type in, and goes away once you've picked; the button then
+  shows your pick with a × to clear it.
+- **Separation's heading no longer sits under the notch.**
+- **One filter for tiers and degrees, the same in Network Circle and in Degrees.** The Filters
+  panel shows the five tiers as bigger rows, each with six dots, one for each degree. Tap a tier
+  to hide or show it, as before. Tap a dot to show or hide that degree for that tier alone:
+  S tier at 2nd degree without everyone else's, say. Tap a number at the top to switch a degree
+  for every tier at once. A dot with nobody behind it is faint and can't be tapped, each row
+  says how many people it is showing, and the last people on screen can't be switched off.
+  Network Circle starts with your own connections; Degrees starts with everything. In Degrees
+  the rows used to pick one bridge tier at a time; now 1st degree is your bridges and 2nd is
+  the people in their circles, each by their own tier.
+- **The Galaxy's physics is the main thing in Network Circle's Filters panel.** The sliders,
+  layouts, colours, find and replay sit straight in the panel under the tiers, always on, with
+  no switch to turn on first and no "experimental" box. With no slider moved the Galaxy is laid
+  out as before; pointing at a dot now lights up its branch unless you turn that off.
+- **Pyramid and List left Network Circle.** Its views are the Galaxy and Orbit. Pyramid and List
+  stay in Degrees.
 - **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
   and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
   it, joined to that dot by a line, so you can see where each path came from. Inside a cluster,
@@ -33,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Bridge Chains, Separation, Pyramid and List in Degrees, switch from the notch that hangs
   under the top tabs, instead of a list at the top of the Filters panel. A scan's progress
   shows in the same notch, beside them. The Filters panel now only filters.
+
+### Fixed
+- **"Only way in" could show beside someone with two ways in drawn.** Rarity trusted the mutual
+  count a scan saved even when the app had since found them through more of your connections
+  than that. It now takes whichever is larger.
 
 ## [0.4.11] - 2026-09-29
 

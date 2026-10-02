@@ -19,7 +19,7 @@ import RingsView from './RingsView';
 import SeparationView from './SeparationView';
 
 /**
- * `modes` — which top-level mode the view belongs in ('network', 'degrees').
+ * `modes` — which top-level tab the view belongs in ('network', 'degrees', 'separation').
  * `allDegree2` — give it every 2nd-degree row rather than the mode-filtered
  *   set. Only Orbit wants this: it draws each bridge's circle in both modes and
  *   narrows to the bridges on screen itself. Declared here rather than hidden
@@ -31,10 +31,13 @@ export const VIEWS = {
   // (Blake, 2026-10-02: "this view type should just be in the network circle or
   // in insights"), not in Degrees: Bridge Chains is for following the chains.
   orbit:    { component: OrbitGraph, modes: ['network'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits, with every mapped circle fanned out', allDegree2: true },
-  separation: { component: SeparationView, modes: ['degrees'],    label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
+  // Separation is a tab of its own (Blake, 2026-10-03), not a view inside Degrees.
+  separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
-  rings:    { component: RingsView,  modes: ['network', 'degrees'], label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
-  list:     { component: ListView,   modes: ['network', 'degrees'], label: 'List',          icon: '☰', desc: 'Ranked power list' },
+  // Pyramid and List left Network Circle (Blake, 2026-10-02: "the list and pyramid gone"): the
+  // Galaxy and its physics are what that tab is for. They stay in Degrees.
+  rings:    { component: RingsView,  modes: ['degrees'],            label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
+  list:     { component: ListView,   modes: ['degrees'],            label: 'List',          icon: '☰', desc: 'Ranked power list' },
   grid:     { component: GridView,   modes: ['network', 'degrees'], label: 'Grid',          icon: '▦', desc: 'Cards' },
 };
 

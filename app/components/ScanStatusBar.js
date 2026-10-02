@@ -17,7 +17,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
-import { watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs } from '../../lib/island';
+import { watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown } from '../../lib/island';
 
 const WHAT = {
   full: 'Scanning your network',
@@ -90,6 +90,12 @@ export default function ScanStatusBar() {
   const running = !!job?.running;
   const other = others[others.length - 1] || null;
   const status = running || other || allDay;
+  // Pages with a heading at the top leave room for the notch while it's showing.
+  const showing = Boolean(status || tabs);
+  useEffect(() => {
+    setNotchShown(showing);
+    return () => setNotchShown(false);
+  }, [showing]);
   if (!status && !tabs) return null;
 
   const p = job?.progress;

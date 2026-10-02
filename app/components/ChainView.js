@@ -397,7 +397,6 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               {(!crowded || isHov) && (
                 <text x={b.x} y={b.y + (isHov ? 34 : 32)} textAnchor="middle" fill={isHov ? '#bbb' : '#888'} fontSize={7}>
                   {b.clusterSize} · {sCount > 0 ? sCount + 'S ' : ''}{aCount > 0 ? aCount + 'A' : ''}
-                  {b.chains > 0 && <tspan fill={DEGREE_COLORS[2]}> · {b.chains} {b.chains === 1 ? 'chain' : 'chains'}</tspan>}
                 </text>
               )}
             </g>

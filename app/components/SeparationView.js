@@ -8,6 +8,19 @@
 // is organised by the PERSON. Someone three of your connections know is one row
 // with three routes, not three rows (lib/separation.js does that merge).
 //
+// The slider (Blake, 2026-10-02: "i want it to be slider ajusted and can be
+// dynmaic") reorders everything as it moves: the rarest ways in at one end,
+// the easiest at the other, each person's own score alone in the middle
+// (lib/rarity.js slideValue). It never changes a score, a tier or a rank.
+//
+// The map follows the slider too (Blake, 2026-10-03): from the rare end to the
+// middle it fans out to ten people, each with the one or two doors that lead
+// to them; towards the easy end it closes in on fewer, and at the end on the
+// one person you're aiming at, with every connection of yours who leads to them.
+//
+// "Path" beside the tier chips narrows everyone to one sector or one company.
+// The picker opens under the button and goes away once you've picked.
+//
 // Two parts, one scroll: a small "summit map" of the top of the list, drawn
 // from You through each bridge to each person, and under it the full ranked
 // list. The list is windowed — about thirty rows are mounted whether there are
@@ -19,12 +32,14 @@
 // when it changes. The map's height never depends on its width, so a scrollbar
 // appearing cannot feed a resize loop.
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { separationPeople, compareWaysIn, summitLayout, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
-import { RARITY, rarityOf, rarityInfo, toggle } from '../../lib/rarity';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
+import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
+import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
 
 const ORANGE = '#FF6B35';
@@ -68,16 +83,26 @@ function subline(person) {
 
 export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
   const isMobile = useIsMobile();
+  // Room at the top for the notch, only while it's on screen (a scan, or another tab's views).
+  const notch = useSyncExternalStore(watchNotchShown, notchShownNow, noNotch);
   const ROW_H = isMobile ? 68 : 56;
   const K = isMobile ? 5 : 10;
   const sidePad = isMobile ? 8 : 16;
 
   const [query, setQuery] = useState('');
   const q = useDeferredValue(query.trim().toLowerCase());
-  const [sort, setSort] = useState('power');     // 'power' | 'ways'
+  // The slider, 0 (rarest ways in first) to 100 (easiest first); 50 is power alone.
+  // The list follows a deferred copy, so the thumb never waits for a sort.
+  const [at, setAt] = useState(SLIDER_MIDDLE);
+  const atSlow = useDeferredValue(at);
   const [tier, setTier] = useState('all');
   // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
   const [rarities, setRarities] = useState(() => new Set());
+  // Path: one sector or one company, or none. The picker is only on screen while it's open.
+  const [path, setPath] = useState(null);            // { kind: 'sector' | 'company', key, label, color }
+  const [pathOpen, setPathOpen] = useState(false);
+  const [pathText, setPathText] = useState('');
+  const [pathUsed, setPathUsed] = useState(false);   // companies are only read once Path is opened
   // Filters a card's Insights asked for ("Show them", "S only"): applied once each.
   const [presetFor, setPresetFor] = useState(null);
   if (preset && preset.id !== presetFor) {
@@ -100,10 +125,6 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 
   // ── Data: one merge per population, then order, then what's showing ──────
   const model = useMemo(() => separationPeople(degree2, connections), [degree2, connections]);
-  const ordered = useMemo(
-    () => (sort === 'ways' ? [...model.people].sort(compareWaysIn) : model.people),
-    [model, sort],
-  );
   // How rare the way in to each person is, counted across every circle you've
   // scanned (not only the ones a bridge-tier filter leaves): never a score.
   const waysAll = useMemo(() => routeIndex(fullDegree2), [fullDegree2]);
@@ -112,18 +133,50 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
     for (const p of model.people) m.set(p.key, rarityOf(p.person, waysAll.get(p.key)?.size || p.waysIn));
     return m;
   }, [model, waysAll]);
+  const ordered = useMemo(() => {
+    if (atSlow === SLIDER_MIDDLE) return model.people;
+    const value = new Map();
+    for (const p of model.people) value.set(p.key, slideValue(p.score, rarityBy.get(p.key)?.count || p.waysIn, atSlow));
+    return [...model.people].sort((a, b) => value.get(b.key) - value.get(a.key) || comparePower(a, b));
+  }, [model, rarityBy, atSlow]);
   const byRarity = useMemo(() => {
     const out = Object.fromEntries(RARITY.map((r) => [r.key, 0]));
     for (const r of rarityBy.values()) out[r.key]++;
     return out;
   }, [rarityBy]);
+  // Where everyone works, and the sector that suggests (inferred, as in Paths):
+  // read once, the first time Path is opened.
+  const facets = useMemo(() => {
+    if (!pathUsed) return null;
+    const by = new Map();
+    const sectors = new Map();
+    const companies = new Map();
+    for (const p of model.people) {
+      const company = companyOf(p.person) || null;
+      const sector = industryOf(company, p.person.headline).key;
+      by.set(p.key, { company, sector });
+      sectors.set(sector, (sectors.get(sector) || 0) + 1);
+      if (company) companies.set(company, (companies.get(company) || 0) + 1);
+    }
+    return {
+      by,
+      sectors: INDUSTRIES.map((i) => ({ ...i, count: sectors.get(i.key) || 0 })).filter((i) => i.count > 0).sort((a, b) => b.count - a.count),
+      companies: [...companies].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    };
+  }, [model, pathUsed]);
+  const onPath = useCallback((p) => {
+    if (!path || !facets) return true;
+    const f = facets.by.get(p.key);
+    return path.kind === 'sector' ? f?.sector === path.key : f?.company === path.key;
+  }, [path, facets]);
   const matches = useCallback((p, text) => (tier === 'all' || p.tier === tier)
     && (!rarities.size || rarities.has(rarityBy.get(p.key)?.key))
-    && (!text || p.haystack.includes(text)), [tier, rarities, rarityBy]);
+    && onPath(p)
+    && (!text || p.haystack.includes(text)), [tier, rarities, rarityBy, onPath]);
   const visible = useMemo(() => {
-    if (!q && tier === 'all' && !rarities.size) return ordered;
+    if (!q && tier === 'all' && !rarities.size && !path) return ordered;
     return ordered.filter((p) => matches(p, q));
-  }, [ordered, q, tier, rarities, matches]);
+  }, [ordered, q, tier, rarities, path, matches]);
 
   // Who you've already asked, or already know. The map is "who to ask next",
   // so it moves on past them: send requests to its ten and the next ten come
@@ -131,9 +184,20 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const d1Keys = useMemo(() => new Set(fullDegree1.map(keyFor)), [fullDegree1]);
   const statusOf = useCallback((p) => (d1Keys.has(p.key) ? 'connected' : hasRequest(p.person, requests) ? 'asked' : null),
     [d1Keys, requests]);
-  const top = useMemo(() => visible.filter((p) => !statusOf(p)).slice(0, K), [visible, K, statusOf]);
+  // How many the map draws follows the slider: ten, then fewer, then the one you're aiming at.
+  const shown = mapCount(atSlow, K);
+  const unasked = useMemo(() => visible.filter((p) => !statusOf(p)).slice(0, K + 1), [visible, K, statusOf]);
+  const top = useMemo(() => unasked.slice(0, shown), [unasked, shown]);
   const askedShown = useMemo(() => visible.reduce((n, p) => n + (statusOf(p) ? 1 : 0), 0), [visible, statusOf]);
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
+  // Down to one: the person picked, if they're in what's showing, else the top of the list.
+  const single = shown === 1;
+  const target = useMemo(() => {
+    if (!single) return null;
+    return (selectedKey && visible.find((p) => p.key === selectedKey)) || unasked[0] || null;
+  }, [single, selectedKey, visible, unasked]);
+  const nextUp = useMemo(() => (single && target ? unasked.filter((p) => p.key !== target.key).slice(0, isMobile ? 3 : 6) : []),
+    [single, target, unasked, isMobile]);
 
   // onSelect is read through a ref so the row and map callbacks never change
   // identity, and memoised rows never re-render because a parent re-rendered.
@@ -159,9 +223,16 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const cw = Math.max(0, Math.min(980, box.w - 2 * sidePad));
   // The map's height comes from the layout, never the DOM, so the list below
   // it can be positioned by arithmetic alone.
-  const layout = useMemo(() => summitLayout(top, cw || 800, isMobile), [top, cw, isMobile]);
+  // One map for both: ten people fanned out, or the one you're aiming at with
+  // everyone who leads to them. The same shape, so it glides from one to the other.
+  const layout = useMemo(
+    () => (single ? convergeLayout(target, cw || 800, isMobile) : summitLayout(top, cw || 800, isMobile)),
+    [single, target, top, cw, isMobile],
+  );
   const captionH = isMobile ? 58 : 40;   // fixed, so HEAD is arithmetic; the phone legend takes two lines
-  const mapBlockH = top.length ? captionH + layout.height + 12 : 0;
+  const NEXT_H = nextUp.length ? 38 : 0;
+  const mapH = single ? (target ? layout.height + NEXT_H : 0) : layout.height;
+  const mapBlockH = mapH ? captionH + mapH + 12 : 0;
   const HEAD = mapBlockH + LABEL_ROW;
   const total = HEAD + visible.length * ROW_H + BOTTOM_PAD;
 
@@ -196,8 +267,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const changeQuery = (v) => { setQuery(v); toTop(); };
   const changeTier = (t) => { setTier(t); toTop(); };
   const changeRarity = (r) => { setRarities((set) => toggle(set, r)); toTop(); };
-  const clearAll = () => { setQuery(''); setTier('all'); setRarities(new Set()); toTop(); };
-  const changeSort = (s) => { setSort(s); toTop(); };
+  const clearAll = () => { setQuery(''); setTier('all'); setRarities(new Set()); setPath(null); toTop(); };
+  const openPath = () => { setPathUsed(true); setPathText(''); setPathOpen(true); };
+  const pickPath = (next) => { setPath(next); setPathOpen(false); toTop(); };
+  const changeAt = (v) => { setAt(Math.max(0, Math.min(100, Math.round(Number(v) || 0)))); toTop(); };
   const onSearchKey = (e) => {
     if (e.key === 'Enter') {
       // Read the live text, not the deferred copy the list is still catching up to.
@@ -211,7 +284,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   };
 
   const { summary } = model;
-  const filtered = !!q || tier !== 'all' || rarities.size > 0;
+  const filtered = !!q || tier !== 'all' || rarities.size > 0 || !!path;
+  const slide = slideLabel(at);
+  const slideColor = at < 45 ? RARE : at > 55 ? EASY : '#FFD700';
   const youLabel = !userName || /^you$/i.test(String(userName).trim()) ? 'You' : initialsFor(userName);
   const rows = visible.slice(start, end);
 
@@ -221,7 +296,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       background: '#0a0a1a', color: '#fff', overflow: 'hidden',
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
-      <div style={{ padding: `10px ${SIDE}px 8px`, flexShrink: 0 }}>
+      <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h2 style={{
             margin: 0, fontSize: 18, fontWeight: 800,
@@ -261,13 +336,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
         )}
       </div>
 
-      {/* ── Controls: search, order, and their tier ── */}
-      <div style={{
-        padding: `0 ${SIDE}px 10px`, flexShrink: 0,
-        display: 'flex', gap: 8, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center',
-        flexWrap: isMobile ? 'nowrap' : 'wrap',   // with the Sidebar open, the chips take a second line
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      {/* ── Controls: search, then the slider with their tier and rarity ── */}
+      <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <style>{SLIDER_CSS}</style>
         <input
           ref={searchRef}
           type="search"
@@ -277,62 +348,116 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           placeholder="Search people, companies, or who knows them"
           aria-label="Search people, companies, or who knows them"
           style={{
-            flex: isMobile ? 'none' : '1 1 260px', minWidth: 0, height: isMobile ? 44 : 34, boxSizing: 'border-box',
+            width: '100%', minWidth: 0, height: isMobile ? 44 : 34, boxSizing: 'border-box',
             padding: '0 12px', borderRadius: 8, outline: 'none', color: '#fff',
             fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
             border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
           }}
         />
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
-          // A phone scrolls this strip sideways, so the page itself never does.
-          overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin', flexShrink: isMobile ? 0 : 1,
+          marginTop: 8, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12, position: 'relative',
+          border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)',
         }}>
-          <div role="group" aria-label="Order" style={{ display: 'flex', flexShrink: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 2 }}>
-            {[['power', 'Power'], ['ways', 'Ways in']].map(([key, label]) => (
-              <button key={key} type="button" aria-pressed={sort === key} onClick={() => changeSort(key)} style={{
-                height: isMobile ? 40 : 30, padding: '0 12px', border: 'none', borderRadius: 6, cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                background: sort === key ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'transparent',
-                color: sort === key ? '#000' : '#999',
-              }}>{label}</button>
-            ))}
-          </div>
-          <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
-          {['all', ...TIERS].map((t) => {
-            const on = tier === t;
-            const c = t === 'all' ? '#fff' : tierColors[t] || '#888';
-            const n = t === 'all' ? summary.people : summary.byTier[t];
-            return (
-              <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
-                height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
-                background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
-                color: on ? c : '#999',
-              }}>
-                {t === 'all' ? 'All' : t}
-                <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : '#666', opacity: 0.85 }}>{fmt(n)}</span>
-              </button>
-            );
-          })}
-          <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 6, cursor: 'help' }}>Rarity</span>
-          {RARITY.map((r) => {
-            const on = rarities.has(r.key);
-            return (
-              <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
-                title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+          {pathOpen && (
+            <PathPicker facets={facets} text={pathText} onText={setPathText} isMobile={isMobile}
+              onPick={pickPath} onClose={() => setPathOpen(false)} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
+            // A phone scrolls this strip sideways, so the page itself never does.
+            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
+            <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
+            {['all', ...TIERS].map((t) => {
+              const on = tier === t;
+              const c = t === 'all' ? '#fff' : tierColors[t] || '#888';
+              const n = t === 'all' ? summary.people : summary.byTier[t];
+              return (
+                <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
                   height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
                   fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                  border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
-                  background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
-                  color: on ? r.color : '#999',
+                  border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
+                  background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
+                  color: on ? c : '#999',
                 }}>
-                {r.label}
-                <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+                  {t === 'all' ? 'All' : t}
+                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : '#666', opacity: 0.85 }}>{fmt(n)}</span>
+                </button>
+              );
+            })}
+            {/* Path: one sector or one company. The picker opens under here and goes away once you pick. */}
+            <span style={{ display: 'inline-flex', flexShrink: 0, height: isMobile ? 40 : 30, borderRadius: 15, overflow: 'hidden',
+              border: `1px solid ${path ? PATH : 'rgba(0,255,136,0.35)'}`, background: path ? 'rgba(0,255,136,0.12)' : 'rgba(0,255,136,0.04)' }}>
+              <button type="button" aria-haspopup="dialog" aria-expanded={pathOpen} onClick={() => (pathOpen ? setPathOpen(false) : openPath())}
+                title="Narrow everyone to one sector or one company" style={{
+                  padding: path ? '0 6px 0 12px' : '0 12px', border: 'none', background: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: PATH, maxWidth: isMobile ? 200 : 300, overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                {path ? <>Path<span style={{ fontWeight: 500, color: '#cfe' }}> · {path.label}</span></> : 'Path ▾'}
               </button>
-            );
-          })}
+              {path && (
+                <button type="button" aria-label={`Clear the path: ${path.label}`} onClick={() => pickPath(null)} style={{
+                  padding: '0 10px 0 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: PATH,
+                }}>×</button>
+              )}
+            </span>
+            {/* Where the slider is, in words */}
+            <span aria-live="polite" style={{
+              marginLeft: 'auto', flexShrink: 0, height: isMobile ? 40 : 30, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
+              display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              border: `1px solid ${slideColor}66`, background: `${slideColor}14`, color: slideColor,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: slideColor }} />
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{at}</span>
+              {slide.name}
+            </span>
+          </div>
+
+          {/* The slider: the rarest ways in at one end, the easiest at the other, power alone in the middle */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <span style={{ color: RARE }}>Rare{isMobile ? '' : ' · one way in'}</span>
+            <span style={{ color: '#FFD700' }}>Power</span>
+            <span style={{ color: EASY }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
+          </div>
+          <input
+            className="sepslide" type="range" min={0} max={100} step={1} value={at}
+            onChange={(e) => changeAt(e.target.value)}
+            onDoubleClick={() => changeAt(SLIDER_MIDDLE)}
+            aria-label="Order: the rarest ways in, to the easiest"
+            aria-valuetext={`${at}: ${slide.name}`}
+            title="Drag to reorder everyone. Double-click to go back to the middle."
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -2 }}>
+            {[[0, 'Rarest'], [25, ''], [SLIDER_MIDDLE, 'By power'], [75, ''], [100, 'Easiest']].map(([v, name]) => (
+              <button key={v} type="button" onClick={() => changeAt(v)} aria-label={`Set the slider to ${v}${name ? `: ${name}` : ''}`} style={{
+                padding: '2px 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 10,
+                color: at === v ? '#fff' : '#667', fontWeight: at === v ? 700 : 500, fontVariantNumeric: 'tabular-nums',
+              }}>{v}{name && !isMobile ? ` · ${name}` : ''}</button>
+            ))}
+          </div>
+          <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: '#bbb' }}>
+            <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
+            {!isMobile && <span style={{ color: '#667' }}>{' '}It only reorders: scores, tiers and ranks stay as they are.</span>}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
+            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
+            <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
+            {RARITY.map((r) => {
+              const on = rarities.has(r.key);
+              return (
+                <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
+                  title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+                    height: isMobile ? 40 : 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
+                    fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+                    border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
+                    background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+                    color: on ? r.color : '#999',
+                  }}>
+                  {r.label}
+                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -343,15 +468,18 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', position: 'relative', padding: `0 ${sidePad}px` }}
       >
         <div style={{ position: 'relative', maxWidth: 980, margin: '0 auto', height: total }}>
-          {top.length > 0 && (
+          {mapBlockH > 0 && (
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''} · every way in drawn
+                  {single
+                    ? <>Aiming at {target.person.name} · every connection of yours who leads to them</>
+                    : <>Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn</>}
                 </div>
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
-                  {askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
-                  <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes · dot size = ways in
+                  {!single && askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
+                  <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
+                  {single ? ' · pick anyone in the list to aim at them instead' : ' · dot size = ways in'}
                 </div>
               </div>
               {cw > 0 && (
@@ -363,7 +491,30 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   isMobile={isMobile}
                   onPick={onPick}
                   onPickBridge={onPickBridge}
+                  mutualsBy={rarityBy}
+                  doors={!isMobile && cw >= 640}
                 />
+              )}
+              {/* Aiming at one person: the next few, to aim at instead */}
+              {cw > 0 && single && (
+                <>
+                  {nextUp.length > 0 && (
+                    <div style={{ height: NEXT_H, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Next</span>
+                      {nextUp.map((p) => (
+                        <button key={p.key} type="button" onClick={() => onPick(p)} title={`Aim at ${p.person.name}`} style={{
+                          height: 26, padding: '0 10px', borderRadius: 13, cursor: 'pointer', flexShrink: 1, minWidth: 0,
+                          fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          border: `1px solid ${(tierColors[p.tier] || '#888')}55`, background: 'rgba(255,255,255,0.03)', color: '#ccc',
+                        }}>
+                          {shortName(p.person.name)}
+                          <span style={{ marginLeft: 5, color: tierColors[p.tier] || '#888', fontWeight: 700 }}>{p.score.toFixed(1)}</span>
+                          <span style={{ marginLeft: 5, color: '#667', fontWeight: 500 }}>{p.waysIn === 1 ? '1 way' : `${p.waysIn} ways`}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -422,6 +573,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 // whatever the network's size. Hover is pure CSS from the scoped <style>, so a
 // still mouse can never re-render anything. aria-hidden because the same people
 // are the first rows of the list, and the list is the accessible path.
+const MOVE = '.38s cubic-bezier(.2,.8,.2,1)';
 const MAP_CSS = `
 .sepmap .sp { cursor: pointer; transition: opacity .12s; }
 .sepmap .ppl:hover .sp { opacity: .28; }
@@ -430,10 +582,33 @@ const MAP_CSS = `
 .sepmap .br { cursor: pointer; }
 .sepmap .br:hover text { text-decoration: underline; }
 .sepmap .rt { pointer-events: none; }
+/* Everything glides to its new place as the slider moves: dots and names by
+   their group's transform, lines by their path. Newcomers fade in. */
+.sepmap .mv { transition: transform ${MOVE}; }
+.sepmap .rt, .sepmap .spk { transition: d ${MOVE}, stroke-opacity .12s; }
+.sepmap .in { animation: sepIn .3s ease-out both; }
+@keyframes sepIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sepmap .mv, .sepmap .rt, .sepmap .spk { transition: none; }
+  .sepmap .in { animation: none; }
+}
 `;
 const HALO = { paintOrder: 'stroke', stroke: '#0a0a1a', strokeWidth: 3, strokeLinejoin: 'round' };
+const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
 
-const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge }) {
+/**
+ * How many mutual connections lead to someone, said the way the data has it:
+ * the ones drawn are the connections of yours whose circles you've scanned;
+ * LinkedIn's own count, when a scan saved one, can be higher.
+ */
+function waysTag(p, mutuals) {
+  if (mutuals?.from === 'linkedin' && mutuals.count > p.waysIn) {
+    return { text: `${fmt(mutuals.count)} mutuals · ${fmt(p.waysIn)} mapped`, rare: false, more: mutuals.count };
+  }
+  return p.waysIn === 1 ? { text: 'only way in', rare: true, more: 0 } : { text: `${fmt(p.waysIn)} ways in`, rare: false, more: 0 };
+}
+
+const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false }) {
   const { width, height, you, people, bridges, links, spokes } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
@@ -454,7 +629,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
       </defs>
 
       {spokes.map((s) => (
-        <line key={`s-${s.id ?? 'unresolved'}`} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
+        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
       ))}
 
       <g className="ppl">
@@ -463,32 +638,70 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
           const c = tierColors[p.tier] || '#888';
           const sel = pp.key === selectedKey;
           const via = p.routes.map((r) => (r.bridge ? r.bridge.name : CANT_NAME)).join(', ');
+          const tag = waysTag(p, mutualsBy?.get(p.key));
+          const lx = pp.r + 14;
+          const room = Math.max(8, Math.floor((width - pp.x - lx) / 6));
+          const clip = (t) => (String(t || '').length > room ? `${String(t).slice(0, room - 1)}…` : String(t || ''));
           return (
             <g key={pp.key} className={sel ? 'sp sel' : 'sp'} onClick={() => onPick(p)}>
-              <title>{`${p.person.name} · #${p.rank}${p.tied ? '=' : ''} · ${p.tier} · ${p.score.toFixed(1)} · via ${via}`}</title>
+              <title>{`${p.person.name} · #${p.rank}${p.tied ? '=' : ''} · ${p.tier} · ${p.score.toFixed(1)} · ${tag.text} · via ${via}`}</title>
               {(linksBy.get(pp.key) || []).map((l) => {
                 const mx = (l.x1 + l.x2) / 2;
-                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : tierColors[l.tier] || '#888';
+                // Aiming at one person: their other routes are gold; among ten, each bridge's tier colour.
+                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : pp.big ? '#FFD700' : tierColors[l.tier] || '#888';
                 return (
                   <path
                     key={`${l.key}-${l.bridgeId ?? 'u'}`}
-                    className="rt"
-                    d={`M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r},${l.y2}`}
+                    className="rt in"
+                    d={`M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r - (pp.big ? 2 : 0)},${l.y2}`}
                     fill="none"
                     stroke={stroke}
-                    strokeWidth={l.primary ? 1.5 : 1}
-                    strokeOpacity={l.primary ? 0.8 : 0.35}
-                    strokeDasharray={l.primary ? undefined : '3 3'}
+                    strokeWidth={pp.big ? (l.primary ? 2.2 : 1.4) : l.primary ? 1.5 : 1}
+                    strokeOpacity={pp.big ? (l.primary ? 0.95 : 0.6) : l.primary ? 0.8 : 0.35}
+                    strokeDasharray={l.primary ? undefined : pp.big ? '5 4' : '3 3'}
                   />
                 );
               })}
-              <rect x={pp.x - 12} y={pp.y - gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />
-              {sel && <circle cx={pp.x} cy={pp.y} r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
-              <circle cx={pp.x} cy={pp.y} r={pp.r} fill={c} />
-              <text x={pp.x + 14} y={pp.y} dy="0.35em" fontSize={fs} fill="#ddd" style={HALO}>
-                {pp.label}
-                <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
-              </text>
+              <g className="mv in" style={at(pp.x, pp.y)}>
+                {(pp.rings || []).map((r, i) => (
+                  <circle key={r} r={r} fill="none" stroke={c} strokeOpacity={0.28 - i * 0.08} strokeWidth={1} strokeDasharray={i ? '2 5' : undefined} />
+                ))}
+                <rect x={-12} y={-gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />
+                {pp.big ? (
+                  <>
+                    <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} />
+                    <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
+                    <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
+                    <text x={lx} y={-4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
+                    <text x={lx} y={13} fontSize={fs} fontWeight={700} fill={c} style={HALO}>
+                      #{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}
+                    </text>
+                    <text x={lx} y={29} fontSize={fs} fill="#ccc" style={HALO}>
+                      {clip(tag.more
+                        ? `${fmt(tag.more)} mutual connections · ${fmt(p.waysIn)} drawn here`
+                        : p.waysIn === 1 ? '1 mutual connection: the only way in' : `${fmt(p.waysIn)} mutual connections, all drawn`)}
+                    </text>
+                    {tag.more > 0 && (
+                      <text x={lx} y={44} fontSize={fs - 1} fill="#778" style={HALO}>
+                        {clip('The count is LinkedIn’s; the rest are in circles not scanned yet')}
+                      </text>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {sel && <circle r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
+                    <circle r={pp.r} fill={c} />
+                    <text x={14} dy="0.35em" fontSize={fs} fill="#ddd" style={HALO}>
+                      {pp.label}
+                      <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
+                      {/* How many mutual connections lead to them: one is the rare kind */}
+                      {doors && (
+                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? RARE : '#778'}>{tag.text}</tspan>
+                      )}
+                    </text>
+                  </>
+                )}
+              </g>
             </g>
           );
         })}
@@ -504,25 +717,27 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
           >
             <title>{b.unresolved
               ? 'Routes whose connection record doesn’t match anyone in your 1st-degree list, so who introduces you can’t be named'
-              : `${b.bridge.name} · ${b.bridge.tier}-tier · a way in to ${b.count} of these · click to open`}</title>
-            <circle
-              cx={b.x} cy={b.y} r={b.r}
-              fill={b.unresolved ? 'none' : c}
-              stroke={b.unresolved ? '#777' : '#0a0a1a'}
-              strokeWidth={b.unresolved ? 1 : 1.5}
-              strokeDasharray={b.unresolved ? '2 2' : undefined}
-            />
-            <text x={b.x - 9} y={b.y} dy="0.35em" textAnchor="end" fontSize={fs - 1} fill={c}
-              fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : 600} style={HALO}>
-              {b.label}
-            </text>
+              : `${b.bridge.name} · ${b.bridge.tier}-tier${b.count > 1 ? ` · a way in to ${b.count} of these` : ''} · click to open`}</title>
+            <g className="mv in" style={at(b.x, b.y)}>
+              <circle
+                r={b.r}
+                fill={b.unresolved ? 'none' : c}
+                stroke={b.unresolved ? '#777' : '#0a0a1a'}
+                strokeWidth={b.unresolved ? 1 : 1.5}
+                strokeDasharray={b.unresolved ? '2 2' : undefined}
+              />
+              <text x={-9} dy="0.35em" textAnchor="end" fontSize={fs - 1} fill={c}
+                fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : b.primary ? 800 : 600} style={HALO}>
+                {b.label}
+              </text>
+            </g>
           </g>
         );
       })}
 
-      <g>
-        <circle cx={you.x} cy={you.y} r={you.r} fill="url(#sepYouGrad)" />
-        <text x={you.x} y={you.y} dy="0.35em" textAnchor="middle" fontSize={youLabel.length > 2 ? 9 : 10} fontWeight={800} fill="#000">
+      <g className="mv" style={at(you.x, you.y)}>
+        <circle r={you.r} fill="url(#sepYouGrad)" />
+        <text dy="0.35em" textAnchor="middle" fontSize={youLabel.length > 2 ? 9 : 10} fontWeight={800} fill="#000">
           {youLabel}
         </text>
       </g>
@@ -579,6 +794,84 @@ function Tags({ status, rarity }) {
   );
 }
 
+// ── Path: pick one sector or one company ───────────────────────────────────
+// Opens under the Path button, over the slider, and closes on a pick, on Esc
+// or on a click anywhere else. Sectors are inferred (lib/companies.js), so it says so.
+function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
+  const needle = text.trim().toLowerCase();
+  const sectors = (facets?.sectors || []).filter((i) => !needle || i.label.toLowerCase().includes(needle));
+  const companies = (facets?.companies || []).filter((c) => !needle || c.name.toLowerCase().includes(needle)).slice(0, needle ? 60 : 24);
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+    else if (e.key === 'Enter') {
+      if (sectors.length === 1 && !companies.length) onPick({ kind: 'sector', key: sectors[0].key, label: sectors[0].label, color: sectors[0].color });
+      else if (companies.length === 1 && !sectors.length) onPick({ kind: 'company', key: companies[0].name, label: companies[0].name });
+    }
+  };
+  const sub = { fontSize: 9, fontWeight: 700, color: '#667', letterSpacing: 1, textTransform: 'uppercase', margin: '10px 0 6px' };
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+      <div role="dialog" aria-label="Pick a sector or a company" style={{
+        position: 'absolute', zIndex: 41, top: isMobile ? 52 : 44, left: isMobile ? 6 : 14, width: isMobile ? 'calc(100% - 12px)' : 'min(560px, calc(100% - 28px))',
+        maxHeight: 340, overflowY: 'auto', boxSizing: 'border-box', padding: 12, borderRadius: 12,
+        background: '#0c101e', border: `1px solid ${PATH}55`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+      }}>
+        <input
+          autoFocus type="search" value={text} onChange={(e) => onText(e.target.value)} onKeyDown={onKey}
+          placeholder="Type a sector or a company" aria-label="Type a sector or a company"
+          style={{
+            width: '100%', height: isMobile ? 44 : 34, boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, outline: 'none',
+            color: '#fff', fontSize: isMobile ? 16 : 13, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)',
+          }}
+        />
+        {sectors.length > 0 && <div style={sub}>Sectors · inferred from company names and headlines</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {sectors.map((i) => (
+            <button key={i.key} type="button" onClick={() => onPick({ kind: 'sector', key: i.key, label: i.label, color: i.color })} style={{
+              height: 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+              border: `1px solid ${i.color}66`, background: `${i.color}14`, color: '#ddd', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: i.color }} />
+              {i.label}
+              <span style={{ fontWeight: 500, color: '#889' }}>{fmt(i.count)}</span>
+            </button>
+          ))}
+        </div>
+        {companies.length > 0 && <div style={sub}>Companies{needle ? '' : ' · the biggest; type to find any'}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {companies.map((c) => (
+            <button key={c.name} type="button" onClick={() => onPick({ kind: 'company', key: c.name, label: c.name })} style={{
+              height: 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#ccc',
+            }}>
+              {c.name}
+              <span style={{ marginLeft: 6, fontWeight: 500, color: '#889' }}>{fmt(c.count)}</span>
+            </button>
+          ))}
+        </div>
+        {!sectors.length && !companies.length && (
+          <div style={{ fontSize: 12, color: '#888', padding: '12px 2px 4px' }}>
+            {facets ? `Nothing matches ‘${text.trim()}’.` : 'Reading where everyone works…'}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+const PATH = '#00ff88';
+// The slider's two ends, in the colours rarity already uses for them.
+const RARE = '#00E5FF';
+const EASY = '#FF7043';
+const SLIDER_CSS = `
+.sepslide { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; background: transparent; cursor: pointer; }
+.sepslide::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
+.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
+.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 3px; border-radius: 6px; }
+`;
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
 const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity }) {

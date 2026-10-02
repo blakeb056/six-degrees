@@ -9,7 +9,8 @@ import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import AutoScanButton from './components/AutoScanButton';
-import { peopleByDegree, tierCountsOf } from '../lib/degrees';
+import { peopleByDegree } from '../lib/degrees';
+import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
@@ -74,13 +75,12 @@ function HomeInner() {
   const [degree2, setDegree2] = useState([]);
   // People found only by company scans: 3rd degree in Network Circle's filter.
   const [degree3, setDegree3] = useState([]);
-  // Which degrees Network Circle draws: your connections alone until you pick more.
-  const [degrees, setDegrees] = useState([1]);
-  // Tiers switched off in Network Circle's Filter panel (C and D make a lot of noise).
-  const [hiddenTiers, setHiddenTiers] = useState([]);
+  // The Filters panel's grid, one for each tab: which tiers show, at which
+  // degrees (lib/tier-grid.js). Network Circle starts with your connections
+  // alone; Degrees with everything it has.
+  const [grids, setGrids] = useState({ network: NETWORK_GRID, degrees: DEGREES_GRID });
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
-  const [filter, setFilter] = useState('all');
   // A link to someone's circle in Bridge Chains, /?chain=<id> (the Scan page's
   // "watch it fill in"), opens Degrees on it. The router's search params rather
   // than window.location: on a click from another page the address bar only
@@ -160,7 +160,7 @@ function HomeInner() {
   const [separationPreset, setSeparationPreset] = useState(null);
   const showInSeparation = useCallback((preset) => {
     setSeparationPreset({ ...preset, id: `${preset.query}|${preset.tier || ''}|${preset.rarity || ''}|${Math.random()}` });
-    setMode('degrees');
+    setMode('separation');
     setVisualMode('separation');
   }, []);
   // A card's Insights → that person's circle in Bridge Chains.
@@ -174,7 +174,8 @@ function HomeInner() {
     try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
   }, []);
 
-  const isDegreesMode = mode === 'degrees';
+  // Separation is its own tab, built on the same rows as Degrees: your bridges and their circles.
+  const isDegreesMode = mode === 'degrees' || mode === 'separation';
   const connections = degree1;
 
   // What the views draw. Memoised because the graph views rebuild their whole
@@ -184,14 +185,13 @@ function HomeInner() {
   // Network Circle draws the degrees picked in the Filter panel, each person
   // once, at the nearest degree they're found (lib/degrees.js).
   const byDegree = useMemo(() => peopleByDegree(degree1, degree2, degree3), [degree1, degree2, degree3]);
-  const networkRows = useMemo(
-    () => (isDegreesMode ? connections : degrees.flatMap((d) => byDegree[d] || [])),
-    [isDegreesMode, connections, degrees, byDegree],
-  );
+  const grid = isDegreesMode ? grids.degrees : grids.network;
+  // Degrees draws your connections (the bridges among them) and their circles;
+  // Network Circle draws whoever the grid shows, at any degree.
   const filtered = useMemo(() => {
-    if (!isDegreesMode) return hiddenTiers.length ? networkRows.filter(c => !hiddenTiers.includes(c.tier)) : networkRows;
-    return filter === 'all' ? networkRows : networkRows.filter(c => c.tier === filter);
-  }, [isDegreesMode, networkRows, filter, hiddenTiers]);
+    if (isDegreesMode) return connections.filter((c) => shows(grid, c.tier, 1));
+    return [1, 2, 3].flatMap((d) => (byDegree[d] || []).filter((c) => shows(grid, c.tier, d)));
+  }, [isDegreesMode, connections, byDegree, grid]);
   // Lookups built once per load. Every click re-renders this component, and the
   // three places below used to scan one list inside another — degree1.find per
   // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
@@ -201,16 +201,17 @@ function HomeInner() {
     () => new Set(degree2.map(d => d.source_connection_id).filter(Boolean)),
     [degree2],
   );
-  const bridgeTierCounts = useMemo(() => {
-    const counts = {};
-    degree1.forEach(c => { if (bridgeIds.has(c.id)) counts[c.tier] = (counts[c.tier] || 0) + 1; });
-    return counts;
-  }, [degree1, bridgeIds]);
+  // A 2nd-degree row shows when its own tier does at 2nd degree, and the bridge
+  // it came through shows at 1st.
   const filteredD2 = useMemo(() => {
     if (!isDegreesMode) return NO_DEGREE2;
-    if (filter === 'all') return degree2;
-    return degree2.filter(c => d1ById.get(c.source_connection_id)?.tier === filter);
-  }, [isDegreesMode, filter, d1ById, degree2]);
+    return degree2.filter((c) => shows(grid, c.tier, 2) && shows(grid, d1ById.get(c.source_connection_id)?.tier, 1));
+  }, [isDegreesMode, grid, d1ById, degree2]);
+  // How many people stand behind each dot of the grid. In Degrees, 1st degree
+  // counts the bridges, since those are the connections it draws.
+  const panelCounts = useMemo(() => gridCounts(isDegreesMode
+    ? { 1: degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
+    : byDegree), [isDegreesMode, degree1, bridgeIds, byDegree]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) setSidebarCollapsed(false);
@@ -254,7 +255,7 @@ function HomeInner() {
           </h1>
           <div id="main-tabs" style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <button
-              onClick={() => { setMode('network'); setSelected(null); setFilter('all'); setVisualMode('galaxy'); }}
+              onClick={() => { setMode('network'); setSelected(null); setVisualMode('galaxy'); }}
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
                 background: mode === 'network' ? '#fff' : 'transparent',
@@ -264,7 +265,7 @@ function HomeInner() {
               {isMobile ? 'Circle' : 'Network Circle'}
             </button>
             <button
-              onClick={() => { setMode('degrees'); setSelected(null); setFilter('all'); setVisualMode('chain'); }}
+              onClick={() => { setMode('degrees'); setSelected(null); setVisualMode('chain'); }}
               style={{
                 padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
                 background: mode === 'degrees' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'rgba(255,255,255,0.12)',
@@ -272,6 +273,16 @@ function HomeInner() {
               }}
             >
               Degrees
+            </button>
+            <button
+              onClick={() => { setMode('separation'); setSelected(null); setVisualMode('separation'); }}
+              style={{
+                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
+                background: mode === 'separation' ? 'linear-gradient(135deg, #00E5FF, #FFD700 55%, #FF7043)' : 'rgba(255,255,255,0.12)',
+                color: mode === 'separation' ? '#000' : '#fff',
+              }}
+            >
+              Separation
             </button>
 
             {/* Which network you are looking at, and the way back out of it.
@@ -474,18 +485,11 @@ function HomeInner() {
         <FilterPanel
           collapsed={filterPanelCollapsed}
           onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-          mode={mode}
-          filter={filter}
-          onFilterChange={setFilter}
+          mode={isDegreesMode ? 'degrees' : 'network'}
           visualMode={view.key}
-          onVisualModeChange={setVisualMode}
-          tierCounts={isDegreesMode ? stats?.tiers || {} : tierCountsOf(networkRows)}
-          degrees={degrees}
-          onDegreesChange={setDegrees}
-          hiddenTiers={hiddenTiers}
-          onHiddenTiersChange={setHiddenTiers}
-          degreeCounts={{ 1: byDegree[1].length, 2: byDegree[2].length, 3: byDegree[3].length }}
-          bridgeTierCounts={bridgeTierCounts}
+          grid={grid}
+          gridCounts={panelCounts}
+          onGridChange={(next) => setGrids((g) => ({ ...g, [isDegreesMode ? 'degrees' : 'network']: next }))}
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
@@ -551,12 +555,11 @@ function HomeInner() {
           tierColors={TIER_COLORS}
           connections={degree1}
           degree2={degree2}
-          mode={mode}
+          mode={isDegreesMode ? 'degrees' : 'network'}
           collapsed={sidebarCollapsed}
-          filter={filter}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onSelect={(node) => { setSelected(node || null); }}
-          onSwitchMode={(newMode) => { setMode(newMode); setFilter('all'); }}
+          onSwitchMode={(newMode) => { setMode(newMode); }}
           onOpenCircle={openCircle}
           onShowInSeparation={showInSeparation}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
