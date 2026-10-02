@@ -191,3 +191,23 @@ test('a lot of fans share about `total` dots between them', () => {
   const drawn = outerFans(anchors, { from: 300, total: 1200 }).reduce((n, f) => n + f.points.length, 0);
   assert.ok(drawn <= 1200, `${drawn} drawn`);
 });
+
+test('circles behind the bridges: a dot each, a bigger circle reaches further, wedges never overlap', async () => {
+  const { scaleFans } = await import('../lib/chain-layout.js');
+  const anchors = [26, 70, 300, 0].map((count, i) => ({ angle: (i * Math.PI) / 2, count }));
+  const { fans, per, spacing } = scaleFans(anchors, { from: 200, limit: 400 });
+  assert.equal(per, 1);
+  assert.deepEqual(fans.map((f) => f.points.length), [26, 70, 300, 0]);
+  const reach = (f) => Math.max(0, ...f.points.map((p) => Math.hypot(p.x, p.y)));
+  assert.ok(reach(fans[2]) > reach(fans[1]) && reach(fans[1]) > reach(fans[0]));   // deeper as it grows
+  assert.ok(fans.every((f) => f.half <= Math.PI / 4 * 0.9 + 1e-9));                 // inside its quarter
+  assert.ok(fans[2].half > fans[0].half);                                           // and wider
+  assert.ok(spacing > 0);
+});
+
+test('circles behind the bridges: a huge network draws one dot for several people, the same for everyone', async () => {
+  const { scaleFans } = await import('../lib/chain-layout.js');
+  const { fans, per } = scaleFans([{ angle: 0, count: 60000 }, { angle: 3, count: 600 }], { from: 200, limit: 400 });
+  assert.equal(per, 3);
+  assert.deepEqual(fans.map((f) => f.points.length), [20000, 200]);
+});

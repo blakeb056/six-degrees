@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Bridge Chains shows every circle behind its bridge, quietly.** A block of small, muted dots
+  sits behind each bridge, S tier nearest, and grows with the circle: a bigger circle is wider
+  and reaches further out. It dims while a bridge's own preview is showing. On a very large
+  network one dot stands for several people, the same for every bridge, and the key says so.
+  Orbit is no longer a view of its own: this is what it was for.
+- **Views are a row at the top of the map.** Galaxy, Pyramid and List in Network Circle, and
+  Bridge Chains, Separation, Pyramid and List in Degrees, switch from one small row instead of
+  a list at the top of the Filters panel. The Filters panel now only filters.
+
 ## [0.4.11] - 2026-09-29
 
 ### Added

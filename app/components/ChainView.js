@@ -33,7 +33,7 @@ import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
-import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
+import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans, scaleFans } from '../../lib/chain-layout';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
@@ -45,6 +45,9 @@ const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 
 const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 const GREEN = '#00ff88';
 const HIDDEN = '#5a5a66';
+// The overview's zoom at rest: close enough to read a bridge's name, far enough
+// out that the circles behind the bridges (the backdrop) fit the window.
+const HOME_ZOOM = 1.1;
 
 const byTierThenScore = (a, b) => (TIER_RANK[a.tier] ?? 9) - (TIER_RANK[b.tier] ?? 9)
   || score(b) - score(a)
@@ -101,7 +104,7 @@ function trailTo(id, rows) {
 export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened }) {
   const containerRef = useRef(null);
   const [hovered, setHovered] = useState(null);
-  const [zoom, setZoom] = useState(1.3);
+  const [zoom, setZoom] = useState(HOME_ZOOM);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   // Every row, whatever the tier filter: a circle opened from a bridge the
   // filter shows is drawn whole, and so is anyone's circle opened from it.
@@ -200,6 +203,33 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, clusterSize: (bridgeMap[b.id] || []).length };
   });
 
+  // Every circle behind its bridge, drawn quietly (Blake, 2026-10-02: Orbit's
+  // scale, shown here "but not bringing so much attention"). A wedge of small
+  // dots per bridge, S nearest, reaching further out the bigger the circle is.
+  // Built once per layout as a few paths, so hovering never redraws the dots.
+  const backdropKey = `${dims.w}x${dims.h}|${bridgePos.map((b) => `${b.id}:${b.clusterSize}:${b.angle.toFixed(4)}`).join(',')}`;
+  const backdrop = useMemo(() => {
+    if (!bridgePos.length) return null;
+    const from = previewBand(maxR, bridgeLayout.rings).inner;
+    const { fans, spacing, per } = scaleFans(
+      bridgePos.map((b) => ({ angle: b.angle, count: b.clusterSize })), { from, limit: maxR * 0.92 });
+    const r = Math.max(0.9, spacing * 0.3);
+    const dot = (pt) => `M${(cx + pt.x - r).toFixed(1)},${(cy + pt.y).toFixed(1)}a${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(2 * r).toFixed(2)},0a${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(-2 * r).toFixed(2)},0`;
+    const wedges = bridgePos.map((b, i) => {
+      // Best first, so S sits nearest the bridge; one dot per `per` people.
+      const tiers = (bridgeMap[b.id] || []).map((m) => m.tier).sort((x, y) => (TIER_RANK[x] ?? 9) - (TIER_RANK[y] ?? 9));
+      const paths = {};
+      fans[i].points.forEach((pt, k) => {
+        const tier = tiers[Math.min(tiers.length - 1, k * per)] || 'D';
+        paths[tier] = (paths[tier] || '') + dot(pt);
+      });
+      return { id: b.id, paths };
+    });
+    return { wedges, per };
+    // bridgePos, bridgeMap and the layout are rebuilt every render; the key says when they changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backdropKey]);
+
   // Touch rotary dial on the overview: drag a finger round the circle to pick a bridge.
   const bridgeAnglesRef = useRef([]);
   useEffect(() => {
@@ -277,6 +307,20 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       <g transform={`translate(${cx * (1 - zoom)}, ${cy * (1 - zoom)}) scale(${zoom})`}>
         {/* Ring guide */}
         <circle cx={cx} cy={cy} r={maxR * 0.55} fill="none" stroke={`${DEGREE_COLORS[1]}10`} strokeWidth={1} />
+
+        {/* Every circle behind its bridge, toned down: the scale, without the noise.
+            It dims further while a bridge's own preview is showing over it. */}
+        {backdrop && (
+          <g pointerEvents="none" opacity={hovBridge ? 0.25 : 1} style={{ transition: 'opacity 0.2s' }}>
+            {backdrop.wedges.map((w) => (
+              <g key={'bd-' + w.id}>
+                {Object.entries(w.paths).map(([tier, d]) => (
+                  <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={tier === 'S' ? 0.5 : tier === 'A' ? 0.4 : 0.3} />
+                ))}
+              </g>
+            ))}
+          </g>
+        )}
 
         {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
         {hovBridge && (
@@ -364,7 +408,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       {/* Zoom controls, clear of the Galaxy switch below them */}
       <ZoomButtons
         onIn={() => setZoom(z => Math.min(3, z + 0.3))}
-        onReset={() => setZoom(1.3)}
+        onReset={() => setZoom(HOME_ZOOM)}
         onOut={() => setZoom(z => Math.max(0.4, z - 0.3))}
       />
 
@@ -402,7 +446,10 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
             {Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways
           </div>
         )}
-        <div style={{ fontSize: 8, color: '#444', marginTop: 4 }}>Click a bridge to open their circle, then anyone in it to open theirs</div>
+        <div style={{ fontSize: 8, color: '#444', marginTop: 4 }}>
+          Click a bridge to open their circle, then anyone in it to open theirs
+          {backdrop ? ` · the dots behind each bridge are their circle${backdrop.per > 1 ? `, one dot for every ${backdrop.per} people` : ''}` : ''}
+        </div>
       </div>
     </div>
   );

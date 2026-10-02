@@ -7,11 +7,12 @@ import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
-import { VIEWS, resolveView } from './components/views';
+import { resolveView } from './components/views';
 import AutoScanButton from './components/AutoScanButton';
 import { peopleByDegree, tierCountsOf } from '../lib/degrees';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
+import ViewTabs from './components/ViewTabs';
 import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
@@ -471,6 +472,13 @@ function HomeInner() {
           degreeCounts={{ 1: byDegree[1].length, 2: byDegree[2].length, 3: byDegree[3].length }}
           bridgeTierCounts={bridgeTierCounts}
         />
+        {/* The views of this tab, as a row at the top of the map; the panel on the left only filters. */}
+        {degree1.length > 0 && (
+          <ViewTabs
+            mode={mode} current={view.key} onChange={setVisualMode} isMobile={isMobile}
+            left={!isMobile && !filterPanelCollapsed ? 336 : isMobile ? 12 : 16}
+          />
+        )}
         {/* Visualization — switches based on visualMode */}
         {(() => {
 
@@ -550,35 +558,6 @@ function HomeInner() {
         />
         {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain'} />}
 
-        {/* Orbit, one tap from Bridge Chains — bottom right, Degrees mode only.
-            It used to say "Galaxy" and show Orbit: the Galaxy is a Network
-            Circle view, so asking for it here fell back to Orbit. Hidden over
-            Separation, where on a phone it sat on top of the score column. */}
-        {isDegreesMode && view.key !== 'separation' && (
-          <div style={{
-            position: 'absolute', bottom: 20, right: 20, zIndex: 20,
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: '6px 14px',
-            backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <span style={{ fontSize: 10, color: '#666' }}>{VIEWS.orbit.icon} {VIEWS.orbit.label}</span>
-            <div
-              onClick={() => setVisualMode(view.key === 'orbit' ? 'chain' : 'orbit')}
-              style={{
-                width: 32, height: 18, borderRadius: 9, cursor: 'pointer',
-                background: view.key === 'orbit' ? '#FF6B35' : 'rgba(255,255,255,0.15)',
-                position: 'relative', transition: 'background 0.2s',
-              }}
-            >
-              <div style={{
-                width: 14, height: 14, borderRadius: '50%', background: '#fff',
-                position: 'absolute', top: 2,
-                left: view.key === 'orbit' ? 16 : 2,
-                transition: 'left 0.2s',
-              }} />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
