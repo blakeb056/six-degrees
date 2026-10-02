@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { easeOf, slideValue, slideLabel } from '../lib/rarity.js';
+import { easeOf, slideValue, slideLabel, mutualsOf, rarityOf } from '../lib/rarity.js';
 
 test('the Separation slider: 50 is the score alone, each end weights it by rarity or ease', () => {
   assert.equal(easeOf(1), 0);
@@ -23,4 +23,13 @@ test('the Separation slider: 50 is the score alone, each end weights it by rarit
   assert.ok(slideValue(9, 1, 0) > slideValue(5, 1, 0));
   assert.deepEqual([0, 30, 50, 70, 100].map((v) => slideLabel(v).name),
     ['Rarest first', 'Leaning rare', 'By power', 'Leaning easy', 'Easiest first']);
+});
+
+test('mutual connections are never fewer than the ways in the app has seen', () => {
+  assert.deepEqual(mutualsOf({ mutual_count: 12 }, 2), { count: 12, from: 'linkedin' });
+  assert.deepEqual(mutualsOf({ mutual_count: 1 }, 3), { count: 3, from: 'scans' });
+  assert.deepEqual(mutualsOf({}, 2), { count: 2, from: 'scans' });
+  assert.deepEqual(mutualsOf({ mutual_count: 0 }, 1), { count: 1, from: 'scans' });
+  assert.equal(rarityOf({ mutual_count: 1 }, 2).key, 'rare');
+  assert.equal(rarityOf({ mutual_count: 1 }, 1).key, 'only');
 });

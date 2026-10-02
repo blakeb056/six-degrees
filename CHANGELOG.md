@@ -10,11 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in
   at one end (strong people only one of your connections knows), the easiest at the other
   (strong people you share the most mutual connections with), and each person's own score alone
-  in the middle, as the list has always been. The map of who to ask next and the list under it
-  follow the slider live, and a line under it says in words what it is surfacing. It only
-  reorders: scores, tiers and ranks stay as they are, and it claims no odds. Double-click the
-  slider, or tap 50, to go back to the middle. It replaces the Power / Ways in switch. The tier
-  chips and the rarity chips ("Only show") sit in the same card.
+  in the middle, as the list has always been. A line under it says in words what it is
+  surfacing. It only reorders: scores, tiers and ranks stay as they are, and it claims no odds.
+  Double-click the slider, or tap 50, to go back to the middle. It replaces the Power / Ways in
+  switch. The tier chips and the rarity chips ("Only show") sit in the same card.
+- **Separation's map follows the slider.** From the rare end to the middle it fans out to ten
+  people, each with the one or two doors that lead to them, and says "only way in" or how many
+  ways beside each name. Towards the easy end it closes in on fewer people, and at the end on
+  one: the person you're aiming at, with rings round them and every connection of yours who
+  leads to them drawn in, the top-scored one solid. Pick anyone in the list, or one of the
+  "Next" names under the map, to aim at them instead. Where LinkedIn counts more mutual
+  connections than the app can name, it says so.
+- **Path, in Separation.** A Path button beside the tier chips narrows everyone to one sector or
+  one company. The picker opens under the button with the sectors (inferred, as in Paths), the
+  biggest companies and a box to type in, and goes away once you've picked; the button then
+  shows your pick with a × to clear it.
 - **Separation's heading no longer sits under the notch.**
 - **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
   and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
@@ -42,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Bridge Chains, Separation, Pyramid and List in Degrees, switch from the notch that hangs
   under the top tabs, instead of a list at the top of the Filters panel. A scan's progress
   shows in the same notch, beside them. The Filters panel now only filters.
+
+### Fixed
+- **"Only way in" could show beside someone with two ways in drawn.** Rarity trusted the mutual
+  count a scan saved even when the app had since found them through more of your connections
+  than that. It now takes whichever is larger.
 
 ## [0.4.11] - 2026-09-29
 

@@ -187,3 +187,33 @@ test('an empty network is an empty list and an empty map', () => {
   assert.deepEqual(people(undefined, undefined), []);
   assert.equal(summitLayout([], 800).height, 0);
 });
+
+test('the map follows the slider: ten people to the middle, then fewer, one at the easy end', async () => {
+  const { mapCount } = await import('../lib/separation.js');
+  assert.deepEqual([0, 25, 50, 60, 75, 90, 96, 100].map((v) => mapCount(v, 10)), [10, 10, 10, 8, 5, 2, 1, 1]);
+  assert.equal(mapCount(100, 5), 1);
+  assert.equal(mapCount(70, 5), 3);
+});
+
+test('one person on the map: every connection who leads to them, the best first, unnamed ones as one', async () => {
+  const { convergeLayout } = await import('../lib/separation.js');
+  const b = (id, tier) => ({ id, bridge: { id, name: `Bridge ${id}`, tier } });
+  const p = { key: 'k', person: { name: 'Target Person' }, routes: [b('a', 'S'), b('b', 'A'), b('c', 'B'), { id: 'x', bridge: null }, { id: 'y', bridge: null }] };
+  const l = convergeLayout(p, 900);
+  assert.equal(l.bridges.length, 4);
+  assert.deepEqual(l.bridges.map((n) => n.primary), [true, false, false, false]);
+  assert.equal(l.bridges[3].unresolved, true);
+  assert.equal(l.bridges[3].count, 2);
+  // Every line ends on the person, who sits to the right of the bridges, level with You.
+  assert.ok(l.links.every((k) => k.x2 === l.target.x && k.y2 === l.target.y));
+  assert.ok(l.target.x > l.bridges[0].x && l.bridges[0].x > l.you.x);
+  assert.equal(l.target.y, l.you.y);
+  // Bridges never closer than their gap, and all inside the map.
+  for (let i = 1; i < l.bridges.length; i++) assert.ok(l.bridges[i].y - l.bridges[i - 1].y >= 34 - 1e-9);
+  assert.ok(l.bridges[0].y > 0 && l.bridges[3].y < l.height);
+  // One way in still draws: a single line, straight across.
+  const one = convergeLayout({ routes: [b('a', 'S')] }, 900);
+  assert.equal(one.links.length, 1);
+  assert.equal(one.bridges[0].y, one.target.y);
+  assert.deepEqual(convergeLayout({ routes: [] }, 900).links, []);
+});
