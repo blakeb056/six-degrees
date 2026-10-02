@@ -1,6 +1,6 @@
 'use client';
 
-// Scores → Your sector (app/scores; it was Settings → Your sector). Up to three sectors you work in: one of the twelve
+// Settings → Scores → Your field (app/settings; it was a Scores tab of its own from 9/28 to 10/3). Up to three sectors you work in: one of the twelve
 // broad industries, or a narrower sector from the app's directory (Dental,
 // Real Estate, Software & SaaS…). Companies in them count for more when your
 // scanned network is scored, like setting their scores by hand on Paths →
@@ -78,7 +78,7 @@ export default function SectorSection({ onSaved } = {}) {
     return () => { off = true; clearTimeout(timer.current); };
   }, []);
 
-  // Links to /scores#sector (the profile's card, the old /settings#sector) arrive
+  // Links to /settings#sector (the profile's card, the old /scores#sector) arrive
   // before this section has loaded, so the browser's own jump to it finds
   // nothing. Jump once it's here, then keep it in place while what loads above
   // it (Updates) pushes it down: the browser only holds steady what's already

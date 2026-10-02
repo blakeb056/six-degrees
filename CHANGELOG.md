@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Scores moved into Settings.** Your field, how tiers are graded and every company's score are a
+  Scores section in Settings (the gear), and the Scores tab is gone from the header. Old links to
+  the Scores tab land in the same place in Settings.
+- **Profile has Insights.** An Insights button beside Profile shows network health: how much of
+  your 2nd degree you reach two or more ways, the effective reach of your connections, and the
+  connections who reach the most people no one else does. It was at the top of the Scores tab.
 - **Paths → People.** A new view beside the company map, drawn the same way but with your
   connections as the bubbles: each is sized by the value of the cluster behind them (S tier counts
   3, A tier 2, everyone else 1; or by cluster size, or by S tier inside), coloured by their sector
