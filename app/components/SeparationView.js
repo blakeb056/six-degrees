@@ -35,7 +35,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
-import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel } from '../../lib/rarity';
+import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel, easeOf } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
@@ -50,6 +50,9 @@ const CANT_NAME = 'a connection we can’t name';
 // phone. This much side padding keeps them off the text at every width.
 const SIDE = 56;
 const LABEL_ROW = 28;
+const TITLE_ROW = 44;           // the ledger's title bar, on a computer (Blake, 2026-10-03: mock-up 2)
+// The ledger's columns: rank, face, person, way in, how rare the way in, power.
+const COLUMNS = '64px 36px minmax(0,1.3fr) minmax(0,1fr) 190px 132px';
 const BOTTOM_PAD = 72;           // clear of the last row's reach, and the corner toggles
 const OVERSCAN = 8;
 const SCROLL_STEP = 16;          // scroll is published to state in 16px steps, not every pixel
@@ -225,15 +228,18 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // it can be positioned by arithmetic alone.
   // One map for both: ten people fanned out, or the one you're aiming at with
   // everyone who leads to them. The same shape, so it glides from one to the other.
+  // Wide enough: connections as pills and people as cards (Blake, 2026-10-03); a phone keeps the dots.
+  const cards = !isMobile && cw >= 760;
   const layout = useMemo(
-    () => (single ? convergeLayout(target, cw || 800, isMobile) : summitLayout(top, cw || 800, isMobile)),
-    [single, target, top, cw, isMobile],
+    () => (single ? convergeLayout(target, cw || 800, isMobile, { cards }) : summitLayout(top, cw || 800, isMobile, { cards })),
+    [single, target, top, cw, isMobile, cards],
   );
   const captionH = isMobile ? 58 : 40;   // fixed, so HEAD is arithmetic; the phone legend takes two lines
   const NEXT_H = nextUp.length ? 38 : 0;
   const mapH = single ? (target ? layout.height + NEXT_H : 0) : layout.height;
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
-  const HEAD = mapBlockH + LABEL_ROW;
+  const titleH = isMobile ? 0 : TITLE_ROW;
+  const HEAD = mapBlockH + titleH + LABEL_ROW;
   const total = HEAD + visible.length * ROW_H + BOTTOM_PAD;
 
   // ── Windowing ────────────────────────────────────────────────────────────
@@ -479,7 +485,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
                   {!single && askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
                   <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
-                  {single ? ' · pick anyone in the list to aim at them instead' : ' · dot size = ways in'}
+                  {single ? ' · pick anyone in the list to aim at them instead' : cards ? ' · a lit pill is someone’s best way in' : ' · dot size = ways in'}
                 </div>
               </div>
               {cw > 0 && (
@@ -493,6 +499,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   onPickBridge={onPickBridge}
                   mutualsBy={rarityBy}
                   doors={!isMobile && cw >= 640}
+                  cards={cards}
                 />
               )}
               {/* Aiming at one person: the next few, to aim at instead */}
@@ -519,17 +526,31 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             </div>
           )}
 
+          {visible.length > 0 && !isMobile && (
+            <div style={{
+              height: TITLE_ROW, display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 0 15px', boxSizing: 'border-box',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 15, fontWeight: 800 }}>Ranked by reach</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#000', background: '#FFD700', borderRadius: 10, padding: '2px 8px' }}>
+                {fmt(visible.length)}{filtered ? ` of ${fmt(summary.people)}` : ''}
+              </span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#777' }}>
+                order follows the slider · <span style={{ color: slideColor }}>{slide.name.toLowerCase()}</span>
+              </span>
+            </div>
+          )}
           {visible.length > 0 && (
             <div style={{
               height: LABEL_ROW, display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px 0 15px',
-              gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : '64px 36px minmax(0,1.4fr) minmax(0,1fr) 96px 44px',
+              gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
               fontSize: 9, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5,
               borderBottom: '1px solid rgba(255,255,255,0.08)', boxSizing: 'border-box',
             }}>
               <span title="Rank by score, then ways in. = means tied">#</span>
               <span />
-              {isMobile ? <span>Person · way in</span> : <><span>Person</span><span>Way in</span><span>Power</span></>}
-              <span style={{ textAlign: 'right' }}>{isMobile ? 'Score' : ''}</span>
+              {isMobile ? <span>Person · way in</span> : <><span>Person</span><span>Way in</span><span title={RARITY_NOTE}>How rare the way in</span><span style={{ textAlign: 'right' }}>Power</span></>}
+              {isMobile && <span style={{ textAlign: 'right' }}>Score</span>}
             </div>
           )}
 
@@ -608,7 +629,7 @@ function waysTag(p, mutuals) {
   return p.waysIn === 1 ? { text: 'only way in', rare: true, more: 0 } : { text: `${fmt(p.waysIn)} ways in`, rare: false, more: 0 };
 }
 
-const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false }) {
+const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false, cards = false }) {
   const { width, height, you, people, bridges, links, spokes } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
@@ -628,10 +649,16 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
         </linearGradient>
       </defs>
 
+      <defs>
+        <radialGradient id="sepAimHalo"><stop offset="0" stopColor="#FFD700" stopOpacity="0.2" /><stop offset="1" stopColor="#FFD700" stopOpacity="0" /></radialGradient>
+      </defs>
       {spokes.map((s) => (
-        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
+        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${cards ? s.x2 - PILL_W : s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
       ))}
 
+      {cards && people.length === 1 && people[0].big && (
+        <circle className="mv" style={at(people[0].x + Math.min(200, (width - people[0].x) / 2), people[0].y)} r={170} fill="url(#sepAimHalo)" />
+      )}
       <g className="ppl">
         {people.map((pp) => {
           const { p } = pp;
@@ -666,8 +693,12 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
                 {(pp.rings || []).map((r, i) => (
                   <circle key={r} r={r} fill="none" stroke={c} strokeOpacity={0.28 - i * 0.08} strokeWidth={1} strokeDasharray={i ? '2 5' : undefined} />
                 ))}
-                <rect x={-12} y={-gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />
-                {pp.big ? (
+                {!cards && <rect x={-12} y={-gap / 2} width={Math.max(0, width - pp.x + 12)} height={gap} fill="transparent" />}
+                {cards && pp.big ? (
+                  <BigCard p={p} c={c} tag={tag} width={Math.max(260, Math.min(400, width - pp.x - 4))} fs={fs} />
+                ) : cards ? (
+                  <SmallCard p={p} c={c} tag={tag} width={Math.max(240, Math.min(340, width - pp.x - 4))} sel={sel} />
+                ) : pp.big ? (
                   <>
                     <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} />
                     <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
@@ -719,6 +750,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
               ? 'Routes whose connection record doesn’t match anyone in your 1st-degree list, so who introduces you can’t be named'
               : `${b.bridge.name} · ${b.bridge.tier}-tier${b.count > 1 ? ` · a way in to ${b.count} of these` : ''} · click to open`}</title>
             <g className="mv in" style={at(b.x, b.y)}>
+              {cards ? <Pill b={b} c={c} big={people.length === 1 && people[0].big} /> : (<>
               <circle
                 r={b.r}
                 fill={b.unresolved ? 'none' : c}
@@ -730,6 +762,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
                 fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : b.primary ? 800 : 600} style={HALO}>
                 {b.label}
               </text>
+              </>)}
             </g>
           </g>
         );
@@ -745,11 +778,102 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
   );
 });
 
+// ── Cards (Blake, 2026-10-03: mock-ups 1 and 1b) ───────────────────────────
+// Connections as pills in the middle, people as cards on the right; at the
+// easy end, the one person as a big card. Plain SVG, placed by the same
+// gliding groups as the dots, so the slider still moves everything smoothly.
+const PILL_W = 236;
+const clipText = (t, n) => (String(t || '').length > n ? `${String(t).slice(0, Math.max(1, n - 1))}…` : String(t || ''));
+const chipW = (text, size = 9.5) => Math.round(String(text).length * size * 0.6 + 14);
+
+/** A connection: their initials, name, tier and what they are to the people on the map. */
+function Pill({ b, c, big }) {
+  if (b.unresolved) {
+    return (
+      <g>
+        <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="#11132a" stroke="#555" strokeDasharray="3 3" />
+        <text x={-PILL_W + 14} dy="0.35em" fontSize={11.5} fontStyle="italic" fill="#888">{clipText(b.label, 30)}</text>
+      </g>
+    );
+  }
+  const tier = b.bridge.tier;
+  const tag = big
+    ? (b.primary ? `${tier} · best way in` : tier)
+    : b.onlyFor ? `${tier} · only door${b.onlyFor > 1 ? ` ×${b.onlyFor}` : ''}`
+      : b.bestFor ? `${tier} · door for ${b.bestFor}` : tier;
+  const hot = big ? b.primary : b.bestFor > 0;
+  const tw = chipW(tag);
+  return (
+    <g>
+      <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="#14172e"
+        stroke={hot ? 'rgba(255,215,0,0.55)' : 'rgba(255,255,255,0.09)'} strokeWidth={hot ? 1.3 : 1} />
+      <circle cx={-PILL_W + 15} r={10} fill={c} />
+      <text x={-PILL_W + 15} dy="0.35em" textAnchor="middle" fontSize={8} fontWeight={800} fill="#000">{initialsFor(b.bridge.name)}</text>
+      <text x={-PILL_W + 31} dy="0.35em" fontSize={12} fontWeight={600} fill="#e8e8f0">
+        {clipText(b.bridge.name, Math.max(6, Math.floor((PILL_W - 31 - tw - 10) / 6.4)))}
+      </text>
+      <rect x={-tw - 7} y={-9} width={tw} height={18} rx={9} fill={`${c}22`} />
+      <text x={-7 - tw / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={c}>{tag}</text>
+    </g>
+  );
+}
+
+/** Someone on the map: rank, name, role, score, and how many ways in. */
+function SmallCard({ p, c, tag, width, sel }) {
+  const tw = chipW(tag.text);
+  return (
+    <g>
+      <rect x={0} y={-20} width={width} height={40} rx={10} fill="#151830" stroke={sel ? '#fff' : 'rgba(255,255,255,0.09)'} strokeWidth={sel ? 1.5 : 1} />
+      <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''}</text>
+      <text x={60} y={-3} fontSize={13} fontWeight={700} fill="#fff">{clipText(p.person.name, Math.floor((width - 60 - 70) / 7))}</text>
+      <text x={60} y={12} fontSize={10.5} fill="#8a8fa8">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
+      <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} fill={c}>{p.score.toFixed(1)}</text>
+      <rect x={width - 12 - tw} y={4} width={tw} height={14} rx={7}
+        fill={tag.rare ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.06)'} stroke={tag.rare ? 'rgba(0,229,255,0.35)' : 'rgba(255,255,255,0.14)'} />
+      <text x={width - 12 - tw / 2} y={11} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tag.rare ? RARE : '#cfd3e6'}>{tag.text}</text>
+    </g>
+  );
+}
+
+/** The one person you're aiming at: a large card with both numbers that matter. */
+function BigCard({ p, c, tag, width, fs }) {
+  const named = p.routes.filter((r) => r.bridge).length;
+  const first = tag.more ? `${fmt(tag.more)} mutual connections` : p.waysIn === 1 ? '1 mutual connection' : `${fmt(p.waysIn)} mutual connections`;
+  const second = tag.more ? `${fmt(p.waysIn)} drawn here` : p.waysIn === 1 ? 'the only way in' : 'all drawn here';
+  const w1 = chipW(first, 10.5);
+  const w2 = chipW(second, 10.5);
+  const tx = 96;
+  const room = Math.floor((width - tx - 14) / 6.6);
+  return (
+    <g>
+      <rect x={0} y={-76} width={width} height={152} rx={16} fill="#151830" stroke="rgba(255,215,0,0.45)" />
+      <circle cx={48} r={32} fill="#0a0a1a" stroke={c} strokeWidth={3} />
+      <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
+      <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
+      <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="#fff">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
+      <text x={tx} y={1} fontSize={12} fill="#8a8fa8">{clipText(subline(p.person), room)}</text>
+      <rect x={tx} y={12} width={w1} height={20} rx={10} fill="rgba(255,112,67,0.12)" stroke="rgba(255,112,67,0.4)" />
+      <text x={tx + w1 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill={EASY}>{first}</text>
+      <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)" />
+      <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#cfd3e6">{second}</text>
+      <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
+        {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count;` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
+      </text>
+      {tag.more > 0 && (
+        <text x={tx} y={64} fontSize={10.5} fill="#6b7090">
+          {clipText(`the other ${fmt(tag.more - named)} are in circles you haven’t scanned yet.`, Math.floor((width - tx - 14) / 5.4))}
+        </text>
+      )}
+    </g>
+  );
+}
+
 // ── Rows ───────────────────────────────────────────────────────────────────
 
 const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 
 function Via({ p, route, tierColors, compact }) {
+  if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} />;
   if (!route?.bridge) {
     return <span style={{ ...ellipsis, color: '#777', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
   }
@@ -766,6 +890,44 @@ function Via({ p, route, tierColors, compact }) {
           color: ORANGE, background: 'rgba(255,107,53,0.15)',
         }}>+{extra}</span>
       )}
+    </span>
+  );
+}
+
+/** The ledger's way in: the connection's face and name, and under it "only way in" or how many more. */
+function WayIn({ p, route, tierColors }) {
+  const b = route?.bridge;
+  const extra = p.waysIn - 1;
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }} title={`Every way in:\n${everyRoute(p)}`}>
+      {b ? <Avatar person={b} size={26} tierColors={tierColors} /> : <span style={{ width: 26, height: 26, borderRadius: '50%', border: '1px dashed #666', flexShrink: 0 }} />}
+      <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <span style={{ ...ellipsis, fontSize: 13, fontWeight: 700, color: b ? tierColors[b.tier] || '#ddd' : '#777', fontStyle: b ? 'normal' : 'italic' }}>
+          {b ? b.name : CANT_NAME}
+        </span>
+        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? '#99a' : RARE, fontWeight: extra > 0 ? 500 : 700 }}>
+          {extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** How rare the way in is, as a bar: full for one door, nearly empty for the warmest. */
+function RarityBar({ p, rarity }) {
+  const info = rarity ? rarityInfo(rarity.key) : null;
+  if (!info) return <span />;
+  const fill = Math.max(0.06, 1 - easeOf(rarity.count));
+  const mapped = rarity.from === 'linkedin' && rarity.count > p.waysIn ? `, ${fmt(p.waysIn)} mapped` : '';
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}
+      title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (LinkedIn’s count)'}. ${RARITY_NOTE}`}>
+      <span style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+        <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, borderRadius: 3, background: info.color }} />
+      </span>
+      <span style={{ ...ellipsis, fontSize: 10.5, fontWeight: 700, color: info.color }}>
+        {info.label} · {fmt(rarity.count)} mutual{rarity.count === 1 ? '' : 's'}{mapped}
+      </span>
     </span>
   );
 }
@@ -900,7 +1062,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
       style={{
         position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box',
         display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px',
-        gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : '64px 36px minmax(0,1.4fr) minmax(0,1fr) 96px 44px',
+        gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
         borderLeft: `3px solid ${selected ? ORANGE : 'transparent'}`,
         borderBottom: '1px solid rgba(255,255,255,0.04)',
         background: base, cursor: 'pointer',
@@ -926,22 +1088,29 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff' }}>{person.name}</span>
               <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}55`, borderRadius: 4, padding: '0 4px' }}>{p.tier}</span>
-              <Tags status={status} rarity={rarity} />
+              {/* The rarity has its own column here */}
+              <Tags status={status} rarity={null} />
               {member && <span style={{ flexShrink: 0, fontSize: 10, color: '#666' }}>out of network</span>}
             </div>
             <div style={{ ...ellipsis, fontSize: 10, color: '#777', marginTop: 2 }}>{subline(person)}</div>
           </div>
           <Via p={p} route={route} tierColors={tierColors} />
-          <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
-            <div style={{ height: '100%', borderRadius: 3, background: c, width: `${Math.max(0, Math.min(1, p.score / 10)) * 100}%` }} />
+          <RarityBar p={p} rarity={rarity} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+              <div style={{ height: '100%', borderRadius: 3, background: c, width: `${Math.max(0, Math.min(1, p.score / 10)) * 100}%` }} />
+            </div>
+            <span style={{ fontSize: 15, fontWeight: 800, color: c, width: 30, textAlign: 'right' }}>{p.score.toFixed(1)}</span>
           </div>
         </>
       )}
 
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: c }}>{p.score.toFixed(1)}</div>
-        {isMobile && <div style={{ fontSize: 9, color: '#666', fontWeight: 700 }}>{p.tier}</div>}
-      </div>
+      {isMobile && (
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: c }}>{p.score.toFixed(1)}</div>
+          <div style={{ fontSize: 9, color: '#666', fontWeight: 700 }}>{p.tier}</div>
+        </div>
+      )}
     </div>
   );
 });
