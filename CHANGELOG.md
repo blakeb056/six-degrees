@@ -73,6 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows in the same notch, beside them. The Filters panel now only filters.
 
 ### Fixed
+- **"Hide the Chrome window while scanning" did nothing for scans started on the Scan page.**
+  Its own buttons (Scan, Check for new, Auto scan and the rest) sent their request without the
+  setting, so Chrome opened anyway; only scans started from a person's card or Resume were hidden.
+  Every scan start now goes through one place that adds it.
 - **"Only way in" could show beside someone with two ways in drawn.** Rarity trusted the mutual
   count a scan saved even when the app had since found them through more of your connections
   than that. It now takes whichever is larger.

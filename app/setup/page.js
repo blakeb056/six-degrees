@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
-import { stopScrape, pickedPerson } from '../../lib/scraper-client';
+import { stopScrape, pickedPerson, scanRequest, HIDE_CHROME_KEY } from '../../lib/scraper-client';
 import { setupStep, askForField } from '../../lib/scanner-setup';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
@@ -68,7 +68,7 @@ function SetupInner() {
   // Experimental Auto-Bridge: all-day pacing and LinkedIn's own data (scripts/scrape.py --experimental).
   const [experimental, setExperimental] = useRemembered('six-degrees-experimental-auto', false);
   // Scanning with no Chrome window (scripts/scrape.py --headless); lib/scraper-client.js reads it for every scan.
-  const [hideChrome, setHideChrome] = useRemembered('six-degrees-hide-chrome', false);
+  const [hideChrome, setHideChrome] = useRemembered(HIDE_CHROME_KEY, false);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
@@ -143,7 +143,9 @@ function SetupInner() {
       const r = await fetch('/api/scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...extra }),
+        // With "Hide the Chrome window" from the switch below; this page's own
+        // buttons used to leave it out, so it never hid anything started here.
+        body: JSON.stringify(scanRequest(action, extra, hideChrome)),
       });
       const d = await r.json();
       if (!r.ok) setError(d.error || 'Could not start.');
