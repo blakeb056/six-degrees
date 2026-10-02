@@ -192,30 +192,53 @@ test('a lot of fans share about `total` dots between them', () => {
   assert.ok(drawn <= 1200, `${drawn} drawn`);
 });
 
-test('circles behind the bridges: a dot each, a bigger circle reaches further, wedges never overlap', async () => {
-  const { scaleFans } = await import('../lib/chain-layout.js');
-  const anchors = [26, 70, 300, 0].map((count, i) => ({ angle: (i * Math.PI) / 2, count }));
-  const { fans, per, spacing } = scaleFans(anchors, { from: 200, limit: 400 });
-  assert.equal(per, 1);
-  assert.deepEqual(fans.map((f) => f.points.length), [26, 70, 300, 0]);
-  const reach = (f) => Math.max(0, ...f.points.map((p) => Math.hypot(p.x, p.y)));
-  assert.ok(reach(fans[2]) > reach(fans[1]) && reach(fans[1]) > reach(fans[0]));   // deeper as it grows
-  assert.ok(fans.every((f) => f.half <= Math.PI / 4 * 0.9 + 1e-9));                 // inside its quarter
-  assert.ok(fans[2].half > fans[0].half);                                           // and wider
-  assert.ok(spacing > 0);
+test('ringLayout: ringGap keeps the rings further apart than the dots on them', async () => {
+  const { ringLayout } = await import('../lib/chain-layout.js');
+  const l = ringLayout(60, { inner: 150, outer: 400, spacing: 30, ringGap: 64 });
+  assert.ok(l.rings.length > 1);
+  for (let k = 1; k < l.rings.length; k++) assert.ok(l.rings[k].radius - l.rings[k - 1].radius >= 64 - 1e-9);
+  // Without it nothing changes.
+  const plain = ringLayout(60, { inner: 150, outer: 400, spacing: 30 });
+  assert.equal(plain.rings[1].radius - plain.rings[0].radius, 30);
 });
 
-test('circles behind the bridges: a huge network draws one dot for several people, the same for everyone', async () => {
-  const { scaleFans } = await import('../lib/chain-layout.js');
-  const big = [{ angle: 0, count: 60000 }, { angle: 3, count: 600 }];
-  // No limit on depth: only the cap on dots in all applies.
-  const free = scaleFans(big, { from: 200 });
-  assert.equal(free.per, 3);
-  assert.deepEqual(free.fans.map((f) => f.points.length), [20000, 200]);
-  // With a limit, a dot stands for more people until the deepest wedge fits it.
-  const fit = scaleFans(big, { from: 200, limit: 400 });
-  assert.ok(fit.per > 3);
-  assert.ok(200 + fit.depth <= 400);
-  assert.equal(fit.fans[0].points.length, Math.ceil(60000 / fit.per));
-  assert.equal(fit.fans[1].points.length, Math.ceil(600 / fit.per));
+test('chains: someone met through a bridge sits one hop out, beside that bridge', async () => {
+  const { chainLayout } = await import('../lib/chain-layout.js');
+  // 0..5 are your own; 6 came through 2; 7 through 6; 8 and 9 both through 4.
+  const parents = [-1, -1, -1, -1, -1, -1, 2, 6, 4, 4];
+  const l = chainLayout(parents, { inner: 200, outer: 240, spacing: 46, hop: 60 });
+  assert.deepEqual(l.points.map((p) => p.depth), [0, 0, 0, 0, 0, 0, 1, 2, 1, 1]);
+  assert.equal(l.points[6].radius, 260);
+  assert.equal(l.points[7].radius, 320);
+  const near = (a, b) => { const d = Math.abs(a - b) % (2 * Math.PI); return Math.min(d, 2 * Math.PI - d); };
+  // An only child points straight out from its bridge, and so does theirs.
+  assert.ok(near(l.points[6].angle, l.points[2].angle) < 1e-9);
+  assert.ok(near(l.points[7].angle, l.points[2].angle) < 1e-9);
+  // Two from the same bridge sit either side of it, a full spacing apart.
+  const sep = 46 / 260;
+  assert.ok(Math.abs(near(l.points[8].angle, l.points[9].angle) - sep) < 1e-9);
+  assert.ok(Math.abs(near(l.points[8].angle, l.points[4].angle) - sep / 2) < 1e-9);
+  assert.deepEqual(l.rings.map((r) => [r.depth, r.count]), [[0, 6], [1, 3], [2, 1]]);
+  assert.equal(l.points[8].parent, 4);
+});
+
+test('chains: nobody on a ring touches a neighbour, however many came through one bridge', async () => {
+  const { chainLayout } = await import('../lib/chain-layout.js');
+  const parents = [-1, -1, -1, ...new Array(9).fill(0), ...new Array(4).fill(1)];
+  const l = chainLayout(parents, { inner: 180, outer: 220, spacing: 40, hop: 60 });
+  const kids = l.points.filter((p) => p.depth === 1).map((p) => p.angle).sort((a, b) => a - b);
+  const sep = 40 / 240;
+  for (let k = 1; k < kids.length; k++) assert.ok(kids[k] - kids[k - 1] >= sep - 1e-9);
+  assert.ok(kids[0] + 2 * Math.PI - kids[kids.length - 1] >= sep - 1e-9);
+});
+
+test('chains: a ring too full to keep its spacing shares the circle evenly; a loop is cut, not followed for ever', async () => {
+  const { chainLayout } = await import('../lib/chain-layout.js');
+  const full = chainLayout([-1, ...new Array(60).fill(0)], { inner: 100, outer: 120, spacing: 46, hop: 60 });
+  const a = full.points.slice(1).map((p) => p.angle).sort((x, y) => x - y);
+  for (let k = 1; k < a.length; k++) assert.ok(Math.abs(a[k] - a[k - 1] - (2 * Math.PI) / 60) < 1e-9);
+  const loop = chainLayout([1, 0, -1], { inner: 100, outer: 120, spacing: 46 });
+  assert.equal(loop.points.length, 3);
+  assert.ok(loop.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
+  assert.deepEqual(chainLayout([], { inner: 100, outer: 120, spacing: 46 }).points, []);
 });
