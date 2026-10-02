@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Separation is a tab of its own**, beside Degrees in the header, instead of a view inside
+  Degrees. It uses the same Filters grid as Degrees. Degrees keeps Bridge Chains, Pyramid and List.
 - **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in
   at one end (strong people only one of your connections knows), the easiest at the other
   (strong people you share the most mutual connections with), and each person's own score alone
@@ -14,13 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   surfacing. It only reorders: scores, tiers and ranks stay as they are, and it claims no odds.
   Double-click the slider, or tap 50, to go back to the middle. It replaces the Power / Ways in
   switch. The tier chips and the rarity chips ("Only show") sit in the same card.
-- **Separation's map follows the slider.** From the rare end to the middle it fans out to ten
-  people, each with the one or two doors that lead to them, and says "only way in" or how many
-  ways beside each name. Towards the easy end it closes in on fewer people, and at the end on
-  one: the person you're aiming at, with rings round them and every connection of yours who
-  leads to them drawn in, the top-scored one solid. Pick anyone in the list, or one of the
-  "Next" names under the map, to aim at them instead. Where LinkedIn counts more mutual
-  connections than the app can name, it says so.
+- **Separation's map follows the slider, and glides.** From the rare end to the middle it fans out
+  to ten people, each with the one or two doors that lead to them. Towards the easy end it
+  closes in on fewer people, and at the end on one: the person you're aiming at, with rings
+  round them and every connection of yours who leads to them drawn in, the top-scored one solid.
+  As the slider moves, people, connections and lines slide to their new places and newcomers
+  fade in (still, with Reduce Motion on). Pick anyone in the list, or one of the "Next" names
+  under the map, to aim at them instead. Beside each name it says how many mutual connections
+  lead to them: "only way in", "3 ways in", or, where LinkedIn's own count is higher than the
+  connections the app can draw, "37 mutuals · 6 mapped".
 - **Path, in Separation.** A Path button beside the tier chips narrows everyone to one sector or
   one company. The picker opens under the button with the sectors (inferred, as in Paths), the
   biggest companies and a box to type in, and goes away once you've picked; the button then
