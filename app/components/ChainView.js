@@ -601,12 +601,13 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
     return placed.map((f, i) => f && { ...f, i, people: behind[i].slice(0, f.points.length) }).filter(Boolean);
   }, [members, behind, hasFans, layout]);
 
-  // Each link's cluster: a small disc of dots round them, S nearest, the same
-  // size of dot for everyone so a bigger circle is a bigger disc.
+  // Each link's cluster: their circle as rings of dots round them, S nearest,
+  // every dot joined to them by a faint line like the big circle's own. The
+  // same size of dot for everyone, so a bigger circle is a bigger disc.
   const clusters = useMemo(() => links.map(({ row }) => {
     const people = (index.circles.get(row.id) || []).slice().sort(byTierThenScore);
-    const l = ringLayout(Math.min(people.length, LINK_DOTS), { inner: 18, outer: Infinity, spacing: 4.6, minSpacing: 4.6 });
-    return { people, points: l.points, radius: (l.rings[l.rings.length - 1]?.radius || 18) + 3 };
+    const l = ringLayout(Math.min(people.length, LINK_DOTS), { inner: LINK_INNER, outer: Infinity, spacing: 7.5, minSpacing: 7.5 });
+    return { people, points: l.points, radius: (l.rings[l.rings.length - 1]?.radius || LINK_INNER) + 6 };
   }), [links, index]);
   // Where the links sit: out to the side on a wide window, below on a tall one.
   const tree = useMemo(() => {
@@ -812,7 +813,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           {tree && links.map((link, j) => {
             const p = tree.points[j];
             const from = link.parent >= 0 ? tree.points[link.parent] : { x: 0, y: 0 };
-            const start = link.parent >= 0 ? 15 : 30;
+            const start = link.parent >= 0 ? LINK_NODE + 3 : 30;
             const len = Math.hypot(p.x - from.x, p.y - from.y) || 1;
             const ux = (p.x - from.x) / len;
             const uy = (p.y - from.y) / len;
@@ -820,7 +821,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
             const color = DEGREE_COLORS[depth + link.step] || DEGREE_COLORS[6];
             return (
               <line key={'ln-' + link.row.id} pointerEvents="none"
-                x1={from.x + ux * start} y1={from.y + uy * start} x2={p.x - ux * 15} y2={p.y - uy * 15}
+                x1={from.x + ux * start} y1={from.y + uy * start} x2={p.x - ux * (LINK_NODE + 3)} y2={p.y - uy * (LINK_NODE + 3)}
                 stroke={color} strokeLinecap="round" strokeWidth={(lit ? 2.6 : 1.8) / k}
                 strokeOpacity={litLinks && !lit ? 0.3 : lit ? 1 : 0.85} />
             );
@@ -836,17 +837,22 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
               <g key={'lk-' + row.id} transform={`translate(${p.x} ${p.y})`} pointerEvents="none"
                 opacity={litLinks && !lit ? 0.45 : 1}>
                 <circle r={c.radius} fill="#0a0a1a" fillOpacity={0.9} stroke={color} strokeOpacity={lit ? 0.7 : 0.25} strokeWidth={1 / k} />
-                {clusterPaths(c).map(([tier, d]) => (
-                  <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={lit ? 1 : 0.8} />
+                {/* Their people, each joined to them */}
+                {clusterPaths(c).map(([tier, { spokes }]) => (
+                  <path key={'s' + tier} d={spokes} fill="none" stroke={TIER_COLORS[tier] || '#555'}
+                    strokeWidth={0.7} strokeOpacity={lit ? 0.6 : 0.38} />
                 ))}
-                <circle r={12} fill={photo ? '#1a1a2e' : TIER_COLORS[row.tier] || '#555'} stroke={hovLink === j ? '#fff' : color} strokeWidth={2} />
+                {clusterPaths(c).map(([tier, { dots: d }]) => (
+                  <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={lit ? 1 : 0.9} />
+                ))}
+                <circle r={LINK_NODE} fill={photo ? '#1a1a2e' : TIER_COLORS[row.tier] || '#555'} stroke={hovLink === j ? '#fff' : color} strokeWidth={2.5} />
                 {photo ? (
                   <>
-                    <clipPath id={'lk-clip-' + row.id}><circle r={10} /></clipPath>
-                    <image href={photo} x={-10} y={-10} width={20} height={20} clipPath={`url(#lk-clip-${row.id})`} />
+                    <clipPath id={'lk-clip-' + row.id}><circle r={LINK_NODE - 2} /></clipPath>
+                    <image href={photo} x={2 - LINK_NODE} y={2 - LINK_NODE} width={LINK_NODE * 2 - 4} height={LINK_NODE * 2 - 4} clipPath={`url(#lk-clip-${row.id})`} />
                   </>
                 ) : (
-                  <text y={4} textAnchor="middle" fill={row.tier === 'S' ? '#000' : '#fff'} fontSize={11} fontWeight={700}>{row.name?.charAt(0)}</text>
+                  <text y={5} textAnchor="middle" fill={row.tier === 'S' ? '#000' : '#fff'} fontSize={14} fontWeight={700}>{row.name?.charAt(0)}</text>
                 )}
                 {row.id === scanningId && (
                   <circle r={c.radius + 4} fill="none" stroke={DEGREE_COLORS[3]} strokeWidth={1 / k} strokeDasharray={`${3 / k} ${2 / k}`} />
@@ -973,15 +979,23 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
 
 // A link's cluster draws at most this many of their people; the count beside it is the whole circle.
 const LINK_DOTS = 290;
+// A link's own dot, and where the first ring of their people starts.
+const LINK_NODE = 17;
+const LINK_INNER = 30;
 
-/** A cluster's dots as one path per tier: a few elements, however many dots. */
+/**
+ * A cluster as two paths per tier, however many people: the dots, and a line
+ * from the link's own dot out to each of them.
+ */
 function clusterPaths(cluster) {
   const paths = {};
   cluster.points.forEach((pt, i) => {
     const tier = cluster.people[i]?.tier || 'D';
-    const q = tier === 'S' ? 1.9 : tier === 'A' ? 1.7 : 1.5;
-    paths[tier] = (paths[tier] || '')
-      + `M${(pt.x - q).toFixed(1)},${pt.y.toFixed(1)}a${q},${q} 0 1,0 ${2 * q},0a${q},${q} 0 1,0 ${-2 * q},0`;
+    const q = tier === 'S' ? 3.1 : tier === 'A' ? 2.8 : 2.5;
+    const len = Math.hypot(pt.x, pt.y) || 1;
+    const at = (paths[tier] ||= { dots: '', spokes: '' });
+    at.dots += `M${(pt.x - q).toFixed(1)},${pt.y.toFixed(1)}a${q},${q} 0 1,0 ${2 * q},0a${q},${q} 0 1,0 ${-2 * q},0`;
+    at.spokes += `M${((pt.x / len) * LINK_NODE).toFixed(1)},${((pt.y / len) * LINK_NODE).toFixed(1)}L${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
   });
   return Object.entries(paths);
 }

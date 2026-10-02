@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and then scanned now sits outside the tier bands with their own cluster round them, joined to
   the person in the middle by a line. Anyone you met through *their* circle sits a step beyond,
   joined to them, and so on for as far as your scans reach, so you can follow a chain outwards
-  from one bridge. Each says how many are in their circle and which degree that is. Point at one
+  from one bridge. Every dot in a cluster is joined to its person by a faint line, as in the big
+  circle. Each says how many are in their circle and which degree that is. Point at one
   and the way back to the middle lights up; click and their circle opens with the whole trail.
   The view zooms to fit the circle and its chains when it opens.
 - **Bridge Chains shows the bridges you connected with yourself.** Someone you met through a
