@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3';
 import { useCompanyScores, ScorePicker } from './CompanyScores';
+import PeopleMap from './PeopleMap';
 import {
   buildCompanyIndex, companyLinks, companyOf, getSeniority, industryOf, industryByKey,
   INDUSTRIES, UNKNOWN_INDUSTRY, waysInto, isSenior,
@@ -25,13 +26,13 @@ const LINE = '1px solid rgba(255,255,255,0.1)';
 const MAX_BUBBLES = 140;
 const ALL_INDUSTRIES = [...INDUSTRIES, UNKNOWN_INDUSTRY];
 
-function jitter(text) {
+export function jitter(text) {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
   return ((h >>> 0) % 1000) / 1000;
 }
 
-function Seg({ value, onChange, options }) {
+export function Seg({ value, onChange, options }) {
   return (
     <div style={{ display: 'flex', borderRadius: 7, overflow: 'hidden', border: LINE }}>
       {options.map(([v, label]) => (
@@ -44,7 +45,7 @@ function Seg({ value, onChange, options }) {
   );
 }
 
-function useSize(ref) {
+export function useSize(ref) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
     const el = ref.current;
@@ -114,6 +115,9 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
 
   const panel = focus?.kind === 'company' ? index.get(focus.key)
     : focus?.kind === 'industry' ? industries.find((i) => i.key === focus.key) : null;
+
+  // People: the same map with your connections as the bubbles (app/components/PeopleMap.js).
+  if (tab === 'people') return <PeopleMap d1={d1} d2={d2} />;
 
   return (
     <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>

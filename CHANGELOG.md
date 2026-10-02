@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Paths → People.** A new view beside the company map, drawn the same way but with your
+  connections as the bubbles: each is sized by the value of the cluster behind them (S tier counts
+  3, A tier 2, everyone else 1; or by cluster size, or by S tier inside), coloured by their sector
+  and grouped like the companies. A white centre is the share of their cluster you can only reach
+  through them, a gold ring means S-tier people inside, and a line joins two connections whose
+  clusters share people. Point at someone for their numbers and how their cluster compares to the
+  rest you've scanned; click to open it in Bridge Chains. Shows the connections you've scanned,
+  or all of them, with the ones not scanned yet as small grey dots.
 - **Separation is a tab of its own**, beside Degrees in the header, instead of a view inside
   Degrees. It uses the same Filters grid as Degrees. Degrees keeps Bridge Chains, Pyramid and List.
 - **Separation has a slider.** One slider reorders everyone as you drag it: the rarest ways in
