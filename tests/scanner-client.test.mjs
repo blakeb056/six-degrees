@@ -183,3 +183,17 @@ test('why the buttons are grey, for each kind of job', async () => {
   assert.equal(busyReason(job('login')), 'The LinkedIn sign-in window is open');
   assert.equal(busyReason({ running: false, action: 'full' }), null);
 });
+
+test('"Hide the Chrome window" goes with every scan start, the Scan page\'s own buttons too', async () => {
+  const { scanRequest, hideChromeOn, HIDE_CHROME_KEY } = await client();
+  const store = (v) => ({ getItem: (k) => (k === HIDE_CHROME_KEY ? v : null) });
+  assert.equal(hideChromeOn(store('true')), true);
+  assert.equal(hideChromeOn(store('false')), false);
+  assert.equal(hideChromeOn(store(null)), false);
+  assert.equal(hideChromeOn(store('not json')), false);
+  assert.equal(hideChromeOn(null), false);
+  assert.deepEqual(scanRequest('auto-bridge', { maxPages: 10 }, true), { action: 'auto-bridge', maxPages: 10, headless: true });
+  assert.deepEqual(scanRequest('refresh', {}, false), { action: 'refresh' });
+  // A caller can't switch it off by passing headless: false while the switch is on.
+  assert.equal(scanRequest('refresh', { headless: false }, true).headless, true);
+});
