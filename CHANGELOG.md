@@ -91,6 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows in the same notch, beside them. The Filters panel now only filters.
 
 ### Fixed
+- **Separation's map lines now meet every box.** Each connection sits level with the people it
+  leads to, so a connection with one person is on that person's row and the line between them runs
+  straight; lines start and end exactly on the pill and the card, with a small dot where they plug in.
 - **"Hide the Chrome window while scanning" did nothing for scans started on the Scan page.**
   Its own buttons (Scan, Check for new, Auto scan and the rest) sent their request without the
   setting, so Chrome opened anyway; only scans started from a person's card or Resume were hidden.

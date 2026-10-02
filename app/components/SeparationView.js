@@ -680,13 +680,25 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
                   <path
                     key={`${l.key}-${l.bridgeId ?? 'u'}`}
                     className="rt in"
-                    d={`M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r - (pp.big ? 2 : 0)},${l.y2}`}
+                    d={cards
+                      ? `M${l.x1},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2},${l.y2}`
+                      : `M${l.x1 + 5},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2 - pp.r - (pp.big ? 2 : 0)},${l.y2}`}
                     fill="none"
                     stroke={stroke}
                     strokeWidth={pp.big ? (l.primary ? 2.2 : 1.4) : l.primary ? 1.5 : 1}
                     strokeOpacity={pp.big ? (l.primary ? 0.95 : 0.6) : l.primary ? 0.8 : 0.35}
                     strokeDasharray={l.primary ? undefined : pp.big ? '5 4' : '3 3'}
                   />
+                );
+              })}
+              {/* As cards, each line plugs into both boxes: a small dot at each end */}
+              {cards && (linksBy.get(pp.key) || []).map((l) => {
+                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : pp.big ? '#FFD700' : tierColors[l.tier] || '#888';
+                return (
+                  <g key={`e-${l.bridgeId ?? 'u'}`} className="in" pointerEvents="none">
+                    <circle className="mv" style={at(l.x1, l.y1)} r={2.6} fill={stroke} />
+                    <circle className="mv" style={at(l.x2, l.y2)} r={2.6} fill={stroke} />
+                  </g>
                 );
               })}
               <g className="mv in" style={at(pp.x, pp.y)}>
