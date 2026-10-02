@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ringLayout, dotRadius, previewBand, tierBandLayout, outerFans } from '../lib/chain-layout.js';
+import { ringLayout, dotRadius, previewBand, tierBandLayout } from '../lib/chain-layout.js';
 
 // The focused view's numbers on a 800×600 window (lib/chain-layout.js is told
 // them by ChainView's CircleFocus): maxR = 270.
@@ -167,31 +167,6 @@ test('too many for the room: the bands close up before they spill', () => {
   assert.ok(tight.edge <= room);
 });
 
-test('fans sit behind their own person, capped, and say how many more', () => {
-  const anchors = [
-    { angle: 0, slot: 0.5, count: 0 },
-    { angle: Math.PI / 2, slot: 0.4, count: 300 },
-    { angle: Math.PI, slot: 0.4, count: 5 },
-  ];
-  const [none, big, small] = outerFans(anchors, { from: 300, cap: 40 });
-  assert.equal(none, null);
-  assert.equal(big.points.length, 40);
-  assert.equal(big.more, 260);
-  assert.equal(small.points.length, 5);
-  assert.equal(small.more, 0);
-  for (const p of big.points) {
-    assert.ok(Math.hypot(p.x, p.y) >= 300 - 1e-6, 'beyond `from`');
-    const off = Math.abs(Math.atan2(p.y, p.x) - Math.PI / 2);
-    assert.ok(off <= 0.4 / 2 + 1e-6, 'within their slot');
-  }
-});
-
-test('a lot of fans share about `total` dots between them', () => {
-  const anchors = Array.from({ length: 100 }, (_, i) => ({ angle: (i / 100) * Math.PI * 2, slot: 0.06, count: 500 }));
-  const drawn = outerFans(anchors, { from: 300, total: 1200 }).reduce((n, f) => n + f.points.length, 0);
-  assert.ok(drawn <= 1200, `${drawn} drawn`);
-});
-
 test('ringLayout: ringGap keeps the rings further apart than the dots on them', async () => {
   const { ringLayout } = await import('../lib/chain-layout.js');
   const l = ringLayout(60, { inner: 150, outer: 400, spacing: 30, ringGap: 64 });
@@ -234,4 +209,36 @@ test('chains from an opened circle: a lone link points where it was told; a full
   assert.equal(loop.points.length, 3);
   assert.ok(loop.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.depth >= 1));
   assert.deepEqual(chainTree([], { from: 100 }).points, []);
+});
+
+test('chains from an opened circle: a first link sits out from its own dot in the circle', async () => {
+  const { chainTree } = await import('../lib/chain-layout.js');
+  const l = chainTree([-1, -1, 0], { from: 300, hop: 100, spacing: 90, toward: 0, angles: [1, 2.5, undefined] });
+  assert.ok(Math.abs(l.points[0].angle - 1) < 1e-9);
+  assert.ok(Math.abs(l.points[1].angle - 2.5) < 1e-9);
+  assert.ok(Math.abs(l.points[2].angle - 1) < 1e-9);
+  // Two whose dots sit side by side still keep their clusters apart.
+  const close = chainTree([-1, -1], { from: 300, spacing: 90, angles: [1, 1.01] });
+  assert.ok(Math.abs(close.points[1].angle - close.points[0].angle - 90 / 300) < 1e-9);
+});
+
+test('tier bands: `start` turns where each ring begins', async () => {
+  const rows = Array.from({ length: 12 }, () => ({ tier: 'S' }));
+  const top = tierBandLayout(rows, { inner: 100, outer: 300, spacing: 20 });
+  const east = tierBandLayout(rows, { inner: 100, outer: 300, spacing: 20, start: 0 });
+  assert.ok(Math.abs(top.points[0].angle + Math.PI / 2) < 1e-9);
+  assert.ok(Math.abs(east.points[0].angle) < 1e-9);
+});
+
+test('the ring round a bridge: one bar a person you added, clusters formed first, then those ready', async () => {
+  const { reachSegments } = await import('../lib/dot-rings.js');
+  assert.deepEqual(reachSegments(15, {}), []);
+  assert.deepEqual(reachSegments(15, { formed: 2, ready: 3 }).map((s) => s.kind), ['formed', 'formed', 'ready', 'ready', 'ready']);
+  assert.equal(reachSegments(15, { ready: 1 }).length, 1);
+  // Past twelve they share the bars, and neither kind disappears.
+  const many = reachSegments(15, { formed: 1, ready: 40 });
+  assert.equal(many.length, 12);
+  assert.equal(many.filter((s) => s.kind === 'formed').length, 1);
+  const other = reachSegments(15, { formed: 40, ready: 1 });
+  assert.equal(other.filter((s) => s.kind === 'ready').length, 1);
 });

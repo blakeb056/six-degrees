@@ -7,17 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **An opened circle shows the chains that lead on from it.** Anyone you met through that circle
-  and then scanned now sits outside the tier bands with their own cluster round them, joined to
-  the person in the middle by a line. Anyone you met through *their* circle sits a step beyond,
-  joined to them, and so on for as far as your scans reach, so you can follow a chain outwards
-  from one bridge. Every dot in a cluster is joined to its person by a faint line, as in the big
-  circle. Each says how many are in their circle and which degree that is. Point at one
-  and the way back to the middle lights up; click and their circle opens with the whole trail.
-  The view zooms to fit the circle and its chains when it opens.
+- **An opened circle shows the chains that lead on from it.** Anyone you added from that circle
+  and then scanned keeps their dot in the circle, and the cluster their scan formed sits outside
+  it, joined to that dot by a line, so you can see where each path came from. Inside a cluster,
+  anyone you added and scanned in turn has their own dot marked and a line on to their cluster,
+  for as far as your scans reach. Every dot in a cluster is joined to its middle by a faint line.
+  Each cluster says whose circle it is, how many are in it and which degree that is. Point at
+  one and the way back to the middle lights up; click and it opens with the whole trail. The
+  people you added sit together on the side the chains lead off to, their names taking turns
+  above and below so they don't overlap, and the view zooms to fit when it opens.
 - **Bridge Chains shows the bridges you connected with yourself.** Someone you met through a
   bridge's circle is a link in that bridge's chain, not a bridge of their own: they're inside its
-  circle. A small orange number on a bridge says how many chains lead on from it.
+  circle.
+- **A bridge's ring now counts the people you added through it.** The ring sits tight on the
+  dot, with one bar for each person: orange once they've been scanned and have a cluster of
+  their own, green while they're ready for a scan. A small green number at the top right says
+  how many are ready, in place of the "ready" label. How much of a bridge's own list is scanned
+  is in its tooltip.
 - **A crowded Bridge Chains is easier to read.** When your bridges need more than one ring, the
   rings sit further apart, each with its own guide line, and the counts under each name wait
   until you point at the bridge.

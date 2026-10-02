@@ -35,8 +35,8 @@ import { useRouter } from 'next/navigation';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
-import { ringSegments, RING } from '../../lib/dot-rings';
-import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, outerFans } from '../../lib/chain-layout';
+import { reachSegments, RING } from '../../lib/dot-rings';
+import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout } from '../../lib/chain-layout';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
@@ -101,7 +101,7 @@ function membersOf(person, index) {
 function chainsFrom(person, index, skip = [], maxStep = MAX_DEGREE) {
   const out = [];
   const seen = new Set([person.id, ...skip]);
-  const size = (row) => index.circles.get(row.id)?.length || 0;
+  const size = (row) => (index.circles.get(row.id)?.length || 0) + (index.introduced.get(row.id)?.length || 0);
   const walk = (from, parent, step) => {
     if (step > maxStep) return;
     const next = (index.introduced.get(from.id) || []).filter((row) => size(row) > 0 && !seen.has(row.id))
@@ -351,24 +351,21 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               onMouseEnter={() => setHovered(b.id)}
               onMouseLeave={() => setHovered(null)}
               style={{ cursor: 'pointer' }}>
+              <title>{bridgeTitle(b, ready, scanBars(b, reach))}</title>
               {/* Glow */}
-              <circle cx={b.x} cy={b.y} r={isHov ? 20 : 16}
-                fill={`${TIER_COLORS[b.tier]}08`}
-                stroke={`${TIER_COLORS[b.tier]}${isHov ? '60' : '25'}`} strokeWidth={1} />
-              {/* How much of their circle is scanned: five thin bars (design C) */}
-              {(() => {
-                const bars = scanBars(b, reach);
-                if (bars == null) return null;
-                return (
-                  <g transform={`translate(${b.x} ${b.y})`} pointerEvents="none">
-                    {ringSegments((isHov ? 20 : 16) + 3.5).map((seg) => (
-                      <path key={seg.i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={1.6}
-                        stroke={seg.i < bars ? RING.filled : RING.empty} />
-                    ))}
-                    <title>{bars === 5 ? 'Their whole list is scanned' : `About ${bars * 20}% of their list is scanned`}</title>
-                  </g>
-                );
-              })()}
+              <circle cx={b.x} cy={b.y} r={isHov ? 21 : 18} fill={`${TIER_COLORS[b.tier]}${isHov ? '14' : '08'}`} />
+              {/* The ring, tight on the dot: one bar for each person you added through
+                  this circle. Orange: scanned since, with a cluster of their own.
+                  Green: ready for a scan. Nobody yet: one faint line. */}
+              <g transform={`translate(${b.x} ${b.y})`} pointerEvents="none">
+                {b.chains + ready === 0 && (
+                  <circle r={(isHov ? 13 : 11) + 3.6} fill="none" stroke={RING.empty} strokeWidth={1} />
+                )}
+                {reachSegments((isHov ? 13 : 11) + 3.6, { formed: b.chains, ready }).map((seg, i) => (
+                  <path key={i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={2}
+                    stroke={seg.kind === 'ready' ? GREEN : DEGREE_COLORS[2]} />
+                ))}
+              </g>
               {/* Node */}
               <circle cx={b.x} cy={b.y} r={isHov ? 13 : 11}
                 fill={localPhoto(b.profile_image_url) ? '#1a1a2e' : TIER_COLORS[b.tier]}
@@ -386,23 +383,11 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
                 <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.tier === 'S' ? '#000' : '#fff'}
                   fontSize={11} fontWeight={700}>{b.name?.charAt(0)}</text>
               )}
-              {/* People you reached through their circle, ready for a scan of their own */}
+              {/* How many in their circle are waiting for a scan: a small outlined number, top right */}
               {ready > 0 && (
-                <g>
-                  <title>{`${ready} you reached through ${firstName(b)}’s circle ${ready === 1 ? 'is' : 'are'} ready for a scan`}</title>
-                  <rect x={b.x + 7} y={b.y - 21} width={ready > 9 ? 40 : 34} height={11} rx={5.5}
-                    fill="rgba(0,255,136,0.16)" stroke={GREEN} strokeWidth={0.6} />
-                  <text x={b.x + 7 + (ready > 9 ? 20 : 17)} y={b.y - 13} textAnchor="middle" fill={GREEN} fontSize={7} fontWeight={800}>
-                    {ready} ready
-                  </text>
-                </g>
-              )}
-              {/* Chains that lead on from their circle: people met through it and then scanned */}
-              {b.chains > 0 && (
-                <g>
-                  <title>{`${b.chains} ${b.chains === 1 ? 'person' : 'people'} you met through ${firstName(b)}’s circle and then scanned: open it to follow the chain`}</title>
-                  <circle cx={b.x - 14} cy={b.y - 14} r={5.5} fill="#0a0a1a" stroke={DEGREE_COLORS[2]} strokeWidth={1} />
-                  <text x={b.x - 14} y={b.y - 11.6} textAnchor="middle" fill={DEGREE_COLORS[2]} fontSize={6.5} fontWeight={800}>{b.chains}</text>
+                <g pointerEvents="none">
+                  <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="#0a0a1a" stroke={GREEN} strokeWidth={1.2} />
+                  <text x={b.x + 14} y={b.y - 11.4} textAnchor="middle" fill={GREEN} fontSize={ready > 9 ? 6 : 7} fontWeight={800}>{ready > 99 ? '99+' : ready}</text>
                 </g>
               )}
               {/* Name + count */}
@@ -472,6 +457,15 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       </div>
     </div>
   );
+}
+
+/** What a bridge's ring and number mean, in words, for its tooltip. */
+function bridgeTitle(b, ready, bars) {
+  const parts = [];
+  if (ready) parts.push(`${ready} in ${firstName(b)}’s circle ${ready === 1 ? 'is' : 'are'} ready for a scan`);
+  if (b.chains) parts.push(`${b.chains} scanned since, with ${b.chains === 1 ? 'a cluster' : 'clusters'} of their own`);
+  if (bars != null) parts.push(bars === 5 ? 'their whole list is scanned' : `about ${bars * 20}% of their list is scanned`);
+  return parts.length ? parts.join(' · ') : `${firstName(b)}’s circle`;
 }
 
 /** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
@@ -559,18 +553,15 @@ function ZoomButtons({ onIn, onReset, onOut }) {
 function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, canScan, onOpen, onBack, onSelect }) {
   const person = trail[trail.length - 1];
   const depth = trail.length;               // the person's degree along the chain: a bridge is 1
-  const everyone = useMemo(() => membersOf(person, index), [person, index]);
-  // The chains that lead on from here: they sit outside the bands with their
-  // own clusters, so they aren't dots among the rest.
+  const members = useMemo(() => membersOf(person, index), [person, index]);
+  // The chains that lead on from here. Each link stays a dot in the circle it
+  // was met through; the cluster their scan formed sits outside, joined to
+  // that dot, so you can see where each path came from.
   const trailKey = trail.map((r) => r.id).join('>');
   const links = useMemo(
     () => chainsFrom(person, index, trailKey.split('>'), Math.max(0, MAX_DEGREE - 1 - depth)),
     [person, index, trailKey, depth],
   );
-  const members = useMemo(() => {
-    const out = new Set(links.filter((l) => l.step === 1).map((l) => l.row.id));
-    return out.size ? everyone.filter((row) => !out.has(row.id)) : everyone;
-  }, [everyone, links]);
   const [hover, setHover] = useState(null); // a member's index, 'center', 'L' + a link's index, or null
   // null until it's moved or zoomed: the fit worked out below.
   const [viewSet, setViewSet] = useState(null);
@@ -581,43 +572,58 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   const cx = dims.w / 2;
   const cy = dims.h / 2;
   const maxR = Math.min(cx, cy) - 30;
-  // Whose own circle is known, drawn behind them (their people, one degree
-  // further out): anyone you're connected to whose circle was scanned, or who
-  // introduced you to someone.
-  const behind = useMemo(() => members.map((row) => (row.degree === 1 ? membersOf(row, index) : [])), [members, index]);
-  const hasFans = behind.some((people) => people.length > 0);
-  // Tier bands round them, S nearest, like Network Circle's orbits; with fans
+  // Chains fan out to the side on a wide window, below on a tall one; the people
+  // you added sit on that side of the circle, so each line is short.
+  const toward = dims.w >= dims.h ? 0 : Math.PI / 2;
+  const hasChains = links.length > 0;
+  // Tier bands round them, S nearest, like Network Circle's orbits; with chains
   // to draw, the bands leave the outside of the circle for them.
   const layout = useMemo(() => tierBandLayout(members, {
-    inner: Math.max(62, maxR * 0.3), outer: maxR * (hasFans ? 0.72 : 0.94),
+    inner: Math.max(62, maxR * 0.3), outer: maxR * (hasChains ? 0.72 : 0.94),
     spacing: Math.max(14, Math.min(24, maxR * 0.085)), minSpacing: 4, gap: Math.max(10, maxR * 0.04),
-  }), [members, maxR, hasFans]);
-  const fans = useMemo(() => {
-    if (!hasFans) return [];
-    const placed = outerFans(
-      members.map((row, i) => ({ angle: layout.points[i].angle, slot: layout.points[i].slot, count: behind[i].length })),
-      { from: layout.edge + layout.spacing * 1.5 },
-    );
-    return placed.map((f, i) => f && { ...f, i, people: behind[i].slice(0, f.points.length) }).filter(Boolean);
-  }, [members, behind, hasFans, layout]);
+    start: hasChains ? toward : -Math.PI / 2,
+  }), [members, maxR, hasChains, toward]);
 
-  // Each link's cluster: their circle as rings of dots round them, S nearest,
-  // every dot joined to them by a faint line like the big circle's own. The
-  // same size of dot for everyone, so a bigger circle is a bigger disc.
-  const clusters = useMemo(() => links.map(({ row }) => {
-    const people = (index.circles.get(row.id) || []).slice().sort(byTierThenScore);
-    const l = ringLayout(Math.min(people.length, LINK_DOTS), { inner: LINK_INNER, outer: Infinity, spacing: 7.5, minSpacing: 7.5 });
-    return { people, points: l.points, radius: (l.rings[l.rings.length - 1]?.radius || LINK_INNER) + 6 };
+  // Each link's people (anyone met through their circle first, so the next
+  // links of the chain are among the dots drawn) and the disc they need. The
+  // same size of dot for all of them, so a bigger circle is a bigger disc.
+  const sizes = useMemo(() => links.map(({ row }) => {
+    const people = membersOf(row, index);
+    const l = ringLayout(Math.min(people.length, LINK_DOTS), CLUSTER);
+    return { people, radius: (l.rings[l.rings.length - 1]?.radius || LINK_INNER) + 6 };
   }), [links, index]);
-  // Where the links sit: out to the side on a wide window, below on a tall one.
+  // Where each cluster sits: straight out from its person's dot in the circle;
+  // further along a chain, straight out from the cluster before.
   const tree = useMemo(() => {
     if (!links.length) return null;
-    const reach = Math.max(...clusters.map((c) => c.radius));
+    const widest = Math.max(...sizes.map((c) => c.radius));
+    const at = new Map(members.map((row, i) => [row.id, i]));
     return chainTree(links.map((l) => l.parent), {
-      from: layout.edge + layout.spacing + reach + 22, hop: reach * 2 + 46, spacing: reach * 2 + 26,
-      toward: dims.w >= dims.h ? 0 : Math.PI / 2,
+      from: layout.edge + layout.spacing + widest + 22, hop: widest * 2 + 46, spacing: widest * 2 + 26, toward,
+      angles: links.map((l) => (l.parent < 0 ? layout.points[at.get(l.row.id)]?.angle : undefined)),
     });
-  }, [links, clusters, layout, dims.w, dims.h]);
+  }, [links, sizes, members, layout, toward]);
+  // The dots of each cluster, its first ring starting on the side that faces
+  // outwards, where the next link of the chain will be.
+  const clusters = useMemo(() => sizes.map((c, j) => ({
+    ...c,
+    points: ringLayout(Math.min(c.people.length, LINK_DOTS), { ...CLUSTER, start: tree.points[j].angle }).points,
+  })), [sizes, tree]);
+  // The dot each path comes from: the link's own dot, in the big circle or in
+  // the cluster of whoever you met them through. `back` is who that was.
+  const origins = useMemo(() => {
+    const at = new Map(members.map((row, i) => [row.id, i]));
+    return links.map((link) => {
+      if (link.parent < 0) {
+        const p = layout.points[at.get(link.row.id)];
+        return p ? { x: p.x, y: p.y, r: dotRadius(layout.spacing, link.row.tier) * 1.4, back: { x: 0, y: 0, r: 30 } } : { x: 0, y: 0, r: 30, back: null };
+      }
+      const hub = tree.points[link.parent];
+      const i = clusters[link.parent].people.findIndex((row) => row.id === link.row.id);
+      const pt = clusters[link.parent].points[i] || { x: 0, y: 0 };
+      return { x: hub.x + pt.x, y: hub.y + pt.y, r: KID_DOT, inCluster: true, back: { x: hub.x, y: hub.y, r: LINK_HUB } };
+    });
+  }, [links, members, layout, tree, clusters]);
   // Fit the bands and every chain in the window to start with.
   const fit = useMemo(() => {
     if (!tree) return { k: 1, x: 0, y: 0 };
@@ -655,11 +661,14 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   const dots = useMemo(() => {
     const few = members.length <= 60;
     const roomy = layout.spacing * k >= 26;
+    // The people you added sit side by side, so their names take turns above and below.
+    let named = 0;
     return members.map((row, i) => {
       const p = layout.points[i];
       const f = facts[i];
       const r = dotRadius(layout.spacing, row.tier) * (f.reached ? 1.4 : 1);
       const color = f.reached === 'hidden' ? HIDDEN : TIER_COLORS[row.tier] || '#555';
+      const above = f.reached ? named++ % 2 === 1 : false;
       return (
         <g key={row.id}>
           {(few || f.reached) && (
@@ -679,7 +688,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
             <circle cx={p.x} cy={p.y} r={r * 2} fill="none" stroke={DEGREE_COLORS[3]} strokeWidth={1 / k} strokeDasharray={`${3 / k} ${2 / k}`} />
           )}
           {(f.reached || (roomy && row.tier === 'S')) && (
-            <text x={p.x} y={p.y + r + 10 / k} textAnchor="middle" fontSize={8.5 / k} fontWeight={f.reached ? 700 : 400}
+            <text x={p.x} y={above ? p.y - r - 4 / k : p.y + r + 10 / k} textAnchor="middle" fontSize={8.5 / k} fontWeight={f.reached ? 700 : 400}
               fill={f.reached === 'hidden' ? '#999' : f.reached ? GREEN : '#aaa'} pointerEvents="none"
               stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">
               {firstName(row)}
@@ -761,9 +770,9 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
 
   const ready = facts.filter((f) => f.reached === 'ready').length;
   const hidden = facts.filter((f) => f.reached === 'hidden').length;
-  const added = facts.filter((f) => f.reached).length + links.filter((l) => l.step === 1).length;
+  const added = facts.filter((f) => f.reached).length;
   const asked = facts.filter((f) => f.requested).length;
-  const byTier = ['S', 'A', 'B', 'C', 'D'].map((t) => [t, everyone.filter((m) => m.tier === t).length]).filter(([, n]) => n);
+  const byTier = ['S', 'A', 'B', 'C', 'D'].map((t) => [t, members.filter((m) => m.tier === t).length]).filter(([, n]) => n);
   const scanningThem = scanningId != null && scanningId === person.id;
   const hovered = typeof hover === 'number' ? members[hover] : null;
   const hp = typeof hover === 'number' ? layout.points[hover] : null;
@@ -774,7 +783,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
         style={{ display: 'block', touchAction: 'none', cursor: hover != null ? 'pointer' : 'grab' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
         onPointerLeave={() => { if (!drag.current) setHover(null); }} onWheel={onWheel}
-        role="img" aria-label={`${person.name}’s circle: ${everyone.length} ${everyone.length === 1 ? 'person' : 'people'}`}>
+        role="img" aria-label={`${person.name}’s circle: ${members.length} ${members.length === 1 ? 'person' : 'people'}`}>
         <defs>
           <filter id="focusGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
@@ -785,59 +794,21 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
               stroke={TIER_COLORS[band.tier] || '#555'} strokeOpacity={0.07}
               strokeWidth={Math.max(1 / k, band.outer - band.inner + layout.spacing)} pointerEvents="none" />
           ))}
-          {/* Behind anyone whose circle is known: their people, a faint line to each */}
-          {fans.map((fan) => {
-            const a = layout.points[fan.i];
-            const last = fan.points[fan.points.length - 1];
-            return (
-              <g key={'fan-' + members[fan.i].id} pointerEvents="none">
-                {fan.points.map((p, j) => (
-                  <line key={'l' + j} x1={a.x} y1={a.y} x2={p.x} y2={p.y}
-                    stroke={GREEN} strokeOpacity={0.12} strokeWidth={0.5 / k} />
-                ))}
-                {fan.points.map((p, j) => (
-                  <circle key={'d' + j} cx={p.x} cy={p.y} r={2.2}
-                    fill={TIER_COLORS[fan.people[j]?.tier] || '#555'} fillOpacity={0.75} />
-                ))}
-                {fan.more > 0 && last && (
-                  <text x={last.x * 1.06} y={last.y * 1.06} textAnchor="middle" fontSize={8 / k} fill="#8b9a9a"
-                    stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">+{fan.more.toLocaleString()}</text>
-                )}
-              </g>
-            );
-          })}
           {dots}
-          {/* The chains that lead on from here: a line out from the middle to
-              anyone met through this circle and then scanned, their own cluster
-              round them, and on from them to whoever came through theirs. */}
-          {tree && links.map((link, j) => {
-            const p = tree.points[j];
-            const from = link.parent >= 0 ? tree.points[link.parent] : { x: 0, y: 0 };
-            const start = link.parent >= 0 ? LINK_NODE + 3 : 30;
-            const len = Math.hypot(p.x - from.x, p.y - from.y) || 1;
-            const ux = (p.x - from.x) / len;
-            const uy = (p.y - from.y) / len;
-            const lit = litLinks?.has(link.row.id);
-            const color = DEGREE_COLORS[depth + link.step] || DEGREE_COLORS[6];
-            return (
-              <line key={'ln-' + link.row.id} pointerEvents="none"
-                x1={from.x + ux * start} y1={from.y + uy * start} x2={p.x - ux * (LINK_NODE + 3)} y2={p.y - uy * (LINK_NODE + 3)}
-                stroke={color} strokeLinecap="round" strokeWidth={(lit ? 2.6 : 1.8) / k}
-                strokeOpacity={litLinks && !lit ? 0.3 : lit ? 1 : 0.85} />
-            );
-          })}
+          {/* The chains that lead on from here. Every cluster is the circle of one
+              person you added and then scanned; the line to it starts at that
+              person's own dot, so you can see where the path came from. */}
           {tree && links.map((link, j) => {
             const p = tree.points[j];
             const c = clusters[j];
             const row = link.row;
             const lit = litLinks?.has(row.id);
             const color = DEGREE_COLORS[depth + link.step] || DEGREE_COLORS[6];
-            const photo = localPhoto(row.profile_image_url);
             return (
               <g key={'lk-' + row.id} transform={`translate(${p.x} ${p.y})`} pointerEvents="none"
                 opacity={litLinks && !lit ? 0.45 : 1}>
                 <circle r={c.radius} fill="#0a0a1a" fillOpacity={0.9} stroke={color} strokeOpacity={lit ? 0.7 : 0.25} strokeWidth={1 / k} />
-                {/* Their people, each joined to them */}
+                {/* Their people, each joined to the middle of the cluster */}
                 {clusterPaths(c).map(([tier, { spokes }]) => (
                   <path key={'s' + tier} d={spokes} fill="none" stroke={TIER_COLORS[tier] || '#555'}
                     strokeWidth={0.7} strokeOpacity={lit ? 0.6 : 0.38} />
@@ -845,24 +816,45 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
                 {clusterPaths(c).map(([tier, { dots: d }]) => (
                   <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={lit ? 1 : 0.9} />
                 ))}
-                <circle r={LINK_NODE} fill={photo ? '#1a1a2e' : TIER_COLORS[row.tier] || '#555'} stroke={hovLink === j ? '#fff' : color} strokeWidth={2.5} />
-                {photo ? (
-                  <>
-                    <clipPath id={'lk-clip-' + row.id}><circle r={LINK_NODE - 2} /></clipPath>
-                    <image href={photo} x={2 - LINK_NODE} y={2 - LINK_NODE} width={LINK_NODE * 2 - 4} height={LINK_NODE * 2 - 4} clipPath={`url(#lk-clip-${row.id})`} />
-                  </>
-                ) : (
-                  <text y={5} textAnchor="middle" fill={row.tier === 'S' ? '#000' : '#fff'} fontSize={14} fontWeight={700}>{row.name?.charAt(0)}</text>
-                )}
+                <circle r={LINK_HUB} fill={color} stroke={hovLink === j ? '#fff' : '#0a0a1a'} strokeWidth={1.5} />
                 {row.id === scanningId && (
                   <circle r={c.radius + 4} fill="none" stroke={DEGREE_COLORS[3]} strokeWidth={1 / k} strokeDasharray={`${3 / k} ${2 / k}`} />
                 )}
                 <text y={c.radius + 12 / k} textAnchor="middle" fill="#fff" fontSize={10 / k} fontWeight={700}
-                  stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">{firstName(row)}</text>
+                  stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">{firstName(row)}’s circle</text>
                 <text y={c.radius + 23 / k} textAnchor="middle" fill={color} fontSize={8 / k}
                   stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">
                   {c.people.length.toLocaleString('en-US')} · {ordinal(depth + link.step + 1)} degree
                 </text>
+              </g>
+            );
+          })}
+          {/* The paths, on top of the clusters they cross: from whoever you met
+              them through, to their own dot, and on out to the cluster their scan formed. */}
+          {tree && links.map((link, j) => {
+            const o = origins[j];
+            const p = tree.points[j];
+            const lit = litLinks?.has(link.row.id);
+            const color = DEGREE_COLORS[depth + link.step] || DEGREE_COLORS[6];
+            const seg = (a, ra, b, rb, key) => {
+              const len = Math.hypot(b.x - a.x, b.y - a.y);
+              if (len <= ra + rb) return null;
+              const ux = (b.x - a.x) / len;
+              const uy = (b.y - a.y) / len;
+              return (
+                <line key={key} x1={a.x + ux * ra} y1={a.y + uy * ra} x2={b.x - ux * rb} y2={b.y - uy * rb}
+                  stroke={color} strokeLinecap="round" strokeWidth={(lit ? 2.6 : 1.8) / k}
+                  strokeOpacity={litLinks && !lit ? 0.3 : lit ? 1 : 0.85} />
+              );
+            };
+            return (
+              <g key={'ln-' + link.row.id} pointerEvents="none">
+                {o.back && seg(o.back, o.back.r, o, o.r + 1, 'a')}
+                {seg(o, o.r + 1, p, LINK_HUB + 1, 'b')}
+                {/* Their own dot inside the cluster they were met through */}
+                {o.inCluster && (
+                  <circle cx={o.x} cy={o.y} r={o.r} fill={TIER_COLORS[link.row.tier] || '#555'} stroke={GREEN} strokeWidth={1.4} />
+                )}
               </g>
             );
           })}
@@ -895,10 +887,10 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
         )}
         {hovLink >= 0 && (
           <Tip x={cx + view.x + tree.points[hovLink].x * k} y={cy + view.y + (tree.points[hovLink].y - clusters[hovLink].radius) * k} w={dims.w}
-            lines={[links[hovLink].row.name,
-              `Met through ${firstName(links[hovLink].parent >= 0 ? links[links[hovLink].parent].row : person)}’s circle, then scanned`,
-              `${clusters[hovLink].people.length.toLocaleString('en-US')} in their circle (${ordinal(depth + links[hovLink].step + 1)} degree)`,
-              `Click to open ${firstName(links[hovLink].row)}’s circle`]}
+            lines={[`${links[hovLink].row.name}’s circle`,
+              `${clusters[hovLink].people.length.toLocaleString('en-US')} people · ${ordinal(depth + links[hovLink].step + 1)} degree`,
+              `You met ${firstName(links[hovLink].row)} through ${firstName(links[hovLink].parent >= 0 ? links[links[hovLink].parent].row : person)}’s circle, then scanned`,
+              'Click to open it']}
             accent={DEGREE_COLORS[depth + links[hovLink].step] || DEGREE_COLORS[6]} />
         )}
         {hover === 'center' && (
@@ -930,7 +922,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           </nav>
         </div>
         <div style={{ fontSize: 11, color: '#999' }}>
-          {firstName(person)}’s circle · {everyone.length.toLocaleString('en-US')} {everyone.length === 1 ? 'person' : 'people'}
+          {firstName(person)}’s circle · {members.length.toLocaleString('en-US')} {members.length === 1 ? 'person' : 'people'}
           {' · '}{ordinal(depth + 1)} degree{depth > 1 ? ', counted along this chain' : ''}
         </div>
         {scanningThem && members.length > 0 && (
@@ -940,13 +932,13 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
         )}
       </div>
 
-      {everyone.length === 0 && (
+      {members.length === 0 && (
         <EmptyCircle person={person} depth={depth} reach={reach} requests={requests}
           scanning={scanningThem} canScan={canScan} onSelect={onSelect} top={cy + 64} />
       )}
 
       {/* What's in this circle */}
-      {everyone.length > 0 && (
+      {members.length > 0 && (
         <div style={{
           position: 'absolute', bottom: 20, left: 20, maxWidth: 'calc(100% - 110px)',
           background: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: '10px 14px',
@@ -979,13 +971,15 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
 
 // A link's cluster draws at most this many of their people; the count beside it is the whole circle.
 const LINK_DOTS = 290;
-// A link's own dot, and where the first ring of their people starts.
-const LINK_NODE = 17;
-const LINK_INNER = 30;
+// The middle of a cluster, where its first ring starts, and a link's own dot inside one.
+const LINK_HUB = 5;
+const LINK_INNER = 15;
+const KID_DOT = 4.6;
+const CLUSTER = { inner: LINK_INNER, outer: Infinity, spacing: 7.5, minSpacing: 7.5 };
 
 /**
  * A cluster as two paths per tier, however many people: the dots, and a line
- * from the link's own dot out to each of them.
+ * from the middle of the cluster out to each of them.
  */
 function clusterPaths(cluster) {
   const paths = {};
@@ -995,7 +989,7 @@ function clusterPaths(cluster) {
     const len = Math.hypot(pt.x, pt.y) || 1;
     const at = (paths[tier] ||= { dots: '', spokes: '' });
     at.dots += `M${(pt.x - q).toFixed(1)},${pt.y.toFixed(1)}a${q},${q} 0 1,0 ${2 * q},0a${q},${q} 0 1,0 ${-2 * q},0`;
-    at.spokes += `M${((pt.x / len) * LINK_NODE).toFixed(1)},${((pt.y / len) * LINK_NODE).toFixed(1)}L${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+    at.spokes += `M${((pt.x / len) * LINK_HUB).toFixed(1)},${((pt.y / len) * LINK_HUB).toFixed(1)}L${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
   });
   return Object.entries(paths);
 }
