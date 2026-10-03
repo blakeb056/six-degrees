@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Separation all the way right counts every mutual, scanned or not.** It aims at whoever you share
+  the most mutual connections with, even when most of them are in circles you haven't scanned: an
+  unscanned mutual is still a likely introduction, so it no longer holds someone back. The ones the
+  app can draw are lines as before; the rest are grey dots, each with a faint line in, with "+37 more
+  mutuals, in circles not scanned yet". The person glows less the less of it is scanned. The Next
+  names are in the same order and say their mutual counts. Narrow the tiers (S only, say) first to
+  aim at the strongest.
 - **The right panel follows the circle you're in.** Open someone's circle in Bridge Chains and the
   panel is about them: how many people are in their circle, tier chips to see just one tier, a
   search inside it, the people you added from it (with Scan… for the ones ready), then everyone
