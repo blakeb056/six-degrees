@@ -27,7 +27,7 @@ mkdirSync(home);
 process.env.SIX_DEGREES_HOME = home;
 process.env.SIX_DEGREES_DB = path.join(home, 'six-degrees.sqlite');
 
-let route, csv, store, durable, applySchema;
+let route, csv, store, durable, applySchema, getDb;
 let buildExport, validateImport, stageImport, applyPendingImport, UPLOAD_WORK_PREFIX, PENDING_DIR, CSV_NETWORK_FILE;
 
 // What the page has: its own sessionStorage, and fetch to the app's routes.
@@ -50,7 +50,8 @@ before(async () => {
   csv = await import('../lib/csv.js');
   store = await import('../lib/csv-store.js');
   ({ durable } = await import('../lib/durable.js'));
-  ({ applySchema } = await import('../lib/db-client.js'));
+  ({ applySchema, getDb } = await import('../lib/db-client.js'));
+  getDb(); // the app's own database in this test's home, opened once as a server opens it
   ({ buildExport } = await import('../lib/data-export.js'));
   ({ validateImport, stageImport, applyPendingImport } = await import('../lib/data-import.js'));
   ({ UPLOAD_WORK_PREFIX, PENDING_DIR, CSV_NETWORK_FILE } = await import('../lib/data-folder.js'));
@@ -62,6 +63,7 @@ beforeEach(() => {
   calls.length = 0;
   rmSync(path.join(home, 'csv-network.json'), { recursive: true, force: true });
   rmSync(path.join(home, 'import-pending'), { recursive: true, force: true });
+  getDb().exec('DELETE FROM linkedin_connections; DELETE FROM users;');
 });
 
 const VERSION = '0.6.0';
@@ -216,11 +218,92 @@ test('the sample stays in this window only: never in the data folder', async () 
   assert.equal(calls.some((c) => c.startsWith('POST')), false);
 });
 
+// ── a scan you've made wins over a kept CSV ──────────────────────────────────
+
+/** Your own connections, as a scan writes them: degree 1 under the profile that owns the network. */
+function scanned(n, { degree = 1 } = {}) {
+  const db = getDb();
+  db.prepare("INSERT OR IGNORE INTO users (id, name) VALUES ('me-scanned', 'You')").run();
+  const add = db.prepare(`INSERT INTO linkedin_connections (id, degree, name, profile_url, user_id, tier, power_score)
+    VALUES (?, ?, ?, ?, 'me-scanned', 'B', 4)`);
+  for (let i = 0; i < n; i++) {
+    add.run(`scan-${degree}-${i}`, degree, `Invented Scanned ${degree}-${i}`, `https://www.linkedin.com/in/invented-scanned-${degree}-${i}`);
+  }
+}
+
+test('one rule picks the network every page opens on: the sample, else a CSV only while nothing is scanned', () => {
+  const cases = [
+    [{}, 'own'],
+    [{ csvKept: true }, 'csv'],
+    [{ csvKept: true, scannedFirstDegree: 0 }, 'csv'],
+    [{ csvKept: true, scannedFirstDegree: 1 }, 'own'],
+    [{ csvKept: true, scannedFirstDegree: 900 }, 'own'],
+    [{ csvKept: false, scannedFirstDegree: 900 }, 'own'],
+    [{ sample: true }, 'sample'],
+    [{ sample: true, csvKept: true }, 'sample'],
+    [{ sample: true, csvKept: true, scannedFirstDegree: 900 }, 'sample'],
+    // A count the page couldn't read is no count: the CSV still opens.
+    [{ csvKept: true, scannedFirstDegree: undefined }, 'csv'],
+    [{ csvKept: true, scannedFirstDegree: Number.NaN }, 'csv'],
+  ];
+  for (const [state, want] of cases) assert.equal(csv.openNetworkSource(state), want, JSON.stringify(state));
+  assert.equal(csv.openNetworkSource(), 'own');
+});
+
+test('once you have scanned your connections, every page shows them, and the kept CSV stays on the disk', async () => {
+  await csv.saveCsvNetwork(parsed(5, 'k'));
+  scanned(3);
+  const fresh = await import(`../lib/csv.js?scanned=${Date.now()}`);
+  assert.equal(await fresh.loadCsvNetwork(), null, 'the map and Paths load the database');
+  assert.equal(await fresh.csvNetworkSource(), null, 'no Your CSV chip, your own profile, Settings about your scan');
+  assert.deepEqual(await fresh.keptBehindScan(), { people: 5, importedAt: store.readCsvNetwork(home).csv.importedAt },
+    'the import page says it is still kept, and offers to remove it');
+  assert.ok(existsSync(keptFile()), 'never deleted for you');
+  assert.deepEqual(calls.filter((c) => c.startsWith('DELETE')), []);
+  const answer = await (await route.GET()).json();
+  assert.equal(answer.scanned, 3);
+  assert.equal(answer.csv.people, 5);
+
+  // Remove it from the import page: gone, and nothing is left behind the scan.
+  assert.deepEqual(await fresh.closeCsvNetwork('csv'), { ok: true });
+  assert.equal(existsSync(keptFile()), false);
+  assert.equal(await fresh.keptBehindScan(), null);
+});
+
+test('a CSV-only network opens as it always did: people found by other routes don\'t count as a scan', async () => {
+  await csv.saveCsvNetwork(parsed(4, 'only'));
+  // Company scans (3rd degree) alone are not your connections.
+  scanned(2, { degree: 3 });
+  const fresh = await import(`../lib/csv.js?only=${Date.now()}`);
+  assert.equal(await fresh.csvNetworkSource(), 'csv');
+  assert.equal((await fresh.loadCsvNetwork()).degree1.length, 4);
+  assert.equal(await fresh.keptBehindScan(), null);
+});
+
+test('the sample opened in this window still opens over a scanned network, and leaving it keeps everything', async () => {
+  await csv.saveCsvNetwork(parsed(3, 'ss'));
+  scanned(2);
+  csv.saveSampleNetwork({ degree1: [{ id: 'invented-sample-1', name: 'Invented Sample' }], degree2: [] });
+  assert.equal(await csv.csvNetworkSource(), 'sample');
+  assert.equal((await csv.loadCsvNetwork()).source, 'sample');
+  await csv.closeCsvNetwork('sample');
+  assert.equal(await csv.csvNetworkSource(), null, 'back to your scan');
+  assert.ok(existsSync(keptFile()));
+});
+
+test('a CSV imported after a scan is kept, and the map stays on the scan', async () => {
+  scanned(6);
+  const saved = await csv.saveCsvNetwork(parsed(2, 'late'));
+  assert.equal(saved.ok, true);
+  assert.equal(await csv.loadCsvNetwork(), null);
+  assert.equal((await csv.keptBehindScan()).people, 2);
+});
+
 // ── a file that can't be read ────────────────────────────────────────────────
 
 test('no file is no import, with nothing to say', async () => {
   assert.deepEqual(store.readCsvNetwork(home), { csv: null, problem: null });
-  assert.deepEqual(await (await route.GET()).json(), { csv: null, problem: null });
+  assert.deepEqual(await (await route.GET()).json(), { csv: null, scanned: 0, problem: null });
   assert.equal(await csv.keptCsvProblem(), null);
 });
 

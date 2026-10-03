@@ -54,7 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   addresses). Click × beside *Your CSV* to remove it; it asks first, and your `Connections.csv`
   isn't touched. *Save a copy of my network* carries it to another computer and an import brings
   it back. If the kept file can't be read, the welcome screen says so instead of acting as if
-  there were none. The welcome screen's CSV card says where it's kept.
+  there were none. The welcome screen's CSV card says where it's kept. Once you've scanned your own
+  connections, every page shows your scan instead; the CSV stays kept, and the import page says so
+  with a button to remove it.
 - **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
   name, so anyone it's shared with knows where to get it.
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about

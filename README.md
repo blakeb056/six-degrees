@@ -324,7 +324,9 @@ While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Y
 ×*, and Outlink and Scan are hidden. Neither is ever added to your network. The sample
 lasts as long as the app's window is open. A CSV import is kept on your computer, in the
 data folder (`csv-network.json`), so it's still there after you close the window or
-restart; click × to remove it (your `Connections.csv` itself isn't touched).
+restart; click × to remove it (your `Connections.csv` itself isn't touched). Once you've
+scanned your own connections, the map shows your scan instead; the CSV stays kept until
+you remove it from the import page.
 
 ## How scoring works
 

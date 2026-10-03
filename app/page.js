@@ -18,7 +18,7 @@ import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
-import { loadCsvNetwork, closeCsvNetwork } from '../lib/csv';
+import { loadCsvNetwork, closeCsvNetwork, REMOVE_CSV_QUESTION } from '../lib/csv';
 import Link from 'next/link';
 import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
@@ -112,7 +112,8 @@ function HomeInner() {
     async function load() {
       // Three possible sources: the bundled demo snapshot (demo mode), the
       // sample opened in this tab or a CSV import kept in the data folder
-      // (1st degree only, never in the database), or the database.
+      // (1st degree only, never in the database), or the database. Which one
+      // is lib/csv.js openNetworkSource: a scan you've made wins over a CSV.
       const csv = await loadCsvNetwork();
       if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
       const { degree1: d1, degree2: d2, degree3: d3 = [] } = IS_DEMO
@@ -288,7 +289,7 @@ function HomeInner() {
             </span>
             <button
               onClick={async () => {
-                if (csvSource !== 'sample' && !window.confirm('Remove this CSV import from this computer? Your Connections.csv file isn’t touched, so you can import it again.')) return;
+                if (csvSource !== 'sample' && !window.confirm(REMOVE_CSV_QUESTION)) return;
                 const closed = await closeCsvNetwork(csvSource);
                 if (!closed.ok) { alert(closed.error); return; }
                 window.location.href = '/';

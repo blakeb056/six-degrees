@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { parseConnectionsCsv, saveCsvNetwork, ConnectionsCsvError, CSV_USER } from '../../lib/csv';
+import { useState, useRef, useEffect } from 'react';
+import {
+  parseConnectionsCsv, saveCsvNetwork, ConnectionsCsvError, CSV_USER, keptBehindScan, closeCsvNetwork, REMOVE_CSV_QUESTION,
+} from '../../lib/csv';
 import { setUser } from '../../lib/user';
 import Link from 'next/link';
 import { TIER_COLORS } from '../../lib/themes';
@@ -19,7 +21,16 @@ export default function ImportPage() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  // A CSV kept here that the map doesn't show, because you have scanned your
+  // own connections (lib/csv.js openNetworkSource).
+  const [behindScan, setBehindScan] = useState(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    let off = false;
+    keptBehindScan().then((k) => { if (!off) setBehindScan(k); });
+    return () => { off = true; };
+  }, []);
 
   async function handleText(text) {
     setBusy(true);
@@ -35,8 +46,11 @@ export default function ImportPage() {
         setBusy(false);
         return;
       }
-      // Local-only identity so the app opens without creating an account.
-      setUser(CSV_USER.id, CSV_USER.name);
+      const behind = await keptBehindScan();
+      setBehindScan(behind);
+      // Local-only identity so the app opens without creating an account,
+      // unless the map opens on your scanned network instead.
+      if (!behind) setUser(CSV_USER.id, CSV_USER.name);
       const tiers = {};
       connections.forEach((c) => { tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
       setResult({ count: connections.length, skipped, tiers });
@@ -84,11 +98,14 @@ export default function ImportPage() {
             })}
           </div>
 
+          {behindScan && <BehindScan onRemoved={() => { setBehindScan(null); setResult(null); }} />}
           <Link href="/" style={primaryBtn}>See your galaxy →</Link>
-          <p style={{ color: 'var(--sd-fg-5, #555)', fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
-            Kept on this computer, in your data folder, so it&rsquo;s still here after you close the window. Nothing was
-            sent anywhere. To remove it, click &times; next to Your CSV at the top of the map.
-          </p>
+          {!behindScan && (
+            <p style={{ color: 'var(--sd-fg-5, #555)', fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
+              Kept on this computer, in your data folder, so it&rsquo;s still here after you close the window. Nothing was
+              sent anywhere. To remove it, click &times; next to Your CSV at the top of the map.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -104,6 +121,8 @@ export default function ImportPage() {
           Drop LinkedIn&rsquo;s official <code style={code}>Connections.csv</code> below. It is read on this computer,
           scored, drawn as a galaxy, and kept in your data folder. No account, and nothing leaves this computer.
         </p>
+
+        {behindScan && <BehindScan onRemoved={() => setBehindScan(null)} />}
 
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -173,6 +192,37 @@ export default function ImportPage() {
           <Link href="/" style={{ color: 'var(--sd-fg-5, #555)', fontSize: 13, textDecoration: 'none' }}>← Back</Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// A CSV kept here that the map doesn't show: your scan wins (lib/csv.js
+// openNetworkSource). The file is never deleted for you, so this says it's
+// there and offers to remove it.
+function BehindScan({ onRemoved }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  async function remove() {
+    if (!window.confirm(REMOVE_CSV_QUESTION)) return;
+    setBusy(true);
+    setError('');
+    const closed = await closeCsvNetwork('csv');
+    setBusy(false);
+    if (closed.ok) onRemoved();
+    else setError(closed.error);
+  }
+  return (
+    <div style={{ ...card, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      <span style={{ flex: '1 1 260px', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.65)', fontSize: 14, lineHeight: 1.6 }}>
+        Your map shows the network you scanned. A CSV import is still kept on this computer.
+      </span>
+      <button onClick={remove} disabled={busy} style={{
+        padding: '8px 14px', borderRadius: 8, cursor: busy ? 'default' : 'pointer', font: 'inherit', fontSize: 13, fontWeight: 700,
+        border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.2)', background: 'transparent', color: 'var(--sd-fg-1, #fff)',
+      }}>
+        {busy ? 'Removing…' : 'Remove it'}
+      </button>
+      {error && <div style={{ width: '100%', color: '#ff8080', fontSize: 13, lineHeight: 1.6 }}>{error}</div>}
     </div>
   );
 }

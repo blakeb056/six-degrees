@@ -61,7 +61,7 @@
 | `lib/quest.js` | Outlink's game rules: stages of five, next best moves, levels, new doors. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
 | `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |
-| `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser, and the page's one way to the import kept in the data folder (`/api/data/csv`: `saveCsvNetwork`, `loadCsvNetwork`, `closeCsvNetwork`). The sample network stays in the window's sessionStorage. |
+| `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser, and the page's one way to the import kept in the data folder (`/api/data/csv`: `saveCsvNetwork`, `loadCsvNetwork`, `closeCsvNetwork`). `openNetworkSource` is the one rule for which network every page opens on: the sample (in the window's sessionStorage), else a kept CSV only while the database has no 1st-degree people, else the database. |
 | `lib/csv-store.js` | The kept CSV import, `csv-network.json` in the data folder: packed rows only (no email), written whole or not at all, read as untrusted (a file it can't use is a `problem`, never a network or "no import": TRAPS §7). Never merged into the database (TRAPS §19, §25, §36). It travels and is replaced like the scanner's notes (`NETWORK_FILES`). |
 | `lib/user.js` | Identity/context provider. |
 | `lib/demo.js` | The static demo-mode short circuit, inherited from v1. |
