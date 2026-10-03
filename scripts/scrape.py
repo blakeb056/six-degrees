@@ -227,6 +227,19 @@ MAX_SCROLL_ROUNDS = 400           # ~10 people load per round
 SCROLL_PAUSE_SECONDS = 0.9
 SCROLL_STALL_LIMIT = 10           # rounds with no new names before stopping
 LOGIN_POLL_SECONDS = 2
+# The Scan page's "Signed in" (lib/scanner-setup.js SIGNED_IN_FILE, which a
+# test keeps the same): true once the session is confirmed below, false while
+# a sign-in is awaited. It went by Chrome's cookie file, which exists as soon
+# as this window first opens, so closing it without signing in ticked the step.
+SIGNED_IN_FILE = "signed-in.json"
+
+
+def _note_signed_in(ok):
+    """Write down for the Scan page whether LinkedIn's session is confirmed. Only a note: never stops a run."""
+    try:
+        _write_json_atomic(_home() / SIGNED_IN_FILE, {"signedIn": bool(ok), "at": time.time()})
+    except Exception as exc:
+        print(f"  (could not note the sign-in for the Scan page: {exc})")
 
 
 def _has_session_cookie(target):
@@ -345,8 +358,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         raise LinkedInPushedBack(0, reason)
 
     if _has_session_cookie(context) and not _looks_logged_out(page) and not wall:
+        _note_signed_in(True)
         return True
 
+    _note_signed_in(False)
     say = log_fn or (lambda m: None)
     if had_session and wall == "checkpoint":
         print()
@@ -356,7 +371,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         say("Waiting for you to finish LinkedIn's security check...")
     else:
         _print_sign_in_banner(say)
-    return _wait_for_sign_in(page, context, timeout_s, say)
+    ok = _wait_for_sign_in(page, context, timeout_s, say)
+    if ok:
+        _note_signed_in(True)
+    return ok
 
 
 def _print_sign_in_banner(say):

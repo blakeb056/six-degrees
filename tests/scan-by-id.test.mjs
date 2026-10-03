@@ -29,6 +29,9 @@ process.env.SIX_DEGREES_HOME = path.join(dir, 'home');
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 process.env.SIX_DEGREES_ROOT = path.join(dir, 'root');
 process.env.SIX_DEGREES_PYTHON = path.join(dir, 'python');
+// Google Chrome is here, whatever the computer running this has (lib/scanner-setup.js
+// chromeInstalled): without it the server refuses every scan (tests/first-run.test.mjs).
+process.env.SIX_DEGREES_TEST_CHROME = 'found';
 mkdirSync(process.env.SIX_DEGREES_HOME);
 mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
 writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');

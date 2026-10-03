@@ -197,3 +197,16 @@ test('"Hide the Chrome window" goes with every scan start, the Scan page\'s own 
   // A caller can't switch it off by passing headless: false while the switch is on.
   assert.equal(scanRequest('refresh', { headless: false }, true).headless, true);
 });
+
+test('the map keeps looking while circles fill in: one person\'s scan, or a batch of them', async () => {
+  const { fillsCircles } = await client();
+  assert.equal(fillsCircles(running()), true);
+  for (const action of ['auto-bridge', 'auto-bridge-retry', 'resume-all']) {
+    assert.equal(fillsCircles({ ...idle(), running: true, action }), true, action);
+  }
+  // Your own list, setting up, signing in: no circle fills in.
+  for (const action of ['full', 'refresh', 'install', 'login', 'company', 'photos', null]) {
+    assert.equal(fillsCircles({ ...idle(), running: true, action }), false, String(action));
+  }
+  assert.equal(fillsCircles(null), false);
+});

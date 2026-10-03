@@ -3,7 +3,7 @@ import { existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:f
 import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
-import { scanProgress } from '../../../lib/scan-progress';
+import { scanProgress, mappingNow } from '../../../lib/scan-progress';
 import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
@@ -15,6 +15,7 @@ import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
+import { chromeInstalled, signedInFrom, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
@@ -222,12 +223,12 @@ function pickedPerson(id) {
   }
 }
 
-// The machine checks (Python, Chrome, signed in) spawn processes, so they are
-// cached for a few seconds, and callers that arrive while a look is under way
-// share it rather than each starting their own Pythons. Everything about the
-// running job — its log, how far it has got — and the counts are read fresh on
-// every call: the page polls every 1.5 s, and a progress bar that moves every
-// 4 s looks stuck.
+// The look for a Python spawns processes, so it is cached for a few seconds,
+// and callers that arrive while a look is under way share it rather than each
+// starting their own Pythons. Everything else (Chrome and signed in, which are
+// file checks; the running job, its log, how far it has got; the counts) is
+// read fresh on every call: the page polls every 1.5 s, a progress bar that
+// moves every 4 s looks stuck, and step 1 ticks the moment Chrome is installed.
 let cached = { at: 0, value: null };
 let looking = null;
 let lookGeneration = 0;
@@ -265,18 +266,30 @@ async function look() {
     host: hostOnce(),
   });
 
-  // Where Playwright's "chrome" channel looks for Google Chrome (Chromium doesn't count).
-  const chrome =
-    process.platform === 'darwin' ? existsSync('/Applications/Google Chrome.app')
-      : process.platform === 'linux' ? existsSync('/opt/google/chrome/chrome')
-        : process.platform === 'win32' ? windowsChrome()
-          : true; // elsewhere Playwright resolves the channel itself
+  return { root, python };
+}
 
-  // Windows' Chrome keeps its cookies one folder down, in Default\Network.
-  const profile = path.join(dataDir(), 'chrome-profile', 'Default');
-  const signedIn = existsSync(path.join(profile, 'Cookies')) || existsSync(path.join(profile, 'Network', 'Cookies'));
+/** Google Chrome, where Playwright's "chrome" channel looks (lib/scanner-setup.js). A file check, so cheap enough for every POST. */
+function chromeHere() {
+  return chromeInstalled({ platform: process.platform, env: process.env, exists: existsSync });
+}
 
-  return { root, python, chrome, signedIn };
+/**
+ * Signed in to LinkedIn in the scanner's Chrome: the scanner's own note once
+ * it has confirmed the session (lib/scanner-setup.js signedInFrom). A folder
+ * from before the note goes by Chrome's cookie file, as it always did; Windows'
+ * Chrome keeps that one folder down, in Default\Network.
+ */
+function signedIn() {
+  const data = dataDir();
+  let note = null;
+  try { note = JSON.parse(readFileSync(path.join(data, SIGNED_IN_FILE), 'utf8')); } catch { /* none yet, or unreadable: the old check */ }
+  const profile = path.join(data, 'chrome-profile', 'Default');
+  return signedInFrom({
+    note,
+    profile: existsSync(path.join(data, 'chrome-profile')),
+    cookies: existsSync(path.join(profile, 'Cookies')) || existsSync(path.join(profile, 'Network', 'Cookies')),
+  });
 }
 
 // The "I understand" before the first scan: given on the Scan page, or implied by
@@ -285,14 +298,6 @@ function scanRisk() {
   let acceptedAt = null;
   try { acceptedAt = readSettings(getDb()).scanRiskAccepted; } catch { /* unreadable: ask */ }
   return riskAccepted({ acceptedAt, scannedBefore: existsSync(path.join(dataDir(), 'chrome-profile')) });
-}
-
-/** Google Chrome on Windows, where Playwright's "chrome" channel looks: for this user, then for everyone. */
-function windowsChrome() {
-  const env = process.env;
-  return [env.LOCALAPPDATA, env.PROGRAMFILES, env['PROGRAMFILES(X86)']]
-    .filter(Boolean)
-    .some((root) => existsSync(path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe')));
 }
 
 function machineChecks() {
@@ -331,6 +336,7 @@ function paused(userId) {
 
 async function status() {
   const m = await machineChecks();
+  const chrome = chromeHere();
 
   // How much is already mapped, by degree, so the page can mark the scan step
   // done and offer the way to the galaxy instead of leaving someone on a form.
@@ -347,7 +353,9 @@ async function status() {
 
   const py = m.python;
   return {
-    ready: Boolean(m.root && py.run && m.chrome),
+    ready: Boolean(m.root && py.run && chrome),
+    // Whose circle is being read now, for the Scan page's "Watch it fill in".
+    mapping: mappingWho(me?.id),
     checks: {
       scriptsFound: Boolean(m.root),
       // A Python that runs the scanner, or one Install can build its environment from.
@@ -366,8 +374,8 @@ async function status() {
       systemPython: py.systemFound,
       // What "Set up the scanner" would download, when there is nothing to install from.
       download: py.download ? { version: py.download.version, size: py.download.size, from: 'github.com' } : null,
-      chrome: m.chrome,
-      signedIn: m.signedIn,
+      chrome,
+      signedIn: signedIn(),
       // The one-time "I understand" before the first scan (lib/scan-risk.js).
       riskAccepted: scanRisk(),
     },
@@ -378,6 +386,28 @@ async function status() {
     linkedin: linkedinState(dataDir()),
     paused: paused(me?.id),
   };
+}
+
+/**
+ * Whose circle the running scan is reading: { id, name } of one of your
+ * connections, or null. A scan of one person knows its target; a batch (Map
+ * 2nd degree, every paused list) prints each person's name as it starts
+ * (lib/scan-progress.js mappingNow), found here among your connections. Two
+ * with that name can't be told apart that way, so neither is named.
+ */
+function mappingWho(userId) {
+  if (!state.running) return null;
+  if (state.target?.id && ['bridge', 'rescrape', 'resume'].includes(state.action)) return { id: state.target.id, name: state.target.name };
+  const name = mappingNow(state.log, state.action);
+  if (!name || !userId) return null;
+  try {
+    const rows = getDb().prepare(
+      'SELECT id FROM linkedin_connections WHERE user_id = ? AND degree = 1 AND name = ? LIMIT 2',
+    ).all(userId, name);
+    return rows.length === 1 ? { id: rows[0].id, name } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -615,6 +645,12 @@ export async function POST(request) {
   // whichever button asked (lib/scan-risk.js).
   if (touchesLinkedIn(action) && !scanRisk()) {
     return Response.json({ error: RISK_REFUSAL, needsRiskAcceptance: true }, { status: 409 });
+  }
+  // Nor without Google Chrome, which the scanner drives: the Scan page's step 1
+  // says so in the same words, and every other button is told here, before
+  // anything starts, rather than by a Playwright error at the end of a log.
+  if (touchesLinkedIn(action) && !chromeHere()) {
+    return Response.json({ error: CHROME_REFUSAL, needsChrome: true }, { status: 409 });
   }
 
   const spec = ACTIONS[action];

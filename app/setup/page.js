@@ -11,7 +11,7 @@ import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
-import { paceOf } from '../../lib/scan-pace';
+import { paceOf, durationText, firstCircleSeconds } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
@@ -135,8 +135,8 @@ function SetupInner() {
     poll();
   }
 
-  // The question is answered: the steps take its place, from the top, since
-  // it may have been answered from far down the picker.
+  // The question is answered: a line takes its place, and the page goes back
+  // to the top, since it may have been answered from far down the picker.
   function answered(sectors) {
     setField({ sectors });
     window.scrollTo(0, 0);
@@ -189,7 +189,8 @@ function SetupInner() {
   // and a line of its own when the Python inside the app didn't work.
   const step1 = setupStep(s);
   const needsDeps = s && !c.dependencies;
-  const needsChrome = s && !c.chrome;
+  // Step 1 says so and offers the download (lib/scanner-setup.js); nothing that opens LinkedIn can start.
+  const needsChrome = s && c.chrome === false;
   const notFound = s && !c.scriptsFound;
   // The one-time "I understand" before anything opens LinkedIn (lib/scan-risk.js);
   // the server refuses without it too. Unknown (an older server) counts as given.
@@ -207,9 +208,12 @@ function SetupInner() {
   const current = !s || !step1.done ? 1 : !c.signedIn ? 2 : mapped === 0 ? 3 : 4;
   // Each step: done, the one you're on (now), or still to come (next).
   const stateOf = (n, done) => (done && n !== current ? 'done' : n === current ? 'now' : n < current ? 'done' : 'next');
-  // Your field, asked once before the first scan (lib/scanner-setup.js
-  // askForField). The steps wait while that isn't known yet (null).
+  // Your field, asked once when your connections are in, before who they know
+  // (lib/scanner-setup.js askForField); left out while that isn't known (null).
   const askField = IS_DEMO || field ? false : askForField(s, settings);
+  // Step 4, honestly: the first circle shows in minutes, the rest takes days.
+  const pace = li?.limits?.pace;
+  const firstCircle = durationText(firstCircleSeconds(pace));
   // A run that ended badly, and the line that says why — the last thing it
   // printed before stopping. Shown as a box, not left for someone to find in the log.
   const failed = s && !running && s.exitCode != null && s.exitCode !== 0;
@@ -237,8 +241,15 @@ function SetupInner() {
           border: '1px solid rgba(0,255,136,0.22)',
         }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.6, color: 'var(--sd-green, #00ff88)' }}>YOUR SCANNER</div>
+          {/* Steps 1 to 3 draw the galaxy in minutes; step 4 is days of small rounds,
+              and saying "four steps" made it sound like one sitting. */}
           <h1 style={{ fontSize: 27, fontWeight: 800, margin: '6px 0 8px', lineHeight: 1.2 }}>
-            {mapped > 0 ? 'Your network is mapped. Send the scanner further.' : 'Map your network in four steps.'}
+            {mapped > 0 ? 'Your network is mapped. Send the scanner further.' : <>
+              Your galaxy in three steps.
+              <span style={{ display: 'block', color: 'var(--sd-fg-2, #aab7c4)', fontSize: 20, fontWeight: 700, marginTop: 4 }}>
+                Who they know fills in over days.
+              </span>
+            </>}
           </h1>
           <div style={{ fontSize: 14.5, color: 'var(--sd-fg-2, #aab7c4)', lineHeight: 1.6, maxWidth: 560 }}>
             It works in your own Chrome on this Mac, slowly and in the open, and keeps everything here.
@@ -254,11 +265,9 @@ function SetupInner() {
         </div>
 
         {/* The first look at the scanner can take a while (it looks for Python): say so, never a blank page. */}
-        {askField === null && <p style={{ color: 'var(--sd-fg-4, #778)', fontSize: 13 }}>Checking your setup…</p>}
-        {askField && <FieldStep onDone={answered} />}
-        {field && <FieldAnswer sectors={field.sectors} />}
+        {!s && <p style={{ color: 'var(--sd-fg-4, #778)', fontSize: 13 }}>Checking your setup…</p>}
 
-        {askField === false && <>
+        {s && <>
           {/* By id: the server finds them by their profile, since two connections can share a name. */}
           {pick?.person.id === pickId && (
             <ScanOne
@@ -286,6 +295,11 @@ function SetupInner() {
               </div>
             </Box>
           )}
+
+          {/* Your field, once, now that there are people to rank with it (it used to
+              stand in front of step 1); then a line saying what it did. */}
+          {askField && <FieldStep onDone={answered} />}
+          {field && <FieldAnswer sectors={field.sectors} />}
 
           {/* Photos an older version kept as links to LinkedIn. The app shows
               only photos saved here (lib/photos.js), so until then those people
@@ -334,17 +348,6 @@ function SetupInner() {
             </Box>
           )}
 
-          {needsChrome && (
-            <Box tone="bad">
-              <b>Google Chrome isn’t installed.</b><br />
-              <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                The scanner drives your real Chrome. Install it from{' '}
-                <a href="https://www.google.com/chrome/" target="_blank" rel="noreferrer"
-                   style={{ color: 'var(--sd-blue, #3498DB)' }}>google.com/chrome</a>, then reload this page.
-              </span>
-            </Box>
-          )}
-
           {/* The Python inside the app didn't work: what happened, and what to do instead.
               Red only while there is something to do; once another Python runs the
               scanner it is just news. */}
@@ -365,16 +368,29 @@ function SetupInner() {
             <Mission title="Get your scanner ready" time="A minute or two, once" done={step1.done} body={s ? step1.text : 'Checking…'}
               launch={s && step1.button && (
                 <Launch onClick={() => run(step1.button.action)} disabled={busy || running}>{step1.button.label}</Launch>
+              )}
+              // No Chrome: the way to get it. The step turns done by itself once
+              // it's installed, since the page keeps asking.
+              more={s && step1.chrome && (
+                <Launch href={step1.chrome.href} quiet={Boolean(step1.button)}>{step1.chrome.label}</Launch>
               )} />
           </StepRow>
           <StepRow n={2} label="Sign in" state={stateOf(2, !!c.signedIn)}>
             <Mission title="Sign in to LinkedIn, once" time="You do this part" done={!!c.signedIn}
               body={c.signedIn
                 ? 'Signed in on this Mac. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
-                : 'A Chrome window opens. Sign in with your email and password there: the scanner never sees them. (“Continue with Google” can’t work in it, because Google blocks its sign-in in automated browsers.)'}
+                : <>
+                  A Chrome window opens. Sign in with your email and password there: the scanner never sees them.
+                  {/* TRAPS §12: Google and Apple block their sign-in in automated browsers, so the fix is a password. */}
+                  <span style={{ display: 'block', marginTop: 6 }}>
+                    Sign in to LinkedIn with Google or Apple? That can&rsquo;t work in this window, so set a LinkedIn
+                    password first: on LinkedIn&rsquo;s sign-in page, <b>Forgot password</b> emails you a link to make one.
+                  </span>
+                </>}
               launch={c.dependencies && (
                 // Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
-                <Launch onClick={() => run('login')} disabled={busy || running || current < 2 || !riskOk} quiet={!!c.signedIn}>
+                // Never without Chrome: the server would refuse it (lib/scanner-setup.js CHROME_REFUSAL).
+                <Launch onClick={() => run('login')} disabled={busy || running || current < 2 || !riskOk || needsChrome} quiet={!!c.signedIn}>
                   {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
                 </Launch>
               )} />
@@ -397,8 +413,15 @@ function SetupInner() {
               )} />
           </StepRow>
           <StepRow n={4} label="Who they know" state={stateOf(4, false)} last>
-            <Mission title="Map who they know" time="A small batch a day, slowly"
-              body={<>It opens your connections one at a time and reads who <i>they</i> know: that fills Degrees, Separation and Outlink. Every round picks up where the last one stopped.</>}>
+            {/* Honest about time (the 1.0 first-run list): a circle shows in minutes, a
+                network in days, because every page is a search and the budget caps a day's. */}
+            <Mission title="Map who they know" time={`First circle in ${firstCircle}`}
+              body={<>
+                It opens your connections one at a time and reads who <i>they</i> know: that fills Degrees, Separation
+                and Outlink. The first circle shows up in {firstCircle}. The rest fills in over days, a round at a time:
+                every page is a LinkedIn search, and {li?.limits?.daily ? <>your budget allows {li.limits.daily} a day</>
+                  : <>a day&rsquo;s searches are best kept few</>}. Every round picks up where the last one stopped.
+              </>}>
               <CooldownBanner
                 cooldown={li?.cooldown}
                 disabled={busy}
@@ -412,7 +435,7 @@ function SetupInner() {
                   scanning={Boolean(running && s?.action?.startsWith('auto-bridge'))}
                   disabled={!canSearch || (order === 'score' && !tiers.length)}
                   label={running && s?.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
-                  sublabel={batch ? `${batch} people` : 'everyone'}
+                  sublabel={running ? (batch ? `${batch} people` : 'everyone') : `first circle in ${firstCircle}`}
                   onScan={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })}
                   onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
                 />
@@ -464,6 +487,18 @@ function SetupInner() {
                   <WhySlow />
                 </div>
               </div>
+              {/* The circle being read, on the map: Bridge Chains looks again every 20
+                  seconds while it fills in (app/page.js NetworkRefresh). */}
+              {running && s?.mapping?.id && (
+                <div style={{ marginTop: 14, fontSize: 13.5 }}>
+                  <Link href={`/?chain=${encodeURIComponent(s.mapping.id)}`} style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 700 }}>
+                    Watch it fill in →
+                  </Link>
+                  <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginLeft: 8 }}>
+                    {s.mapping.name ? `${s.mapping.name}’s circle, ` : ''}saved every 10 pages.
+                  </span>
+                </div>
+              )}
             </Mission>
           </StepRow>
           </div>
@@ -757,19 +792,36 @@ function Mission({ title, time, body, launch, more, done = false, children }) {
   );
 }
 
-/** The big go button. `quiet` once that step is done, so the next thing to do stands out. */
-function Launch({ children, onClick, disabled, quiet = false }) {
+/**
+ * The big go button. `quiet` once that step is done, so the next thing to do
+ * stands out. With `href`, a link that looks the same, opened outside the app
+ * (the desktop app sends it to the browser): Chrome's download.
+ */
+function Launch({ children, onClick, disabled, quiet = false, href }) {
+  if (href) {
+    return (
+      <a className="launch-go" href={href} target="_blank" rel="noreferrer" style={{
+        ...launchLook(false, quiet), textDecoration: 'none',
+      }}>
+        <span aria-hidden="true" style={{ fontSize: quiet ? 11 : 13 }}>▶</span>{children}
+      </a>
+    );
+  }
   return (
-    <button type="button" className="launch-go" onClick={onClick} disabled={disabled} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 10, padding: quiet ? '10px 18px' : '13px 26px', borderRadius: 12,
-      fontSize: quiet ? 14 : 16, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer',
-      color: disabled ? 'var(--sd-fg-4, #667)' : quiet ? 'var(--sd-fg-1, #cfe8dc)' : '#04140c', border: quiet ? '1px solid rgba(0,255,136,0.35)' : 'none',
-      background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : quiet ? 'rgba(0,255,136,0.08)' : 'linear-gradient(135deg, #00ff88, #1abc9c)',
-      boxShadow: disabled || quiet ? 'none' : '0 4px 22px rgba(0,255,136,0.25)',
-    }}>
+    <button type="button" className="launch-go" onClick={onClick} disabled={disabled} style={launchLook(disabled, quiet)}>
       <span aria-hidden="true" style={{ fontSize: quiet ? 11 : 13 }}>▶</span>{children}
     </button>
   );
+}
+
+function launchLook(disabled, quiet) {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 10, padding: quiet ? '10px 18px' : '13px 26px', borderRadius: 12,
+    fontSize: quiet ? 14 : 16, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer',
+    color: disabled ? 'var(--sd-fg-4, #667)' : quiet ? 'var(--sd-fg-1, #cfe8dc)' : '#04140c', border: quiet ? '1px solid rgba(0,255,136,0.35)' : 'none',
+    background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : quiet ? 'rgba(0,255,136,0.08)' : 'linear-gradient(135deg, #00ff88, #1abc9c)',
+    boxShadow: disabled || quiet ? 'none' : '0 4px 22px rgba(0,255,136,0.25)',
+  };
 }
 
 /** Why the second degree goes slowly: one tap away, not in the way. */

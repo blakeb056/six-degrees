@@ -65,3 +65,23 @@ test('setting up the scanner: a bar while its Python downloads, none once it has
   assert.equal(scanProgress([...log, 'Its checksum matches the one Six Degrees has for it.', 'Unpacking it…'], 'setup'), null);
   assert.equal(scanProgress(log, 'install'), null);
 });
+
+test('whose circle a batch is reading now, from the line it prints as each person starts', async () => {
+  const { mappingNow } = await import('../lib/scan-progress.js');
+  const log = [
+    'Mapping every bridge in turn…',
+    '[1/10] Ada Park (A-tier, score 6.2)',
+    '  Page 1... 10 found (total: 10)',
+    '[2/10] Ben Ortiz (She/Her) (S-tier, score 8.1), carrying on from page 11',
+    '  Page 11... 9 found (total: 9)',
+  ];
+  // The newest, with a name that has brackets of its own.
+  assert.equal(mappingNow(log, 'auto-bridge'), 'Ben Ortiz (She/Her)');
+  assert.equal(mappingNow(log.slice(0, 3), 'auto-bridge-retry'), 'Ada Park');
+  assert.equal(mappingNow(['[3/4] Cy Moreno (?-tier, score ?)'], 'resume-all'), 'Cy Moreno');
+  // Before the first person, for another kind of job, or with no log: nobody.
+  assert.equal(mappingNow(log.slice(0, 1), 'auto-bridge'), null);
+  assert.equal(mappingNow(log, 'full'), null);
+  assert.equal(mappingNow(log, null), null);
+  assert.equal(mappingNow(null, 'auto-bridge'), null);
+});
