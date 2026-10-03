@@ -241,6 +241,26 @@ svg.bars g:hover rect { filter: brightness(1.35); }
 .k-removed { fill: var(--grey); --k: var(--grey); }
 .k-security { fill: var(--orange); --k: var(--orange); }
 .k-deprecated { fill: var(--grey); --k: var(--grey); }
+/* Before 0.1 (scripts/build-site.mjs BEFORE): a colour for each stage, its bars in commits. */
+:root { --alpha: #e3b341; --beta: #ec7fb4; --preview: #46c9c3; }
+.k-alpha { fill: var(--alpha); --k: var(--alpha); }
+.k-beta { fill: var(--beta); --k: var(--beta); }
+.k-preview { fill: var(--preview); --k: var(--preview); }
+svg.bars .hit { fill: transparent; }
+svg.bars a { cursor: pointer; }
+.stage-band { list-style: none; display: flex; margin: 6px 0 0; padding: 0; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
+.stage-band li { flex: 1 1 0; min-width: 0; padding: 0; white-space: nowrap; }
+.stage-band li[class] { border-top: 3px solid var(--s); color: var(--s); }
+.stage-band li.first { margin-left: 2px; }
+.stage-band li span { display: block; padding: 3px 0 0; }
+.stage-band .short { display: none; }
+.s-alpha { --s: var(--alpha); }
+.s-beta { --s: var(--beta); }
+.s-preview { --s: var(--preview); }
+.s-release { --s: var(--faint); }
+.legend.stages { margin-top: 6px; }
+.legend.stages .note { color: var(--faint); font-size: 12.5px; }
+.legend.stages .note::before { content: none; }
 .legend { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14.5px; color: var(--muted); }
 .legend.inline { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; }
 .legend li { display: flex; align-items: baseline; gap: 8px; }
@@ -619,6 +639,8 @@ main.page { padding-bottom: 40px; }
   .compare tbody tr td:last-child { border-bottom: 0; }
 }
 @media (max-width: 520px) {
+  .stage-band .long { display: none; }
+  .stage-band .short { display: block; }
   :root { --gutter: 16px; }
   body { font-size: 16px; }
   .hero { padding-top: 36px; }
@@ -656,4 +678,5 @@ main.page { padding-bottom: 40px; }
 .before { margin-top: 48px; padding: 8px 24px 12px; border-radius: 18px; border: 1px dashed rgba(181, 126, 220, 0.4); background: rgba(155, 89, 182, 0.05); }
 .before > h2 { text-align: left; font-size: 24px; margin: 18px 0 4px; }
 .before .release:last-child { border-bottom: 0; }
-.tag.stage { font-family: inherit; font-weight: 700; color: #1b0f24; background: var(--purple); border-color: transparent; }
+.tag.stage { font-family: inherit; font-weight: 700; color: #1b0f24; background: var(--s, var(--purple)); border-color: transparent; }
+.release-toc .stage-link { color: var(--s); }

@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseChangelog, fullReleases, changeCounts, highlights, leadOf, longDate, plainText,
-  sampleStats, fill, newsHtml,
+  sampleStats, fill, newsHtml, releaseChartHtml,
 } from '../scripts/site-news.mjs';
 import { markdown, frontMatter, htmlFrontMatter, slugify } from '../scripts/site-markdown.mjs';
 import { build, loadSite, slotValues, faqFrom, header, scanWording, BEFORE } from '../scripts/build-site.mjs';
@@ -174,10 +174,31 @@ test('the generations before 0.1 are on /releases/, below 0.1.0, with their stag
     const html = readFileSync(path.join(out, 'releases/index.html'), 'utf8');
     for (const b of BEFORE) {
       assert.ok(html.indexOf(`id="${b.id}"`) > html.indexOf('id="v0.1.0"'), `${b.id} comes after 0.1.0`);
-      assert.match(html, new RegExp(`id="${b.id}"[\\s\\S]*?class="tag stage">${b.stage}<`));
+      assert.match(html, new RegExp(`id="${b.id}"[\\s\\S]*?class="tag stage s-${b.stage.toLowerCase()}">${b.stage}<`));
     }
     assert.doesNotMatch(readFileSync(path.join(out, 'releases/feed.xml'), 'utf8'), /Before 0\.1|The first build/, 'not in the feed');
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
+});
+
+test('the releases chart starts at the first build: the milestones by commits, a gap, then each release, each a link to its notes', () => {
+  const full = fullReleases(parseChangelog(read('CHANGELOG.md')));
+  const html = releaseChartHtml(full, BEFORE);
+  const links = [...html.matchAll(/<a href="#([^"]+)">/g)].map((m) => m[1]);
+  // Oldest first: the first build, then every milestone, then 0.1.0 … the newest release.
+  assert.deepEqual(links.slice(0, BEFORE.length), [...BEFORE].reverse().map((b) => b.id));
+  assert.equal(links[BEFORE.length], 'v0.1.0');
+  assert.equal(links.at(-1), `v${full[0].version}`);
+  assert.equal(links.length, BEFORE.length + full.length);
+  for (const b of BEFORE) {
+    assert.ok(Number.isInteger(b.commits) && b.commits > 0, `${b.id} has its commits`);
+    assert.match(html, new RegExp(`${b.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} · [^:]+: ${b.commits} commits`));
+  }
+  // The band: a cell under every column, the gap's empty, each stretch named once.
+  const cells = html.match(/<ol class="stage-band"[^>]*>([\s\S]*?)<\/ol>/)[1].match(/<li/g).length;
+  assert.equal(cells, BEFORE.length + 1 + full.length);
+  for (const name of ['Alpha', 'Beta', 'Preview', 'Releases']) assert.equal(html.split(`<span class="long">${name}</span>`).length, 2);
+  assert.match(html, /<li>Alpha 1 · 11 Jun<\/li>/);
+  assert.doesNotMatch(html, / style=/, 'the site allows no inline styles');
 });
