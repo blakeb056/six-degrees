@@ -1429,6 +1429,8 @@ def note_unclear(profile_url, clear=False):
 #   scan-limits.json        {"daily": 50, "monthly": 250, "profiles": 50}
 #                           0 = no cap on searches; profile views always have one
 #   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
+#                           lifted on the Scan page: "until" is when, plus
+#                           "lifted_at" and "was_until"; read here as ended
 # ---------------------------------------------------------------------------
 DEFAULT_DAILY_SEARCHES = 50
 DEFAULT_MONTHLY_SEARCHES = 250

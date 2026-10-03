@@ -2,10 +2,10 @@
 
 // The Scan page's radar (Blake, 2026-10-02: "making the scan button more
 // gamified, having the slow medium high scan option"). A round Scan button in
-// the middle, today's searches against the budget round the edge, and beside
-// it the three speeds with what each means for the rest of today's budget.
-// Speed only changes searches an hour (lib/scan-pace.js); the daily budget is
-// still the cap.
+// the middle, the last 24 hours' searches against the budget round the edge,
+// and beside it the three speeds with what each means for the rest of the
+// budget. Speed only changes searches an hour (lib/scan-pace.js); the daily
+// budget is still the cap.
 //
 // While a scan runs the Scan button is a hub and the people it finds gather
 // round it as a cluster, as the map draws one (Blake, 2026-10-03: "for the
@@ -108,7 +108,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
               ))}
             </g>
           )}
-          {/* Today's searches against the budget, round the edge */}
+          {/* The last 24 hours' searches against the budget, round the edge */}
           <path d={arc(R + 5, top, top + 2 * Math.PI - 0.001)} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.08)" strokeWidth={5} />
           {share > 0 && <path d={arc(R + 5, top, top + 2 * Math.PI * share - 0.001)} fill="none" stroke={tone} strokeWidth={5} strokeLinecap="round" />}
         </svg>
@@ -159,7 +159,8 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
             ? <>Today&rsquo;s searches show here once the scanner can read them.</>
             : left == null
             ? <>No daily cap is set.</>
-            : <><b style={{ color: tone }}>{left}</b> of {daily} searches left today
+            // The budget counts a rolling 24 hours (lib/linkedin-limits.js usage), not since midnight.
+            : <><b style={{ color: tone }}>{left}</b> of {daily} searches left, counting the last 24 hours
               {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left))} to use them</>}.</>}
         </div>
         <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.55 }}>

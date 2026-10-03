@@ -18,12 +18,14 @@ function exportOf(n) {
   return lines.join('\n');
 }
 
-test('an export at LinkedIn\'s 30,000 maximum fits in the tab once packed', () => {
+test('an export at LinkedIn\'s 30,000 maximum is kept in one request once packed', () => {
   const { connections } = parseConnectionsCsv(exportOf(30000));
   assert.equal(connections.length, 30000);
-  const stored = JSON.stringify({ packed: packConnections(connections), degree2: [], source: 'csv', importedAt: 0 });
-  // Chrome's per-origin session storage holds about 5 million characters.
-  assert.ok(stored.length < 4_500_000, `packed is ${stored.length} characters`);
+  // What the page sends to /api/data/csv (lib/csv.js saveCsvNetwork). Next
+  // reads at most 10 MB of a body before middleware, and quietly keeps only
+  // that much of a bigger one (docs/brain/ENDPOINTS.md), so it stays far under.
+  const body = JSON.stringify({ connections: packConnections(connections) });
+  assert.ok(body.length < 4_500_000, `packed is ${body.length} characters`);
   // The old form (every scored field) would not have fitted.
   assert.ok(JSON.stringify(connections).length > 5_000_000);
 });

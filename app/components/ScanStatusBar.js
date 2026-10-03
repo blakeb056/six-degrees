@@ -6,9 +6,10 @@
 // every page (Blake, 2026-09-29: "a notch ui of the thing scanning"). It stays
 // out of the way: nothing at all while nothing runs; a tiny dimmed "Auto scan"
 // when the all-day mode is on but idle; while a scan runs, what it's doing and
-// how far it's got. Hover or click it to open it: who, today's LinkedIn budget,
-// the latest line, Details and Stop. Stop saves what was read, and the Scan
-// page's Resume carries on from that page. Other long jobs can show here too
+// how far it's got. Hover or click it to open it: who, the LinkedIn budget over
+// the last 24 hours (a link to Settings → LinkedIn usage), the latest line,
+// Details and Stop. Stop saves what was read, and the Scan page's Resume
+// carries on from that page. Other long jobs can show here too
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
 
@@ -178,10 +179,12 @@ export default function ScanStatusBar() {
       {expanded && running && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 8px 0', flexWrap: 'wrap' }}>
           {job.target?.name && <span>{job.target.name}</span>}
+          {/* A rolling 24 hours, as the budget counts them (lib/linkedin-limits.js usage), not
+              since midnight; it opens Settings → LinkedIn usage for the rest. */}
           {b && (
-            <span style={{ color: tone(b.searches, b.cap) }} title="Searches on your LinkedIn account in the last 24 hours, and your daily budget">
-              {b.searches}{b.cap ? ` of ${b.cap}` : ''} searches today
-            </span>
+            <Link href="/settings#usage" style={{ color: tone(b.searches, b.cap), textDecoration: 'none' }} title="Searches on your LinkedIn account in the last 24 hours, and your daily budget. Open LinkedIn usage">
+              {b.searches}{b.cap ? ` of ${b.cap}` : ''} searches in the last 24 hours
+            </Link>
           )}
           {last && (
             <span style={{ color: 'var(--sd-fg-4, #667)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>

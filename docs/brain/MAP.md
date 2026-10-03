@@ -18,6 +18,7 @@
 | `app/paths` `app/queue` `app/profile` `app/import` `app/setup` `app/launch` | Secondary screens. |
 | `app/settings/page.js` | Settings: Updates (`UpdatePanel`), Your sector, About this copy, and a `<Section>` per feature that adds a setting. Reached from the ⚙ button and *Six Degrees → Settings…* (⌘,). |
 | `app/components/settings/SectorSection.js` | Scores → Your sector: up to three picks (`SectorPicker`, with "Suggested from your network" from `/api/settings/sector-suggestions`), lean/strong, a dry run of what would change (`/api/settings/sector-preview`), and Save, which rescores everyone. Says when a CSV or the sample is open, since those aren't re-weighted. |
+| `app/components/settings/UsageSection.js` | Settings → LinkedIn usage (`/settings#usage`, linked from the notch's budget and the Scan page's budget box): a status pill, bars for the last 24 hours (marks at 50, 100 and 373), this month (LinkedIn's Pacific reset, the 250 to 350 people report shaded), the last 7 days against Auto scan's 200, and profile views; speed, about how many people are left to map, the last pushback, Auto scan's rules, a warning with *Back to 50 a day, 250 a month*. Reads `GET /api/scraper?usage`; every number says where it came from. |
 | `app/components/settings/SectorPicker.js` | The sector picks, shared by Scores → Your sector and the Scan page's field question: your picks, a search box, and the twelve industries, each opening to its sectors from the directory. Picks only; the page saves. |
 | `app/components/FieldStep.js` | The Scan page's one question, once your connections are in (step 3) and before who they know: your field, with `SectorPicker`, then *Continue* (which rescores everyone) or *Skip for now*, held at the foot of the window while the card runs past it, under "Your galaxy is ready". Either saves `fieldAsked`, so it's asked once. `FieldAnswer` is the line in its place afterwards. |
 | `app/components/ui.js` | Shared pieces for Settings (`Section`, `Body`, `Mono`, `Status`, `Btn`). New screens use these rather than a private copy. |
@@ -26,7 +27,7 @@
 | `lib/settings-client.js` | The browser's one way to save settings (`saveSettings`, `POST /api/settings`): Scores → Your sector and Tiers, and the Scan page's field question. |
 | `lib/settings-effects.js` | What saving a setting sets in motion (a new sector focus rescores everyone and counts who moved, as the preview does). Each changed setting's work runs even if another's fails. Kept apart from the store because rescoring reads the settings: the store importing it would go in a circle. |
 | `app/api/*` | 27 routes. See [`ENDPOINTS.md`](ENDPOINTS.md). |
-| `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`. |
+| `app/api/data/*` | Settings → Your data: `GET /api/data` (the folder's facts, open) and the gated `export`, `import`, `restart`, `reveal`, and `csv` (a CSV import kept in the data folder: `lib/csv-store.js`). |
 | `app/api/scraper/route.js` | Spawns the scraper on the app's behalf, so no second terminal or second server is needed. Runs it on the Python `lib/scanner-python.js` picks (the Mac app's own first), and sets the scanner up: Install, or Set up the scanner (download a pinned Python first). |
 | `app/setup/page.js` | The Scan page: preflight checks that fix themselves, then one button. Google Chrome is part of step 1 (*Install Google Chrome, then come back*); step 4 says the first circle shows in about 5 minutes and the rest takes days, with *Watch it fill in* (`/?chain=<id>`) while a circle is read. Once your connections are in, one optional question under "Your galaxy is ready": your field (`FieldStep`, when `askForField` says so). `/setup?scan=<id>` adds *Scan one circle* for that person: the cost, the day's budget, and a button (the id, read with `useSearchParams`: TRAPS §41). *Save photos* appears while some people's photos are still links (`photosWaiting`). |
 | `middleware.js` | Refuses requests addressed to another name, then cross-site writes, on all of `/api` and `/avatars`, then applies the destructive-route gate (`lib/gate.js requestRefusal`). Leaves out exactly `/api/data/import`, whose handlers make the same checks themselves before reading the upload (ENDPOINTS.md, "Request bodies over 10 MB"). |
@@ -42,8 +43,9 @@
 | `lib/data-export.js` | Builds the `.sixdegrees` file: `VACUUM INTO`, then the manifest and the allow-listed files with their SHA-256 ([`SCHEMA.md`](SCHEMA.md)). Only the photos a row still points at. |
 | `lib/data-import.js` | Checks an upload before reading it (`admitImport`) and the file after (untrusted: SECURITY.md), rebuilds it into this version's schema in `import-pending/`, and swaps it in at the next start, step by step (a journal on the disk), after keeping what was there in `backups/`: never while another process has the database open, and only once the kept copy is synced and checks out. `RETIRED` lists names older exports may still have. Also what the page says about restarting. |
 | `lib/durable.js` | Writes that must be on the disk before the next step counts on them: sync a file, sync a folder (so a rename is), write a file whole or not at all. Node's fsync is F_FULLFSYNC on a Mac. |
-| `lib/linkedin-limits.js` | The LinkedIn search budget, the cap on profile views and the cooldown, read with the scanner's rules; the Scan page's two edits; and an import's budget files, checked (`budgetFileProblem`) and merged (`mergeBudgetFiles`), since they belong to the account. |
+| `lib/linkedin-limits.js` | The LinkedIn search budget, the cap on profile views and the cooldown, read with the scanner's rules; the Scan page's two edits (lifting a cooldown keeps it, marked `lifted_at`, its `until` moved to the moment it was lifted, so every reader sees it ended); Settings → LinkedIn usage's closer reading (`linkedinUsage`: the last hour and 7 days, when the next search or profile view frees, the last pushback from the cooldown file and the newest `pushback/*.txt`, its time and reason only); and an import's budget files, checked (`budgetFileProblem`) and merged (`mergeBudgetFiles`), since they belong to the account. |
 | `lib/search-risk.js` | When a search budget is risky (over 100 a day, or no monthly cap) and what the budget picker asks and says about it. No Node imports, so the page and tests share it. |
+| `lib/usage.js` | Settings → LinkedIn usage's rules: Auto scan's own ceilings (`AUTO`, checked against `scrape.py` by `tests/usage.test.mjs`), about 9 people a search, the level (`usageLevel`: paused, too close at 60% of 373 or searching within a day of a pushback, risky over 100, above the default over 50, ok), its plain-word warning, what's left (`estimate`), and the times in words. No Node imports. |
 | `lib/degrees.js` | Everyone the app knows by degree (1st, 2nd in a scanned circle, 3rd from company scans), each once at the nearest; Network Circle's Degree filter. |
 | `lib/brokerage.js` | Exclusive reach per connection: 1 ÷ how many of your connections reach each person in their circle, summed, and how many only they reach (ego betweenness). |
 | `lib/network-health.js` | Network health for the Scores tab: circles scanned, reach two or more ways, effective size N − 2t/N from `connection_ties`, top five by who only they reach. |
@@ -61,7 +63,8 @@
 | `lib/quest.js` | Outlink's game rules: stages of five, next best moves, levels, new doors. |
 | `lib/network.js` | Shapes rows into the graph the views consume. |
 | `lib/separation.js` | The one merge of 2nd-degree rows into people, with routes, ranks and the summit map's layout. Separation and the Sidebar both read it. |
-| `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser. Never persisted. |
+| `lib/csv.js` | Parses LinkedIn's `Connections.csv` in the browser, and the page's one way to the import kept in the data folder (`/api/data/csv`: `saveCsvNetwork`, `loadCsvNetwork`, `closeCsvNetwork`). `openNetworkSource` is the one rule for which network every page opens on: the sample (in the window's sessionStorage), else a kept CSV only while the database has no 1st-degree people, else the database. |
+| `lib/csv-store.js` | The kept CSV import, `csv-network.json` in the data folder: packed rows only (no email), written whole or not at all, read as untrusted (a file it can't use is a `problem`, never a network or "no import": TRAPS §7). Never merged into the database (TRAPS §19, §25, §36). It travels and is replaced like the scanner's notes (`NETWORK_FILES`). |
 | `lib/user.js` | Identity/context provider. |
 | `lib/demo.js` | The static demo-mode short circuit, inherited from v1. |
 | `lib/updater.js` | The Mac app's one-click update, its decisions only (no side effects): which release asset, `SHA256SUMS`, where the running app is and whether it may replace itself, what the Terminal line would do instead, the helper's arguments, what the next start says. The exit code 76 that means "quit quietly, an update follows". |
@@ -112,6 +115,7 @@ chrome-profile/           the scraper's browser profile — holds a live session
 backups/                  auto-before-<version>-*.sqlite (newest five kept) and
                           before-import-<time>.sqlite + -files/ (never pruned)
 import-pending/           an import waiting for the next start (READY, data.sqlite, files/)
+csv-network.json          a LinkedIn CSV import, kept until × removes it (lib/csv-store.js)
 *.json                    the scanner's progress, skip lists, budget and cooldown;
                           signed-in.json, whether it last found you signed in (this
                           computer's Chrome only, so it never travels)
@@ -120,7 +124,7 @@ python/                   a Python for them that Set up the scanner downloaded (
 ```
 
 What an export carries is an allow-list (`lib/data-folder.js`): the database, `avatars/`
-and the six scanner files. Never `chrome-profile/`, `venv/`, `python/`, `backups/`, `pushback/`,
+and the six scanner files, and a kept CSV import. Never `chrome-profile/`, `venv/`, `python/`, `backups/`, `pushback/`,
 `app-version` or anything temporary.
 
 **`chrome-profile/` grants access to the user's LinkedIn account.** Treat it like a
