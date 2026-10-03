@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Heat: power as a thermal map.** A new Colour by in Network Circle's Physics: every dot coloured
+  from cold violet through red and orange to white hot by where their power score ranks among the
+  people showing, with a soft glow behind the hotter ones that pools where powerful people cluster,
+  like a thermal camera. Works with every layout, the replay and the filter grid.
 - **Separation all the way right counts every mutual, scanned or not.** It aims at whoever you share
   the most mutual connections with, even when most of them are in circles you haven't scanned: an
   unscanned mutual is still a likely introduction, so it no longer holds someone back. The ones the

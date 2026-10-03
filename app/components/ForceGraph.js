@@ -6,7 +6,7 @@ import { localPhoto } from '../../lib/photos';
 import { recentre } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
-import { LAB_DEFAULTS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
@@ -23,6 +23,7 @@ function esc(value) {
 // The id of the node at the centre, you. Not a connection's id (those come from
 // the database), and never shown.
 const CENTER_ID = '__center__';
+const HEAT_GLOWS = 700;   // glows drawn under Colour by → Heat, hottest first
 
 // Builds the avatar tooltip through the DOM rather than a string, so no value
 // can break out of the attribute it is written into. Only a photo saved on this
@@ -510,6 +511,30 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
   });
 
+  // Heat (Colour by → Heat): a soft glow behind the hotter dots, screen-blended
+  // so the glows add up where powerful people cluster, like a thermal camera.
+  // The hottest HEAT_GLOWS only, so a big network stays smooth.
+  let heatFn = scheme?.heat || null;
+  const heatDefs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
+  for (let k = 0; k <= 5; k++) {
+    if (heatDefs.select(`#heat-glow-${k}`).size()) continue;
+    const grad = heatDefs.append('radialGradient').attr('id', `heat-glow-${k}`);
+    grad.append('stop').attr('offset', '0').attr('stop-color', heatColour(k / 5)).attr('stop-opacity', 0.14 + 0.06 * k);
+    grad.append('stop').attr('offset', '1').attr('stop-color', heatColour(k / 5)).attr('stop-opacity', 0);
+  }
+  const heatG = g.append('g').attr('class', 'heat-glow').style('pointer-events', 'none').style('mix-blend-mode', 'screen');
+  let heatDots = heatG.selectAll('circle');
+  const drawHeat = () => {
+    const hot = heatFn
+      ? nodes.filter(n => n.id !== CENTER_ID && heatFn(n) >= 0.5).sort((a, b) => heatFn(b) - heatFn(a)).slice(0, HEAT_GLOWS)
+      : [];
+    heatDots = heatG.selectAll('circle').data(hot, d => d.id).join('circle')
+      .attr('r', d => nodeRadius(d) * 2.5 + 12 + 30 * heatFn(d))
+      .attr('fill', d => `url(#heat-glow-${Math.round(heatFn(d) * 5)})`)
+      .attr('cx', d => d.x || 0).attr('cy', d => d.y || 0)
+      .style('display', d => (clockAt == null || bornById.get(d.id) <= clockAt ? null : 'none'));
+  };
+
   // forceLink has already swapped each link's ids for the nodes themselves, so
   // the colour is one step away. It used to search every node for every link:
   // about 1.8 s at 30,000 people.
@@ -691,6 +716,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
     dotRings.attr('transform', d => `translate(${d.x},${d.y})`);
     labels.attr('x', d => d.x).attr('y', d => d.y);
+    if (heatFn) heatDots.attr('cx', d => d.x).attr('cy', d => d.y);
     placeRing();
   });
 
@@ -740,7 +766,12 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const dated = d1.map(n => bornById.get(n.id)).filter(Number.isFinite);
   const range = { min: dated.length ? dated.reduce((m, t) => Math.min(m, t)) : null, max: dated.length ? dated.reduce((m, t) => Math.max(m, t)) : null, of: d1.length };
   let clockAt = null;
-  const showBorn = () => labels.style('display', d => (clockAt == null || bornById.get(d.id) <= clockAt ? null : 'none'));
+  const showBorn = () => {
+    const born = d => (clockAt == null || bornById.get(d.id) <= clockAt ? null : 'none');
+    labels.style('display', born);
+    if (heatFn) heatDots.style('display', born);
+  };
+  drawHeat();
   const setTime = (at) => {
     if (!L.on) at = null;
     clockAt = at;
@@ -768,6 +799,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // A new colour scheme (Colour by): recolour the dots, lines and names in place.
   const setColours = (next) => {
     colourOf = next.of;
+    heatFn = next.heat || null;
+    drawHeat();
     node.attr('fill', d => d.id === CENTER_ID ? '#fff' : colourOf(d));
     link.attr('stroke', d => colourOf(d.target) || '#333');
     drawLabels();

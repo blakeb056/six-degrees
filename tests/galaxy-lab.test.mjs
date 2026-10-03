@@ -110,6 +110,23 @@ test('who wrote last comes from the live sync where the export is missing or old
   assert.deepEqual(waiting.map((w) => [w.url, w.days]), [[url('cy'), 5], [url('ben'), 15]]);
 });
 
+import { heatColour, heatOf } from '../lib/galaxy-lab.js';
+
+test('heat: power as a thermal map, spread across whoever is shown', () => {
+  assert.equal(heatColour(0), '#2b1b6b');
+  assert.equal(heatColour(1), '#fff3b0');
+  assert.equal(heatColour(-3), heatColour(0));
+  assert.match(heatColour(0.5), /^#[0-9a-f]{6}$/);
+  const people = [{ power_score: 2 }, { power_score: '9.1' }, { power_score: 5 }, { power_score: 5 }];
+  const heat = heatOf(people);
+  assert.deepEqual(people.map(heat), [0, 1, 0.5, 0.5]);   // equal scores share a heat
+  assert.equal(heatOf([{ power_score: 4 }])({ power_score: 4 }), 1);
+  const scheme = colourScheme('heat', people, tiers);
+  assert.equal(scheme.of(people[1]), '#fff3b0');
+  assert.equal(scheme.heat(people[0]), 0);
+  assert.equal(scheme.legend.length, 4);
+});
+
 import { ORBIT, CLUSTERS, layoutOf } from '../lib/galaxy-lab.js';
 
 test('layouts: Rings as always, Orbit and Clusters by their sliders, your own otherwise', () => {

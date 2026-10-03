@@ -148,9 +148,14 @@ export default function GalaxyLab() {
           <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Colour by</div>
           <Choice
             value={lab.colourBy}
-            options={[['tier', 'Tier'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
+            options={[['tier', 'Tier'], ['heat', 'Heat'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
             onPick={(v) => setLab({ colourBy: v })}
           />
+          {lab.colourBy === 'heat' && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+              Power as a thermal map: the higher someone&rsquo;s score among the people showing, the hotter, and the hottest glow. Where the glow pools, powerful people cluster.
+            </div>
+          )}
           {lab.colourBy === 'warmth' && clock.social === null && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
               Warmth comes from the Social tab: import your LinkedIn export there first. Until then it&rsquo;s by tier.
