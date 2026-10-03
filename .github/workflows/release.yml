@@ -232,7 +232,9 @@ jobs:
           tag="${{ inputs.tag || github.ref_name }}"
           ver="$(node -p "require('./package.json').version")"
           [ "${tag#v}" = "$ver" ] || { echo "::error::Tag $tag does not match package.json version $ver."; exit 1; }
-      - run: npm ci
+      # --force: package.json's "os" keeps the npm package (npx six-degrees) off
+      # Windows, where it doesn't run; the desktop app is built here regardless.
+      - run: npm ci --force
       - name: Build Setup.exe
         run: node scripts/build-desktop.mjs --platform=win32
       - name: Install it silently, check its Python, open, reach, quit, nothing left, uninstall
