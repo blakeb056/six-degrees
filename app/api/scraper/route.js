@@ -7,6 +7,8 @@ import { scanProgress } from '../../../lib/scan-progress';
 import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
+import { db as notesDb } from '../../../lib/db';
+import { scanDoneNotification } from '../../../lib/notifications';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
@@ -712,6 +714,7 @@ export async function POST(request) {
       const reason = state.stderrTail.filter((l) => !/Warning|warnings\.warn\(/.test(l)).slice(-6);
       state.failure = reason.length ? reason : null;
     }
+    const stopped = state.stopping;
     push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
     state.stopping = false;
     state.running = false;
@@ -721,6 +724,9 @@ export async function POST(request) {
     state.recent = [{
       action: state.action, target: state.target, startedAt: state.startedAt, exitCode: code, failure: state.failure,
     }, ...state.recent].slice(0, 5);
+    // A scan that finished leaves a notification ("Scan done: …"); a stop or a failure doesn't.
+    const done = scanDoneNotification({ action: state.action, target: state.target, exitCode: code, stopped, log: state.log.slice(-12), userId: profileId || null });
+    if (done) Promise.resolve(notesDb.from('notifications').insert([done])).catch(() => {});
     // A setup's private folder (the download and what was unpacked from it).
     if (cleanup) {
       try { cleanup(); } catch { /* swept at the next setup (sweepSetupLeftovers) */ }

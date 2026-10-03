@@ -95,6 +95,8 @@ function HomeInner() {
   const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : 'galaxy'));
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
+  // A notification opened in the right panel (app/components/NoteDetail.js).
+  const [openNote, setOpenNote] = useState(null);
   const [csvMode, setCsvMode] = useState(false);
   const [csvSource, setCsvSource] = useState('csv');
   // What the scanner noted: hidden lists, and lists read with nothing new in
@@ -214,7 +216,7 @@ function HomeInner() {
     : byDegree), [isDegreesMode, degree1, bridgeIds, byDegree]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
-    if (node) setSidebarCollapsed(false);
+    if (node) { setSidebarCollapsed(false); setOpenNote(null); }
   }, []);
 
   // Resolved once: the renderer below and the notch's buttons both need it.
@@ -420,14 +422,26 @@ function HomeInner() {
                   {notifications.length === 0 ? (
                     <div style={{ padding: 20, textAlign: 'center', color: '#555', fontSize: 12 }}>No notifications yet</div>
                   ) : notifications.slice(0, 20).map(n => (
-                    <div key={n.id} style={{
-                      padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    <div key={n.id} role="button" tabIndex={0}
+                      onClick={() => {
+                        // Open it in the right panel, and count it as read.
+                        if (!n.seen) {
+                          fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark-seen', id: n.id }) }).catch(() => {});
+                          setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, seen: true } : x)));
+                        }
+                        setOpenNote(n); setShowNotifs(false); setSidebarCollapsed(false);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.click(); }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = n.seen ? 'transparent' : 'rgba(255,215,0,0.04)'; }}
+                      style={{
+                      padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer',
                       background: n.seen ? 'transparent' : 'rgba(255,215,0,0.04)',
                     }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                         <span style={{ fontSize: 16 }}>{n.icon || '📌'}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: n.seen ? '#888' : '#fff' }}>{n.title}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: n.seen ? '#888' : '#fff' }}>{n.title}<span style={{ color: '#556', marginLeft: 6 }}>›</span></div>
                           {n.message && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{n.message}</div>}
                           <div style={{ fontSize: 9, color: '#444', marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString()}</div>
                         </div>
@@ -551,6 +565,8 @@ function HomeInner() {
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onSelect={(node) => { setSelected(node || null); }}
           onSwitchMode={(newMode) => { setMode(newMode); }}
+          note={openNote}
+          onCloseNote={() => setOpenNote(null)}
           onOpenCircle={openCircle}
           onShowInSeparation={showInSeparation}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}
