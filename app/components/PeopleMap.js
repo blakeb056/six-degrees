@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3';
 import { peopleMap } from '../../lib/people-map';
 import { companyOf, industryOf, industryByKey, INDUSTRIES, UNKNOWN_INDUSTRY } from '../../lib/companies';
-import { jitter, Seg, useSize } from './PathsAnalyzer';
+import { jitter, Seg, useSize, SidePanel, panelHeading } from './PathsAnalyzer';
 
 const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const LINE = '1px solid rgba(255,255,255,0.1)';
@@ -39,6 +39,8 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
   const [tier, setTier] = useState('all');             // their own tier: 'all' | 'SA'
   const [hidden, setHidden] = useState(() => new Set());
   const [query, setQuery] = useState('');
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [labels, setLabels] = useState('top');        // 'top' | 'all' | 'none'
 
   const model = useMemo(() => peopleMap(d1, d2), [d1, d2]);
   // Each connection's sector, from where they work (inferred, as on the company map).
@@ -69,15 +71,16 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
   }, [model, who, sectorOf]);
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '10px 16px', borderBottom: LINE, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a person"
-            style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, minWidth: 170 }} />
-          <Seg value={sizeBy} onChange={setSizeBy} options={Object.entries(SIZE_BY).map(([k, v]) => [k, `Size by ${v.label.toLowerCase()}`])} />
-          <Seg value={who} onChange={setWho} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All your connections (${fmt(model.people.length)})`]]} />
+    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      <SidePanel open={panelOpen} onToggle={() => setPanelOpen((o) => !o)}>
+        <div style={panelHeading}>Filter</div>
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a person"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, marginBottom: 8 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Seg value={who} onChange={setWho} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All (${fmt(model.people.length)})`]]} />
           <Seg value={tier} onChange={setTier} options={[['all', 'All tiers'], ['SA', 'S & A only']]} />
         </div>
+        <div style={panelHeading}>Sectors</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {sectors.map((i) => {
             const off = hidden.has(i.key);
@@ -91,16 +94,23 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
               </button>
             );
           })}
-          <span style={{ fontSize: 11, color: '#667', alignSelf: 'center' }}>sectors inferred from where each connection works</span>
         </div>
-      </div>
-      <Bubbles people={shown} links={model.links} sizeBy={SIZE_BY[sizeBy]} sectorOf={sectorOf} rank={model.rank}
+        <div style={{ fontSize: 10.5, color: '#667', marginTop: 6 }}>Inferred from where each connection works.</div>
+        <div style={panelHeading}>Read the map</div>
+        <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
+        <Seg value={sizeBy} onChange={setSizeBy} options={Object.entries(SIZE_BY).map(([k, v]) => [k, v.label])} />
+        <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
+        <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
+      </SidePanel>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <Bubbles people={shown} links={model.links} sizeBy={SIZE_BY[sizeBy]} sectorOf={sectorOf} rank={model.rank} names={labels}
         onOpen={(id) => router.push(`/?chain=${encodeURIComponent(id)}`)} />
+      </div>
     </div>
   );
 }
 
-function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen }) {
+function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' }) {
   const wrap = useRef(null);
   const { w, h } = useSize(wrap);
   const [hover, setHover] = useState(null);
@@ -169,7 +179,7 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen }) {
     }
     return s;
   }, [hover, layout]);
-  const labelled = useMemo(() => new Set(layout.nodes.filter((n) => n.p.size).slice(0, 28).map((n) => n.id)), [layout]);
+  const labelled = useMemo(() => new Set(names === 'none' ? [] : layout.nodes.filter((n) => n.p.size).slice(0, names === 'all' ? Infinity : 28).map((n) => n.id)), [layout, names]);
 
   // Where a node is on screen (the SVG fits its box to the window, centred).
   const scale = w && h ? Math.min(w / layout.box.w, h / layout.box.h) : 1;

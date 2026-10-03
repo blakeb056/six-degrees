@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Paths has the same header as the map.** The app's tabs stay at the top, with Paths lit, and Map,
+  People, Industries and Companies sit in the notch under them, as the map page's views do; a tab
+  for Network Circle, Degrees or Separation takes you straight to it. Paths' filters moved into a
+  Filters panel on the left, like the map page's, with new ways to read the map: what a bubble's
+  size means (your people there, the S and A among them, or the ones you already know; on People,
+  cluster value, size or S tier) and which names show (the biggest, all, or none).
 - **The Scan page has a radar, and a speed: Slow, Medium or Fast.** Mapping the 2nd degree starts
   from a round Scan button in the middle of a radar: its sweep turns while a scan runs, and the
   ring round it fills with today's searches against your budget. Beside it, three speeds. Fast is
