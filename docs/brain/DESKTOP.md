@@ -30,10 +30,12 @@ wrong, however good it looks.
    data folder behave exactly as in 0.1.x.
 3. **The user's data is untouchable.** It stays in `~/.six-degrees`
    (`%USERPROFILE%\.six-degrees` on Windows). From D0 on, the first launch of a new
-   version copies the database into `backups/` (keeping the last five) before anything
-   opens it. The one thing that replaces it is an import the user asks for (Settings →
-   Your data): checked first, applied only at the next start, and only after what was
-   there is kept in `backups/before-import-*`, which nothing ever prunes. The app never
+   version backs it up into `backups/` (the whole network as a checked `.sixdegrees` file,
+   keeping the last three; Blake, 2026-10-03) before anything
+   opens it. The one thing that replaces it is an import or a restore the user asks for
+   (Settings → Your data): checked first, applied only at the next start, and only after
+   what was there is kept in `backups/before-import-*`, the newest three of which are kept,
+   and never one under 30 days old (`lib/backups.js`). The app never
    moves the folder itself: a live SQLite database in a synced folder can tear, and
    `chrome-profile/` lives inside it.
 4. **Nothing becomes "latest" until it is proven.** Each desktop phase ships first as a
@@ -67,10 +69,13 @@ wrong, however good it looks.
       `docs/SCRAPING.md`, SECURITY.md and the README. Code names stay. Still says "scrape" in
       its own live-log lines: `scripts/scrape.py`, which rule 1 keeps unedited.
 - [x] Back up the database on the first launch of each new version (rule 3). Every later
-      phase depends on it. `backupOnNewVersion()` in `lib/db-client.js`: `VACUUM INTO`
-      `backups/auto-before-<version>-<time>.sqlite` before the schema step, keeping the
-      last five and never touching hand-made copies. Checked on a copy of real data (3,877
-      people copied)
+      phase depends on it. `backupOnNewVersion()` in `lib/db-client.js`: before the schema
+      step, `backups/before-update-<version>-<time>.sixdegrees` (`lib/backups.js`
+      `makeBackup`: photos too, checked by the importer), keeping the last three and never
+      touching hand-made copies; when that can't be made, the old database-only
+      `auto-before-<version>-<time>.sqlite`, so there is always a copy before an update.
+      The database-only copy was checked on a copy of real data (3,877 people copied); the
+      `.sixdegrees` one on invented networks only (2026-10-03)
 - [ ] A real app icon: 1024px artwork → `.icns` for the Mac and `.ico` for Windows. Today
       there is none on the Mac, and the favicon is **Next.js's default Vercel triangle**
       (Vercel's mark, not ours). The Electron build uses a placeholder
