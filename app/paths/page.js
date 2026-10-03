@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
-import { hasCsvNetwork, loadCsvNetwork } from '../../lib/csv';
+import { loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
 import { useUser } from '../components/UserProvider';
@@ -57,17 +57,17 @@ function PathsInner() {
   }, [tab, selectedCompany]);
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
-  // The sample or a CSV import: they live only in this tab, so a company scan could only fail.
+  // The sample or a CSV import: neither is in the database, so a company scan could only fail.
   const [localOnly, setLocalOnly] = useState(false);
 
   useEffect(() => {
     if (IS_DEMO) return;
     if (!userId) return;
     async function load() {
-      // A CSV import (1st degree only) and the sample network (both degrees) live
-      // in this tab, not the database. Keep the sample's 2nd degree: without it
+      // A CSV import (1st degree only, kept in the data folder) and the sample
+      // network (both degrees, in this tab) aren't in the database. Keep the sample's 2nd degree: without it
       // the company map has no links and nobody is "reachable".
-      const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
+      const csv = await loadCsvNetwork();
       setLocalOnly(Boolean(csv));
       let d1 = [], d2 = [], d3 = [];
       if (csv) {

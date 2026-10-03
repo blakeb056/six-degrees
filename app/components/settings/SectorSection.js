@@ -51,16 +51,15 @@ export default function SectorSection({ onSaved } = {}) {
   const [result, setResult] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [suggest, setSuggest] = useState({ loading: true });
-  // A CSV import or the sample network held in this window. This section only
-  // renders in the browser (the page waits in OnboardingGate), so reading
-  // sessionStorage here can't disagree with a server render.
-  const [onScreen] = useState(() => (typeof window === 'undefined' ? null : csvNetworkSource()));
+  // A CSV import or the sample network open instead of yours.
+  const [onScreen, setOnScreen] = useState(null);
   const timer = useRef(null);
   const ticket = useRef(0);
   const jumped = useRef(false);
 
   useEffect(() => {
     let off = false;
+    csvNetworkSource().then((source) => { if (!off) setOnScreen(source); });
     fetch('/api/settings')
       .then((r) => r.json().then((d) => (r.ok ? d : Promise.reject(new Error(d.error || 'Could not load your sector.')))))
       .then((d) => {
@@ -205,7 +204,7 @@ export default function SectorSection({ onSaved } = {}) {
             </li>
             {onScreen && (
               <li style={{ color: 'var(--sd-gold, #FFD700)' }}>
-                {onScreen === 'sample' ? 'The sample network' : 'The CSV import'} open in this window isn&rsquo;t changed by this, and
+                {onScreen === 'sample' ? 'The sample network open in this window' : 'The CSV import you have open'} isn&rsquo;t changed by this, and
                 isn&rsquo;t counted in the suggestions. Your sector applies to networks you&rsquo;ve scanned.
               </li>
             )}

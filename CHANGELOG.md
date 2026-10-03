@@ -47,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the theme's colours (the same as the header's dots), the newest glowing.
 
 ### Changed
+- **A LinkedIn CSV import is kept until you remove it.** Close the window or restart the app and
+  your imported network is still there; it used to be gone with the window. It's kept on this
+  computer, in your data folder (`csv-network.json`), apart from any network you scan, and only
+  what the map needs (names, positions, companies, profile links, when you connected; never email
+  addresses). Click × beside *Your CSV* to remove it; it asks first, and your `Connections.csv`
+  isn't touched. *Save a copy of my network* carries it to another computer and an import brings
+  it back. If the kept file can't be read, the welcome screen says so instead of acting as if
+  there were none. The welcome screen's CSV card says where it's kept.
 - **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
   name, so anyone it's shared with knows where to get it.
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about

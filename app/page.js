@@ -18,7 +18,7 @@ import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
-import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
+import { loadCsvNetwork, closeCsvNetwork } from '../lib/csv';
 import Link from 'next/link';
 import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
@@ -110,10 +110,10 @@ function HomeInner() {
   useEffect(() => {
     if (!userId) return;
     async function load() {
-      // Demo mode: hydrate from the bundled static snapshot, no Supabase.
-      // Three possible sources: the bundled demo snapshot, a CSV the visitor
-      // imported in this tab (1st-degree only, never persisted), or Supabase.
-      const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
+      // Three possible sources: the bundled demo snapshot (demo mode), the
+      // sample opened in this tab or a CSV import kept in the data folder
+      // (1st degree only, never in the database), or the database.
+      const csv = await loadCsvNetwork();
       if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
       const { degree1: d1, degree2: d2, degree3: d3 = [] } = IS_DEMO
         ? await loadDemoNetwork()
@@ -129,11 +129,9 @@ function HomeInner() {
       shapeRef.current = networkShape(d1, d2);
       setStats(statsFor(d1, d2));
       setLoading(false);
+      if (!IS_DEMO && !csv) loadScanNotes().then(setScanNotes);
     }
     load();
-    if (!IS_DEMO && !hasCsvNetwork()) {
-      loadScanNotes().then(setScanNotes);
-    }
   }, [userId]);
 
   // The network again, after a scan: circles fill in while they're scanned
@@ -141,7 +139,7 @@ function HomeInner() {
   // is published, because the graph views rebuild their scene whenever these
   // lists change identity (TRAPS §29).
   const reload = useCallback(async () => {
-    if (IS_DEMO || hasCsvNetwork() || !userId) return;
+    if (IS_DEMO || csvMode || !userId) return;
     try {
       const [{ degree1: d1, degree2: d2, degree3: d3 = [] }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
       setScanNotes((prev) => (JSON.stringify(prev) === JSON.stringify(notes) ? prev : notes));
@@ -153,7 +151,7 @@ function HomeInner() {
       setDegree2(d2);
       setStats(statsFor(d1, d2));
     } catch { /* the app restarting, say: keep what's on screen */ }
-  }, [userId]);
+  }, [userId, csvMode]);
 
   // Followed once: Bridge Chains has opened it, so leaving that view and coming
   // back, or reloading, starts from the overview.
@@ -271,7 +269,9 @@ function HomeInner() {
         openNoteId={linkedNote}
         // Which network you are looking at, and the way back out of it. Loading
         // the sample used to be a one-way door: it lives in sessionStorage, and
-        // nothing in the UI cleared it.
+        // nothing in the UI cleared it. A CSV import is kept in the data folder
+        // now, so × is how it's removed for good, and it asks first, as every
+        // delete of something kept on this computer does.
         chips={csvMode && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
@@ -287,8 +287,13 @@ function HomeInner() {
               {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
             </span>
             <button
-              onClick={() => { clearCsvNetwork(); window.location.href = '/'; }}
-              title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
+              onClick={async () => {
+                if (csvSource !== 'sample' && !window.confirm('Remove this CSV import from this computer? Your Connections.csv file isn’t touched, so you can import it again.')) return;
+                const closed = await closeCsvNetwork(csvSource);
+                if (!closed.ok) { alert(closed.error); return; }
+                window.location.href = '/';
+              }}
+              title={csvSource === 'sample' ? 'Leave the sample network' : 'Remove this import from this computer'}
               style={{
                 border: 'none', background: 'transparent', cursor: 'pointer',
                 color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 13 : 15, lineHeight: 1,

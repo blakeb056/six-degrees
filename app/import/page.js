@@ -21,13 +21,17 @@ export default function ImportPage() {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
 
-  function handleText(text) {
+  async function handleText(text) {
     setBusy(true);
     setError('');
     try {
       const { connections, skipped } = parseConnectionsCsv(text);
-      if (!saveCsvNetwork(connections)) {
-        setError('That network is too large to hold in this window. LinkedIn allows up to 30,000 connections and this app holds that many, so please report it with your connection count: github.com/blakeb056/six-degrees/issues');
+      // Kept in the data folder (lib/csv-store.js), so it's still here after
+      // the window closes. If it can't be kept, nothing opens: a map that
+      // vanished on the next start would look kept when it wasn't.
+      const saved = await saveCsvNetwork(connections);
+      if (!saved.ok) {
+        setError(saved.error);
         setBusy(false);
         return;
       }
@@ -82,7 +86,8 @@ export default function ImportPage() {
 
           <Link href="/" style={primaryBtn}>See your galaxy →</Link>
           <p style={{ color: 'var(--sd-fg-5, #555)', fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
-            Nothing was uploaded or saved: this lives only in this window (or browser tab), and closing it clears it.
+            Kept on this computer, in your data folder, so it&rsquo;s still here after you close the window. Nothing was
+            sent anywhere. To remove it, click &times; next to Your CSV at the top of the map.
           </p>
         </div>
       </div>
@@ -96,8 +101,8 @@ export default function ImportPage() {
           Map <span style={{ background: 'linear-gradient(135deg,#FFD700,#9B59B6,#3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>your</span> network
         </h1>
         <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', margin: '0 0 30px', lineHeight: 1.6, fontSize: 16 }}>
-          Drop LinkedIn&rsquo;s official <code style={code}>Connections.csv</code> below. It is read in your browser,
-          scored, and drawn as a galaxy. No account, no upload, nothing stored.
+          Drop LinkedIn&rsquo;s official <code style={code}>Connections.csv</code> below. It is read on this computer,
+          scored, drawn as a galaxy, and kept in your data folder. No account, and nothing leaves this computer.
         </p>
 
         <div
@@ -144,8 +149,9 @@ export default function ImportPage() {
         <div style={{ ...card, marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#2ecc71', letterSpacing: 2, marginBottom: 10 }}>PRIVATE BY DESIGN</div>
           <p style={{ margin: 0, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.55)', fontSize: 14, lineHeight: 1.7 }}>
-            Your file never leaves this browser. It is parsed locally, held for this tab only, and never written to any
-            database. The <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Email Address column is ignored entirely</strong>.
+            Your file never leaves this computer. It is read here, and only what the map needs (names, positions,
+            companies, profile links and when you connected) is kept, in your data folder, apart from any network you
+            scan. The <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Email Address column is ignored entirely</strong>.
           </p>
         </div>
 

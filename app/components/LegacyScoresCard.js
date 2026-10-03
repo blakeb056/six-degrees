@@ -35,12 +35,11 @@ export default function LegacyScoresCard({ onAnswered }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (csvNetworkSource()) return;
     let off = false;
-    fetch('/api/company-scores/legacy')
-      .then((r) => r.json())
+    csvNetworkSource()
+      .then((onScreen) => (onScreen || off ? null : fetch('/api/company-scores/legacy').then((r) => r.json())))
       .then((j) => {
-        if (off || !j.offer?.companies?.length) return;
+        if (off || !j?.offer?.companies?.length) return;
         setOffer(j.offer);
         setPicked(new Set(j.offer.companies.map((c) => c.name)));
       })

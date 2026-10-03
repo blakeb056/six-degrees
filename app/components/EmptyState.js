@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loadSampleIntoSession } from '../../lib/demo';
+import { keptCsvProblem } from '../../lib/csv';
 
 // The first thing a new install shows: there is no network yet, so pick a way in.
 //
@@ -58,11 +59,7 @@ export default function EmptyState() {
           note="It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this."
         />
 
-        <Choice
-          href="/import"
-          title="Import my LinkedIn CSV"
-          body="LinkedIn’s official export, read in your browser. Takes about ten minutes to arrive by email. Shows the people you know, not who they know."
-        />
+        <CsvChoice />
 
         <Choice
           onClick={loadSample}
@@ -84,6 +81,26 @@ export default function EmptyState() {
         </p>
       </div>
     </div>
+  );
+}
+
+// The CSV card. It says where an import is kept, and when one is kept but
+// can't be read, says that too, rather than look as if there were none
+// (lib/csv.js keptCsvProblem; TRAPS §7).
+function CsvChoice() {
+  const [problem, setProblem] = useState(null);
+  useEffect(() => {
+    let off = false;
+    keptCsvProblem().then((p) => { if (!off) setProblem(p); });
+    return () => { off = true; };
+  }, []);
+  return (
+    <Choice
+      href="/import"
+      title="Import my LinkedIn CSV"
+      body="LinkedIn’s official export. Takes about ten minutes to arrive by email. Kept on this computer, in your data folder, until you remove it. Shows the people you know, not who they know."
+      note={problem}
+    />
   );
 }
 
