@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Heat: power as a thermal map.** A new Colour by in Network Circle's Physics: every dot coloured
+  from cold violet through red and orange to white hot by where their power score ranks among the
+  people showing, with a soft glow behind the hotter ones that pools where powerful people cluster,
+  like a thermal camera. Works with every layout, the replay and the filter grid.
 - **Social is part of Outlink.** Outlink has the same header as every page, and its views sit in
   the notch: Circles, To add, Pending, and Messages & follow-ups, which is the whole Social tab (your
   LinkedIn export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and
