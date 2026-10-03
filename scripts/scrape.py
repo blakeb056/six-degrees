@@ -3394,7 +3394,11 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         raise SearchLimitReached(len(read))
     if reach.get("pushed_back"):
         why = reach.get("pushback_reason") or "a page that would not open"
-        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+        # Auto scan rests two days after any check from LinkedIn, as the Scan
+        # page promises and AUTO_PUSHBACK_REST says; a pushback partway through
+        # a list used to rest it one day, like a scan you start yourself.
+        set_cooldown(seconds=AUTO_PUSHBACK_REST if EXPERIMENT["on"] else DAY_SECONDS,
+                     reason=f"LinkedIn pushed back: {why}")
         raise LinkedInPushedBack(len(read), why)
     if reach.get("budget"):
         raise BudgetReached(len(read), reach["budget"])
