@@ -47,6 +47,7 @@ const state = registerScanState({
   stderrTail: [],
   failure: null,   // the last lines of stderr from a run that failed — its reason
   pages: 0,        // pages the running scan has read: the dots along the header's line (app/components/ScanTrail.js)
+  found: [],       // how many people each of those pages found: the Scan page's cluster (app/components/ScanRadar.js)
 });
 
 // A page read, as scripts/scrape.py prints it: "  Page 3... " as a circle or a
@@ -54,6 +55,10 @@ const state = registerScanState({
 // people of your own connections list. Counted as the lines arrive, since the
 // log only keeps its last MAX_LOG lines.
 const PAGE_READ = /^\s*Page \d+\.\.\.|\d+\s*\/\s*\d+\s+collected/;
+// What a page found, which the scanner prints after "Page N... " once it's read:
+// "10 found (total: 30)" in a circle, "7 found (2 with images)" for a company.
+const PAGE_FOUND = /(\d+) found \((?:total: \d+|\d+ with images)\)/;
+const MAX_PAGES_KEPT = 400;
 
 /** Stop the running job without orphaning the browser it opened.
  *
@@ -106,7 +111,14 @@ function push(line) {
     const t = part.replace(/\s+$/, '');
     if (!t) continue;
     state.log.push(t);
-    if (PAGE_READ.test(t)) state.pages += 1;
+    if (PAGE_READ.test(t)) {
+      state.pages += 1;
+      // Fifty of your own list at a time; a page's count comes on its next line.
+      state.found.push(/collected/.test(t) ? 50 : 0);
+      if (state.found.length > MAX_PAGES_KEPT) state.found.splice(0, state.found.length - MAX_PAGES_KEPT);
+    }
+    const got = t.match(PAGE_FOUND);
+    if (got && state.found.length) state.found[state.found.length - 1] = Number(got[1]);
   }
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
 }
@@ -375,6 +387,7 @@ function job() {
     failure: state.running ? null : state.failure,
     progress: state.running ? scanProgress(state.log, state.action) : null,
     pages: state.running ? state.pages : 0,
+    found: state.running ? state.found : [],
     log: state.log.slice(-120),
     recent: state.recent,
     budget: state.running ? budgetNow() : null,
@@ -714,6 +727,7 @@ export async function POST(request) {
   state.startedAt = Date.now();
   state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
   state.pages = 0;
+  state.found = [];
   state.stderrTail = [];
   state.failure = null;
   forgetChecks();

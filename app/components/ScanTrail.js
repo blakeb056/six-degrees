@@ -4,7 +4,7 @@
 // scanner reads, collecting from the left (Blake, 2026-10-03: "for every page
 // it collects then small dots start collecting on the left side of the line on
 // the lower header line giving that active feel"). The map's own colours, in
-// the order of the name's gradient: gold, purple, blue. The newest one glows;
+// the order of the name's gradient: gold, purple, blue (the theme's S, A and B). The newest one glows;
 // a pulsing seed sits at the start until the first page is in. It's on every
 // tab, since the header is, and a click opens the Scan page.
 //
@@ -15,8 +15,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import useScanner from './useScanner';
+import { TIER_COLORS } from '../../lib/themes';
 
-const COLOURS = ['#FFD700', '#9B59B6', '#3498DB'];
+// The theme's S, A and B dots, in that order (the Scan page's cluster uses the same, page for page).
+const colours = () => [TIER_COLORS.S, TIER_COLORS.A, TIER_COLORS.B];
 const STEP = 9;        // a dot and its gap
 const LINGER_MS = 4000;
 
@@ -75,7 +77,8 @@ export default function ScanTrail({ inset }) {
       }}>
         {first > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#889', marginRight: 2, fontVariantNumeric: 'tabular-nums' }}>+{first.toLocaleString('en-US')}</span>}
         {dots.map((i) => {
-          const c = COLOURS[i % COLOURS.length];
+          const cs = colours();
+          const c = cs[i % cs.length];
           return <span key={i} className={`dot${i === pages - 1 ? ' newest' : ''}`} style={{ width: 5, height: 5, borderRadius: '50%', background: c, color: c, flexShrink: 0 }} />;
         })}
         {shown.on && <span className="seed" style={{ width: 5, height: 5, borderRadius: '50%', background: '#00ff88', flexShrink: 0 }} />}
