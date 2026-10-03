@@ -22,8 +22,9 @@ import { useLivePhysics, HeatDefs, HeatGlow, PHYSICS_OFF } from './MapControls';
 import { makeGrid, shows, gridCounts } from '../../lib/tier-grid';
 import { heatBy, heatColour } from '../../lib/galaxy-lab';
 import { clusterStrength } from '../../lib/map-heat';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(255,255,255,0.1)';
 const UNSCANNED = '#3a3f55';
 const MAX_BUBBLES = 400;

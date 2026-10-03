@@ -8,8 +8,9 @@
 
 import Avatar from './Avatar';
 import { noteSubject } from '../../lib/notifications';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const VALUE = {
   S: 'S-tier: one of the most valuable people in your network to know.',
   A: 'A-tier: a strong person to know.',

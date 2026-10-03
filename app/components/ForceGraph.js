@@ -8,6 +8,7 @@ import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
+import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
@@ -225,7 +226,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
       <style>{RING_CSS}</style>
-      <svg ref={svgRef} width={dimensions?.width ?? 800} height={dimensions?.height ?? 600} style={{ background: '#0a0a1a' }} />
+      <svg ref={svgRef} width={dimensions?.width ?? 800} height={dimensions?.height ?? 600} style={{ background: 'transparent' }} />
       {/* The selection ring. The scene places it over the selected dot. */}
       <div ref={ringRef} className="galaxy-ring" style={{
         position: 'absolute', left: 0, top: 0, display: 'none',
@@ -593,9 +594,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // forceLink has already swapped each link's ids for the nodes themselves, so
   // the colour is one step away. It used to search every node for every link:
   // about 1.8 s at 30,000 people.
+  // The theme says whether a line takes the colour of the person it leads to, or one colour for all (lib/themes.js).
+  const lineColour = (d) => (MAP_LOOK.lines === 'one' ? MAP_LOOK.line : colourOf(d.target) || '#333');
   const link = g.append('g').selectAll('line').data(links).join('line')
     .attr('class', 'gl')
-    .attr('stroke', d => colourOf(d.target) || '#333')
+    .attr('stroke', lineColour)
     .attr('stroke-opacity', lineOpacity()).attr('stroke-width', 0.5 * L.lines);
 
   // Catalyst outer glow rings (rendered behind the nodes)
@@ -648,7 +651,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const node = g.append('g').selectAll('circle').data(nodes).join('circle')
     .attr('class', 'gn')
     .attr('r', nodeRadius)
-    .attr('fill', d => d.id === CENTER_ID ? '#fff' : colourOf(d))
+    .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : colourOf(d))
     .attr('fill-opacity', d => (d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
     .attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
@@ -934,8 +937,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     colourOf = next.of;
     heatFn = next.heat || null;
     drawHeat();
-    node.attr('fill', d => d.id === CENTER_ID ? '#fff' : colourOf(d));
-    link.attr('stroke', d => colourOf(d.target) || '#333');
+    node.attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : colourOf(d));
+    link.attr('stroke', lineColour);
     drawLabels();
     showBorn();
     if (ringNode) select(ringNode.id);

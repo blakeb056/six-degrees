@@ -18,8 +18,9 @@ import { circleIndex, circleRings, circleLayout, requestedByDefault } from '../.
 import { keyFor, routeIndex } from '../../lib/separation';
 import { RARITY, rarityOf, passes, countByRarity, toggle, rarityInfo } from '../../lib/rarity';
 import { scoreGuess } from '../../lib/score-guess';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const CLASSIC = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 const GREEN = '#00ff88';
 

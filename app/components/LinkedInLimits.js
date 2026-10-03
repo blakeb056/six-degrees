@@ -8,9 +8,10 @@
 
 import { useState } from 'react';
 import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 const LINE = '1px solid rgba(255,255,255,0.1)';
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const DAILY = [25, 50, 100, 200, 500];
 const MONTHLY = [100, 250, 500, 1000, 0];
 const PROFILES = [10, 25, 50, 100];

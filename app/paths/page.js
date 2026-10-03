@@ -15,8 +15,8 @@ import useScanner from '../components/useScanner';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 // Map and Companies (Blake, 2026-10-02: companies are worth more than industries,
 // and an industry's detail opens from a company's card). Whether the map's bubbles
 // are companies or people is a switch in its Filters panel.
@@ -240,8 +240,8 @@ function PathsInner() {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 12, background: '#0a0a1a', color: 'rgba(255,255,255,0.7)',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        gap: 12, background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
+        fontFamily: 'var(--sd-font)',
       }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#fff' }}>Not part of the demo</h1>
         <p style={{ fontSize: 13, margin: 0 }}>The public demo includes the Network Circle and Degrees views only.</p>
@@ -251,13 +251,13 @@ function PathsInner() {
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a1a', color: '#fff' }}>Loading...</div>;
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>Loading...</div>;
   }
 
   return (
     <div style={{
-      height: '100vh', background: '#0a0a1a', color: '#fff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      height: '100vh', background: 'var(--sd-page)', color: '#fff',
+      fontFamily: 'var(--sd-font)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       {/* The same header as every page: the app's tabs, Paths lit; Map, People,

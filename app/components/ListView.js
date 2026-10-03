@@ -1,8 +1,8 @@
 'use client';
 
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 export default function ListView({ connections, degree2 = [], onSelect, mode }) {
   const isDegreesMode = mode === 'degrees';
@@ -26,7 +26,7 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
     }).filter(Boolean).sort((a, b) => b.value - a.value);
 
     return (
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: '#0a0a1a' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: 'var(--sd-page)' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           {/* Table header */}
           <div style={{
@@ -92,7 +92,7 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
   const maxScore = parseFloat(sorted[0]?.power_score) || 10;
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: '#0a0a1a' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: 'var(--sd-page)' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         {/* Table header */}
         <div style={{

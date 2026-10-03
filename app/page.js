@@ -22,6 +22,7 @@ import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
 import Link from 'next/link';
 import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
+import { TIER_COLORS } from '../lib/themes';   // the theme's dot colours, filled before anything draws
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -38,13 +39,6 @@ function statsFor(d1, d2) {
   return { total: d1.length, tiers: tierCounts, d2Total: d2.length, d2Tiers: d2TierCounts };
 }
 
-const TIER_COLORS = {
-  S: '#FFD700',
-  A: '#9B59B6',
-  B: '#3498DB',
-  C: '#95A5A6',
-  D: '#BDC3C7',
-};
 
 export default function Home() {
   // Suspense because HomeInner reads the address's ?chain= (useSearchParams),
@@ -255,7 +249,7 @@ function HomeInner() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a1a', color: '#fff' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>
         <div style={{ fontSize: 24, fontWeight: 700 }}>Loading Six Degrees…</div>
         <div style={{ fontSize: 14, color: '#888', marginTop: 8 }}>Mapping your LinkedIn network</div>
       </div>
@@ -266,7 +260,7 @@ function HomeInner() {
   const canScan = !IS_DEMO && !csvMode;
 
   return (
-    <div data-map style={{ height: '100vh', overflow: 'hidden', background: '#0a0a1a', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div data-map style={{ height: '100vh', overflow: 'hidden', background: 'var(--sd-page)', color: '#fff', fontFamily: 'var(--sd-font)' }}>
       <AppHeader
         active={mode}
         isMobile={isMobile}

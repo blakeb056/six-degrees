@@ -53,7 +53,11 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const isMobile = mobileProp ?? mobileSeen;
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
   return (
-    <header style={{ position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+    <header style={{
+      position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0,
+      // Clear, or frosted glass on a glass theme (lib/themes.js).
+      background: 'var(--sd-header)', backdropFilter: 'var(--sd-header-blur)', WebkitBackdropFilter: 'var(--sd-header-blur)',
+    }}>
       <div style={isMobile
         ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }
         : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: 8 }}>
@@ -132,7 +136,7 @@ function NotificationBell({ isMobile, onOpen, openId }) {
       {open && (
         <div style={{
           position: 'absolute', top: 40, right: 0, width: 320, maxHeight: 400,
-          background: 'rgba(10,10,26,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+          background: 'color-mix(in srgb, var(--sd-bg) 97%, transparent)', border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 12, overflow: 'hidden', zIndex: 100,
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',

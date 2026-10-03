@@ -11,8 +11,9 @@ import { useUser } from '../UserProvider';
 import { loadNetwork } from '../../../lib/network';
 import { networkHealth } from '../../../lib/network-health';
 import { Body, LINE } from '../ui';
+import { TIER_COLORS as THEME_TIERS } from '../../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const pct = (x) => `${Math.round(x * 100)}%`;
 
 export default function NetworkHealthSection() {

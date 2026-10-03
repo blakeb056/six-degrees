@@ -19,8 +19,9 @@ import {
 import { keyFor } from '../../lib/separation';
 import { Body, LINE } from '../components/ui';
 import Thread from './Thread';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const STAGE_COLOUR = { new: '#8b9a9a', contacted: '#3498DB', replied: '#00d4aa', meeting: '#ff9f43', won: '#FFD700', 'not-now': '#667' };
 const LIST_PAGE = 100;
 const DAY = 86400000;

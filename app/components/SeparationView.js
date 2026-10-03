@@ -41,9 +41,10 @@ import useRequests from './useRequests';
 import { initialsFor } from '../../lib/tiers';
 import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 const ORANGE = '#FF6B35';
-const CLASSIC = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const CANT_NAME = 'a connection we can’t name';
 // The fixed Filters (left:16) and Details (right:16) pills sit at viewport
 // top:140 — inside the header band on a desktop, in the controls row on a
@@ -361,7 +362,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   return (
     <div style={{
       flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-      background: '#0a0a1a', color: '#fff', overflow: 'hidden',
+      background: 'var(--sd-page)', color: '#fff', overflow: 'hidden',
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
       <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
@@ -650,7 +651,7 @@ const MAP_CSS = `
 }
 `;
 const RANK_NOTE = 'Ranked by each person’s own score (title, company, headline). It ranks reachability, not people. From the lists scanned so far.';
-const HALO = { paintOrder: 'stroke', stroke: '#0a0a1a', strokeWidth: 3, strokeLinejoin: 'round' };
+const HALO = { paintOrder: 'stroke', stroke: 'var(--sd-bg)', strokeWidth: 3, strokeLinejoin: 'round' };
 const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
 
 /**
@@ -768,7 +769,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
                   <SmallCard p={p} c={c} tag={tag} width={Math.max(240, Math.min(340, width - pp.x - 4))} sel={sel} />
                 ) : pp.big ? (
                   <>
-                    <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
+                    <circle r={pp.r} fill="var(--sd-bg)" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
                     <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
                     <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
                     <text x={lx} y={-4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
@@ -822,7 +823,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
               <circle
                 r={b.r}
                 fill={b.unresolved ? 'none' : c}
-                stroke={b.unresolved ? '#777' : '#0a0a1a'}
+                stroke={b.unresolved ? '#777' : 'var(--sd-bg)'}
                 strokeWidth={b.unresolved ? 1 : 1.5}
                 strokeDasharray={b.unresolved ? '2 2' : undefined}
               />
@@ -915,7 +916,7 @@ function BigCard({ p, c, tag, width, fs }) {
   return (
     <g>
       <rect x={0} y={-76} width={width} height={152} rx={16} fill="#151830" stroke="rgba(255,215,0,0.45)" />
-      <circle cx={48} r={32} fill="#0a0a1a" stroke={c} strokeWidth={3} />
+      <circle cx={48} r={32} fill="var(--sd-bg)" stroke={c} strokeWidth={3} />
       <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
       <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
       <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="#fff">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
@@ -1097,9 +1098,9 @@ const EASY = '#FF7043';
 const SLIDER_CSS = `
 .sepslide { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; background: transparent; cursor: pointer; }
 .sepslide::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
 .sepslide::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #0a0a1a; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
 .sepslide:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 3px; border-radius: 6px; }
 `;
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';

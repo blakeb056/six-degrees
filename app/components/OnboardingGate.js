@@ -16,8 +16,8 @@ export default function OnboardingGate({ children }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0a0a1a', color: '#fff', padding: 24, textAlign: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: 'var(--sd-page)', color: '#fff', padding: 24, textAlign: 'center',
+      fontFamily: 'var(--sd-font)',
     }}>
       {!ready ? (
         <div style={{ fontSize: 18, fontWeight: 600 }}>Loading…</div>

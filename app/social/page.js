@@ -12,7 +12,7 @@ export default function SocialMoved() {
   const router = useRouter();
   useEffect(() => { router.replace('/queue?view=messages'); }, [router]);
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a1a', color: '#aab', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#aab', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
       Social is part of <Link href="/queue?view=messages" style={{ color: '#FF6B35', marginLeft: 4 }}>Outlink</Link> now.
     </div>
   );

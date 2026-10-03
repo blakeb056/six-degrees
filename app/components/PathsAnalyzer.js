@@ -25,8 +25,9 @@ import {
   buildCompanyIndex, companyLinks, companyOf, getSeniority, industryOf, industryByKey,
   INDUSTRIES, UNKNOWN_INDUSTRY, waysInto, isSenior,
 } from '../../lib/companies';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(255,255,255,0.1)';
 const MAX_BUBBLES = 140;
 const ALL_INDUSTRIES = [...INDUSTRIES, UNKNOWN_INDUSTRY];
@@ -88,7 +89,7 @@ export function SidePanel({ open, onToggle, children }) {
   return (
     <aside style={{
       width: 300, flexShrink: 0, height: '100%', overflowY: 'auto', boxSizing: 'border-box', padding: '16px 14px',
-      borderRight: '1px solid rgba(52,152,219,0.15)', background: 'rgba(10,15,30,0.65)', fontSize: 13,
+      borderRight: '1px solid rgba(52,152,219,0.15)', background: 'var(--sd-panel)', fontSize: 13,
     }}>
       <button type="button" onClick={onToggle} style={{
         display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 14, padding: '6px 12px', borderRadius: 6, cursor: 'pointer',

@@ -575,7 +575,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             return (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                background: 'rgba(10,10,26,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+                background: 'color-mix(in srgb, var(--sd-bg) 97%, transparent)', border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
               }}>
@@ -790,7 +790,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {searchResults.length > 0 && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-            background: 'rgba(10,10,26,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'color-mix(in srgb, var(--sd-bg) 97%, transparent)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8, marginTop: 4, overflow: 'hidden',
             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           }}>
@@ -966,8 +966,8 @@ function SidebarWrapper({ children, collapsed, onToggle }) {
         borderLeft: '1px solid rgba(255,215,0,0.12)',
         padding: isMobile ? '12px 10px' : '16px 16px',
         overflowY: 'auto', overflowX: 'hidden',
-        background: isMobile ? 'rgba(15,12,5,0.98)' : 'rgba(15,12,5,0.65)', fontSize: 13,
-        backdropFilter: 'blur(24px) saturate(1.4)', WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+        background: isMobile ? 'rgba(15,12,5,0.98)' : 'var(--sd-panel)', fontSize: 13,
+        backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
         boxShadow: 'inset 0 0 60px rgba(255,215,0,0.03), -4px 0 24px rgba(0,0,0,0.3)',
         marginLeft: isMobile ? 'auto' : 0,
       }}>

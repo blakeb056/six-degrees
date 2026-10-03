@@ -18,8 +18,8 @@ import { keyFor } from '../../lib/separation';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex } from '../../lib/reach';
 import { loadScanNotes } from '../../lib/scraper-client';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 // Who to reach first: power, +1 when the company their score is built on is a
 // top one by the model's own scores (TOP_COMPANY: the curated list's major
@@ -159,8 +159,8 @@ function QueueInner() {
   if (IS_DEMO) {
     return (
       <div style={{
-        minHeight: '100vh', background: '#0a0a1a', color: 'rgba(255,255,255,0.7)',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
+        fontFamily: 'var(--sd-font)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
         textAlign: 'center', padding: 24,
       }}>
@@ -254,13 +254,13 @@ function QueueInner() {
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a1a', color: '#fff' }}>Loading...</div>;
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>Loading...</div>;
   }
 
   return (
     <div style={{
-      height: '100vh', background: '#0a0a1a', color: '#fff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      height: '100vh', background: 'var(--sd-page)', color: '#fff',
+      fontFamily: 'var(--sd-font)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       {/* The same header as every page: the app's tabs, Outlink lit. Circles, To add,
