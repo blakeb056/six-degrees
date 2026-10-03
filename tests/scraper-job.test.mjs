@@ -16,6 +16,9 @@ register('./helpers/extensionless.mjs', import.meta.url);
 const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-scraper-job-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
+// Google Chrome is here, whatever the computer running this has (lib/scanner-setup.js
+// chromeInstalled): without it the server refuses every scan (tests/first-run.test.mjs).
+process.env.SIX_DEGREES_TEST_CHROME = 'found';
 
 let GET, POST, getDb, registerScanState;
 

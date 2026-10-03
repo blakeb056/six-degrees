@@ -38,6 +38,14 @@ earlier check waited for `nav.global-nav`, which no longer exists anywhere on Li
 so it never matched. Not the URL either — the signed-out landing page is often just
 `linkedin.com/`, which slips past a `login`/`authwall` check.
 
+Once the cookie is confirmed past any sign-in wall, `ensure_logged_in` writes
+`signed-in.json` (`{ signedIn, at }`) in the data folder, and `signedIn: false` before it
+waits for you to sign in. The Scan page's step 2 goes by that note
+(`lib/scanner-setup.js` `signedInFrom`). It used to go by Chrome's cookie file, which Chrome
+makes as soon as the window first opens, so closing it without signing in ticked the step. A
+folder from before the note keeps the cookie-file check until the next scan writes one. A
+pushback mid-scan (TRAPS §35) leaves the note as it was.
+
 The wait has **no meaningful deadline**. Closing the browser window is the cancel signal.
 Any timer is a guess about how long a 2FA round-trip takes, and losing that race used to
 close the window mid-login and discard the attempt.

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Download for Mac shows how to open it the first time.** On sixdegreesapp.com, clicking Download
+  for Mac now shows the three steps right under the button: drag it into Applications, close
+  macOS's warning, and allow it once in System Settings → Privacy & Security. They used to be only
+  on the Download page.
+- **Watch a circle fill in while it's scanned.** While the scanner reads who your connections know,
+  step 4 on the Scan page has a Watch it fill in link to that person's circle in Bridge Chains,
+  which fills in as the scanner saves every 10 pages, during a whole round too, not only a scan of
+  one person.
 - **An "I understand" before the first scan**: the Scan page says once, plainly, that scanning runs
   your own LinkedIn account automatically, that LinkedIn may restrict accounts that do this (the safe
   limits of 50 searches a day and 250 a month stay on), and that nothing leaves your computer. Nothing
@@ -58,6 +66,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Scan page's budget box link to it.
 
 ### Changed
+- **Google Chrome is part of getting ready.** Step 1 on the Scan page isn't done until Chrome is on
+  your computer, and offers Install Google Chrome, then come back; it ticks by itself once Chrome is
+  there. Open LinkedIn waits for it, nothing that opens LinkedIn starts without it (every button
+  gets the same one-sentence reason), and the welcome screen's Scan card says it needs Chrome.
+- **Honest about how long scanning takes.** The Scan page says your galaxy takes three steps and who
+  they know fills in over days. Step 4 says the first circle shows up in about 5 minutes (longer at
+  Medium or Slow) and why the rest takes days: every page is a LinkedIn search, and your budget caps
+  a day's.
+- **Your field is asked after your connections are in**, under "Your galaxy is ready", instead of
+  before the first scan, and picking one rescores everyone straight away. Anyone with only their own
+  connections mapped who never answered is asked once; skipping counts as an answer.
+- **Sign in to LinkedIn with Google or Apple?** Step 2 now says what to do: set a LinkedIn password
+  first (Forgot password on LinkedIn's sign-in page emails you a link to make one), since Google and
+  Apple sign-in can't work in the scanner's window.
 - **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
   name, so anyone it's shared with knows where to get it.
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about
@@ -72,6 +94,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   people ready before.
 
 ### Fixed
+- **"Signed in" means signed in.** Step 2 used to tick as soon as the scanner's Chrome window had
+  opened once, even if you closed it without signing in. Now it ticks once the scanner has seen you
+  signed in. Anyone already signed in before this stays signed in.
+- **Degrees says the right thing before who they know is mapped.** With no 2nd degree yet, it told
+  everyone LinkedIn's CSV can't have circles, scanner users included. Now someone who scanned is
+  pointed to step 4 on the Scan page; a CSV import gets the CSV reason, as before.
 - **Words on screen read plainly**: no em dashes anywhere the app shows text (pages, notices,
   notifications, error messages), and a test keeps it that way. The Scan page's old "Checking for
   updates has moved" note is gone. Two messages written for developers now say what anyone can do: a

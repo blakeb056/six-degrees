@@ -122,7 +122,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
           }}>
           <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{scanning ? '•••' : 'SCAN'}</span>
           <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, lineHeight: 1.25, textAlign: 'center' }}>{label}</span>
-          {sublabel && <span style={{ fontSize: 10, opacity: 0.6, textAlign: 'center' }}>{sublabel}</span>}
+          {sublabel && <span style={{ fontSize: 10, opacity: 0.6, textAlign: 'center', textWrap: 'balance' }}>{sublabel}</span>}
         </button>
         {running && found.length > 0 && (
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: -18, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-2, #9fe8c4)', fontVariantNumeric: 'tabular-nums' }}>
