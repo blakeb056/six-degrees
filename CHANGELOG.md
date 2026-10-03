@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1-beta.1] - 2026-10-02 (beta: a pre-release, never installed automatically)
+
 ### Added
 - **Six Degrees for Windows and Linux (beta).** The same app as on the Mac, with the scanner's
   own Python inside, so nothing needs installing before a scan. **Windows:**
