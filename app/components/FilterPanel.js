@@ -18,7 +18,8 @@ const DEGREE_NAMES = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
 const DEGREE_IS = {
   network: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
   degrees: { 1: 'your bridges', 2: 'people in their circles' },
-  paths: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
+  separation: { 2: 'the people Separation ranks' },
+  paths:{ 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
 };
 
 /**
@@ -31,6 +32,11 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   const dot = isMobile ? 21 : 23;
   const anyAt = (d) => TIERS.some((t) => (counts[t]?.[d] || 0) > 0);
   const what = (d) => DEGREE_IS[mode]?.[d];
+  // Separation: your connections are the ways in, and all of them stay, whatever their tier.
+  const waysIn = mode === 'separation';
+  const emptyTitle = (d, t) => (waysIn && d === 1
+    ? 'Every connection stays a way in here, whatever their tier: the tiers choose who is ranked'
+    : `No ${t ? `${t}-Tier ` : 'one '}at ${DEGREE_NAMES[d]} degree yet`);
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
@@ -44,7 +50,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
             const on = any && TIERS.every((t) => grid.hidden.includes(t) || !(counts[t]?.[d] > 0) || grid.degrees[t].includes(d));
             return (
               <button key={d} type="button" disabled={!any} aria-pressed={on}
-                title={any ? `${DEGREE_NAMES[d]} degree${what(d) ? `: ${what(d)}` : ''}. Tap to ${on ? 'hide' : 'show'} it for every tier` : `Nobody at ${DEGREE_NAMES[d]} degree yet`}
+                title={any ? `${DEGREE_NAMES[d]} degree${what(d) ? `: ${what(d)}` : ''}. Tap to ${on ? 'hide' : 'show'} it for every tier` : emptyTitle(d)}
                 onClick={() => onChange(toggleDegree(grid, d, counts))}
                 style={{
                   width: dot, height: 18, padding: 0, border: 'none', background: 'none', cursor: any ? 'pointer' : 'default',
@@ -87,14 +93,14 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                       aria-label={`${t}-Tier at ${DEGREE_NAMES[d]} degree`}
                       title={people
                         ? `${people.toLocaleString('en-US')} ${t}-Tier at ${DEGREE_NAMES[d]} degree. Tap to ${on ? 'hide' : 'show'} them`
-                        : `No ${t}-Tier at ${DEGREE_NAMES[d]} degree yet`}
+                        : emptyTitle(d, t)}
                       onClick={() => onChange(toggleCell(grid, t, d, counts))}
                       style={{
                         width: dot, height: dot, padding: 0, borderRadius: '50%', boxSizing: 'border-box',
                         cursor: people ? 'pointer' : 'default', fontSize: 10, fontWeight: 800, lineHeight: 1,
-                        border: !people ? '1px dashed rgba(255,255,255,0.1)' : on ? `1.5px solid ${color}` : `1.5px solid ${color}70`,
-                        background: on ? color : 'transparent',
-                        color: !people ? 'rgba(255,255,255,0.12)' : on ? '#0a0a1a' : `${color}b0`,
+                        border: waysIn && d === 1 ? `1px solid ${color}40` : !people ? '1px dashed rgba(255,255,255,0.1)' : on ? `1.5px solid ${color}` : `1.5px solid ${color}70`,
+                        background: on ? color : waysIn && d === 1 ? `${color}1f` : 'transparent',
+                        color: waysIn && d === 1 ? `${color}90` : !people ? 'rgba(255,255,255,0.12)' : on ? '#0a0a1a' : `${color}b0`,
                         opacity: off && people ? 0.45 : 1,
                       }}>
                       {d}
@@ -112,7 +118,9 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
         <div style={{ fontSize: 10, color: '#667', lineHeight: 1.4 }}>
-          Tap a tier to hide it, or a dot to show that degree.
+          {waysIn
+            ? 'Tap a tier to leave it out of the ranking. Every connection stays a way in.'
+            : 'Tap a tier to hide it, or a dot to show that degree.'}
         </div>
         <div style={{ fontSize: 10.5, color: '#889', whiteSpace: 'nowrap', marginLeft: 8 }}>
           {total.toLocaleString('en-US')} showing
@@ -130,7 +138,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
 
 export default function FilterPanel({ collapsed, onToggle, mode, visualMode, grid, gridCounts = {}, onGridChange }) {
   const isMobile = useIsMobile();
-  const isDegreesMode = mode === 'degrees';
+  const isDegreesMode = mode === 'degrees' || mode === 'separation';
 
   if (collapsed) {
     return (
@@ -186,7 +194,7 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
         </button>
 
         {/* Which tiers, at which degrees: the same grid in Network Circle and in Degrees */}
-        <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={isDegreesMode ? 'degrees' : 'network'} isMobile={isMobile} />
+        <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} />
 
         {/* Network Circle's Galaxy: the physics that lays it out is what this panel is for. */}
         {!isDegreesMode && visualMode === 'galaxy' && (isMobile ? <NamesSwitch /> : <GalaxyLab />)}
