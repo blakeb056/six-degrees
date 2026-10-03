@@ -91,6 +91,8 @@ function HomeInner() {
   // Another page's tab row links back here with the tab named: /?mode=separation (app/components/AppTabs.js).
   const linkedMode = ['network', 'degrees', 'separation'].includes(params.get('mode')) ? params.get('mode') : null;
   const [chainOpen, setChainOpen] = useState(linkedChain);
+  // Whose circle is open in Bridge Chains right now: the right panel follows it.
+  const [chainIn, setChainIn] = useState(null);
   const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : linkedMode || 'network'));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -482,6 +484,7 @@ function HomeInner() {
             canScan,
             chainOpen,
             onChainOpened: chainOpened,
+            onCircle: setChainIn,
             preset: separationPreset,
           };
           return <View {...viewProps} />;
@@ -499,6 +502,7 @@ function HomeInner() {
           onSwitchMode={(newMode) => { setMode(newMode); }}
           note={openNote}
           onCloseNote={() => setOpenNote(null)}
+          circle={view.key === 'chain' ? chainIn : null}
           onOpenCircle={openCircle}
           onShowInSeparation={showInSeparation}
           onFocusNode={(nodeId) => { if (focusNodeRef.current) focusNodeRef.current(nodeId); }}

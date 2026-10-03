@@ -11,7 +11,6 @@
 // the component and adding a row.
 
 import ForceGraph from './ForceGraph';
-import OrbitGraph from './OrbitGraph';
 import ChainView from './ChainView';
 import GridView from './GridView';
 import ListView from './ListView';
@@ -21,16 +20,14 @@ import SeparationView from './SeparationView';
 /**
  * `modes` — which top-level tab the view belongs in ('network', 'degrees', 'separation').
  * `allDegree2` — give it every 2nd-degree row rather than the mode-filtered
- *   set. Only Orbit wants this: it draws each bridge's circle in both modes and
- *   narrows to the bridges on screen itself. Declared here rather than hidden
- *   in a branch, because an exception you cannot see is one you break later.
+ *   set. No view wants it now (Orbit did, before it became a Galaxy layout);
+ *   declared here rather than hidden in a branch, because an exception you
+ *   cannot see is one you break later.
  */
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
-  // Orbit shows the volume of every circle at once. It sits in Network Circle
-  // (Blake, 2026-10-02: "this view type should just be in the network circle or
-  // in insights"), not in Degrees: Bridge Chains is for following the chains.
-  orbit:    { component: OrbitGraph, modes: ['network'],            label: 'Orbit',         icon: '🪐', desc: 'Tier orbits, with every mapped circle fanned out', allDegree2: true },
+  // Orbit is a layout of the Galaxy now, in its Physics (Blake, 2026-10-03: "add that
+  // as a visual option instead so the person can interact with it"): lib/galaxy-lab.js ORBIT.
   // Separation is a tab of its own (Blake, 2026-10-03), not a view inside Degrees.
   separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
@@ -46,7 +43,7 @@ export const VIEWS = {
  * it is also where resolveView lands when the chosen view isn't a Degrees one
  * (Galaxy, say, carried over from Network Circle); then Separation.
  */
-const ORDER = ['galaxy', 'orbit', 'chain', 'separation', 'rings', 'list'];
+const ORDER = ['galaxy', 'chain', 'separation', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

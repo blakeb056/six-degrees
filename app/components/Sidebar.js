@@ -15,9 +15,10 @@ import { exclusiveReach, bridgeOverlap } from '../../lib/brokerage';
 import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
 import NoteDetail from './NoteDetail';
+import CirclePanel from './CirclePanel';
 import { localPhoto } from '../../lib/photos';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote, circle = null }) {
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
@@ -503,6 +504,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             View LinkedIn Profile
           </a>
         )}
+      </SidebarWrapper>
+    );
+  }
+
+  // A circle open in Bridge Chains: the panel is about whoever's circle you're in.
+  if (isDegreesMode && circle) {
+    return (
+      <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
+        <CirclePanel key={circle.id} person={circle} connections={connections} degree2={degree2} scanNotes={scanNotes}
+          tierColors={tierColors} onSelect={onSelect} onToggle={onToggle} canScan={canScan} />
       </SidebarWrapper>
     );
   }

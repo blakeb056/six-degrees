@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, CLUSTERS, labNow, setLab, watchLab,
+  LAB_DEFAULTS, CLUSTERS, ORBIT, layoutOf, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
@@ -98,8 +98,7 @@ export default function GalaxyLab() {
     try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); done(); }
   };
   const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
-  const preset = FORCES.every((f) => lab[f.key] === LAB_DEFAULTS[f.key]) ? 'rings'
-    : Object.entries(CLUSTERS).every(([k, v]) => lab[k] === v) ? 'clusters' : null;
+  const preset = layoutOf(lab);
 
   return (
     <div style={{ marginBottom: 18, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
@@ -128,13 +127,15 @@ export default function GalaxyLab() {
           <div style={heading}>Layout</div>
           <Choice
             value={preset}
-            options={[['rings', 'Rings'], ['clusters', 'Clusters']]}
-            onPick={(v) => setLab(v === 'rings' ? { ...Object.fromEntries(FORCES.map((f) => [f.key, LAB_DEFAULTS[f.key]])), sizeBy: 'power' } : CLUSTERS)}
+            options={[['rings', 'Rings'], ['orbit', 'Orbit'], ['clusters', 'Clusters']]}
+            onPick={(v) => setLab(v === 'rings' ? { ...Object.fromEntries(FORCES.map((f) => [f.key, LAB_DEFAULTS[f.key]])), sizeBy: 'power' } : v === 'orbit' ? ORBIT : CLUSTERS)}
           />
           <div style={{ ...small, marginBottom: 6 }}>
             {preset === 'clusters'
               ? 'No rings: each connection pulls their circle round them, and a dot grows with everyone behind it.'
-              : 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.'}
+              : preset === 'orbit'
+                ? 'Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them. Drag a bridge and its circle follows.'
+                : 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.'}
           </div>
 
           <div style={heading}>Forces</div>
