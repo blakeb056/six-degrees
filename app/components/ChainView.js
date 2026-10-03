@@ -447,6 +447,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         title={[
           `${roots.length} bridges${bridges.length > roots.length ? ` + ${bridges.length - roots.length} along their chains` : ''} · ${d2S} S + ${d2A} A at 2nd degree`,
           twoWays > 0 ? `${Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways` : null,
+          'The inner ring: the circles with the most going on (notifications, people ready to scan, clusters formed since)',
           'Click a bridge to open their circle, then anyone in it to open theirs',
         ].filter(Boolean).join('\n')}
         style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
