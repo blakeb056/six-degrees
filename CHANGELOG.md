@@ -6,7 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-03
+
+### Added
+- **Themes** (Settings → Appearance). Seven looks: Standard, High contrast, Obsidian, Glass,
+  Analyst, Space and Synthwave, each with a small preview of the map in its colours. Then make it
+  yours: the background and a second colour, a backdrop behind everything (stars, a grid, a glow,
+  a sunset horizon), the accent, each tier's dot and your own, the map's lines (in the colour of
+  the person they lead to, or one colour), how see-through the side panels are, and the font.
+  Everything changes as you go, on every page, and stays in this browser. Copy a theme code to
+  share a look; pasting one only ever sets colours and choices.
+- **Clusters, the way Obsidian draws a graph** (Network Circle → Filters → Layout → Clusters). Your
+  network as one round disc: each connection with a scanned circle is a big hub with their circle
+  around them, and everyone is sized by their lines. Someone in several circles is linked to each
+  of them, so they sit between those hubs and tie them together. The forces have Obsidian's names,
+  Center force, Repel force, Link force and Link distance, each saying what it does to your
+  network. Names fade as you zoom out, all but the hubs'. Picking a layout fits everyone on screen,
+  and so does ⤢ Fit.
+- **Orbit** (Filters → Forces): sets the whole map turning round you, every circle with it, so
+  nothing loses its shape. Still under Reduce Motion.
+- **Dots along the header's line while a scan runs**: one for each page the scanner reads,
+  collecting from the left, on every tab. A click opens the Scan page.
+
 ### Changed
+- **The same header on every tab.** The tabs sit in the exact middle of the window, and Settings,
+  notifications, ↻ Check for new and your level are on Paths, Outlink and Scan too. A notification
+  picked on another tab opens on the map.
 - **Separation fits a laptop's window.** The header is slimmer: the search sits in the title's row,
   the tier line stays without the sentence under it (it's the title's tooltip now), Only show sits
   beside the tiers, the pill saying where the slider is sits over its middle, and the long
@@ -18,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dots to see a step.
 - **↻ Check for new**, in words, in the map's header (it was a bare ↻): the same name as the Scan
   page's button, for checking your LinkedIn for new connections in one click.
+
+### Fixed
+- **Separation's tiers choose who's ranked, not who leads to them.** Hiding a tier in Filters also
+  hid your connections of that tier (the purple A-tier lines), so the people they lead to lost a
+  way in. In Separation every connection now stays a way in, whatever its tier.
+- The level in the round button at the top right matches the Profile page's: it left out C and D
+  tiers and catalysts, so it read lower.
 
 ## [0.5.1-beta.1] - 2026-10-02 (beta: a pre-release, never installed automatically)
 
