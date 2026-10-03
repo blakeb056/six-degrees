@@ -440,41 +440,34 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         onOut={() => setZoom(z => Math.max(0.4, (z ?? homeZoom) - 0.3))}
       />
 
-      {/* Depth tracker */}
-      <div style={{
-        position: 'absolute', bottom: 16, left: 12,
-        background: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: '10px 14px',
-        backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)',
-        maxWidth: 'calc(100vw - 80px)',
-      }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: '#666', letterSpacing: 1.5, marginBottom: 8 }}>DEGREES OF SEPARATION</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[1, 2, 3, 4, 5, 6].map(d => (
-            <div key={d} style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%', fontSize: 11, fontWeight: 800,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: d <= 2 ? DEGREE_COLORS[d] : 'rgba(255,255,255,0.04)',
-                color: d <= 2 ? '#000' : '#333',
-                border: d <= 2 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: d <= 2 ? `0 0 6px ${DEGREE_COLORS[d]}30` : 'none',
-              }}>D{d}</div>
-              <div style={{ fontSize: 7, color: d <= 2 ? '#aaa' : '#333', marginTop: 3 }}>
-                {d === 1 ? connections.length : d === 2 ? totalD2 : '—'}
-              </div>
+      {/* Depth tracker: just the dots, no box (Blake, 2026-10-03: the box grew with
+          a theme's font and stopped fitting; "just have the dots there instead so
+          its more clean looking"). What they add up to is the tooltip. */}
+      <div
+        title={[
+          `${roots.length} bridges${bridges.length > roots.length ? ` + ${bridges.length - roots.length} along their chains` : ''} · ${d2S} S + ${d2A} A at 2nd degree`,
+          twoWays > 0 ? `${Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways` : null,
+          'Click a bridge to open their circle, then anyone in it to open theirs',
+        ].filter(Boolean).join('\n')}
+        style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+        {[1, 2, 3, 4, 5, 6].map((d) => {
+          const lit = d <= 2;
+          const n = d === 1 ? connections.length : d === 2 ? totalD2 : null;
+          return (
+            <div key={d} title={lit ? `${d === 1 ? '1st degree: your bridges' : '2nd degree: the people in their circles'} (${n.toLocaleString('en-US')})` : `${d}th degree: further along a chain, as your scans reach it`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{
+                width: 11, height: 11, borderRadius: '50%',
+                background: lit ? DEGREE_COLORS[d] : 'transparent',
+                border: lit ? 'none' : '1px solid rgba(255,255,255,0.22)',
+                boxShadow: lit ? `0 0 8px ${DEGREE_COLORS[d]}80` : 'none',
+              }} />
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: lit ? '#c8cdd8' : '#556', fontVariantNumeric: 'tabular-nums', textShadow: HALO_TEXT }}>
+                {lit ? n.toLocaleString('en-US') : `D${d}`}
+              </span>
             </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 9, color: '#555', marginTop: 8 }}>
-          {roots.length} bridges{bridges.length > roots.length ? ` + ${bridges.length - roots.length} along their chains` : ''} · {d2S} S + {d2A} A at 2nd degree
-        </div>
-        {twoWays > 0 && (
-          <div style={{ fontSize: 9, color: '#555', marginTop: 4 }}
-            title="The share of everyone you reach through a circle that more than one of your connections reaches">
-            {Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways
-          </div>
-        )}
-        <div style={{ fontSize: 8, color: '#444', marginTop: 4 }}>Click a bridge to open their circle, then anyone in it to open theirs</div>
+          );
+        })}
       </div>
     </div>
   );
@@ -960,30 +953,23 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           scanning={scanningThem} canScan={canScan} onSelect={onSelect} top={cy + 64} />
       )}
 
-      {/* What's in this circle */}
+      {/* What's in this circle: dots and counts, no box, as the depth tracker */}
       {members.length > 0 && (
-        <div style={{
-          position: 'absolute', bottom: 20, left: 20, maxWidth: 'calc(100% - 110px)',
-          background: 'rgba(0,0,0,0.75)', borderRadius: 10, padding: '10px 14px',
-          backdropFilter: 'blur(8px)', fontSize: 10, color: '#888', lineHeight: 1.6,
-        }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#666', letterSpacing: 1, marginBottom: 6 }}>IN THIS CIRCLE</div>
+        <div title={`Click anyone for their circle${ready > 0 && canScan ? ', or someone ready to scan theirs' : ''} · drag to move · scroll to zoom`}
+          style={{
+            position: 'absolute', bottom: 18, left: 18, maxWidth: 'calc(100% - 110px)',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 14px',
+            fontSize: 10.5, color: '#aab', textShadow: HALO_TEXT,
+          }}>
           {byTier.map(([t, n]) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: TIER_COLORS[t] }} />
-              <span style={{ color: TIER_COLORS[t], fontWeight: 600, width: 40 }}>{t}-Tier</span>
-              <span>{n.toLocaleString('en-US')}</span>
-            </div>
+            <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLORS[t], boxShadow: `0 0 6px ${TIER_COLORS[t]}66` }} />
+              <span style={{ color: TIER_COLORS[t], fontWeight: 700 }}>{t}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{n.toLocaleString('en-US')}</span>
+            </span>
           ))}
-          {(added > 0 || asked > 0) && (
-            <div style={{ marginTop: 6 }}>
-              {added > 0 && <div><span style={{ color: GREEN }}>● </span>you added {added}{ready ? `, ${ready} ready to scan` : ''}{hidden ? `, ${hidden} hidden` : ''}</div>}
-              {asked > 0 && <div><span style={{ color: '#FFD700' }}>◌ </span>{asked} {asked === 1 ? 'request' : 'requests'} out</div>}
-            </div>
-          )}
-          <div style={{ marginTop: 6, color: '#555' }}>
-            Click anyone for their circle{ready > 0 && canScan ? ', or someone ready to scan theirs' : ''} · drag to move · scroll to zoom
-          </div>
+          {added > 0 && <span><span style={{ color: GREEN }}>●</span> you added {added}{ready ? `, ${ready} ready to scan` : ''}{hidden ? `, ${hidden} hidden` : ''}</span>}
+          {asked > 0 && <span><span style={{ color: '#FFD700' }}>◌</span> {asked} {asked === 1 ? 'request' : 'requests'} out</span>}
         </div>
       )}
 
@@ -991,6 +977,9 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
     </>
   );
 }
+
+// Words over the map without a box: a soft halo in the theme's background (lib/themes.js).
+const HALO_TEXT = '0 0 3px var(--sd-bg), 0 0 6px var(--sd-bg), 0 0 1px var(--sd-bg)';
 
 // A link's cluster draws at most this many of their people; the count beside it is the whole circle.
 const LINK_DOTS = 290;
