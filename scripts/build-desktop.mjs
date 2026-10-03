@@ -280,6 +280,10 @@ if (WIN) {
   console.log(`  ${path.relative(ROOT, setup)} (${Math.round(statSync(setup).size / 1e6)} MB)`);
 } else {
   step('Building the .tar.gz and the .deb');
+  // Readable by everyone, writable by the owner: packager's output folder is
+  // private (700, it's made as a temporary folder), and installed as root from
+  // the .deb that left /opt/six-degrees unreadable to the user who runs it.
+  run('chmod', ['-R', 'u+rwX,go+rX,go-w', APP_DIR]);
   run('tar', ['-C', OUT, '-czf', path.join(OUT, `Six-Degrees-${VERSION}-linux-x64.tar.gz`), path.basename(APP_DIR)]);
   const deb = path.join(STAGE, 'deb');
   rmSync(deb, { recursive: true, force: true });
