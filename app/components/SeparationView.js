@@ -98,6 +98,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // The slider, 0 (rarest ways in first) to 100 (easiest first); 50 is power alone.
   // The list follows a deferred copy, so the thumb never waits for a sort.
   const [at, setAt] = useState(SLIDER_MIDDLE);
+  // The map's zoom: null fits the whole map in the window (Blake, 2026-10-03: "hard
+  // to see the whole graph on the single screen ... at least have a plus and minus").
+  const [zoom, setZoom] = useState(null);
   const atSlow = useDeferredValue(at);
   const [tier, setTier] = useState('all');
   // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
@@ -244,9 +247,13 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       : summitLayout(top, cw || 800, isMobile, { cards })),
     [single, target, top, cw, isMobile, cards, rarityBy],
   );
-  const captionH = isMobile ? 58 : 28;   // fixed, so HEAD is arithmetic; the phone legend takes two lines, a computer's is the tooltip
+  const captionH = isMobile ? 58 : 36;   // fixed, so HEAD is arithmetic; the phone legend takes two lines, a computer's is the tooltip and the zoom
   const NEXT_H = nextUp.length ? 38 : 0;
-  const mapH = single ? (target ? layout.height + NEXT_H : 0) : layout.height;
+  // Fit: as big as it can be with all of it in the window, never bigger than
+  // life. A phone scrolls instead, unless you zoom.
+  const fitZoom = isMobile ? 1 : Math.max(ZOOM_MIN, Math.min(1, (box.h - captionH - 22 - (single ? NEXT_H : 0)) / Math.max(1, layout.height)));
+  const scale = zoom ?? fitZoom;
+  const mapH = single ? (target ? Math.round(layout.height * scale) + NEXT_H : 0) : Math.round(layout.height * scale);
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
   const titleH = isMobile ? 0 : TITLE_ROW;
   const HEAD = mapBlockH + titleH + LABEL_ROW;
@@ -506,15 +513,19 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
         <div style={{ position: 'relative', maxWidth: 980, margin: '0 auto', height: total }}>
           {mapBlockH > 0 && (
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
-              <div style={{ height: captionH - 10, overflow: 'hidden' }}>
+              <div style={{ height: captionH - 10, overflow: 'hidden', display: isMobile ? 'block' : 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div title={isMobile ? undefined : `${!single && askedShown > 0 ? `${fmt(askedShown)} asked or connected, so it moved on. ` : ''}Solid orange: the top-scored bridge. Dashed: other routes.${single ? ' Pick anyone in the list to aim at them instead.' : cards ? ' A lit pill is someone’s best way in.' : ' Dot size: ways in.'}`}
-                  style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {single
                     ? <>Aiming at {target.person.name} · {layout.unscanned
                       ? `${fmt(target.waysIn + layout.unscanned)} mutual connections: ${fmt(target.waysIn)} drawn, ${fmt(layout.unscanned)} in circles not scanned yet`
                       : target.waysIn === 1 ? 'the one connection of yours who leads to them' : `all ${fmt(target.waysIn)} connections of yours who lead to them`}</>
                     : <>Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn</>}
                 </div>
+                {!isMobile && <ZoomControl scale={scale} fitted={zoom == null}
+                  onOut={() => setZoom(Math.max(ZOOM_MIN, Math.round((scale - 0.1) * 10) / 10))}
+                  onFit={() => setZoom(null)}
+                  onIn={() => setZoom(Math.min(ZOOM_MAX, Math.round((scale + 0.1) * 10) / 10))} />}
                 {isMobile && <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
                   {!single && askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
                   <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
@@ -524,6 +535,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               {cw > 0 && (
                 <SummitMap
                   layout={layout}
+                  scale={scale}
                   selectedKey={selectedKey}
                   tierColors={tierColors}
                   youLabel={youLabel}
@@ -625,6 +637,38 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   );
 }
 
+// ── Zoom ───────────────────────────────────────────────────────────────────
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 1.5;
+
+/** − | Fit | +, one segmented control as a Mac draws one. The middle says the zoom once you've changed it. */
+function ZoomControl({ scale, fitted, onOut, onFit, onIn }) {
+  const seg = (extra = {}) => ({
+    height: 22, minWidth: 26, padding: '0 7px', border: 'none', background: 'none', color: '#c9cdd6',
+    fontSize: 12, fontWeight: 600, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    ...extra,
+  });
+  const line = { width: 1, alignSelf: 'stretch', margin: '4px 0', background: 'rgba(255,255,255,0.14)' };
+  return (
+    <div role="group" aria-label="Zoom the map" style={{
+      display: 'inline-flex', alignItems: 'center', flexShrink: 0, borderRadius: 7, overflow: 'hidden',
+      background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
+      boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 1px 2px rgba(0,0,0,0.35)',
+    }}>
+      <button type="button" onClick={onOut} disabled={scale <= ZOOM_MIN + 0.001} title="Zoom out" aria-label="Zoom out"
+        style={seg({ fontSize: 15, opacity: scale <= ZOOM_MIN + 0.001 ? 0.35 : 1 })}>−</button>
+      <span style={line} />
+      <button type="button" onClick={onFit} title={fitted ? 'The whole map fits the window' : 'Fit the whole map in the window'}
+        style={seg({ minWidth: 44, fontSize: 11, fontVariantNumeric: 'tabular-nums', color: fitted ? '#8f96a3' : '#e6e9ef' })}>
+        {fitted ? 'Fit' : `${Math.round(scale * 100)}%`}
+      </button>
+      <span style={line} />
+      <button type="button" onClick={onIn} disabled={scale >= ZOOM_MAX - 0.001} title="Zoom in" aria-label="Zoom in"
+        style={seg({ fontSize: 15, opacity: scale >= ZOOM_MAX - 0.001 ? 0.35 : 1 })}>+</button>
+    </div>
+  );
+}
+
 // ── The summit map ─────────────────────────────────────────────────────────
 // A plain React <svg>: no d3, no canvas, no zoom — at most about 150 elements
 // whatever the network's size. Hover is pure CSS from the scoped <style>, so a
@@ -666,7 +710,7 @@ function waysTag(p, mutuals) {
   return p.waysIn === 1 ? { text: 'only way in', rare: true, more: 0 } : { text: `${fmt(p.waysIn)} ways in`, rare: false, more: 0 };
 }
 
-const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false, cards = false }) {
+const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false, cards = false }) {
   const { width, height, you, people, bridges, links, spokes, ghosts = [], unscanned = 0, ghostLabel = null, drawn = 1 } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
@@ -677,7 +721,10 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
   const fs = isMobile ? 12 : 11;
 
   return (
-    <svg className="sepmap" width={width} height={height} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+    // Drawn at its own size and scaled whole by the viewBox, so zooming never
+    // lays it out again and everything stays sharp.
+    <svg className="sepmap" width={Math.round(width * scale)} height={Math.round(height * scale)} viewBox={`0 0 ${width} ${height}`} aria-hidden="true"
+      style={{ display: 'block', overflow: 'visible', margin: '0 auto' }}>
       <style>{MAP_CSS}</style>
       <defs>
         <linearGradient id="sepYouGrad" x1="0" y1="0" x2="1" y2="1">
