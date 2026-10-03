@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mutuals, in circles not scanned yet". The person glows less the less of it is scanned. The Next
   names are in the same order and say their mutual counts. Narrow the tiers (S only, say) first to
   aim at the strongest.
+- **The right panel follows the circle you're in.** Open someone's circle in Bridge Chains and the
+  panel is about them: how many people are in their circle, tier chips to see just one tier, a
+  search inside it, the people you added from it (with Scan… for the ones ready), then everyone
+  else in it, strongest first. Click anyone for their card.
+- **Orbit is a layout of the Galaxy now**, in Physics next to Rings and Clusters, not a separate
+  view: every tier held on its own orbit, S nearest you, and each connection's circle tucked in
+  behind them. It's still the Galaxy, so you can drag dots and move every slider on it.
+- **Light up a branch on hover starts off.** It dimmed and relit thousands of dots on every hover,
+  which flickered; it's still in Physics if you want it, and moving from one dot to the next no
+  longer flashes the whole Galaxy in between.
 - **Social is part of Outlink.** Outlink has the same header as every page, and its views sit in
   the notch: Circles, To add, Pending, and Messages & follow-ups, which is the whole Social tab (your
   LinkedIn export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and

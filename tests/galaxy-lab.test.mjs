@@ -109,3 +109,27 @@ test('who wrote last comes from the live sync where the export is missing or old
   // As of Ana's newest message: Cy wrote 5 days before, Ben 15; Ana's is too fresh to owe.
   assert.deepEqual(waiting.map((w) => [w.url, w.days]), [[url('cy'), 5], [url('ben'), 15]]);
 });
+
+import { ORBIT, CLUSTERS, layoutOf } from '../lib/galaxy-lab.js';
+
+test('layouts: Rings as always, Orbit and Clusters by their sliders, your own otherwise', () => {
+  assert.equal(layoutOf(LAB_DEFAULTS), 'rings');
+  assert.equal(layoutOf({ ...LAB_DEFAULTS, ...ORBIT }), 'orbit');
+  assert.equal(layoutOf({ ...LAB_DEFAULTS, ...CLUSTERS }), 'clusters');
+  assert.equal(layoutOf({ ...LAB_DEFAULTS, ...ORBIT, push: 7 }), null);
+  assert.ok(ORBIT.rings > LAB_DEFAULTS.rings);   // every tier held on its orbit
+});
+
+test('the branch light-up starts off, even in a setting saved when it was on', async () => {
+  assert.equal(LAB_DEFAULTS.branch, false);
+  const store = new Map([['six-degrees-galaxy-lab', JSON.stringify({ branch: true, push: 40 })]]);
+  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  try {
+    const fresh = await import('../lib/galaxy-lab.js?saved-before-v2');
+    assert.equal(fresh.labNow().branch, false);
+    assert.equal(fresh.labNow().push, 40);              // the rest of the setting kept
+    fresh.setLab({ branch: true });                      // turned back on: it stays on
+    const again = await import('../lib/galaxy-lab.js?saved-at-v2');
+    assert.equal(again.labNow().branch, true);
+  } finally { delete globalThis.localStorage; }
+});
