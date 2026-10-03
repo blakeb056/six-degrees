@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bridge Chains: hovering a bridge grows its circle.** Their people shoot out of the bridge to
   their places, then anyone among them whose own circle is scanned sprouts it (3rd degree), then
   theirs (4th), in under half a second.
+- **↻ Check for new forms a cluster.** Hover it and a ring of dots builds round it clockwise, the
+  way a connection's circle forms on the map; while it checks, the ring keeps building, round and
+  round, in the look's colours, and the button stays lit. The same on the Scan page.
 - **Scan: the radar is a cluster that grows with every page.** While a scan runs, the people each
   page finds gather round the Scan button as dots, ring by ring, each page's batch in the next of
   the theme's colours (the same as the header's dots), the newest glowing.

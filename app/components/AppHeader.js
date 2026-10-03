@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import AppTabs from './AppTabs';
 import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
+import ClusterSpinner from './ClusterSpinner';
 import useScanner from './useScanner';
 import { useUser } from './UserProvider';
 import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../../lib/scraper-client';
@@ -194,6 +195,7 @@ function RefreshButton({ isMobile }) {
   const busy = busyReason(scan);
   return (
     <button
+      className="cluster-host"
       onClick={async () => {
         try {
           const blocked = notReadyMessage(await scraperStatus());
@@ -218,12 +220,14 @@ function RefreshButton({ isMobile }) {
         // Words, not a bare ↻ (Blake, 2026-10-02: "make it easier to check for new
         // connections"), and the same words as the Scan page's button.
         height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
-        border: '1px solid rgba(0,255,136,0.3)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.45 : 1,
+        // Its own check running stays bright, its cluster building; something else running greys it.
+        border: '1px solid rgba(0,255,136,0.3)', cursor: checking ? 'progress' : busy ? 'not-allowed' : 'pointer', opacity: busy && !checking ? 0.45 : 1,
         background: 'rgba(0,255,136,0.08)', color: 'var(--sd-fg-1, #bff5d9)', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
         display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0,
       }}
     >
-      <span aria-hidden="true" style={{ fontSize: isMobile ? 12 : 14 }}>↻</span>
+      {/* A cluster forming: built once on hover, round and round while it checks */}
+      <ClusterSpinner size={isMobile ? 12 : 14} live={checking} />
       {checking ? 'Checking…' : isMobile ? 'New' : 'Check for new'}
     </button>
   );

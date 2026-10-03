@@ -14,6 +14,7 @@ import { paceOf } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import ClusterSpinner from '../components/ClusterSpinner';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -364,8 +365,9 @@ function SetupInner() {
                 </Launch>
               )}
               more={mapped > 0 && (
-                <Btn onClick={() => run('refresh')} disabled={!canSearch || current < 3} primary>
-                  {running && s.action === 'refresh' ? 'Checking…' : '↻ Check for new'}
+                <Btn onClick={() => run('refresh')} disabled={!canSearch || current < 3} primary cluster active={Boolean(running && s.action === 'refresh')}>
+                  <ClusterSpinner size={13} live={Boolean(running && s.action === 'refresh')} />
+                  {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
                 </Btn>
               )} />
           </StepRow>
@@ -773,15 +775,19 @@ function WhySlow() {
   );
 }
 
-function Btn({ children, onClick, disabled, primary, tone }) {
+// `cluster`: its first child is a ClusterSpinner, built on hover (app/components/ClusterSpinner.js).
+// `active`: its own job is running, so it stays lit (and can't be pressed again).
+function Btn({ children, onClick, disabled, primary, tone, cluster = false, active = false }) {
   const bg = tone === 'bad' ? 'rgba(255,80,80,0.15)'
     : primary ? 'linear-gradient(135deg, #9B59B6, #3498DB)'
     : 'rgba(var(--sd-ink, 255, 255, 255), 0.08)';
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button onClick={onClick} disabled={disabled} className={cluster ? 'cluster-host' : undefined} style={{
       padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 650,
-      color: disabled ? 'var(--sd-fg-4, #667)' : 'var(--sd-fg-1, #fff)', background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.05)' : bg,
-      border: LINE, cursor: disabled ? 'not-allowed' : 'pointer',
+      // White on the purple gradient in every look; the theme's words elsewhere.
+      color: disabled && !active ? 'var(--sd-fg-4, #667)' : primary ? '#fff' : 'var(--sd-fg-1, #fff)', background: disabled && !active ? 'rgba(var(--sd-ink, 255, 255, 255), 0.05)' : bg,
+      border: LINE, cursor: active ? 'progress' : disabled ? 'not-allowed' : 'pointer',
+      ...(cluster ? { display: 'inline-flex', alignItems: 'center', gap: 8 } : {}),
     }}>{children}</button>
   );
 }
