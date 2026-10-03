@@ -177,6 +177,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows in the same notch, beside them. The Filters panel now only filters.
 
 ### Fixed
+- The scanner's log, shown on the Scan page, says "scanning" throughout; a few lines still said the
+  old word.
+- The "Scanning…" dot in the right panel pulses again; the animation it named was never defined.
 - **Separation's map lines now meet every box.** Each connection sits level with the people it
   leads to, so a connection with one person is on that person's row and the line between them runs
   straight; lines start and end exactly on the pill and the card, with a small dot where they plug in.
