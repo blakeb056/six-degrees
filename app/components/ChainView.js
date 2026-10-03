@@ -36,7 +36,9 @@ import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
 import { reachSegments, RING } from '../../lib/dot-rings';
-import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout } from '../../lib/chain-layout';
+import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
+import { noteCircle } from '../../lib/notifications';
+import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
@@ -175,6 +177,17 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const index = useMemo(() => circleIndex(all1, all2), [all1, all2]);
   const reach = useMemo(() => reachIndex(all1, all2, scanNotes), [all1, all2, scanNotes]);
   const readyCount = useMemo(() => readyByCircle(reach), [reach]);
+  // The notifications, by the circle each is about: the busiest circles go on the inner ring.
+  const { userId } = useUser();
+  const [notes, setNotes] = useState([]);
+  useEffect(() => {
+    if (!userId) return undefined;
+    let live = true;
+    fetch(`/api/notifications?userId=${encodeURIComponent(userId)}`).then((r) => r.json())
+      .then((d) => { if (live) setNotes((d.notifications || []).map((n) => ({ circle: noteCircle(n), seen: !!n.seen }))); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [userId]);
   const twoWays = useMemo(() => redundancy(fullDegree2 || degree2, fullDegree1 || connections), [fullDegree2, degree2, fullDegree1, connections]);
   const rowById = useMemo(() => {
     const m = new Map();
@@ -240,7 +253,12 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     }
     return withCircle.has(b.unlocked_from_bridge_id);
   };
-  const roots = bridges.filter((b) => !linked(b));
+  // The inner ring holds the circles with the most going on (lib/chain-layout.js
+  // circleActivity): notifications about them, people in them ready to scan,
+  // clusters formed from them since. The biggest first among the rest.
+  const activity = circleActivity(bridges, { notes, ready: readyCount, chained });
+  const roots = bridges.filter((b) => !linked(b))
+    .sort((a, b) => activity.get(b.id).score - activity.get(a.id).score);
   // Bridges round you: one ring while they fit, more once there are many, each
   // ring far enough from the last for the names under it.
   const bridgeLayout = ringLayout(roots.length, {
@@ -248,7 +266,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   });
   const bridgePos = roots.map((b, i) => {
     const p = bridgeLayout.points[i];
-    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0 };
+    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0, activity: activity.get(b.id) };
   });
   // More than one ring: the counts under each name wait for a hover.
   const crowded = bridgeLayout.rings.length > 1;
@@ -465,6 +483,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 /** What a bridge's ring and number mean, in words, for its tooltip. */
 function bridgeTitle(b, ready, bars) {
   const parts = [];
+  const notes = b.activity?.notes || 0;
+  if (notes) parts.push(`${notes} notification${notes === 1 ? '' : 's'} about their circle${b.activity.unread ? `, ${b.activity.unread} new` : ''}`);
   if (ready) parts.push(`${ready} in ${firstName(b)}’s circle ${ready === 1 ? 'is' : 'are'} ready for a scan`);
   if (b.chains) parts.push(`${b.chains} scanned since, with ${b.chains === 1 ? 'a cluster' : 'clusters'} of their own`);
   if (bars != null) parts.push(bars === 5 ? 'their whole list is scanned' : `about ${bars * 20}% of their list is scanned`);
