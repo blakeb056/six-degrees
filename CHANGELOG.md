@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Rank titles your way** (Settings → Scores → Titles). Set how much each kind of title counts, out
+  of 10, or start from a preset: Founders first, Investors, or A role I'm looking for. Add the roles
+  you're after ("account executive", "head of growth", "recruiter") with their own points, and
+  everyone whose title has those words rises, whatever their level: for outbound to one role, or
+  hiring for it. Saving rescores everyone and says how many people changed tier, and a card's score
+  says "your ranking" where it moved a title. Nothing set scores exactly as before.
+
 ### Changed
 - **The Scan page is a launch, not a manual.** It opens with what the scanner is and what it never does
   (never posts or messages anyone, never sees your password, nothing leaves this Mac, stops when you
