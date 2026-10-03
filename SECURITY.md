@@ -12,14 +12,15 @@ This app is designed to run **on your own machine, against your own network**.
 
 - The web UI binds to localhost. It is not hardened for exposure to the
   internet, and it has no multi-user authentication or per-user authorization.
-- Ten API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
-  `setup-profile`, `scraper`, `update`, and Settings → Your data's
-  `data/export`, `data/import`, `data/restart`, `data/reveal`). The first four
-  can irreversibly destroy or rewrite data, `scraper` starts processes, and
-  `update` changes the code that runs next. `data/export` hands over the whole
-  network in one file, `data/import` replaces it, `data/restart` stops the
-  server, and `data/reveal` starts a process (Finder, or the Linux file
-  browser, on the data folder's own path). While the server is bound to
+- Eleven API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
+  `setup-profile`, `scraper`, `update`, Settings → Your data's
+  `data/export`, `data/import`, `data/restart`, `data/reveal`, and `data/csv`).
+  The first four can irreversibly destroy or rewrite data, `scraper` starts
+  processes, and `update` changes the code that runs next. `data/export` hands
+  over the whole network in one file, `data/import` replaces it, `data/restart`
+  stops the server, `data/reveal` starts a process (Finder, or the Linux file
+  browser, on the data folder's own path), and `data/csv` keeps, hands over and
+  removes a LinkedIn CSV import kept in the data folder. While the server is bound to
   127.0.0.1 they need no token — anyone who can reach it can already open the
   database file directly, so a token there adds friction rather than safety. If
   it is bound to any other address, every caller must send `ADMIN_TOKEN` as a
@@ -113,8 +114,10 @@ This app is designed to run **on your own machine, against your own network**.
 
 Everything stays local:
 
-- A CSV import is parsed in the browser and held for that tab only. It is never
-  uploaded and never written to a database.
+- A CSV import is parsed in the browser. Only what the map needs about each
+  person (no email addresses) goes to the app on this computer, which keeps it
+  in the data folder as `csv-network.json` until you remove it, apart from the
+  database. It is never uploaded anywhere.
 - Scanned data and cached avatars are written to your machine and are gitignored.
   The app shows photos only from those files, so looking at your network never
   contacts LinkedIn.

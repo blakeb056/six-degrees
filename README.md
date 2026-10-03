@@ -302,7 +302,7 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
   LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
   Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
-  `Connections.csv` into the app.
+  `Connections.csv` into the app. It's kept on your computer until you remove it.
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
 
@@ -321,8 +321,12 @@ people you *haven't* met, have nothing to draw. That data exists in no official 
 the scanner is the only way to it, and it's opt-in for that reason.
 
 While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Your CSV
-×* (click × to go back), and Outlink and Scan are hidden. Neither is ever added to your
-network: they last as long as the app's window is open.
+×*, and Outlink and Scan are hidden. Neither is ever added to your network. The sample
+lasts as long as the app's window is open. A CSV import is kept on your computer, in the
+data folder (`csv-network.json`), so it's still there after you close the window or
+restart; click × to remove it (your `Connections.csv` itself isn't touched). Once you've
+scanned your own connections, the map shows your scan instead; the CSV stays kept until
+you remove it from the import page.
 
 ## How scoring works
 
@@ -386,8 +390,9 @@ It estimates **network position**, not what anyone is worth as a person.
 
 - Your network is stored on your computer and nowhere else. No account, no server, no
   telemetry, no analytics, no crash reporting.
-- A CSV import is read on your machine and never added to your network. It's held only
-  in the app window's own storage, and you import it again next time.
+- A CSV import is read on your machine and never added to your network. It's kept in the
+  data folder as `csv-network.json` (names, positions, companies, profile links and when
+  you connected; never email addresses) until you click × beside *Your CSV*.
 - The app contacts only these, and only when you act:
   - **LinkedIn**, while you scan. Each profile photo is saved on your computer as the
     scan reads it, and the app shows photos only from there, so looking at your network
@@ -424,6 +429,7 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 ├── venv/                   the scanner's Python add-ons, if you set it up without the Mac app
 ├── python/                 a private Python for them, if Set up the scanner downloaded one
 ├── pushback/               what LinkedIn's page said if it ever pushed back
+├── csv-network.json        a LinkedIn CSV import, kept until you remove it
 └── *.json                  the scanner's budget, cooldown, progress and skip lists
 ```
 
@@ -453,8 +459,8 @@ Finder*), what each part takes up, and the backups in it.
    (`before-import-…`), and those copies are never deleted automatically: see
    [Undo an import](#undo-an-import).
 5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
-   into a copy. A network opened from a LinkedIn CSV isn't in the copy either: it lives in
-   its browser tab, so import the CSV again there.
+   into a copy. A LinkedIn CSV import kept on the old computer does go into it, and opens
+   on the new one.
 
 ### Undo an import
 
@@ -463,8 +469,9 @@ finished (Settings → Your data shows the exact name):
 
 - `before-import-<time>.sqlite`: your network as it was.
 - `before-import-<time>-files/`: its profile photos (`avatars/`), the scanner's notes about
-  it (`bridge-progress.json`, `bridge-skips.json`, `bridge-unclear.json`), and a copy of
-  your LinkedIn budget files as they were.
+  it (`bridge-progress.json`, `bridge-skips.json`, `bridge-unclear.json`), a CSV import
+  kept with it (`csv-network.json`) if there was one, and a copy of your LinkedIn budget
+  files as they were.
 
 To put it back (there's no button for this yet):
 
@@ -474,14 +481,14 @@ To put it back (there's no button for this yet):
    Move these out of it, to the Trash or somewhere safe if you might want the imported
    network again: `six-degrees.sqlite`, and `six-degrees.sqlite-wal` and
    `six-degrees.sqlite-shm` if they're there (a `-wal` left beside a different database
-   is replayed into it and damages it), then `avatars/` and the three `bridge-*.json`
-   files.
+   is replayed into it and damages it), then `avatars/`, the three `bridge-*.json` files
+   and `csv-network.json`.
 3. Copy `backups/before-import-<time>.sqlite` into the data folder and rename the copy
    `six-degrees.sqlite`. If `before-import-<time>.sqlite-wal` and `-shm` files are beside
    it, copy them too, renamed to match (`six-degrees.sqlite-wal`,
    `six-degrees.sqlite-shm`).
-4. Copy `avatars/` and the three `bridge-*.json` files from
-   `backups/before-import-<time>-files/` back into the data folder.
+4. Copy `avatars/`, the three `bridge-*.json` files and `csv-network.json` (whichever are
+   there) from `backups/before-import-<time>-files/` back into the data folder.
 5. Leave `linkedin-activity.json`, `linkedin-cooldown.json` and `scan-limits.json` as they
    are. They're your LinkedIn account's budget, which the import kept (it only added the
    other computer's searches), so they're right whichever network you use.
@@ -494,8 +501,7 @@ would also sync your LinkedIn sign-in.
 **To remove everything:** quit the app and drag **Six Degrees** from Applications to the
 Trash. Then in Finder choose **Go → Go to Folder…** (⇧⌘G), paste `~/.six-degrees` and
 move that folder to the Trash. Do the same for
-`~/Library/Application Support/Six Degrees`, the app window's own storage and cache
-(it can include a CSV you imported).
+`~/Library/Application Support/Six Degrees`, the app window's own storage and cache.
 
 > [!WARNING]
 > `chrome-profile/` holds a **real, signed-in LinkedIn session**. It's the one thing here
@@ -509,7 +515,7 @@ Nothing to configure. Two optional environment variables exist:
 | Variable | Purpose |
 |---|---|
 | `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. A relative folder is taken from the folder you run the command in. |
-| `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the ten routes that delete, replace or hand over your data, run the scanner, open the data folder or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
+| `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the eleven routes that delete, replace or hand over your data, run the scanner, open the data folder or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
 ## Docs
 

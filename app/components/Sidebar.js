@@ -1203,9 +1203,9 @@ function CreateClusterCard({ selected, degree2 }) {
   );
 }
 
-// In place of the Scan buttons while the sample or a CSV import is open. Both
-// live in this window only, so a scan could only fail: the scanner looks the
-// person up in the database, and says "Bridge '…' not found in database".
+// In place of the Scan buttons while the sample or a CSV import is open.
+// Neither is in the database, so a scan could only fail: the scanner looks the
+// person up there, and says "Bridge '…' not found in database".
 function ScansNeedYourNetwork({ csvSource, style }) {
   return (
     <div style={{
@@ -1214,7 +1214,7 @@ function ScansNeedYourNetwork({ csvSource, style }) {
     }}>
       {csvSource === 'sample'
         ? 'Scanning needs your own network: everyone in the sample is invented.'
-        : 'Scanning needs your own network: a CSV import lives only in this window. Close it (× at the top) and open Scan.'}
+        : 'Scanning needs your own network, not a CSV import. Remove the import (× at the top) and open Scan.'}
     </div>
   );
 }

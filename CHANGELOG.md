@@ -66,6 +66,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Scan page's budget box link to it.
 
 ### Changed
+- **A LinkedIn CSV import is kept until you remove it.** Close the window or restart the app and
+  your imported network is still there; it used to be gone with the window. It's kept on this
+  computer, in your data folder (`csv-network.json`), apart from any network you scan, and only
+  what the map needs (names, positions, companies, profile links, when you connected; never email
+  addresses). Click × beside *Your CSV* to remove it; it asks first, and your `Connections.csv`
+  isn't touched. *Save a copy of my network* carries it to another computer and an import brings
+  it back. If the kept file can't be read, the welcome screen says so instead of acting as if
+  there were none. The welcome screen's CSV card says where it's kept. Once you've scanned your own
+  connections, every page shows your scan instead; the CSV stays kept, and the import page says so
+  with a button to remove it.
 - **Google Chrome is part of getting ready.** Step 1 on the Scan page isn't done until Chrome is on
   your computer, and offers Install Google Chrome, then come back; it ticks by itself once Chrome is
   there. Open LinkedIn waits for it, nothing that opens LinkedIn starts without it (every button
