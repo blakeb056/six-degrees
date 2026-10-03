@@ -84,14 +84,14 @@ export default function MappingProgress({ degree1 = [], degree2 = [], skips = []
 
       {m.hidden > 0 && (
         <p style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #667)', margin: '10px 0 0', lineHeight: 1.6 }}>
-          Hidden means they keep their connections private — that will not change, and it
+          Hidden means they keep their connections private. That will not change, and it
           does not count against you.
         </p>
       )}
 
       {!done && (
         <p style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', margin: '10px 0 0', lineHeight: 1.6 }}>
-          {m.todo} left — about <b>{m.batches} {m.batches === 1 ? 'batch' : 'batches'}</b> of {BATCH}.
+          {m.todo} left, about <b>{m.batches} {m.batches === 1 ? 'batch' : 'batches'}</b> of {BATCH}.
           Run one, leave it a while, run another. Long unbroken runs are what gets an
           account restricted.
         </p>

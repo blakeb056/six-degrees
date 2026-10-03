@@ -46,7 +46,7 @@ export default function EmptyState() {
         </h2>
         <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', fontSize: 14.5, lineHeight: 1.7, margin: '0 0 28px' }}>
           Your network, drawn as a galaxy. Everything stays on this computer.
-          Pick how to bring it in — you can switch later.
+          Pick how to bring it in. You can switch later.
         </p>
 
         <Choice

@@ -244,7 +244,7 @@ function GalaxySection() {
           </h2>
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginTop: 20, maxWidth: 440 }}>
             Every connection orbits you by power tier. S-Tier innermost, D-Tier outermost.
-            A living galaxy of influence — zoom, filter, and explore your entire professional universe.
+            A living galaxy of influence. Zoom, filter, and explore your entire professional universe.
           </p>
           {/* Tier legend */}
           <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
@@ -321,7 +321,7 @@ function ChainSection() {
   const [ref, inView] = useInView();
   const degrees = [
     // The sample's counts; it maps two degrees.
-    { d: 1, label: 'Your Connections', desc: 'Direct network — scored & tiered', color: '#3498DB', count: SAMPLE_STATS.degree1 },
+    { d: 1, label: 'Your Connections', desc: 'Direct network, scored & tiered', color: '#3498DB', count: SAMPLE_STATS.degree1 },
     { d: 2, label: 'Bridge Connections', desc: 'Friends of your bridges', color: '#9B59B6', count: SAMPLE_STATS.degree2 },
     { d: 3, label: 'Extended Reach', desc: 'Bridged from promoted D2s', color: '#FFD700', count: null },
     { d: 4, label: 'Industry Layer', desc: 'Company & sector intelligence', color: '#FF6B35', count: null },
@@ -515,7 +515,7 @@ function FeaturesGrid() {
     {
       title: 'Bridge Clusters',
       subtitle: 'Deep Network Mining',
-      desc: 'Select any D1 connection as a bridge. Automatically discover and score all their connections — your D2 layer.',
+      desc: 'Select any D1 connection as a bridge. Automatically discover and score all their connections: your D2 layer.',
       color: '#9B59B6',
       icon: '🔗',
       stat: `${SAMPLE_STATS.bridges} bridges in the sample`,
@@ -700,7 +700,7 @@ function TheorySection() {
             proximity, and shared experience.
           </p>
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, marginTop: 16, maxWidth: 560, margin: '16px auto 0' }}>
-            Six degrees of separation isn&rsquo;t just a theory &mdash; it&rsquo;s the architecture of human connection.
+            Six degrees of separation isn&rsquo;t just a theory. It&rsquo;s the architecture of human connection.
             Every string vibrates with potential. Every bridge shortens the distance.
           </p>
 
@@ -712,7 +712,7 @@ function TheorySection() {
             opacity: inView ? 1 : 0, transition: 'opacity 1.5s ease 0.5s',
           }}>
             &ldquo;Everyone is connected to everyone else by six degrees or fewer.
-            The question isn&rsquo;t <em>if</em> &mdash; it&rsquo;s <em>through whom</em>.&rdquo;
+            The question isn&rsquo;t <em>if</em>, it&rsquo;s <em>through whom</em>.&rdquo;
           </div>
         </div>
       </div>

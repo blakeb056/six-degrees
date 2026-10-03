@@ -228,7 +228,7 @@ function QueueInner() {
       return;
     }
     // Open a launcher page with all links as clickable buttons
-    const html = `<!DOCTYPE html><html><head><title>Outlink — ${toOpen.length} profiles</title>
+    const html = `<!DOCTYPE html><html><head><title>Outlink · ${toOpen.length} profiles</title>
     <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px;margin:0}
     h2{color:#FFD700;margin-bottom:4px}p{color:#888;font-size:13px;margin-bottom:16px}
     .btn{display:block;padding:12px 16px;margin-bottom:6px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
@@ -551,7 +551,7 @@ function QueueInner() {
                       <span style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)' }}>{tierItems.length}</span>
                       <button onClick={() => {
                         if (tierItems.length === 1) { window.open(tierItems[0].profile_url, '_blank'); return; }
-                        const h2 = `<!DOCTYPE html><html><head><title>${tier}-Tier — ${tierItems.length}</title>
+                        const h2 = `<!DOCTYPE html><html><head><title>${tier}-Tier · ${tierItems.length}</title>
                         <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px}
                         .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
                         border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}

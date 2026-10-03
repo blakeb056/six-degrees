@@ -190,7 +190,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                   <div style={row}>
                     <span style={label}>Only through {first}</span>
                     <span style={{ flex: 1 }}>
-                      {i.circle ? <><b style={{ color: 'var(--sd-green, #00ff88)' }}>{i.only.toLocaleString()}</b> ({Math.round(i.onlyShare * 100)}%): none of your other connections reach them</> : '—'}
+                      {i.circle ? <><b style={{ color: 'var(--sd-green, #00ff88)' }}>{i.only.toLocaleString()}</b> ({Math.round(i.onlyShare * 100)}%): none of your other connections reach them</> : '-'}
                     </span>
                     {i.only > 0 && onShowInSeparation && (
                       <button style={act} onClick={() => onShowInSeparation({ query: selected.name, rarity: 'only' })}>Show them →</button>
@@ -261,7 +261,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             <div style={{ fontSize: 12, color: 'var(--sd-fg-2, #ccc)' }}>
               This person&apos;s network power exceeds their own tier. They connect to{' '}
               <strong style={{ color: 'var(--sd-green, #00ff88)' }}>{selected.catalyst_score} S+A tier</strong>{' '}
-              people — making them a high-value stepping stone to reach elite connections.
+              people, making them a high-value stepping stone to reach elite connections.
             </div>
           </div>
         )}
@@ -350,7 +350,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           return (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--sd-orange, #FF6B35)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
-                Cluster Overview — {bridgeConnections.length} connections
+                Cluster Overview · {bridgeConnections.length} connections
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, fontSize: 10 }}>
                 {sTier.length > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 600 }}>{sTier.length} S-tier</span>}
@@ -850,7 +850,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           if (showHeader) tierRankCounter[c.tier] = 0;
           tierRankCounter[c.tier] = (tierRankCounter[c.tier] || 0) + 1;
           const tierRank = tierRankCounter[c.tier];
-          const tierNames = { S: 'S-Tier — Elite', A: 'A-Tier — High Value', B: 'B-Tier — Notable', C: 'C-Tier — Standard', D: 'D-Tier — Entry' };
+          const tierNames = { S: 'S-Tier · Elite', A: 'A-Tier · High Value', B: 'B-Tier · Notable', C: 'C-Tier · Standard', D: 'D-Tier · Entry' };
           return (
           <div key={c.id}>
             {showHeader && (
@@ -1405,13 +1405,13 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
 
   // 1. Title leverage
   if (role.match(/ceo|chief|founder|president|chairman/i)) {
-    insights.push({ icon: '👑', text: `${person.role} — C-suite executive, highest leverage contact`, color: 'var(--sd-gold, #FFD700)' });
+    insights.push({ icon: '👑', text: `${person.role}: C-suite executive, highest leverage contact`, color: 'var(--sd-gold, #FFD700)' });
   } else if (role.match(/vp|vice president|svp|evp|managing director/i)) {
-    insights.push({ icon: '⚡', text: `${person.role} — VP-level, strong decision-making authority`, color: 'var(--sd-gold, #FFD700)' });
+    insights.push({ icon: '⚡', text: `${person.role}: VP-level, strong decision-making authority`, color: 'var(--sd-gold, #FFD700)' });
   } else if (role.match(/director|head of|senior director/i)) {
-    insights.push({ icon: '🎯', text: `${person.role} — Senior leadership, controls team/budget`, color: 'var(--sd-orange, #FF6B35)' });
+    insights.push({ icon: '🎯', text: `${person.role}: Senior leadership, controls team/budget`, color: 'var(--sd-orange, #FF6B35)' });
   } else if (role.match(/manager|lead|principal/i)) {
-    insights.push({ icon: '📊', text: `${person.role} — Mid-senior, operational influence`, color: 'var(--sd-blue, #3498DB)' });
+    insights.push({ icon: '📊', text: `${person.role}: Mid-senior, operational influence`, color: 'var(--sd-blue, #3498DB)' });
   }
 
   // 2–3. A top company now, and one before, by the model's own company scores
@@ -1421,16 +1421,16 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
   // headline, so "Metadata Analyst" read as Meta and an ex-Googler as at Google.
   const { now, before } = topCompanies(person);
   if (now) {
-    insights.push({ icon: '🏢', text: `At ${now.name} (${now.score}/10) — top-tier company network access`, color: 'var(--sd-purple, #9B59B6)' });
+    insights.push({ icon: '🏢', text: `At ${now.name} (${now.score}/10): top-tier company network access`, color: 'var(--sd-purple, #9B59B6)' });
   }
   if (before) {
-    insights.push({ icon: '📜', text: `Former ${before.name} (${before.score}/10) — carries network from previous role`, color: 'var(--sd-fg-3, #95A5A6)' });
+    insights.push({ icon: '📜', text: `Former ${before.name} (${before.score}/10): carries network from previous role`, color: 'var(--sd-fg-3, #95A5A6)' });
   }
 
   // 4. Sector overlap with user
   const matchingSectors = userSectors.filter(s => headline.includes(s) || company.includes(s));
   if (matchingSectors.length > 0) {
-    insights.push({ icon: '🔗', text: `Shared sector: ${matchingSectors.join(', ')} — direct industry relevance to you`, color: '#2ECC71' });
+    insights.push({ icon: '🔗', text: `Shared sector: ${matchingSectors.join(', ')}: direct industry relevance to you`, color: '#2ECC71' });
   }
 
   // 5. Bridge / gateway value
@@ -1442,7 +1442,7 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
 
   // 6. Catalyst
   if (person.is_catalyst) {
-    insights.push({ icon: '⚡', text: `Catalyst — network power exceeds personal tier, high stepping-stone value`, color: 'var(--sd-green, #00ff88)' });
+    insights.push({ icon: '⚡', text: `Catalyst: network power exceeds personal tier, high stepping-stone value`, color: 'var(--sd-green, #00ff88)' });
   }
 
   // 7. Every way in (degree 2). Built from the merged routes, so it can never
@@ -1461,7 +1461,7 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
       const via = names.length === 0 ? 'connections we can’t name'
         : more > 0 ? `${names.join(', ')} and ${more} more`
         : names.join(' and ');
-      insights.push({ icon: '🤝', text: `Reachable ${routes.length} ways — via ${via}`, color: 'var(--sd-blue, #3498DB)' });
+      insights.push({ icon: '🤝', text: `Reachable ${routes.length} ways, via ${via}`, color: 'var(--sd-blue, #3498DB)' });
     }
   }
 

@@ -60,7 +60,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
     const done = cluster.done + 1;
     const first = String(cluster.bridge.name || '').split(/[\s,]+/)[0];
     setToast(done >= cluster.targets.length
-      ? `+${XP_SEND[person.tier] || 2} · Stage ${cluster.stage} of ${first}'s circle cleared — the next ${STAGE_SIZE} are up`
+      ? `+${XP_SEND[person.tier] || 2} · Stage ${cluster.stage} of ${first}'s circle cleared. The next ${STAGE_SIZE} are up`
       : `+${XP_SEND[person.tier] || 2} · ${first}'s circle ${done}/${cluster.targets.length}`);
     setTimeout(() => setToast(null), 3500);
   }
@@ -83,7 +83,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
             <div style={{ height: '100%', width: `${Math.round(level.progress * 100)}%`, background: 'linear-gradient(90deg, #FFD700, #FF6B35)', transition: 'width 0.5s' }} />
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 6 }}>
-            Points come from invites you send and people who accept — not from browsing.
+            Points come from invites you send and people who accept, not from browsing.
           </div>
         </div>
         {[[quest.sentTotal, 'invites sent'], [quest.addedTotal, 'people added'], [quest.clearedStages, 'stages cleared']].map(([n, l]) => (

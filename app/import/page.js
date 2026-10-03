@@ -97,7 +97,7 @@ export default function ImportPage() {
         </h1>
         <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', margin: '0 0 30px', lineHeight: 1.6, fontSize: 16 }}>
           Drop LinkedIn&rsquo;s official <code style={code}>Connections.csv</code> below. It is read in your browser,
-          scored, and drawn as a galaxy — no account, no upload, nothing stored.
+          scored, and drawn as a galaxy. No account, no upload, nothing stored.
         </p>
 
         <div
@@ -153,12 +153,12 @@ export default function ImportPage() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sd-gold, #FFD700)', letterSpacing: 2, marginBottom: 10 }}>HONEST CAVEAT</div>
           <p style={{ margin: '0 0 12px', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.55)', fontSize: 14, lineHeight: 1.7 }}>
             LinkedIn&rsquo;s export contains no profile photos, so everyone renders as initials on a tier-colored circle.
-            It also only covers people you are <em>already</em> connected to — so <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Degrees</strong> and
+            It also only covers people you are <em>already</em> connected to, so <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Degrees</strong> and
             the <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Outlink queue</strong> stay empty, because those map the people you
             haven&rsquo;t met yet.
           </p>
           <p style={{ margin: 0, color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7 }}>
-            Want those? Run the local scanner — it captures 2nd-degree circles and real photos.{' '}
+            Want those? Run the local scanner: it captures 2nd-degree circles and real photos.{' '}
             <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>See setup →</Link>
           </p>
         </div>

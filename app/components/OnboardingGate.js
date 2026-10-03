@@ -27,8 +27,8 @@ export default function OnboardingGate({ children }) {
             Can’t reach Six Degrees’ local server
           </div>
           <div style={{ color: 'var(--sd-fg-3, #888)', fontSize: 14, lineHeight: 1.6 }}>
-            The page loaded but the app behind it is not answering. If you started it
-            from a terminal, check that window for an error, then reload this page.
+            The page loaded, but the app behind it isn’t answering. Quit Six Degrees and
+            open it again.
           </div>
         </div>
       )}

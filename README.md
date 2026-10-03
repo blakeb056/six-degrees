@@ -68,7 +68,7 @@ The links above always fetch the newest release.</sub>
 
 **Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
 **Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
-(Ventura) or later**, and it's about 220 MB. Everything the scanner needs except Google
+(Ventura) or later**, and it's about 210 MB. Everything the scanner needs except Google
 Chrome is inside, Python included, so there's nothing else to install.
 
 **The first time you open it**, macOS stops it, because the app isn't signed with a

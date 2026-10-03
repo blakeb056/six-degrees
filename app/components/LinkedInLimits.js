@@ -129,7 +129,7 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
     <div style={{ borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: LINE, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <b style={{ fontSize: 13.5 }}>Paused — {paused.length} {paused.length === 1 ? 'list' : 'lists'} with more to read</b>
+          <b style={{ fontSize: 13.5 }}>Paused: {paused.length} {paused.length === 1 ? 'list' : 'lists'} with more to read</b>
           <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 2 }}>
             Each carries on from the page it stopped at{legacy ? `; ${legacy} were read to page 10 before whole lists were read` : ''}.
           </div>
