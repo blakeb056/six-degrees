@@ -46,7 +46,14 @@ const state = registerScanState({
   stopping: false,
   stderrTail: [],
   failure: null,   // the last lines of stderr from a run that failed — its reason
+  pages: 0,        // pages the running scan has read: the dots along the header's line (app/components/ScanTrail.js)
 });
+
+// A page read, as scripts/scrape.py prints it: "  Page 3... " as a circle or a
+// company scan reads each page, and "  350 / 817 collected" for each fifty
+// people of your own connections list. Counted as the lines arrive, since the
+// log only keeps its last MAX_LOG lines.
+const PAGE_READ = /^\s*Page \d+\.\.\.|\d+\s*\/\s*\d+\s+collected/;
 
 /** Stop the running job without orphaning the browser it opened.
  *
@@ -99,6 +106,7 @@ function push(line) {
     const t = part.replace(/\s+$/, '');
     if (!t) continue;
     state.log.push(t);
+    if (PAGE_READ.test(t)) state.pages += 1;
   }
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
 }
@@ -366,6 +374,7 @@ function job() {
     exitCode: state.exitCode,
     failure: state.running ? null : state.failure,
     progress: state.running ? scanProgress(state.log, state.action) : null,
+    pages: state.running ? state.pages : 0,
     log: state.log.slice(-120),
     recent: state.recent,
     budget: state.running ? budgetNow() : null,
@@ -704,6 +713,7 @@ export async function POST(request) {
   state.exitCode = null;
   state.startedAt = Date.now();
   state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
+  state.pages = 0;
   state.stderrTail = [];
   state.failure = null;
   forgetChecks();

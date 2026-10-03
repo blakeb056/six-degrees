@@ -29,7 +29,7 @@ before(async () => {
 beforeEach(() => {
   for (const t of ['linkedin_connections', 'users']) getDb().exec(`DELETE FROM ${t}`);
   rmSync(path.join(dir, 'bridge-progress.json'), { force: true });
-  Object.assign(registerScanState({}), { running: false, action: null, target: null, recent: [], log: [], startedAt: null, exitCode: null });
+  Object.assign(registerScanState({}), { running: false, action: null, target: null, recent: [], log: [], startedAt: null, exitCode: null, pages: 0 });
 });
 
 const ask = async (query) => (await GET(new Request(`http://127.0.0.1/api/scraper${query}`))).json();
@@ -37,18 +37,20 @@ const ask = async (query) => (await GET(new Request(`http://127.0.0.1/api/scrape
 test('?job=1 says what runs and whose scan it is, and how the last jobs ended', async () => {
   assert.deepEqual(await ask('?job=1'), {
     running: false, action: null, target: null, startedAt: null, exitCode: null,
-    failure: null, progress: null, log: [], recent: [], budget: null,
+    failure: null, progress: null, pages: 0, log: [], recent: [], budget: null,
   });
 
   const state = registerScanState({});
   Object.assign(state, {
     running: true, action: 'bridge', target: { id: 'p-ada', name: 'Ada Park' }, startedAt: 1000,
     log: ['Mapping the circle behind Ada Park…'],
+    pages: 7,   // the header's dots (app/components/ScanTrail.js)
     recent: [{ action: 'company', target: { id: null, name: 'Initech' }, startedAt: 900, exitCode: 0, failure: null }],
   });
   const job = await ask('?job=1');
   assert.equal(job.running, true);
   assert.deepEqual(job.target, { id: 'p-ada', name: 'Ada Park' });
+  assert.equal(job.pages, 7);
   assert.deepEqual(job.recent.map((j) => [j.startedAt, j.exitCode]), [[900, 0]]);
 
   // A second scan is refused while it runs, naming what does.
