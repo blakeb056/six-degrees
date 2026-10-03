@@ -18,9 +18,12 @@
 // here. That one line makes every "Coming soon" button for that platform a real
 // download (index.html's data-soon="linux" / data-soon="windows" buttons), and
 // hides the "Coming soon" notes beside them (data-when-soon).
+// Windows and Linux are a beta (docs/brain/DESKTOP.md D3), so their files are on
+// that pre-release, not on releases/latest (which skips pre-releases). Once
+// they're promoted to a full release, point these at releases/latest/download/.
 const DOWNLOADS = {
-  linux: '', // e.g. 'https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Linux.AppImage'
-  windows: '', // e.g. 'https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Windows.exe'
+  linux: 'https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb',
+  windows: 'https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe',
 };
 
 (() => {

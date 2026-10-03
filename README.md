@@ -41,7 +41,7 @@ know placed on rings by how much they can open up for you, the handful of people
 whose own circles reach the furthest, and the shortest chain from you to a stranger
 worth meeting.
 
-It's a Mac app (or `npx six-degrees` on Linux). It runs on your computer, against your own data, with no account and
+It's a Mac app, and now a Windows and Linux app too (beta). It runs on your computer, against your own data, with no account and
 no server.
 
 ## Download
@@ -55,8 +55,8 @@ no server.
 |---|---|---|
 | **macOS**, Apple Silicon (M1 or newer) | [Six-Degrees-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
 | **macOS**, Intel | [Six-Degrees-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
-| **Linux** | App: *coming soon.* Run it today from the Terminal: `npx six-degrees` ([how](https://sixdegreesapp.com/download/#linux)) | Node 22.13 or later |
-| **Windows** | *Coming soon.* [Watch releases](https://github.com/blakeb056/six-degrees) (Watch → Custom → Releases) to hear when it's out | — |
+| **Windows** (beta) | [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe) | Windows 10 or 11, 64-bit |
+| **Linux** (beta) | [Six-Degrees-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz), or from the Terminal: `npx six-degrees` ([how](https://sixdegreesapp.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
 
 <sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
 `SHA256SUMS` file ([latest](https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS)); the Terminal install below checks the download against it.
@@ -114,7 +114,20 @@ touch it. Each new version also copies your data into its `backups` folder befor
 first opens it. To take it to another computer, see
 [Moving to a new computer](#moving-to-a-new-computer).
 
-**Linux:** install **Node 22.13 or later** (from nodejs.org or nvm; Ubuntu's own
+**Windows (beta):** download [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe)
+and open it. It installs for you alone (no administrator password), adds Start Menu and
+Desktop shortcuts, and opens Six Degrees. It isn't signed with a paid certificate yet, so
+SmartScreen may say it protected your PC: **More info → Run anyway**. A newer Setup.exe
+updates it in place; your network stays in `%USERPROFILE%\.six-degrees`, which
+uninstalling never touches. Scanning needs Google Chrome.
+
+**Linux app (beta):** `sudo apt install ./Six-Degrees-Linux-x64.deb` with the
+[.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb), then open it from your apps. The
+[.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz) runs from its folder; on Ubuntu 24.04 and
+later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in it
+once (or start it with `--no-sandbox`). Scanning needs Google Chrome (not Chromium).
+
+**Linux from the Terminal:** install **Node 22.13 or later** (from nodejs.org or nvm; Ubuntu's own
 `nodejs` package is too old), then run:
 
 ```bash
@@ -131,8 +144,7 @@ up the scanner** button downloads a private copy into your data folder (24–33 
 GitHub, checked against a checksum built into Six Degrees). It's tested on Ubuntu, and
 works on a Mac too if you'd rather not install the app.
 
-**Windows:** not yet. There's no Windows app, and `npx six-degrees` doesn't run on
-Windows yet; npm says so if you try.
+`npx six-degrees` doesn't run on Windows; use the Windows app above.
 
 <details>
 <summary>Run it from source (contributors)</summary>
@@ -248,7 +260,7 @@ two steps away, and 503 of them, 84%, are reached through only one connection.
 | Any network, any data, research-grade statistics | — (LinkedIn networks only) | — | any data | ✓ what they're built for |
 | Runs on your computer, with no account | ✓ | — (online, with your account) | varies | ✓ |
 | Price | free, MIT | free, with paid plans | free to paid | free, open source |
-| Windows | coming soon | ✓ | ✓ | ✓ |
+| Windows | ✓ (beta) | ✓ | ✓ | ✓ |
 
 Something out of date, or unfair to another tool? [Open an issue](https://github.com/blakeb056/six-degrees/issues).
 
