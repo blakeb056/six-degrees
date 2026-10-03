@@ -112,8 +112,9 @@ Downloading the new `.dmg` works too; you'll repeat step 3 once for it.
 
 Your network isn't stored in the app. It's in a hidden folder in your home folder,
 `.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
-touch it. Each new version also copies your data into its `backups` folder before it
-first opens it. To take it to another computer, see
+touch it. Each new version also backs up your data, photos and all, into its `backups`
+folder before it first opens it, and Six Degrees makes a backup each day it's open
+(see [Backups](#backups)). To take it to another computer, see
 [Moving to a new computer](#moving-to-a-new-computer).
 
 **Windows (beta):** download [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe)
@@ -417,8 +418,8 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 ```
 .six-degrees/               in your home folder (hidden)
 ├── six-degrees.sqlite      your network: connections, scores, tiers, queue, settings
-├── backups/                copies of the database from before each new version, and
-│                           before an import, touched it
+├── backups/                backups of your network: daily, before each new version, before
+│                           an import or a restore, and any you make (see Backups below)
 ├── avatars/                profile photos, if you scan
 ├── chrome-profile/         the scanner's Chrome sign-in, if you scan (see below)
 ├── venv/                   the scanner's Python add-ons, if you set it up without the Mac app
@@ -430,17 +431,44 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 **Settings → Your data** shows where this folder is (with *Copy the path* and *Show in
 Finder*), what each part takes up, and the backups in it.
 
+### Backups
+
+A backup is your whole network in one `.sixdegrees` file: your connections, their profile
+photos, your settings (the look and your saved Galaxy layouts too), and the scanner's
+progress, skip lists and LinkedIn budget. Each one is checked as it's made, the same way a
+restore would check it, so a backup that's listed would restore. The Social tab's messages
+and notes are never in a backup, so deleting them there (*Forget it*) deletes them
+everywhere, and a restore leaves them as they are. Six Degrees makes one:
+
+- **each day** it's open with a network in it (when it starts, and after a scan, if the
+  newest daily one is a day old; nothing runs on a timer), keeping the last 7;
+- **before a new version** first opens your data, keeping the last 3;
+- **when you click Back up now** in Settings → Your data. These are never deleted for you.
+
+An import or a restore keeps what it replaced as well (`before-import-…`), keeping the
+last 3, and never one that's under 30 days old. Anything else you put in `backups/`
+yourself is never touched.
+
+Settings → Your data says when the last backup was made and whether it passed its check
+("Last backup: <time>, verified"), or what's wrong with it if it didn't. Each backup has
+**Restore** and **Show in Finder**. Backups stay on this computer: to keep one safe if the
+computer is lost, copy it somewhere else (Show in Finder, then drag it to a USB stick).
+
+They take space. For a network of about 650 connections and 5,000 people beyond them,
+with their photos, each backup is about 25 to 35 MB, so the kept ones add up to about
+300 to 400 MB.
+
 ### Moving to a new computer
 
-1. On the old computer, open **Settings → Your data** and click **Save a copy of my
-   network**. You get one file, `Six Degrees backup <date>.sixdegrees`, with your network,
+1. On the old computer, open **Settings → Your data** and click **Export backup
+   file…**. You get one file, `Six Degrees backup <date>.sixdegrees`, with your network,
    your settings, the scanner's progress, skip lists and LinkedIn budget, and the profile
    photos of the people in it (untick them to leave them out; they come back as you scan
    again).
 2. Move that file to the new computer yourself (a USB stick, AirDrop). It holds other
    people's names and photos, so don't post it or share it.
-3. On the new computer, install Six Degrees, open **Settings → Your data**, choose the
-   file and click **Import**. It's checked first, and nothing changes if it isn't a whole
+3. On the new computer, install Six Degrees, open **Settings → Your data**, click
+   **Restore from a file…**, choose the file and click **Restore**. It's checked first, and nothing changes if it isn't a whole
    and undamaged Six Degrees copy. If that computer already has a network, you're asked to
    confirm that the import replaces it. The two networks are never merged. Your LinkedIn
    search budget is the one thing that is: it belongs to your LinkedIn account, not to a
@@ -450,42 +478,27 @@ Finder*), what each part takes up, and the backups in it.
    **Restart now**; with `npx six-degrees`, press Ctrl-C and start it again. If another
    copy of Six Degrees has the same folder open (one started from the Terminal, say), the
    import waits, and Settings says so. What was there before is kept in `backups/`
-   (`before-import-…`), and those copies are never deleted automatically: see
-   [Undo an import](#undo-an-import).
+   (`before-import-…`), for at least 30 days: see [Undo an import](#undo-an-import).
 5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
    into a copy. A network opened from a LinkedIn CSV isn't in the copy either: it lives in
    its browser tab, so import the CSV again there.
 
 ### Undo an import
 
-An import keeps what it replaced in the data folder's `backups/`, named with the time it
-finished (Settings → Your data shows the exact name):
+An import, or a restore, keeps what it replaced in the data folder's `backups/`, named with
+the time it finished: `before-import-<time>.sqlite`, your network as it was, and
+`before-import-<time>-files/` beside it, with its profile photos and the scanner's notes
+about it.
 
-- `before-import-<time>.sqlite`: your network as it was.
-- `before-import-<time>-files/`: its profile photos (`avatars/`), the scanner's notes about
-  it (`bridge-progress.json`, `bridge-skips.json`, `bridge-unclear.json`), and a copy of
-  your LinkedIn budget files as they were.
+To put it back, open **Settings → Your data**, open **The backups**, find **Before an import
+or a restore** with that time, and click **Restore**. It's checked first, then finishes when
+Six Degrees restarts (**Restart now** in the Mac app; with `npx six-degrees`, press Ctrl-C
+and start it again), and what's there now is kept in the same way, so you can go back
+again. Your LinkedIn search budget stays as it is: it belongs to your LinkedIn account,
+not to a network.
 
-To put it back (there's no button for this yet):
-
-1. Quit Six Degrees (⌘Q in the Mac app, Ctrl-C for `npx six-degrees`). Do the rest while
-   it's closed.
-2. Open the data folder (Settings → Your data → *Show in Finder*, or `~/.six-degrees`).
-   Move these out of it, to the Trash or somewhere safe if you might want the imported
-   network again: `six-degrees.sqlite`, and `six-degrees.sqlite-wal` and
-   `six-degrees.sqlite-shm` if they're there (a `-wal` left beside a different database
-   is replayed into it and damages it), then `avatars/` and the three `bridge-*.json`
-   files.
-3. Copy `backups/before-import-<time>.sqlite` into the data folder and rename the copy
-   `six-degrees.sqlite`. If `before-import-<time>.sqlite-wal` and `-shm` files are beside
-   it, copy them too, renamed to match (`six-degrees.sqlite-wal`,
-   `six-degrees.sqlite-shm`).
-4. Copy `avatars/` and the three `bridge-*.json` files from
-   `backups/before-import-<time>-files/` back into the data folder.
-5. Leave `linkedin-activity.json`, `linkedin-cooldown.json` and `scan-limits.json` as they
-   are. They're your LinkedIn account's budget, which the import kept (it only added the
-   other computer's searches), so they're right whichever network you use.
-6. Open Six Degrees again.
+The same **Restore** puts back any other backup: yesterday's, or the one from before the
+last update.
 
 Don't put the live folder in iCloud Drive or Dropbox to share it between computers
 instead. A sync service that copies the database while it's open can damage it, and it

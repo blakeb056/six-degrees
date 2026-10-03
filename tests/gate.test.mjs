@@ -10,7 +10,7 @@ import { gateDecision, isDestructive, boundToLoopback, DESTRUCTIVE_ROUTES } from
 test('exactly these routes are gated; everything else, reads included, is not', () => {
   const gated = [
     '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
-    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal',
+    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal', '/api/data/backup', '/api/data/restore',
   ];
   for (const p of gated) assert.equal(isDestructive(p), true, p);
   // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.

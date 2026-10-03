@@ -6,7 +6,7 @@ import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress } from '../../../lib/scan-progress';
 import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
-import { getDb } from '../../../lib/db-client';
+import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
 import { scanDoneNotification } from '../../../lib/notifications';
 import { registerScanState } from '../../../lib/scan-state';
@@ -797,6 +797,17 @@ export async function POST(request) {
       try { cleanup(); } catch { /* swept at the next setup (sweepSetupLeftovers) */ }
     }
     forgetChecks();
+    // The daily backup, once a scan may have changed the network (lib/backups.js):
+    // checked here and when the server starts, never on a timer. Setting the
+    // scanner up and signing in change nothing in it.
+    if (!['install', 'setup', 'login'].includes(state.action)) {
+      try {
+        const daily = backUpDailyIfDue();
+        if (daily) push('Made today’s backup of your network (Settings → Your data).');
+      } catch (err) {
+        push(`Today’s backup couldn’t be made: ${err.message}`);
+      }
+    }
   }
 
   function runStep(i) {

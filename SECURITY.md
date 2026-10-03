@@ -12,21 +12,24 @@ This app is designed to run **on your own machine, against your own network**.
 
 - The web UI binds to localhost. It is not hardened for exposure to the
   internet, and it has no multi-user authentication or per-user authorization.
-- Ten API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
+- Twelve API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
   `setup-profile`, `scraper`, `update`, and Settings → Your data's
-  `data/export`, `data/import`, `data/restart`, `data/reveal`). The first four
-  can irreversibly destroy or rewrite data, `scraper` starts processes, and
-  `update` changes the code that runs next. `data/export` hands over the whole
+  `data/export`, `data/import`, `data/restart`, `data/reveal`, `data/backup`,
+  `data/restore`). The first four can irreversibly destroy or rewrite data,
+  `scraper` starts processes, and `update` changes the code that runs next. `data/export` hands over the whole
   network in one file, `data/import` replaces it, `data/restart` stops the
-  server, and `data/reveal` starts a process (Finder, or the Linux file
-  browser, on the data folder's own path). While the server is bound to
+  server, `data/reveal` starts a process (Finder, or the Linux file
+  browser, on the data folder's own path or a backup in it), `data/backup`
+  writes the whole network to a file in `backups/`, and `data/restore`
+  replaces the network with one of those backups, named as `backups/` lists
+  it, never by a path from the request. While the server is bound to
   127.0.0.1 they need no token — anyone who can reach it can already open the
   database file directly, so a token there adds friction rather than safety. If
   it is bound to any other address, every caller must send `ADMIN_TOKEN` as a
   bearer, including this machine and the app's own buttons, and the routes
   refuse to run when it is unset. Reading the data folder's facts
-  (`GET /api/data`: its path and sizes) changes nothing and stays open, like
-  every other read.
+  (`GET /api/data`: its path, sizes and backups) changes nothing and stays
+  open, like every other read.
 - A localhost-bound service is still reachable by any web page you visit — the
   binding keeps other machines out, not your own browser. Every mutating API
   request is therefore refused when the browser reports it came from another

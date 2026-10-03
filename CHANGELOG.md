@@ -45,6 +45,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Scan: the radar is a cluster that grows with every page.** While a scan runs, the people each
   page finds gather round the Scan button as dots, ring by ring, each page's batch in the next of
   the theme's colours (the same as the header's dots), the newest glowing.
+- **Backups that look after themselves, photos and all.** Six Degrees now backs up your whole
+  network once a day while it's open (when it starts, and after a scan, if the last one is a day
+  old), before a new version first opens it, and whenever you click **Back up now** in Settings →
+  Your data. Each backup holds your connections, their profile photos, your settings and the
+  scanner's progress, and is checked as it's made, the same way a restore would check it. Settings
+  says "Last backup: <time>, verified", or plainly what's wrong if a backup ever fails its check.
+  It keeps the last 7 daily backups, 3 from before new versions and 3 from before an import or a
+  restore (each of those for at least 30 days); ones you make yourself stay until you delete them.
+  The Social tab's messages and notes are never in a backup, so deleting them there deletes them
+  everywhere.
+- **Restore any backup, from Settings.** Each backup has **Restore** and **Show in Finder**.
+  Restore checks it, then puts it back when Six Degrees restarts (**Restart now** in the Mac app),
+  keeping what was there first so you can go back again. Undoing an import is now one click on
+  the backup it kept, instead of moving files by hand.
+- **Your look and your saved Galaxy layouts travel with your network**: they're kept with your
+  settings, so a backup, a restore or a move to another computer brings them along.
 
 ### Changed
 - **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
@@ -59,6 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bridge Chains: the badge at a bridge's top right counts their circle's news**: new notifications
   about it (gold) and people in it ready to scan (green), as asked for on 10/2; it counted only the
   people ready before.
+- **Settings → Your data says Export backup file… and Restore from a file…** instead of "Save a
+  copy of my network" and "Choose a file… / Import". They do the same: one file to carry your
+  network to another computer, and putting one back.
 
 ### Fixed
 - **Words on screen read plainly**: no em dashes anywhere the app shows text (pages, notices,
@@ -67,6 +86,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   copy missing its scanner says to download it again, and a page that can't reach the app says to
   quit and reopen it. The download size reads "about 210 MB" everywhere (the Mac downloads are 204
   and 212 MB).
+- **The Social tab says truly where its messages and notes go**: never into Six Degrees' own
+  backups, and into an exported backup file only with its Social tab box ticked. It used to say
+  they were never in a copy, which wasn't so when that box was ticked.
+- **Copies kept before an import no longer pile up forever**: the newest 3 stay, and none goes
+  before it's 30 days old.
 
 ## [0.6.0] - 2026-10-03
 

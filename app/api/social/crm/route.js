@@ -5,7 +5,8 @@ import { socialFiles, readJson, writeJsonAtomic } from '../../../../lib/social-s
 // The Social tab's CRM: your own stage, tags, notes and next follow-up for each
 // person, in crm-<profile>.json in the data folder (lib/social-crm.js has the
 // shape). Yours, so always kept, whatever Keep my messages says; never sent
-// anywhere, and not in "Save a copy of my network".
+// anywhere, never in Six Degrees' own backups (lib/backups.js BACKUP_SOCIAL),
+// and in "Export backup file…" only when its Social box is ticked.
 //
 //   GET     the whole store
 //   PATCH   { key, set: { stage?, tags?, notes?, followUp? } } one person's

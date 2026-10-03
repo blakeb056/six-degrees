@@ -17,7 +17,7 @@ installed rather than run from a checkout. TRAPS §4.
 | `connection_ties` | Two of your own connections who know each other: when a circle scan finds one of your connections in someone's list, the pair (profile URLs, smaller first, one row per pair) is kept here instead of being dropped. Written by `app/api/ingest` (`lib/ties.js`); removed with either person by `app/api/admin-delete`. Nothing reads it yet: it's for clustering and communities. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
 | `company_scores` | A company score **you** set (the Scores tab): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
-| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, `scoring_list` which curated company list, industries' words and labels, and scoring rule tables (a fingerprint of them, `scoringStamp()` in `lib/rpc.js`), and `scoring_focus` which sector focus (`lean:health,dental@<version>`, `<version>` being the sector directory's, since every pick matches by its words, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `legacy_scores_offer` is the one-time offer to keep the old list's scores: `open`, then `kept` or `declined` for good, or `none` when its first look found nothing to offer; absent when the database was never scored with the old list. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`), so it travels with the data. `last_import` is the import this copy last finished (Settings → Your data); an export leaves it out. |
+| `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, `scoring_list` which curated company list, industries' words and labels, and scoring rule tables (a fingerprint of them, `scoringStamp()` in `lib/rpc.js`), and `scoring_focus` which sector focus (`lean:health,dental@<version>`, `<version>` being the sector directory's, since every pick matches by its words, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `legacy_scores_offer` is the one-time offer to keep the old list's scores: `open`, then `kept` or `declined` for good, or `none` when its first look found nothing to offer; absent when the database was never scored with the old list. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`), so it travels with the data: an export, a backup, a restore. The look (`theme`) and the Galaxy's saved layouts (`galaxyLayouts`) are in it too, `null` until first saved on this network. `last_import` is the import this copy last finished (Settings → Your data); an export leaves it out. |
 
 ## `linkedin_connections` — the fields that carry meaning
 
@@ -92,6 +92,11 @@ New tables need nothing extra.
 - **IDs are `TEXT` UUIDs**, carried over from the Postgres original.
 
 ## The export file (`.sixdegrees`)
+
+The backups in `backups/` are this same file (`lib/backups.js`), named
+`<daily|before-update|manual>-<version>-<time>.sixdegrees`, made without the Social tab's
+files. A backup made before an update says in `app_version` which version's data it holds
+(the one before), so that version can restore it.
 
 Settings → Your data saves the network as one file that is itself a SQLite database:
 `VACUUM INTO` of the live one (journal mode DELETE, so no `-wal` travels beside it), plus
