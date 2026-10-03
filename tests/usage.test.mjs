@@ -13,13 +13,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, searchedAfterPushback, countAfter,
-  estimate, levelWarning, barMax, pacificText, untilText, agoText, hoursText,
+  estimate, levelWarning, warningParts, barMax, pacificText, untilText, agoText, hoursText,
 } from '../lib/usage.js';
 import {
   linkedinUsage, linkedinState, countWithin, freesAt, clearAt, newestPushback, lastPushback,
   liftCooldown, readCooldown, budgetFileProblem, mergeBudgetFiles, writeLimits, monthStartPacific, nextMonthStartPacific,
 } from '../lib/linkedin-limits.js';
-import { RESTRICTED_AT } from '../lib/search-risk.js';
+import { RESTRICTED_AT, limitNote, riskyLimits } from '../lib/search-risk.js';
 import { PYTHON, noPython } from './python.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
@@ -112,6 +112,37 @@ test('every level\'s warning is a plain sentence with its numbers, and ok has no
     assert.doesNotMatch(text, /—/, `${level}: no em dashes on screen`);
     assert.doesNotMatch(text, /scrap/i, `${level}: scanning, never scraping`);
   }
+});
+
+test('the warning names the 373 once, whatever the level and the budget', () => {
+  const now = Date.UTC(2026, 9, 3, 18);
+  const states = [
+    ['above-default', { searchesDay: 72 }],
+    ['risky', { searchesDay: 130 }],
+    ['danger', { searchesDay: 248 }],
+    ['danger', { searchesDay: 42, lastPushback: { at: now - 5 * H * 1000 } }],
+    ['paused', { searchesDay: 41, cooldown: { until: now + H * 1000, reason: 'LinkedIn pushed back: a security check' } }],
+    ['unknown', { searchesDay: null }],
+    ['ok', { searchesDay: 10 }],
+  ];
+  const budgets = [{ daily: 50, monthly: 250 }, { daily: 100, monthly: 250 }, { daily: 200, monthly: 1000 }, { daily: 500, monthly: 0 }];
+  for (const [level, facts] of states) {
+    for (const limits of budgets) {
+      const said = warningParts(level, { ...facts, now }, limits).join(' ');
+      const times = said.split(`restricted after ${RESTRICTED_AT}`).length - 1;
+      assert.ok(times <= 1, `${level} at ${facts.searchesDay} with ${JSON.stringify(limits)}: said ${times} times`);
+      // A risky budget still gets the rest of its note.
+      if (limits.daily > 100) assert.match(said, new RegExp(`${limits.daily} a day can use up`), `${level} ${limits.daily}`);
+      if (riskyLimits(limits)) assert.match(said, new RegExp(`restricted after ${RESTRICTED_AT}`), `${level}: said once, not dropped`);
+    }
+  }
+  // The danger case from the lead's review: the count's warning says it, so the note doesn't again.
+  assert.deepEqual(warningParts('danger', { searchesDay: 248, now }, { daily: 500, monthly: 0 }), [
+    levelWarning('danger', { searchesDay: 248, now }),
+    '500 a day can use up a free account\'s month in a day or two. With no monthly cap, nothing but the daily budget stops a long run.',
+  ]);
+  // The Scan page's budget box says its note whole, as before.
+  assert.match(limitNote({ daily: 500, monthly: 0 }), /^A real account was restricted after 373 searches in 24 hours\. 500 a day/);
 });
 
 // ── estimate, scales, words ──────────────────────────────────────────────────

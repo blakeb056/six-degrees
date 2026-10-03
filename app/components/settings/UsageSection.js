@@ -18,10 +18,10 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Section, Body, LINE } from '../ui';
 import {
-  AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, levelWarning, estimate,
+  AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, warningParts, estimate,
   barMax, pacificText, whenText, untilText, agoText, hoursText,
 } from '../../../lib/usage';
-import { RESTRICTED_AT, RISKY_DAILY, SAFE_LIMITS, limitNote } from '../../../lib/search-risk';
+import { RESTRICTED_AT, RISKY_DAILY, SAFE_LIMITS } from '../../../lib/search-risk';
 import { paceOf, searchesPerHour } from '../../../lib/scan-pace';
 
 // Looked at again while the page is open, as the Scan page's own checks are.
@@ -157,9 +157,9 @@ export default function UsageSection() {
   const { limits = {} } = u;
   const day = u.searchesToday;
   const level = usageLevel({ cooldown: u.cooldown, searchesDay: day, lastPushback: u.lastPushback, searchesSincePushback: u.searchesSincePushback, now });
-  const warning = levelWarning(level, { searchesDay: day, cooldown: u.cooldown, lastPushback: u.lastPushback, now });
-  // The budget itself, when it invites trouble whatever has been used (lib/search-risk.js).
-  const budgetNote = limitNote(limits);
+  // The level's warning, then the budget's own when it invites trouble whatever has been
+  // used; the 373 said once between them (lib/usage.js warningParts).
+  const warnings = warningParts(level, { searchesDay: day, cooldown: u.cooldown, lastPushback: u.lastPushback, now }, limits);
   const aboveSafe = limits.daily > SAFE_LIMITS.daily || limits.monthly === 0 || limits.monthly > SAFE_LIMITS.monthly;
   const left = estimate({ leftDay: u.leftToday, leftMonth: u.leftMonth, paused: Boolean(u.cooldown) });
   const pace = paceOf(limits.pace);
@@ -197,14 +197,13 @@ export default function UsageSection() {
         </span>
       </div>
 
-      {(warning || (budgetNote && aboveSafe)) && (
+      {warnings.length > 0 && (
         <div style={{
           marginTop: 14, padding: '11px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.6,
           color: 'var(--sd-fg-2, #e3d9c4)', background: `${(LEVELS[level] || LEVELS.unknown).color}14`,
           border: `1px solid ${(LEVELS[level] || LEVELS.unknown).color}55`,
         }}>
-          {warning && <div>{warning}</div>}
-          {budgetNote && aboveSafe && <div style={{ marginTop: warning ? 6 : 0 }}>{budgetNote}</div>}
+          {warnings.map((text, i) => <div key={i} style={{ marginTop: i ? 6 : 0 }}>{text}</div>)}
           {aboveSafe && (
             <button onClick={backToSafe} disabled={saving} style={{
               marginTop: 9, padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 650,
