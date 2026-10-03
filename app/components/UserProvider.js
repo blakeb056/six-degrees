@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getUserId, getUserName, setUser, hasUser } from '../../lib/user';
 import { IS_DEMO, DEMO_USER } from '../../lib/demo';
-import { hasCsvNetwork, CSV_USER } from '../../lib/csv';
+import { csvNetworkSource, CSV_USER } from '../../lib/csv';
 
 const UserContext = createContext({
   userId: null, userName: null, userProfile: null, ready: false,
@@ -33,18 +33,6 @@ export default function UserProvider({ children }) {
       setReady(true);
       return;
     }
-    // An imported CSV is a local, account-free session: adopt a local identity
-    // so the app opens straight into their network with no /api/users call.
-    if (hasCsvNetwork()) {
-      setUserId(CSV_USER.id);
-      setUserName(CSV_USER.name);
-      setUserProfile({
-        name: CSV_USER.name, headline: 'Imported from your LinkedIn CSV',
-        role: '', company: '', industry: '', sectors: [], goals: [], linkedin_url: '',
-      });
-      setReady(true);
-      return;
-    }
     // Who "you" are is decided by the server, from the data: the profile that
     // owns the network, or a new one on a fresh install (lib/profile.js).
     //
@@ -64,8 +52,7 @@ export default function UserProvider({ children }) {
       goals: u.goals || [],
       linkedin_url: u.linkedin_url || '',
     });
-
-    fetch('/api/users?me=1')
+    const ownProfile = () => fetch('/api/users?me=1')
       .then((r) => r.json())
       .then((data) => {
         const me = data.user;
@@ -83,6 +70,26 @@ export default function UserProvider({ children }) {
         }
       })
       .finally(() => setReady(true));
+
+    // A CSV import (kept in the data folder) or the sample open in this window
+    // is account-free: adopt a local identity so the app opens straight into
+    // it, with no /api/users call and no profile made for it.
+    let off = false;
+    csvNetworkSource().then((source) => {
+      if (off) return;
+      if (!source) {
+        ownProfile();
+        return;
+      }
+      setUserId(CSV_USER.id);
+      setUserName(CSV_USER.name);
+      setUserProfile({
+        name: CSV_USER.name, headline: 'Imported from your LinkedIn CSV',
+        role: '', company: '', industry: '', sectors: [], goals: [], linkedin_url: '',
+      });
+      setReady(true);
+    });
+    return () => { off = true; };
   }, []);
 
   const login = (id, name) => {

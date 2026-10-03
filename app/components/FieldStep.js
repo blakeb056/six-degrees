@@ -1,11 +1,13 @@
 'use client';
 
-// The Scan page's one question before the first scan: what field you're in.
-// The same picks as Settings → Scores → Your field (SectorPicker), saved the same way
-// (lib/settings-client.js), so the first scan is already scored with them.
-// Optional: Skip for now carries on without one. Either answer is kept
-// (`fieldAsked`, lib/sector-focus.js), so it's asked once; when it's asked at
-// all is lib/scanner-setup.js askForField.
+// The Scan page's one question, once your connections are in: what field
+// you're in. The same picks as Settings → Scores → Your field (SectorPicker),
+// saved the same way (lib/settings-client.js), which rescores everyone with
+// them (lib/settings-effects.js) and every scan after. It used to be asked
+// before the first scan, in the way of it; now it's asked under "Your galaxy
+// is ready". Optional: Skip for now carries on without one. Either answer is
+// kept (`fieldAsked`, lib/sector-focus.js), so it's asked once; when it's
+// asked at all is lib/scanner-setup.js askForField.
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -29,8 +31,8 @@ export default function FieldStep({ onDone }) {
     setSaving('pick');
     setError(null);
     const d = await saveSettings({ sectorFocus: { sectors, strength: 'lean' }, fieldAsked: true });
-    // Saved even if the rescore it set off failed: there's no one to rescore
-    // yet, and the first scan scores everyone.
+    // Saved even if the rescore it set off failed: the map rescores a network
+    // scored with another focus when it next loads (lib/rpc.js rescoreIfStale).
     if (d.settings) { onDone(d.settings.sectorFocus.sectors); return; }
     setError(d.error);
     setSaving(null);
@@ -49,7 +51,7 @@ export default function FieldStep({ onDone }) {
     <section aria-labelledby="field-question" data-field-question style={{
       margin: '8px 0 0', padding: '20px 22px 0', borderRadius: 12, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
     }}>
-      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #788)', textTransform: 'uppercase', letterSpacing: 0.6 }}>Before you scan · optional</div>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #788)', textTransform: 'uppercase', letterSpacing: 0.6 }}>One question · optional</div>
       <h2 id="field-question" style={{ fontSize: 18, fontWeight: 700, margin: '6px 0 4px' }}>What field are you in?</h2>
       <Body style={{ marginTop: 0, marginBottom: 14 }}>
         Pick up to three. Companies in your field count for more when your network is scored, so the people there rank
@@ -87,8 +89,8 @@ export function FieldAnswer({ sectors }) {
   // The labels have commas of their own ("Tech, Software & AI"), so a dot separates them.
   return (
     <Status tone="ok">
-      Your field: {sectors.map((k) => sectorByKey(k).label).join(' · ')}. Your first scan is scored with it. Change it
-      anytime in <Link href="/settings#sector" style={link}>Settings</Link>.
+      Your field: {sectors.map((k) => sectorByKey(k).label).join(' · ')}. Your network is scored with it now, and
+      every scan after. Change it anytime in <Link href="/settings#sector" style={link}>Settings</Link>.
     </Status>
   );
 }

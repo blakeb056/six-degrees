@@ -4,6 +4,7 @@
 //   1. The download button for this computer: the Mac download on a Mac (with a
 //      guess at the chip), and on Linux or Windows that platform's dimmed
 //      "Coming soon" button, with the way to run it today where there is one.
+//      A Mac download, once clicked, shows the steps to allow it once.
 //   2. The latest version and download sizes, and on /about/ the number of
 //      stars, asked of GitHub. If that fails, the page keeps its fallback lines.
 //   3. Copy buttons for the Terminal lines.
@@ -81,6 +82,25 @@ const DOWNLOADS = {
       alt.textContent = 'Download for Apple Silicon';
     } else if (chip === 'silicon') {
       $('dl-main-sub').textContent = 'Free · Apple Silicon · for this Mac';
+    }
+  }
+
+  // Once a Mac download starts, the steps a first open needs, under the button:
+  // the app isn't signed with a paid Apple certificate yet, so macOS blocks it
+  // until it's allowed once. Those steps were only on /download/. The click
+  // still downloads; this only shows them.
+  const after = $('after-dl');
+  if (after) {
+    for (const link of [$('dl-main'), $('dl-alt')]) {
+      if (!link) continue;
+      link.addEventListener('click', () => {
+        const first = after.hidden;
+        after.hidden = false;
+        if (!first) return;
+        const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        after.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'nearest' });
+        after.focus({ preventScroll: true });
+      });
     }
   }
 

@@ -132,8 +132,8 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="/style.css?v=2026-09-29-3">
-  <script src="/app.js?v=2026-09-29-3" defer></script>
+  <link rel="stylesheet" href="/style.css?v=2026-10-03-1">
+  <script src="/app.js?v=2026-10-03-1" defer></script>
 </head>
 <body class="home">
 <!-- gen:header -->
@@ -219,6 +219,24 @@
       </ul>
       <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a> · </span><a href="/download/">All downloads and install help</a></p>
       <p class="fine" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
+
+      <!-- Shown once a Mac download starts (app.js): the steps a first open needs, since
+           the app isn't signed with a paid Apple certificate yet. They were only on
+           /download/#install, a page most people who download from here never open. -->
+      <section class="after-dl" id="after-dl" aria-labelledby="after-dl-title" tabindex="-1" hidden>
+        <h2 id="after-dl-title">Your download has started. Then, just once:</h2>
+        <ol>
+          <li><strong>Drag it into Applications.</strong> Open the file you downloaded and drag Six Degrees onto
+            the Applications folder.</li>
+          <li><strong>Open it, and close the warning.</strong> macOS says it can't check the app for malware,
+            because it isn't signed with a paid Apple certificate yet. Close it with <strong>Done</strong> (on macOS
+            13 or 14: <strong>OK</strong>). Anything except <em>Move to Trash</em>.</li>
+          <li><strong>Allow it once.</strong> Open <strong>System Settings → Privacy &amp; Security</strong>, scroll
+            down to <em>"Six Degrees" was blocked</em>, and click <strong>Open Anyway</strong>. After that it opens
+            like any app.</li>
+        </ol>
+        <p class="fine"><a href="/download/#install">The install guide, with a video and a one-line Terminal way</a></p>
+      </section>
 
       <figure class="hero-shot">
         <img src="/img/app/hero.jpg" srcset="/img/app/hero-1200.jpg 1200w, /img/app/hero.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Six Degrees on a Mac: an invented sample network drawn as rings around you, the most powerful people closest" width="2400" height="1601" fetchpriority="high">

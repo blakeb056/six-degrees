@@ -540,8 +540,8 @@ export default function DataSection() {
       {exportNote && <Status tone={exportNote.tone}>{exportNote.text}</Status>}
       <Body style={small}>
         The file holds the names, headlines and photos of the people in your network. Keep it private: don’t
-        post it or share it, and delete it once it has been restored. A network opened from a LinkedIn CSV lives
-        only in its browser tab, so it isn’t in the file; import the CSV again on the new computer. With the
+        post it or share it, and delete it once it has been restored. A LinkedIn CSV import kept on this computer
+        goes into the file too, and opens on the new one. With the
         Social tab included, the file also holds your CRM notes and any messages you keep, so it&rsquo;s as private
         as your inbox.
       </Body>

@@ -105,7 +105,7 @@ two tables of its own (`lib/data-export.js`):
 | Table | Holds |
 |---|---|
 | `sd_export_manifest(key, value)` | `format` (1), `app_version`, `scoring_version`, `exported_at`, `include_photos`, `people`, `photos`, `files`, and `counts`: rows per app table, as JSON. |
-| `sd_export_files(path, bytes, sha256)` | `avatars/<name>` (names the `/avatars` route would serve) and the six scanner files in `TRAVELLING_FILES` (`lib/data-folder.js`). Nothing else, ever. |
+| `sd_export_files(path, bytes, sha256)` | `avatars/<name>` (names the `/avatars` route would serve) and the six scanner files and a kept CSV import (`csv-network.json`) in `TRAVELLING_FILES` (`lib/data-folder.js`). Nothing else, ever. |
 
 An import (`lib/data-import.js`) refuses a file that is newer than the running version,
 fails `PRAGMA integrity_check`, holds any object an export never has (a view, a trigger, a

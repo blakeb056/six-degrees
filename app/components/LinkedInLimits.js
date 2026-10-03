@@ -7,6 +7,7 @@
 // files the scanner writes.
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
@@ -80,7 +81,7 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
           <Bar used={li.searchesMonth} cap={limits.monthly} />
         </div>
         <div>
-          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{views}</b> of {limits.profiles} profile views today</div>
+          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{views}</b> of {limits.profiles} profile views in the last 24 hours</div>
           <Bar used={li.unreadable ? limits.profiles : li.profilesToday} cap={limits.profiles} />
         </div>
       </div>
@@ -116,6 +117,10 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
         LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
         once today&rsquo;s are used, a scan stops before the next profile and tries that person next time.
       </div>
+      {/* The whole picture (the last hour, the last 7 days, when the next one frees, the last pushback) is in Settings. */}
+      <Link href="/settings#usage" style={{ display: 'inline-block', marginTop: 8, color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>
+        See all your LinkedIn usage &rarr;
+      </Link>
     </div>
   );
 }

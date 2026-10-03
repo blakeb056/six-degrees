@@ -10,7 +10,7 @@ import { gateDecision, isDestructive, boundToLoopback, DESTRUCTIVE_ROUTES } from
 test('exactly these routes are gated; everything else, reads included, is not', () => {
   const gated = [
     '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
-    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal', '/api/data/backup', '/api/data/restore',
+    '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal', '/api/data/backup', '/api/data/restore', '/api/data/csv',
   ];
   for (const p of gated) assert.equal(isDestructive(p), true, p);
   // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
@@ -241,7 +241,7 @@ test('middleware.js runs on every /api route and every photo except exactly POST
 
   assert.equal(covered('/api/data/import'), false, 'the one route left alone');
   for (const p of ['/api', '/api/', '/api/users', '/api/network', '/api/data', '/api/data/export', '/api/data/restart',
-    '/api/data/reveal', '/api/scraper', '/api/update', '/api/admin-delete', '/api/settings', '/api/data/import/',
+    '/api/data/reveal', '/api/data/csv', '/api/scraper', '/api/update', '/api/admin-delete', '/api/settings', '/api/data/import/',
     '/api/data/import/x', '/api/data/imports', '/api/data/import.json', '/api/data/importx', '/avatars/a.webp']) {
     assert.equal(covered(p), true, p);
   }

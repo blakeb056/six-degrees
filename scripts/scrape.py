@@ -227,6 +227,19 @@ MAX_SCROLL_ROUNDS = 400           # ~10 people load per round
 SCROLL_PAUSE_SECONDS = 0.9
 SCROLL_STALL_LIMIT = 10           # rounds with no new names before stopping
 LOGIN_POLL_SECONDS = 2
+# The Scan page's "Signed in" (lib/scanner-setup.js SIGNED_IN_FILE, which a
+# test keeps the same): true once the session is confirmed below, false while
+# a sign-in is awaited. It went by Chrome's cookie file, which exists as soon
+# as this window first opens, so closing it without signing in ticked the step.
+SIGNED_IN_FILE = "signed-in.json"
+
+
+def _note_signed_in(ok):
+    """Write down for the Scan page whether LinkedIn's session is confirmed. Only a note: never stops a run."""
+    try:
+        _write_json_atomic(_home() / SIGNED_IN_FILE, {"signedIn": bool(ok), "at": time.time()})
+    except Exception as exc:
+        print(f"  (could not note the sign-in for the Scan page: {exc})")
 
 
 def _has_session_cookie(target):
@@ -345,8 +358,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         raise LinkedInPushedBack(0, reason)
 
     if _has_session_cookie(context) and not _looks_logged_out(page) and not wall:
+        _note_signed_in(True)
         return True
 
+    _note_signed_in(False)
     say = log_fn or (lambda m: None)
     if had_session and wall == "checkpoint":
         print()
@@ -356,7 +371,10 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
         say("Waiting for you to finish LinkedIn's security check...")
     else:
         _print_sign_in_banner(say)
-    return _wait_for_sign_in(page, context, timeout_s, say)
+    ok = _wait_for_sign_in(page, context, timeout_s, say)
+    if ok:
+        _note_signed_in(True)
+    return ok
 
 
 def _print_sign_in_banner(say):
@@ -1411,6 +1429,8 @@ def note_unclear(profile_url, clear=False):
 #   scan-limits.json        {"daily": 50, "monthly": 250, "profiles": 50}
 #                           0 = no cap on searches; profile views always have one
 #   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
+#                           lifted on the Scan page: "until" is when, plus
+#                           "lifted_at" and "was_until"; read here as ended
 # ---------------------------------------------------------------------------
 DEFAULT_DAILY_SEARCHES = 50
 DEFAULT_MONTHLY_SEARCHES = 250
@@ -3376,7 +3396,11 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         raise SearchLimitReached(len(read))
     if reach.get("pushed_back"):
         why = reach.get("pushback_reason") or "a page that would not open"
-        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+        # Auto scan rests two days after any check from LinkedIn, as the Scan
+        # page promises and AUTO_PUSHBACK_REST says; a pushback partway through
+        # a list used to rest it one day, like a scan you start yourself.
+        set_cooldown(seconds=AUTO_PUSHBACK_REST if EXPERIMENT["on"] else DAY_SECONDS,
+                     reason=f"LinkedIn pushed back: {why}")
         raise LinkedInPushedBack(len(read), why)
     if reach.get("budget"):
         raise BudgetReached(len(read), reach["budget"])

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { isCircleScan, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
+import { fillsCircles, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
@@ -18,7 +18,7 @@ import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
-import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
+import { loadCsvNetwork, closeCsvNetwork, REMOVE_CSV_QUESTION } from '../lib/csv';
 import Link from 'next/link';
 import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
@@ -110,10 +110,11 @@ function HomeInner() {
   useEffect(() => {
     if (!userId) return;
     async function load() {
-      // Demo mode: hydrate from the bundled static snapshot, no Supabase.
-      // Three possible sources: the bundled demo snapshot, a CSV the visitor
-      // imported in this tab (1st-degree only, never persisted), or Supabase.
-      const csv = hasCsvNetwork() ? loadCsvNetwork() : null;
+      // Three possible sources: the bundled demo snapshot (demo mode), the
+      // sample opened in this tab or a CSV import kept in the data folder
+      // (1st degree only, never in the database), or the database. Which one
+      // is lib/csv.js openNetworkSource: a scan you've made wins over a CSV.
+      const csv = await loadCsvNetwork();
       if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
       const { degree1: d1, degree2: d2, degree3: d3 = [] } = IS_DEMO
         ? await loadDemoNetwork()
@@ -129,11 +130,9 @@ function HomeInner() {
       shapeRef.current = networkShape(d1, d2);
       setStats(statsFor(d1, d2));
       setLoading(false);
+      if (!IS_DEMO && !csv) loadScanNotes().then(setScanNotes);
     }
     load();
-    if (!IS_DEMO && !hasCsvNetwork()) {
-      loadScanNotes().then(setScanNotes);
-    }
   }, [userId]);
 
   // The network again, after a scan: circles fill in while they're scanned
@@ -141,7 +140,7 @@ function HomeInner() {
   // is published, because the graph views rebuild their scene whenever these
   // lists change identity (TRAPS §29).
   const reload = useCallback(async () => {
-    if (IS_DEMO || hasCsvNetwork() || !userId) return;
+    if (IS_DEMO || csvMode || !userId) return;
     try {
       const [{ degree1: d1, degree2: d2, degree3: d3 = [] }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
       setScanNotes((prev) => (JSON.stringify(prev) === JSON.stringify(notes) ? prev : notes));
@@ -153,7 +152,7 @@ function HomeInner() {
       setDegree2(d2);
       setStats(statsFor(d1, d2));
     } catch { /* the app restarting, say: keep what's on screen */ }
-  }, [userId]);
+  }, [userId, csvMode]);
 
   // Followed once: Bridge Chains has opened it, so leaving that view and coming
   // back, or reloading, starts from the overview.
@@ -271,7 +270,9 @@ function HomeInner() {
         openNoteId={linkedNote}
         // Which network you are looking at, and the way back out of it. Loading
         // the sample used to be a one-way door: it lives in sessionStorage, and
-        // nothing in the UI cleared it.
+        // nothing in the UI cleared it. A CSV import is kept in the data folder
+        // now, so × is how it's removed for good, and it asks first, as every
+        // delete of something kept on this computer does.
         chips={csvMode && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
@@ -287,8 +288,13 @@ function HomeInner() {
               {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
             </span>
             <button
-              onClick={() => { clearCsvNetwork(); window.location.href = '/'; }}
-              title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
+              onClick={async () => {
+                if (csvSource !== 'sample' && !window.confirm(REMOVE_CSV_QUESTION)) return;
+                const closed = await closeCsvNetwork(csvSource);
+                if (!closed.ok) { alert(closed.error); return; }
+                window.location.href = '/';
+              }}
+              title={csvSource === 'sample' ? 'Leave the sample network' : 'Remove this import from this computer'}
               style={{
                 border: 'none', background: 'transparent', cursor: 'pointer',
                 color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 13 : 15, lineHeight: 1,
@@ -330,8 +336,11 @@ function HomeInner() {
           // No connections at all: offer a way in rather than a black screen.
           if (degree1.length === 0) return <EmptyState />;
 
-          // Every Degrees surface is built from 2nd-degree rows. A CSV import
-          // has none, so say why instead of rendering an empty canvas.
+          // Every Degrees surface is built from 2nd-degree rows, so with none
+          // say why instead of rendering an empty canvas. Why depends on where
+          // the network came from: a CSV import (csvMode) can never have them,
+          // while a scanned network just hasn't had step 4 yet. It used to tell
+          // everyone the CSV reason, scanner users included.
           if (isDegreesMode && degree2.length === 0) {
             return (
               <div style={{
@@ -341,15 +350,20 @@ function HomeInner() {
                 <div style={{ maxWidth: 440 }}>
                   <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>&#128279;</div>
                   <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px', color: 'var(--sd-fg-1, #fff)' }}>
-                    Degrees need 2nd-degree data
+                    {csvMode ? 'Degrees need 2nd-degree data' : 'Who they know comes next'}
                   </h2>
                   <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
-                    This view maps who <em>your connections</em>{' '}know: the people you haven&rsquo;t met yet.
-                    LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.
+                    This view maps who <em>your connections</em>{' '}know: the people you haven&rsquo;t met yet.{' '}
+                    {csvMode
+                      ? <>LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.</>
+                      : <>Your own connections are mapped. Step 4 on the Scan page reads their circles, one person at a
+                        time: the first shows up here in a few minutes, and the rest fill in over days.</>}
                   </p>
                   <p style={{ color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                    The local scanner maps those circles (and captures real photos).{' '}
-                    <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Set up scanning &rarr;</Link>
+                    {csvMode ? <>The local scanner maps those circles (and captures real photos).{' '}</> : null}
+                    <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>
+                      {csvMode ? 'Set up scanning' : 'Map who they know'} &rarr;
+                    </Link>
                   </p>
                 </div>
               </div>
@@ -428,14 +442,16 @@ function networkShape(d1, d2) {
 }
 
 // Looks at the network again when a scan has changed it: once when any scan
-// ends, and every 20 seconds while a circle is being scanned with Bridge Chains
-// open, since the scanner saves every 10 pages and the circle fills in as it
-// does. Its own component so the scanner's answer, which changes every second or
-// two while a scan runs, re-renders it and not the whole map.
+// ends, and every 20 seconds while circles are being scanned with Bridge Chains
+// open, since the scanner saves every 10 pages and a circle fills in as it
+// does. A batch (Map 2nd degree) counts too, not only one person's scan: the
+// Scan page's "Watch it fill in" opens the circle it is reading. Its own
+// component so the scanner's answer, which changes every second or two while
+// a scan runs, re-renders it and not the whole map.
 function NetworkRefresh({ onChange, live }) {
   const scan = useScanner();
   const ended = scan.finished.find(CHANGES_NETWORK)?.startedAt ?? null;
-  const filling = live && scan.running && isCircleScan(scan);
+  const filling = live && scan.running && fillsCircles(scan);
   useEffect(() => {
     if (ended != null) onChange();
   }, [ended, onChange]);
