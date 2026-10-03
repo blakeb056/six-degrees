@@ -13,12 +13,13 @@ import AppHeader from '../components/AppHeader';
 import { paceOf } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
 // Python server in a terminal they had not been told they needed.
 
-const BG = '#0a0a1a';
+const BG = 'var(--sd-page)';   // clear: the theme shows through (lib/themes.js)
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
 const ACTION_LABELS = {
@@ -198,7 +199,7 @@ function SetupInner() {
   return (
     <div style={{
       minHeight: '100vh', background: BG, color: '#fff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: 'var(--sd-font)',
     }}>
       {/* The same header as every page, Scan lit (Blake, 2026-10-02: continuity) */}
       <AppHeader active="scan" brand="span" />
@@ -644,7 +645,7 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
   );
 }
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 
 // A setting this browser remembers between visits: the order and depth someone
 // picked should not reset every time the page opens. localStorage can be missing

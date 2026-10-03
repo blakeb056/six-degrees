@@ -1,8 +1,8 @@
 'use client';
 
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 
 export default function GridView({ connections, degree2 = [], onSelect, mode }) {
@@ -25,7 +25,7 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
     }).filter(Boolean).sort((a, b) => (b.sCount * 3 + b.aCount * 2 + b.total) - (a.sCount * 3 + a.aCount * 2 + a.total));
 
     return (
-      <div style={{ flex: 1, overflow: 'auto', padding: 20, background: '#0a0a1a' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 20, background: 'var(--sd-page)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12, maxWidth: 1200, margin: '0 auto' }}>
           {clusters.map(cl => (
             <div key={cl.bridge.id} onClick={() => onSelect && onSelect(cl.bridge)}
@@ -71,7 +71,7 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                     width: 22, height: 22, borderRadius: '50%', fontSize: 8, fontWeight: 700,
                     background: localPhoto(m.profile_image_url) ? 'transparent' : (TIER_COLORS[m.tier] || '#333'),
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '2px solid #0a0a1a', marginLeft: i > 0 ? -6 : 0, position: 'relative', zIndex: 8 - i,
+                    border: '2px solid var(--sd-bg)', marginLeft: i > 0 ? -6 : 0, position: 'relative', zIndex: 8 - i,
                     overflow: 'hidden',
                   }}>
                     {localPhoto(m.profile_image_url) ? (
@@ -101,7 +101,7 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
   });
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: 20, background: '#0a0a1a' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: 20, background: 'var(--sd-page)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {TIERS.map(tier => {
           const people = tierGroups[tier];

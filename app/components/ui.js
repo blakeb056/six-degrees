@@ -5,7 +5,8 @@
 // new screens should use these rather than adding another.
 
 export const LINE = '1px solid rgba(255,255,255,0.1)';
-export const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+// The theme's font (lib/themes.js), Standard's until one is applied.
+export const FONT = 'var(--sd-font)';
 
 /** One titled block of settings. `id` makes it linkable (/settings#id). */
 export function Section({ id, title, intro, children }) {

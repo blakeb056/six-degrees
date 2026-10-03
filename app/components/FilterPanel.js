@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, showAllTiers } from '../../lib/tier-grid';
+import { TIER_COLORS } from '../../lib/themes';
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -10,7 +11,6 @@ function useIsMobile() {
   return m;
 }
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 
 const DEGREE_NAMES = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
@@ -176,8 +176,8 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
         borderRight: '1px solid rgba(52,152,219,0.15)',
         padding: isMobile ? '12px 10px' : '16px 14px',
         overflowY: 'auto', overflowX: 'hidden',
-        background: isMobile ? 'rgba(10,15,30,0.98)' : 'rgba(10,15,30,0.65)', fontSize: 13,
-        backdropFilter: 'blur(24px) saturate(1.4)', WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+        background: isMobile ? 'rgba(10,15,30,0.98)' : 'var(--sd-panel)', fontSize: 13,
+        backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
         boxShadow: 'inset 0 0 60px rgba(52,152,219,0.04), 4px 0 24px rgba(0,0,0,0.3)',
       }}>
         {/* Close button */}

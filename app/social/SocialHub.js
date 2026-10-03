@@ -237,13 +237,13 @@ export default function SocialHub({ embedded = false }) {
     return counts;
   }, [net, merged, asOf]);
 
-  if (IS_DEMO) return <div style={{ minHeight: '100vh', background: '#0a0a1a', color: '#aaa', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
+  if (IS_DEMO) return <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#aaa', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
   const running = job?.running;
   const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', marginTop: 10 };
   const h2 = { fontSize: 16, margin: '24px 0 6px' };
 
   return (
-    <div style={embedded ? { color: '#fff', fontFamily: FONT } : { minHeight: '100vh', background: '#0a0a1a', color: '#fff', fontFamily: FONT }}>
+    <div style={embedded ? { color: '#fff', fontFamily: FONT } : { minHeight: '100vh', background: 'var(--sd-page)', color: '#fff', fontFamily: FONT }}>
       {!embedded && (
         <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
           <Link href="/" style={{ color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: LINE }}>← Back to Map</Link>

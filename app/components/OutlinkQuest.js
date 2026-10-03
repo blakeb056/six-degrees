@@ -12,8 +12,9 @@ import Link from 'next/link';
 import { buildQuest, XP_SEND, STAGE_SIZE } from '../../lib/quest';
 import { initialsFor } from '../../lib/tiers';
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(255,255,255,0.1)';
 
 function Face({ person, size = 36, ring }) {

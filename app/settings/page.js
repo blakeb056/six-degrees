@@ -8,6 +8,7 @@ import DataSection from '../components/settings/DataSection';
 import SectorSection from '../components/settings/SectorSection';
 import TierSection from '../components/settings/TierSection';
 import TitleSection from '../components/settings/TitleSection';
+import AppearanceSection from '../components/settings/AppearanceSection';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -52,7 +53,7 @@ function SettingsInner() {
   if (IS_DEMO) {
     return (
       <div style={{
-        minHeight: '100vh', background: '#0a0a1a', color: 'rgba(255,255,255,0.7)',
+        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 12, textAlign: 'center', padding: 24, fontFamily: FONT,
       }}>
@@ -66,7 +67,7 @@ function SettingsInner() {
   const about = info?.about;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a1a', color: '#fff', fontFamily: FONT }}>
+    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#fff', fontFamily: FONT }}>
       <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Link href="/" style={{
           display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
@@ -84,6 +85,7 @@ function SettingsInner() {
         {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
+        <AppearanceSection />
         <Section id="scoring" title="Scores">
           <Body>
             How someone&rsquo;s power score is worked out, and the four things you can change about it:{' '}

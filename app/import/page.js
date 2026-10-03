@@ -4,8 +4,8 @@ import { useState, useRef } from 'react';
 import { parseConnectionsCsv, saveCsvNetwork, ConnectionsCsvError, CSV_USER } from '../../lib/csv';
 import { setUser } from '../../lib/user';
 import Link from 'next/link';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 
 const card = {
   background: 'rgba(255,255,255,0.03)',
@@ -172,8 +172,8 @@ export default function ImportPage() {
 }
 
 const wrap = {
-  minHeight: '100vh', background: '#0a0a1a', color: '#fff', padding: '56px 24px',
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  minHeight: '100vh', background: 'var(--sd-page)', color: '#fff', padding: '56px 24px',
+  fontFamily: 'var(--sd-font)',
   display: 'flex', justifyContent: 'center',
 };
 

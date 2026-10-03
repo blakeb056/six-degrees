@@ -2,8 +2,9 @@
 
 import { initialsFor } from '../../lib/tiers';
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const FALLBACK = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const FALLBACK = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 
 // A round face with a tier-coloured ring.
 //

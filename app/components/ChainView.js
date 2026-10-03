@@ -42,8 +42,8 @@ import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
 import useRequests from './useRequests';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 5: '#00ff88', 6: '#ff5050' };
 const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 const GREEN = '#00ff88';
@@ -309,7 +309,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // === ONE CIRCLE: a bridge's, or anyone's in it, opened in place ===
   if (focused) {
     return (
-      <div ref={containerRef} style={{ flex: 1, background: '#0a0a1a', position: 'relative', overflow: 'hidden' }}>
+      <div ref={containerRef} style={{ flex: 1, background: 'var(--sd-page)', position: 'relative', overflow: 'hidden' }}>
         <CircleFocus
           key={trail.map((r) => r.id).join('>')}
           trail={trail} index={index} reach={reach} dims={dims} requests={requests}
@@ -329,7 +329,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const hovBridge = hovered ? bridgePos.find(b => b.id === hovered) : null;
 
   return (
-    <div ref={containerRef} style={{ flex: 1, background: '#0a0a1a', position: 'relative', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ flex: 1, background: 'var(--sd-page)', position: 'relative', overflow: 'hidden' }}>
       <svg width={dims.w} height={dims.h}>
       <g transform={`translate(${cx * (1 - zoom)}, ${cy * (1 - zoom)}) scale(${zoom})`}>
         {/* A guide line for every ring of bridges */}
@@ -390,7 +390,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               {/* How many in their circle are waiting for a scan: a small outlined number, top right */}
               {ready > 0 && (
                 <g pointerEvents="none">
-                  <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="#0a0a1a" stroke={GREEN} strokeWidth={1.2} />
+                  <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="var(--sd-bg)" stroke={GREEN} strokeWidth={1.2} />
                   <text x={b.x + 14} y={b.y - 11.4} textAnchor="middle" fill={GREEN} fontSize={ready > 9 ? 6 : 7} fontWeight={800}>{ready > 99 ? '99+' : ready}</text>
                 </g>
               )}
@@ -408,7 +408,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         })}
 
         {/* Center: YOU */}
-        <circle cx={cx} cy={cy} r={22} fill="#0a0a1a" stroke="#FFD700" strokeWidth={3} />
+        <circle cx={cx} cy={cy} r={22} fill="var(--sd-bg)" stroke="#FFD700" strokeWidth={3} />
         <text x={cx} y={cy + 4} textAnchor="middle" fill="#FFD700" fontSize={11} fontWeight={800}>
           {userName?.split(' ')[0] || 'YOU'}
         </text>
@@ -693,7 +693,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           {(f.reached || (roomy && row.tier === 'S')) && (
             <text x={p.x} y={above ? p.y - r - 4 / k : p.y + r + 10 / k} textAnchor="middle" fontSize={8.5 / k} fontWeight={f.reached ? 700 : 400}
               fill={f.reached === 'hidden' ? '#999' : f.reached ? GREEN : '#aaa'} pointerEvents="none"
-              stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">
+              stroke="var(--sd-bg)" strokeWidth={2.4 / k} paintOrder="stroke">
               {firstName(row)}
             </text>
           )}
@@ -810,7 +810,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
             return (
               <g key={'lk-' + row.id} transform={`translate(${p.x} ${p.y})`} pointerEvents="none"
                 opacity={litLinks && !lit ? 0.45 : 1}>
-                <circle r={c.radius} fill="#0a0a1a" fillOpacity={0.9} stroke={color} strokeOpacity={lit ? 0.7 : 0.25} strokeWidth={1 / k} />
+                <circle r={c.radius} fill="var(--sd-bg)" fillOpacity={0.9} stroke={color} strokeOpacity={lit ? 0.7 : 0.25} strokeWidth={1 / k} />
                 {/* Their people, each joined to the middle of the cluster */}
                 {clusterPaths(c).map(([tier, { spokes }]) => (
                   <path key={'s' + tier} d={spokes} fill="none" stroke={TIER_COLORS[tier] || '#555'}
@@ -819,14 +819,14 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
                 {clusterPaths(c).map(([tier, { dots: d }]) => (
                   <path key={tier} d={d} fill={TIER_COLORS[tier] || '#555'} fillOpacity={lit ? 1 : 0.9} />
                 ))}
-                <circle r={LINK_HUB} fill={color} stroke={hovLink === j ? '#fff' : '#0a0a1a'} strokeWidth={1.5} />
+                <circle r={LINK_HUB} fill={color} stroke={hovLink === j ? '#fff' : 'var(--sd-bg)'} strokeWidth={1.5} />
                 {row.id === scanningId && (
                   <circle r={c.radius + 4} fill="none" stroke={DEGREE_COLORS[3]} strokeWidth={1 / k} strokeDasharray={`${3 / k} ${2 / k}`} />
                 )}
                 <text y={c.radius + 12 / k} textAnchor="middle" fill="#fff" fontSize={10 / k} fontWeight={700}
-                  stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">{firstName(row)}’s circle</text>
+                  stroke="var(--sd-bg)" strokeWidth={2.4 / k} paintOrder="stroke">{firstName(row)}’s circle</text>
                 <text y={c.radius + 23 / k} textAnchor="middle" fill={color} fontSize={8 / k}
-                  stroke="#0a0a1a" strokeWidth={2.4 / k} paintOrder="stroke">
+                  stroke="var(--sd-bg)" strokeWidth={2.4 / k} paintOrder="stroke">
                   {c.people.length.toLocaleString('en-US')} · {ordinal(depth + link.step + 1)} degree
                 </text>
               </g>
@@ -871,7 +871,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           )}
           {/* The person in the middle, with the halo if their own circle is ready to scan */}
           {reachState(person, reach) === 'ready' && <Halo x={0} y={0} r={40} still={still} />}
-          <circle r={28} fill="#0a0a1a" stroke={TIER_COLORS[person.tier] || '#888'} strokeWidth={hover === 'center' ? 4 : 3} filter="url(#focusGlow)" />
+          <circle r={28} fill="var(--sd-bg)" stroke={TIER_COLORS[person.tier] || '#888'} strokeWidth={hover === 'center' ? 4 : 3} filter="url(#focusGlow)" />
           {localPhoto(person.profile_image_url) ? (
             <>
               <clipPath id="focus-clip"><circle r={24} /></clipPath>
@@ -1077,7 +1077,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   return (
     <div role="status" style={{
       position: 'absolute', left: '50%', top, transform: 'translateX(-50%)', width: 'min(360px, calc(100% - 32px))',
-      background: 'rgba(10,10,26,0.94)', border: `1px solid ${state === 'hidden' ? 'rgba(255,255,255,0.12)' : 'rgba(0,255,136,0.25)'}`,
+      background: 'color-mix(in srgb, var(--sd-bg) 94%, transparent)', border: `1px solid ${state === 'hidden' ? 'rgba(255,255,255,0.12)' : 'rgba(0,255,136,0.25)'}`,
       borderRadius: 12, padding: '14px 16px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: state === 'hidden' ? '#aaa' : '#fff', marginBottom: 6 }}>

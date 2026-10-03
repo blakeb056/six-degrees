@@ -10,6 +10,7 @@ import { useUser } from '../components/UserProvider';
 import { sectorByKey } from '../../lib/sector-labels';
 import Link from 'next/link';
 import { networkPower as powerOf, levelOf } from '../../lib/level';
+import { TIER_COLORS } from '../../lib/themes';
 import NetworkHealthSection from '../components/settings/NetworkHealthSection';
 
 const LEVEL_NAMES = {
@@ -115,10 +116,10 @@ function ProfileInner() {
   if (IS_DEMO) {
     return (
       <div style={{
-        minHeight: '100vh', background: '#0a0a1a', color: 'rgba(255,255,255,0.7)',
+        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 12, textAlign: 'center', padding: 24,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'var(--sd-font)',
       }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
         <p style={{ margin: 0, fontSize: 13 }}>The public demo includes the Network Circle and Degrees views only.</p>
@@ -129,13 +130,13 @@ function ProfileInner() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a1a', color: '#fff' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>
         Loading profile...
       </div>
     );
   }
 
-  const tierColors = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+  const tierColors = TIER_COLORS;   // the theme's (lib/themes.js)
   const s = stats;
 
   // Milestones
@@ -154,8 +155,8 @@ function ProfileInner() {
 
   return (
     <div style={{
-      height: '100vh', background: '#0a0a1a', color: '#fff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      height: '100vh', background: 'var(--sd-page)', color: '#fff',
+      fontFamily: 'var(--sd-font)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       {/* Header */}

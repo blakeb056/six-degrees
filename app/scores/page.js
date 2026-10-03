@@ -18,7 +18,7 @@ export default function ScoresMoved() {
     router.replace(at === '#health' ? '/profile?view=insights' : `/settings${at || '#scoring'}`);
   }, [router]);
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a1a', color: '#aab', fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#aab', fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
       Scores are in <Link href="/settings#scoring" style={{ color: '#3498DB', marginLeft: 4 }}>Settings</Link> now.
     </div>
   );

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { localPhoto } from '../../lib/photos';
+import { TIER_COLORS } from '../../lib/themes';
 
-const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 
 // Pyramid View — S-tier crown at top, tiers cascade down
@@ -33,7 +33,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
     const nodeSize = { S: 36, A: 28, B: 22, C: 16, D: 12 };
 
     return (
-      <div style={{ flex: 1, overflow: 'auto', background: '#0a0a1a', padding: '20px 10px' }}>
+      <div style={{ flex: 1, overflow: 'auto', background: 'var(--sd-page)', padding: '20px 10px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           {clusters.map((cl, ci) => {
             // Group D2 by tier
@@ -163,7 +163,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
   const nodeSize = { S: 44, A: 34, B: 26, C: 20, D: 16 };
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', background: '#0a0a1a', padding: '20px 10px' }}>
+    <div style={{ flex: 1, overflow: 'auto', background: 'var(--sd-page)', padding: '20px 10px' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {TIERS.map((tier, tierIdx) => {
           const people = tierGroups[tier];
