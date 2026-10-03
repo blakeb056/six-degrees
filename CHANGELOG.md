@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the theme's colours (the same as the header's dots), the newest glowing.
 
 ### Changed
+- **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
+  name, so anyone it's shared with knows where to get it.
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about
   them (new ones count double), people in them ready to scan, and clusters formed from them since.
   A circle's tooltip says how many notifications are about it.
