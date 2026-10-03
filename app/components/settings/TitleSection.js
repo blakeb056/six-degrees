@@ -1,6 +1,6 @@
 'use client';
 
-// Settings → Scores → Titles (Blake, 2026-10-03): how much each kind of title
+// Settings → Scores → Titles (Blake, 2026-10-02): how much each kind of title
 // counts, your way. Value founders, investors, or a role you're looking for
 // (outbound, hiring: "find more in that role"), and everyone with it rises.
 // Saving rescores everyone and says how many changed tier, as Tiers does.

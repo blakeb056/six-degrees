@@ -1,7 +1,7 @@
 'use client';
 
 // Paths → People: the Paths map with people in place of companies (Blake,
-// 2026-10-03, mock-up 3b). One bubble per connection of yours, sized by the
+// 2026-10-02, mock-up 3b). One bubble per connection of yours, sized by the
 // cluster behind them, coloured by their sector and grouped like the company
 // map; a white centre for the share of their cluster you can only reach
 // through them, a gold ring for the S tier inside, and a line between two

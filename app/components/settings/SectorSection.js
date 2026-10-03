@@ -1,6 +1,6 @@
 'use client';
 
-// Settings → Scores → Your field (app/settings; it was a Scores tab of its own from 9/28 to 10/3). Up to three sectors you work in: one of the twelve
+// Settings → Scores → Your field (app/settings; it was a Scores tab of its own from 9/28 to 10/2). Up to three sectors you work in: one of the twelve
 // broad industries, or a narrower sector from the app's directory (Dental,
 // Real Estate, Software & SaaS…). Companies in them count for more when your
 // scanned network is scored, like setting their scores by hand on Paths →

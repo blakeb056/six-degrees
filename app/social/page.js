@@ -1,6 +1,6 @@
 'use client';
 
-// Social is part of Outlink now (Blake, 2026-10-03): the CRM, your LinkedIn
+// Social is part of Outlink now (Blake, 2026-10-02): the CRM, your LinkedIn
 // export and the messages sit under Outlink → Messages & follow-ups
 // (app/social/SocialHub.js). Old links land there.
 

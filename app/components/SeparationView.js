@@ -13,7 +13,7 @@
 // the easiest at the other, each person's own score alone in the middle
 // (lib/rarity.js slideValue). It never changes a score, a tier or a rank.
 //
-// The map follows the slider too (Blake, 2026-10-03): from the rare end to the
+// The map follows the slider too (Blake, 2026-10-02): from the rare end to the
 // middle it fans out to ten people, each with the one or two doors that lead
 // to them; towards the easy end it closes in on fewer, and at the end on the
 // one person you're aiming at, with every connection of yours who leads to them.
@@ -50,7 +50,7 @@ const CANT_NAME = 'a connection we can’t name';
 // phone. This much side padding keeps them off the text at every width.
 const SIDE = 56;
 const LABEL_ROW = 28;
-const TITLE_ROW = 44;           // the ledger's title bar, on a computer (Blake, 2026-10-03: mock-up 2)
+const TITLE_ROW = 44;           // the ledger's title bar, on a computer (Blake, 2026-10-02: mock-up 2)
 // The ledger's columns: rank, face, person, way in, how rare the way in, power.
 const COLUMNS = '64px 36px minmax(0,1.3fr) minmax(0,1fr) 190px 132px';
 const BOTTOM_PAD = 72;           // clear of the last row's reach, and the corner toggles
@@ -235,7 +235,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // it can be positioned by arithmetic alone.
   // One map for both: ten people fanned out, or the one you're aiming at with
   // everyone who leads to them. The same shape, so it glides from one to the other.
-  // Wide enough: connections as pills and people as cards (Blake, 2026-10-03); a phone keeps the dots.
+  // Wide enough: connections as pills and people as cards (Blake, 2026-10-02); a phone keeps the dots.
   const cards = !isMobile && cw >= 760;
   const layout = useMemo(
     () => (single
@@ -824,7 +824,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
   );
 });
 
-// ── Cards (Blake, 2026-10-03: mock-ups 1 and 1b) ───────────────────────────
+// ── Cards (Blake, 2026-10-02: mock-ups 1 and 1b) ───────────────────────────
 // Connections as pills in the middle, people as cards on the right; at the
 // easy end, the one person as a big card. Plain SVG, placed by the same
 // gliding groups as the dots, so the slider still moves everything smoothly.

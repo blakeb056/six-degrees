@@ -1,7 +1,7 @@
 'use client';
 
-// Scores had a tab of its own from 2026-09-28 to 2026-10-03. It now lives in
-// Settings (Blake, 2026-10-03: "moving scores into settings"), and network
+// Scores had a tab of its own from 2026-09-28 to 2026-10-02. It now lives in
+// Settings (Blake, 2026-10-02: "moving scores into settings"), and network
 // health in Profile → Insights. Old links land in the right place:
 // /scores#sector, #tiers and #companies go to the same place in Settings;
 // /scores#health goes to Insights.

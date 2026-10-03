@@ -1,6 +1,6 @@
 'use client';
 
-// The right panel while a circle is open in Bridge Chains (Blake, 2026-10-03:
+// The right panel while a circle is open in Bridge Chains (Blake, 2026-10-02:
 // "when im in a d2 cluster in the bridges and i open up the people panel it
 // should show the cluster of whoever im in"). Who is in their circle, strongest
 // first, with the people you added from it at the top: the ones whose own

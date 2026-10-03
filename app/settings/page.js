@@ -17,7 +17,7 @@ import { IS_DEMO } from '../../lib/demo';
 // user chooses is saved in the database (lib/settings.js), so it travels with
 // their data.
 //
-// Scores live here again (Blake, 2026-10-03: "moving scores into settings"):
+// Scores live here again (Blake, 2026-10-02: "moving scores into settings"):
 // your field, how tiers are graded and every company's score. They had a tab
 // of their own (app/scores), which now forwards here; network health went to
 // Profile → Insights.

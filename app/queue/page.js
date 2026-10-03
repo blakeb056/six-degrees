@@ -58,7 +58,7 @@ function QueueInner() {
   const [serverPending, setServerPending] = useState([]);
   const [bridgeById, setBridgeById] = useState({});
   // Circles is the game (lib/quest.js); the list and Pending are still here.
-  // Messages & follow-ups is Social, folded in (Blake, 2026-10-03); a link can open any view: /queue?view=messages.
+  // Messages & follow-ups is Social, folded in (Blake, 2026-10-02); a link can open any view: /queue?view=messages.
   const asked = useSearchParams().get('view');
   const [view, setView] = useState(() => (VIEWS.includes(asked) ? asked : 'quest')); // quest | recs | pending | messages
   const [added, setAdded] = useState([]);

@@ -1,6 +1,6 @@
 'use client';
 
-// The Scan page's radar (Blake, 2026-10-03: "making the scan button more
+// The Scan page's radar (Blake, 2026-10-02: "making the scan button more
 // gamified, having the slow medium high scan option"). A round Scan button in
 // the middle of a radar: the sweep turns while a scan runs, the outer arc is
 // today's searches against the budget, and beside it the three speeds with
