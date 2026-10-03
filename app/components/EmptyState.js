@@ -50,12 +50,13 @@ export default function EmptyState() {
           Pick how to bring it in. You can switch later.
         </p>
 
+        {/* Chrome said up front: the scanner drives it, and step 1 waits for it. */}
         <Choice
           href="/setup"
           primary
           badge="Recommended"
           title="Scan my LinkedIn"
-          body="A few guided steps: set up the scanner, sign into LinkedIn yourself, and watch your galaxy fill in. The only way to see who your connections know."
+          body="A few guided steps: set up the scanner, sign into LinkedIn yourself, and watch your galaxy fill in. The only way to see who your connections know. Needs Google Chrome."
           note="It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this."
         />
 
