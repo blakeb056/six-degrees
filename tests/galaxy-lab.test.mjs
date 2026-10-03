@@ -125,6 +125,8 @@ test('heat: power as a thermal map, spread across whoever is shown', () => {
   assert.equal(scheme.of(people[1]), '#fff3b0');
   assert.equal(scheme.heat(people[0]), 0);
   assert.equal(scheme.legend.length, 4);
+});
+
 import { ORBIT, CLUSTERS, layoutOf } from '../lib/galaxy-lab.js';
 
 test('layouts: Rings as always, Orbit and Clusters by their sliders, your own otherwise', () => {
