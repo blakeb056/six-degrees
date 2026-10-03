@@ -305,8 +305,8 @@ function SetupInner() {
             <Box tone="bad">
               <b>Can’t find the scanner files.</b><br />
               <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                Expected <code style={code}>scripts/scrape.py</code> next to the app. If you
-                downloaded a zip, run the app from inside the project folder.
+                This copy of Six Degrees is missing part of its scanner. Download it again from
+                sixdegreesapp.com and put the new copy in place of this one.
               </span>
             </Box>
           )}
@@ -398,7 +398,7 @@ function SetupInner() {
                       <option value={5}>5 people</option>
                       <option value={10}>10 people</option>
                       <option value={25}>25 people</option>
-                      <option value={0}>everyone — not advised</option>
+                      <option value={0}>everyone (not advised)</option>
                     </select>
                   </label>
                   <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'var(--sd-fg-2, #cfd8d8)' }}>
@@ -558,15 +558,10 @@ function SetupInner() {
           )}
         </>}
 
-        <div style={{ marginTop: 32, paddingTop: 20, borderTop: LINE, fontSize: 13.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
-          Checking for updates has moved to{' '}
-          <Link href="/settings#updates" style={{ color: 'var(--sd-blue, #3498DB)' }}>Settings →</Link>
-        </div>
-
         <p style={{ color: 'var(--sd-fg-4, #667)', fontSize: 12.5, lineHeight: 1.7, marginTop: 32 }}>
           Automating LinkedIn may go against its User Agreement, and accounts have been
           restricted for it. This runs locally against your own account, at your own risk.
-          LinkedIn’s own CSV export is the supported route and needs none of this —{' '}
+          LinkedIn’s own CSV export is the supported route and needs none of this:{' '}
           <Link href="/import" style={{ color: 'var(--sd-blue, #3498DB)' }}>import a CSV instead</Link>.
         </p>
       </div>
@@ -667,7 +662,6 @@ function useRemembered(key, fallback) {
   return [value, set];
 }
 
-const code = { background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', padding: '1px 5px', borderRadius: 4 };
 const selectStyle = {
   padding: '9px 10px', borderRadius: 7, fontSize: 13.5, fontWeight: 600,
   background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)', border: LINE,
@@ -819,7 +813,7 @@ function Progress({ p, action }) {
           }} />
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--sd-fg-1, #cfe6f7)' }}>
-          Saving to your network and fetching photos — this can take a minute or two.
+          Saving to your network and fetching photos. This can take a minute or two.
         </div>
       </div>
     );
@@ -828,7 +822,7 @@ function Progress({ p, action }) {
   let text;
   if (p.kind === 'download') text = `Downloading Python: ${p.done.toFixed(1)} of ${p.total.toFixed(1)} MB · ${pct}%`;
   else if (p.kind === 'batch') text = `Person ${p.current} of ${p.total}`;
-  else if (action === 'refresh') text = `Looked at ${p.done.toLocaleString()} so far — stops once it reaches people already saved`;
+  else if (action === 'refresh') text = `Looked at ${p.done.toLocaleString()} so far, and stops once it reaches people already saved`;
   else text = `${p.done.toLocaleString()} of ${p.total.toLocaleString()} connections · ${pct}%`;
 
   return (

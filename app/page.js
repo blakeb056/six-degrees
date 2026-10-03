@@ -344,7 +344,7 @@ function HomeInner() {
                     Degrees need 2nd-degree data
                   </h2>
                   <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
-                    This view maps who <em>your connections</em>{' '}know &mdash; the people you haven&rsquo;t met yet.
+                    This view maps who <em>your connections</em>{' '}know: the people you haven&rsquo;t met yet.
                     LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.
                   </p>
                   <p style={{ color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>

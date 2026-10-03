@@ -75,18 +75,18 @@ function GitUpdates({ local }) {
       {done ? (
         <>
           <Body>
-            Updated to <Mono>{done.sha}</Mono> — “{done.subject}”.
+            Updated to <Mono>{done.sha}</Mono>: “{done.subject}”.
           </Body>
           <Body style={{ color: done.needsRestart ? 'var(--sd-gold, #FFD700)' : undefined }}>
             {done.needsRestart
-              ? 'Stop the app in your terminal and start it again — this update changed how it starts.'
+              ? 'Stop the app in your terminal and start it again: this update changed how it starts.'
               : 'The page will pick up most changes on its own. Restart the app if anything looks odd.'}
           </Body>
         </>
       ) : (
         <>
           <Body>
-            You are on <Mono>{local.sha}</Mono> — “{local.subject}”.
+            You are on <Mono>{local.sha}</Mono>: “{local.subject}”.
           </Body>
 
           {result && result.behind === 0 && <Status tone="ok">You&rsquo;re up to date.</Status>}
@@ -103,7 +103,7 @@ function GitUpdates({ local }) {
           {result?.dirty?.length > 0 && (
             <Body>
               Changed files here:{' '}
-              <Mono>{result.dirty.join(', ')}</Mono>. Commit or discard them first — this
+              <Mono>{result.dirty.join(', ')}</Mono>. Commit or discard them first: this
               will not throw away your work.
             </Body>
           )}
@@ -124,7 +124,7 @@ function GitUpdates({ local }) {
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
       <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 12 }}>
-        Nothing is checked automatically and nothing about you is sent — this runs the
+        Nothing is checked automatically and nothing about you is sent: this runs the
         same <Mono>git fetch</Mono> and <Mono>git pull</Mono> you would type yourself.
       </Body>
     </Section>
@@ -262,7 +262,7 @@ function InstalledUpdates({ local }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      setError('Could not copy — select the line and copy it by hand.');
+      setError('Could not copy. Select the line and copy it by hand.');
     }
   }
 

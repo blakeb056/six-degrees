@@ -123,9 +123,9 @@ test('other pages send people to Scan while there is something to set up there',
   assert.equal(notReadyMessage(null), 'Could not reach the app.');
   assert.equal(notReadyMessage(status({ scriptsFound: false })), 'The scanner files are missing from this install.');
   assert.equal(notReadyMessage(status({ python: false, dependencies: false, download: DOWNLOAD })),
-    'The scanner is not set up yet — open Scan to set it up.');
+    'The scanner is not set up yet. Open Scan to set it up.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: false })),
-    'The scanner is not set up yet — open Scan to set it up.');
+    'The scanner is not set up yet. Open Scan to set it up.');
   assert.equal(notReadyMessage(status({ python: false, dependencies: false, download: null })),
     'No Python 3.10 to 3.14 is installed on this machine.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: true, chrome: false })), 'Google Chrome is not installed.');

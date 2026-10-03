@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   about it (gold) and people in it ready to scan (green), as asked for on 10/2; it counted only the
   people ready before.
 
+### Fixed
+- **Words on screen read plainly**: no em dashes anywhere the app shows text (pages, notices,
+  notifications, error messages), and a test keeps it that way. The Scan page's old "Checking for
+  updates has moved" note is gone. Two messages written for developers now say what anyone can do: a
+  copy missing its scanner says to download it again, and a page that can't reach the app says to
+  quit and reopen it. The download size reads "about 210 MB" everywhere (the Mac downloads are 204
+  and 212 MB).
+
 ## [0.6.0] - 2026-10-03
 
 ### Added

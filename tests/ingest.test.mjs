@@ -82,7 +82,7 @@ test('a refresh says how many are new, and names each new person the model score
 
 test('a refresh that added nobody says the network is up to date', () => {
   assert.deepEqual(refreshNotifications({ added: [], checked: 110 }).map((n) => [n.title, n.message]),
-    [['Network up to date', 'Checked 110 connections — no new additions']]);
+    [['Network up to date', 'Checked 110 connections: no new additions']]);
 });
 
 test('ties: the circle\'s person with each of your connections in it, each pair once, smaller URL first', async () => {

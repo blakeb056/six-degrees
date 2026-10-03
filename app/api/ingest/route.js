@@ -322,7 +322,7 @@ export async function POST(request) {
               user_id: userId || null,
               type: 'request_accepted',
               title: `${p.name} accepted! +${XP_ACCEPT[p.tier] || 5} XP`,
-              message: `${p.tier}-Tier connection — bridge their cluster to reach D3`,
+              message: `${p.tier}-Tier connection: bridge their cluster to reach D3`,
               icon: '🤝',
               data: { personId: p.id, viaId: p.source_connection_id ?? null, tier: p.tier ?? null },
             }))

@@ -424,32 +424,32 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
     // Same level connections help with social proof
     const sameLevelConnected = sameLevel.filter(op => d1Urls.has(op.profile_url || op.profileUrl)).length;
     if (sameLevelConnected > 0) {
-      unlockInsights.push({ icon: '🤝', text: `${sameLevelConnected} people at their level already connected — high social proof`, color: 'var(--sd-gold, #FFD700)' });
+      unlockInsights.push({ icon: '🤝', text: `${sameLevelConnected} people at their level already connected: high social proof`, color: 'var(--sd-gold, #FFD700)' });
     } else {
-      unlockInsights.push({ icon: '🎯', text: `First connection at this level — opens a new layer`, color: 'var(--sd-blue, #3498DB)' });
+      unlockInsights.push({ icon: '🎯', text: `First connection at this level: opens a new layer`, color: 'var(--sd-blue, #3498DB)' });
     }
 
     // Bridge path value
     if (p.bridgeName) {
-      unlockInsights.push({ icon: '🔗', text: `Reachable through ${p.bridgeName} — warm intro possible`, color: 'var(--sd-orange, #FF6B35)' });
+      unlockInsights.push({ icon: '🔗', text: `Reachable through ${p.bridgeName}: warm intro possible`, color: 'var(--sd-orange, #FF6B35)' });
     }
 
     // Role-specific value
     if (p.seniority.level >= 5) {
-      unlockInsights.push({ icon: '👑', text: `${p.seniority.label} — decision maker, high strategic value but low accept rate`, color: 'var(--sd-gold, #FFD700)' });
+      unlockInsights.push({ icon: '👑', text: `${p.seniority.label}: decision maker, high strategic value but low accept rate`, color: 'var(--sd-gold, #FFD700)' });
     } else if (p.seniority.level >= 3) {
-      unlockInsights.push({ icon: '📊', text: `${p.seniority.label} — middle management, good balance of access and accept rate`, color: 'var(--sd-purple, #9B59B6)' });
+      unlockInsights.push({ icon: '📊', text: `${p.seniority.label}: middle management, good balance of access and accept rate`, color: 'var(--sd-purple, #9B59B6)' });
     } else {
-      unlockInsights.push({ icon: '✅', text: `${p.seniority.label} — highest accept rate, builds mutual foundation for people above`, color: 'var(--sd-green, #00ff88)' });
+      unlockInsights.push({ icon: '✅', text: `${p.seniority.label}: highest accept rate, builds mutual foundation for people above`, color: 'var(--sd-green, #00ff88)' });
     }
 
     // Likelihood explanation
     if (p.likelihood >= 60) {
-      unlockInsights.push({ icon: '🔥', text: `${p.likelihood}% likely to accept — strong mutual overlap + approachable role`, color: 'var(--sd-green, #00ff88)' });
+      unlockInsights.push({ icon: '🔥', text: `${p.likelihood}% likely to accept: strong mutual overlap + approachable role`, color: 'var(--sd-green, #00ff88)' });
     } else if (p.likelihood >= 30) {
-      unlockInsights.push({ icon: '⚡', text: `${p.likelihood}% likely — moderate chance, add more people at their level first`, color: 'var(--sd-gold, #FFD700)' });
+      unlockInsights.push({ icon: '⚡', text: `${p.likelihood}% likely: moderate chance, add more people at their level first`, color: 'var(--sd-gold, #FFD700)' });
     } else {
-      unlockInsights.push({ icon: '🔒', text: `${p.likelihood}% likely — low chance right now, build more connections below them first`, color: 'var(--sd-red, #ff5050)' });
+      unlockInsights.push({ icon: '🔒', text: `${p.likelihood}% likely: low chance right now, build more connections below them first`, color: 'var(--sd-red, #ff5050)' });
     }
   }
 
@@ -578,7 +578,7 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
           {/* Connected state */}
           {p.connected && (
             <div style={{ fontSize: 10, color: 'var(--sd-green, #00ff88)', fontWeight: 600 }}>
-              ✓ Already connected — contributes as mutual for others at {selectedCompany?.name}
+              ✓ Already connected: contributes as mutual for others at {selectedCompany?.name}
             </div>
           )}
         </div>

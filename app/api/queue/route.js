@@ -59,7 +59,7 @@ export async function POST(request) {
           await supabase.from('notifications').insert([{
             type: 'connection_accepted',
             title: `${item.name} accepted!`,
-            message: `+${item.xp_reward} XP — Ready to scan their cluster`,
+            message: `+${item.xp_reward} XP · Ready to scan their cluster`,
             icon: '🎉',
           }]);
         }

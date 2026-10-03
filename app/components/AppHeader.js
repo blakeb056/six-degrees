@@ -208,7 +208,7 @@ function RefreshButton({ isMobile }) {
           );
           if (!ok) return;
           await beginScrape('refresh');
-          alert('Checking for new connections — watch it on the Scan page.');
+          alert('Checking for new connections. Watch it on the Scan page.');
         } catch (e) {
           alert(e.message);
         }

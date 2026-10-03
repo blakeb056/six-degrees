@@ -88,7 +88,7 @@ function stopChild() {
     spawn('taskkill', ['/pid', String(pid), '/T'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
     setTimeout(() => {
       if (state.child && state.child.pid === pid) {
-        push('Still running — forcing it.');
+        push('Still running. Forcing it to stop.');
         spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
       }
     }, 5000);
@@ -99,7 +99,7 @@ function stopChild() {
 
   setTimeout(() => {
     if (state.child && state.child.pid === pid) {
-      push('Still running — forcing it.');
+      push('Still running. Forcing it to stop.');
       try { process.kill(-pid, 'SIGKILL'); }
       catch { try { child.kill('SIGKILL'); } catch {} }
     }
@@ -658,7 +658,7 @@ export async function POST(request) {
   }
   const cooldown = linkedinState(dataDir()).cooldown;
   if (searches && cooldown) {
-    return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()} — ${cooldown.reason}.`, cooldown }, { status: 409 });
+    return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()}: ${cooldown.reason}.`, cooldown }, { status: 409 });
   }
   if (state.running) {
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });

@@ -35,7 +35,7 @@ export default function StaleServerBanner() {
     >
       <span>
         You have newer code on disk ({info.sha}) than this server is running ({info.bootSha}).
-        Restart it to see the changes — <code style={{
+        Restart it to see the changes: <code style={{
           background: 'rgba(var(--sd-shade, 0, 0, 0), 0.16)', padding: '1px 6px', borderRadius: 4,
         }}>Ctrl-C</code> in the terminal, then <code style={{
           background: 'rgba(var(--sd-shade, 0, 0, 0), 0.16)', padding: '1px 6px', borderRadius: 4,
