@@ -7,6 +7,7 @@ import UpdatePanel from '../components/UpdatePanel';
 import DataSection from '../components/settings/DataSection';
 import SectorSection from '../components/settings/SectorSection';
 import TierSection from '../components/settings/TierSection';
+import TitleSection from '../components/settings/TitleSection';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -83,15 +84,17 @@ function SettingsInner() {
         <UpdatePanel />
         <Section id="scoring" title="Scores">
           <Body>
-            How someone&rsquo;s power score is worked out, and the three things you can change about it:{' '}
+            How someone&rsquo;s power score is worked out, and the four things you can change about it:{' '}
             <a href="#sector" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>your field</a>,{' '}
-            <a href="#tiers" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how tiers are graded</a> and{' '}
+            <a href="#tiers" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how tiers are graded</a>,{' '}
+            <a href="#titles" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how titles rank</a> and{' '}
             <a href="#companies" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>any company&rsquo;s score</a>.
             A change here rescores everyone. How your network holds together is in{' '}
             <Link href="/profile?view=insights" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights</Link>.
           </Body>
           <SectorSection onSaved={saved} />
           <TierSection onSaved={saved} />
+          <TitleSection onSaved={saved} />
           <div id="companies" style={{ marginTop: 28 }}>
             <CompanyScores version={saves} />
           </div>
