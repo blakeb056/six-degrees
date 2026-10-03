@@ -278,7 +278,9 @@ function InstalledUpdates({ local }) {
   // whenever it can't install the update itself, or the last time it tried
   // didn't work (so a second try that fails the same way isn't the only way),
   // except where the line would do harm.
-  const showLine = result?.newer && (!mac || fallback)
+  // Windows and Linux (DESKTOP.md D3): no Terminal line, ever; the release page's installer replaces the app.
+  const desktop = local.kind === 'windows-app' || local.kind === 'linux-app';
+  const showLine = !desktop && result?.newer && (!mac || fallback)
     && (!canInstall || failed || refused || local.lastUpdate?.tone === 'bad');
   const how = fallbackText({ mac, kind: local.kind, canInstall, fallback });
 
@@ -328,6 +330,22 @@ function InstalledUpdates({ local }) {
                 </>
               )}
               {mac && !canInstall && result.install?.reason && <Body>{result.install.reason}</Body>}
+              {desktop && (
+                <>
+                  <Body>
+                    {local.kind === 'windows-app'
+                      ? 'Download its Setup.exe from the release page and run it: it closes this copy, puts the new version in its place and opens it.'
+                      : 'Download its .deb (or .tar.gz) from the release page and install it over this one, after quitting Six Degrees.'}
+                    {' '}Your network stays where it is.
+                  </Body>
+                  <Row>
+                    <a href={(result.download || result.latest).url} target="_blank" rel="noreferrer" style={{
+                      display: 'inline-block', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                      background: 'linear-gradient(135deg, #9B59B6, #3498DB)', color: '#fff',
+                    }}>Open the release page</a>
+                  </Row>
+                </>
+              )}
               {showLine && (
                 <>
                   <Body>{how}</Body>
@@ -346,7 +364,7 @@ function InstalledUpdates({ local }) {
                   )}
                 </>
               )}
-              {!canInstall && !showLine && <Row><WhatChanged url={result.latest.url} /></Row>}
+              {!canInstall && !showLine && !desktop && <Row><WhatChanged url={result.latest.url} /></Row>}
             </>
           )}
 

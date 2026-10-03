@@ -49,6 +49,8 @@ test('which wheels may be pinned: CPython 3.10 to 3.14, macOS 13 or older, Linux
     'charset_normalizer-3.5.1-cp37-abi3-macosx_10_9_universal2.whl',
     'requests-2.34.2-py3-none-any.whl',
     'tzdata-2026.4-py2.py3-none-any.whl',
+    'pillow-12.3.0-cp312-cp312-win_amd64.whl',             // the Windows desktop app
+    'playwright-1.63.0-py3-none-win_amd64.whl',
   ];
   const refused = [
     'pillow-12.3.0-cp312-cp312-macosx_14_0_arm64.whl',     // newer than the app's macOS 13.5
@@ -56,10 +58,11 @@ test('which wheels may be pinned: CPython 3.10 to 3.14, macOS 13 or older, Linux
     'pillow-12.3.0-cp315-cp315-macosx_11_0_arm64.whl',     // not yet
     'pillow-12.3.0-cp313-cp313t-macosx_11_0_arm64.whl',    // free-threaded
     'pillow-12.3.0-cp312-cp312-musllinux_1_2_x86_64.whl',
-    'pillow-12.3.0-cp312-cp312-win_amd64.whl',
     'pillow-12.3.0-cp312-cp312-manylinux_2_28_ppc64le.whl',
     'pillow-12.3.0-pp310-pypy310_pp73-manylinux_2_28_x86_64.whl',
     'pillow-12.3.0.tar.gz',
+    'pillow-12.3.0-cp312-cp312-win32.whl',                 // 32-bit Windows
+    'pillow-12.3.0-cp312-cp312-win_arm64.whl',
   ];
   for (const f of ok) assert.equal(wheelAllowed(f), true, f);
   for (const f of refused) assert.equal(wheelAllowed(f), false, f);

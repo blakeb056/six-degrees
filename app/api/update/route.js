@@ -3,7 +3,7 @@ import { accessSync, constants, existsSync } from 'node:fs';
 import { projectRoot, isGitCheckout, dataDir } from '../../../lib/paths';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import { repoSlug, compareVersions, installKind, updateCommand } from '../../../lib/release';
+import { repoSlug, compareVersions, installKind, updateCommand, INSTALLER_KINDS } from '../../../lib/release';
 import {
   bundleRefusal, dataRefusal, installerTarget, lastUpdateReport, planFromRelease, releaseSource, runningBundle,
   terminalFallback,
@@ -239,12 +239,18 @@ async function installedPost(action, root) {
       // Install installs the version this check offered and no other
       // (lib/updater-job.js rememberCheck); none, when it offered none.
       if (mac) rememberCheck(newer ? latest.version : null);
+      // Windows and Linux: the newer release's page, where its installer is. Only
+      // ever this project's own releases on GitHub (the page opens it in the browser).
+      const releasePage = `https://github.com/${info.slug}/releases/`;
+      const download = newer && INSTALLER_KINDS.includes(info.kind) && latest?.url && String(latest.url).startsWith(releasePage)
+        ? { url: latest.url } : null;
       return Response.json({
         ...info,
         latest: latest && { version: latest.version, url: latest.url },
         newer,
         install,
         fallback,
+        download,
       });
     } catch (e) {
       return Response.json({ error: `Could not reach GitHub (${e.message}). Try again in a moment.` }, { status: 502 });
@@ -252,11 +258,11 @@ async function installedPost(action, root) {
   }
 
   if (action === 'install-release') {
-    if (info.kind !== 'mac-app') {
-      return Response.json(
-        { error: 'Only the Mac app can install an update itself. Use the line below instead.', command: info.command },
-        { status: 400 },
-      );
+    if (info.kind !== 'mac-app' || process.platform !== 'darwin') {
+      const error = INSTALLER_KINDS.includes(info.kind)
+        ? 'On Windows and Linux an update is the new installer: download it from the release page and run it.'
+        : 'Only the Mac app can install an update itself. Use the line below instead.';
+      return Response.json({ error, command: info.command }, { status: 400 });
     }
     if (!info.slug) {
       return Response.json({ error: 'This copy does not say where it was published.' }, { status: 400 });

@@ -77,7 +77,8 @@ test('the disk image name and SHA256SUMS are what the build and the release publ
   assert.ok(build.includes("`${APP_NAME.replace(/ /g, '-')}-${pkg.version}-${ARCH}.dmg`"), 'build-app.mjs names it');
   assert.equal(dmgName('0.2.2', 'arm64'), 'Six Degrees'.replace(/ /g, '-') + '-0.2.2-arm64.dmg');
   const releaseYml = repoFile('.github/workflows/release.yml');
-  assert.match(releaseYml, new RegExp(`sha256sum \\*\\.dmg > ${SUMS_NAME}`), 'release.yml writes it');
+  // Every download's line, the disk images' included (Windows and Linux joined them, DESKTOP.md D3).
+  assert.match(releaseYml, new RegExp(`sha256sum \\$\\(ls \\*\\.dmg [^)]*\\) > ${SUMS_NAME}`), 'release.yml writes it');
 });
 
 test('the helper ships inside the app, and the app tells the server where it is', () => {

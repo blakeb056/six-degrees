@@ -17,7 +17,9 @@ let db, getDb;
 before(async () => {
   ({ db } = await import('../lib/db.js'));
   ({ getDb } = await import('../lib/db-client.js'));
-  process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
+  // Windows cannot delete the folder while the database inside is open; the
+  // system's temp cleanup gets it there.
+  process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* see above */ } });
 });
 
 beforeEach(() => {

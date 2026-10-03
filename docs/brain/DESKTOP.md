@@ -260,21 +260,43 @@ real browser, and the Scan page already checks for it. The download grows by abo
 for the `.dmg` (220,305,162 bytes built here). Without sharing the driver's Node it would
 have grown by about 62 MB.
 
-### D3 — Windows
+### D3 — Windows (and a Linux desktop app with it)
 
-- [ ] Electron's Windows build: a one-click `Setup.exe` that installs for the current
-      user, adds Start Menu and Desktop shortcuts, and opens the app. Plus Python for
-      Windows (with `tzdata`: Windows Python has no time zone database). This replaces the
-      PowerShell installer parked on branch `windows` (below).
-- [ ] Merge the app-level Windows fixes from that branch: the `py` launcher found first,
-      a real Chrome check, Stop closing the scanner's Chrome via `taskkill /T`, no console
-      windows, `scripts/next.mjs` in place of shell-only `VAR=x` scripts, and tests that
-      pass on Windows.
-- [ ] Windows CI: install silently, start, reach, update over a running copy, stop. The
-      same checks the parked branch runs.
-- [ ] One test on a real Windows PC before release.
+Built 2026-10-02 at Blake's ask ("making the windows version and linux stable and having them
+ready to release for tonight"), to ship as a **beta** first (rule 4) until it has been opened on
+a real Windows PC.
+
+- [x] Electron's Windows build: a one-click `Setup.exe` (Inno Setup, preinstalled on GitHub's
+      windows runners) that installs for the current user in
+      `%LOCALAPPDATA%\Programs\Six Degrees` (no admin prompt), adds Start Menu and Desktop
+      shortcuts, and opens the app. Running a newer one over it closes the running copy the
+      way Exit does (WM_CLOSE, so the scan stops cleanly), replaces it and opens it again.
+      Uninstalling never touches the data folder. `scripts/build-desktop.mjs --platform=win32`
+      and `scripts/windows/six-degrees.iss`. Python for Windows is pinned in
+      `lib/scanner-python.js` (`win32-x64`) with `tzdata`; the packages' Windows wheels are
+      pinned by hash in `scripts/requirements.txt` (`pin-python-packages.mjs` allows
+      `win_amd64`). "Set up the scanner" stays off on Windows (`hostKey` null there).
+- [x] The app-level Windows fixes, taken by hand from the parked `windows` branch (387
+      commits behind; its PowerShell installer is superseded): `scripts/next.mjs` for
+      Next's scripts, the `py` launcher first, a real Chrome check, Stop via `taskkill /T`
+      (and the shell's own `stopProcess`), `windowsHide` everywhere a process starts, no
+      `detached` console for Playwright's driver, Python's output in UTF-8 (TRAPS §42),
+      cookies in `Network\Cookies` (TRAPS §44), a File/Edit/View/Help menu, the
+      AppUserModelID, a per-user log name off the Mac.
+- [x] Settings → Updates: `SIX_DEGREES_INSTALL` is `windows-app` / `linux-app` there, so it
+      offers the release page's installer and never the Mac swap or a Terminal line
+      (`lib/release.js` `INSTALLER_KINDS`, `app/api/update/route.js`, `UpdatePanel.js`).
+- [x] Windows CI (release.yml `windows`): install silently, check the Python, open, reach
+      every page, the scanner on its own Python, Chrome found, Updates refuses the swap, a
+      second copy hands over, quit, nothing left; again without the app's Python and a job
+      to stop; uninstall with the data kept (`scripts/smoke-desktop.mjs`, TRAPS §43).
+- [x] Linux: the same app as a `.deb` (chrome-sandbox setuid root, TRAPS §44) and a
+      `.tar.gz`, installed and checked the same way under Xvfb (release.yml `linux`).
+- [ ] Update over a running copy, in CI (built into the installer; not yet checked there).
+- [ ] One test on a real Windows PC before it becomes "latest" (then promote, as 0.2.0 was).
 - [ ] Decide: when Chrome is missing on Windows, fall back to Edge for scanning (always
       installed there)? That's a small behaviour change, so it needs a watched run first.
+- [ ] Linux arm64 (`ubuntu-24.04-arm`) and Windows on Arm.
 
 ### D4 — Signing (when Blake decides to pay)
 
@@ -477,7 +499,7 @@ is ever attempted, it must answer each reason first:
 | Homebrew cask / winget | Good *second* channels, after D4. Homebrew's main catalog needs signed apps. A personal tap works, but brew quarantines what it downloads, which brings the first-launch warning back. |
 | apt and Linux packages | Linux runs from source today (README). `npx six-degrees` would cover it once the npm package is published: the name is unclaimed, so claim it first. |
 | A cloud version | The scanner has to be the user's own browser on the user's own connection. Hosting everyone's network also makes the operator responsible for other people's data. |
-| PowerShell one-liner for Windows | Built, and passing CI on branch `windows` (2026-09-24). Parked, not released: D3 replaces it unless Windows is wanted before Electron. |
+| PowerShell one-liner for Windows | Built, and passing CI on branch `windows` (2026-09-24). Superseded by D3's Setup.exe (2026-10-02); the branch stays as history. |
 
 ## Status
 
@@ -486,6 +508,6 @@ is ever attempted, it must answer each reason first:
 | D0 Groundwork | backups ✅ pre-releases ✅ "scanner" wording ✅; the icon still to do |
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | ✅ built on branch `python-inside` for 0.3.0, one release with Settings (Blake confirmed 2026-09-25); the x64 build and a quarantined install still to see |
-| D3 Windows | after D2; the PowerShell installer is parked on branch `windows` |
+| D3 Windows (+ Linux) | ✅ built 2026-10-02: Setup.exe, .deb and .tar.gz, checked in CI; shipping as a beta until opened on a real Windows PC |
 | D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
 | D5 Scanner in JS | optional; spec still rejects it |

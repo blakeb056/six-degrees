@@ -28,6 +28,8 @@ export default function SettingsPage() {
 
 const KIND_LABEL = {
   'mac-app': 'the Mac app',
+  'windows-app': 'the Windows app',
+  'linux-app': 'the Linux app',
   npm: 'the npm package (npx six-degrees)',
   source: 'a copy built from the source code',
   git: 'a git checkout of the source code',
@@ -108,7 +110,7 @@ function SettingsInner() {
               <Body>
                 Your network is kept in <Mono>{about.dataDir}</Mono>
                 {about.customDataDir ? ' (a folder you chose).' : '.'}
-                {about.kind === 'mac-app' && ' Help → Show the Data Folder opens it.'}
+                {['mac-app', 'windows-app', 'linux-app'].includes(about.kind) && ' Help → Show the Data Folder opens it.'}
               </Body>
               <Body style={{ fontSize: 12, color: '#667', marginTop: 10 }}>
                 Settings are saved with your network, on this computer. Nothing here is sent anywhere.

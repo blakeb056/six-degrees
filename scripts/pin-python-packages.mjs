@@ -58,6 +58,8 @@ export function wheelAllowed(filename) {
     if (plat === 'any') return true;
     const mac = plat.match(/^macosx_(\d+)_(\d+)_(arm64|x86_64|universal2)$/);
     if (mac) return Number(mac[1]) <= MACOS_MAX_MAJOR;
+    // 64-bit Windows: the desktop app's own Python (DESKTOP.md D3). Not win32 or win_arm64.
+    if (plat === 'win_amd64') return true;
     return /^manylinux(1|2010|2014|_2_\d+)_(x86_64|aarch64)$/.test(plat);
   });
   return pythonOk && platformOk;
