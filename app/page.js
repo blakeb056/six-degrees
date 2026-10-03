@@ -21,6 +21,7 @@ import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
 import Link from 'next/link';
+import AppTabs from './components/AppTabs';
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -85,14 +86,17 @@ function HomeInner() {
   // "watch it fill in"), opens Degrees on it. The router's search params rather
   // than window.location: on a click from another page the address bar only
   // changes after this page has rendered, and the map opened on the Galaxy.
-  const linkedChain = useSearchParams().get('chain');
+  const params = useSearchParams();
+  const linkedChain = params.get('chain');
+  // Another page's tab row links back here with the tab named: /?mode=separation (app/components/AppTabs.js).
+  const linkedMode = ['network', 'degrees', 'separation'].includes(params.get('mode')) ? params.get('mode') : null;
   const [chainOpen, setChainOpen] = useState(linkedChain);
-  const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : 'network'));
+  const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : linkedMode || 'network'));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(true);
-  const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : 'galaxy'));
+  const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : linkedMode === 'degrees' ? 'chain' : linkedMode === 'separation' ? 'separation' : 'galaxy'));
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [csvMode, setCsvMode] = useState(false);
@@ -253,38 +257,13 @@ function HomeInner() {
           <h1 style={{ fontSize: isMobile ? 16 : 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Six Degrees
           </h1>
-          <div id="main-tabs" style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-            <button
-              onClick={() => { setMode('network'); setSelected(null); setVisualMode('galaxy'); }}
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
-                background: mode === 'network' ? '#fff' : 'transparent',
-                color: mode === 'network' ? '#000' : '#888',
-              }}
-            >
-              {isMobile ? 'Circle' : 'Network Circle'}
-            </button>
-            <button
-              onClick={() => { setMode('degrees'); setSelected(null); setVisualMode('chain'); }}
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
-                background: mode === 'degrees' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'rgba(255,255,255,0.12)',
-                color: mode === 'degrees' ? '#000' : '#fff',
-              }}
-            >
-              Degrees
-            </button>
-            <button
-              onClick={() => { setMode('separation'); setSelected(null); setVisualMode('separation'); }}
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, cursor: 'pointer',
-                background: mode === 'separation' ? 'linear-gradient(135deg, #00E5FF, #FFD700 55%, #FF7043)' : 'rgba(255,255,255,0.12)',
-                color: mode === 'separation' ? '#000' : '#fff',
-              }}
-            >
-              Separation
-            </button>
-
+          <AppTabs
+            active={mode}
+            isMobile={isMobile}
+            csvMode={csvMode}
+            onMode={(m) => { setMode(m); setSelected(null); setVisualMode(m === 'network' ? 'galaxy' : m === 'degrees' ? 'chain' : 'separation'); }}
+            after={!IS_DEMO && !csvMode ? <AutoScanButton isMobile={isMobile} /> : null}
+          >
             {/* Which network you are looking at, and the way back out of it.
                 Loading the sample used to be a one-way door: it lives in
                 sessionStorage, and nothing in the UI cleared it. */}
@@ -315,54 +294,7 @@ function HomeInner() {
                 </button>
               </div>
             )}
-            {!IS_DEMO && <Link
-              href="/paths"
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', color: '#00ff88', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Paths
-            </Link>}
-            {!IS_DEMO && <Link
-              href="/social"
-              title="Experimental: what your own LinkedIn data says about your relationships"
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', color: '#FFD700', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Social<span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>beta</span>
-            </Link>}
-            {/* Scores moved into Settings (2026-10-03); the gear above opens them. */}
-            {!IS_DEMO && !csvMode && <Link
-              href="/queue"
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', color: '#FF6B35', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Outlink
-            </Link>}
-            {/* Named "Scan" everywhere — nav, page title, README and docs. It is
-                also the only route to 2nd-degree data, so it stays visible on
-                mobile rather than being the one thing a phone user cannot find. */}
-            {!IS_DEMO && !csvMode && <Link
-              href="/setup"
-              style={{
-                padding: isMobile ? '8px 12px' : '8px 16px', borderRadius: 6, border: 'none',
-                fontSize: 13, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', color: '#666', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Scan
-            </Link>}
-            {!IS_DEMO && !csvMode && <AutoScanButton isMobile={isMobile} />}
-          </div>
+          </AppTabs>
           {/* Settings — also in CSV/sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <Link
             href="/settings"

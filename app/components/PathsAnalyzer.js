@@ -62,6 +62,40 @@ export function useSize(ref) {
   return size;
 }
 
+/**
+ * The left panel, as on the map page (app/components/FilterPanel.js): a
+ * Filters tab at the edge until opened, then a column the map makes room for.
+ * Paths' filters, and the ways to read the map, live here (Blake, 2026-10-03:
+ * "incorporate the filter with maybe ways to read the data more").
+ */
+export function SidePanel({ open, onToggle, children }) {
+  if (!open) {
+    return (
+      <button type="button" onClick={onToggle} style={{
+        position: 'fixed', left: 16, top: 140, zIndex: 30, cursor: 'pointer', height: 36, borderRadius: 18, padding: '0 14px 0 10px',
+        display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(52,152,219,0.15)', border: '2px solid rgba(52,152,219,0.5)',
+        color: '#3498DB', fontWeight: 700, boxShadow: '0 0 12px rgba(52,152,219,0.3)', backdropFilter: 'blur(8px)',
+      }}>
+        <span style={{ fontSize: 18 }}>›</span><span style={{ fontSize: 11, fontWeight: 600 }}>Filters</span>
+      </button>
+    );
+  }
+  return (
+    <aside style={{
+      width: 300, flexShrink: 0, height: '100%', overflowY: 'auto', boxSizing: 'border-box', padding: '16px 14px',
+      borderRight: '1px solid rgba(52,152,219,0.15)', background: 'rgba(10,15,30,0.65)', fontSize: 13,
+    }}>
+      <button type="button" onClick={onToggle} style={{
+        display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 14, padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: 12, fontWeight: 600,
+      }}><span style={{ fontSize: 16 }}>›</span> Close</button>
+      {children}
+    </aside>
+  );
+}
+
+export const panelHeading = { fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, margin: '14px 0 6px', textTransform: 'uppercase' };
+
 /** Does this person pass the filters? */
 function passes(p, f) {
   if (f.degree !== 'all' && String(p.degree) !== f.degree) return false;
@@ -76,6 +110,10 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
   const [hidden, setHidden] = useState(() => new Set());       // industries toggled off
   const [query, setQuery] = useState('');
   const [focus, setFocus] = useState(null);                   // { kind: 'company'|'industry', key }
+  const [panelOpen, setPanelOpen] = useState(true);
+  // Ways to read the map: what a bubble's size means, and which names show.
+  const [sizeBy, setSizeBy] = useState('people');            // 'people' | 'sa' | 'known'
+  const [labels, setLabels] = useState('top');               // 'top' | 'all' | 'none'
 
   const rows = useMemo(() => [...d1, ...d2, ...d3], [d1, d2, d3]);
   const index = useMemo(() => buildCompanyIndex(rows), [rows]);
@@ -121,12 +159,23 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
 
   return (
     <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <SidePanel open={panelOpen} onToggle={() => setPanelOpen((o) => !o)}>
         <Filters filters={filters} setFilters={setFilters} query={query} setQuery={setQuery}
           industries={industries} hidden={hidden} setHidden={setHidden}
           onIndustry={(key) => setFocus({ kind: 'industry', key })} />
+        {tab === 'map' && (
+          <>
+            <div style={panelHeading}>Read the map</div>
+            <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
+            <Seg value={sizeBy} onChange={setSizeBy} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
+            <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
+            <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
+          </>
+        )}
+      </SidePanel>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {tab === 'map' ? (
-          <CompanyMap companies={companies} links={links} focus={focus}
+          <CompanyMap companies={companies} links={links} focus={focus} sizeBy={sizeBy} labels={labels}
             onCompany={(name) => setFocus({ kind: 'company', key: name })}
             onIndustry={(key) => setFocus({ kind: 'industry', key })}
             onClear={() => setFocus(null)} />
@@ -149,10 +198,11 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
 function Filters({ filters, setFilters, query, setQuery, industries, hidden, setHidden, onIndustry }) {
   const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
   return (
-    <div style={{ padding: '10px 16px', borderBottom: LINE, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={panelHeading}>Filter</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
-          style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, minWidth: 170 }} />
+          style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
         <Seg value={filters.degree} onChange={(v) => set('degree', v)} options={[['all', 'All degrees'], ['1', '1st'], ['2', '2nd'], ['3', '3rd']]} />
         <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
         <Seg value={filters.tier} onChange={(v) => set('tier', v)} options={[['all', 'All tiers'], ['SA', 'S & A only']]} />
@@ -178,7 +228,7 @@ function Filters({ filters, setFilters, query, setQuery, industries, hidden, set
   );
 }
 
-function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear }) {
+function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, sizeBy = 'people', labels: names = 'top' }) {
   const wrap = useRef(null);
   const { w, h } = useSize(wrap);
   const [hover, setHover] = useState(null);
@@ -195,7 +245,9 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear })
       return [k, { x: Math.cos(a) * R, y: Math.sin(a) * R }];
     }));
     const nodes = shown.map((c) => ({
-      id: c.name, co: c, r: 4 + Math.sqrt(c.shown.length) * 3.4,
+      id: c.name, co: c,
+      // Size: your people there, the S and A among them, or the ones you already know.
+      r: 4 + Math.sqrt(sizeBy === 'sa' ? c.shown.filter((p) => p.tier === 'S' || p.tier === 'A').length : sizeBy === 'known' ? c.d1 : c.shown.length) * (sizeBy === 'people' ? 3.4 : 5),
       // A fixed jitter from the name, so the same network always lays out the same.
       x: anchor.get(c.industry.key).x + (jitter(c.name) - 0.5) * 40, y: anchor.get(c.industry.key).y + (jitter(c.name + '#') - 0.5) * 40,
     }));
@@ -236,7 +288,7 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear })
     // cluster's label never lands on it.
     box.h += Math.max(60, box.h * 0.1);
     return { nodes, edges, box, labels, cut: Math.max(0, companies.length - shown.length) };
-  }, [companies, links]);
+  }, [companies, links, sizeBy]);
 
   const active = hover || (focus?.kind === 'company' ? focus.key : null);
   const activeInd = focus?.kind === 'industry' ? focus.key : null;
@@ -249,7 +301,7 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear })
     }
     return s;
   }, [active, layout]);
-  const labelled = useMemo(() => new Set(layout.nodes.slice(0, 28).map((n) => n.id)), [layout]);
+  const labelled = useMemo(() => new Set(names === 'none' ? [] : (names === 'all' ? layout.nodes : [...layout.nodes].sort((a, b) => b.r - a.r).slice(0, 28)).map((n) => n.id)), [layout, names]);
 
   return (
     <div ref={wrap} style={{ flex: 1, minHeight: 360, position: 'relative' }} onClick={onClear}>

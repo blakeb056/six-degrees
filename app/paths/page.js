@@ -1,6 +1,8 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import AppTabs from '../components/AppTabs';
+import { setNotchTabs } from '../../lib/island';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
@@ -42,6 +44,13 @@ function PathsInner() {
   const [tab, setTab] = useState(() => (TABS.some(([k]) => k === asked) ? asked : 'map'));
   const router = useRouter();
   useEffect(() => { if (asked === 'scores') router.replace('/settings#companies'); }, [asked, router]);
+  // Map, People, Industries and Companies in the notch under the tabs, as the
+  // map page's views are; not while one company is open (its own bar shows).
+  useEffect(() => {
+    if (selectedCompany) { setNotchTabs(null); return undefined; }
+    setNotchTabs({ items: TABS.map(([key, label]) => ({ key, label })), current: tab, onPick: setTab });
+    return () => setNotchTabs(null);
+  }, [tab, selectedCompany]);
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
   // The sample or a CSV import: they live only in this tab, so a company scan could only fail.
@@ -247,28 +256,25 @@ function PathsInner() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      <header style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+      {/* The same header as every page: the app's tabs, Paths lit; Map, People,
+          Industries and Companies sit in the notch under it. */}
+      <header style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Six Degrees
+            </h1>
+          </Link>
+          <AppTabs active="paths" csvMode={localOnly} />
+          <Link href="/settings" title="Settings" aria-label="Settings" style={{
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
+            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>⚙</Link>
+        </div>
+      </header>
+      {selectedCompany && (
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/" style={{
-            display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
-            fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          }}><span style={{ fontSize: 16 }}>&larr;</span> Map</Link>
-          <h1 style={{
-            fontSize: 20, fontWeight: 700, margin: 0,
-            background: 'linear-gradient(135deg, #00ff88, #3498DB)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>Paths</h1>
-          {!selectedCompany && (
-            <div style={{ display: 'flex', gap: 4, marginLeft: 8, padding: 3, borderRadius: 8, background: 'rgba(255,255,255,0.05)' }}>
-              {TABS.map(([k, label]) => (
-                <button key={k} onClick={() => setTab(k)} style={{
-                  padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
-                  background: tab === k ? 'linear-gradient(135deg, #00ff88, #3498DB)' : 'transparent', color: tab === k ? '#000' : '#aab',
-                }}>{label}</button>
-              ))}
-            </div>
-          )}
           {selectedCompany && (
             <>
               <button onClick={() => { setSelectedCompany(null); setCompanyPeople([]); }}
@@ -302,7 +308,8 @@ function PathsInner() {
             </>
           )}
         </div>
-      </header>
+        </div>
+      )}
 
       {!selectedCompany && tab !== 'companies' ? (
         <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}
