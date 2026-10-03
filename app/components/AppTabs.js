@@ -17,7 +17,7 @@ const MODES = [
 ];
 const PAGES = [
   { key: 'paths', href: '/paths', label: 'Paths', color: '#00ff88', on: 'linear-gradient(135deg, #00ff88, #3498DB)', demo: true },
-  { key: 'social', href: '/social', label: 'Social', badge: 'beta', color: '#FFD700', on: 'linear-gradient(135deg, #FFD700, #FF6B35)', demo: true, title: 'Experimental: what your own LinkedIn data says about your relationships' },
+  // Social is part of Outlink now (Messages & follow-ups); /social forwards there.
   { key: 'outlink', href: '/queue', label: 'Outlink', color: '#FF6B35', on: 'linear-gradient(135deg, #FF6B35, #FFD700)', own: true },
   { key: 'scan', href: '/setup', label: 'Scan', color: '#666', on: 'linear-gradient(135deg, #00ff88, #1abc9c)', own: true },
 ];

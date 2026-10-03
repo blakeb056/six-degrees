@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Social is part of Outlink.** Outlink has the same header as every page, and its views sit in
+  the notch: Circles, To add, Pending, and Messages & follow-ups, which is the whole Social tab (your
+  LinkedIn export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and
+  received). Adding people and keeping track of them are now one place. The Social tab is gone from
+  the header, and old links to it land on Messages & follow-ups.
 - **Paths has the same header as the map.** The app's tabs stay at the top, with Paths lit, and Map,
   People, Industries and Companies sit in the notch under them, as the map page's views do; a tab
   for Network Circle, Degrees or Separation takes you straight to it. Paths' filters moved into a
