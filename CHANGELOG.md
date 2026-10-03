@@ -104,6 +104,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   people ready before.
 
 ### Fixed
+- **Auto scan rests two days after any check from LinkedIn, as the Scan page says.** A pushback
+  partway through reading someone's list used to rest it one day, like a scan you start yourself;
+  only a check at the start of a run got the two days.
 - **"Signed in" means signed in.** Step 2 used to tick as soon as the scanner's Chrome window had
   opened once, even if you closed it without signing in. Now it ticks once the scanner has seen you
   signed in. Anyone already signed in before this stays signed in.

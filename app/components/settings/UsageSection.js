@@ -296,7 +296,7 @@ export default function UsageSection() {
           However high your budget is set, Auto scan keeps under its own limits: {AUTO.day} searches in any 24 hours,
           {' '}{AUTO.week} in any 7 days, only from {hoursText(AUTO.hours)} on this computer&rsquo;s clock,
           {' '}{AUTO.sittingRest === 3600 ? 'an hour’s rest' : `a ${AUTO.sittingRest / 60}-minute rest`} after every {AUTO.sitting} searches,
-          {' '}and {AUTO.pushbackRest / 86400} days off after a security check or being signed out.
+          {' '}and {AUTO.pushbackRest / 86400} days off after any check from LinkedIn.
         </Row>
       </div>
 
