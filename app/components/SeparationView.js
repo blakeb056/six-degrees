@@ -252,6 +252,15 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // Fit: as big as it can be with all of it in the window, never bigger than
   // life. A phone scrolls instead, unless you zoom.
   const fitZoom = isMobile ? 1 : Math.max(ZOOM_MIN, Math.min(1, (box.h - captionH - 22 - (single ? NEXT_H : 0)) / Math.max(1, layout.height)));
+  // Dynamic (Blake, 2026-10-03: "it should be dynamic"): what the map shows
+  // changes — the slider moves, you aim at someone else — and it fits again,
+  // whatever zoom you'd set. A new window size re-fits on its own.
+  const viewKey = single ? `aim:${target?.key ?? ''}` : `top:${top.map((t) => t.key).join(',')}`;
+  const [zoomFor, setZoomFor] = useState(viewKey);
+  if (zoomFor !== viewKey) {
+    setZoomFor(viewKey);
+    if (zoom != null) setZoom(null);
+  }
   const scale = zoom ?? fitZoom;
   const mapH = single ? (target ? Math.round(layout.height * scale) + NEXT_H : 0) : Math.round(layout.height * scale);
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
@@ -512,7 +521,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       >
         <div style={{ position: 'relative', maxWidth: 980, margin: '0 auto', height: total }}>
           {mapBlockH > 0 && (
-            <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
+            <div className="sepblock" style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden', display: isMobile ? 'block' : 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div title={isMobile ? undefined : `${!single && askedShown > 0 ? `${fmt(askedShown)} asked or connected, so it moved on. ` : ''}Solid orange: the top-scored bridge. Dashed: other routes.${single ? ' Pick anyone in the list to aim at them instead.' : cards ? ' A lit pill is someone’s best way in.' : ' Dot size: ways in.'}`}
                   style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: 'var(--sd-fg-1, #ddd)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -691,9 +700,13 @@ const MAP_CSS = `
 .sepmap .mv { transition: transform ${MOVE}; }
 .sepmap .rt, .sepmap .spk { transition: d ${MOVE}, stroke-opacity .12s; }
 .sepmap .in { animation: sepIn .3s ease-out both; }
+/* The zoom glides too, and the list under the map with it. */
+.sepmap { transition: width ${MOVE}, height ${MOVE}; }
+.sepblock { transition: height ${MOVE}; }
+.seprow { transition: top ${MOVE}; }
 @keyframes sepIn { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .sepmap .mv, .sepmap .rt, .sepmap .spk { transition: none; }
+  .sepmap .mv, .sepmap .rt, .sepmap .spk, .sepmap, .sepblock, .seprow { transition: none; }
   .sepmap .in { animation: none; }
 }
 `;
@@ -727,7 +740,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
     // Drawn at its own size and scaled whole by the viewBox, so zooming never
     // lays it out again and everything stays sharp.
     <svg className="sepmap" width={Math.round(width * scale)} height={Math.round(height * scale)} viewBox={`0 0 ${width} ${height}`} aria-hidden="true"
-      style={{ display: 'block', overflow: 'visible', margin: '0 auto' }}>
+      style={{ display: 'block', overflow: 'visible', margin: '0 auto', width: Math.round(width * scale), height: Math.round(height * scale) }}>
       <style>{MAP_CSS}</style>
       <defs>
         <linearGradient id="sepYouGrad" x1="0" y1="0" x2="1" y2="1">
@@ -1178,6 +1191,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(p); } }}
       onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = base; }}
+      className="seprow"
       style={{
         position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box',
         display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px',
