@@ -1,6 +1,6 @@
 'use client';
 
-// Network health on the Scores tab (lib/network-health.js): how much of your
+// Network health, in Profile → Insights (lib/network-health.js; it was on the Scores tab): how much of your
 // 2nd degree you reach two or more ways, the effective size of your own
 // network from the ties scans have kept, and your top five connections by who
 // only they reach. Only your own numbers, never a percentile against others.

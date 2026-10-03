@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import UpdatePanel from '../components/UpdatePanel';
 import DataSection from '../components/settings/DataSection';
+import SectorSection from '../components/settings/SectorSection';
+import TierSection from '../components/settings/TierSection';
+import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 
@@ -13,6 +15,11 @@ import { IS_DEMO } from '../../lib/demo';
 // and the facts about this copy. Each feature adds its own <Section>; what the
 // user chooses is saved in the database (lib/settings.js), so it travels with
 // their data.
+//
+// Scores live here again (Blake, 2026-10-03: "moving scores into settings"):
+// your field, how tiers are graded and every company's score. They had a tab
+// of their own (app/scores), which now forwards here; network health went to
+// Profile → Insights.
 
 export default function SettingsPage() {
   return <OnboardingGate><SettingsInner /></OnboardingGate>;
@@ -28,13 +35,9 @@ const KIND_LABEL = {
 function SettingsInner() {
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
-  const router = useRouter();
-  // Your field and tiers moved to the Scores tab (app/scores): old links to
-  // /settings#sector and /settings#tiers go there.
-  useEffect(() => {
-    const at = window.location.hash;
-    if (at === '#sector' || at === '#tiers') router.replace(`/scores${at}`);
-  }, [router]);
+  // Saving your field or tiers rescores everyone; the company list reads its scores again when this changes.
+  const [saves, setSaves] = useState(0);
+  const saved = () => setSaves((n) => n + 1);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -74,16 +77,24 @@ function SettingsInner() {
         }}>Settings</h1>
       </header>
 
-      <main style={{ maxWidth: 720, margin: '0 auto', padding: '8px 24px 64px' }}>
+      <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
         {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
-        <Section id="scoring" title="Your field and tiers">
+        <Section id="scoring" title="Scores">
           <Body>
-            They&rsquo;re on the <Link href="/scores" style={{ color: '#3498DB' }}>Scores</Link> tab now, beside every
-            company&rsquo;s score: <Link href="/scores#sector" style={{ color: '#3498DB' }}>your field</Link> and{' '}
-            <Link href="/scores#tiers" style={{ color: '#3498DB' }}>how tiers are graded</Link>.
+            How someone&rsquo;s power score is worked out, and the three things you can change about it:{' '}
+            <a href="#sector" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>your field</a>,{' '}
+            <a href="#tiers" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how tiers are graded</a> and{' '}
+            <a href="#companies" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>any company&rsquo;s score</a>.
+            A change here rescores everyone. How your network holds together is in{' '}
+            <Link href="/profile?view=insights" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights</Link>.
           </Body>
+          <SectorSection onSaved={saved} />
+          <TierSection onSaved={saved} />
+          <div id="companies" style={{ marginTop: 28 }}>
+            <CompanyScores version={saves} />
+          </div>
         </Section>
         <DataSection />
 

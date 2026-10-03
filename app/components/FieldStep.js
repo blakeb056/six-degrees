@@ -1,7 +1,7 @@
 'use client';
 
 // The Scan page's one question before the first scan: what field you're in.
-// The same picks as Scores → Your sector (SectorPicker), saved the same way
+// The same picks as Settings → Scores → Your field (SectorPicker), saved the same way
 // (lib/settings-client.js), so the first scan is already scored with them.
 // Optional: Skip for now carries on without one. Either answer is kept
 // (`fieldAsked`, lib/sector-focus.js), so it's asked once; when it's asked at
@@ -53,7 +53,7 @@ export default function FieldStep({ onDone }) {
       <h2 id="field-question" style={{ fontSize: 18, fontWeight: 700, margin: '6px 0 4px' }}>What field are you in?</h2>
       <Body style={{ marginTop: 0, marginBottom: 14 }}>
         Pick up to three. Companies in your field count for more when your network is scored, so the people there rank
-        higher. You can change it anytime on the Scores tab.
+        higher. You can change it anytime in Settings.
       </Body>
 
       <SectorPicker sectors={sectors} onChange={setSectors} disabled={Boolean(saving)} />
@@ -82,13 +82,13 @@ export default function FieldStep({ onDone }) {
 /** What was answered, above the scan's steps: where it went, and where to change it. */
 export function FieldAnswer({ sectors }) {
   if (!sectors.length) {
-    return <Status>No field for now. You can pick one anytime on <Link href="/scores#sector" style={link}>Scores</Link>.</Status>;
+    return <Status>No field for now. You can pick one anytime in <Link href="/settings#sector" style={link}>Settings</Link>.</Status>;
   }
   // The labels have commas of their own ("Tech, Software & AI"), so a dot separates them.
   return (
     <Status tone="ok">
       Your field: {sectors.map((k) => sectorByKey(k).label).join(' · ')}. Your first scan is scored with it. Change it
-      anytime on <Link href="/scores#sector" style={link}>Scores</Link>.
+      anytime in <Link href="/settings#sector" style={link}>Settings</Link>.
     </Status>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { loadNetwork } from '../../lib/network';
 import MappingProgress from '../components/MappingProgress';
 import { IS_DEMO } from '../../lib/demo';
@@ -8,6 +9,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import { sectorByKey } from '../../lib/sector-labels';
 import Link from 'next/link';
+import NetworkHealthSection from '../components/settings/NetworkHealthSection';
 
 const LEVEL_NAMES = {
   1: 'Observer', 11: 'Connector', 31: 'Networker', 51: 'Strategist', 76: 'Architect',
@@ -22,18 +24,25 @@ function getLevelName(level) {
 }
 
 export default function ProfilePage() {
-  return <OnboardingGate><ProfileInner /></OnboardingGate>;
+  // useSearchParams (which view) needs a Suspense boundary to build.
+  return <Suspense fallback={null}><OnboardingGate><ProfileInner /></OnboardingGate></Suspense>;
 }
 
 function ProfileInner() {
   const { userId, userName, userProfile } = useUser();
+  // Profile, or Insights: how your network holds together (Blake, 2026-10-03:
+  // "having the insights button into profile having network health"). A link
+  // can open Insights: /profile?view=insights (Settings, the old Scores tab).
+  const router = useRouter();
+  const view = useSearchParams().get('view') === 'insights' ? 'insights' : 'profile';
+  const showView = (v) => router.replace(v === 'insights' ? '/profile?view=insights' : '/profile', { scroll: false });
   const profile = userProfile || { name: userName || 'User', headline: '', sectors: [], goals: [] };
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
-  // "Your Sectors" is what you picked in Scores → Your sector. (users.sectors,
+  // "Your Sectors" is what you picked in Settings → Scores → Your field. (users.sectors,
   // which this card used to show, is never written by anything; the Sidebar
   // and Outlink still read it as free text.) null while it loads; a load that
   // fails says so rather than showing "none picked" (TRAPS §7).
@@ -163,9 +172,27 @@ function ProfileInner() {
           background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>Profile</h1>
+        {/* Profile, or Insights: network health, built from your own scans */}
+        <div role="tablist" aria-label="Profile or Insights" style={{ display: 'flex', gap: 3, marginLeft: 8, padding: 3, borderRadius: 9, background: 'rgba(255,255,255,0.06)' }}>
+          {[['profile', 'Profile'], ['insights', 'Insights']].map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => showView(k)} style={{
+              padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              background: view === k ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'transparent', color: view === k ? '#000' : '#aab',
+            }}>{k === 'insights' ? '✦ ' : ''}{label}</button>
+          ))}
+        </div>
       </header>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '30px 20px' }}>
+      {view === 'insights' ? (
+        <div style={{ maxWidth: 820, margin: '0 auto' }}>
+          <div style={{ fontSize: 13, color: '#8a8fa8', lineHeight: 1.6 }}>
+            How your network holds together, from the circles you&rsquo;ve scanned. Only your own numbers, never a
+            comparison with anyone else&rsquo;s.
+          </div>
+          <NetworkHealthSection />
+        </div>
+      ) : (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
 
         {/* === LEVEL CARD === */}
@@ -376,8 +403,8 @@ function ProfileInner() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Your Sectors</h3>
-            <Link href="/scores#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
-              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick on Scores' : 'Scores'} &rarr;
+            <Link href="/settings#sector" style={{ fontSize: 11, color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>
+              {sectorFocus?.sectors?.length ? 'Change' : sectorFocus && !sectorFocus.failed ? 'Pick in Settings' : 'Settings'} &rarr;
             </Link>
           </div>
           {!sectorFocus ? (
@@ -409,6 +436,7 @@ function ProfileInner() {
         </div>
 
       </div>
+      )}
       </div>
     </div>
   );
