@@ -668,7 +668,7 @@ function Group({ g, contacts, nameOf, keep, token, onPick }) {
               return (
                 <button key={k} onClick={() => onPick(k)} style={{ ...btn, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                   <Dot tier={p?.row?.tier} />{nameOf(k) || k.split('/').pop()}
-                  {p && !p.connection && <span style={{ color: '#ffc58a', fontSize: 10.5 }}>not a connection</span>}
+                  {p && !p.connection && <span style={{ color: 'var(--sd-fg-2, #ffc58a)', fontSize: 10.5 }}>not a connection</span>}
                 </button>
               );
             })}

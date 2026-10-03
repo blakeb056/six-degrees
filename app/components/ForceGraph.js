@@ -547,7 +547,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // rather than being drawn into one even disc with all the others.
   const gravity = d => 0.15 * L.gravity * (hubs.has(d.id) ? 0.5 : d.degree >= 2 ? 0.2 : 1);
   // Thicker lines show more of themselves too, so a cluster's links read at a distance.
-  const lineOpacity = () => Math.min(0.45, 0.1 + 0.05 * L.lines);
+  // On a light page lines need more of themselves to read.
+  const lineOpacity = () => (MAP_LOOK.light ? Math.min(0.7, 0.22 + 0.08 * L.lines) : Math.min(0.45, 0.1 + 0.05 * L.lines));
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(Math.min(1, linkBase * L.pull)))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge))
@@ -682,17 +683,18 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .attr('class', 'gn')
     .attr('r', nodeRadius)
     .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)))
-    .attr('fill-opacity', d => (dotStyle === 'droplet' ? 1 : d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
+    .attr('fill-opacity', d => (dotStyle === 'droplet' || dotStyle === 'plain' ? 1 : d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
     .attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
       if (d.is_catalyst) return '#00ff88';
-      return dotStyle === 'droplet' ? colourOf(d) : 'none';
+      // Plain: an analysis tool's node, a solid dot with a thin dark ring.
+      return dotStyle === 'droplet' ? colourOf(d) : dotStyle === 'plain' ? '#2b2b2b' : 'none';
     })
-    .attr('stroke-opacity', d => (dotStyle === 'droplet' && d.id !== CENTER_ID && !d.is_catalyst ? 0.45 : 1))
+    .attr('stroke-opacity', d => (d.id === CENTER_ID || d.is_catalyst ? 1 : dotStyle === 'droplet' ? 0.45 : dotStyle === 'plain' ? 0.75 : 1))
     .attr('stroke-width', d => {
       if (d.id === CENTER_ID) return 3;
       if (d.is_catalyst) return 2.5;
-      return dotStyle === 'droplet' ? 0.7 : 0;
+      return dotStyle === 'droplet' ? 0.7 : dotStyle === 'plain' ? 0.8 : 0;
     })
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
@@ -791,6 +793,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('fill', d => {
         if (d.id === CENTER_ID) return MAP_LOOK.text;
         if (dotStyle === 'flat') return MAP_LOOK.light ? '#4d5566' : '#b9bec8';   // Obsidian's grey names
+        if (dotStyle === 'plain') return MAP_LOOK.text;                          // an analysis tool's black labels
         if (d.is_catalyst) return MAP_LOOK.light ? '#0b7a47' : '#00ff88';
         return colourOf(d);
       })

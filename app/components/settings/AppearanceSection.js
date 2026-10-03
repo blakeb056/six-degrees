@@ -17,7 +17,7 @@ const BACKDROP_LABEL = { none: 'Plain', stars: 'Stars', grid: 'Grid', glow: 'Glo
 const FONT_LABEL = { system: 'System', rounded: 'Rounded', mono: 'Mono', serif: 'Serif' };
 const TIER_NAME = { S: 'S tier', A: 'A tier', B: 'B tier', C: 'C tier', D: 'D tier' };
 const BUTTON_LABEL = { soft: 'Soft', flat: 'Flat', square: 'Square', frosted: 'Frosted glass', neon: 'Neon', bold: 'Bold outline' };
-const DOT_LABEL = { solid: 'Solid', droplet: 'Glass droplets', flat: 'Flat, like Obsidian', glow: 'Glowing' };
+const DOT_LABEL = { solid: 'Solid', droplet: 'Glass droplets', flat: 'Flat, like Obsidian', glow: 'Glowing', plain: 'Plain, outlined' };
 
 const label = { fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-4, #778)', letterSpacing: 0.6, textTransform: 'uppercase', margin: '16px 0 8px' };
 
@@ -96,7 +96,7 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
         {ring.map((p) => (
           <circle key={`d${p.k}`} cx={p.x} cy={p.y} r={p.k === 'S' ? 4.5 : 3.6}
             fill={t.dots === 'droplet' ? `url(#${id}-drop-${p.k})` : t.tiers[p.k]}
-            stroke={t.dots === 'droplet' ? t.tiers[p.k] : 'none'} strokeOpacity={0.5} strokeWidth={0.6} />
+            stroke={t.dots === 'droplet' ? t.tiers[p.k] : t.dots === 'plain' ? '#2b2b2b' : 'none'} strokeOpacity={t.dots === 'plain' ? 0.75 : 0.5} strokeWidth={0.6} />
         ))}
       </g>
       <circle cx={cx} cy={cy} r={5.5} fill={t.you} stroke={t.accent} strokeWidth={1.2} />
@@ -151,7 +151,7 @@ export default function AppearanceSection() {
   return (
     <Section id="appearance" title="Appearance" intro="How the whole app looks: pick one of ours, then make it yours. It changes as you go, and stays in this browser.">
       <div style={label}>Looks</div>
-      <Body style={{ marginTop: -4, marginBottom: 10, fontSize: 12.5 }}>Daylight and Paper are light; the rest are dark. Each has its own buttons and its own way of drawing the map&rsquo;s dots.</Body>
+      <Body style={{ marginTop: -4, marginBottom: 10, fontSize: 12.5 }}>Daylight, Paper and Analyst are light; the rest are dark. Each has its own buttons and its own way of drawing the map&rsquo;s dots.</Body>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
         {THEMES.map((p) => {
           const on = choice.base === p.id;

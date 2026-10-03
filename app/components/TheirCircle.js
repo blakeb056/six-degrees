@@ -177,7 +177,7 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
                 stroke={it.state === 'connected' ? GREEN : 'none'} strokeWidth={Math.max(0.6, r * 0.3)} />
             )}
             {labels && it.state === 'connected' && (
-              <text x={it.x} y={it.y - r - 3} textAnchor="middle" fontSize={9} fill={GREEN} fontWeight={700}>
+              <text x={it.x} y={it.y - r - 3} textAnchor="middle" fontSize={9} fill="var(--sd-green, #00ff88)" fontWeight={700}>
                 {String(it.row.name || '').split(' ')[0]}
               </text>
             )}
@@ -241,7 +241,7 @@ function Legend() {
   );
   return (
     <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #999)', marginTop: 8, lineHeight: 1.8 }}>
-      {item(<svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#FFD700" /></svg>, 'colour = tier')}
+      {item(<svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="var(--sd-fg-2, #FFD700)" /></svg>, 'colour = tier')}
       {item(<svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#9B59B6" stroke={GREEN} strokeWidth="1.5" /></svg>, 'you added them')}
       {item(<svg width="12" height="12"><circle cx="6" cy="6" r="4.2" fill="none" stroke="#3498DB" strokeWidth="1.4" strokeDasharray="2 1.6" /></svg>, 'request sent')}
     </div>
