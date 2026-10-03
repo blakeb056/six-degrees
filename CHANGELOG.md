@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **An "I understand" before the first scan**: the Scan page says once, plainly, that scanning runs
+  your own LinkedIn account automatically, that LinkedIn may restrict accounts that do this (the safe
+  limits of 50 searches a day and 250 a month stay on), and that nothing leaves your computer. Nothing
+  opens LinkedIn until you click I understand, whichever button asks, and the CSV import is one click
+  away instead. It's asked once and kept with your settings; anyone who has scanned before isn't asked.
+  The welcome screen's Scan card says the risk too, and the README and website say Six Degrees is not
+  affiliated with or endorsed by LinkedIn.
 - **Light looks, and every look its own all the way through** (Settings → Appearance). Daylight and
   Paper are light, designed for it: ink words, white cards and panels, deeper dots that read on
   white. Pick any light background in the editor and the words and borders turn dark with it. Each
