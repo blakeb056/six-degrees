@@ -17,6 +17,11 @@ import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY
 import { peopleMap } from '../../lib/people-map';
 import { companyOf, industryOf, industryByKey, INDUSTRIES, UNKNOWN_INDUSTRY } from '../../lib/companies';
 import { jitter, Seg, useSize, SidePanel, panelHeading } from './PathsAnalyzer';
+import { TierGrid } from './FilterPanel';
+import { useLivePhysics, HeatDefs, HeatGlow, PHYSICS_OFF } from './MapControls';
+import { makeGrid, shows, gridCounts } from '../../lib/tier-grid';
+import { heatBy, heatColour } from '../../lib/galaxy-lab';
+import { clusterStrength } from '../../lib/map-heat';
 
 const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const LINE = '1px solid rgba(255,255,255,0.1)';
@@ -32,17 +37,23 @@ const SIZE_BY = {
   s: { label: 'S tier inside', of: (p) => p.S, k: 6 },
 };
 
-export default function PeopleMap({ d1 = [], d2 = [] }) {
+/**
+ * `top` (Paths' "Bubbles are" switch), `look` (its Colour and Physics) and the
+ * `colourBy` and `physics` they set come from PathsAnalyzer, shared with the company map.
+ */
+export default function PeopleMap({ d1 = [], d2 = [], top = null, look = null, colourBy = 'sector', physics = PHYSICS_OFF }) {
   const router = useRouter();
   const [sizeBy, setSizeBy] = useState('value');
   const [who, setWho] = useState('scanned');          // 'scanned' | 'all'
-  const [tier, setTier] = useState('all');             // their own tier: 'all' | 'SA'
+  // Their own tier, on the same grid as Network Circle; everyone here is 1st degree.
+  const [grid, setGrid] = useState(() => makeGrid([1]));
   const [hidden, setHidden] = useState(() => new Set());
   const [query, setQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [labels, setLabels] = useState('top');        // 'top' | 'all' | 'none'
 
   const model = useMemo(() => peopleMap(d1, d2), [d1, d2]);
+  const counts = useMemo(() => gridCounts({ 1: model.people.filter((p) => who === 'all' || p.size > 0).map((p) => p.person) }), [model, who]);
   // Each connection's sector, from where they work (inferred, as on the company map).
   const sectorOf = useMemo(() => {
     const m = new Map();
@@ -54,11 +65,11 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return model.people.filter((p) => (who === 'all' || p.size > 0)
-      && (tier === 'all' || p.person.tier === 'S' || p.person.tier === 'A')
+      && shows(grid, p.person.tier, 1)
       && !hidden.has(sectorOf.get(p.id).key)
       && (!q || String(p.person.name || '').toLowerCase().includes(q)))
       .sort((a, b) => b.value - a.value || b.size - a.size);
-  }, [model, who, tier, hidden, query, sectorOf]);
+  }, [model, who, grid, hidden, query, sectorOf]);
 
   const sectors = useMemo(() => {
     const counts = new Map();
@@ -73,12 +84,15 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
       <SidePanel open={panelOpen} onToggle={() => setPanelOpen((o) => !o)}>
+        {top}
         <div style={panelHeading}>Filter</div>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a person"
           style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, marginBottom: 8 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Seg value={who} onChange={setWho} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All (${fmt(model.people.length)})`]]} />
-          <Seg value={tier} onChange={setTier} options={[['all', 'All tiers'], ['SA', 'S & A only']]} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <TierGrid grid={grid} counts={counts} onChange={setGrid} mode="paths" />
         </div>
         <div style={panelHeading}>Sectors</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -101,16 +115,19 @@ export default function PeopleMap({ d1 = [], d2 = [] }) {
         <Seg value={sizeBy} onChange={setSizeBy} options={Object.entries(SIZE_BY).map(([k, v]) => [k, v.label])} />
         <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
         <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
+        {look}
       </SidePanel>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* Room at the top for the notch's Map / Companies, so it never covers a label */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', paddingTop: 40, boxSizing: 'border-box' }}>
       <Bubbles people={shown} links={model.links} sizeBy={SIZE_BY[sizeBy]} sectorOf={sectorOf} rank={model.rank} names={labels}
+        colourBy={colourBy} physics={physics}
         onOpen={(id) => router.push(`/?chain=${encodeURIComponent(id)}`)} />
       </div>
     </div>
   );
 }
 
-function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' }) {
+function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top', colourBy = 'sector', physics = PHYSICS_OFF }) {
   const wrap = useRef(null);
   const { w, h } = useSize(wrap);
   const [hover, setHover] = useState(null);
@@ -132,15 +149,16 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' 
         id: p.id, p, sector: sectorOf.get(p.id),
         r: p.size ? 4 + Math.sqrt(Math.max(0, sizeBy.of(p))) * sizeBy.k : 3,
         x: at.x + (jitter(String(p.id)) - 0.5) * 40, y: at.y + (jitter(`${p.id}#`) - 0.5) * 40,
+        ax: at.x, ay: at.y,   // where their sector sits, for live physics
       };
     });
-    const edges = links.filter((l) => ids.has(l.a) && ids.has(l.b)).map((l) => ({ source: l.a, target: l.b, weight: l.shared }));
+    const edges = links.filter((l) => ids.has(l.a) && ids.has(l.b)).map((l) => ({ source: l.a, target: l.b, weight: l.shared, k: Math.min(0.25, 0.02 * l.shared) }));
     const sim = forceSimulation(nodes)
       .force('x', forceX((d) => anchor.get(d.sector.key).x).strength(0.12))
       .force('y', forceY((d) => anchor.get(d.sector.key).y).strength(0.12))
       .force('collide', forceCollide((d) => d.r + 3))
       .force('charge', forceManyBody().strength(-25))
-      .force('link', forceLink(edges).id((d) => d.id).strength((e) => Math.min(0.25, 0.02 * e.weight)).distance(60))
+      .force('link', forceLink(edges).id((d) => d.id).strength((e) => e.k).distance(60))
       .stop();
     for (let i = 0; i < 320; i++) sim.tick();
     const xs = nodes.flatMap((n) => [n.x - n.r, n.x + n.r]);
@@ -168,6 +186,10 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' 
     box.h += Math.max(60, box.h * 0.1);
     return { nodes, edges, box, labels, cut: Math.max(0, people.length - list.length) };
   }, [people, links, sizeBy, sectorOf]);
+  const { drag, clicked } = useLivePhysics(layout, physics);
+  // Heat: how strong each cluster is, person for person; not scanned is the coldest.
+  const heat = useMemo(() => heatBy(layout.nodes, (n) => clusterStrength(n.p)), [layout]);
+  const hot = colourBy === 'heat';
 
   const hovered = hover ? layout.nodes.find((n) => n.id === hover) : null;
   const neighbours = useMemo(() => {
@@ -190,7 +212,9 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' 
   return (
     <div ref={wrap} style={{ flex: 1, minHeight: 360, position: 'relative' }}>
       {w > 0 && (
-        <svg width={w} height={h} viewBox={`${layout.box.x} ${layout.box.y} ${layout.box.w} ${layout.box.h}`} style={{ display: 'block' }}>
+        <svg width={w} height={h} viewBox={`${layout.box.x} ${layout.box.y} ${layout.box.w} ${layout.box.h}`} style={{ display: 'block', touchAction: drag ? 'none' : undefined }}>
+          {hot && <HeatDefs id="pplheat" />}
+          {hot && <HeatGlow id="pplheat" nodes={layout.nodes.filter((n) => n.p.size)} heat={heat} />}
           <g>
             {layout.edges.map((e, i) => {
               const on = hover && (e.source.id === hover || e.target.id === hover);
@@ -210,10 +234,11 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' 
             const { p } = n;
             const dim = neighbours && !neighbours.has(n.id);
             return (
-              <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: p.size ? 'pointer' : 'default' }} opacity={dim ? 0.18 : 1}
+              <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: drag ? 'grab' : p.size ? 'pointer' : 'default' }} opacity={dim ? 0.18 : 1}
                 onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
-                onClick={() => { if (p.size) onOpen(n.id); }}>
-                <circle r={n.r} fill={p.size ? n.sector.color : UNSCANNED} fillOpacity={p.size ? 0.92 : 0.6}
+                onPointerDown={drag ? (ev) => drag(ev, n) : undefined}
+                onClick={() => { if (clicked() && p.size) onOpen(n.id); }}>
+                <circle r={n.r} fill={!p.size ? UNSCANNED : hot ? heatColour(heat(n)) : n.sector.color} fillOpacity={p.size ? 0.92 : 0.6}
                   stroke={hover === n.id ? '#fff' : p.S ? TIER.S : 'rgba(0,0,0,0.35)'}
                   strokeWidth={hover === n.id ? 2.5 : p.S ? Math.min(4, 1 + p.S / 40) : 0.6} />
                 {/* The share of their cluster only they can open, as an inner disc */}
@@ -229,7 +254,7 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top' 
       )}
       {hovered && <Card n={hovered} at={onScreen(hovered)} w={w} rank={rank(hovered.id)} />}
       <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: '#778', lineHeight: 1.6, pointerEvents: 'none' }}>
-        Bubble = one of your connections, sized by {sizeBy.label.toLowerCase()} (value: S tier counts 3, A tier 2, everyone else 1);
+        Bubble = one of your connections, sized by {sizeBy.label.toLowerCase()} (value: S tier counts 3, A tier 2, everyone else 1){hot ? '; colour = how strong their cluster is, person for person, cold to white hot' : ''};
         white centre = the share of their cluster only they can open; gold ring = S tier inside.<br />
         A line = two of your connections whose clusters share people. Grey = not scanned yet.
         {layout.cut ? ` Showing the ${MAX_BUBBLES} largest of ${fmt(layout.cut + MAX_BUBBLES)}.` : ''}

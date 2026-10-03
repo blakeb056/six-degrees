@@ -16,6 +16,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3';
 import { useCompanyScores, ScorePicker } from './CompanyScores';
 import PeopleMap from './PeopleMap';
+import { TierGrid } from './FilterPanel';
+import { MapLook, useLivePhysics, HeatDefs, HeatGlow, PHYSICS_OFF } from './MapControls';
+import { makeGrid, shows, gridCounts } from '../../lib/tier-grid';
+import { heatBy, heatColour } from '../../lib/galaxy-lab';
+import { companyStrength } from '../../lib/map-heat';
 import {
   buildCompanyIndex, companyLinks, companyOf, getSeniority, industryOf, industryByKey,
   INDUSTRIES, UNKNOWN_INDUSTRY, waysInto, isSenior,
@@ -96,17 +101,29 @@ export function SidePanel({ open, onToggle, children }) {
 
 export const panelHeading = { fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, margin: '14px 0 6px', textTransform: 'uppercase' };
 
-/** Does this person pass the filters? */
+/** Does this person pass the filters? Tier and degree from the grid, as in Network Circle. */
 function passes(p, f) {
-  if (f.degree !== 'all' && String(p.degree) !== f.degree) return false;
+  if (f.grid && !shows(f.grid, p.tier, Number(p.degree) || 1)) return false;
   if (f.seniority === 'senior' && !isSenior(p.headline)) return false;
   if (f.seniority === 'csuite' && getSeniority(p.headline).level < 6) return false;
-  if (f.tier === 'SA' && p.tier !== 'S' && p.tier !== 'A') return false;
   return true;
 }
 
-export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', onOpenCompany }) {
-  const [filters, setFilters] = useState({ degree: 'all', seniority: 'all', tier: 'all' });
+/** What the map's bubbles are: companies, or your connections (Paths → People). An easy switch at the top of the panel. */
+function ShowSwitch({ show, onShow }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ ...panelHeading, marginTop: 0 }}>Bubbles are</div>
+      <Seg value={show} onChange={onShow} options={[['companies', 'Companies'], ['people', 'People']]} />
+    </div>
+  );
+}
+
+export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], initialShow = 'companies', onOpenCompany }) {
+  const [show, setShow] = useState(initialShow);
+  const [filters, setFilters] = useState(() => ({ seniority: 'all', grid: makeGrid([1, 2, 3]) }));
+  const [colourBy, setColourBy] = useState('sector');
+  const [physics, setPhysics] = useState(PHYSICS_OFF);
   const [hidden, setHidden] = useState(() => new Set());       // industries toggled off
   const [query, setQuery] = useState('');
   const [focus, setFocus] = useState(null);                   // { kind: 'company'|'industry', key }
@@ -116,6 +133,7 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
   const [labels, setLabels] = useState('top');               // 'top' | 'all' | 'none'
 
   const rows = useMemo(() => [...d1, ...d2, ...d3], [d1, d2, d3]);
+  const counts = useMemo(() => gridCounts({ 1: d1, 2: d2, 3: d3 }), [d1, d2, d3]);
   const index = useMemo(() => buildCompanyIndex(rows), [rows]);
   const links = useMemo(() => companyLinks(d1, d2), [d1, d2]);
 
@@ -154,59 +172,65 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], tab = 'map', 
   const panel = focus?.kind === 'company' ? index.get(focus.key)
     : focus?.kind === 'industry' ? industries.find((i) => i.key === focus.key) : null;
 
-  // People: the same map with your connections as the bubbles (app/components/PeopleMap.js).
-  if (tab === 'people') return <PeopleMap d1={d1} d2={d2} />;
+  const look = (heatHint) => (
+    <MapLook colourBy={colourBy} onColourBy={setColourBy} physics={physics} onPhysics={setPhysics} heatHint={heatHint} />
+  );
+
+  // People: the same map with your connections as the bubbles (app/components/PeopleMap.js),
+  // with the same switch, colours and physics.
+  if (show === 'people') {
+    return (
+      <PeopleMap d1={d1} d2={d2} top={<ShowSwitch show={show} onShow={setShow} />}
+        colourBy={colourBy} physics={physics}
+        look={look('How strong each cluster is, person for person (S counts 3, A 2, the rest 1): the hotter, the stronger. Size is still how big it is.')} />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
       <SidePanel open={panelOpen} onToggle={() => setPanelOpen((o) => !o)}>
-        <Filters filters={filters} setFilters={setFilters} query={query} setQuery={setQuery}
+        <ShowSwitch show={show} onShow={setShow} />
+        <Filters filters={filters} setFilters={setFilters} counts={counts} query={query} setQuery={setQuery}
           industries={industries} hidden={hidden} setHidden={setHidden}
           onIndustry={(key) => setFocus({ kind: 'industry', key })} />
-        {tab === 'map' && (
-          <>
-            <div style={panelHeading}>Read the map</div>
-            <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
-            <Seg value={sizeBy} onChange={setSizeBy} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
-            <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
-            <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
-          </>
-        )}
+        <div style={panelHeading}>Read the map</div>
+        <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
+        <Seg value={sizeBy} onChange={setSizeBy} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
+        <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
+        <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
+        {look('How strong your people at each company are: the average power score of the five strongest. The hotter, the stronger; size is still how many.')}
       </SidePanel>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        {tab === 'map' ? (
-          <CompanyMap companies={companies} links={links} focus={focus} sizeBy={sizeBy} labels={labels}
-            onCompany={(name) => setFocus({ kind: 'company', key: name })}
-            onIndustry={(key) => setFocus({ kind: 'industry', key })}
-            onClear={() => setFocus(null)} />
-        ) : (
-          <IndustryCards industries={industries} index={index} d1={d1} d2={d2}
-            onIndustry={(key) => setFocus({ kind: 'industry', key })}
-            onCompany={(name) => setFocus({ kind: 'company', key: name })} />
-        )}
+      {/* Room at the top for the notch's Map / Companies, so it never covers a label */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', paddingTop: 40, boxSizing: 'border-box' }}>
+        <CompanyMap companies={companies} links={links} focus={focus} sizeBy={sizeBy} labels={labels}
+          colourBy={colourBy} physics={physics}
+          onCompany={(name) => setFocus({ kind: 'company', key: name })}
+          onIndustry={(key) => setFocus({ kind: 'industry', key })}
+          onClear={() => setFocus(null)} />
       </div>
       {panel && (
         <AnalyzerPanel focus={focus} data={panel} index={index} links={links} d1={d1} d2={d2}
           filters={filters} onClose={() => setFocus(null)}
           onCompany={(name) => setFocus({ kind: 'company', key: name })}
+          onIndustry={(key) => setFocus({ kind: 'industry', key })}
           onOpenCompany={onOpenCompany} />
       )}
     </div>
   );
 }
 
-function Filters({ filters, setFilters, query, setQuery, industries, hidden, setHidden, onIndustry }) {
+function Filters({ filters, setFilters, counts, query, setQuery, industries, hidden, setHidden, onIndustry }) {
   const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={panelHeading}>Filter</div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
-          style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
-        <Seg value={filters.degree} onChange={(v) => set('degree', v)} options={[['all', 'All degrees'], ['1', '1st'], ['2', '2nd'], ['3', '3rd']]} />
-        <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
-        <Seg value={filters.tier} onChange={(v) => set('tier', v)} options={[['all', 'All tiers'], ['SA', 'S & A only']]} />
-      </div>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
+        style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
+      {/* The same tiers × degrees as Network Circle (Blake, 2026-10-03) */}
+      <TierGrid grid={filters.grid} counts={counts} onChange={(g) => set('grid', g)} mode="paths" />
+      <div style={{ fontSize: 11, color: '#8b9a9a', marginTop: -10 }}>Level</div>
+      <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
+      <div style={panelHeading}>Industries</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {industries.map((i) => {
           const off = hidden.has(i.key);
@@ -222,13 +246,13 @@ function Filters({ filters, setFilters, query, setQuery, industries, hidden, set
             </span>
           );
         })}
-        <span style={{ fontSize: 11, color: '#667', alignSelf: 'center' }}>industries inferred from companies and headlines</span>
+        <span style={{ fontSize: 11, color: '#667', alignSelf: 'center' }}>Inferred from companies and headlines. ● hides one; its name opens it.</span>
       </div>
     </div>
   );
 }
 
-function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, sizeBy = 'people', labels: names = 'top' }) {
+function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, sizeBy = 'people', labels: names = 'top', colourBy = 'sector', physics = PHYSICS_OFF }) {
   const wrap = useRef(null);
   const { w, h } = useSize(wrap);
   const [hover, setHover] = useState(null);
@@ -250,14 +274,17 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
       r: 4 + Math.sqrt(sizeBy === 'sa' ? c.shown.filter((p) => p.tier === 'S' || p.tier === 'A').length : sizeBy === 'known' ? c.d1 : c.shown.length) * (sizeBy === 'people' ? 3.4 : 5),
       // A fixed jitter from the name, so the same network always lays out the same.
       x: anchor.get(c.industry.key).x + (jitter(c.name) - 0.5) * 40, y: anchor.get(c.industry.key).y + (jitter(c.name + '#') - 0.5) * 40,
+      // Where its industry sits, for live physics (MapControls.js).
+      ax: anchor.get(c.industry.key).x, ay: anchor.get(c.industry.key).y,
     }));
-    const edges = links.filter((l) => names.has(l.a) && names.has(l.b)).map((l) => ({ source: l.a, target: l.b, weight: l.weight, via: l.via.size }));
+    const edges = links.filter((l) => names.has(l.a) && names.has(l.b))
+      .map((l) => ({ source: l.a, target: l.b, weight: l.weight, via: l.via.size, k: Math.min(0.25, 0.03 * l.weight) }));
     const sim = forceSimulation(nodes)
       .force('x', forceX((d) => anchor.get(d.co.industry.key).x).strength(0.12))
       .force('y', forceY((d) => anchor.get(d.co.industry.key).y).strength(0.12))
       .force('collide', forceCollide((d) => d.r + 3))
       .force('charge', forceManyBody().strength(-25))
-      .force('link', forceLink(edges).id((d) => d.id).strength((e) => Math.min(0.25, 0.03 * e.weight)).distance(60))
+      .force('link', forceLink(edges).id((d) => d.id).strength((e) => e.k).distance(60))
       .stop();
     for (let i = 0; i < 320; i++) sim.tick();
     const xs = nodes.flatMap((n) => [n.x - n.r, n.x + n.r]);
@@ -289,6 +316,13 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
     box.h += Math.max(60, box.h * 0.1);
     return { nodes, edges, box, labels, cut: Math.max(0, companies.length - shown.length) };
   }, [companies, links, sizeBy]);
+  const { drag, clicked } = useLivePhysics(layout, physics);
+  // Heat: how strong your people at each company are, ranked among the bubbles shown.
+  const heat = useMemo(() => {
+    const strength = new Map(layout.nodes.map((n) => [n.id, companyStrength(n.co.shown)]));
+    return heatBy(layout.nodes, (n) => strength.get(n.id));
+  }, [layout]);
+  const hot = colourBy === 'heat';
 
   const active = hover || (focus?.kind === 'company' ? focus.key : null);
   const activeInd = focus?.kind === 'industry' ? focus.key : null;
@@ -306,7 +340,9 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
   return (
     <div ref={wrap} style={{ flex: 1, minHeight: 360, position: 'relative' }} onClick={onClear}>
       {w > 0 && (
-        <svg width={w} height={h} viewBox={`${layout.box.x} ${layout.box.y} ${layout.box.w} ${layout.box.h}`} style={{ display: 'block' }}>
+        <svg width={w} height={h} viewBox={`${layout.box.x} ${layout.box.y} ${layout.box.w} ${layout.box.h}`} style={{ display: 'block', touchAction: drag ? 'none' : undefined }}>
+          {hot && <HeatDefs id="coheat" />}
+          {hot && <HeatGlow id="coheat" nodes={layout.nodes} heat={heat} />}
           <g>
             {layout.edges.map((e, i) => {
               const on = active && (e.source.id === active || e.target.id === active);
@@ -328,12 +364,13 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
             const dim = (neighbours && !neighbours.has(n.id)) || (activeInd && n.co.industry.key !== activeInd);
             const sel = focus?.kind === 'company' && focus.key === n.id;
             return (
-              <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: 'pointer' }}
+              <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{ cursor: drag ? 'grab' : 'pointer' }}
                 opacity={dim ? 0.18 : 1}
                 onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
-                onClick={(ev) => { ev.stopPropagation(); onCompany(n.id); }}>
+                onPointerDown={drag ? (ev) => drag(ev, n) : undefined}
+                onClick={(ev) => { ev.stopPropagation(); if (clicked()) onCompany(n.id); }}>
                 <title>{`${n.co.name} · ${n.co.industry.label} (inferred)\n${n.co.d1} you know · ${n.co.d2} reachable${n.co.d3 ? ` · ${n.co.d3} further` : ''}`}</title>
-                <circle r={n.r} fill={n.co.industry.color} fillOpacity={0.75}
+                <circle r={n.r} fill={hot ? heatColour(heat(n)) : n.co.industry.color} fillOpacity={hot ? 0.9 : 0.75}
                   stroke={sel ? '#fff' : n.co.S ? TIER.S : 'rgba(0,0,0,0.35)'} strokeWidth={sel ? 2.5 : n.co.S ? 1.5 : 0.6} />
                 {/* the share you already know, as an inner disc */}
                 {n.co.d1 > 0 && <circle r={n.r * Math.sqrt(n.co.d1 / Math.max(1, n.co.people.length))} fill="#fff" fillOpacity={0.35} />}
@@ -346,9 +383,9 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
         </svg>
       )}
       <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: '#778', lineHeight: 1.6, pointerEvents: 'none' }}>
-        Bubble = a company, sized by your people there; white centre = the share you already know; gold ring = an S-tier person inside.<br />
+        Bubble = a company, sized by your people there; {hot ? 'colour = how strong they are, cold to white hot' : 'colour = its industry'}; white centre = the share you already know; gold ring = an S-tier person inside.<br />
         A line = one of your connections at one company knows people at the other.
-        {layout.cut ? ` Showing the ${MAX_BUBBLES} largest; ${layout.cut} smaller companies are in Industries.` : ''}
+        {layout.cut ? ` Showing the ${MAX_BUBBLES} largest; ${layout.cut} smaller companies are in Companies.` : ''}
       </div>
     </div>
   );
@@ -358,69 +395,6 @@ function Bar({ parts, total }) {
   return (
     <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
       {parts.map(([n, color], i) => <div key={i} style={{ width: `${(n / Math.max(1, total)) * 100}%`, background: color }} />)}
-    </div>
-  );
-}
-
-function IndustryCards({ industries, index, d1, d2, onIndustry, onCompany }) {
-  const bridgesInto = useMemo(() => {
-    const byId = new Map(d1.map((c) => [c.id, c]));
-    const out = new Map();
-    for (const r of d2) {
-      const co = companyOf(r);
-      const ind = co ? index.get(co)?.industry.key : industryOf(null, r.headline).key;
-      if (!ind) continue;
-      const m = out.get(ind) || new Map();
-      m.set(r.source_connection_id, (m.get(r.source_connection_id) || 0) + 1);
-      out.set(ind, m);
-    }
-    const best = new Map();
-    for (const [ind, m] of out) {
-      const [id, n] = [...m.entries()].sort((a, b) => b[1] - a[1])[0] || [];
-      if (byId.get(id)) best.set(ind, { bridge: byId.get(id), n });
-    }
-    return best;
-  }, [index, d1, d2]);
-
-  return (
-    <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-        {industries.map((i) => {
-          const d1n = i.people.filter((p) => p.degree === 1).length;
-          const d2n = i.people.filter((p) => p.degree === 2).length;
-          const senior = i.people.filter((p) => isSenior(p.headline)).length;
-          const S = i.people.filter((p) => p.tier === 'S').length;
-          const topCos = [...i.companies.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-          const way = bridgesInto.get(i.key);
-          return (
-            <div key={i.key} onClick={() => onIndustry(i.key)} style={{ padding: 14, borderRadius: 10, border: LINE, borderTop: `3px solid ${i.color}`, background: 'rgba(255,255,255,0.03)', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <b style={{ fontSize: 14, color: i.color }}>{i.label}</b>
-                <span style={{ fontSize: 20, fontWeight: 800 }}>{i.people.length}</span>
-              </div>
-              <div style={{ fontSize: 11.5, color: '#8b9a9a', margin: '4px 0 6px' }}>
-                {d1n} you know · {d2n} reachable · {i.companies.size} companies · {senior} director+ · {S} S-tier
-              </div>
-              <Bar total={i.people.length} parts={[[d1n, '#00ff88'], [d2n, '#FF6B35']]} />
-              {topCos.length > 0 && (
-                <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {topCos.map(([name, n]) => (
-                    <button key={name} onClick={(e) => { e.stopPropagation(); onCompany(name); }}
-                      style={{ padding: '2px 8px', borderRadius: 10, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#dfe6e9', fontSize: 11, cursor: 'pointer' }}>
-                      {name} <span style={{ color: '#778' }}>{n}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {way && (
-                <div style={{ marginTop: 8, fontSize: 11.5, color: '#aab7b7' }}>
-                  Best way in: <b style={{ color: TIER[way.bridge.tier] || '#ccc' }}>{way.bridge.name}</b> knows {way.n} here
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -437,7 +411,7 @@ function PersonLine({ p, note }) {
   );
 }
 
-function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, onCompany, onOpenCompany }) {
+function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, onCompany, onIndustry, onOpenCompany }) {
   const isCompany = focus.kind === 'company';
   const people = (isCompany ? data.people : data.people).filter((p) => passes(p, filters));
   const levels = useMemo(() => {
@@ -466,9 +440,16 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
       <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕ Close</button>
       <div style={{ fontSize: 10, letterSpacing: 1, color: '#8b9a9a', marginTop: 8 }}>{isCompany ? 'COMPANY' : 'INDUSTRY'} ANALYZER</div>
       <h2 style={{ margin: '4px 0 6px', fontSize: 20 }}>{isCompany ? data.name : data.label}</h2>
-      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: `${industry.color}22`, color: industry.color }}>
-        {industry.label}{isCompany ? ' · inferred' : ''}
-      </span>
+      {/* A company's industry opens that industry here (Blake, 2026-10-03: industries live in the side card, not a tab). */}
+      {isCompany && onIndustry ? (
+        <button type="button" onClick={() => onIndustry(industry.key)} title={`Open ${industry.label}: everyone there and its top companies`} style={{
+          fontSize: 11, padding: '2px 8px', borderRadius: 10, border: 'none', cursor: 'pointer', background: `${industry.color}22`, color: industry.color,
+        }}>{industry.label} · inferred →</button>
+      ) : (
+        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: `${industry.color}22`, color: industry.color }}>
+          {industry.label}{isCompany ? ' · inferred' : ''}
+        </span>
+      )}
       {isCompany && <CompanyScoreLine name={data.name} />}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, margin: '14px 0' }}>
