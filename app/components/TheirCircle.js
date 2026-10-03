@@ -173,7 +173,7 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
               <circle cx={it.x} cy={it.y} r={r * 1.25} fill="none" stroke={color} strokeWidth={Math.max(0.5, r * 0.45)}
                 strokeDasharray={`${Math.max(0.6, r * 0.55)} ${Math.max(0.5, r * 0.45)}`} />
             ) : (
-              <circle cx={it.x} cy={it.y} r={r} fill={color}
+              <circle className="sd-dot" cx={it.x} cy={it.y} r={r} fill={color}
                 stroke={it.state === 'connected' ? GREEN : 'none'} strokeWidth={Math.max(0.6, r * 0.3)} />
             )}
             {labels && it.state === 'connected' && (
@@ -184,7 +184,7 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
           </g>
         );
       }))}
-      <circle cx={c.x} cy={c.y} r={7 * k} fill={tierColors[person.tier] || 'var(--sd-fg-3, #888)'} stroke="#fff" strokeWidth={0.8 * k} />
+      <circle className="sd-dot" cx={c.x} cy={c.y} r={7 * k} fill={tierColors[person.tier] || 'var(--sd-fg-3, #888)'} stroke="#fff" strokeWidth={0.8 * k} />
       <text x={c.x} y={c.y + 2.4 * k} textAnchor="middle" fontSize={6.5 * k} fontWeight={800} fill={person.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}>
         {String(person.name || '?').charAt(0)}
       </text>

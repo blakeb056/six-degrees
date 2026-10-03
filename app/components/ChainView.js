@@ -375,7 +375,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               style={{ cursor: 'pointer' }}>
               <title>{bridgeTitle(b, ready, scanBars(b, reach))}</title>
               {/* Glow */}
-              <circle cx={b.x} cy={b.y} r={isHov ? 21 : 18} fill={`${TIER_COLORS[b.tier]}${isHov ? '14' : '08'}`} />
+              <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 21 : 18} fill={`${TIER_COLORS[b.tier]}${isHov ? '14' : '08'}`} />
               {/* The ring, tight on the dot: one bar for each person you added through
                   this circle. Orange: scanned since, with a cluster of their own.
                   Green: ready for a scan. Nobody yet: one faint line. */}
@@ -389,7 +389,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
                 ))}
               </g>
               {/* Node */}
-              <circle cx={b.x} cy={b.y} r={isHov ? 13 : 11}
+              <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 13 : 11}
                 fill={localPhoto(b.profile_image_url) ? '#1a1a2e' : TIER_COLORS[b.tier]}
                 stroke={isHov ? 'var(--sd-fg-1, #fff)' : TIER_COLORS[b.tier]}
                 strokeWidth={isHov ? 2.5 : 2} />
@@ -465,7 +465,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
           return (
             <div key={d} title={lit ? `${d === 1 ? '1st degree: your bridges' : '2nd degree: the people in their circles'} (${n.toLocaleString('en-US')})` : `${d}th degree: further along a chain, as your scans reach it`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span style={{
+              <span className={lit ? 'sd-dot-html' : undefined} style={{
                 width: 11, height: 11, borderRadius: '50%',
                 background: lit ? DEGREE_COLORS[d] : 'transparent',
                 border: lit ? 'none' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.22)',
@@ -555,7 +555,7 @@ function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band, circ
             )}
             <g className="pv-dot" style={{ '--d': stagger(j), ...from(x2, y2, bridge.x, bridge.y) }}>
               {state === 'ready' && <Halo x={x2} y={y2} r={nr * 2.3} still={still} />}
-              <circle cx={x2} cy={y2} r={nr}
+              <circle className="sd-dot" cx={x2} cy={y2} r={nr}
                 fill={color} fillOpacity={state ? 0.95 : 0.45}
                 stroke={state && state !== 'hidden' ? GREEN : color} strokeWidth={state ? 1 : 0.5} strokeOpacity={state ? 1 : 0.25} />
               {(d2.tier === 'S' || state) && shown.length <= 60 && (
@@ -759,7 +759,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
             <circle cx={p.x} cy={p.y} r={r * 1.2} fill="none" stroke={color} strokeWidth={Math.max(0.6, r * 0.45)}
               strokeDasharray={`${Math.max(0.8, r * 0.55)} ${Math.max(0.6, r * 0.45)}`} />
           ) : (
-            <circle cx={p.x} cy={p.y} r={r} fill={color} fillOpacity={f.reached ? 1 : 0.85}
+            <circle className="sd-dot" cx={p.x} cy={p.y} r={r} fill={color} fillOpacity={f.reached ? 1 : 0.85}
               stroke={f.reached && f.reached !== 'hidden' ? GREEN : 'none'} strokeWidth={f.reached ? Math.max(0.8, r * 0.3) : 0} />
           )}
           {f.reached === 'hidden' && <Lock x={p.x} y={p.y - r * 0.1} s={r / 4.2} />}
@@ -893,9 +893,9 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
                     strokeWidth={0.7} strokeOpacity={lit ? 0.6 : 0.38} />
                 ))}
                 {clusterPaths(c).map(([tier, { dots: d }]) => (
-                  <path key={tier} d={d} fill={TIER_COLORS[tier] || 'var(--sd-fg-5, #555)'} fillOpacity={lit ? 1 : 0.9} />
+                  <path className="sd-dot" key={tier} d={d} fill={TIER_COLORS[tier] || 'var(--sd-fg-5, #555)'} fillOpacity={lit ? 1 : 0.9} />
                 ))}
-                <circle r={LINK_HUB} fill={color} stroke={hovLink === j ? 'var(--sd-fg-1, #fff)' : 'var(--sd-bg)'} strokeWidth={1.5} />
+                <circle className="sd-dot" r={LINK_HUB} fill={color} stroke={hovLink === j ? 'var(--sd-fg-1, #fff)' : 'var(--sd-bg)'} strokeWidth={1.5} />
                 {row.id === scanningId && (
                   <circle r={c.radius + 4} fill="none" stroke={DEGREE_COLORS[3]} strokeWidth={1 / k} strokeDasharray={`${3 / k} ${2 / k}`} />
                 )}
@@ -932,7 +932,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
                 {seg(o, o.r + 1, p, LINK_HUB + 1, 'b')}
                 {/* Their own dot inside the cluster they were met through */}
                 {o.inCluster && (
-                  <circle cx={o.x} cy={o.y} r={o.r} fill={TIER_COLORS[link.row.tier] || 'var(--sd-fg-5, #555)'} stroke={GREEN} strokeWidth={1.4} />
+                  <circle className="sd-dot" cx={o.x} cy={o.y} r={o.r} fill={TIER_COLORS[link.row.tier] || 'var(--sd-fg-5, #555)'} stroke={GREEN} strokeWidth={1.4} />
                 )}
               </g>
             );
@@ -1026,7 +1026,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
           }}>
           {byTier.map(([t, n]) => (
             <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLORS[t], boxShadow: `0 0 6px ${TIER_COLORS[t]}66` }} />
+              <span className="sd-dot-html" style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLORS[t], boxShadow: `0 0 6px ${TIER_COLORS[t]}66` }} />
               <span style={{ color: TIER_COLORS[t], fontWeight: 700 }}>{t}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{n.toLocaleString('en-US')}</span>
             </span>

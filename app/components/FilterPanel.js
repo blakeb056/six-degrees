@@ -81,7 +81,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                   flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 6px 12px 10px',
                   border: 'none', background: 'none', cursor: 'pointer', color: off ? 'var(--sd-fg-5, #555)' : color, textAlign: 'left',
                 }}>
-                <span style={{ width: 11, height: 11, borderRadius: '50%', background: color, opacity: off ? 0.2 : 1, flexShrink: 0 }} />
+                <span className="sd-dot-html" style={{ width: 11, height: 11, borderRadius: '50%', background: color, opacity: off ? 0.2 : 1, flexShrink: 0 }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', textDecoration: off ? 'line-through' : 'none' }}>{t}-Tier</span>
               </button>
               <div style={{ display: 'flex', gap: 3 }}>
