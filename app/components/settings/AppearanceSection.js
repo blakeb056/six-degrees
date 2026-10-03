@@ -26,7 +26,7 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
   const t = theme;
   const cx = width * 0.58;
   const cy = height / 2;
-  const id = `p-${t.id}-${t.customised ? 'c' : 'p'}`;
+  const id = `p-${t.id}-${t.customised ? 'c' : 'p'}-${t.dots}`;
   const glass = Math.min(1, Math.max(0, t.glass));
   const ring = TIER_KEYS.map((k, i) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / TIER_KEYS.length;
@@ -40,6 +40,14 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
         <radialGradient id={`${id}-glow`}><stop offset="0" stopColor={t.bg2} stopOpacity="0.8" /><stop offset="1" stopColor={t.bg2} stopOpacity="0" /></radialGradient>
         <radialGradient id={`${id}-glow2`}><stop offset="0" stopColor={t.accent} stopOpacity="0.55" /><stop offset="1" stopColor={t.accent} stopOpacity="0" /></radialGradient>
         <linearGradient id={`${id}-sun`} x1="0" y1="0" x2="0" y2="1"><stop offset="0.45" stopColor={t.bg2} stopOpacity="0" /><stop offset="1" stopColor={t.bg2} stopOpacity="0.45" /></linearGradient>
+        {/* The look's dots: a drop of glass, or a glow (lib/themes.js DOTS) */}
+        {TIER_KEYS.map((k) => (
+          <radialGradient key={k} id={`${id}-drop-${k}`} fx="34%" fy="30%">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.95" /><stop offset="0.25" stopColor={t.tiers[k]} stopOpacity="0.9" />
+            <stop offset="0.75" stopColor={t.tiers[k]} stopOpacity="0.5" /><stop offset="1" stopColor={t.tiers[k]} stopOpacity="0.15" />
+          </radialGradient>
+        ))}
+        <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
       </defs>
       <rect width={width} height={height} fill={t.bg} />
       {t.backdrop === 'stars' && (
@@ -84,7 +92,13 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
           </g>
         );
       }))}
-      {ring.map((p) => <circle key={`d${p.k}`} cx={p.x} cy={p.y} r={p.k === 'S' ? 4.5 : 3.6} fill={t.tiers[p.k]} />)}
+      <g filter={t.dots === 'glow' ? `url(#${id}-glow)` : undefined}>
+        {ring.map((p) => (
+          <circle key={`d${p.k}`} cx={p.x} cy={p.y} r={p.k === 'S' ? 4.5 : 3.6}
+            fill={t.dots === 'droplet' ? `url(#${id}-drop-${p.k})` : t.tiers[p.k]}
+            stroke={t.dots === 'droplet' ? t.tiers[p.k] : 'none'} strokeOpacity={0.5} strokeWidth={0.6} />
+        ))}
+      </g>
       <circle cx={cx} cy={cy} r={5.5} fill={t.you} stroke={t.accent} strokeWidth={1.2} />
     </svg>
   );

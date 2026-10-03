@@ -41,7 +41,7 @@ export function MapLook({ colourBy, onColourBy, physics, onPhysics, heatHint }) 
               </div>
               <input type="range" min={s.min} max={s.max} step={s.step} value={physics[s.key]}
                 onChange={(e) => onPhysics({ ...physics, [s.key]: Number(e.target.value) })}
-                style={{ width: '100%', accentColor: '#3498DB' }} />
+                style={{ width: '100%', accentColor: 'var(--sd-accent, #3498DB)' }} />
             </label>
           ))}
           <div style={hint}>Drag a bubble and the ones joined to it follow. Click still opens it.</div>

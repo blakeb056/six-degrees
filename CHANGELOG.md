@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Light looks, and every look its own all the way through** (Settings → Appearance). Daylight and
+  Paper are light, designed for it: ink words, white cards and panels, deeper dots that read on
+  white. Pick any light background in the editor and the words and borders turn dark with it. Each
+  look now changes more than its colours: its buttons (soft, flat, square, glass, neon or bold), its
+  words (Obsidian's greys, a data terminal's for Analyst, brighter ones on Glass), its cards,
+  pickers, tooltips and notch, the sliders, and how the map draws its dots (glass droplets, flat
+  like Obsidian, or glowing). Both are yours to pick in the editor too.
+- **Glass is Apple's Liquid Glass.** Panels of dark glass that keep their words readable, with a lit
+  rim and a bright top edge, and edges that bend what's behind them the way Apple's glass does. The
+  tabs sit in one glass capsule; buttons are glass capsules that spring when pressed. With Reduce
+  Transparency on, the panels go solid.
+- **Bridge Chains: hovering a bridge grows its circle.** Their people shoot out of the bridge to
+  their places, then anyone among them whose own circle is scanned sprouts it (3rd degree), then
+  theirs (4th), in under half a second.
+- **Scan: the radar is a cluster that grows with every page.** While a scan runs, the people each
+  page finds gather round the Scan button as dots, ring by ring, each page's batch in the next of
+  the theme's colours (the same as the header's dots), the newest glowing.
+
+### Changed
+- **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about
+  them (new ones count double), people in them ready to scan, and clusters formed from them since.
+  A circle's tooltip says how many notifications are about it.
+- **Separation fits the whole map in the window**, with a − Fit + zoom at the right of its caption.
+- **Bridge Chains' legends are just dots**, no box: they fit whatever font a look uses.
+
 ## [0.6.0] - 2026-10-03
 
 ### Added

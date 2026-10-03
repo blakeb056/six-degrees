@@ -50,7 +50,7 @@ function Slider({ spec, value }) {
       <input
         type="range" min={spec.min} max={spec.max} step={spec.step} value={value}
         onChange={(e) => setLab({ [spec.key]: Number(e.target.value) })}
-        style={{ width: '100%', accentColor: '#3498DB' }}
+        style={{ width: '100%', accentColor: 'var(--sd-accent, #3498DB)' }}
       />
     </label>
   );
@@ -195,7 +195,7 @@ export default function GalaxyLab() {
           <Choice value={lab.names === 'all' ? 'all' : 'key'} options={[['key', 'Hubs, S, catalysts'], ['all', 'All 1st']]} onPick={(v) => setLab({ names: v })} />
           <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>Zoomed out, only the hubs keep their names.</div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--sd-fg-3, #aab)', cursor: 'pointer' }}>
-            <input type="checkbox" checked={lab.branch} onChange={(e) => setLab({ branch: e.target.checked })} style={{ accentColor: '#3498DB' }} />
+            <input type="checkbox" checked={lab.branch} onChange={(e) => setLab({ branch: e.target.checked })} style={{ accentColor: 'var(--sd-accent, #3498DB)' }} />
             Light up a branch on hover
           </label>
 
@@ -221,7 +221,7 @@ export default function GalaxyLab() {
                 <input
                   type="range" min={clock.min} max={clock.max} step={DAY} value={clock.at ?? clock.max}
                   onChange={(e) => { pause(); setClock({ at: Number(e.target.value) }); }}
-                  style={{ width: '100%', accentColor: '#3498DB' }}
+                  style={{ width: '100%', accentColor: 'var(--sd-accent, #3498DB)' }}
                   aria-label="Time"
                 />
                 {/* Milestones from the Social tab: a job start (gold) or a post (blue). */}
@@ -241,7 +241,7 @@ export default function GalaxyLab() {
               <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', margin: '8px 0 4px' }}>Length</div>
               <Choice value={lab.speed} options={[[5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '1 min']]} onPick={(v) => setLab({ speed: v })} />
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--sd-fg-3, #aab)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={lab.loop} onChange={(e) => setLab({ loop: e.target.checked })} style={{ accentColor: '#3498DB' }} />
+                <input type="checkbox" checked={lab.loop} onChange={(e) => setLab({ loop: e.target.checked })} style={{ accentColor: 'var(--sd-accent, #3498DB)' }} />
                 Loop
               </label>
               <div style={{ ...small, marginTop: 4 }}>
