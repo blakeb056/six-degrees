@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppTabs from './AppTabs';
 import AutoScanButton from './AutoScanButton';
+import ScanTrail from './ScanTrail';
 import useScanner from './useScanner';
 import { useUser } from './UserProvider';
 import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../../lib/scraper-client';
@@ -52,7 +53,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const isMobile = mobileProp ?? mobileSeen;
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
   return (
-    <header style={{ padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+    <header style={{ position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
       <div style={isMobile
         ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }
         : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: 8 }}>
@@ -76,6 +77,8 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
         </div>
       </div>
       {children}
+      {/* While a scan runs: a dot on the line below for each page it reads */}
+      {own && <ScanTrail inset={isMobile ? 12 : 30} />}
     </header>
   );
 }
