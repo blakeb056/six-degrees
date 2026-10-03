@@ -7,7 +7,7 @@ import { EXPORT_WORK_PREFIX, sweepLeftovers } from '../../../../lib/data-folder'
 import { SCHEMA_SQL } from '../../../../db/schema';
 import { APP_VERSION } from '../../../../lib/app-version';
 
-// Save a copy of the network to carry to another computer: one .sixdegrees
+// Export backup file…: a copy of the network to carry to another computer, one .sixdegrees
 // file (lib/data-export.js), sent back as a download. A POST, so it takes a
 // click on the app's own page (the cross-site guard applies), and gated with
 // the other routes that hand over or replace everything (lib/gate.js).

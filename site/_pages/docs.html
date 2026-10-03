@@ -75,10 +75,12 @@ updated: 2026-09-29
         <p>Your network lives in a hidden folder in your home folder, <code>.six-degrees</code>. Open it any time with
           <em>Help → Show the Data Folder</em>, and see what each part takes up in <strong>Settings → Your data</strong>.</p>
         <ul>
-          <li><strong>Backups.</strong> Each new version copies your network into <code>backups/</code> before it first
-            opens it, and so does an import.</li>
-          <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Save a copy of my network</em> makes
-            one file. Move it yourself, and import it on the other computer. Your LinkedIn sign-in never goes into a copy.</li>
+          <li><strong>Backups.</strong> Six Degrees backs up your network, photos and all, into <code>backups/</code>
+            once a day while it's open, before each new version first opens it, and before an import or a restore. Each
+            one is checked as it's made. Settings → Your data shows the last one and puts any of them back with
+            <em>Restore</em>.</li>
+          <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Export backup file…</em> makes
+            one file. Move it yourself, and restore it on the other computer. Your LinkedIn sign-in never goes into it.</li>
           <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in LinkedIn
             session. Never copy, sync or share it; deleting it just means signing in again.</li>
         </ul>

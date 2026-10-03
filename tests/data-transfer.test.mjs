@@ -679,7 +679,8 @@ test('a network here that can’t be read is kept exactly as it was, and the imp
   assert.deepEqual(namesIn(dbIn(torn)), ['s-0', 's-1']);
 });
 
-test('copies kept before an import are never pruned with the automatic ones', () => {
+// The rotation keeps them as their own kind (lib/backups.js, tests/backups.test.mjs).
+test('copies kept before an import are never pruned with the ones from before new versions', () => {
   const here = hardStoppedNetwork('l', 2);
   stageImport(uploadInto(here, goodExport('m', 2)), { dir: here, ...checks });
   const { keptDatabase } = applyPendingImport({ dir: here, dbFile: dbIn(here), now: new Date('2026-09-20T00:00:00Z') });
