@@ -243,7 +243,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       : summitLayout(top, cw || 800, isMobile, { cards })),
     [single, target, top, cw, isMobile, cards, rarityBy],
   );
-  const captionH = isMobile ? 58 : 40;   // fixed, so HEAD is arithmetic; the phone legend takes two lines
+  const captionH = isMobile ? 58 : 28;   // fixed, so HEAD is arithmetic; the phone legend takes two lines, a computer's is the tooltip
   const NEXT_H = nextUp.length ? 38 : 0;
   const mapH = single ? (target ? layout.height + NEXT_H : 0) : layout.height;
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
@@ -305,6 +305,59 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const youLabel = !userName || /^you$/i.test(String(userName).trim()) ? 'You' : initialsFor(userName);
   const rows = visible.slice(start, end);
 
+  // Where the slider is, in words (and in full, as its tooltip).
+  const pillEl = (
+    <span aria-live="polite" title={`${slide.name}. ${slide.detail} It only reorders: scores, tiers and ranks stay as they are.`} style={{
+      ...(isMobile ? { marginLeft: 'auto' } : {}), textTransform: 'none', letterSpacing: 0, flexShrink: 0, height: isMobile ? 40 : 26, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
+      display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+      border: `1px solid ${slideColor}66`, background: `${slideColor}14`, color: slideColor,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: slideColor }} />
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{at}</span>
+      {slide.name}
+    </span>
+  );
+  // The search, in the title's row on a computer and under it on a phone.
+  const searchBox = (
+    <input
+      ref={searchRef}
+      type="search"
+      value={query}
+      onChange={(e) => changeQuery(e.target.value)}
+      onKeyDown={onSearchKey}
+      placeholder={isMobile ? 'Search people, companies, or who knows them' : 'Search people, companies, who knows them'}
+      aria-label="Search people, companies, or who knows them"
+      style={{
+        width: isMobile ? '100%' : 300, flexShrink: 0, minWidth: 0, height: isMobile ? 44 : 32, boxSizing: 'border-box',
+        padding: '0 12px', borderRadius: 8, outline: 'none', color: '#fff',
+        fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
+        border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
+      }}
+    />
+  );
+  // "Only show": the rarity chips, beside the tiers on a computer, on their own row on a phone.
+  const rarityChips = (
+    <>
+      <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
+      {RARITY.map((r) => {
+        const on = rarities.has(r.key);
+        return (
+          <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
+            title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
+              height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
+              fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+              border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
+              background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+              color: on ? r.color : '#999',
+            }}>
+            {r.label}
+            <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+          </button>
+        );
+      })}
+    </>
+  );
+
   return (
     <div style={{
       flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
@@ -312,17 +365,18 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
       <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <h2 style={{
+        <div style={{ display: 'flex', alignItems: isMobile ? 'baseline' : 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <h2 title={RANK_NOTE} style={{
             margin: 0, fontSize: 18, fontWeight: 800,
             background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>Separation</h2>
-          <span style={{ fontSize: 12, color: '#aaa' }}>
+          <span style={{ fontSize: 12, color: '#aaa', ...(isMobile ? {} : { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
             {isMobile
               ? `${plural(summary.people, 'person', 'people')} · ${fmt(summary.byTier.S)} S · ${fmt(summary.multi)} with 2+ ways`
               : `${plural(summary.people, 'person', 'people')} two steps away · ${fmt(summary.byTier.S)} S-tier · ${fmt(summary.multi)} reachable 2+ ways · through ${fmt(summary.bridges)} of your connections`}
           </span>
+          {!isMobile && searchBox}
         </div>
         {/* The whole population at a glance: one segment per tier, to scale. */}
         <div aria-hidden="true" style={{ display: 'flex', gap: 1, height: 6, borderRadius: 3, overflow: 'hidden', margin: '8px 0 6px', background: 'rgba(255,255,255,0.04)' }}>
@@ -330,11 +384,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             <div key={t} style={{ flex: summary.byTier[t], background: tierColors[t] || '#555' }} />
           ))}
         </div>
-        <div style={{ fontSize: 11, color: '#777', lineHeight: 1.4 }}>
-          {isMobile
-            ? 'Ranks reachability, not people · lists scanned so far'
-            : 'Ranked by each person’s own score (title, company, headline). It ranks reachability, not people. From the lists scanned so far.'}
-        </div>
+        {/* On a computer the line says it on its own; what it ranks is the title's tooltip (RANK_NOTE). */}
+        {isMobile && (
+          <div style={{ fontSize: 11, color: '#777', lineHeight: 1.4 }}>Ranks reachability, not people · lists scanned so far</div>
+        )}
         {summary.peopleOnlyUnresolved > 0 && (
           <div style={{
             marginTop: 8, padding: '8px 10px', borderRadius: 8, fontSize: 11.5, lineHeight: 1.5, color: '#e8d9a0',
@@ -354,30 +407,16 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       {/* ── Controls: search, then the slider with their tier and rarity ── */}
       <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <style>{SLIDER_CSS}</style>
-        <input
-          ref={searchRef}
-          type="search"
-          value={query}
-          onChange={(e) => changeQuery(e.target.value)}
-          onKeyDown={onSearchKey}
-          placeholder="Search people, companies, or who knows them"
-          aria-label="Search people, companies, or who knows them"
-          style={{
-            width: '100%', minWidth: 0, height: isMobile ? 44 : 34, boxSizing: 'border-box',
-            padding: '0 12px', borderRadius: 8, outline: 'none', color: '#fff',
-            fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
-            border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
-          }}
-        />
+        {isMobile && searchBox}
         <div style={{
-          marginTop: 8, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12, position: 'relative',
+          marginTop: isMobile ? 8 : 2, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12, position: 'relative',
           border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)',
         }}>
           {pathOpen && (
             <PathPicker facets={facets} text={pathText} onText={setPathText} isMobile={isMobile}
               onPick={pickPath} onClose={() => setPathOpen(false)} />
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
             // A phone scrolls this strip sideways, so the page itself never does.
             overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
             <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
@@ -387,7 +426,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               const n = t === 'all' ? summary.people : summary.byTier[t];
               return (
                 <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
-                  height: isMobile ? 40 : 30, padding: '0 10px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
+                  height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
                   fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
                   border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
                   background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
@@ -414,23 +453,19 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                 }}>×</button>
               )}
             </span>
-            {/* Where the slider is, in words */}
-            <span aria-live="polite" style={{
-              marginLeft: 'auto', flexShrink: 0, height: isMobile ? 40 : 30, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
-              display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-              border: `1px solid ${slideColor}66`, background: `${slideColor}14`, color: slideColor,
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: slideColor }} />
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{at}</span>
-              {slide.name}
-            </span>
+            {!isMobile && <>
+              <span aria-hidden="true" style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)', margin: '0 2px' }} />
+              {rarityChips}
+            </>}
+            {isMobile && pillEl}
           </div>
 
           {/* The slider: the rarest ways in at one end, the easiest at the other, power alone in the middle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            <span style={{ color: RARE }}>Rare{isMobile ? '' : ' · one way in'}</span>
-            <span style={{ color: '#FFD700' }}>Power</span>
-            <span style={{ color: EASY }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
+          {/* On a computer the pill saying where the slider is sits over its middle, in place of "Power" */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'baseline' : 'center', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <span style={{ color: RARE, flex: isMobile ? undefined : 1 }}>Rare{isMobile ? '' : ' · one way in'}</span>
+            {isMobile ? <span style={{ color: '#FFD700' }}>Power</span> : pillEl}
+            <span style={{ color: EASY, flex: isMobile ? undefined : 1, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
           </div>
           <input
             className="sepslide" type="range" min={0} max={100} step={1} value={at}
@@ -448,31 +483,16 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               }}>{v}{name && !isMobile ? ` · ${name}` : ''}</button>
             ))}
           </div>
-          <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: '#bbb' }}>
-            <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
-            {!isMobile && <span style={{ color: '#667' }}>{' '}It only reorders: scores, tiers and ranks stay as they are.</span>}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
-            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
-            <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
-            {RARITY.map((r) => {
-              const on = rarities.has(r.key);
-              return (
-                <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
-                  title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
-                    height: isMobile ? 40 : 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
-                    fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
-                    border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
-                    background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
-                    color: on ? r.color : '#999',
-                  }}>
-                  {r.label}
-                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* On a phone: the sentence, and the rarity chips on a row of their own */}
+          {isMobile && <>
+            <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: '#bbb' }}>
+              <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: 'nowrap',
+              overflowX: 'auto', scrollbarWidth: 'thin' }}>
+              {rarityChips}
+            </div>
+          </>}
         </div>
       </div>
 
@@ -486,18 +506,19 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           {mapBlockH > 0 && (
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div title={isMobile ? undefined : `${!single && askedShown > 0 ? `${fmt(askedShown)} asked or connected, so it moved on. ` : ''}Solid orange: the top-scored bridge. Dashed: other routes.${single ? ' Pick anyone in the list to aim at them instead.' : cards ? ' A lit pill is someone’s best way in.' : ' Dot size: ways in.'}`}
+                  style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {single
                     ? <>Aiming at {target.person.name} · {layout.unscanned
                       ? `${fmt(target.waysIn + layout.unscanned)} mutual connections: ${fmt(target.waysIn)} drawn, ${fmt(layout.unscanned)} in circles not scanned yet`
                       : target.waysIn === 1 ? 'the one connection of yours who leads to them' : `all ${fmt(target.waysIn)} connections of yours who lead to them`}</>
                     : <>Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn</>}
                 </div>
-                <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
+                {isMobile && <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
                   {!single && askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
                   <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
                   {single ? ' · pick anyone in the list to aim at them instead' : cards ? ' · a lit pill is someone’s best way in' : ' · dot size = ways in'}
-                </div>
+                </div>}
               </div>
               {cw > 0 && (
                 <SummitMap
@@ -628,6 +649,7 @@ const MAP_CSS = `
   .sepmap .in { animation: none; }
 }
 `;
+const RANK_NOTE = 'Ranked by each person’s own score (title, company, headline). It ranks reachability, not people. From the lists scanned so far.';
 const HALO = { paintOrder: 'stroke', stroke: '#0a0a1a', strokeWidth: 3, strokeLinejoin: 'round' };
 const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
 

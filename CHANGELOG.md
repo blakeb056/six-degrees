@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Separation fits a laptop's window.** The header is slimmer: the search sits in the title's row,
+  the tier line stays without the sentence under it (it's the title's tooltip now), Only show sits
+  beside the tiers, the pill saying where the slider is sits over its middle, and the long
+  explanations moved into tooltips. The cards are packed a little closer, so the whole map, ten
+  people and every way in, shows at once in the app's normal window wherever the slider is.
 - **The Scan page shows every step at once**, down a line: Get ready, Sign in, Who you know, Who
   they know, each with its label, what it does and its one button, marked Done, Now or Next. The
   line turns green as each is done, so it's plain what's finished and what's left; no more tapping
