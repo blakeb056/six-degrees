@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says "your ranking" where it moved a title. Nothing set scores exactly as before.
 
 ### Changed
+- **The Scan page is a launch, not a manual.** It opens with what the scanner is and what it never does
+  (never posts or messages anyone, never sees your password, nothing leaves this Mac, stops when you
+  say), then the four steps on a rail: Get ready, Sign in, Who you know, Who they know. The one
+  you're on pulses, with one big button that does it and how long it takes; any other opens with a
+  tap. While it runs, "Your scanner is working" and Stop sit right under the step. How many people
+  this round and who first are beside the radar; the daily budget, how much of each list, the hidden
+  window, retrying hidden lists and paused lists are in Fine-tune, closed until you want them. The
+  log is one tap away, and opens by itself when a run stops badly. Scan has the same header as every
+  page now.
 - **Paths reads like Network Circle.** Its notch is now Map and Companies: companies count for more
   than industries, and an industry opens from a company's card (its industry is a link there). Whether
   the map's bubbles are companies or your connections (what was the People tab) is a switch at the
