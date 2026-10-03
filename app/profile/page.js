@@ -30,7 +30,7 @@ export default function ProfilePage() {
 
 function ProfileInner() {
   const { userId, userName, userProfile } = useUser();
-  // Profile, or Insights: how your network holds together (Blake, 2026-10-03:
+  // Profile, or Insights: how your network holds together (Blake, 2026-10-02:
   // "having the insights button into profile having network health"). A link
   // can open Insights: /profile?view=insights (Settings, the old Scores tab).
   const router = useRouter();

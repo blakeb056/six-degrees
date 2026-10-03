@@ -64,7 +64,7 @@ async function sendInviteNotes(invitations) {
 
 /**
  * Social, the CRM and your LinkedIn export, as part of Outlink (Blake,
- * 2026-10-03: "make outlink a one thing with the dms follow up and etc mixed
+ * 2026-10-02: "make outlink a one thing with the dms follow up and etc mixed
  * with the social aspect of adding those people and keeping track"). `embedded`
  * leaves out its own header: Outlink's tabs and notch are above it.
  */

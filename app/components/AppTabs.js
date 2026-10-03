@@ -1,6 +1,6 @@
 'use client';
 
-// The app's tabs, the same on every page (Blake, 2026-10-03: "for paths we
+// The app's tabs, the same on every page (Blake, 2026-10-02: "for paths we
 // need a notch for it so the tabs are visible and continuity is there").
 // Network Circle, Degrees and Separation are views of the map page: there they
 // switch in place (onMode); anywhere else they are links back to it with the

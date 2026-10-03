@@ -1,6 +1,6 @@
 'use client';
 
-// A notification, opened in the right panel (Blake, 2026-10-03: "if it is
+// A notification, opened in the right panel (Blake, 2026-10-02: "if it is
 // [clicked] then it should take over the right panel and show a more detailed
 // version of the notifications telling you what person added back from who and
 // that they are a value person if the score is s"). Who it's about comes from

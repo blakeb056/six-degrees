@@ -70,7 +70,7 @@ export function useSize(ref) {
 /**
  * The left panel, as on the map page (app/components/FilterPanel.js): a
  * Filters tab at the edge until opened, then a column the map makes room for.
- * Paths' filters, and the ways to read the map, live here (Blake, 2026-10-03:
+ * Paths' filters, and the ways to read the map, live here (Blake, 2026-10-02:
  * "incorporate the filter with maybe ways to read the data more").
  */
 export function SidePanel({ open, onToggle, children }) {
@@ -226,7 +226,7 @@ function Filters({ filters, setFilters, counts, query, setQuery, industries, hid
       <div style={panelHeading}>Filter</div>
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
         style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
-      {/* The same tiers × degrees as Network Circle (Blake, 2026-10-03) */}
+      {/* The same tiers × degrees as Network Circle (Blake, 2026-10-02) */}
       <TierGrid grid={filters.grid} counts={counts} onChange={(g) => set('grid', g)} mode="paths" />
       <div style={{ fontSize: 11, color: '#8b9a9a', marginTop: -10 }}>Level</div>
       <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
@@ -440,7 +440,7 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
       <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕ Close</button>
       <div style={{ fontSize: 10, letterSpacing: 1, color: '#8b9a9a', marginTop: 8 }}>{isCompany ? 'COMPANY' : 'INDUSTRY'} ANALYZER</div>
       <h2 style={{ margin: '4px 0 6px', fontSize: 20 }}>{isCompany ? data.name : data.label}</h2>
-      {/* A company's industry opens that industry here (Blake, 2026-10-03: industries live in the side card, not a tab). */}
+      {/* A company's industry opens that industry here (Blake, 2026-10-02: industries live in the side card, not a tab). */}
       {isCompany && onIndustry ? (
         <button type="button" onClick={() => onIndustry(industry.key)} title={`Open ${industry.label}: everyone there and its top companies`} style={{
           fontSize: 11, padding: '2px 8px', borderRadius: 10, border: 'none', cursor: 'pointer', background: `${industry.color}22`, color: industry.color,

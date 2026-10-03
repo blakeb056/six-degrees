@@ -201,7 +201,7 @@ function SetupInner() {
       minHeight: '100vh', background: BG, color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
-      {/* The same header as every page, Scan lit (Blake, 2026-10-03: continuity) */}
+      {/* The same header as every page, Scan lit (Blake, 2026-10-02: continuity) */}
       <header style={{ padding: '20px 30px', borderBottom: LINE }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
@@ -341,7 +341,7 @@ function SetupInner() {
             <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
           )}
 
-          {/* ---- the journey (Blake, 2026-10-03: "simple and easy to understand … like they are
+          {/* ---- the journey (Blake, 2026-10-02: "simple and easy to understand … like they are
                launching an agent"): four steps on a rail, the one you're on open, one button to
                launch it. Everything else waits in Fine-tune. ---- */}
           <Journey current={current} view={shown} onView={setView} steps={[

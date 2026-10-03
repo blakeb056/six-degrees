@@ -26,9 +26,9 @@ import SeparationView from './SeparationView';
  */
 export const VIEWS = {
   galaxy:   { component: ForceGraph, modes: ['network'],            label: 'Galaxy',        icon: '🌌', desc: 'Force-directed layout' },
-  // Orbit is a layout of the Galaxy now, in its Physics (Blake, 2026-10-03: "add that
+  // Orbit is a layout of the Galaxy now, in its Physics (Blake, 2026-10-02: "add that
   // as a visual option instead so the person can interact with it"): lib/galaxy-lab.js ORBIT.
-  // Separation is a tab of its own (Blake, 2026-10-03), not a view inside Degrees.
+  // Separation is a tab of its own (Blake, 2026-10-02), not a view inside Degrees.
   separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
   // Pyramid and List left Network Circle (Blake, 2026-10-02: "the list and pyramid gone"): the

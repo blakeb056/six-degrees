@@ -17,7 +17,7 @@ import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-// Map and Companies (Blake, 2026-10-03: companies are worth more than industries,
+// Map and Companies (Blake, 2026-10-02: companies are worth more than industries,
 // and an industry's detail opens from a company's card). Whether the map's bubbles
 // are companies or people is a switch in its Filters panel.
 const TABS = [['map', 'Map'], ['companies', 'Companies']];

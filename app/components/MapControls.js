@@ -1,7 +1,7 @@
 'use client';
 
 // Paths' two maps (companies and people) read the way Network Circle does
-// (Blake, 2026-10-03: "the paths should have the same filter as network circle
+// (Blake, 2026-10-02: "the paths should have the same filter as network circle
 // even with phyics as well if they want to enable them and change color heat
 // mapping"): colour by sector or by heat, and physics you can switch on, then
 // drag bubbles and move the forces. Off, the layout is computed once and stays

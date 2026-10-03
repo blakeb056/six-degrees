@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-02
+
 ### Added
 - **Rank titles your way** (Settings → Scores → Titles). Set how much each kind of title counts, out
   of 10, or start from a preset: Founders first, Investors, or A role I'm looking for. Add the roles
