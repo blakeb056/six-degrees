@@ -66,3 +66,13 @@ for node in ast.walk(tree):
     assert.deepEqual(py[name], { page_pause: PACES[name].pagePause, chunk_cooldown: PACES[name].chunkCooldown, profile_gap: PACES[name].profileGap });
   }
 });
+
+test('the first circle shows in about 5 minutes at Fast, later at the slower speeds', async () => {
+  const { firstCircleSeconds } = await import('../lib/scan-pace.js');
+  // Ten pages, when the scanner first saves, and the rest after them.
+  assert.equal(firstCircleSeconds('fast'), paceSeconds('fast', 10));
+  assert.equal(durationText(firstCircleSeconds('fast')), 'about 5 min');
+  assert.equal(durationText(firstCircleSeconds(undefined)), 'about 5 min', 'no speed saved is Fast');
+  assert.ok(firstCircleSeconds('medium') > firstCircleSeconds('fast'));
+  assert.ok(firstCircleSeconds('slow') > firstCircleSeconds('medium'));
+});

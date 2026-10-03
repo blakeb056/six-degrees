@@ -176,6 +176,16 @@ a.dl.primary:hover { color: #1b1400; filter: brightness(1.04); box-shadow: 0 1px
 .dl-platforms a:hover { border-color: var(--gold); }
 .dl-platforms .beta { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 0 7px; }
 .dl-alt code { color: #d8f5dc; }
+/* The steps to allow the Mac app once, shown under the button after a download starts (app.js). */
+.after-dl { max-width: 640px; margin: 22px auto 0; padding: 18px 22px 14px; border-radius: var(--radius); text-align: left;
+  background: rgba(62, 224, 143, 0.07); border: 1px solid rgba(62, 224, 143, 0.32); }
+.after-dl:focus { outline: none; }
+.after-dl h2 { margin: 0 0 10px; font-size: 17px; font-weight: 750; color: var(--text); text-align: left; }
+.after-dl ol { margin: 0; padding-left: 22px; color: var(--muted); font-size: 15px; }
+.after-dl li { margin: 0 0 8px; }
+.after-dl li strong { color: var(--text); }
+.after-dl li::marker { color: var(--green); font-weight: 700; }
+.after-dl .fine { margin: 6px 0 0; font-size: 14px; }
 .hero .fine { margin: 8px 0 0; }
 
 .hero-shot { position: relative; margin: 44px auto 0; max-width: 1072px; }
