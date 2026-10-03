@@ -53,6 +53,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Scan: the radar is a cluster that grows with every page.** While a scan runs, the people each
   page finds gather round the Scan button as dots, ring by ring, each page's batch in the next of
   the theme's colours (the same as the header's dots), the newest glowing.
+- **Settings → LinkedIn usage: how close your account is to the line, at a glance.** A status pill
+  (well within, above the default, risky, too close, or paused) and four bars: searches in the last
+  24 hours, marked at 50 (the default), 100 (risky) and 373 (where a real account was restricted),
+  with when the next one frees and when you're all clear; searches this month, with when LinkedIn's
+  month resets (midnight Pacific on the 1st) and the 250 to 350 people report for a free account
+  shaded as a guide, not a fact; the last 7 days against Auto scan's 200; and profile views. Below
+  them: your speed and searches in the last hour, about how many people you can still map, the last
+  time LinkedIn pushed back (its time and reason, even after you lift the pause), Auto scan's own
+  rules, and a plain warning with *Back to 50 a day, 250 a month* when it matters. Every number is
+  counted from what Six Degrees wrote down on this computer, and says so. The notch's budget and the
+  Scan page's budget box link to it.
 
 ### Changed
 - **A LinkedIn CSV import is kept until you remove it.** Close the window or restart the app and
@@ -105,6 +116,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   copy missing its scanner says to download it again, and a page that can't reach the app says to
   quit and reopen it. The download size reads "about 210 MB" everywhere (the Mac downloads are 204
   and 212 MB).
+- **The budget says "the last 24 hours", because that's what it counts.** The notch said "searches
+  today" and the Scan page "searches left today" (and "profile views today"), but the budget has
+  always counted a rolling 24 hours, not since midnight. They now say so.
 
 ## [0.6.0] - 2026-10-03
 
