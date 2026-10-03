@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import AppTabs from '../components/AppTabs';
+import AppHeader from '../components/AppHeader';
 import SocialHub from '../social/SocialHub';
 import { setNotchTabs } from '../../lib/island';
 import { loadNetwork } from '../../lib/network';
@@ -265,20 +265,7 @@ function QueueInner() {
     }}>
       {/* The same header as every page: the app's tabs, Outlink lit. Circles, To add,
           Pending and Messages & follow-ups sit in the notch under it. */}
-      <header style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Six Degrees
-            </h1>
-          </Link>
-          <AppTabs active="outlink" />
-          <Link href="/settings" title="Settings" aria-label="Settings" style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
-            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>⚙</Link>
-        </div>
-      </header>
+      <AppHeader active="outlink" />
       {(view === 'recs' || view === 'pending') && (
       <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>

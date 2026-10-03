@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import AppTabs from '../components/AppTabs';
+import AppHeader from '../components/AppHeader';
 import { setNotchTabs } from '../../lib/island';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
@@ -262,20 +262,7 @@ function PathsInner() {
     }}>
       {/* The same header as every page: the app's tabs, Paths lit; Map, People,
           Industries and Companies sit in the notch under it. */}
-      <header style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Six Degrees
-            </h1>
-          </Link>
-          <AppTabs active="paths" csvMode={localOnly} />
-          <Link href="/settings" title="Settings" aria-label="Settings" style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
-            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>⚙</Link>
-        </div>
-      </header>
+      <AppHeader active="paths" csvMode={localOnly} />
       {selectedCompany && (
         <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

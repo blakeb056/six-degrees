@@ -9,7 +9,7 @@ import { setupStep, askForField } from '../../lib/scanner-setup';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
-import AppTabs from '../components/AppTabs';
+import AppHeader from '../components/AppHeader';
 import { paceOf } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
@@ -201,20 +201,7 @@ function SetupInner() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
       {/* The same header as every page, Scan lit (Blake, 2026-10-02: continuity) */}
-      <header style={{ padding: '20px 30px', borderBottom: LINE }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: 28, fontWeight: 700, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Six Degrees
-            </span>
-          </Link>
-          <AppTabs active="scan" />
-          <Link href="/settings" title="Settings" aria-label="Settings" style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
-            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>⚙</Link>
-        </div>
-      </header>
+      <AppHeader active="scan" brand="span" />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px' }}>
 

@@ -9,6 +9,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import { useUser } from '../components/UserProvider';
 import { sectorByKey } from '../../lib/sector-labels';
 import Link from 'next/link';
+import { networkPower as powerOf, levelOf } from '../../lib/level';
 import NetworkHealthSection from '../components/settings/NetworkHealthSection';
 
 const LEVEL_NAMES = {
@@ -74,10 +75,9 @@ function ProfileInner() {
       d1.forEach(c => { if (c.company) companies[c.company] = (companies[c.company] || 0) + 1; });
       const topCompanies = Object.entries(companies).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-      // Network Power
-      const networkPower = (tiers.S * 100) + (tiers.A * 40) + (tiers.B * 15) + (tiers.C * 5) + (tiers.D * 1)
-        + (clusters * 200) + (catalysts * 150) + (d2Tiers.S * 50) + d1.length;
-      const level = Math.floor(Math.sqrt(networkPower / 10));
+      // Network Power, and the level the header's round button shows (lib/level.js)
+      const networkPower = powerOf(d1, d2);
+      const level = levelOf(networkPower);
       const currentLevelPower = level * level * 10;
       const nextLevelPower = (level + 1) * (level + 1) * 10;
       const xpProgress = ((networkPower - currentLevelPower) / (nextLevelPower - currentLevelPower)) * 100;
