@@ -560,6 +560,7 @@ function NetworkRefresh({ onChange, live }) {
 // with no word of what it was about to do.
 function RefreshButton({ isMobile }) {
   const scan = useScanner();
+  const checking = scan.running && scan.action === 'refresh';
   const busy = busyReason(scan);
   return (
     <button
@@ -581,15 +582,19 @@ function RefreshButton({ isMobile }) {
         }
       }}
       disabled={Boolean(busy)}
-      title={busy ? `${busy}. One scan at a time.` : 'Check for new connections'}
+      title={busy ? `${busy}. One scan at a time.` : 'Check for new connections: reads your LinkedIn connections list from the newest'}
+      aria-label="Check for new connections"
       style={{
-        width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none',
-        cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.4 : 1,
-        background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
-        display: isMobile ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+        // Words, not a bare ↻ (Blake, 2026-10-02: "make it easier to check for new
+        // connections"), and the same words as the Scan page's button.
+        height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
+        border: '1px solid rgba(0,255,136,0.3)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.45 : 1,
+        background: 'rgba(0,255,136,0.08)', color: '#bff5d9', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
+        display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8, whiteSpace: 'nowrap',
       }}
     >
-      ↻
+      <span aria-hidden="true" style={{ fontSize: isMobile ? 12 : 14 }}>↻</span>
+      {checking ? 'Checking…' : isMobile ? 'New' : 'Check for new'}
     </button>
   );
 }

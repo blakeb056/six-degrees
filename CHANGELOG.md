@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The Scan page shows every step at once**, down a line: Get ready, Sign in, Who you know, Who
+  they know, each with its label, what it does and its one button, marked Done, Now or Next. The
+  line turns green as each is done, so it's plain what's finished and what's left; no more tapping
+  dots to see a step.
+- **↻ Check for new**, in words, in the map's header (it was a bare ↻): the same name as the Scan
+  page's button, for checking your LinkedIn for new connections in one click.
+
 ## [0.5.1-beta.1] - 2026-10-02 (beta: a pre-release, never installed automatically)
 
 ### Added
