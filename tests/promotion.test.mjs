@@ -35,7 +35,9 @@ before(async () => {
   }]);
 });
 
-after(() => rmSync(dir, { recursive: true, force: true }));
+// Windows cannot delete the folder while the database inside is open; the
+// system's temp cleanup gets it there.
+after(() => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* see above */ } });
 
 test('a 2nd-degree person starts out attributed to their bridge', async () => {
   const { data } = await db.from('linkedin_connections').select('*').eq('profile_url', HER_URL);

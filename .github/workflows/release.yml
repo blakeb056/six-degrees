@@ -209,9 +209,128 @@ jobs:
           path: dist/*.dmg
           if-no-files-found: error
 
+  # Windows (docs/brain/DESKTOP.md D3): the same app, as a one-click per-user
+  # Setup.exe (scripts/build-desktop.mjs, scripts/windows/six-degrees.iss).
+  # Installed silently as a user would get it, then the same checks as the Mac
+  # app (scripts/smoke-desktop.mjs), then uninstalled with the data left alone.
+  windows:
+    name: Windows app (x64)
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Tag matches package.json
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          ver="$(node -p "require('./package.json').version")"
+          [ "${tag#v}" = "$ver" ] || { echo "::error::Tag $tag does not match package.json version $ver."; exit 1; }
+      - run: npm ci
+      - name: Build Setup.exe
+        run: node scripts/build-desktop.mjs --platform=win32
+      - name: Install it silently, check its Python, open, reach, quit, nothing left, uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = (Get-ChildItem dist\Six-Degrees-*-win-x64-Setup.exe).FullName
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/LOG=$env:RUNNER_TEMP\setup.log" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 60; throw "Setup failed ($($p.ExitCode))" }
+          $app = Join-Path $env:LOCALAPPDATA 'Programs\Six Degrees'
+          if (-not (Test-Path "$app\Six Degrees.exe")) { throw 'Setup did not install Six Degrees.exe' }
+          foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Six Degrees.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Six Degrees.lnk'))) {
+            if (-not (Test-Path $lnk)) { throw "No shortcut at $lnk" }
+          }
+          $env:PYTHONDONTWRITEBYTECODE = '1'
+          & "$app\resources\python\python.exe" -E -s -B -X utf8 -c "import sys, platform, zoneinfo, requests; from PIL import Image; from playwright.sync_api import sync_playwright; zoneinfo.ZoneInfo('America/Los_Angeles'); print('Python', sys.version.split()[0], platform.machine(), '→ ok')"
+          if ($LASTEXITCODE -ne 0) { throw 'The app''s Python failed its check' }
+          Remove-Item Env:PYTHONDONTWRITEBYTECODE
+          node scripts/smoke-desktop.mjs --exe "$app\Six Degrees.exe" --dir $app --home "$env:RUNNER_TEMP\sd-home" --shot "$env:RUNNER_TEMP\window-windows.png"
+          if ($LASTEXITCODE -ne 0) { throw 'The smoke test failed' }
+          # Uninstall: the app goes, the data stays (DESKTOP.md rule 3).
+          Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          for ($i = 0; $i -lt 60 -and (Test-Path "$app\Six Degrees.exe"); $i++) { Start-Sleep 1 }
+          if (Test-Path "$app\Six Degrees.exe") { throw 'Uninstalling left the app behind' }
+          if (-not (Test-Path "$env:RUNNER_TEMP\sd-home\six-degrees.sqlite")) { throw 'The data folder did not survive' }
+          Write-Host 'Installed, Python checked, opened, reached, quit, left nothing, uninstalled with the data kept.'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: window-windows
+          path: ${{ runner.temp }}/window-windows.png
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-win-x64
+          path: dist/*-Setup.exe
+          if-no-files-found: error
+
+  # Linux (x64): a .deb (chrome-sandbox setuid root, which Electron needs on
+  # Ubuntu 24.04 and later) and a .tar.gz. The .deb is installed as a user would,
+  # then the same checks under a virtual display.
+  linux:
+    name: Linux app (x64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Tag matches package.json
+        if: ${{ !inputs.dry_run }}
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          ver="$(node -p "require('./package.json').version")"
+          [ "${tag#v}" = "$ver" ] || { echo "::error::Tag $tag does not match package.json version $ver."; exit 1; }
+      - run: npm ci
+      - name: Build the .deb and .tar.gz
+        run: node scripts/build-desktop.mjs --platform=linux
+      - name: Install the .deb, check its Python, open, reach, quit, nothing left
+        run: |
+          set -eu
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/six-degrees_*_amd64.deb xvfb
+          app=/opt/six-degrees
+          [ "$(stat -c '%U %a' $app/chrome-sandbox)" = "root 4755" ] || { echo "::error::chrome-sandbox isn't setuid root"; exit 1; }
+          if find "$app" -type l -exec readlink {} \; | grep -q '^/'; then echo "::error::The installed app has absolute symlinks"; exit 1; fi
+          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$app/resources/python/bin/python3" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; print("Python", sys.version.split()[0], platform.machine(), "→ ok")'
+          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$app/resources/python/bin/python3" node --test \
+            tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
+            tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+          Xvfb :99 -screen 0 1600x1000x24 > /dev/null 2>&1 &
+          export DISPLAY=:99
+          sleep 2
+          node scripts/smoke-desktop.mjs --exe "$app/six-degrees" --dir "$app" --home "$RUNNER_TEMP/sd-home" --shot "$RUNNER_TEMP/window-linux.png"
+          echo "Installed from the .deb, its Python works, opened, reached, quit, left nothing."
+        env:
+          PIP_NO_CACHE_DIR: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: window-linux
+          path: ${{ runner.temp }}/window-linux.png
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-linux-x64
+          path: |
+            dist/*.deb
+            dist/*.tar.gz
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: mac
+    needs: [mac, windows, linux]
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     permissions:
@@ -220,6 +339,17 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: dmg-*
+          merge-multiple: true
+          path: out
+      # Windows and Linux (DESKTOP.md D3). By name: a bare pattern would publish the window pictures too.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: setup-win-*
+          merge-multiple: true
+          path: out
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pkg-linux-*
           merge-multiple: true
           path: out
       # Two downloads with names that never change, so the README's buttons can
@@ -234,7 +364,12 @@ jobs:
               *-x64.dmg)   cp "$f" Six-Degrees-Mac-Intel.dmg ;;
             esac
           done
-          sha256sum *.dmg > SHA256SUMS && cat SHA256SUMS
+          # Windows and Linux under fixed names too (never ending in -arm64.dmg or
+          # -x64.dmg, which install.sh and the Mac updater look for).
+          for f in *-win-x64-Setup.exe; do [ -e "$f" ] && cp "$f" Six-Degrees-Windows-Setup.exe; done
+          for f in six-degrees_*_amd64.deb; do [ -e "$f" ] && cp "$f" Six-Degrees-Linux-x64.deb; done
+          for f in Six-Degrees-*-linux-x64.tar.gz; do [ -e "$f" ] && cp "$f" Six-Degrees-Linux-x64.tar.gz; done
+          sha256sum $(ls *.dmg *.exe *.deb *.tar.gz 2>/dev/null) > SHA256SUMS && cat SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -251,6 +386,10 @@ jobs:
             gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --prerelease --title "$TAG (beta)" --notes "$(cat <<EOF
           **Beta.** Not offered to anyone automatically: the one-line install and the app's Updates panel skip pre-releases.
 
+          **Windows (new, beta):** **Six-Degrees-Windows-Setup.exe**. One click installs it for you (no admin rights) with Start Menu and Desktop shortcuts. It isn't signed yet, so Windows SmartScreen may say it protected your PC: choose *More info → Run anyway*. Scanning needs Google Chrome.
+
+          **Linux (new, beta):** **Six-Degrees-Linux-x64.deb** (`sudo apt install ./Six-Degrees-Linux-x64.deb`), or the **.tar.gz**: on Ubuntu 24.04 and later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in its folder once, or start it with `--no-sandbox`. Scanning needs Google Chrome.
+
           To try it without touching your normal copy, install it to a separate folder:
 
           \`\`\`
@@ -264,6 +403,8 @@ jobs:
           )"
           else
             gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --title "$TAG" --notes "$(cat <<'EOF'
+          **Windows:** **Six-Degrees-Windows-Setup.exe**: one click installs it (no admin rights). Not signed yet, so SmartScreen may ask: *More info → Run anyway*. **Linux:** **Six-Degrees-Linux-x64.deb** (`sudo apt install ./Six-Degrees-Linux-x64.deb`) or the .tar.gz. Scanning needs Google Chrome on both.
+
           **Download for Mac:** **Six-Degrees-Mac-Apple-Silicon.dmg** (any Mac with an Apple M chip) or **Six-Degrees-Mac-Intel.dmg** (older Intel Macs), below. Not sure which? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel. Needs macOS 13.5 (Ventura) or later.
 
           Open the `.dmg` and drag **Six Degrees** to Applications. It isn't signed with a paid Apple certificate yet, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.

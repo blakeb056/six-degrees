@@ -1,6 +1,7 @@
 // The desktop app's decisions that don't need Electron, kept here so the tests
 // can run them directly (tests/desktop.test.mjs). main.mjs wires them up.
 
+import { spawn } from 'node:child_process';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -165,11 +166,26 @@ export function stopProcess(child, { graceMs = 5000 } = {}) {
       resolve();
     };
     child.once('exit', done);
+    // Windows has no SIGTERM: kill() there ends node.exe alone, and anything it
+    // started would outlive it. taskkill /T ends the whole tree (the scan was
+    // already asked to stop cleanly before this, stopScan in main.mjs).
+    if (process.platform === 'win32') {
+      try {
+        spawnTree('taskkill', ['/pid', String(child.pid), '/T', '/F']);
+      } catch { try { child.kill(); } catch { done(); } }
+      timer = setTimeout(() => { try { child.kill(); } catch { /* already gone */ } }, graceMs);
+      return;
+    }
     timer = setTimeout(() => {
       try { child.kill('SIGKILL'); } catch { /* already gone */ }
     }, graceMs);
     try { child.kill('SIGTERM'); } catch { done(); }
   });
+}
+
+// Started and left: its exit doesn't matter, only that it never shows a window.
+function spawnTree(cmd, args) {
+  spawn(cmd, args, { stdio: 'ignore', windowsHide: true }).on('error', () => {});
 }
 
 /**
