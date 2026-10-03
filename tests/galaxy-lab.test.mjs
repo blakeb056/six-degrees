@@ -127,7 +127,7 @@ test('heat: power as a thermal map, spread across whoever is shown', () => {
   assert.equal(scheme.legend.length, 4);
 });
 
-import { ORBIT, CLUSTERS, layoutOf } from '../lib/galaxy-lab.js';
+import { ORBIT, CLUSTERS, LAYOUT_LOOKS, FORCE_KEYS, layoutOf } from '../lib/galaxy-lab.js';
 
 test('layouts: Rings as always, Orbit and Clusters by their sliders, your own otherwise', () => {
   assert.equal(layoutOf(LAB_DEFAULTS), 'rings');
@@ -135,6 +135,16 @@ test('layouts: Rings as always, Orbit and Clusters by their sliders, your own ot
   assert.equal(layoutOf({ ...LAB_DEFAULTS, ...CLUSTERS }), 'clusters');
   assert.equal(layoutOf({ ...LAB_DEFAULTS, ...ORBIT, push: 7 }), null);
   assert.ok(ORBIT.rings > LAB_DEFAULTS.rings);   // every tier held on its orbit
+});
+
+test('Clusters is Obsidian\'s graph: no rings, a center force, everyone sized by their lines; Orbit and the look are not part of it', () => {
+  assert.equal(CLUSTERS.rings, 0);
+  assert.ok(CLUSTERS.gravity > 0);
+  assert.equal(CLUSTERS.sizeBy, 'links');
+  assert.equal(LAB_DEFAULTS.orbit, 0);           // still, until you turn it
+  // Turning the map, or a picked layout's thicker lines, doesn't make it someone else's layout.
+  assert.equal(layoutOf({ ...LAB_DEFAULTS, ...CLUSTERS, orbit: 2, ...LAYOUT_LOOKS.clusters }), 'clusters');
+  assert.deepEqual(FORCE_KEYS, ['gravity', 'rings', 'push', 'pull', 'distance']);
 });
 
 test('the branch light-up starts off, even in a setting saved when it was on', async () => {
