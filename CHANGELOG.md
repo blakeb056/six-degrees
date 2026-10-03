@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-03
+
 ### Added
 - **Download for Mac shows how to open it the first time.** On sixdegreesapp.com, clicking Download
   for Mac now shows the three steps right under the button: drag it into Applications, close
