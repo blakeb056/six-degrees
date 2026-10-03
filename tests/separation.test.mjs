@@ -259,11 +259,35 @@ test('each connection sits level with the people they lead to, so one-to-one lin
   assert.deepEqual(stackColumn([]), []);
 });
 
-test('all the way to easy, the map aims at whoever the most of your connections lead to', async () => {
-  const { mostWaysIn } = await import('../lib/separation.js');
+test('all the way to easy, the map aims at whoever you share the most mutuals with, scanned or not', async () => {
+  const { mostMutuals } = await import('../lib/separation.js');
   const p = (key, waysIn, score, mutuals) => ({ key, waysIn, score, mutuals, routes: [], person: { name: key } });
   const people = [p('strong-one-way', 1, 9.5, 40), p('six-ways', 6, 7.2, 37), p('four-ways', 4, 8.8, 50), p('six-ways-weaker-count', 6, 7.9, 12)];
-  const order = mostWaysIn(people, (x) => x.mutuals, 3).map((x) => x.key);
-  assert.deepEqual(order, ['six-ways', 'six-ways-weaker-count', 'four-ways']);
-  assert.deepEqual(mostWaysIn([], () => 0), []);
+  const order = mostMutuals(people, (x) => x.mutuals, 3).map((x) => x.key);
+  // 50 mutuals beats 40 and 37, though only 4 are drawn: the unscanned ones count.
+  assert.deepEqual(order, ['four-ways', 'strong-one-way', 'six-ways']);
+  // Equal counts: the one with more drawn first. A count lower than the ways drawn is the ways drawn.
+  const tie = [p('two-drawn', 2, 9, 20), p('nine-drawn', 9, 7, 20), p('stale-count', 25, 6, 3)];
+  assert.deepEqual(mostMutuals(tie, (x) => x.mutuals).map((x) => x.key), ['stale-count', 'nine-drawn', 'two-drawn']);
+  assert.deepEqual(mostMutuals([], () => 0), []);
+});
+
+test('mutuals not scanned yet: grey dots on the map, and the person drawn as bright as the share you can see', async () => {
+  const { convergeLayout, GHOST_MAX } = await import('../lib/separation.js');
+  const b = (id, tier) => ({ id, bridge: { id, name: `Bridge ${id}`, tier } });
+  const p = { key: 'k', waysIn: 2, person: { name: 'Target' }, routes: [b('a', 'S'), b('b', 'A')] };
+  const none = convergeLayout(p, 900, false, { cards: true });
+  assert.deepEqual(none.ghosts, []);
+  assert.equal(none.unscanned, 0);
+  assert.equal(none.drawn, 1);
+  const some = convergeLayout(p, 900, false, { cards: true, mutuals: 30 });
+  assert.equal(some.unscanned, 28);
+  assert.equal(some.ghosts.length, 28);
+  assert.ok(Math.abs(some.drawn - 2 / 30) < 1e-9);
+  // Under the connections, inside the map, and the map grows to hold them.
+  assert.ok(some.ghosts.every((g) => g.y > some.bridges[1].y && g.y < some.height));
+  assert.ok(some.height >= none.height);
+  const lots = convergeLayout(p, 900, false, { cards: true, mutuals: 500 });
+  assert.equal(lots.ghosts.length, GHOST_MAX);
+  assert.equal(lots.unscanned, 498);
 });
