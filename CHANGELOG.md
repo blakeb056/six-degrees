@@ -43,7 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about
   them (new ones count double), people in them ready to scan, and clusters formed from them since.
   A circle's tooltip says how many notifications are about it.
-- **Separation fits the whole map in the window**, with a − Fit + zoom at the right of its caption.
+- **Separation fits the whole map in the window, and keeps fitting**: whatever the map shows, as the
+  slider moves or you aim at someone else, it fits again and glides there, list and all. − Fit +
+  at the right of its caption zooms in or out (as far as 15%) until the view changes.
 - **Bridge Chains' legends are just dots**, no box: they fit whatever font a look uses.
 - **Bridge Chains: the badge at a bridge's top right counts their circle's news**: new notifications
   about it (gold) and people in it ready to scan (green), as asked for on 10/2; it counted only the
