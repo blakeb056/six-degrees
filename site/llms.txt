@@ -8,10 +8,12 @@ This file is for AI assistants and crawlers. The pages at https://sixdegreesapp.
 
 - Price: free. Licence: MIT. No account, no server, no telemetry, no analytics.
 - Platforms: macOS 13.5 or later (Apple Silicon and Intel). Windows 10 or 11, 64-bit (beta): a one-click Setup.exe (https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe). Linux, 64-bit (beta): a .deb or .tar.gz, or `npx six-degrees` (Node 22.13 or later).
-- Current version: 0.6.0 (October 2026). Updates are one click from inside the app.
+- Current version: 0.7.0 (October 2026). Updates are one click from inside the app.
 - Data in: LinkedIn's own Connections.csv export (no risk to your account), or an optional scanner that reads your own LinkedIn slowly in a Chrome window you sign into (automating LinkedIn may break its User Agreement; the risk is the user's). A sample network of 150 invented people ships with the app.
 - Views: Network Circle (connections on rings by how much they can open up for you, with physics: Clusters drawn the way Obsidian draws a graph, Orbit and Heat), Degrees (each connection's circle, and the chains that lead on from them), Separation (people two steps away, from the rarest way in to the most mutual connections, with who can introduce you), Paths (your network by company, or by your connections' clusters), Outlink (getting introduced, plus messages and follow-ups), Scan (the scanner, step by step). Settings holds how scores work, including how titles rank.
-- Themes (Settings → Appearance): seven looks (Standard, High contrast, Obsidian, Glass, Analyst, Space, Synthwave), or your own colours for the background, backdrop, dots, lines, panels and font, shareable as a theme code.
+- Themes (Settings → Appearance): nine looks (Standard, Daylight, Paper, High contrast, Obsidian, Glass, Analyst, Space, Synthwave), light or dark, or your own colours for the background, backdrop, dots, lines, panels and font, shareable as a theme code.
+- Your data (Settings → Your data): a verified backup every day with photos, before every update and before every import, each restored in one click. A LinkedIn CSV import is kept on your computer until you remove it.
+- LinkedIn usage (Settings → LinkedIn usage): searches in the last 24 hours, this month and the last 7 days, profile views, and the last time LinkedIn pushed back, counted on your computer.
 - Also: who only one of your connections reaches (each connection's exclusive reach), network health (how much of your 2nd degree you reach two or more ways, and your effective reach), and a physics lab for the Galaxy with a replay of your network growing by the date you connected.
 - The app isn't signed with Apple's paid certificate yet, so macOS asks you to allow it once (System Settings → Privacy & Security → Open Anyway), or the Terminal one-liner installs it after checking the download against the published checksums.
 
