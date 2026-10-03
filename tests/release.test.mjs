@@ -26,9 +26,9 @@ test('the launcher says how it was installed', () => {
   assert.equal(installKind({ SIX_DEGREES_INSTALL: 'npm' }, '/Applications/Six Degrees.app/Contents/Resources/app'), 'npm');
 });
 
-test('an older Mac app is recognised by its path', () => {
-  assert.equal(installKind({}, '/Applications/Six Degrees.app/Contents/Resources/app'), 'mac-app');
-  assert.equal(installKind({}, '/Users/x/.npm/_npx/abc/node_modules/six-degrees'), 'npm');
+test('an older Mac app is recognised by its path, on a Mac', () => {
+  assert.equal(installKind({}, '/Applications/Six Degrees.app/Contents/Resources/app', 'darwin'), 'mac-app');
+  assert.equal(installKind({}, '/Users/x/.npm/_npx/abc/node_modules/six-degrees', 'darwin'), 'npm');
 });
 
 test('each install kind gets its own update line', () => {
