@@ -75,7 +75,7 @@ export default function ScanTrail({ inset }) {
         position: 'absolute', left: 0, top: 0, height: 7, display: 'flex', alignItems: 'center', gap: STEP - 5,
         pointerEvents: shown.on ? 'auto' : 'none', opacity: shown.on ? 1 : 0, textDecoration: 'none',
       }}>
-        {first > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#889', marginRight: 2, fontVariantNumeric: 'tabular-nums' }}>+{first.toLocaleString('en-US')}</span>}
+        {first > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-3, #889)', marginRight: 2, fontVariantNumeric: 'tabular-nums' }}>+{first.toLocaleString('en-US')}</span>}
         {dots.map((i) => {
           const cs = colours();
           const c = cs[i % cs.length];

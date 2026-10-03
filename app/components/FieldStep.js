@@ -14,7 +14,7 @@ import SectorPicker from './settings/SectorPicker';
 import { sectorByKey } from '../../lib/sector-directory';
 import { saveSettings } from '../../lib/settings-client';
 
-const link = { color: '#3498DB' };
+const link = { color: 'var(--sd-blue, #3498DB)' };
 // The card's own colour (3% white on the page's #0a0a1a), made solid so the
 // picks scroll behind the buttons rather than through them.
 const FOOT = '#111121';
@@ -47,9 +47,9 @@ export default function FieldStep({ onDone }) {
 
   return (
     <section aria-labelledby="field-question" data-field-question style={{
-      margin: '8px 0 0', padding: '20px 22px 0', borderRadius: 12, border: LINE, background: 'rgba(255,255,255,0.03)',
+      margin: '8px 0 0', padding: '20px 22px 0', borderRadius: 12, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
     }}>
-      <div style={{ fontSize: 12, color: '#788', textTransform: 'uppercase', letterSpacing: 0.6 }}>Before you scan · optional</div>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #788)', textTransform: 'uppercase', letterSpacing: 0.6 }}>Before you scan · optional</div>
       <h2 id="field-question" style={{ fontSize: 18, fontWeight: 700, margin: '6px 0 4px' }}>What field are you in?</h2>
       <Body style={{ marginTop: 0, marginBottom: 14 }}>
         Pick up to three. Companies in your field count for more when your network is scored, so the people there rank

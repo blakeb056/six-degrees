@@ -15,14 +15,14 @@ import { localPhoto } from '../../lib/photos';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
-const LINE = '1px solid rgba(255,255,255,0.1)';
+const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 
 function Face({ person, size = 36, ring }) {
   const color = TIER[person?.tier] || '#667';
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <div style={{
-        width: size, height: size, borderRadius: '50%', background: color, color: person?.tier === 'S' ? '#000' : '#fff',
+        width: size, height: size, borderRadius: '50%', background: color, color: person?.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.34, fontWeight: 800,
         border: `2px solid ${ring || color}`,
       }}>{initialsFor(person?.name || '?')}</div>
@@ -40,7 +40,7 @@ function Ring({ progress, size = 86, color = '#FF6B35', children }) {
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={5} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.08)" strokeWidth={5} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round"
           strokeDasharray={`${c * Math.min(1, progress)} ${c}`} style={{ transition: 'stroke-dasharray 0.5s ease' }} />
       </svg>
@@ -76,20 +76,20 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
           <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1 }}>{level.level}</div>
         </div>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 13, color: '#dfe6e9' }}>
+          <div style={{ fontSize: 13, color: 'var(--sd-fg-1, #dfe6e9)' }}>
             <b>{quest.points}</b> points · <b>{level.next - quest.points}</b> to level {level.level + 1}
           </div>
-          <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.08)', marginTop: 6, overflow: 'hidden' }}>
+          <div style={{ height: 8, borderRadius: 4, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', marginTop: 6, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${Math.round(level.progress * 100)}%`, background: 'linear-gradient(90deg, #FFD700, #FF6B35)', transition: 'width 0.5s' }} />
           </div>
-          <div style={{ fontSize: 11.5, color: '#8b9a9a', marginTop: 6 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 6 }}>
             Points come from invites you send and people who accept — not from browsing.
           </div>
         </div>
         {[[quest.sentTotal, 'invites sent'], [quest.addedTotal, 'people added'], [quest.clearedStages, 'stages cleared']].map(([n, l]) => (
           <div key={l} style={{ textAlign: 'center', minWidth: 80 }}>
             <div style={{ fontSize: 24, fontWeight: 900 }}>{n}</div>
-            <div style={{ fontSize: 11, color: '#8b9a9a' }}>{l}</div>
+            <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)' }}>{l}</div>
           </div>
         ))}
       </div>
@@ -97,7 +97,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
       {quest.newDoors.length > 0 && (
         <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.06)', fontSize: 13 }}>
           🚪 <b>{quest.newDoors.length} new {quest.newDoors.length === 1 ? 'door' : 'doors'}:</b> people you added through a circle, whose own circle isn&rsquo;t mapped yet.
-          That&rsquo;s the next degree. <Link href="/setup" style={{ color: '#00ff88' }}>Map them on the Scan page →</Link>
+          That&rsquo;s the next degree. <Link href="/setup" style={{ color: 'var(--sd-green, #00ff88)' }}>Map them on the Scan page →</Link>
         </div>
       )}
 
@@ -107,16 +107,16 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
           <h3 style={{ margin: '22px 0 10px', fontSize: 15 }}>Next best moves</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
             {quest.nextMoves.map(({ person, cluster }, i) => (
-              <div key={person.id} style={{ padding: 14, borderRadius: 12, border: `1px solid ${TIER[person.tier]}55`, background: 'rgba(255,255,255,0.03)', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 11, fontWeight: 800, color: '#FF6B35' }}>#{i + 1}</div>
+              <div key={person.id} style={{ padding: 14, borderRadius: 12, border: `1px solid ${TIER[person.tier]}55`, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 11, fontWeight: 800, color: 'var(--sd-orange, #FF6B35)' }}>#{i + 1}</div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <Face person={person} size={44} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{person.name}</div>
-                    <div style={{ fontSize: 11.5, color: '#8b9a9a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{person.headline}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{person.headline}</div>
                   </div>
                 </div>
-                <div style={{ fontSize: 11.5, color: '#aab7b7', margin: '10px 0' }}>
+                <div style={{ fontSize: 11.5, color: 'var(--sd-fg-2, #aab7b7)', margin: '10px 0' }}>
                   via <b style={{ color: TIER[cluster.bridge.tier] }}>{cluster.bridge.name}</b> · their circle {cluster.done}/{cluster.targets.length} this stage
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -133,7 +133,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
 
       {/* 3. clusters */}
       <h3 style={{ margin: '26px 0 4px', fontSize: 15 }}>Circles to work through</h3>
-      <div style={{ fontSize: 12, color: '#8b9a9a', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 12 }}>
         Each is one of your connections and the best people they know, {STAGE_SIZE} at a time. Fill the ring to clear a stage.
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
@@ -141,15 +141,15 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
           const isOpen = open === c.bridge.id;
           return (
             <button key={c.bridge.id} onClick={() => setOpen(isOpen ? null : c.bridge.id)} style={{
-              padding: 12, borderRadius: 12, cursor: 'pointer', textAlign: 'center', color: '#fff',
-              border: isOpen ? '1px solid #FF6B35' : LINE, background: c.complete ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.03)',
+              padding: 12, borderRadius: 12, cursor: 'pointer', textAlign: 'center', color: 'var(--sd-fg-1, #fff)',
+              border: isOpen ? '1px solid #FF6B35' : LINE, background: c.complete ? 'rgba(0,255,136,0.06)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
             }}>
               <Ring progress={c.progress} color={c.complete ? '#00ff88' : '#FF6B35'}>
                 <Face person={c.bridge} size={60} />
               </Ring>
               <div style={{ fontWeight: 700, fontSize: 13, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.bridge.name}</div>
-              <div style={{ fontSize: 11, color: c.complete ? '#00ff88' : '#aab7b7' }}>
+              <div style={{ fontSize: 11, color: c.complete ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-2, #aab7b7)' }}>
                 {c.complete ? 'Circle cleared' : `Stage ${c.stage} of ${c.stages} · ${c.done}/${c.targets.length}`}
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -160,7 +160,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                   }} />
                 ))}
               </div>
-              <div style={{ fontSize: 10.5, color: '#778' }}>
+              <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)' }}>
                 {c.open.S ? `${c.open.S} S · ` : ''}{c.open.A ? `${c.open.A} A · ` : ''}{c.people.length} worth adding{c.added.length ? ` · ★ ${c.added.length} added` : ''}
               </div>
             </button>
@@ -174,27 +174,27 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
             <Face person={expanded.bridge} size={40} />
             <div>
               <div style={{ fontWeight: 800 }}>{expanded.bridge.name}&rsquo;s circle · stage {expanded.stage} of {expanded.stages}</div>
-              <div style={{ fontSize: 12, color: '#aab7b7' }}>Ask {expanded.bridge.name?.split(' ')[0]} for an intro, or invite them directly. Mark each one when it&rsquo;s sent.</div>
+              <div style={{ fontSize: 12, color: 'var(--sd-fg-2, #aab7b7)' }}>Ask {expanded.bridge.name?.split(' ')[0]} for an intro, or invite them directly. Mark each one when it&rsquo;s sent.</div>
             </div>
           </div>
           {expanded.targets.map((p) => {
             const sent = sentIds.has(p.id);
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.05)' }}>
                 <Face person={p} size={34} ring={sent ? '#00ff88' : undefined} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name} <span style={{ color: TIER[p.tier], fontSize: 11 }}>{p.tier}</span></div>
-                  <div style={{ fontSize: 11.5, color: '#8b9a9a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.headline}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.headline}</div>
                 </div>
                 {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
                 {sent
-                  ? <button onClick={() => onUndo(p)} style={{ ...btnGhost, color: '#00ff88' }}>Sent ✓ (undo)</button>
+                  ? <button onClick={() => onUndo(p)} style={{ ...btnGhost, color: 'var(--sd-green, #00ff88)' }}>Sent ✓ (undo)</button>
                   : <button onClick={() => send(p, expanded)} style={btnHot}>Sent · +{XP_SEND[p.tier] || 2}</button>}
               </div>
             );
           })}
           {expanded.added.length > 0 && (
-            <div style={{ marginTop: 10, fontSize: 12, color: '#00ff88' }}>
+            <div style={{ marginTop: 10, fontSize: 12, color: 'var(--sd-green, #00ff88)' }}>
               ★ Added from this circle: {expanded.added.map((a) => a.name).join(', ')}
             </div>
           )}
@@ -211,4 +211,4 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
 }
 
 const btnHot = { padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 12, background: 'linear-gradient(135deg, #FF6B35, #FFD700)', color: '#000' };
-const btnGhost = { padding: '7px 12px', borderRadius: 8, border: LINE, cursor: 'pointer', fontWeight: 600, fontSize: 12, background: 'rgba(255,255,255,0.05)', color: '#dfe6e9', textDecoration: 'none' };
+const btnGhost = { padding: '7px 12px', borderRadius: 8, border: LINE, cursor: 'pointer', fontWeight: 600, fontSize: 12, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #dfe6e9)', textDecoration: 'none' };

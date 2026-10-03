@@ -44,7 +44,7 @@ export default function EmptyState() {
         }}>
           Welcome to Six Degrees
         </h2>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14.5, lineHeight: 1.7, margin: '0 0 28px' }}>
+        <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', fontSize: 14.5, lineHeight: 1.7, margin: '0 0 28px' }}>
           Your network, drawn as a galaxy. Everything stays on this computer.
           Pick how to bring it in — you can switch later.
         </p>
@@ -71,13 +71,13 @@ export default function EmptyState() {
         />
 
         {error && (
-          <div style={{ color: '#ff6b6b', fontSize: 13, marginTop: 18 }}>{error}</div>
+          <div style={{ color: 'var(--sd-red, #ff6b6b)', fontSize: 13, marginTop: 18 }}>{error}</div>
         )}
 
         {/* The new-computer case: a network saved on the old one is brought in from Settings. */}
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, lineHeight: 1.6, margin: '18px 0 0' }}>
+        <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', fontSize: 13, lineHeight: 1.6, margin: '18px 0 0' }}>
           Moving from another computer?{' '}
-          <a href="/settings#data" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          <a href="/settings#data" style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.75)' }}>
             Import your saved copy in Settings → Your data.
           </a>
         </p>
@@ -91,11 +91,11 @@ function Choice({ href, onClick, disabled, primary, badge, title, body }) {
     display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left',
     padding: '16px 18px', borderRadius: 12, marginBottom: 12, textDecoration: 'none',
     cursor: disabled ? 'default' : 'pointer', font: 'inherit',
-    border: primary ? '1px solid rgba(255,215,0,0.45)' : '1px solid rgba(255,255,255,0.12)',
+    border: primary ? '1px solid rgba(255,215,0,0.45)' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
     background: primary
       ? 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(155,89,182,0.14))'
-      : 'rgba(255,255,255,0.03)',
-    color: '#fff',
+      : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+    color: 'var(--sd-fg-1, #fff)',
   };
   const inner = (
     <>
@@ -107,9 +107,9 @@ function Choice({ href, onClick, disabled, primary, badge, title, body }) {
             padding: '3px 8px', borderRadius: 20, background: '#FFD700', color: '#0a0a1a',
           }}>{badge}</span>
         )}
-        <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.4)' }}>→</span>
+        <span style={{ marginLeft: 'auto', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.4)' }}>→</span>
       </div>
-      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{body}</div>
+      <div style={{ fontSize: 13, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', lineHeight: 1.6 }}>{body}</div>
     </>
   );
   return href

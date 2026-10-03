@@ -53,13 +53,13 @@ function SettingsInner() {
   if (IS_DEMO) {
     return (
       <div style={{
-        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
+        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.7)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 12, textAlign: 'center', padding: 24, fontFamily: FONT,
       }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>Not part of the demo</h2>
         <p style={{ margin: 0, fontSize: 13 }}>The public demo includes the Network Circle and Degrees views only.</p>
-        <Link href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
+        <Link href="/" style={{ fontSize: 12, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );
   }
@@ -67,12 +67,12 @@ function SettingsInner() {
   const about = info?.about;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#fff', fontFamily: FONT }}>
+    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: FONT }}>
       <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Link href="/" style={{
-          display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
+          display: 'flex', alignItems: 'center', gap: 6, color: 'var(--sd-fg-3, #888)', textDecoration: 'none',
           fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
-          background: 'rgba(255,255,255,0.06)', border: LINE,
+          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE,
         }}>← Back to Map</Link>
         <h1 style={{
           fontSize: 22, fontWeight: 700, margin: 0,
@@ -82,19 +82,19 @@ function SettingsInner() {
       </header>
 
       <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
-        {error && <Body style={{ color: '#ff7676', marginTop: 16 }}>{error}</Body>}
+        {error && <Body style={{ color: 'var(--sd-red, #ff7676)', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
         <AppearanceSection />
         <Section id="scoring" title="Scores">
           <Body>
             How someone&rsquo;s power score is worked out, and the four things you can change about it:{' '}
-            <a href="#sector" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>your field</a>,{' '}
-            <a href="#tiers" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how tiers are graded</a>,{' '}
-            <a href="#titles" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>how titles rank</a> and{' '}
-            <a href="#companies" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>any company&rsquo;s score</a>.
+            <a href="#sector" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>your field</a>,{' '}
+            <a href="#tiers" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>how tiers are graded</a>,{' '}
+            <a href="#titles" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>how titles rank</a> and{' '}
+            <a href="#companies" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>any company&rsquo;s score</a>.
             A change here rescores everyone. How your network holds together is in{' '}
-            <Link href="/profile?view=insights" style={{ color: '#3498DB', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights</Link>.
+            <Link href="/profile?view=insights" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights</Link>.
           </Body>
           <SectorSection onSaved={saved} />
           <TierSection onSaved={saved} />
@@ -114,7 +114,7 @@ function SettingsInner() {
                 {about.customDataDir ? ' (a folder you chose).' : '.'}
                 {['mac-app', 'windows-app', 'linux-app'].includes(about.kind) && ' Help → Show the Data Folder opens it.'}
               </Body>
-              <Body style={{ fontSize: 12, color: '#667', marginTop: 10 }}>
+              <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 10 }}>
                 Settings are saved with your network, on this computer. Nothing here is sent anywhere.
               </Body>
             </>

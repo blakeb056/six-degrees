@@ -76,7 +76,7 @@ export default function SectorPicker({ sectors, onChange, disabled, suggest }) {
     return (
       <Chip key={key} color={sectorByKey(key).color} on={on} blocked={!on && full} disabled={disabled} title={title}
         onClick={() => toggle(key)}>
-        {label}{note && <span style={{ fontWeight: 400, color: on ? '#dfe7e7' : '#8b9a9a' }}>{note}</span>}
+        {label}{note && <span style={{ fontWeight: 400, color: on ? 'var(--sd-fg-1, #dfe7e7)' : 'var(--sd-fg-3, #8b9a9a)' }}>{note}</span>}
       </Chip>
     );
   };
@@ -84,17 +84,17 @@ export default function SectorPicker({ sectors, onChange, disabled, suggest }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-        <span style={{ fontSize: 13, color: '#8b9a9a' }}>Your picks ({sectors.length} of {MAX_SECTORS}):</span>
-        {!sectors.length && <span style={{ fontSize: 13, color: '#667' }}>none yet</span>}
+        <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>Your picks ({sectors.length} of {MAX_SECTORS}):</span>
+        {!sectors.length && <span style={{ fontSize: 13, color: 'var(--sd-fg-4, #667)' }}>none yet</span>}
         {sectors.map((k) => {
           const s = sectorByKey(k);
           return (
             <button key={k} type="button" disabled={disabled} onClick={() => toggle(k)} aria-label={`Remove ${s.label}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 12.5,
-                fontWeight: 600, color: '#fff', background: `${s.color}33`, border: `1px solid ${s.color}`, cursor: 'pointer',
+                fontWeight: 600, color: 'var(--sd-fg-1, #fff)', background: `${s.color}33`, border: `1px solid ${s.color}`, cursor: 'pointer',
               }}>
-              {s.label} <span aria-hidden="true" style={{ color: '#cfd8d8' }}>×</span>
+              {s.label} <span aria-hidden="true" style={{ color: 'var(--sd-fg-2, #cfd8d8)' }}>×</span>
             </button>
           );
         })}
@@ -102,7 +102,7 @@ export default function SectorPicker({ sectors, onChange, disabled, suggest }) {
 
       {suggest && <Suggestions state={suggest} chip={chip} />}
 
-      <label htmlFor="sector-search" style={{ display: 'block', fontSize: 13, color: '#8b9a9a', margin: '16px 0 6px' }}>
+      <label htmlFor="sector-search" style={{ display: 'block', fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', margin: '16px 0 6px' }}>
         Find a sector
       </label>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -110,8 +110,8 @@ export default function SectorPicker({ sectors, onChange, disabled, suggest }) {
           placeholder="Try dentist, bakery or Stripe"
           autoComplete="off" spellCheck={false}
           style={{
-            flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 7, fontSize: 14, color: '#fff',
-            background: 'rgba(255,255,255,0.05)', border: LINE, outline: 'none',
+            flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 7, fontSize: 14, color: 'var(--sd-fg-1, #fff)',
+            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', border: LINE, outline: 'none',
           }} />
         {query && <Btn onClick={() => setQuery('')}>Clear</Btn>}
       </div>
@@ -142,7 +142,7 @@ export default function SectorPicker({ sectors, onChange, disabled, suggest }) {
                   {chip(g.key, g.label, { title: 'The whole industry: companies its sectors place, or whose name or the well-known list says so' })}
                   <button type="button" aria-expanded={isOpen} aria-controls={`sectors-${g.key}`} onClick={() => flip(g.key)}
                     style={{
-                      padding: '4px 6px', fontSize: 12.5, color: inside ? '#9fd3ff' : '#8b9a9a', background: 'none', border: 'none',
+                      padding: '4px 6px', fontSize: 12.5, color: inside ? 'var(--sd-fg-2, #9fd3ff)' : 'var(--sd-fg-3, #8b9a9a)', background: 'none', border: 'none',
                       cursor: 'pointer',
                     }}>
                     {isOpen ? '▾' : '▸'} {plural(inIndustry.length, 'sector')}{inside ? ` · ${inside} picked` : ''}
@@ -171,8 +171,8 @@ function Chip({ color, on, blocked, disabled, title, onClick, children }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, maxWidth: '100%',
         fontSize: 12.5, fontWeight: 600, textAlign: 'left', cursor: blocked ? 'not-allowed' : 'pointer',
-        color: on ? '#fff' : blocked ? '#556' : '#b8c4c4',
-        background: on ? `${color}33` : 'rgba(255,255,255,0.04)',
+        color: on ? 'var(--sd-fg-1, #fff)' : blocked ? 'var(--sd-fg-5, #556)' : 'var(--sd-fg-2, #b8c4c4)',
+        background: on ? `${color}33` : 'rgba(var(--sd-ink, 255, 255, 255), 0.04)',
         border: on ? `1px solid ${color}` : LINE,
       }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, opacity: blocked ? 0.4 : 1, flexShrink: 0 }} />
@@ -190,7 +190,7 @@ function Suggestions({ state, chip }) {
   if (!state.list.length) return <Body style={note}>None of the list&rsquo;s sectors stands out among the people you&rsquo;ve scanned yet.</Body>;
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 13, color: '#8b9a9a', marginBottom: 6 }}>Suggested from your network</div>
+      <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 6 }}>Suggested from your network</div>
       <div role="group" aria-label="Suggested from your network" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {state.list.map((s) => chip(s.key, s.label, {
           note: `: ${plural(s.people, 'person', 'people')} at ${plural(s.companies, 'company', 'companies')}`,

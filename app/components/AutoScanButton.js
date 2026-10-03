@@ -22,7 +22,7 @@ export default function AutoScanButton({ isMobile = false }) {
   };
   if (mine) {
     return (
-      <Link href="/setup" title="Auto scan is running: see it on the Scan page" style={{ ...style, background: 'rgba(0,255,136,0.15)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.45)' }}>
+      <Link href="/setup" title="Auto scan is running: see it on the Scan page" style={{ ...style, background: 'rgba(0,255,136,0.15)', color: 'var(--sd-green, #00ff88)', border: '1px solid rgba(0,255,136,0.45)' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00ff88' }} />Auto scan
       </Link>
     );
@@ -33,7 +33,7 @@ export default function AutoScanButton({ isMobile = false }) {
       onClick={() => { setStarting(true); startAutoScan().catch(() => setStarting(false)); }}
       disabled={busy}
       title={busy ? 'The scanner is busy: one scan at a time' : 'Start the all-day Auto-Bridge (experimental)'}
-      style={{ ...style, cursor: busy ? 'default' : 'pointer', background: 'rgba(255,255,255,0.04)', color: busy ? '#555' : '#8b9a9a', border: '1px solid rgba(255,215,0,0.25)' }}
+      style={{ ...style, cursor: busy ? 'default' : 'pointer', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: busy ? 'var(--sd-fg-5, #555)' : 'var(--sd-fg-3, #8b9a9a)', border: '1px solid rgba(255,215,0,0.25)' }}
     >
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#556' }} />Auto scan
     </button>

@@ -27,7 +27,7 @@ const ago = (when) => {
 };
 const btn = {
   padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
-  border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#ddd',
+  border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #ddd)',
 };
 
 export default function NoteDetail({ note, connections = [], degree2 = [], onBack, onSelect, onOpenCircle, onShowInSeparation }) {
@@ -40,14 +40,14 @@ export default function NoteDetail({ note, connections = [], degree2 = [], onBac
 
   return (
     <div>
-      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 12, padding: 0, marginBottom: 12 }}>
+      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-3, #aaa)', cursor: 'pointer', fontSize: 12, padding: 0, marginBottom: 12 }}>
         ← Back
       </button>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <span style={{ fontSize: 22 }}>{note?.icon || '📌'}</span>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1.35 }}>{note?.title}</div>
-          <div style={{ fontSize: 11, color: '#777', marginTop: 3 }}>{ago(note?.created_at)}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--sd-fg-1, #fff)', lineHeight: 1.35 }}>{note?.title}</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', marginTop: 3 }}>{ago(note?.created_at)}</div>
         </div>
       </div>
 
@@ -57,26 +57,26 @@ export default function NoteDetail({ note, connections = [], degree2 = [], onBac
             <Avatar person={person} size={44} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 800 }}>{person.name}</div>
-              <div style={{ fontSize: 11.5, color: '#aab', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.headline || person.company || ''}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #aab)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.headline || person.company || ''}</div>
               <div style={{ fontSize: 11.5, fontWeight: 800, color: TIER[tier] || '#aaa', marginTop: 2 }}>
                 {tier ? `${tier}-tier` : 'Not scored yet'}{Number.isFinite(score) ? ` · ${score.toFixed(1)}` : ''}
               </div>
             </div>
           </div>
           {addedBack && (
-            <div style={{ marginTop: 12, fontSize: 12.5, color: '#ddd', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--sd-fg-1, #ddd)', lineHeight: 1.5 }}>
               <b>{person.name.split(' ')[0]}</b> added you back
               {via ? <>. You met through <b style={{ color: TIER[via.tier] || '#fff' }}>{via.name}</b>.</> : '.'}
             </div>
           )}
           {!addedBack && via && (
-            <div style={{ marginTop: 12, fontSize: 12.5, color: '#ddd' }}>
+            <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--sd-fg-1, #ddd)' }}>
               {person.degree === 2 ? 'In the circle of ' : 'You met through '}<b>{via.name}</b>.
             </div>
           )}
           {VALUE[tier] && <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: TIER[tier] }}>{VALUE[tier]}</div>}
           {prestige >= 8 && (
-            <div style={{ marginTop: 6, fontSize: 12, color: '#cfd3e6' }}>Works at a top company{person.company ? `, ${person.company}` : ''} (its score: {prestige}).</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--sd-fg-2, #cfd3e6)' }}>Works at a top company{person.company ? `, ${person.company}` : ''} (its score: {prestige}).</div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>
             <button type="button" style={btn} onClick={() => onSelect?.(person)}>Open {person.name.split(' ')[0]}’s card →</button>
@@ -94,13 +94,13 @@ export default function NoteDetail({ note, connections = [], degree2 = [], onBac
 
       {people.length > 1 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: '#6b7090', textTransform: 'uppercase', marginBottom: 8 }}>Who</div>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--sd-fg-4, #6b7090)', textTransform: 'uppercase', marginBottom: 8 }}>Who</div>
           {people.slice(0, 12).map((p) => (
             <button key={p.id} type="button" onClick={() => onSelect?.(p)} style={{ ...btn, display: 'flex', gap: 10, alignItems: 'center', width: '100%', marginBottom: 6, fontWeight: 600 }}>
               <Avatar person={p} size={26} />
               <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: 'block', color: '#fff' }}>{p.name}</span>
-                <span style={{ display: 'block', fontSize: 10.5, color: '#8a8fa8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.company || p.headline || ''}</span>
+                <span style={{ display: 'block', color: 'var(--sd-fg-1, #fff)' }}>{p.name}</span>
+                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--sd-fg-3, #8a8fa8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.company || p.headline || ''}</span>
               </span>
               <span style={{ fontSize: 11, fontWeight: 800, color: TIER[p.tier] || '#aaa' }}>{p.tier}</span>
             </button>
@@ -109,10 +109,10 @@ export default function NoteDetail({ note, connections = [], degree2 = [], onBac
       )}
 
       {note?.message && (
-        <div style={{ marginTop: 14, fontSize: 12, color: '#999', lineHeight: 1.55 }}>{note.message}</div>
+        <div style={{ marginTop: 14, fontSize: 12, color: 'var(--sd-fg-3, #999)', lineHeight: 1.55 }}>{note.message}</div>
       )}
       {!person && !people.length && (
-        <div style={{ marginTop: 10, fontSize: 11.5, color: '#667' }}>Nothing more on file about this one.</div>
+        <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--sd-fg-4, #667)' }}>Nothing more on file about this one.</div>
       )}
     </div>
   );

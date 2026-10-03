@@ -237,10 +237,10 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       {/* The replay's date, written by the scene as it plays. */}
       <div ref={stampRef} style={{
         position: 'absolute', bottom: 56, left: '50%', transform: 'translateX(-50%)', display: 'none',
-        padding: '6px 14px', borderRadius: 16, background: 'rgba(10,15,30,0.8)', border: '1px solid rgba(255,255,255,0.12)',
-        color: '#e6edf5', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
+        padding: '6px 14px', borderRadius: 16, background: 'var(--sd-surface, rgba(10,15,30,0.8))', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
+        color: 'var(--sd-fg-1, #e6edf5)', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
       }} />
-      <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: '#888', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
         {scheme.legend.map(([label, color]) => (
           <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
@@ -268,7 +268,7 @@ function createTooltip() {
     .style('background', 'rgba(0,0,0,0.92)').style('color', '#fff')
     .style('padding', '8px 12px').style('border-radius', '6px').style('font-size', '12px')
     .style('pointer-events', 'none').style('opacity', 0).style('z-index', 1000)
-    .style('border', '1px solid rgba(255,255,255,0.2)').style('max-width', '280px');
+    .style('border', '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.2)').style('max-width', '280px');
 }
 
 // A hovered dot eases up to 1.5 times its size and back, rather than jumping.
@@ -648,20 +648,51 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }
   dotRings.each(drawDotRing);
 
-  const node = g.append('g').selectAll('circle').data(nodes).join('circle')
+  // How the theme draws a dot (lib/themes.js DOTS). Droplet: a drop of glass,
+  // lit from the top left and clear at the rim, with a fine edge (Glass).
+  // Flat: one plain fill and quiet names, as Obsidian draws its notes. Glow: a
+  // soft light round each (Space, Synthwave; up to 6,000 dots). Solid otherwise.
+  const dotStyle = MAP_LOOK.dots;
+  const defs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
+  const drops = new Map();
+  const dotFill = (colour) => {
+    if (dotStyle !== 'droplet' || !colour || !/^#[0-9a-f]{6}$/i.test(colour)) return colour;
+    if (!drops.has(colour)) {
+      if (drops.size >= 64) return colour;   // a map with more colours than that (Heat): plain fills
+      const id = `drop-${drops.size}`;
+      const grad = defs.append('radialGradient').attr('id', id).attr('cx', '50%').attr('cy', '50%').attr('r', '50%').attr('fx', '34%').attr('fy', '30%');
+      grad.append('stop').attr('offset', '0').attr('stop-color', '#ffffff').attr('stop-opacity', 0.95);
+      grad.append('stop').attr('offset', '0.22').attr('stop-color', colour).attr('stop-opacity', 0.9);
+      grad.append('stop').attr('offset', '0.72').attr('stop-color', colour).attr('stop-opacity', 0.5);
+      grad.append('stop').attr('offset', '1').attr('stop-color', colour).attr('stop-opacity', 0.12);
+      drops.set(colour, `url(#${id})`);
+    }
+    return drops.get(colour);
+  };
+  const nodeG = g.append('g');
+  if (dotStyle === 'glow' && nodes.length <= 6000) {
+    if (!defs.select('#dot-glow').size()) {
+      const f = defs.append('filter').attr('id', 'dot-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+      f.append('feGaussianBlur').attr('stdDeviation', 2.2).attr('result', 'b');
+      f.append('feMerge').html('<feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>');
+    }
+    nodeG.attr('filter', 'url(#dot-glow)');
+  }
+  const node = nodeG.selectAll('circle').data(nodes).join('circle')
     .attr('class', 'gn')
     .attr('r', nodeRadius)
-    .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : colourOf(d))
-    .attr('fill-opacity', d => (d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
+    .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)))
+    .attr('fill-opacity', d => (dotStyle === 'droplet' ? 1 : d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
     .attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
       if (d.is_catalyst) return '#00ff88';
-      return 'none';
+      return dotStyle === 'droplet' ? colourOf(d) : 'none';
     })
+    .attr('stroke-opacity', d => (dotStyle === 'droplet' && d.id !== CENTER_ID && !d.is_catalyst ? 0.45 : 1))
     .attr('stroke-width', d => {
       if (d.id === CENTER_ID) return 3;
       if (d.is_catalyst) return 2.5;
-      return 0;
+      return dotStyle === 'droplet' ? 0.7 : 0;
     })
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
@@ -758,8 +789,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('font-size', d => d.id === CENTER_ID ? 14 : hubs.has(d.id) ? Math.max(12, Math.min(22, nodeRadius(d) * 0.5)) : 10)
       .attr('font-weight', d => d.id === CENTER_ID || hubs.has(d.id) ? 700 : 500)
       .attr('fill', d => {
-        if (d.id === CENTER_ID) return '#fff';
-        if (d.is_catalyst) return '#00ff88';
+        if (d.id === CENTER_ID) return MAP_LOOK.text;
+        if (dotStyle === 'flat') return MAP_LOOK.light ? '#4d5566' : '#b9bec8';   // Obsidian's grey names
+        if (d.is_catalyst) return MAP_LOOK.light ? '#0b7a47' : '#00ff88';
         return colourOf(d);
       })
       .attr('text-anchor', 'middle').attr('dy', d => nodeRadius(d) + 14)
@@ -937,7 +969,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     colourOf = next.of;
     heatFn = next.heat || null;
     drawHeat();
-    node.attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : colourOf(d));
+    node.attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)));
     link.attr('stroke', lineColour);
     drawLabels();
     showBorn();

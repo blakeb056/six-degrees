@@ -55,7 +55,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                     <div style={{
                       width: 56, height: 56, borderRadius: '50%', margin: '0 auto',
                       border: `3px solid ${TIER_COLORS[cl.bridge.tier]}`,
-                      overflow: 'hidden', background: '#1a1a2e',
+                      overflow: 'hidden', background: 'var(--sd-card, #1a1a2e)',
                       boxShadow: hoveredId === cl.bridge.id ? `0 0 20px ${TIER_COLORS[cl.bridge.tier]}60` : `0 0 10px ${TIER_COLORS[cl.bridge.tier]}20`,
                       transition: 'box-shadow 0.2s',
                     }}>
@@ -63,12 +63,12 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                         <img src={localPhoto(cl.bridge.profile_image_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: TIER_COLORS[cl.bridge.tier], color: cl.bridge.tier === 'S' ? '#000' : '#fff', fontSize: 20, fontWeight: 800 }}>
+                          background: TIER_COLORS[cl.bridge.tier], color: cl.bridge.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)', fontSize: 20, fontWeight: 800 }}>
                           {cl.bridge.name?.charAt(0)}
                         </div>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginTop: 4 }}>{cl.bridge.name}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sd-fg-1, #fff)', marginTop: 4 }}>{cl.bridge.name}</div>
                     <div style={{ fontSize: 9, color: TIER_COLORS[cl.bridge.tier], fontWeight: 600 }}>
                       {cl.bridge.tier}-Tier · {cl.total} connections · {cl.sCount > 0 ? cl.sCount + 'S ' : ''}{cl.aCount > 0 ? cl.aCount + 'A' : ''}
                     </div>
@@ -106,7 +106,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                                     onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.background = TIER_COLORS[tier]; }} />
                                 ) : (
                                   <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: size * 0.4, fontWeight: 700, color: tier === 'S' ? '#000' : '#fff' }}>
+                                    fontSize: size * 0.4, fontWeight: 700, color: tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)' }}>
                                     {p.name?.charAt(0)}
                                   </span>
                                 )}
@@ -118,8 +118,8 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                                 }}>
                                   <div style={{
                                     fontSize: isHov ? 10 : 8, fontWeight: 600,
-                                    color: isHov ? '#fff' : '#aaa',
-                                    background: isHov ? 'rgba(0,0,0,0.85)' : 'transparent',
+                                    color: isHov ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #aaa)',
+                                    background: isHov ? 'var(--sd-surface, rgba(0,0,0,0.85))' : 'transparent',
                                     padding: isHov ? '3px 8px' : 0, borderRadius: 4,
                                   }}>
                                     {p.name?.split(' ')[0]}
@@ -221,7 +221,7 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                         ) : (
                           <span style={{
                             fontSize: size * 0.4, fontWeight: 700,
-                            color: tier === 'S' ? '#000' : '#fff',
+                            color: tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                           }}>{c.name?.charAt(0)}</span>
                         )}
                       </div>
@@ -235,8 +235,8 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                         }}>
                           <div style={{
                             fontSize: tier === 'S' ? 9 : 10, fontWeight: 600,
-                            color: isHovered ? '#fff' : '#aaa',
-                            background: isHovered ? 'rgba(0,0,0,0.85)' : 'transparent',
+                            color: isHovered ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #aaa)',
+                            background: isHovered ? 'var(--sd-surface, rgba(0,0,0,0.85))' : 'transparent',
                             padding: isHovered ? '3px 8px' : 0,
                             borderRadius: 4,
                           }}>
@@ -249,8 +249,8 @@ export default function RingsView({ connections, degree2 = [], onSelect, mode })
                           </div>
                           {isHovered && c.headline && (
                             <div style={{
-                              fontSize: 8, color: '#888', marginTop: 2,
-                              background: 'rgba(0,0,0,0.85)', padding: '2px 6px', borderRadius: 3,
+                              fontSize: 8, color: 'var(--sd-fg-3, #888)', marginTop: 2,
+                              background: 'rgba(var(--sd-shade, 0, 0, 0), 0.85)', padding: '2px 6px', borderRadius: 3,
                               maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis',
                             }}>{c.headline.substring(0, 40)}</div>
                           )}

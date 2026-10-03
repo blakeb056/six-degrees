@@ -11,15 +11,15 @@ import Link from 'next/link';
 import { IS_DEMO } from '../../lib/demo';
 
 const MODES = [
-  { key: 'network', label: 'Network Circle', short: 'Circle', on: { background: '#fff', color: '#000' }, off: { background: 'transparent', color: '#888' } },
-  { key: 'degrees', label: 'Degrees', on: { background: 'linear-gradient(135deg, #FFD700, #FF6B35)', color: '#000' }, off: { background: 'rgba(255,255,255,0.12)', color: '#fff' } },
-  { key: 'separation', label: 'Separation', on: { background: 'linear-gradient(135deg, #00E5FF, #FFD700 55%, #FF7043)', color: '#000' }, off: { background: 'rgba(255,255,255,0.12)', color: '#fff' } },
+  { key: 'network', label: 'Network Circle', short: 'Circle', on: { background: '#fff', color: '#000' }, off: { background: 'transparent', color: 'var(--sd-fg-3, #888)' } },
+  { key: 'degrees', label: 'Degrees', on: { background: 'linear-gradient(135deg, #FFD700, #FF6B35)', color: '#000' }, off: { background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', color: 'var(--sd-fg-1, #fff)' } },
+  { key: 'separation', label: 'Separation', on: { background: 'linear-gradient(135deg, #00E5FF, #FFD700 55%, #FF7043)', color: '#000' }, off: { background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', color: 'var(--sd-fg-1, #fff)' } },
 ];
 const PAGES = [
-  { key: 'paths', href: '/paths', label: 'Paths', color: '#00ff88', on: 'linear-gradient(135deg, #00ff88, #3498DB)', demo: true },
+  { key: 'paths', href: '/paths', label: 'Paths', color: 'var(--sd-green, #00ff88)', on: 'linear-gradient(135deg, #00ff88, #3498DB)', demo: true },
   // Social is part of Outlink now (Messages & follow-ups); /social forwards there.
-  { key: 'outlink', href: '/queue', label: 'Outlink', color: '#FF6B35', on: 'linear-gradient(135deg, #FF6B35, #FFD700)', own: true },
-  { key: 'scan', href: '/setup', label: 'Scan', color: '#666', on: 'linear-gradient(135deg, #00ff88, #1abc9c)', own: true },
+  { key: 'outlink', href: '/queue', label: 'Outlink', color: 'var(--sd-orange, #FF6B35)', on: 'linear-gradient(135deg, #FF6B35, #FFD700)', own: true },
+  { key: 'scan', href: '/setup', label: 'Scan', color: 'var(--sd-fg-4, #666)', on: 'linear-gradient(135deg, #00ff88, #1abc9c)', own: true },
 ];
 
 /**
@@ -33,7 +33,7 @@ export default function AppTabs({ active, isMobile = false, csvMode = false, onM
   const pad = isMobile ? '6px 10px' : '8px 16px';
   const base = { padding: pad, borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600, textDecoration: 'none' };
   return (
-    <div id="main-tabs" style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+    <div id="main-tabs" data-glass-panel="bar" style={{ display: 'flex', gap: isMobile ? 2 : 4, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', borderRadius: 8, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
       {MODES.map((m) => {
         const style = { ...base, cursor: 'pointer', ...(active === m.key ? m.on : m.off) };
         const label = isMobile && m.short ? m.short : m.label;
@@ -47,7 +47,7 @@ export default function AppTabs({ active, isMobile = false, csvMode = false, onM
         return (
           <Link key={p.key} href={p.href} title={p.title} aria-current={on ? 'page' : undefined} style={{
             ...base, display: 'flex', alignItems: 'center', gap: 4,
-            background: on ? p.on : 'rgba(255,255,255,0.06)', color: on ? '#000' : p.color,
+            background: on ? p.on : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: on ? '#000' : p.color,
           }}>
             {p.label}{p.badge && <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>{p.badge}</span>}
           </Link>

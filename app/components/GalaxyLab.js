@@ -37,15 +37,15 @@ const DISPLAY = [
   { key: 'lines', label: 'Link thickness', min: 0, max: 20, step: 0.1, fmt: (v) => `${v.toFixed(1)}×` },
 ];
 
-const heading = { fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, margin: '12px 0 6px', textTransform: 'uppercase' };
-const small = { fontSize: 10, color: '#667', lineHeight: 1.4 };
+const heading = { fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, margin: '12px 0 6px', textTransform: 'uppercase' };
+const small = { fontSize: 10, color: 'var(--sd-fg-4, #667)', lineHeight: 1.4 };
 
 function Slider({ spec, value }) {
   return (
     <label title={spec.hint} style={{ display: 'block', marginBottom: 7 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#aab' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--sd-fg-3, #aab)' }}>
         <span>{spec.label}</span>
-        <span style={{ color: value === LAB_DEFAULTS[spec.key] ? '#556' : '#cfe6f7', fontVariantNumeric: 'tabular-nums' }}>{spec.fmt(value)}</span>
+        <span style={{ color: value === LAB_DEFAULTS[spec.key] ? 'var(--sd-fg-5, #556)' : 'var(--sd-fg-1, #cfe6f7)', fontVariantNumeric: 'tabular-nums' }}>{spec.fmt(value)}</span>
       </div>
       <input
         type="range" min={spec.min} max={spec.max} step={spec.step} value={value}
@@ -62,9 +62,9 @@ function Choice({ options, value, onPick }) {
       {options.map(([v, label]) => (
         <button key={v} onClick={() => onPick(v)} aria-pressed={value === v} style={{
           flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
-          border: value === v ? '1px solid rgba(52,152,219,0.6)' : '1px solid rgba(255,255,255,0.08)',
-          background: value === v ? 'rgba(52,152,219,0.18)' : 'rgba(255,255,255,0.03)',
-          color: value === v ? '#cfe6f7' : '#888',
+          border: value === v ? '1px solid rgba(52,152,219,0.6)' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)',
+          background: value === v ? 'rgba(52,152,219,0.18)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+          color: value === v ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #888)',
         }}>{label}</button>
       ))}
     </div>
@@ -76,7 +76,7 @@ export function NamesSwitch() {
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
   return (
     <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Names</div>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Names</div>
       <Choice value={lab.labels} options={[[true, 'On'], [false, 'Off']]} onPick={(v) => setLab({ labels: v })} />
     </div>
   );
@@ -122,8 +122,8 @@ export default function GalaxyLab() {
   const still = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
 
   return (
-    <div style={{ marginBottom: 18, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#dde' }}>Physics</div>
+    <div style={{ marginBottom: 18, borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)', paddingTop: 12 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--sd-fg-1, #dde)' }}>Physics</div>
       <div style={{ ...small, marginTop: 3 }}>The forces that lay the Galaxy out. Everything here moves it in place.</div>
 
           <div style={heading}>Names</div>
@@ -136,7 +136,7 @@ export default function GalaxyLab() {
             onKeyDown={(e) => { if (e.key === 'Enter') setClock({ fly: clock.fly + 1 }); }}
             style={{
               width: '100%', boxSizing: 'border-box', padding: '6px 9px', borderRadius: 6, fontSize: 11.5,
-              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.25)', color: '#dde',
+              border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.25)', color: 'var(--sd-fg-1, #dde)',
             }}
           />
           {clock.find.trim().length >= 2 && (
@@ -161,7 +161,7 @@ export default function GalaxyLab() {
 
           <button onClick={fit} title="Zoom so everyone on the map is on screen" style={{
             width: '100%', padding: '5px 10px', marginBottom: 4, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-            border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aab',
+            border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-3, #aab)',
           }}>⤢ Fit everyone on screen</button>
 
           <div style={heading}>Forces</div>
@@ -173,9 +173,9 @@ export default function GalaxyLab() {
 
           <div style={heading}>Display</div>
           {DISPLAY.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
-          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Size dots by</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Size dots by</div>
           <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['links', 'Links'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
-          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Colour by</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Colour by</div>
           <Choice
             value={lab.colourBy}
             options={[['tier', 'Tier'], ['heat', 'Heat'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
@@ -191,10 +191,10 @@ export default function GalaxyLab() {
               Warmth comes from the Social tab: import your LinkedIn export there first. Until then it&rsquo;s by tier.
             </div>
           )}
-          <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
           <Choice value={lab.names === 'all' ? 'all' : 'key'} options={[['key', 'Hubs, S, catalysts'], ['all', 'All 1st']]} onPick={(v) => setLab({ names: v })} />
           <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>Zoomed out, only the hubs keep their names.</div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#aab', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--sd-fg-3, #aab)', cursor: 'pointer' }}>
             <input type="checkbox" checked={lab.branch} onChange={(e) => setLab({ branch: e.target.checked })} style={{ accentColor: '#3498DB' }} />
             Light up a branch on hover
           </label>
@@ -205,15 +205,15 @@ export default function GalaxyLab() {
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                 <button onClick={() => (clock.playing ? pause() : play())} style={{
                   padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: '#cfe6f7',
+                  border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
                 }}>{clock.playing ? '❚❚ Pause' : '▶ Replay'}</button>
                 {clock.at != null && (
                   <button onClick={stopReplay} style={{
                     padding: '5px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                    border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aaa',
+                    border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-3, #aaa)',
                   }}>Show all</button>
                 )}
-                <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#aab', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--sd-fg-3, #aab)', fontVariantNumeric: 'tabular-nums' }}>
                   {month(clock.at ?? clock.max)}
                 </span>
               </div>
@@ -238,9 +238,9 @@ export default function GalaxyLab() {
               <div style={{ display: 'flex', justifyContent: 'space-between', ...small }}>
                 <span>{month(clock.min)}</span><span>{month(clock.max)}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#aab', margin: '8px 0 4px' }}>Length</div>
+              <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', margin: '8px 0 4px' }}>Length</div>
               <Choice value={lab.speed} options={[[5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '1 min']]} onPick={(v) => setLab({ speed: v })} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#aab', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--sd-fg-3, #aab)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={lab.loop} onChange={(e) => setLab({ loop: e.target.checked })} style={{ accentColor: '#3498DB' }} />
                 Loop
               </label>
@@ -252,7 +252,7 @@ export default function GalaxyLab() {
                 <button disabled={!!busy} onClick={() => run('video', recordReplay)} style={{
                   marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                   cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(231,76,60,0.5)',
-                  background: 'rgba(231,76,60,0.12)', color: '#f5b7b1',
+                  background: 'rgba(231,76,60,0.12)', color: 'var(--sd-fg-2, #f5b7b1)',
                 }}>{busy === 'video' ? '● Recording…' : '● Record the replay as a video'}</button>
               )}
             </>
@@ -268,8 +268,8 @@ export default function GalaxyLab() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
               {layouts.map((l) => (
                 <span key={l.name} style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 12, border: '1px solid rgba(52,152,219,0.4)', background: 'rgba(52,152,219,0.1)' }}>
-                  <button onClick={() => applyLayout(l.name)} style={{ padding: '3px 4px 3px 9px', border: 'none', background: 'none', color: '#cfe6f7', fontSize: 10.5, cursor: 'pointer' }}>{l.name}</button>
-                  <button onClick={() => forgetLayout(l.name)} aria-label={`Forget ${l.name}`} title="Forget this layout" style={{ padding: '3px 8px 3px 3px', border: 'none', background: 'none', color: '#667', fontSize: 11, cursor: 'pointer' }}>×</button>
+                  <button onClick={() => applyLayout(l.name)} style={{ padding: '3px 4px 3px 9px', border: 'none', background: 'none', color: 'var(--sd-fg-1, #cfe6f7)', fontSize: 10.5, cursor: 'pointer' }}>{l.name}</button>
+                  <button onClick={() => forgetLayout(l.name)} aria-label={`Forget ${l.name}`} title="Forget this layout" style={{ padding: '3px 8px 3px 3px', border: 'none', background: 'none', color: 'var(--sd-fg-4, #667)', fontSize: 11, cursor: 'pointer' }}>×</button>
                 </span>
               ))}
             </div>
@@ -277,27 +277,27 @@ export default function GalaxyLab() {
           <form onSubmit={(e) => { e.preventDefault(); saveLayout(name); setName(''); }} style={{ display: 'flex', gap: 4 }}>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name this layout" maxLength={40} style={{
               flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 6, fontSize: 11,
-              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.25)', color: '#dde',
+              border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.25)', color: 'var(--sd-fg-1, #dde)',
             }} />
             <button type="submit" disabled={!name.trim()} style={{
               padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default',
-              border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: name.trim() ? '#cfe6f7' : '#667',
+              border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: name.trim() ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-4, #667)',
             }}>Save</button>
           </form>
 
           <div style={heading}>Share</div>
           <button disabled={!!busy} onClick={() => run('picture', savePicture)} style={{
             width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: busy ? 'default' : 'pointer',
-            border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: '#cfe6f7',
+            border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
           }}>{busy === 'picture' ? 'Saving…' : 'Save a picture of the Galaxy'}</button>
           <div style={{ ...small, marginTop: 4 }}>
             A PNG of what&rsquo;s on screen, at twice the size. It shows real names, so check it before you post it.
           </div>
-          {note && <div style={{ ...small, color: '#e67e73', marginTop: 4 }}>{note}</div>}
+          {note && <div style={{ ...small, color: 'var(--sd-red, #e67e73)', marginTop: 4 }}>{note}</div>}
 
           <button onClick={() => { stopReplay(); setClock({ find: '' }); setLab(null); }} style={{
             marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-            border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aaa',
+            border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-3, #aaa)',
           }}>Reset to today&rsquo;s layout</button>
     </div>
   );

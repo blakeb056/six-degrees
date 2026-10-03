@@ -22,12 +22,13 @@ import StaleServerBanner from './components/StaleServerBanner';
 import ScanStatusBar from './components/ScanStatusBar';
 import SocialAutoSync from './components/SocialAutoSync';
 import ThemeLoader from './components/ThemeLoader';
+import LiquidGlass from './components/LiquidGlass';
 
-const THEME_FIRST = `try{var t=JSON.parse(localStorage.getItem('six-degrees-theme-vars')||'null');if(t&&t.vars){var r=document.documentElement;for(var k in t.vars){var v=String(t.vars[k]);if(/^--sd-[a-z0-9-]+$/.test(k)&&!/[;{}<>]/.test(v))r.style.setProperty(k,v)}var a=t.attrs||{};if(/^[a-z]+$/.test(a.theme||''))r.dataset.theme=a.theme;if(/^[a-z]+$/.test(a.backdrop||''))r.dataset.backdrop=a.backdrop}}catch(e){}`;
+const THEME_FIRST = `try{var t=JSON.parse(localStorage.getItem('six-degrees-theme-vars')||'null');if(t&&t.vars){var r=document.documentElement;for(var k in t.vars){var v=String(t.vars[k]);if(/^--sd-[a-z0-9-]+$/.test(k)&&!/[;{}<>]/.test(v))r.style.setProperty(k,v)}var a=t.attrs||{};['theme','backdrop','mode','buttons','dots'].forEach(function(n){if(/^[a-z]+$/.test(a[n]||''))r.dataset[n]=a[n]});r.style.colorScheme=a.mode==='light'?'light':'dark'}}catch(e){}`;
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-backdrop="none" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-backdrop="none" data-mode="dark" data-buttons="soft" data-dots="solid" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         {/* The theme (lib/theme-store.js), on the page before it paints. Only
             --sd- variables, and only values with nothing that could end one. */}
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
       </head>
       <body style={{ margin: 0, padding: 0, background: 'var(--sd-bg, #0a0a1a)' }}>
         <ThemeLoader />
+        <LiquidGlass />
         <UserProvider>
           {children}
           {/* Says so when the files on disk have moved past what this server

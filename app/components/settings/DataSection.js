@@ -50,15 +50,15 @@ async function answer(res, fallback) {
 }
 
 const row = { display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' };
-const small = { fontSize: 12, color: '#667', marginTop: 10 };
-const subhead = { fontSize: 14, fontWeight: 650, margin: '26px 0 4px', color: '#e8e8ee' };
-const check = { display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 12, fontSize: 13, color: '#c8d0d0', lineHeight: 1.5, cursor: 'pointer' };
+const small = { fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 10 };
+const subhead = { fontSize: 14, fontWeight: 650, margin: '26px 0 4px', color: 'var(--sd-fg-1, #e8e8ee)' };
+const check = { display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 12, fontSize: 13, color: 'var(--sd-fg-2, #c8d0d0)', lineHeight: 1.5, cursor: 'pointer' };
 
 function Fact({ label, children }) {
   return (
     <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', padding: '7px 0', borderTop: LINE, fontSize: 13.5 }}>
-      <span style={{ color: '#8b9a9a' }}>{label}</span>
-      <span style={{ color: '#e8e8ee', textAlign: 'right' }}>{children}</span>
+      <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{label}</span>
+      <span style={{ color: 'var(--sd-fg-1, #e8e8ee)', textAlign: 'right' }}>{children}</span>
     </div>
   );
 }
@@ -286,14 +286,14 @@ export default function DataSection() {
       </div>
 
       {backups.length > 0 && (
-        <details style={{ marginTop: 10, fontSize: 13, color: '#8b9a9a' }}>
+        <details style={{ marginTop: 10, fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>
           <summary style={{ cursor: 'pointer' }}>The backups</summary>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '6px 14px', marginTop: 8 }}>
             {backups.map((b) => (
               <div key={b.name} style={{ display: 'contents' }}>
-                <span style={{ wordBreak: 'break-all', color: '#c8d0d0' }}>
+                <span style={{ wordBreak: 'break-all', color: 'var(--sd-fg-2, #c8d0d0)' }}>
                   {b.name}{b.folder ? '/' : ''}
-                  <span style={{ color: '#667' }}> · {b.folder ? 'its photos and files' : BACKUP_KIND[b.kind] || b.kind}</span>
+                  <span style={{ color: 'var(--sd-fg-4, #667)' }}> · {b.folder ? 'its photos and files' : BACKUP_KIND[b.kind] || b.kind}</span>
                 </span>
                 <span>{when(b.modifiedAt)}</span>
                 <span style={{ textAlign: 'right' }}>{size(b.bytes)}</span>
@@ -336,7 +336,7 @@ export default function DataSection() {
         <Btn primary onClick={exportNow} disabled={!!busy || restarting || info.people === 0}>
           {busy === 'export' ? 'Saving…' : 'Save a copy of my network'}
         </Btn>
-        {info.people === 0 && <span style={{ fontSize: 13, color: '#8b9a9a' }}>There’s no network here to save yet.</span>}
+        {info.people === 0 && <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>There’s no network here to save yet.</span>}
       </div>
       {exportNote && <Status tone={exportNote.tone}>{exportNote.text}</Status>}
       <Body style={small}>
@@ -361,7 +361,7 @@ export default function DataSection() {
             {' '}Your LinkedIn search budget and any pause on scanning are kept.
           </div>
           {pending.error && (
-            <div style={{ color: '#ff7676', marginTop: 6 }}>
+            <div style={{ color: 'var(--sd-red, #ff7676)', marginTop: 6 }}>
               The last try stopped: {pending.error.replace(/\.$/, '')}. It tries again the next time Six Degrees starts.
             </div>
           )}
@@ -396,7 +396,7 @@ export default function DataSection() {
           <input ref={picker} type="file" accept=".sixdegrees" onChange={choose} style={{ display: 'none' }} />
           <div style={row}>
             <Btn onClick={() => picker.current?.click()} disabled={!!busy}>Choose a file…</Btn>
-            {file && <span style={{ fontSize: 13, color: '#c8d0d0', wordBreak: 'break-all' }}>{file.name} · {size(file.size)}</span>}
+            {file && <span style={{ fontSize: 13, color: 'var(--sd-fg-2, #c8d0d0)', wordBreak: 'break-all' }}>{file.name} · {size(file.size)}</span>}
           </div>
           {tooBig && (
             <Status tone="bad">

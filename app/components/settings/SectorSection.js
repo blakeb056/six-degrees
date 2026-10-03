@@ -154,13 +154,13 @@ export default function SectorSection({ onSaved } = {}) {
             suggest={suggest} />
 
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-            <span style={{ fontSize: 13, color: '#8b9a9a' }}>How much:</span>
+            <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>How much:</span>
             {Object.keys(SECTOR_BONUS).map((s) => (
               <button key={s} type="button" aria-pressed={draft.strength === s} disabled={saving}
                 onClick={() => change({ ...draft, strength: s })}
                 style={{
                   padding: '5px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                  color: draft.strength === s ? '#fff' : '#8b9a9a',
+                  color: draft.strength === s ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #8b9a9a)',
                   background: draft.strength === s ? 'rgba(52,152,219,0.25)' : 'transparent', border: LINE,
                 }}>
                 {STRENGTH_LABEL[s]} · +{SECTOR_BONUS[s]}
@@ -183,9 +183,9 @@ export default function SectorSection({ onSaved } = {}) {
           </div>
           {result && <Status tone={result.tone}>{result.text}</Status>}
 
-          <ul style={{ margin: '16px 0 0', paddingLeft: 18, fontSize: 12.5, color: '#778', lineHeight: 1.7 }}>
+          <ul style={{ margin: '16px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.7 }}>
             <li>Tiers rank how reachable someone is through your network, not the people themselves.</li>
-            <li>A company score you set on <a href="#companies" style={{ color: '#3498DB' }}>Company scores</a>, below, always wins. Your sector never changes it.</li>
+            <li>A company score you set on <a href="#companies" style={{ color: 'var(--sd-blue, #3498DB)' }}>Company scores</a>, below, always wins. Your sector never changes it.</li>
             <li>If you scan highest tier first, people in your sectors come up sooner. Scanning newest first, the default, doesn&rsquo;t go by tier.</li>
             <li>
               An industry includes its sectors. It counts a company in any of its sectors (Healthcare &amp; Biotech counts a
@@ -204,7 +204,7 @@ export default function SectorSection({ onSaved } = {}) {
               Staffing, Smith CPA), and so does a kind of firm in a headline (staffing agency, law firm, SaaS).
             </li>
             {onScreen && (
-              <li style={{ color: '#FFD700' }}>
+              <li style={{ color: 'var(--sd-gold, #FFD700)' }}>
                 {onScreen === 'sample' ? 'The sample network' : 'The CSV import'} open in this window isn&rsquo;t changed by this, and
                 isn&rsquo;t counted in the suggestions. Your sector applies to networks you&rsquo;ve scanned.
               </li>
@@ -233,7 +233,7 @@ function savedLine(focus, effect) {
 function Preview({ preview, draft }) {
   if (!preview) return null;
   if (preview.key !== focusFingerprint(draft)) return null;
-  const box = { marginTop: 12, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.6, border: LINE, background: 'rgba(255,255,255,0.03)', color: '#cfd8d8' };
+  const box = { marginTop: 12, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.6, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', color: 'var(--sd-fg-2, #cfd8d8)' };
   if (preview.loading) return <div style={box} aria-live="polite">Working out what would change…</div>;
   if (preview.error) return <Status tone="bad">{preview.error}</Status>;
   if (!preview.scored) {
@@ -247,13 +247,13 @@ function Preview({ preview, draft }) {
   return (
     <div style={box} aria-live="polite">
       <div>
-        <b style={{ color: '#fff' }}>If you save:</b> {cos ? `${cos}.` : 'No company changes score.'} {tierLine(preview.up, preview.down, false)}
+        <b style={{ color: 'var(--sd-fg-1, #fff)' }}>If you save:</b> {cos ? `${cos}.` : 'No company changes score.'} {tierLine(preview.up, preview.down, false)}
       </div>
       {preview.examples?.length > 0 && (
         <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 12.5 }}>
           {preview.examples.map((e, n) => (
             <span key={n} title={e.company || undefined}>
-              {e.name}{e.degree ? <span style={{ color: '#667' }}> ({DEGREE[e.degree] || `${e.degree}th`})</span> : null}{' '}
+              {e.name}{e.degree ? <span style={{ color: 'var(--sd-fg-4, #667)' }}> ({DEGREE[e.degree] || `${e.degree}th`})</span> : null}{' '}
               <b style={{ color: TIER_COLORS_CLASSIC[e.from] || '#889' }}>{e.from || '–'}</b>
               {' → '}
               <b style={{ color: TIER_COLORS_CLASSIC[e.to] || '#889' }}>{e.to}</b>
@@ -262,7 +262,7 @@ function Preview({ preview, draft }) {
         </div>
       )}
       {preview.companyExamples?.length > 0 && (
-        <div style={{ marginTop: 4, fontSize: 12, color: '#8b9a9a' }}>
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)' }}>
           {preview.companyExamples.slice(0, 3).map((c) => `${c.name} ${c.from} → ${c.to}`).join(' · ')}
         </div>
       )}

@@ -18,8 +18,8 @@ export default function ScoresMoved() {
     router.replace(at === '#health' ? '/profile?view=insights' : `/settings${at || '#scoring'}`);
   }, [router]);
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#aab', fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
-      Scores are in <Link href="/settings#scoring" style={{ color: '#3498DB', marginLeft: 4 }}>Settings</Link> now.
+    <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-3, #aab)', fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+      Scores are in <Link href="/settings#scoring" style={{ color: 'var(--sd-blue, #3498DB)', marginLeft: 4 }}>Settings</Link> now.
     </div>
   );
 }

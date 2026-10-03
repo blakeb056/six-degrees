@@ -60,27 +60,27 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
         <Label>Their circle</Label>
         {guess ? (
           <>
-            <div style={{ fontSize: 11.5, color: '#d8ccb0', lineHeight: 1.5, marginBottom: canScan ? 9 : 0 }}>
-              <b style={{ color: '#FFD700' }}>Their score is a guess.</b> {guess.reason}
+            <div style={{ fontSize: 11.5, color: 'var(--sd-fg-2, #d8ccb0)', lineHeight: 1.5, marginBottom: canScan ? 9 : 0 }}>
+              <b style={{ color: 'var(--sd-gold, #FFD700)' }}>Their score is a guess.</b> {guess.reason}
               {canScan && <> Scanning {first}&apos;s circle shows who you can reach through them, and a strong
                 circle adds up to +2 to their score.</>}
             </div>
             {canScan && (
               <button type="button" onClick={toScanBox} style={{
                 width: '100%', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700',
+                border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: 'var(--sd-gold, #FFD700)',
               }}>
                 Scan their circle ↓
               </button>
             )}
           </>
         ) : canScan ? (
-          <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #999)', lineHeight: 1.5 }}>
             Not scanned yet. Scan {first}&apos;s circle below to see who they know, and
             everyone you reach through them after that.
           </div>
         ) : (
-          <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>Not scanned.</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #999)', lineHeight: 1.5 }}>Not scanned.</div>
         )}
       </div>
     );
@@ -99,7 +99,7 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
     />
   );
   const note = (
-    <div style={{ fontSize: 9.5, color: '#777', lineHeight: 1.45, marginTop: 6 }}>
+    <div style={{ fontSize: 9.5, color: 'var(--sd-fg-4, #777)', lineHeight: 1.45, marginTop: 6 }}>
       Rarity is how many mutual connections lead to someone. It never changes a score.{' '}
       {fromLinkedIn
         ? 'LinkedIn’s own count where a scan saved it; otherwise the ways in from your scans.'
@@ -146,7 +146,7 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
       role="img" aria-label={`${person.name}'s circle, ${rings.length} ${rings.length === 1 ? 'ring' : 'rings'}`}>
       {layout.rings.map((ring) => (
         <g key={ring.degree}>
-          <circle cx={c.x} cy={c.y} r={ring.radius} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={0.6 * k} />
+          <circle cx={c.x} cy={c.y} r={ring.radius} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.07)" strokeWidth={0.6 * k} />
           <text x={c.x} y={c.y - ring.radius - ring.dotR - 3 * k} textAnchor="middle" fontSize={6.5 * k} fill="#666" fontWeight={700}>
             D{ring.degree}
           </text>
@@ -184,8 +184,8 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
           </g>
         );
       }))}
-      <circle cx={c.x} cy={c.y} r={7 * k} fill={tierColors[person.tier] || '#888'} stroke="#fff" strokeWidth={0.8 * k} />
-      <text x={c.x} y={c.y + 2.4 * k} textAnchor="middle" fontSize={6.5 * k} fontWeight={800} fill={person.tier === 'S' ? '#000' : '#fff'}>
+      <circle cx={c.x} cy={c.y} r={7 * k} fill={tierColors[person.tier] || 'var(--sd-fg-3, #888)'} stroke="#fff" strokeWidth={0.8 * k} />
+      <text x={c.x} y={c.y + 2.4 * k} textAnchor="middle" fontSize={6.5 * k} fontWeight={800} fill={person.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}>
         {String(person.name || '?').charAt(0)}
       </text>
     </svg>
@@ -194,11 +194,11 @@ function RingMap({ person, rings, facts, filter, tierColors, size, labels = fals
 
 function RingCounts({ rings, totals, shown }) {
   return (
-    <div style={{ fontSize: 10.5, color: '#aaa', marginTop: 6, lineHeight: 1.5 }}>
+    <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #aaa)', marginTop: 6, lineHeight: 1.5 }}>
       {rings.map((r) => `D${r.degree} ${r.people.length.toLocaleString('en-US')}`).join(' · ')}
       {totals.connected > 0 && <span style={{ color: GREEN }}> · you added {totals.connected}</span>}
-      {totals.requested > 0 && <span style={{ color: '#FFD700' }}> · {totals.requested} {totals.requested === 1 ? 'request' : 'requests'} out</span>}
-      {shown != null && <span style={{ color: '#fff' }}> · {shown.toLocaleString('en-US')} shown</span>}
+      {totals.requested > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)' }}> · {totals.requested} {totals.requested === 1 ? 'request' : 'requests'} out</span>}
+      {shown != null && <span style={{ color: 'var(--sd-fg-1, #fff)' }}> · {shown.toLocaleString('en-US')} shown</span>}
     </div>
   );
 }
@@ -206,8 +206,8 @@ function RingCounts({ rings, totals, shown }) {
 function Filters({ tierColors, byTier, byRarity, tiers, rarities, onTier, onRarity, onClear }) {
   const chip = (on, color) => ({
     height: 22, padding: '0 7px', borderRadius: 11, cursor: 'pointer', fontSize: 10, fontWeight: 700,
-    whiteSpace: 'nowrap', border: `1px solid ${on ? color : 'rgba(255,255,255,0.1)'}`,
-    background: on ? `${color}22` : 'rgba(255,255,255,0.03)', color: on ? color : '#999',
+    whiteSpace: 'nowrap', border: `1px solid ${on ? color : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
+    background: on ? `${color}22` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', color: on ? color : 'var(--sd-fg-3, #999)',
   });
   return (
     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -240,7 +240,7 @@ function Legend() {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginRight: 12, whiteSpace: 'nowrap' }}>{swatch}{text}</span>
   );
   return (
-    <div style={{ fontSize: 10.5, color: '#999', marginTop: 8, lineHeight: 1.8 }}>
+    <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #999)', marginTop: 8, lineHeight: 1.8 }}>
       {item(<svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#FFD700" /></svg>, 'colour = tier')}
       {item(<svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#9B59B6" stroke={GREEN} strokeWidth="1.5" /></svg>, 'you added them')}
       {item(<svg width="12" height="12"><circle cx="6" cy="6" r="4.2" fill="none" stroke="#3498DB" strokeWidth="1.4" strokeDasharray="2 1.6" /></svg>, 'request sent')}
@@ -260,18 +260,18 @@ function Enlarged({ title, onClose, children }) {
   }, [onClose]);
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={title} onClick={onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.78)',
+      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.78)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
         width: 'min(720px, 100%)', maxHeight: '100%', overflowY: 'auto', boxSizing: 'border-box',
-        background: '#0f0c05', border: '1px solid rgba(255,215,0,0.18)', borderRadius: 14, padding: 16,
+        background: 'var(--sd-surface, #0f0c05)', border: '1px solid rgba(255,215,0,0.18)', borderRadius: 14, padding: 16,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{title}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--sd-fg-1, #fff)' }}>{title}</div>
           <button type="button" onClick={onClose} style={{ ...linkButton, fontSize: 12 }}>Close ✕</button>
         </div>
-        <div style={{ fontSize: 10.5, color: '#888', marginBottom: 8 }}>Click a dot to open that person.</div>
+        <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #888)', marginBottom: 8 }}>Click a dot to open that person.</div>
         {children}
       </div>
     </div>,
@@ -290,12 +290,12 @@ function toScanBox() {
 }
 
 function Label({ children }) {
-  return <div style={{ fontSize: 10, fontWeight: 700, color: '#FF6B35', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{children}</div>;
+  return <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--sd-orange, #FF6B35)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{children}</div>;
 }
 
 const box = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+  background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.07)',
   borderRadius: 10, padding: 10, marginBottom: 16,
 };
-const rowLabel = { fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5, width: 38, flexShrink: 0 };
-const linkButton = { background: 'none', border: 'none', color: '#888', fontSize: 10.5, fontWeight: 600, cursor: 'pointer', padding: 0 };
+const rowLabel = { fontSize: 9, color: 'var(--sd-fg-4, #666)', textTransform: 'uppercase', letterSpacing: 0.5, width: 38, flexShrink: 0 };
+const linkButton = { background: 'none', border: 'none', color: 'var(--sd-fg-3, #888)', fontSize: 10.5, fontWeight: 600, cursor: 'pointer', padding: 0 };

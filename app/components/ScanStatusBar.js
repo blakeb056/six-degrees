@@ -117,13 +117,14 @@ export default function ScanStatusBar() {
 
   return (
     <div
+      data-glass-panel="bar"
       onMouseLeave={() => setOpen(false)}
       style={{
         position: 'fixed', left, top: top ?? 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
         maxWidth: 'calc(100vw - 16px)',
         padding: expanded && status ? '4px 6px 10px' : '4px 6px 5px',
-        borderRadius: '0 0 14px 14px', border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(255,255,255,0.1)'}`, borderTop: 'none',
-        background: 'rgba(8,10,22,0.96)', color: '#cfd8d8', fontSize: 12,
+        borderRadius: '0 0 14px 14px', border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, borderTop: 'none',
+        background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 12,
         opacity: tabs || running || other || expanded ? 1 : 0.55,
         boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',
         transition: 'padding 0.18s ease, opacity 0.18s ease',
@@ -141,7 +142,7 @@ export default function ScanStatusBar() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 8, border: 'none',
                     cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
-                    background: on ? 'rgba(52,152,219,0.22)' : 'transparent', color: on ? '#cfe6f7' : '#8b9aa8',
+                    background: on ? 'rgba(52,152,219,0.22)' : 'transparent', color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9aa8)',
                   }}
                 >
                   {t.icon && <span aria-hidden="true">{t.icon}</span>}
@@ -151,7 +152,7 @@ export default function ScanStatusBar() {
             })}
           </div>
         )}
-        {tabs && status && <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', margin: '3px 4px', background: 'rgba(255,255,255,0.12)' }} />}
+        {tabs && status && <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', margin: '3px 4px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' }} />}
         {status && (
           <button
             onMouseEnter={() => setOpen(true)}
@@ -162,15 +163,15 @@ export default function ScanStatusBar() {
           >
             <span className={running ? 'notch-pulse' : undefined} style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
             <span role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <b style={{ color: running || other ? '#fff' : '#b8c4c4', fontWeight: 600 }}>{label}</b>
-              {short && <span style={{ color: '#8b9a9a' }}>{short}</span>}
+              <b style={{ color: running || other ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #b8c4c4)', fontWeight: 600 }}>{label}</b>
+              {short && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{short}</span>}
             </span>
-            {!running && !other && expanded && <span style={{ color: '#8b9a9a' }}>ready · press Auto scan beside Scan to start</span>}
+            {!running && !other && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
           </button>
         )}
       </div>
       {status && fraction != null && (
-        <div style={{ height: 2, margin: '3px 6px 0', borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div style={{ height: 2, margin: '3px 6px 0', borderRadius: 2, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', overflow: 'hidden' }}>
           <div style={{ width: `${Math.round(fraction * 100)}%`, height: '100%', background: running ? '#00ff88' : '#3498DB', transition: 'width 0.4s ease' }} />
         </div>
       )}
@@ -183,21 +184,21 @@ export default function ScanStatusBar() {
             </span>
           )}
           {last && (
-            <span style={{ color: '#667', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>
+            <span style={{ color: 'var(--sd-fg-4, #667)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>
           )}
-          <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Details</Link>
+          <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Details</Link>
           <button
             onClick={async () => { setStopping(true); try { await stopScrape(); } catch { setStopping(false); } }}
             disabled={stopping}
             title="Stops after saving what's been read; Resume on the Scan page carries on from the same page"
             style={{
               padding: '3px 10px', borderRadius: 8, fontSize: 12, cursor: stopping ? 'default' : 'pointer',
-              background: 'rgba(255,107,107,0.12)', color: '#ff9b9b', border: '1px solid rgba(255,107,107,0.35)',
+              background: 'rgba(255,107,107,0.12)', color: 'var(--sd-fg-2, #ff9b9b)', border: '1px solid rgba(255,107,107,0.35)',
             }}
           >{stopping ? 'Stopping…' : 'Stop'}</button>
         </div>
       )}
-      {expanded && !running && other?.detail && <div style={{ margin: '6px 8px 0', color: '#8b9a9a' }}>{other.detail}</div>}
+      {expanded && !running && other?.detail && <div style={{ margin: '6px 8px 0', color: 'var(--sd-fg-3, #8b9a9a)' }}>{other.detail}</div>}
     </div>
   );
 }

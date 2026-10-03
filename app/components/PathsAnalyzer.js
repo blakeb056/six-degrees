@@ -28,7 +28,7 @@ import {
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
-const LINE = '1px solid rgba(255,255,255,0.1)';
+const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const MAX_BUBBLES = 140;
 const ALL_INDUSTRIES = [...INDUSTRIES, UNKNOWN_INDUSTRY];
 
@@ -44,7 +44,7 @@ export function Seg({ value, onChange, options }) {
       {options.map(([v, label]) => (
         <button key={v} onClick={() => onChange(v)} style={{
           padding: '5px 10px', fontSize: 11.5, fontWeight: 600, border: 'none', cursor: 'pointer',
-          background: value === v ? 'rgba(52,152,219,0.25)' : 'transparent', color: value === v ? '#cfe6f7' : '#8b9a9a',
+          background: value === v ? 'rgba(52,152,219,0.25)' : 'transparent', color: value === v ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9a9a)',
         }}>{label}</button>
       ))}
     </div>
@@ -80,27 +80,28 @@ export function SidePanel({ open, onToggle, children }) {
       <button type="button" onClick={onToggle} style={{
         position: 'fixed', left: 16, top: 140, zIndex: 30, cursor: 'pointer', height: 36, borderRadius: 18, padding: '0 14px 0 10px',
         display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(52,152,219,0.15)', border: '2px solid rgba(52,152,219,0.5)',
-        color: '#3498DB', fontWeight: 700, boxShadow: '0 0 12px rgba(52,152,219,0.3)', backdropFilter: 'blur(8px)',
+        color: 'var(--sd-blue, #3498DB)', fontWeight: 700, boxShadow: '0 0 12px rgba(52,152,219,0.3)', backdropFilter: 'blur(8px)',
       }}>
         <span style={{ fontSize: 18 }}>›</span><span style={{ fontSize: 11, fontWeight: 600 }}>Filters</span>
       </button>
     );
   }
   return (
-    <aside style={{
+    <aside data-glass-panel="side" style={{
       width: 300, flexShrink: 0, height: '100%', overflowY: 'auto', boxSizing: 'border-box', padding: '16px 14px',
       borderRight: '1px solid rgba(52,152,219,0.15)', background: 'var(--sd-panel)', fontSize: 13,
+      backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
     }}>
       <button type="button" onClick={onToggle} style={{
         display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 14, padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: 12, fontWeight: 600,
+        background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', color: 'var(--sd-fg-3, #aaa)', fontSize: 12, fontWeight: 600,
       }}><span style={{ fontSize: 16 }}>›</span> Close</button>
       {children}
     </aside>
   );
 }
 
-export const panelHeading = { fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, margin: '14px 0 6px', textTransform: 'uppercase' };
+export const panelHeading = { fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, margin: '14px 0 6px', textTransform: 'uppercase' };
 
 /** Does this person pass the filters? Tier and degree from the grid, as in Network Circle. */
 function passes(p, f) {
@@ -195,9 +196,9 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], initialShow =
           industries={industries} hidden={hidden} setHidden={setHidden}
           onIndustry={(key) => setFocus({ kind: 'industry', key })} />
         <div style={panelHeading}>Read the map</div>
-        <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
+        <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 4 }}>Bubble size</div>
         <Seg value={sizeBy} onChange={setSizeBy} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
-        <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
+        <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', margin: '10px 0 4px' }}>Names</div>
         <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
         {look('How strong your people at each company are: the average power score of the five strongest. The hotter, the stronger; size is still how many.')}
       </SidePanel>
@@ -226,10 +227,10 @@ function Filters({ filters, setFilters, counts, query, setQuery, industries, hid
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={panelHeading}>Filter</div>
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
-        style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
+        style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
       {/* The same tiers × degrees as Network Circle (Blake, 2026-10-02) */}
       <TierGrid grid={filters.grid} counts={counts} onChange={(g) => set('grid', g)} mode="paths" />
-      <div style={{ fontSize: 11, color: '#8b9a9a', marginTop: -10 }}>Level</div>
+      <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: -10 }}>Level</div>
       <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
       <div style={panelHeading}>Industries</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -241,13 +242,13 @@ function Filters({ filters, setFilters, counts, query, setQuery, industries, hid
                 onClick={() => setHidden((h) => { const n = new Set(h); if (n.has(i.key)) n.delete(i.key); else n.add(i.key); return n; })}
                 style={{ padding: '3px 7px', border: 'none', background: `${i.color}22`, cursor: 'pointer', color: i.color, fontSize: 11 }}>●</button>
               <button onClick={() => onIndustry(i.key)} title="Analyse this industry"
-                style={{ padding: '3px 9px 3px 5px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#cfd8d8', fontSize: 11.5 }}>
-                {i.label} <span style={{ color: '#778' }}>{i.people.length}</span>
+                style={{ padding: '3px 9px 3px 5px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 11.5 }}>
+                {i.label} <span style={{ color: 'var(--sd-fg-4, #778)' }}>{i.people.length}</span>
               </button>
             </span>
           );
         })}
-        <span style={{ fontSize: 11, color: '#667', alignSelf: 'center' }}>Inferred from companies and headlines. ● hides one; its name opens it.</span>
+        <span style={{ fontSize: 11, color: 'var(--sd-fg-4, #667)', alignSelf: 'center' }}>Inferred from companies and headlines. ● hides one; its name opens it.</span>
       </div>
     </div>
   );
@@ -349,7 +350,7 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
               const on = active && (e.source.id === active || e.target.id === active);
               return (
                 <line key={i} x1={e.source.x} y1={e.source.y} x2={e.target.x} y2={e.target.y}
-                  stroke={on ? '#FF6B35' : '#8fa6c0'} strokeOpacity={on ? 0.8 : active ? 0.04 : 0.14}
+                  stroke={on ? '#FF6B35' : 'var(--sd-fg-3, #8fa6c0)'} strokeOpacity={on ? 0.8 : active ? 0.04 : 0.14}
                   strokeWidth={on ? 1 + Math.log2(1 + e.weight) : 0.4 + Math.log2(1 + e.weight) * 0.5} />
               );
             })}
@@ -372,18 +373,18 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
                 onClick={(ev) => { ev.stopPropagation(); if (clicked()) onCompany(n.id); }}>
                 <title>{`${n.co.name} · ${n.co.industry.label} (inferred)\n${n.co.d1} you know · ${n.co.d2} reachable${n.co.d3 ? ` · ${n.co.d3} further` : ''}`}</title>
                 <circle r={n.r} fill={hot ? heatColour(heat(n)) : n.co.industry.color} fillOpacity={hot ? 0.9 : 0.75}
-                  stroke={sel ? '#fff' : n.co.S ? TIER.S : 'rgba(0,0,0,0.35)'} strokeWidth={sel ? 2.5 : n.co.S ? 1.5 : 0.6} />
+                  stroke={sel ? 'var(--sd-fg-1, #fff)' : n.co.S ? TIER.S : 'rgba(0,0,0,0.35)'} strokeWidth={sel ? 2.5 : n.co.S ? 1.5 : 0.6} />
                 {/* the share you already know, as an inner disc */}
-                {n.co.d1 > 0 && <circle r={n.r * Math.sqrt(n.co.d1 / Math.max(1, n.co.people.length))} fill="#fff" fillOpacity={0.35} />}
+                {n.co.d1 > 0 && <circle r={n.r * Math.sqrt(n.co.d1 / Math.max(1, n.co.people.length))} fill="var(--sd-fg-1, #fff)" fillOpacity={0.35} />}
                 {(labelled.has(n.id) || n.id === active || sel) && (
-                  <text y={n.r + 11} textAnchor="middle" fontSize={10} fill="#e6edf0" style={{ pointerEvents: 'none' }}>{n.co.name}</text>
+                  <text y={n.r + 11} textAnchor="middle" fontSize={10} fill="var(--sd-fg-1, #e6edf0)" style={{ pointerEvents: 'none' }}>{n.co.name}</text>
                 )}
               </g>
             );
           })}
         </svg>
       )}
-      <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: '#778', lineHeight: 1.6, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6, pointerEvents: 'none' }}>
         Bubble = a company, sized by your people there; {hot ? 'colour = how strong they are, cold to white hot' : 'colour = its industry'}; white centre = the share you already know; gold ring = an S-tier person inside.<br />
         A line = one of your connections at one company knows people at the other.
         {layout.cut ? ` Showing the ${MAX_BUBBLES} largest; ${layout.cut} smaller companies are in Companies.` : ''}
@@ -394,7 +395,7 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
 
 function Bar({ parts, total }) {
   return (
-    <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+    <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' }}>
       {parts.map(([n, color], i) => <div key={i} style={{ width: `${(n / Math.max(1, total)) * 100}%`, background: color }} />)}
     </div>
   );
@@ -406,7 +407,7 @@ function PersonLine({ p, note }) {
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER[p.tier] || '#667', flexShrink: 0 }} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-        <div style={{ fontSize: 11, color: '#8b9a9a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note || p.headline}</div>
+        <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note || p.headline}</div>
       </div>
     </div>
   );
@@ -437,9 +438,9 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
   const topCos = !isCompany ? [...data.companies.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10) : [];
 
   return (
-    <aside style={{ width: 360, flexShrink: 0, borderLeft: LINE, overflow: 'auto', padding: 16, background: 'rgba(255,255,255,0.02)' }}>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕ Close</button>
-      <div style={{ fontSize: 10, letterSpacing: 1, color: '#8b9a9a', marginTop: 8 }}>{isCompany ? 'COMPANY' : 'INDUSTRY'} ANALYZER</div>
+    <aside style={{ width: 360, flexShrink: 0, borderLeft: LINE, overflow: 'auto', padding: 16, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' }}>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-3, #888)', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕ Close</button>
+      <div style={{ fontSize: 10, letterSpacing: 1, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 8 }}>{isCompany ? 'COMPANY' : 'INDUSTRY'} ANALYZER</div>
       <h2 style={{ margin: '4px 0 6px', fontSize: 20 }}>{isCompany ? data.name : data.label}</h2>
       {/* A company's industry opens that industry here (Blake, 2026-10-02: industries live in the side card, not a tab). */}
       {isCompany && onIndustry ? (
@@ -455,9 +456,9 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, margin: '14px 0' }}>
         {[[d1n, 'you know', '#00ff88'], [d2n, 'reachable', '#FF6B35'], [people.filter((p) => isSenior(p.headline)).length, 'director+', '#FFD700']].map(([n, l, c]) => (
-          <div key={l} style={{ padding: 8, borderRadius: 8, background: 'rgba(255,255,255,0.04)', textAlign: 'center' }}>
+          <div key={l} style={{ padding: 8, borderRadius: 8, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: c }}>{n}</div>
-            <div style={{ fontSize: 10.5, color: '#8b9a9a' }}>{l}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>{l}</div>
           </div>
         ))}
       </div>
@@ -465,16 +466,16 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
       <Section title="By level">
         {levels.map(([label, { n }]) => (
           <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 28px', gap: 8, alignItems: 'center', fontSize: 11.5, marginBottom: 4 }}>
-            <span style={{ color: '#aab7b7' }}>{label}</span>
+            <span style={{ color: 'var(--sd-fg-2, #aab7b7)' }}>{label}</span>
             <Bar total={people.length} parts={[[n, '#3498DB']]} />
-            <span style={{ color: '#778', textAlign: 'right' }}>{n}</span>
+            <span style={{ color: 'var(--sd-fg-4, #778)', textAlign: 'right' }}>{n}</span>
           </div>
         ))}
       </Section>
 
       {isCompany && ways && (
         <Section title="Ways in">
-          {ways.direct.length > 0 && <div style={{ fontSize: 11, color: '#00ff88', margin: '2px 0' }}>You already know {ways.direct.length} here</div>}
+          {ways.direct.length > 0 && <div style={{ fontSize: 11, color: 'var(--sd-green, #00ff88)', margin: '2px 0' }}>You already know {ways.direct.length} here</div>}
           {(() => {
             // One line per person: someone who works here and also knows others
             // here is the best way in of all, so they lead, with both facts.
@@ -492,7 +493,7 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
               </>
             );
           })()}
-          {!ways.direct.length && !ways.bridges.length && <div style={{ fontSize: 12, color: '#778' }}>No one you know links here yet.</div>}
+          {!ways.direct.length && !ways.bridges.length && <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)' }}>No one you know links here yet.</div>}
         </Section>
       )}
 
@@ -504,8 +505,8 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
         <Section title="Connected companies">
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {related.map((r) => (
-              <button key={r.name} onClick={() => onCompany(r.name)} style={{ padding: '3px 9px', borderRadius: 10, border: LINE, background: `${(index.get(r.name)?.industry.color || '#666')}22`, color: '#dfe6e9', fontSize: 11.5, cursor: 'pointer' }}>
-                {r.name} <span style={{ color: '#778' }}>{r.weight}</span>
+              <button key={r.name} onClick={() => onCompany(r.name)} style={{ padding: '3px 9px', borderRadius: 10, border: LINE, background: `${(index.get(r.name)?.industry.color || '#666')}22`, color: 'var(--sd-fg-1, #dfe6e9)', fontSize: 11.5, cursor: 'pointer' }}>
+                {r.name} <span style={{ color: 'var(--sd-fg-4, #778)' }}>{r.weight}</span>
               </button>
             ))}
           </div>
@@ -518,7 +519,7 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
             <div key={name} onClick={() => onCompany(name)} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 24px', gap: 8, alignItems: 'center', fontSize: 12, padding: '3px 0', cursor: 'pointer' }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               <Bar total={topCos[0][1]} parts={[[n, industry.color]]} />
-              <span style={{ color: '#778', textAlign: 'right' }}>{n}</span>
+              <span style={{ color: 'var(--sd-fg-4, #778)', textAlign: 'right' }}>{n}</span>
             </div>
           ))}
         </Section>
@@ -536,7 +537,7 @@ function AnalyzerPanel({ focus, data, index, links, d1, d2, filters, onClose, on
 function Section({ title, children }) {
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 10.5, letterSpacing: 0.8, color: '#8b9a9a', fontWeight: 700, marginBottom: 6 }}>{title.toUpperCase()}</div>
+      <div style={{ fontSize: 10.5, letterSpacing: 0.8, color: 'var(--sd-fg-3, #8b9a9a)', fontWeight: 700, marginBottom: 6 }}>{title.toUpperCase()}</div>
       {children}
     </div>
   );
@@ -550,8 +551,8 @@ function CompanyScoreLine({ name }) {
   if (!c) return null;
   const from = { yours: 'your score', known: 'known list', network: 'estimated', default: 'unknown company' }[c.source];
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: '#aab7b7' }}>
-      Company score <b style={{ color: '#fff', fontSize: 15 }}>{c.score}</b>/10 · {from}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: 'var(--sd-fg-2, #aab7b7)' }}>
+      Company score <b style={{ color: 'var(--sd-fg-1, #fff)', fontSize: 15 }}>{c.score}</b>/10 · {from}
       <span style={{ marginLeft: 'auto' }}><ScorePicker company={c} onSet={setScore} compact /></span>
     </div>
   );

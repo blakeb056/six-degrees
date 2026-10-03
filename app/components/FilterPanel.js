@@ -40,7 +40,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-        <div style={{ flex: 1, fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>
+        <div style={{ flex: 1, fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, textTransform: 'uppercase' }}>
           Tiers
         </div>
         {/* A degree, for every tier at once */}
@@ -54,7 +54,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                 onClick={() => onChange(toggleDegree(grid, d, counts))}
                 style={{
                   width: dot, height: 18, padding: 0, border: 'none', background: 'none', cursor: any ? 'pointer' : 'default',
-                  fontSize: 10, fontWeight: 800, color: !any ? '#333' : on ? '#cfe6f7' : '#778',
+                  fontSize: 10, fontWeight: 800, color: !any ? 'var(--sd-fg-5, #333)' : on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-4, #778)',
                 }}>
                 {d}
               </button>
@@ -72,14 +72,14 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
           return (
             <div key={t} style={{
               display: 'flex', alignItems: 'center', borderRadius: 8,
-              background: off ? 'rgba(255,255,255,0.02)' : `${color}14`,
+              background: off ? 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' : `${color}14`,
               borderLeft: `3px solid ${off ? 'transparent' : color}`,
             }}>
               <button type="button" aria-pressed={!off} title={off ? `Show ${t}-Tier` : `Hide ${t}-Tier`}
                 onClick={() => onChange(toggleTier(grid, t, counts))}
                 style={{
                   flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 6px 12px 10px',
-                  border: 'none', background: 'none', cursor: 'pointer', color: off ? '#555' : color, textAlign: 'left',
+                  border: 'none', background: 'none', cursor: 'pointer', color: off ? 'var(--sd-fg-5, #555)' : color, textAlign: 'left',
                 }}>
                 <span style={{ width: 11, height: 11, borderRadius: '50%', background: color, opacity: off ? 0.2 : 1, flexShrink: 0 }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', textDecoration: off ? 'line-through' : 'none' }}>{t}-Tier</span>
@@ -98,9 +98,9 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                       style={{
                         width: dot, height: dot, padding: 0, borderRadius: '50%', boxSizing: 'border-box',
                         cursor: people ? 'pointer' : 'default', fontSize: 10, fontWeight: 800, lineHeight: 1,
-                        border: waysIn && d === 1 ? `1px solid ${color}40` : !people ? '1px dashed rgba(255,255,255,0.1)' : on ? `1.5px solid ${color}` : `1.5px solid ${color}70`,
+                        border: waysIn && d === 1 ? `1px solid ${color}40` : !people ? '1px dashed rgba(var(--sd-ink, 255, 255, 255), 0.1)' : on ? `1.5px solid ${color}` : `1.5px solid ${color}70`,
                         background: on ? color : waysIn && d === 1 ? `${color}1f` : 'transparent',
-                        color: waysIn && d === 1 ? `${color}90` : !people ? 'rgba(255,255,255,0.12)' : on ? '#0a0a1a' : `${color}b0`,
+                        color: waysIn && d === 1 ? `${color}90` : !people ? 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' : on ? '#0a0a1a' : `${color}b0`,
                         opacity: off && people ? 0.45 : 1,
                       }}>
                       {d}
@@ -108,7 +108,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                   );
                 })}
               </div>
-              <div style={{ width: 44, textAlign: 'right', paddingRight: 8, fontSize: 10.5, color: off || !n ? '#445' : '#889', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ width: 44, textAlign: 'right', paddingRight: 8, fontSize: 10.5, color: off || !n ? 'var(--sd-fg-5, #445)' : 'var(--sd-fg-3, #889)', fontVariantNumeric: 'tabular-nums' }}>
                 {n.toLocaleString('en-US')}
               </div>
             </div>
@@ -117,17 +117,17 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-        <div style={{ fontSize: 10, color: '#667', lineHeight: 1.4 }}>
+        <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #667)', lineHeight: 1.4 }}>
           {waysIn
             ? 'Tap a tier to leave it out of the ranking. Every connection stays a way in.'
             : 'Tap a tier to hide it, or a dot to show that degree.'}
         </div>
-        <div style={{ fontSize: 10.5, color: '#889', whiteSpace: 'nowrap', marginLeft: 8 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #889)', whiteSpace: 'nowrap', marginLeft: 8 }}>
           {total.toLocaleString('en-US')} showing
           {grid.hidden.length > 0 && (
             <button type="button" onClick={() => onChange(showAllTiers(grid))} style={{
               marginLeft: 8, padding: '2px 8px', borderRadius: 10, fontSize: 10, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#aab',
+              border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-3, #aab)',
             }}>All tiers</button>
           )}
         </div>
@@ -149,7 +149,7 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
           display: 'flex', alignItems: 'center', gap: 0,
           height: 36, borderRadius: 18,
           background: 'rgba(52,152,219,0.15)', border: '2px solid rgba(52,152,219,0.5)',
-          color: '#3498DB', fontWeight: 700,
+          color: 'var(--sd-blue, #3498DB)', fontWeight: 700,
           boxShadow: '0 0 12px rgba(52,152,219,0.3)',
           backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           overflow: 'hidden', transition: 'width 0.25s ease',
@@ -170,13 +170,13 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
       position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
       width: '100vw', pointerEvents: 'auto',
     } : { flexShrink: 0, height: '100%' }}>
-      {isMobile && <div onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />}
-      <div style={{
+      {isMobile && <div onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
+      <div data-glass-panel={isMobile ? undefined : 'side'} style={{
         width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
         borderRight: '1px solid rgba(52,152,219,0.15)',
         padding: isMobile ? '12px 10px' : '16px 14px',
         overflowY: 'auto', overflowX: 'hidden',
-        background: isMobile ? 'rgba(10,15,30,0.98)' : 'var(--sd-panel)', fontSize: 13,
+        background: isMobile ? 'var(--sd-surface, rgba(10,15,30,0.98))' : 'var(--sd-panel)', fontSize: 13,
         backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
         boxShadow: 'inset 0 0 60px rgba(52,152,219,0.04), 4px 0 24px rgba(0,0,0,0.3)',
       }}>
@@ -185,8 +185,8 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
           onClick={onToggle}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 6, color: '#aaa', fontSize: 12, cursor: 'pointer',
+            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
+            borderRadius: 6, color: 'var(--sd-fg-3, #aaa)', fontSize: 12, cursor: 'pointer',
             padding: '6px 12px', marginBottom: 14, fontWeight: 600, width: '100%',
           }}
         >
