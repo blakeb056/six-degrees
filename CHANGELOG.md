@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Filters panel on the left, like the map page's, with new ways to read the map: what a bubble's
   size means (your people there, the S and A among them, or the ones you already know; on People,
   cluster value, size or S tier) and which names show (the biggest, all, or none).
+- **All the way to easy, Separation aims at whoever the most of your connections lead to**, with
+  every one of those lines drawn, the strongest first among equals; the "Next" names are the
+  runners-up by the same measure. It used to aim at the top of the list, which could be someone
+  with many mutual connections by LinkedIn's count but only one the app could draw.
 - **The Scan page has a radar, and a speed: Slow, Medium or Fast.** Mapping the 2nd degree starts
   from a round Scan button in the middle of a radar: its sweep turns while a scan runs, and the
   ring round it fills with today's searches against your budget. Beside it, three speeds. Fast is

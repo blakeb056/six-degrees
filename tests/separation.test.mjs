@@ -258,3 +258,12 @@ test('each connection sits level with the people they lead to, so one-to-one lin
   assert.deepEqual(stackColumn([10, 100, 200], 36), [10, 100, 200]);
   assert.deepEqual(stackColumn([]), []);
 });
+
+test('all the way to easy, the map aims at whoever the most of your connections lead to', async () => {
+  const { mostWaysIn } = await import('../lib/separation.js');
+  const p = (key, waysIn, score, mutuals) => ({ key, waysIn, score, mutuals, routes: [], person: { name: key } });
+  const people = [p('strong-one-way', 1, 9.5, 40), p('six-ways', 6, 7.2, 37), p('four-ways', 4, 8.8, 50), p('six-ways-weaker-count', 6, 7.9, 12)];
+  const order = mostWaysIn(people, (x) => x.mutuals, 3).map((x) => x.key);
+  assert.deepEqual(order, ['six-ways', 'six-ways-weaker-count', 'four-ways']);
+  assert.deepEqual(mostWaysIn([], () => 0), []);
+});

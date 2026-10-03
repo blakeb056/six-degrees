@@ -33,7 +33,7 @@
 // appearing cannot feed a resize loop.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostWaysIn, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
 import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel, easeOf } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
@@ -195,12 +195,18 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
   // Down to one: the person picked, if they're in what's showing, else the top of the list.
   const single = shown === 1;
+  // Down to one, it aims at whoever the most of your connections lead to (all
+  // their lines can be drawn), unless you picked someone; "Next" are the runners-up.
+  const aimable = useMemo(() => {
+    if (!single) return [];
+    return mostWaysIn(visible.filter((p) => !statusOf(p)), (p) => rarityBy.get(p.key)?.count || 0, (isMobile ? 3 : 6) + 1);
+  }, [single, visible, statusOf, rarityBy, isMobile]);
   const target = useMemo(() => {
     if (!single) return null;
-    return (selectedKey && visible.find((p) => p.key === selectedKey)) || unasked[0] || null;
-  }, [single, selectedKey, visible, unasked]);
-  const nextUp = useMemo(() => (single && target ? unasked.filter((p) => p.key !== target.key).slice(0, isMobile ? 3 : 6) : []),
-    [single, target, unasked, isMobile]);
+    return (selectedKey && visible.find((p) => p.key === selectedKey)) || aimable[0] || null;
+  }, [single, selectedKey, visible, aimable]);
+  const nextUp = useMemo(() => (single && target ? aimable.filter((p) => p.key !== target.key).slice(0, isMobile ? 3 : 6) : []),
+    [single, target, aimable, isMobile]);
 
   // onSelect is read through a ref so the row and map callbacks never change
   // identity, and memoised rows never re-render because a parent re-rendered.
@@ -479,7 +485,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {single
-                    ? <>Aiming at {target.person.name} · every connection of yours who leads to them</>
+                    ? <>Aiming at {target.person.name} · {target.waysIn === 1 ? 'the one connection of yours who leads to them' : `all ${fmt(target.waysIn)} connections of yours who lead to them`}</>
                     : <>Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn</>}
                 </div>
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
