@@ -2,13 +2,12 @@
 
 import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { scraperStatus, beginScrape, notReadyMessage, busyReason, isCircleScan, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
+import { isCircleScan, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
 import useRequests from './components/useRequests';
 import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
-import AutoScanButton from './components/AutoScanButton';
 import { peopleByDegree } from '../lib/degrees';
 import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
@@ -21,7 +20,8 @@ import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { hasCsvNetwork, loadCsvNetwork, clearCsvNetwork } from '../lib/csv';
 import Link from 'next/link';
-import AppTabs from './components/AppTabs';
+import AppHeader from './components/AppHeader';
+import { networkLevel } from '../lib/level';
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -99,10 +99,11 @@ function HomeInner() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(true);
   const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : linkedMode === 'degrees' ? 'chain' : linkedMode === 'separation' ? 'separation' : 'galaxy'));
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifs, setShowNotifs] = useState(false);
-  // A notification opened in the right panel (app/components/NoteDetail.js).
+  // A notification opened in the right panel (app/components/NoteDetail.js);
+  // one picked on another page arrives as /?note=<id> (app/components/AppHeader.js).
   const [openNote, setOpenNote] = useState(null);
+  const linkedNote = params.get('note');
+  const openNoteHere = useCallback((n) => { setOpenNote(n); setSidebarCollapsed(false); }, []);
   const [csvMode, setCsvMode] = useState(false);
   const [csvSource, setCsvSource] = useState('csv');
   // What the scanner noted: hidden lists, and lists read with nothing new in
@@ -138,8 +139,6 @@ function HomeInner() {
     load();
     if (!IS_DEMO && !hasCsvNetwork()) {
       loadScanNotes().then(setScanNotes);
-      // Fetch notifications
-      fetch(`/api/notifications?userId=${userId}`).then(r => r.json()).then(d => setNotifications(d.notifications || [])).catch(() => {});
     }
   }, [userId]);
 
@@ -188,7 +187,7 @@ function HomeInner() {
 
   // What the views draw. Memoised because the graph views rebuild their whole
   // scene when these change identity: computed inline, every re-render — a click,
-  // the sidebar opening, notifications arriving — reset the galaxy's layout. The
+  // the sidebar opening, a notification arriving — reset the galaxy's layout. The
   // empty list in network mode was a new [] each time, which was enough on its own.
   // Network Circle draws the degrees picked in the Filter panel, each person
   // once, at the nearest degree they're found (lib/degrees.js).
@@ -205,6 +204,8 @@ function HomeInner() {
   // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
   // a click, at 20k rows.
   const d1ById = useMemo(() => new Map(degree1.map(c => [c.id, c])), [degree1]);
+  // Your level, in the round button at the top right (lib/level.js).
+  const level = useMemo(() => networkLevel(degree1, degree2), [degree1, degree2]);
   const bridgeIds = useMemo(
     () => new Set(degree2.map(d => d.source_connection_id).filter(Boolean)),
     [degree2],
@@ -256,156 +257,45 @@ function HomeInner() {
 
   return (
     <div data-map style={{ height: '100vh', overflow: 'hidden', background: '#0a0a1a', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-      <header style={{ padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 4 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 6 : 0 }}>
-          <h1 style={{ fontSize: isMobile ? 16 : 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Six Degrees
-          </h1>
-          <AppTabs
-            active={mode}
-            isMobile={isMobile}
-            csvMode={csvMode}
-            onMode={(m) => { setMode(m); setSelected(null); setVisualMode(m === 'network' ? 'galaxy' : m === 'degrees' ? 'chain' : 'separation'); }}
-            after={!IS_DEMO && !csvMode ? <AutoScanButton isMobile={isMobile} /> : null}
-          >
-            {/* Which network you are looking at, and the way back out of it.
-                Loading the sample used to be a one-way door: it lives in
-                sessionStorage, and nothing in the UI cleared it. */}
-            {csvMode && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                marginLeft: isMobile ? 4 : 10, padding: isMobile ? '4px 8px' : '5px 10px',
-                borderRadius: 999, background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-              }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: csvSource === 'sample' ? '#9B59B6' : '#2ecc71',
-                }} />
-                <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
-                  {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
-                </span>
-                <button
-                  onClick={() => { clearCsvNetwork(); window.location.href = '/'; }}
-                  title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
-                  style={{
-                    border: 'none', background: 'transparent', cursor: 'pointer',
-                    color: '#888', fontSize: isMobile ? 13 : 15, lineHeight: 1,
-                    padding: '0 0 0 2px',
-                  }}
-                >
-                  &times;
-                </button>
-              </div>
-            )}
-          </AppTabs>
-          {/* Settings — also in CSV/sample mode and on phones, so updates stay reachable */}
-          {!IS_DEMO && <Link
-            href="/settings"
-            title="Settings"
-            aria-label="Settings"
-            style={{
-              width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: isMobile ? 4 : 8,
-            }}
-          >
-            {'\u2699\uFE0E'}
-          </Link>}
-          {/* Notification bell */}
-          {!IS_DEMO && !csvMode && <div style={{ position: 'relative', marginLeft: isMobile ? 4 : 8 }}>
+      <AppHeader
+        active={mode}
+        isMobile={isMobile}
+        csvMode={csvMode}
+        onMode={(m) => { setMode(m); setSelected(null); setVisualMode(m === 'network' ? 'galaxy' : m === 'degrees' ? 'chain' : 'separation'); }}
+        level={level}
+        onOpenNote={openNoteHere}
+        openNoteId={linkedNote}
+        // Which network you are looking at, and the way back out of it. Loading
+        // the sample used to be a one-way door: it lives in sessionStorage, and
+        // nothing in the UI cleared it.
+        chips={csvMode && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            marginLeft: isMobile ? 4 : 10, padding: isMobile ? '4px 8px' : '5px 10px',
+            borderRadius: 999, background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.12)',
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: csvSource === 'sample' ? '#9B59B6' : '#2ecc71',
+            }} />
+            <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+              {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
+            </span>
             <button
-              onClick={() => setShowNotifs(!showNotifs)}
+              onClick={() => { clearCsvNetwork(); window.location.href = '/'; }}
+              title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
               style={{
-                width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                color: '#888', fontSize: isMobile ? 13 : 15, lineHeight: 1,
+                padding: '0 0 0 2px',
               }}
             >
-              🔔
-              {notifications.filter(n => !n.seen).length > 0 && (
-                <span style={{
-                  position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: '50%',
-                  background: '#ff5050', color: '#fff', fontSize: 9, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {notifications.filter(n => !n.seen).length}
-                </span>
-              )}
+              &times;
             </button>
-            {showNotifs && (
-              <div style={{
-                position: 'absolute', top: 40, right: 0, width: 320, maxHeight: 400,
-                background: 'rgba(10,10,26,0.98)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, overflow: 'hidden', zIndex: 100,
-                backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-              }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>Notifications</span>
-                  {notifications.filter(n => !n.seen).length > 0 && (
-                    <button onClick={() => {
-                      fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark-all-seen' }) });
-                      setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
-                    }} style={{ background: 'none', border: 'none', color: '#3498DB', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-                <div style={{ overflowY: 'auto', maxHeight: 340 }}>
-                  {notifications.length === 0 ? (
-                    <div style={{ padding: 20, textAlign: 'center', color: '#555', fontSize: 12 }}>No notifications yet</div>
-                  ) : notifications.slice(0, 20).map(n => (
-                    <div key={n.id} role="button" tabIndex={0}
-                      onClick={() => {
-                        // Open it in the right panel, and count it as read.
-                        if (!n.seen) {
-                          fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark-seen', id: n.id }) }).catch(() => {});
-                          setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, seen: true } : x)));
-                        }
-                        setOpenNote(n); setShowNotifs(false); setSidebarCollapsed(false);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.click(); }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = n.seen ? 'transparent' : 'rgba(255,215,0,0.04)'; }}
-                      style={{
-                      padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer',
-                      background: n.seen ? 'transparent' : 'rgba(255,215,0,0.04)',
-                    }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: 16 }}>{n.icon || '📌'}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: n.seen ? '#888' : '#fff' }}>{n.title}<span style={{ color: '#556', marginLeft: 6 }}>›</span></div>
-                          {n.message && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{n.message}</div>}
-                          <div style={{ fontSize: 9, color: '#444', marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>}
-          {/* Refresh button — Check for new, once you say yes; notifies */}
-          {!IS_DEMO && !csvMode && <RefreshButton isMobile={isMobile} />}
-          {/* Profile icon — top right */}
-          <a href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} style={{
-            width: isMobile ? 30 : 36, height: isMobile ? 30 : 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, #FFD700, #FF6B35)', color: '#000', fontWeight: 800, fontSize: isMobile ? 11 : 14,
-            textDecoration: 'none', marginLeft: isMobile ? 6 : 12, flexShrink: 0,
-          }}>
-            {(() => {
-              const sCount = degree1.filter(c => c.tier === 'S').length;
-              const aCount = degree1.filter(c => c.tier === 'A').length;
-              const bCount = degree1.filter(c => c.tier === 'B').length;
-              const clusters = degree1.filter(c => bridgeIds.has(c.id)).length;
-              const d2S = degree2.filter(c => c.tier === 'S').length;
-              const np = (sCount*100)+(aCount*40)+(bCount*15)+(clusters*200)+(d2S*50)+degree1.length;
-              return Math.floor(Math.sqrt(np / 10));
-            })()}
-          </a>
-        </div>
-
+          </div>
+        )}
+      >
         {/* Pending count badge — in header: everyone with a request out, once each (lib/requests-client.js) */}
         {isDegreesMode && !csvMode && pendingCount > 0 && (
           <Link href="/queue" style={{
@@ -418,7 +308,7 @@ function HomeInner() {
             {pendingCount} Pending
           </Link>
         )}
-      </header>
+      </AppHeader>
 
       <div style={{ display: 'flex', height: isMobile ? 'calc(100vh - 70px)' : 'calc(100vh - 130px)', position: 'relative' }}>
         <FilterPanel
@@ -536,7 +426,8 @@ function networkShape(d1, d2) {
 // Looks at the network again when a scan has changed it: once when any scan
 // ends, and every 20 seconds while a circle is being scanned with Bridge Chains
 // open, since the scanner saves every 10 pages and the circle fills in as it
-// does. Its own component for the same reason as RefreshButton below.
+// does. Its own component so the scanner's answer, which changes every second or
+// two while a scan runs, re-renders it and not the whole map.
 function NetworkRefresh({ onChange, live }) {
   const scan = useScanner();
   const ended = scan.finished.find(CHANGES_NETWORK)?.startedAt ?? null;
@@ -552,49 +443,3 @@ function NetworkRefresh({ onChange, live }) {
   return null;
 }
 
-// Its own component so the scanner's answer, which changes every second or two
-// while a scan runs, re-renders this button and not the whole map.
-//
-// It asks first, as a company scan does, and says what it will do and what it
-// costs: one click on a small icon used to open a Chrome window on LinkedIn
-// with no word of what it was about to do.
-function RefreshButton({ isMobile }) {
-  const scan = useScanner();
-  const checking = scan.running && scan.action === 'refresh';
-  const busy = busyReason(scan);
-  return (
-    <button
-      onClick={async () => {
-        try {
-          const blocked = notReadyMessage(await scraperStatus());
-          if (blocked) { alert(blocked); return; }
-          const ok = window.confirm(
-            'Check for new connections?\n\nThis opens a Chrome window on your LinkedIn connections ' +
-            'list and reads it from the newest, stopping once it reaches people already saved. It ' +
-            'usually takes under a minute. It reads your own list, not a search, so it doesn’t ' +
-            'use your search budget, but like any scan it is LinkedIn traffic from your account.',
-          );
-          if (!ok) return;
-          await beginScrape('refresh');
-          alert('Checking for new connections — watch it on the Scan page.');
-        } catch (e) {
-          alert(e.message);
-        }
-      }}
-      disabled={Boolean(busy)}
-      title={busy ? `${busy}. One scan at a time.` : 'Check for new connections: reads your LinkedIn connections list from the newest'}
-      aria-label="Check for new connections"
-      style={{
-        // Words, not a bare ↻ (Blake, 2026-10-02: "make it easier to check for new
-        // connections"), and the same words as the Scan page's button.
-        height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
-        border: '1px solid rgba(0,255,136,0.3)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.45 : 1,
-        background: 'rgba(0,255,136,0.08)', color: '#bff5d9', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
-        display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8, whiteSpace: 'nowrap',
-      }}
-    >
-      <span aria-hidden="true" style={{ fontSize: isMobile ? 12 : 14 }}>↻</span>
-      {checking ? 'Checking…' : isMobile ? 'New' : 'Check for new'}
-    </button>
-  );
-}
