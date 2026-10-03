@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Scan)
+- **The Scan page is a launch, not a manual.** It opens with what the scanner is and what it never does
+  (never posts or messages anyone, never sees your password, nothing leaves this Mac, stops when you
+  say), then the four steps on a rail: Get ready, Sign in, Who you know, Who they know. The one
+  you're on pulses, with one big button that does it and how long it takes; any other opens with a
+  tap. While it runs, "Your scanner is working" and Stop sit right under the step. How many people
+  this round and who first are beside the radar; the daily budget, how much of each list, the hidden
+  window, retrying hidden lists and paused lists are in Fine-tune, closed until you want them. The
+  log is one tap away, and opens by itself when a run stops badly. Scan has the same header as every
+  page now.
+
 ### Changed
 - **Heat: power as a thermal map.** A new Colour by in Network Circle's Physics: every dot coloured
   from cold violet through red and orange to white hot by where their power score ranks among the

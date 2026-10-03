@@ -9,6 +9,7 @@ import { setupStep, askForField } from '../../lib/scanner-setup';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
+import AppTabs from '../components/AppTabs';
 import { paceOf } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
@@ -72,6 +73,8 @@ function SetupInner() {
   // Scanning with no Chrome window (scripts/scrape.py --headless); lib/scraper-client.js reads it for every scan.
   const [hideChrome, setHideChrome] = useRemembered(HIDE_CHROME_KEY, false);
   const [error, setError] = useState(null);
+  // The step open on the rail: null follows the one you're on.
+  const [view, setView] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
   // loads, null when it couldn't be read. And the answer given here, if any.
@@ -177,6 +180,9 @@ function SetupInner() {
   // you know, then the people found through them, then company scans.
   const net = s?.network || { first: 0, second: 0, third: 0 };
   const mapped = net.first;
+  // The step you're on: the first not done. Any other opens from the rail.
+  const current = !s || !step1.done ? 1 : !c.signedIn ? 2 : mapped === 0 ? 3 : 4;
+  const shown = view ?? current;
   // Your field, asked once before the first scan (lib/scanner-setup.js
   // askForField). The steps wait while that isn't known yet (null).
   const askField = IS_DEMO || field ? false : askForField(s, settings);
@@ -195,29 +201,46 @@ function SetupInner() {
       minHeight: '100vh', background: BG, color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
-      <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Link href="/" style={{
-          display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
-          fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
-          background: 'rgba(255,255,255,0.06)', border: LINE,
-        }}>← Back to Map</Link>
-        <h1 style={{
-          fontSize: 22, fontWeight: 700, margin: 0,
-          background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>Scan your network</h1>
+      {/* The same header as every page, Scan lit (Blake, 2026-10-03: continuity) */}
+      <header style={{ padding: '20px 30px', borderBottom: LINE }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <span style={{ fontSize: 28, fontWeight: 700, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Six Degrees
+            </span>
+          </Link>
+          <AppTabs active="scan" />
+          <Link href="/settings" title="Settings" aria-label="Settings" style={{
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
+            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>⚙</Link>
+        </div>
       </header>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px' }}>
 
-        <p style={{ color: '#9aa', fontSize: 15, lineHeight: 1.6, marginTop: 0 }}>
-          This reads your own LinkedIn connections in a real Chrome window on this
-          machine and saves them here. Nothing leaves your computer, and you will never
-          be asked for your password — you sign in yourself, once.
-          {!mapped && (askField
-            ? ' One optional question, then three steps and your galaxy appears.'
-            : ' Three steps and your galaxy appears; each one ticks itself off.')}
-        </p>
+        {/* What the scanner is, in one breath, and what it never does */}
+        <div style={{
+          padding: '26px 26px 22px', borderRadius: 16, marginBottom: 22, position: 'relative', overflow: 'hidden',
+          background: 'radial-gradient(120% 140% at 0% 0%, rgba(0,255,136,0.10), rgba(52,152,219,0.06) 45%, rgba(255,255,255,0.02) 75%)',
+          border: '1px solid rgba(0,255,136,0.22)',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.6, color: '#00ff88' }}>YOUR SCANNER</div>
+          <h1 style={{ fontSize: 27, fontWeight: 800, margin: '6px 0 8px', lineHeight: 1.2 }}>
+            {mapped > 0 ? 'Your network is mapped. Send the scanner further.' : 'Map your network in four steps.'}
+          </h1>
+          <div style={{ fontSize: 14.5, color: '#aab7c4', lineHeight: 1.6, maxWidth: 560 }}>
+            It works in your own Chrome on this Mac, slowly and in the open, and keeps everything here.
+            You launch it; it does the reading; you watch it go.
+          </div>
+          <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', marginTop: 16 }}>
+            {['Never posts or messages anyone', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
+              <span key={t} style={{ fontSize: 12.5, color: '#cfe8dc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#00ff88', fontWeight: 900 }}>✓</span>{t}
+              </span>
+            ))}
+          </div>
+        </div>
 
         {/* The first look at the scanner can take a while (it looks for Python): say so, never a blank page. */}
         {askField === null && <p style={{ color: '#778', fontSize: 13 }}>Checking your setup…</p>}
@@ -318,90 +341,58 @@ function SetupInner() {
             <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
           )}
 
-          {/* ---- step 1 : the scanner itself ---- */}
-          <Step
-            n={1}
-            done={step1.done}
-            title="Set up the scanner"
-            body={s ? step1.text : ''}
-            action={
-              s && step1.button && (
-                <Btn onClick={() => run(step1.button.action)} disabled={busy || running}>
-                  {step1.button.label}
-                </Btn>
-              )
-            }
-          />
+          {/* ---- the journey (Blake, 2026-10-03: "simple and easy to understand … like they are
+               launching an agent"): four steps on a rail, the one you're on open, one button to
+               launch it. Everything else waits in Fine-tune. ---- */}
+          <Journey current={current} view={shown} onView={setView} steps={[
+            { key: 1, label: 'Get ready', done: step1.done },
+            { key: 2, label: 'Sign in', done: !!c.signedIn },
+            { key: 3, label: 'Who you know', done: mapped > 0 },
+            { key: 4, label: 'Who they know', done: net.second > 0 },
+          ]} />
 
-          {/* ---- step 2 : sign in ---- */}
-          <Step
-            n={2}
-            done={!!c.signedIn}
-            title="Sign into LinkedIn"
-            body={
-              c.signedIn
-                ? 'Signed in on this machine. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
-                : 'Opens a Chrome window. Sign in with your email and password — “Continue with Google” cannot work here, because Google blocks its sign-in inside automated browsers.'
-            }
-            action={
-              // Shown after sign-in too: a security check survives the session
-              // cookie, so "signed in" can still need a person (TRAPS §35).
-              c.dependencies && (
-                <Btn onClick={() => run('login')} disabled={busy || running}>
-                  {running && s.action === 'login' ? 'Waiting for you…' : 'Open LinkedIn'}
-                </Btn>
-              )
-            }
-          />
-
-          {/* ---- step 3 : the people you know ---- */}
-          <Step
-            n={3}
-            done={mapped > 0}
-            title="1st degree — the people you know"
-            body="The first scan walks your whole connections list, about a minute and a half for 750 people. After that, Check for new only looks at what has been added since."
-            action={
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <Btn onClick={() => run('full')} disabled={!canSearch} primary>
-                  {running && s.action === 'full' ? 'Scanning…' : 'Scan my whole network'}
-                </Btn>
-                <Btn onClick={() => run('refresh')} disabled={!canSearch}>
+          {shown === 1 && (
+            <Mission step={1} title="Get your scanner ready" time="A minute or two, once" body={s ? step1.text : 'Checking…'}
+              launch={s && step1.button && (
+                <Launch onClick={() => run(step1.button.action)} disabled={busy || running}>{step1.button.label}</Launch>
+              )} />
+          )}
+          {shown === 2 && (
+            <Mission step={2} title="Sign in to LinkedIn, once" time="You do this part"
+              body={c.signedIn
+                ? 'Signed in on this Mac. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
+                : 'A Chrome window opens. Sign in with your email and password there: the scanner never sees them. (“Continue with Google” can’t work in it, because Google blocks its sign-in in automated browsers.)'}
+              launch={c.dependencies && (
+                // Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
+                <Launch onClick={() => run('login')} disabled={busy || running} quiet={!!c.signedIn}>
+                  {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
+                </Launch>
+              )} />
+          )}
+          {shown === 3 && (
+            <Mission step={3} title="Map the people you know" time="About a minute and a half for 750 people"
+              body="It reads your connections list and saves everyone here. After the first time, Check for new only looks at who you've added since."
+              launch={(
+                <Launch onClick={() => run('full')} disabled={!canSearch} quiet={mapped > 0}>
+                  {running && s.action === 'full' ? 'Scanning…' : mapped > 0 ? 'Scan it all again' : 'Scan my network'}
+                </Launch>
+              )}
+              more={(
+                <Btn onClick={() => run('refresh')} disabled={!canSearch} primary={mapped > 0}>
                   {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
                 </Btn>
-              </div>
-            }
-          />
-
-          {/* ---- step 4 : who they know ---- */}
-          <Step
-            n={4}
-            done={false}
-            title="2nd degree — the people they know"
-            body={
-              <>
-                This is what fills <b>Degrees</b> and <b>Outlink</b>: it opens each of your
-                connections in turn and reads who <i>they</i> know. Most people hide their
-                connections — those are noted and never tried again.
-                <br /><br />
-                It is slow on purpose, about two minutes between each person, because
-                this is the part LinkedIn notices. During development a real account was
-                temporarily restricted after roughly <b>19 people in one sitting</b>.
-                Run a batch, leave it for a day, run another — and stop the moment
-                LinkedIn mentions unusual activity. It always picks up where it left
-                off: anyone still without a mapped circle, in the order you choose below —
-                your newest connections first, or highest tier first. Each person&rsquo;s
-                list is read to the end, saving every 10 pages, and a read that is stopped
-                carries on from the same page next time.
-              </>
-            }
-            action={
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <CooldownBanner
-                  cooldown={li?.cooldown}
-                  disabled={busy}
-                  onLift={() => run('lift-cooldown')}
-                />
-                {/* The radar: Scan in the middle, today's budget round it, the speed beside it */}
+              )} />
+          )}
+          {shown === 4 && (
+            <Mission step={4} title="Map who they know" time="A small batch a day, slowly"
+              body={<>It opens your connections one at a time and reads who <i>they</i> know: that fills Degrees, Separation and Outlink. Every round picks up where the last one stopped.</>}>
+              <CooldownBanner
+                cooldown={li?.cooldown}
+                disabled={busy}
+                onLift={() => run('lift-cooldown')}
+              />
+              {/* The radar: Scan in the middle, today's budget round it, the speed beside it */}
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
                 <ScanRadar
                   li={li}
                   running={Boolean(running)}
@@ -412,7 +403,23 @@ function SetupInner() {
                   onScan={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })}
                   onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
                 />
-                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
+                <div style={{ flex: '1 1 230px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: '#cfd8d8' }}>
+                    This round
+                    <select value={batch} onChange={(e) => setBatch(Number(e.target.value))} disabled={running} style={selectStyle}>
+                      <option value={5}>5 people</option>
+                      <option value={10}>10 people</option>
+                      <option value={25}>25 people</option>
+                      <option value={0}>everyone — not advised</option>
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: '#cfd8d8' }}>
+                    Start with
+                    <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
+                      <option value="newest">Newest connections</option>
+                      <option value="score">Highest tier</option>
+                    </select>
+                  </label>
                 {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
                   {['S', 'A', 'B', 'C', 'D'].map((t) => {
@@ -441,95 +448,22 @@ function SetupInner() {
                     {' '}<b>Check for new</b> first so your latest connections are in the list.
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: '#8b9a9a' }}>Start with</span>
-                  <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
-                    <option value="newest">Newest connections first</option>
-                    <option value="score">Highest tier first</option>
-                  </select>
-                  <span style={{ fontSize: 12, color: '#8b9a9a' }}>Read up to</span>
-                  <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
-                    <option value={100}>every page, to the end of their list</option>
-                    <option value={50}>50 pages each</option>
-                    <option value={25}>25 pages each</option>
-                    <option value={10}>10 pages (~100 people) each</option>
-                  </select>
+                  <WhySlow />
                 </div>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8', cursor: running ? 'not-allowed' : 'pointer' }}>
-                  <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
-                  Also finish people already mapped, from the page each one stopped at
-                </label>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
-                  <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
-                    onChange={(e) => { setExperimental(e.target.checked); window.dispatchEvent(new Event('six-degrees:experimental')); }} />
-                  <span>
-                    <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 8 pages in a sitting,
-                    then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40 searches in a day
-                    or 200 in a week, however high your budget; two days&rsquo; rest after any check from LinkedIn; at
-                    the budget it waits instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
-                    the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
-                  </span>
-                </label>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
-                  <input type="checkbox" checked={hideChrome} disabled={running} style={{ marginTop: 3 }}
-                    onChange={(e) => setHideChrome(e.target.checked)} />
-                  <span>
-                    <b style={{ color: '#FFD700' }}>Hide the Chrome window while scanning.</b> Every scan runs with no
-                    window popping up; the status bar still shows what it&rsquo;s doing, and Stop still works. Signing
-                    in always opens the window.
-                    <span style={{ display: 'block', marginTop: 4, color: '#e0a080' }}>
-                      The risks: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a
-                      warning or restriction more likely. If LinkedIn asks you to check it&rsquo;s you (a code, a
-                      puzzle, signing in again) you won&rsquo;t see it, and the scan will stop instead of waiting for
-                      you. Untick this and scan again to see what LinkedIn wants. It changes nothing about pacing or
-                      your daily budget.
-                    </span>
-                  </span>
-                </label>
-                <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
-                  Every page is a LinkedIn search, so at {paceOf(li?.limits?.pace).label} it rests{' '}
-                  {paceOf(li?.limits?.pace).pagePause} seconds before each one and{' '}
-                  {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after every 10, and a long list can take
-                  {' '}about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
-                  LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
-                  have a monthly search limit: if LinkedIn says it has been reached, the scan saves
-                  what it read and stops, and carries on from that page next time. Keep batches small.
-                </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <select
-                  value={batch}
-                  onChange={(e) => setBatch(Number(e.target.value))}
-                  disabled={running}
-                  style={selectStyle}
-                >
-                  <option value={5}>5 people</option>
-                  <option value={10}>10 people</option>
-                  <option value={25}>25 people</option>
-                  <option value={0}>everyone — not advised</option>
-                </select>
-                <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
-                  Retry hidden ones
-                </Btn>
               </div>
-              <PausedList
-                paused={s?.paused || []}
-                disabled={!canSearch}
-                onResume={(p) => run('resume', { id: p.id })}
-                onResumeAll={() => run('resume-all', { maxBridges: batch })}
-              />
-              </div>
-            }
-          />
+            </Mission>
+          )}
 
-          {/* ---- stop: one control, always where the log is ---- */}
+          {/* ---- the scanner at work: what it's doing, and Stop, right under the step ---- */}
           {running && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
               padding: '14px 16px', borderRadius: 8,
-              background: 'rgba(255,255,255,0.05)', border: LINE,
+              background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.3)',
             }}>
               <Spinner />
               <div style={{ flex: 1, fontSize: 13.5 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#00ff88', marginBottom: 2 }}>YOUR SCANNER IS WORKING</div>
                 <b>{ACTION_LABELS[s.action] || 'Working'}</b>
                 {s.progress && <Progress p={s.progress} action={s.action} />}
                 <div style={{ color: '#8b9a9a', fontSize: 12.5, marginTop: 2 }}>
@@ -540,18 +474,90 @@ function SetupInner() {
             </div>
           )}
 
+          {/* Everything you might want to change, out of the way until you do */}
+          <details style={{ margin: '18px 0 4px', borderRadius: 10, border: LINE, background: 'rgba(255,255,255,0.02)' }}>
+            <summary style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13.5, fontWeight: 650, color: '#cfd8d8' }}>
+              Fine-tune the scanner
+              <span style={{ fontWeight: 500, color: '#778', marginLeft: 8 }}>daily budget, how much of each list, the hidden window, paused lists</span>
+            </summary>
+            <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
+              <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8' }}>
+                Read up to
+                <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
+                  <option value={100}>every page, to the end of their list</option>
+                  <option value={50}>50 pages each</option>
+                  <option value={25}>25 pages each</option>
+                  <option value={10}>10 pages (~100 people) each</option>
+                </select>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#cfd8d8', cursor: running ? 'not-allowed' : 'pointer' }}>
+                <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
+                Also finish people already mapped, from the page each one stopped at
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
+                <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
+                  onChange={(e) => { setExperimental(e.target.checked); window.dispatchEvent(new Event('six-degrees:experimental')); }} />
+                <span>
+                  <b style={{ color: '#FFD700' }}>Experimental:</b> all-day pacing. Up to 8 pages in a sitting,
+                  then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40 searches in a day
+                  or 200 in a week, however high your budget; two days&rsquo; rest after any check from LinkedIn; at
+                  the budget it waits instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
+                  the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
+                </span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', cursor: running ? 'default' : 'pointer' }}>
+                <input type="checkbox" checked={hideChrome} disabled={running} style={{ marginTop: 3 }}
+                  onChange={(e) => setHideChrome(e.target.checked)} />
+                <span>
+                  <b style={{ color: '#FFD700' }}>Hide the Chrome window while scanning.</b> Every scan runs with no
+                  window popping up; the status bar still shows what it&rsquo;s doing, and Stop still works. Signing
+                  in always opens the window.
+                  <span style={{ display: 'block', marginTop: 4, color: '#e0a080' }}>
+                    The risks: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a
+                    warning or restriction more likely. If LinkedIn asks you to check it&rsquo;s you (a code, a
+                    puzzle, signing in again) you won&rsquo;t see it, and the scan will stop instead of waiting for
+                    you. Untick this and scan again to see what LinkedIn wants. It changes nothing about pacing or
+                    your daily budget.
+                  </span>
+                </span>
+              </label>
+              <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
+                Every page is a LinkedIn search, so at {paceOf(li?.limits?.pace).label} it rests{' '}
+                {paceOf(li?.limits?.pace).pagePause} seconds before each one and{' '}
+                {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after every 10, and a long list can take
+                {' '}about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
+                LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
+                have a monthly search limit: if LinkedIn says it has been reached, the scan saves
+                what it read and stops, and carries on from that page next time. Keep batches small.
+              </div>
+              <div>
+                <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
+                  Retry hidden ones
+                </Btn>
+                <span style={{ fontSize: 12, color: '#8b9a9a', marginLeft: 10 }}>People whose list was hidden last time, in case they've opened it.</span>
+              </div>
+              <PausedList
+                paused={s?.paused || []}
+                disabled={!canSearch}
+                onResume={(p) => run('resume', { id: p.id })}
+                onResumeAll={() => run('resume-all', { maxBridges: batch })}
+              />
+            </div>
+          </details>
+
           {error && <Box tone="bad">{error}</Box>}
 
+          {/* The scanner's own words, for when you want them: open by itself when a run stopped badly. */}
           {(s?.log?.length > 0) && (
-            <>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                margin: '28px 0 8px', fontSize: 12, color: '#788',
-                textTransform: 'uppercase', letterSpacing: 0.6,
+            <details open={failed} style={{ marginTop: 20 }}>
+              <summary style={{
+                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                margin: '8px 0', fontSize: 12, color: '#788', textTransform: 'uppercase', letterSpacing: 0.6,
               }}>
                 {running && <Spinner />}
-                {running ? 'Working' : 'Last run'}
-              </div>
+                {running ? 'What it’s doing (the log)' : 'The last run’s log'}
+              </summary>
               <pre ref={logRef} style={{
                 background: 'rgba(0,0,0,0.45)', border: LINE, borderRadius: 8,
                 padding: 14, maxHeight: 280, overflow: 'auto', margin: 0,
@@ -559,7 +565,7 @@ function SetupInner() {
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
               }}>{s.log.join('\n')}</pre>
-            </>
+            </details>
           )}
         </>}
 
@@ -678,23 +684,97 @@ const selectStyle = {
   background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
 };
 
-function Step({ n, done, title, body, action }) {
+const JOURNEY_CSS = `
+@keyframes stepPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,.45); } 50% { box-shadow: 0 0 0 7px rgba(0,255,136,0); } }
+.journey-now { animation: stepPulse 2.2s ease-in-out infinite; }
+.launch-go { transition: transform .15s ease, box-shadow .2s ease, filter .2s ease; }
+.launch-go:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,255,136,.35); filter: brightness(1.08); }
+.launch-go:not(:disabled):active { transform: translateY(0) scale(.98); }
+@media (prefers-reduced-motion: reduce) { .journey-now { animation: none; } }
+`;
+
+/** The four steps on a rail: done ones ticked, the one you're on pulsing, any of them opens on a tap. */
+function Journey({ steps, current, view, onView }) {
+  return (
+    <div role="tablist" aria-label="Scanning, step by step" style={{ display: 'flex', alignItems: 'flex-start', margin: '4px 0 14px' }}>
+      <style>{JOURNEY_CSS}</style>
+      {steps.map((st, i) => {
+        const now = st.key === current && !st.done;
+        const open = st.key === view;
+        const color = st.done ? '#00ff88' : now ? '#fff' : '#667';
+        return (
+          <div key={st.key} style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
+            <button type="button" role="tab" aria-selected={open} onClick={() => onView(st.key === current ? null : st.key)}
+              style={{ flex: '0 0 auto', width: 76, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span className={now ? 'journey-now' : undefined} style={{
+                width: 38, height: 38, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 15, fontWeight: 800,
+                background: st.done ? 'rgba(0,255,136,0.16)' : now ? 'linear-gradient(135deg, #00ff88, #1abc9c)' : 'rgba(255,255,255,0.05)',
+                color: st.done ? '#00ff88' : now ? '#04140c' : '#778',
+                border: `2px solid ${open ? '#fff' : st.done ? 'rgba(0,255,136,0.55)' : now ? 'transparent' : 'rgba(255,255,255,0.12)'}`,
+              }}>{st.done ? '✓' : st.key}</span>
+              {/* Wraps to two lines rather than running into the next on a phone */}
+              <span style={{ fontSize: 12, fontWeight: open ? 800 : 650, color, textAlign: 'center', lineHeight: 1.25, maxWidth: 76, overflowWrap: 'break-word' }}>{st.label}</span>
+            </button>
+            {i < steps.length - 1 && (
+              <span aria-hidden="true" style={{
+                flex: 1, height: 2, marginTop: 19, borderRadius: 1, minWidth: 8,
+                background: st.done ? 'linear-gradient(90deg, rgba(0,255,136,0.7), rgba(0,255,136,0.25))' : 'rgba(255,255,255,0.1)',
+              }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The step that's open: what it does, how long, and the one button that does it. */
+function Mission({ step, title, time, body, launch, more, children }) {
   return (
     <div style={{
-      display: 'flex', gap: 16, padding: '20px 0', borderBottom: LINE, alignItems: 'flex-start',
+      padding: '20px 22px', borderRadius: 14, marginBottom: 8,
+      background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.1)',
     }}>
-      <div style={{
-        flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
-        display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
-        background: done ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.08)',
-        color: done ? '#00ff88' : '#889', border: `1px solid ${done ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.14)'}`,
-      }}>{done ? '✓' : n}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15.5, fontWeight: 650, marginBottom: 4 }}>{title}</div>
-        <div style={{ fontSize: 13.5, color: '#8b9a9a', lineHeight: 1.6, marginBottom: action ? 12 : 0 }}>{body}</div>
-        {action}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#778' }}>STEP {step}</span>
+        <span style={{ fontSize: 19, fontWeight: 800 }}>{title}</span>
+        {time && <span style={{ fontSize: 12, color: '#8fd9b6', marginLeft: 'auto' }}>⏱ {time}</span>}
       </div>
+      <div style={{ fontSize: 14, color: '#9fb0bb', lineHeight: 1.6, margin: '8px 0 14px', maxWidth: 600 }}>{body}</div>
+      {children}
+      {(launch || more) && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{launch}{more}</div>}
     </div>
+  );
+}
+
+/** The big go button. `quiet` once that step is done, so the next thing to do stands out. */
+function Launch({ children, onClick, disabled, quiet = false }) {
+  return (
+    <button type="button" className="launch-go" onClick={onClick} disabled={disabled} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 10, padding: quiet ? '10px 18px' : '13px 26px', borderRadius: 12,
+      fontSize: quiet ? 14 : 16, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer',
+      color: disabled ? '#667' : quiet ? '#cfe8dc' : '#04140c', border: quiet ? '1px solid rgba(0,255,136,0.35)' : 'none',
+      background: disabled ? 'rgba(255,255,255,0.06)' : quiet ? 'rgba(0,255,136,0.08)' : 'linear-gradient(135deg, #00ff88, #1abc9c)',
+      boxShadow: disabled || quiet ? 'none' : '0 4px 22px rgba(0,255,136,0.25)',
+    }}>
+      <span aria-hidden="true" style={{ fontSize: quiet ? 11 : 13 }}>▶</span>{children}
+    </button>
+  );
+}
+
+/** Why the second degree goes slowly: one tap away, not in the way. */
+function WhySlow() {
+  return (
+    <details style={{ fontSize: 12.5, color: '#8b9a9a', lineHeight: 1.6 }}>
+      <summary style={{ cursor: 'pointer', color: '#aab7c4', fontWeight: 600 }}>Why so slow?</summary>
+      <div style={{ marginTop: 6 }}>
+        This is the part LinkedIn notices. While this app was being built, a real account was
+        restricted for a while after roughly <b>19 people in one sitting</b>. So: a small batch, a day&rsquo;s
+        rest, another batch, and stop the moment LinkedIn mentions unusual activity. Most people hide
+        their connections; those are noted and never tried again. A list is read to the end, saving every
+        10 pages, and a stopped read carries on from the same page.
+      </div>
+    </details>
   );
 }
 
