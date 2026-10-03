@@ -55,6 +55,7 @@ export default function EmptyState() {
           badge="Recommended"
           title="Scan my LinkedIn"
           body="A few guided steps: set up the scanner, sign into LinkedIn yourself, and watch your galaxy fill in. The only way to see who your connections know."
+          note="It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this."
         />
 
         <Choice
@@ -86,7 +87,7 @@ export default function EmptyState() {
   );
 }
 
-function Choice({ href, onClick, disabled, primary, badge, title, body }) {
+function Choice({ href, onClick, disabled, primary, badge, title, body, note }) {
   const style = {
     display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left',
     padding: '16px 18px', borderRadius: 12, marginBottom: 12, textDecoration: 'none',
@@ -110,6 +111,8 @@ function Choice({ href, onClick, disabled, primary, badge, title, body }) {
         <span style={{ marginLeft: 'auto', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.4)' }}>→</span>
       </div>
       <div style={{ fontSize: 13, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', lineHeight: 1.6 }}>{body}</div>
+      {/* What it risks, said where it's recommended (lib/scan-risk.js asks again before the first scan). */}
+      {note && <div style={{ fontSize: 12.5, color: 'var(--sd-gold, #FFD700)', opacity: 0.85, lineHeight: 1.5, marginTop: 6 }}>{note}</div>}
     </>
   );
   return href

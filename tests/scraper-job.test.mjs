@@ -23,6 +23,9 @@ before(async () => {
   ({ GET, POST } = await import('../app/api/scraper/route.js'));
   ({ getDb } = await import('../lib/db-client.js'));
   ({ registerScanState } = await import('../lib/scan-state.js'));
+  // The one-time "I understand" (lib/scan-risk.js) was given in this folder.
+  const { writeSettings } = await import('../lib/settings.js');
+  writeSettings(getDb(), { scanRiskAccepted: '2026-10-03T00:00:00.000Z' });
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
 

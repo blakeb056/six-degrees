@@ -283,6 +283,10 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 >
 > **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
+>
+> The app asks for an explicit "I understand" once, before the first scan.
+>
+> Six Degrees is not affiliated with or endorsed by LinkedIn.
 
 ## First run
 

@@ -40,11 +40,14 @@ writeFileSync(process.env.SIX_DEGREES_PYTHON, [
 ].join('\n'));
 chmodSync(process.env.SIX_DEGREES_PYTHON, 0o755);
 
-let GET, POST, getDb;
+let GET, POST, getDb, writeSettings;
 
 before(async () => {
   ({ GET, POST } = await import('../app/api/scraper/route.js'));
   ({ getDb } = await import('../lib/db-client.js'));
+  ({ writeSettings } = await import('../lib/settings.js'));
+  // The one-time "I understand" (lib/scan-risk.js) was given in this folder.
+  writeSettings(getDb(), { scanRiskAccepted: '2026-10-03T00:00:00.000Z' });
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
 
@@ -88,6 +91,33 @@ test('a scan of someone picked by id reads their list, found by profile URL, fro
   await post({ action: 'bridge', id: 'p-dalia-1', name: 'Dalia Fenmoor' });
   assert.deepEqual(await scannerArgs(),
     ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-1', '--from-start', '--max-pages=100']);
+});
+
+test('nothing opens LinkedIn before the one-time "I understand", whichever button asks', async () => {
+  const profile = path.join(process.env.SIX_DEGREES_HOME, 'chrome-profile');
+  writeSettings(getDb(), { scanRiskAccepted: null });
+  try {
+    for (const body of [{ action: 'bridge', id: 'p-dalia-2' }, { action: 'login' }, { action: 'refresh' }]) {
+      const res = await post(body);
+      assert.equal(res.status, 409, body.action);
+      const d = await res.json();
+      assert.equal(d.needsRiskAcceptance, true);
+      assert.match(d.error, /Scan page/);
+    }
+    assert.equal(existsSync(ARGS), false, 'nothing was started');
+    assert.equal((await job()).running, false);
+
+    // Someone who scanned before this existed (the scanner's own Chrome profile is here) isn't asked.
+    mkdirSync(profile);
+    assert.equal((await post({ action: 'bridge', id: 'p-dalia-2' })).status, 200);
+    assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100']);
+  } finally {
+    rmSync(profile, { recursive: true, force: true });
+    writeSettings(getDb(), { scanRiskAccepted: '2026-10-03T00:00:00.000Z' });
+  }
+  // Given on the Scan page: it starts.
+  assert.equal((await post({ action: 'bridge', id: 'p-dalia-2' })).status, 200);
+  await scannerArgs();
 });
 
 test('carrying on with someone picked by id leaves out --from-start', async () => {

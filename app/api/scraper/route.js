@@ -12,6 +12,8 @@ import { scanDoneNotification } from '../../../lib/notifications';
 import { registerScanState } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
+import { readSettings } from '../../../lib/settings';
+import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
@@ -277,6 +279,14 @@ async function look() {
   return { root, python, chrome, signedIn };
 }
 
+// The "I understand" before the first scan: given on the Scan page, or implied by
+// the scanner's own Chrome profile, which only a scan before it could have made.
+function scanRisk() {
+  let acceptedAt = null;
+  try { acceptedAt = readSettings(getDb()).scanRiskAccepted; } catch { /* unreadable: ask */ }
+  return riskAccepted({ acceptedAt, scannedBefore: existsSync(path.join(dataDir(), 'chrome-profile')) });
+}
+
 /** Google Chrome on Windows, where Playwright's "chrome" channel looks: for this user, then for everyone. */
 function windowsChrome() {
   const env = process.env;
@@ -358,6 +368,8 @@ async function status() {
       download: py.download ? { version: py.download.version, size: py.download.size, from: 'github.com' } : null,
       chrome: m.chrome,
       signedIn: m.signedIn,
+      // The one-time "I understand" before the first scan (lib/scan-risk.js).
+      riskAccepted: scanRisk(),
     },
     network,
     photosWaiting,
@@ -598,6 +610,11 @@ export async function POST(request) {
 
   if (!Object.hasOwn(ACTIONS, action)) {
     return Response.json({ error: `Unknown action '${action}'` }, { status: 400 });
+  }
+  // Nothing opens LinkedIn before the one-time "I understand" on the Scan page,
+  // whichever button asked (lib/scan-risk.js).
+  if (touchesLinkedIn(action) && !scanRisk()) {
+    return Response.json({ error: RISK_REFUSAL, needsRiskAcceptance: true }, { status: 409 });
   }
 
   const spec = ACTIONS[action];

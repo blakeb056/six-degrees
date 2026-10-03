@@ -6,6 +6,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape, pickedPerson, scanRequest, HIDE_CHROME_KEY } from '../../lib/scraper-client';
 import { setupStep, askForField } from '../../lib/scanner-setup';
+import { RISK_POINTS } from '../../lib/scan-risk';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
@@ -141,6 +142,25 @@ function SetupInner() {
     window.scrollTo(0, 0);
   }
 
+  // "I understand": when, kept with your settings so it travels with a copy.
+  async function acceptRisk() {
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { scanRiskAccepted: new Date().toISOString() } }),
+      });
+      if (!r.ok) setError((await r.json().catch(() => null))?.error || 'Could not save that. Try again.');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+      poll();
+    }
+  }
+
   async function run(action, extra = {}) {
     setError(null);
     setBusy(true);
@@ -171,7 +191,10 @@ function SetupInner() {
   const needsDeps = s && !c.dependencies;
   const needsChrome = s && !c.chrome;
   const notFound = s && !c.scriptsFound;
-  const canScrape = s?.ready && !running;
+  // The one-time "I understand" before anything opens LinkedIn (lib/scan-risk.js);
+  // the server refuses without it too. Unknown (an older server) counts as given.
+  const riskOk = c.riskAccepted !== false;
+  const canScrape = s?.ready && !running && riskOk;
   // Anything that searches LinkedIn waits out a cooldown (TRAPS §35).
   const li = s?.linkedin;
   const cooling = Boolean(li?.cooldown);
@@ -334,6 +357,8 @@ function SetupInner() {
                displayed with the line following"): every step shown at once, down a line that turns
                green as each is done, the one you're on lit, one button each. Everything else waits
                in Fine-tune. ---- */}
+          {s && !riskOk && <RiskCard onAccept={acceptRisk} busy={busy} />}
+
           <div role="list" aria-label="Scanning, step by step" style={{ margin: '4px 0 8px' }}>
           <style>{JOURNEY_CSS}</style>
           <StepRow n={1} label="Get ready" state={stateOf(1, step1.done)}>
@@ -349,7 +374,7 @@ function SetupInner() {
                 : 'A Chrome window opens. Sign in with your email and password there: the scanner never sees them. (“Continue with Google” can’t work in it, because Google blocks its sign-in in automated browsers.)'}
               launch={c.dependencies && (
                 // Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
-                <Launch onClick={() => run('login')} disabled={busy || running || current < 2} quiet={!!c.signedIn}>
+                <Launch onClick={() => run('login')} disabled={busy || running || current < 2 || !riskOk} quiet={!!c.signedIn}>
                   {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
                 </Launch>
               )} />
@@ -558,12 +583,6 @@ function SetupInner() {
           )}
         </>}
 
-        <p style={{ color: 'var(--sd-fg-4, #667)', fontSize: 12.5, lineHeight: 1.7, marginTop: 32 }}>
-          Automating LinkedIn may go against its User Agreement, and accounts have been
-          restricted for it. This runs locally against your own account, at your own risk.
-          LinkedIn’s own CSV export is the supported route and needs none of this:{' '}
-          <Link href="/import" style={{ color: 'var(--sd-blue, #3498DB)' }}>import a CSV instead</Link>.
-        </p>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }
@@ -783,6 +802,31 @@ function Btn({ children, onClick, disabled, primary, tone, cluster = false, acti
       border: LINE, cursor: active ? 'progress' : disabled ? 'not-allowed' : 'pointer',
       ...(cluster ? { display: 'inline-flex', alignItems: 'center', gap: 8 } : {}),
     }}>{children}</button>
+  );
+}
+
+// Before the first scan, once: what scanning does and risks, and an explicit
+// "I understand" (lib/scan-risk.js). The CSV stays one click away for anyone
+// who would rather not.
+function RiskCard({ onAccept, busy }) {
+  return (
+    <div role="region" aria-label="Before your first scan" style={{
+      margin: '6px 0 18px', padding: '16px 18px', borderRadius: 12,
+      border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.14)',
+      background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)',
+    }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--sd-fg-1, #fff)', marginBottom: 8 }}>Before your first scan</div>
+      <ul style={{ margin: '0 0 14px', paddingLeft: 18, color: 'var(--sd-fg-2, #c8d0d0)', fontSize: 13.5, lineHeight: 1.65 }}>
+        {RISK_POINTS.map((p) => <li key={p} style={{ marginBottom: 4 }}>{p}</li>)}
+      </ul>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn onClick={onAccept} disabled={busy} primary>I understand</Btn>
+        <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>
+          Rather not? LinkedIn’s own CSV export needs none of this:{' '}
+          <Link href="/import" style={{ color: 'var(--sd-blue, #3498DB)' }}>import a CSV instead</Link>.
+        </span>
+      </div>
+    </div>
   );
 }
 
