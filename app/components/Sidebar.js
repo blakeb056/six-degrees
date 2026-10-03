@@ -14,9 +14,10 @@ import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from
 import { exclusiveReach, bridgeOverlap } from '../../lib/brokerage';
 import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
+import NoteDetail from './NoteDetail';
 import { localPhoto } from '../../lib/photos';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote }) {
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
@@ -52,6 +53,18 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
   const requests = useRequests();
   const isRequested = useCallback((row) => hasRequest(row, requests), [requests]);
+
+  // A notification someone clicked takes the panel over until they go back (app/components/NoteDetail.js).
+  if (note) {
+    return (
+      <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
+        <NoteDetail note={note} connections={connections} degree2={degree2} onBack={onCloseNote}
+          onSelect={(p) => { onCloseNote?.(); onSelect?.(p); }}
+          onOpenCircle={onOpenCircle ? (id) => { onCloseNote?.(); onOpenCircle(id); } : undefined}
+          onShowInSeparation={onShowInSeparation ? (preset) => { onCloseNote?.(); onShowInSeparation(preset); } : undefined} />
+      </SidebarWrapper>
+    );
+  }
 
   if (selected) {
     const isBridge = selected.degree === 1 && bridgeMap[selected.id];

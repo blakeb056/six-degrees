@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Notifications open.** Click one and it takes over the right panel with the detail: who it is
+  about, their tier and score, who you met them through, and, for an S or A, that they're a
+  valuable person to know; with buttons to open their card, their circle in Bridge Chains, or
+  them in Separation. A notification naming several people lists them all.
+- **New notifications:** someone you met through a bridge added you back ("Ana added you back,
+  through Yuki"); a circle scan found people at top companies (a company score of 8 or more), named
+  in one notification; and a scan finished ("Scan done: Yuki's circle", "Check for new: done").
+  Accepted requests and high-value new connections now say who they are about, and older ones are
+  matched by the name in their title.
 - **Paths has the same header as the map.** The app's tabs stay at the top, with Paths lit, and Map,
   People, Industries and Companies sit in the notch under them, as the map page's views do; a tab
   for Network Circle, Degrees or Separation takes you straight to it. Paths' filters moved into a

@@ -2,6 +2,7 @@ import { db as supabase } from '../../../lib/db';
 import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf } from '../../../lib/ingest';
 import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
+import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
 
 function parseHeadline(h) {
@@ -113,6 +114,8 @@ export async function POST(request) {
     const newRecords = records.filter(r => !existingUrls.has(r.profile_url));
     const existingRecords = records.filter(r => existingUrls.has(r.profile_url));
     let promoted = 0;
+    // Who was promoted, and through whom, for an "added you back" notification once they're rescored.
+    const addedBack = [];
 
     // Someone you met through a bridge and have now actually connected with.
     //
@@ -144,7 +147,7 @@ export async function POST(request) {
             ...(rec.profile_image_url ? { profile_image_url: rec.profile_image_url } : {}),
           },
         });
-        if (res.promoted) promoted += 1;
+        if (res.promoted) { promoted += 1; addedBack.push(res); }
       }
     }
 
@@ -240,6 +243,41 @@ export async function POST(request) {
       } catch (e) { /* notifications are optional */ }
     }
 
+    // A circle scan that found people at top companies: one notification naming them (lib/notifications.js).
+    if (degree === 2 && bridgeId && newRecords.length) {
+      try {
+        const found = [];
+        const urls = newRecords.map((r) => r.profile_url).filter(Boolean);
+        for (let i = 0; i < urls.length; i += 100) {
+          let q = supabase.from('linkedin_connections').select('id, name, company, company_prestige_score, power_score, tier')
+            .in('profile_url', urls.slice(i, i + 100)).eq('source_connection_id', bridgeId);
+          if (userId) q = q.eq('user_id', userId);
+          const { data } = await q;
+          found.push(...(data || []));
+        }
+        const { data: via } = await supabase.from('linkedin_connections').select('id, name').eq('id', bridgeId).single();
+        const note = topCompanyNotification({ people: found, via, userId });
+        if (note) await supabase.from('notifications').insert([note]);
+      } catch (e) { /* notifications are optional */ }
+    }
+
+    // Someone you met through a bridge who is now a connection: "added you back, through …".
+    if (addedBack.length) {
+      try {
+        const rows = [];
+        for (const res of addedBack.slice(0, 10)) {
+          const { data: person } = await supabase.from('linkedin_connections')
+            .select('id, name, tier, power_score, headline, unlocked_from_bridge_id').eq('id', res.id).single();
+          if (!person) continue;
+          const viaId = res.originId ?? person.unlocked_from_bridge_id;
+          const via = viaId != null ? { id: viaId, name: res.originName || null } : null;
+          const note = addedBackNotification({ person, via, userId });
+          if (note) rows.push(note);
+        }
+        if (rows.length) await supabase.from('notifications').insert(rows);
+      } catch (e) { /* notifications are optional */ }
+    }
+
     // Auto-detect accepted pending requests: if a pending person just showed up as d1
     if (degree === 1 && records.length > 0) {
       try {
@@ -286,6 +324,7 @@ export async function POST(request) {
               title: `${p.name} accepted! +${XP_ACCEPT[p.tier] || 5} XP`,
               message: `${p.tier}-Tier connection — bridge their cluster to reach D3`,
               icon: '🤝',
+              data: { personId: p.id, viaId: p.source_connection_id ?? null, tier: p.tier ?? null },
             }))
           ).catch(() => {});
         }
