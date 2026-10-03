@@ -1,6 +1,6 @@
 <!--
-title: Download Six Degrees for Mac, Linux and Windows
-description: Download Six Degrees free for Mac (Apple Silicon and Intel), run it on Linux with npx, and see what's coming for Windows. With install steps, checksums and troubleshooting.
+title: Download Six Degrees for Mac, Windows and Linux
+description: Download Six Degrees free for Mac (Apple Silicon and Intel), and in beta for Windows and Linux. With install steps, checksums and troubleshooting.
 crumb: Download
 path: /download/
 type: WebPage
@@ -9,9 +9,9 @@ updated: 2026-09-29
     <header class="page-hero">
       <p class="kicker">Download</p>
       <h1>Get Six Degrees</h1>
-      <p class="lede">Free for Mac today. Apps for Linux and Windows are on the way, and on Linux it already runs from the
-        Terminal.</p>
-      <p class="fine center" id="version-line">macOS 13.5 or later · Linux from the Terminal · Windows coming soon</p>
+      <p class="lede">Free for Mac, and now for Windows and Linux too, in beta: the same app, with everything it needs
+        inside.</p>
+      <p class="fine center" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
     </header>
 
     <section class="download" id="download">
@@ -20,8 +20,8 @@ updated: 2026-09-29
 
     <nav class="on-page" aria-label="On this page">
       <a href="#install">Install on a Mac</a>
-      <a href="#linux">Run it on Linux</a>
       <a href="#windows">Windows</a>
+      <a href="#linux">Linux</a>
       <a href="#requirements">Requirements</a>
       <a href="#updating">Updating</a>
       <a href="#troubleshooting">Troubleshooting</a>
@@ -78,12 +78,51 @@ updated: 2026-09-29
         download yourself: <code>shasum -a 256 ~/Downloads/Six-Degrees-Mac-*.dmg</code>, and compare.</p>
     </section>
 
+    <section class="windows" id="windows">
+      <p class="kicker">Windows <span class="pill">beta</span></p>
+      <h2>Install on Windows</h2>
+      <p class="intro">The same app as on the Mac, for Windows 10 or 11 (64-bit), with the scanner's Python inside.</p>
+      <ol class="steps" role="list">
+        <li>
+          <h3>Download it and open it</h3>
+          <p>Download <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe"><strong>Six-Degrees-Windows-Setup.exe</strong></a> and
+            open it. It installs for you alone (no administrator password), adds Six Degrees to the Start Menu and the
+            Desktop, and opens it.</p>
+        </li>
+        <li>
+          <h3>If SmartScreen asks, run it anyway</h3>
+          <p>It isn't signed with a paid certificate yet, so Windows may say it protected your PC. Choose
+            <strong>More info → Run anyway</strong>. Once per download.</p>
+        </li>
+        <li>
+          <h3>Updating</h3>
+          <p>Open a newer Setup.exe: it closes Six Degrees, puts the new version in its place and opens it.
+            <strong>Settings → Updates</strong> tells you when there is one.</p>
+        </li>
+      </ol>
+      <p class="fine">Your network stays in <code>%USERPROFILE%\.six-degrees</code>; uninstalling (Settings → Apps)
+        never touches it. Scanning drives Google Chrome, which it needs for that part only.
+        This is a beta: if something doesn't work, <a href="https://github.com/blakeb056/six-degrees/issues">say so on GitHub</a>.</p>
+    </section>
+
     <section class="linux" id="linux">
-      <p class="kicker">Linux</p>
-      <h2>Run it on Linux today</h2>
-      <p class="intro">A Linux app to download is coming soon. Until then, Six Degrees runs from the Terminal with
-        <code>npx</code>, which comes with Node.js: it downloads Six Degrees from <strong>npm</strong>, the public library
-        of Node.js programs, and runs it in your browser.</p>
+      <p class="kicker">Linux <span class="pill">beta</span></p>
+      <h2>Install on Linux</h2>
+      <p class="intro">On Ubuntu or Debian (64-bit), download
+        <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb"><strong>Six-Degrees-Linux-x64.deb</strong></a> and install it:</p>
+      <div class="terminal">
+        <div class="cmd">
+          <code id="cmd-deb">sudo apt install ./Six-Degrees-Linux-x64.deb</code>
+          <button type="button" class="copy" data-copy="cmd-deb" aria-label="Copy the install command">Copy</button>
+        </div>
+        <p class="fine">Then open Six Degrees from your apps. Elsewhere, the
+          <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz">.tar.gz</a> runs from its folder: on Ubuntu 24.04 and later, run
+          <code>sudo chown root:root chrome-sandbox &amp;&amp; sudo chmod 4755 chrome-sandbox</code> in it once (or start it with
+          <code>--no-sandbox</code>). Scanning needs Google Chrome (not Chromium).</p>
+      </div>
+      <p class="intro">Or, without installing anything, run it from the Terminal with <code>npx</code>, which comes with
+        Node.js: it downloads Six Degrees from <strong>npm</strong>, the public library of Node.js programs, and runs it in
+        your browser.</p>
       <figure class="video">
         <video controls muted playsinline preload="metadata" poster="/video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Six Degrees on Linux">
           <source src="/video/linux.mp4?v=0.2.1" type="video/mp4">
@@ -106,27 +145,18 @@ updated: 2026-09-29
       </div>
     </section>
 
-    <section class="windows-soon" id="windows">
-      <p class="kicker">Windows</p>
-      <h2>Coming soon</h2>
-      <p class="intro">There's no Windows version yet, and <code>npx six-degrees</code> doesn't run on Windows either; npm
-        says so if you try. A Windows app is <a href="/roadmap/">on the roadmap</a>. To hear when it's out,
-        <a href="https://github.com/blakeb056/six-degrees">watch the repository's releases on GitHub</a>
-        (Watch → Custom → Releases), or follow the <a href="/releases/feed.xml">releases feed</a>.</p>
-    </section>
-
     <section class="requirements" id="requirements">
       <p class="kicker">Requirements</p>
       <h2>What it needs</h2>
       <div class="table-wrap prose-table">
         <table>
-          <thead><tr><th scope="col"></th><th scope="col">Mac app</th><th scope="col">Linux (npx)</th></tr></thead>
+          <thead><tr><th scope="col"></th><th scope="col">Mac app</th><th scope="col">Windows and Linux apps (beta)</th><th scope="col">Linux (npx)</th></tr></thead>
           <tbody>
-            <tr><th scope="row">System</th><td>macOS 13.5 (Ventura) or later, Apple Silicon or Intel</td><td>Node 22.13 or later; tested on Ubuntu</td></tr>
-            <tr><th scope="row">Download</th><td>About 200 MB, with everything inside</td><td>From npm, the first time you run it</td></tr>
-            <tr><th scope="row">To explore the sample or import LinkedIn's CSV</th><td>Nothing else</td><td>Nothing else</td></tr>
-            <tr><th scope="row">To scan your own LinkedIn (optional)</th><td>Google Chrome; the scanner's Python comes inside the app</td><td>Google Chrome, and Python 3.10–3.14 or the one-click private copy</td></tr>
-            <tr><th scope="row">Account, server, sign-up</th><td>None</td><td>None</td></tr>
+            <tr><th scope="row">System</th><td>macOS 13.5 (Ventura) or later, Apple Silicon or Intel</td><td>Windows 10 or 11, 64-bit; Ubuntu or Debian, 64-bit</td><td>Node 22.13 or later; tested on Ubuntu</td></tr>
+            <tr><th scope="row">Download</th><td>About 200 MB, with everything inside</td><td>About 150 MB, with everything inside</td><td>From npm, the first time you run it</td></tr>
+            <tr><th scope="row">To explore the sample or import LinkedIn's CSV</th><td>Nothing else</td><td>Nothing else</td><td>Nothing else</td></tr>
+            <tr><th scope="row">To scan your own LinkedIn (optional)</th><td>Google Chrome; the scanner's Python comes inside the app</td><td>Google Chrome; the scanner's Python comes inside the app</td><td>Google Chrome, and Python 3.10–3.14 or the one-click private copy</td></tr>
+            <tr><th scope="row">Account, server, sign-up</th><td>None</td><td>None</td><td>None</td></tr>
           </tbody>
         </table>
       </div>
