@@ -132,7 +132,8 @@ const DOWNLOADS = {
       const line = $('version-line');
       if (!line) return;
       if (os !== 'mac') {
-        line.textContent = `Version ${version} · macOS 13.5 or later · Linux from the Terminal · free and open source`;
+        // Windows and Linux are a beta on their own pre-release (DOWNLOADS above), not this "latest" version.
+        line.textContent = `Mac ${version} · Windows and Linux in beta · free and open source`;
         return;
       }
       const silicon = mb('Six-Degrees-Mac-Apple-Silicon.dmg');
