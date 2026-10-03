@@ -289,18 +289,75 @@ ${post.html}
 }
 
 /**
- * The generations before this codebase, shown on /releases/ under "Before 0.1".
- * Dates and one line each: their repositories are private, so they're never
- * linked. Not in the releases feed: they aren't releases of this app.
+ * What came before 0.1.0, shown on /releases/ under "Before 0.1", newest first:
+ * the first build (June, "Alpha"), the static version (July, "Beta") and the
+ * open-source rebuild's first month (August and September, "Preview"), one
+ * entry for each day the work landed (Blake, 2026-10-02: showing it as one
+ * block "doesn't represent it properly"). Taken from each repository's commit
+ * history, with the dates the commits carry. They were never downloads, and
+ * the first two repositories are private, so nothing here links to them.
+ * Not in the releases feed: they aren't releases of this app.
  */
 export const BEFORE = [
   {
-    id: 'beta-static', stage: 'Beta', date: '2026-07-12', title: 'The static version',
+    id: 'preview-6', stage: 'Preview', date: '2026-09-10', title: 'Preview 6: one-command updates',
+    text: 'Updating became one command that can\'t half-succeed, the app said when its server was older than its files, and the front page told the truth about how to run it.',
+  },
+  {
+    id: 'preview-5', stage: 'Preview', date: '2026-09-09', title: 'Preview 5: the scanner, end to end',
+    text: 'Who introduced whom was remembered, with a note when they accepted; each photo matched to the right person; the dial paged through every bridge; and the map said how much of the network was actually mapped.',
+  },
+  {
+    id: 'preview-4', stage: 'Preview', date: '2026-09-01', title: 'Preview 4: open source',
+    text: 'The rebuild went public on GitHub, and the earlier versions\' repositories went private.',
+  },
+  {
+    id: 'preview-3', stage: 'Preview', date: '2026-08-25', title: 'Preview 3: signing in first',
+    text: 'The scanner waited for you to sign in to LinkedIn yourself before reading anything, a first scan read your whole list, and loading the sample network could be undone.',
+  },
+  {
+    id: 'preview-2', stage: 'Preview', date: '2026-08-24', title: 'Preview 2: one command to run it',
+    text: 'Packaged to run with one command, with an invented sample network and a real empty state, and two security holes closed (a cross-site write and stored script injection).',
+  },
+  {
+    id: 'preview-1', stage: 'Preview', date: '2026-08-21', title: 'Preview 1: the open-source rebuild begins',
+    text: 'This codebase starts: the hosted database replaced by a local one on your own computer, the scanner\'s last ties to the cloud cut, and checks that keep secrets and personal data out of the code.',
+  },
+  {
+    id: 'beta-3', stage: 'Beta', date: '2026-07-15', title: 'Beta 3: scanning from inside the app',
+    text: 'The scanner ran from the app itself, with its progress shown live, and one command started everything.',
+  },
+  {
+    id: 'beta-2', stage: 'Beta', date: '2026-07-13', title: 'Beta 2: local-first, for real',
+    text: 'A local database server on your own computer, a hardened scanner, and the first build\'s features brought back where they were safe for a demo.',
+  },
+  {
+    id: 'beta-static', stage: 'Beta', date: '2026-07-12', title: 'Beta 1: the static version',
     text: 'Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data never left your device.',
   },
   {
-    id: 'alpha-first-build', stage: 'Alpha', date: '2026-06-11', title: 'The first build',
-    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online. Where Six Degrees started.',
+    id: 'alpha-6', stage: 'Alpha', date: '2026-06-18', title: 'Alpha 6: on your phone, and a launch page',
+    text: 'A layout for phones, with a touch dial for spinning through a bridge\'s circle, and a showcase page for the launch.',
+  },
+  {
+    id: 'alpha-5', stage: 'Alpha', date: '2026-06-16', title: 'Alpha 5: chains',
+    text: 'The Chain view, where Bridge Chains began: hover a bridge to see their circle, and the people in it who could lead one step further.',
+  },
+  {
+    id: 'alpha-4', stage: 'Alpha', date: '2026-06-15', title: 'Alpha 4: more than one network',
+    text: 'Each person\'s network kept apart from everyone else\'s, a bulk import, company scores of your own, and Paths reading companies from headlines.',
+  },
+  {
+    id: 'alpha-3', stage: 'Alpha', date: '2026-06-14', title: 'Alpha 3: who to add next',
+    text: 'A ranked list of who to add next (where Outlink began), a profile page with a level, points and milestones, and cluster cards you could open.',
+  },
+  {
+    id: 'alpha-2', stage: 'Alpha', date: '2026-06-12', title: 'Alpha 2: photos and clusters',
+    text: 'Profile photos on the map and the cards, the most valuable clusters ranked, and your bridges orbiting you by tier.',
+  },
+  {
+    id: 'alpha-first-build', stage: 'Alpha', date: '2026-06-11', title: 'Alpha 1: the first build',
+    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Six Degrees started.',
     archive: 'https://six-degrees-linkedin.vercel.app/',
     image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation, Map your LinkedIn power network', width: 800, height: 500, caption: 'The first build, June 2026' },
   },
@@ -318,8 +375,10 @@ export function beforeHtml() {
       </article>`).join('\n');
   return `      <section class="before" id="before-0-1" aria-labelledby="before-h">
         <h2 id="before-h">Before 0.1</h2>
-        <p class="fine">The generations before this codebase. The open-source rebuild began on
-          <time datetime="2026-08-21">21 August 2026</time> and led to 0.1.0. <a href="/roadmap/#how-it-started">How it started</a>.</p>
+        <p class="fine">Three and a half months before the first release, from the day each piece of work landed: the first
+          build in June (Alpha), the static version in July (Beta), and the open-source rebuild from
+          <time datetime="2026-08-21">21 August 2026</time> (Preview), which led to 0.1.0. Milestones taken from the
+          code's history, not downloads. <a href="/roadmap/#how-it-started">How it started</a>.</p>
 ${entries}
       </section>`;
 }
