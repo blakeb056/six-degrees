@@ -74,7 +74,7 @@ test('a theme code carries the look and nothing else, and a bad one is refused',
 });
 
 test('light is the background\'s own: a light look turns words and borders dark, a dark one sets none of that', () => {
-  assert.deepEqual(THEMES.filter(isLight).map((t) => t.id), ['daylight', 'paper']);
+  assert.deepEqual(THEMES.filter(isLight).map((t) => t.id), ['daylight', 'paper', 'analyst']);
   const dark = themeVars({ base: 'standard' });
   for (const k of ['--sd-ink', '--sd-fg-1', '--sd-gold']) assert.equal(dark[k], undefined, `${k} stays the dark default`);
   const light = themeVars({ base: 'daylight' });

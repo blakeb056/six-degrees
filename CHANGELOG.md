@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   words (Obsidian's greys, a data terminal's for Analyst, brighter ones on Glass), its cards,
   pickers, tooltips and notch, the sliders, and how the map draws its dots (glass droplets, flat
   like Obsidian, or glowing). Both are yours to pick in the editor too.
+- **Analyst is an analysis tool's look**: a bare white canvas and flat grey panels, plain outlined
+  dots in colour-blind-safe colours with black labels, thin grey lines, flat blue for what's picked,
+  no gradients, glows or shadows, and every number in even columns. Less on screen, more about the
+  numbers.
 - **Glass is Apple's Liquid Glass.** Panels of dark glass that keep their words readable, with a lit
   rim and a bright top edge, and edges that bend what's behind them the way Apple's glass does. The
   tabs sit in one glass capsule; buttons are glass capsules that spring when pressed. With Reduce
@@ -34,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A circle's tooltip says how many notifications are about it.
 - **Separation fits the whole map in the window**, with a − Fit + zoom at the right of its caption.
 - **Bridge Chains' legends are just dots**, no box: they fit whatever font a look uses.
+- **Bridge Chains: the badge at a bridge's top right counts their circle's news**: new notifications
+  about it (gold) and people in it ready to scan (green), as asked for on 10/2; it counted only the
+  people ready before.
 
 ## [0.6.0] - 2026-10-03
 

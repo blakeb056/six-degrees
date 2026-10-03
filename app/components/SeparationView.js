@@ -398,7 +398,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
         )}
         {summary.peopleOnlyUnresolved > 0 && (
           <div style={{
-            marginTop: 8, padding: '8px 10px', borderRadius: 8, fontSize: 11.5, lineHeight: 1.5, color: '#e8d9a0',
+            marginTop: 8, padding: '8px 10px', borderRadius: 8, fontSize: 11.5, lineHeight: 1.5, color: 'var(--sd-fg-2, #e8d9a0)',
             background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
           }}>
             {/* Worded without a cause on purpose: the one time this happened, the
@@ -471,9 +471,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           {/* The slider: the rarest ways in at one end, the easiest at the other, power alone in the middle */}
           {/* On a computer the pill saying where the slider is sits over its middle, in place of "Power" */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'baseline' : 'center', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            <span style={{ color: RARE, flex: isMobile ? undefined : 1 }}>Rare{isMobile ? '' : ' · one way in'}</span>
+            <span style={{ color: 'var(--sd-cyan, #00E5FF)', flex: isMobile ? undefined : 1 }}>Rare{isMobile ? '' : ' · one way in'}</span>
             {isMobile ? <span style={{ color: 'var(--sd-gold, #FFD700)' }}>Power</span> : pillEl}
-            <span style={{ color: EASY, flex: isMobile ? undefined : 1, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
+            <span style={{ color: 'var(--sd-coral, #FF7043)', flex: isMobile ? undefined : 1, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
           </div>
           <input
             className="sepslide" type="range" min={0} max={100} step={1} value={at}
@@ -528,7 +528,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   onIn={() => setZoom(Math.min(ZOOM_MAX, Math.round((scale + 0.1) * 10) / 10))} />}
                 {isMobile && <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2, whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
                   {!single && askedShown > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
-                  <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
+                  <span style={{ color: 'var(--sd-orange, #FF6B35)' }}>solid orange</span> = top-scored bridge · dashed = other routes
                   {single ? ' · pick anyone in the list to aim at them instead' : cards ? ' · a lit pill is someone’s best way in' : ' · dot size = ways in'}
                 </div>}
               </div>
@@ -843,7 +843,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                       <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
                       {/* How many mutual connections lead to them: one is the rare kind */}
                       {doors && (
-                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? RARE : 'var(--sd-fg-4, #778)'}>{tag.text}</tspan>
+                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? 'var(--sd-cyan, #00E5FF)' : 'var(--sd-fg-4, #778)'}>{tag.text}</tspan>
                       )}
                     </text>
                   </>
@@ -940,13 +940,13 @@ function SmallCard({ p, c, tag, width, sel }) {
   return (
     <g>
       <rect x={0} y={-20} width={width} height={40} rx={10} fill="var(--sd-card, #151830)" stroke={sel ? 'var(--sd-fg-1, #fff)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={sel ? 1.5 : 1} />
-      <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''}</text>
+      <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="var(--sd-gold, #FFD700)">#{p.rank}{p.tied ? '=' : ''}</text>
       <text x={60} y={-3} fontSize={13} fontWeight={700} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor((width - 60 - 70) / 7))}</text>
       <text x={60} y={12} fontSize={10.5} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
       <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} fill={c}>{p.score.toFixed(1)}</text>
       <rect x={width - 12 - tw} y={4} width={tw} height={14} rx={7}
         fill={tag.rare ? 'rgba(0,229,255,0.1)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'} stroke={tag.rare ? 'rgba(0,229,255,0.35)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.14)'} />
-      <text x={width - 12 - tw / 2} y={11} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tag.rare ? RARE : '#cfd3e6'}>{tag.text}</text>
+      <text x={width - 12 - tw / 2} y={11} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tag.rare ? 'var(--sd-cyan, #00E5FF)' : 'var(--sd-fg-2, #cfd3e6)'}>{tag.text}</text>
     </g>
   );
 }
@@ -965,13 +965,13 @@ function BigCard({ p, c, tag, width, fs }) {
       <rect x={0} y={-76} width={width} height={152} rx={16} fill="var(--sd-card, #151830)" stroke="rgba(255,215,0,0.45)" />
       <circle cx={48} r={32} fill="var(--sd-bg)" stroke={c} strokeWidth={3} />
       <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
-      <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
+      <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="var(--sd-gold, #FFD700)">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
       <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
       <text x={tx} y={1} fontSize={12} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), room)}</text>
       <rect x={tx} y={12} width={w1} height={20} rx={10} fill="rgba(255,112,67,0.12)" stroke="rgba(255,112,67,0.4)" />
       <text x={tx + w1 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill={EASY}>{first}</text>
       <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(var(--sd-ink, 255, 255, 255), 0.06)" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.14)" />
-      <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#cfd3e6">{second}</text>
+      <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="var(--sd-fg-2, #cfd3e6)">{second}</text>
       <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
         {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count. The other ${fmt(tag.more - p.waysIn)}` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
       </text>
@@ -1003,7 +1003,7 @@ function Via({ p, route, tierColors, compact }) {
       {extra > 0 && (
         <span title={`Every way in:\n${everyRoute(p)}`} style={{
           flexShrink: 0, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 800,
-          color: ORANGE, background: 'rgba(255,107,53,0.15)',
+          color: 'var(--sd-orange, #FF6B35)', background: 'rgba(255,107,53,0.15)',
         }}>+{extra}</span>
       )}
     </span>

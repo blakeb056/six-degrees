@@ -735,7 +735,7 @@ function Mission({ title, time, body, launch, more, done = false, children }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: done ? 16 : 19, fontWeight: 800 }}>{title}</span>
-        {time && !done && <span style={{ fontSize: 12, color: '#8fd9b6', marginLeft: 'auto' }}>⏱ {time}</span>}
+        {time && !done && <span style={{ fontSize: 12, color: 'var(--sd-fg-2, #8fd9b6)', marginLeft: 'auto' }}>⏱ {time}</span>}
       </div>
       <div style={{ fontSize: done ? 13 : 14, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6, margin: done ? '6px 0 10px' : '8px 0 14px', maxWidth: 600 }}>{body}</div>
       {children}

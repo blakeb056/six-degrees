@@ -125,7 +125,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
           {sublabel && <span style={{ fontSize: 10, opacity: 0.6, textAlign: 'center' }}>{sublabel}</span>}
         </button>
         {running && found.length > 0 && (
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: -18, textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#9fe8c4', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: -18, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-2, #9fe8c4)', fontVariantNumeric: 'tabular-nums' }}>
             {total.toLocaleString('en-US')} found · {found.length} page{found.length === 1 ? '' : 's'}
           </div>
         )}

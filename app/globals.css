@@ -215,3 +215,19 @@ html[data-buttons="bold"] :is(button, a, select, input):focus-visible { outline:
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-buttons="soft"]) :is(button, #main-tabs > a) { transition: box-shadow 0.15s, filter 0.15s, outline-color 0.15s; }
 }
+
+/* ---- Analyst: nothing decorative (lib/themes.js) ----
+   An analysis tool's restraint: no gradients, glows or shadows anywhere, the
+   name in plain ink, the picked tab and the main buttons a flat accent, and
+   every number in even columns. Only in this look; the colours inline stay
+   the same in every other. */
+html[data-theme="analyst"] body { font-variant-numeric: tabular-nums; }
+html[data-theme="analyst"] [style*="box-shadow"] { box-shadow: none !important; }
+html[data-theme="analyst"] [style*="text-shadow"] { text-shadow: none !important; }
+html[data-theme="analyst"] header h1, html[data-theme="analyst"] header :is(span, a) > h1, html[data-theme="analyst"] [style*="-webkit-text-fill-color"] {
+  background: none !important; -webkit-text-fill-color: currentColor !important; color: var(--sd-fg-1, #111) !important;
+}
+html[data-theme="analyst"] :is(button, a)[style*="gradient"] { background: var(--sd-accent) !important; color: #fff !important; border-color: transparent !important; }
+html[data-theme="analyst"] div[style*="radial-gradient"], html[data-theme="analyst"] div[style*="linear-gradient(1"] { background-image: none !important; }
+html[data-theme="analyst"] [style*="backdrop-filter"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+html[data-theme="analyst"] :is(.galaxy-ring-pulse, .cluster-hub, .seed) { animation: none !important; }

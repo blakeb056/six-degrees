@@ -405,13 +405,21 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
                 <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
                   fontSize={11} fontWeight={700}>{b.name?.charAt(0)}</text>
               )}
-              {/* How many in their circle are waiting for a scan: a small outlined number, top right */}
-              {ready > 0 && (
-                <g pointerEvents="none">
-                  <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="var(--sd-bg)" stroke={GREEN} strokeWidth={1.2} />
-                  <text x={b.x + 14} y={b.y - 11.4} textAnchor="middle" fill={GREEN} fontSize={ready > 9 ? 6 : 7} fontWeight={800}>{ready > 99 ? '99+' : ready}</text>
-                </g>
-              )}
+              {/* The circle's notifications, top right (Blake, 2026-10-02: "the circle degree
+                  outline on the top right with the number of notifications for that cluster"):
+                  new notifications about it and the people in it ready to scan. Gold when
+                  there's news, green when it's only people ready. */}
+              {(() => {
+                const news = (b.activity?.unread || 0) + ready;
+                if (!news) return null;
+                const tone = b.activity?.unread ? 'var(--sd-gold, #FFD700)' : 'var(--sd-green, #00ff88)';   // deeper on a light look
+                return (
+                  <g pointerEvents="none">
+                    <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="var(--sd-bg)" stroke={tone} strokeWidth={1.2} />
+                    <text x={b.x + 14} y={b.y - 11.4} textAnchor="middle" fill={tone} fontSize={news > 9 ? 6 : 7} fontWeight={800}>{news > 99 ? '99+' : news}</text>
+                  </g>
+                );
+              })()}
               {/* Name + count */}
               <text x={b.x} y={b.y + (isHov ? 24 : 22)} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={9} fontWeight={600}>
                 {b.name?.split(' ')[0]}
@@ -427,7 +435,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 
         {/* Center: YOU */}
         <circle cx={cx} cy={cy} r={22} fill="var(--sd-bg)" stroke="#FFD700" strokeWidth={3} />
-        <text x={cx} y={cy + 4} textAnchor="middle" fill="#FFD700" fontSize={11} fontWeight={800}>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--sd-gold, #FFD700)" fontSize={11} fontWeight={800}>
           {userName?.split(' ')[0] || 'YOU'}
         </text>
       </g>
