@@ -38,6 +38,9 @@ ARROW = """<svg class="arrow" viewBox="0 0 24 24" width="30" height="30" aria-hi
 BUTTONS = [
     ("download-apple-silicon.png", "Click to download for Mac", "Apple Silicon", "M1 or newer", "green"),
     ("download-intel.png",         "Click to download for Mac", "Intel",         "Macs with an Intel chip", "slate"),
+    # Windows and Linux (DESKTOP.md D3): a beta, on its own pre-release.
+    ("download-windows.png",       "Click to download · beta",  "Windows",       "Windows 10 or 11, one click", "slate"),
+    ("download-linux.png",         "Click to download · beta",  "Linux",         "Ubuntu and Debian · .deb", "slate"),
 ]
 
 CSS = """

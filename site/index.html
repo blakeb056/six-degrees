@@ -186,22 +186,22 @@
           </a>
         </div>
         <div class="cta-main" data-for="linux" hidden>
-          <button type="button" class="dl primary is-soon" data-soon="linux" data-ready-title="Download for Linux (beta)" data-ready-sub="Free · .deb for Ubuntu and Debian" aria-disabled="true">
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">
             <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="dl-text">
-              <span class="dl-title">Linux app: coming soon</span>
-              <span class="dl-sub">Not ready to download yet</span>
+              <span class="dl-title">Download for Linux (beta)</span>
+              <span class="dl-sub">Free · .deb for Ubuntu and Debian</span>
             </span>
-          </button>
+          </a>
         </div>
         <div class="cta-main" data-for="windows" hidden>
-          <button type="button" class="dl primary is-soon" data-soon="windows" data-ready-title="Download for Windows (beta)" data-ready-sub="Free · Windows 10 or 11" aria-disabled="true">
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">
             <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="dl-text">
-              <span class="dl-title">Windows: coming soon</span>
-              <span class="dl-sub">Not ready to download yet</span>
+              <span class="dl-title">Download for Windows (beta)</span>
+              <span class="dl-sub">Free · Windows 10 or 11</span>
             </span>
-          </button>
+          </a>
         </div>
         <a class="dl ghost" href="https://github.com/blakeb056/six-degrees">
           <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -211,7 +211,12 @@
           </span>
         </a>
       </div>
-      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a> · </span><span data-for="linux" hidden><span data-when-soon="linux">It runs on Linux today from the Terminal · </span></span><span data-for="windows" hidden><span data-when-soon="windows"><a href="https://github.com/blakeb056/six-degrees">Watch releases on GitHub</a> to hear when it's out · </span></span><a href="/download/">All downloads and install help</a></p>
+      <ul class="dl-platforms" aria-label="Every download">
+        <li><a href="/download/#os-mac">macOS</a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">Windows <span class="beta">beta</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">Linux <span class="beta">beta</span></a></li>
+      </ul>
+      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg">Download for Intel</a> · </span><a href="/download/">All downloads and install help</a></p>
       <p class="fine" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
 
       <figure class="hero-shot">
