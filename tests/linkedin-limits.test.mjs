@@ -78,11 +78,11 @@ test('a damaged record reads as the day used up, never as nothing searched', () 
 test('limits: defaults, only offered choices are saved, 0 means no monthly cap', () => {
   const dir = scratch();
   assert.deepEqual(readLimits(dir), DEFAULT_LIMITS);
-  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, monthly: 250, profiles: 50 });
+  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, monthly: 250, profiles: 50, pace: 'fast' });
   writeLimits(dir, { daily: 100, monthly: 0 });
-  assert.deepEqual(readLimits(dir), { daily: 100, monthly: 0, profiles: 50 });
+  assert.deepEqual(readLimits(dir), { daily: 100, monthly: 0, profiles: 50, pace: 'fast' });
   writeLimits(dir, { daily: 99999, monthly: -1 });
-  assert.deepEqual(readLimits(dir), { daily: 100, monthly: 0, profiles: 50 }, 'anything else is ignored');
+  assert.deepEqual(readLimits(dir), { daily: 100, monthly: 0, profiles: 50, pace: 'fast' }, 'anything else is ignored');
   assert.equal(linkedinState(dir).leftMonth, null, 'no cap');
   rmSync(dir, { recursive: true, force: true });
 });
@@ -91,21 +91,21 @@ test('profile views: 10, 25, 50 or 100 a day, never unlimited, and saving one li
   const dir = scratch();
   assert.deepEqual(PROFILE_CHOICES, [10, 25, 50, 100]);
   writeLimits(dir, { daily: 25, monthly: 500, profiles: 10 });
-  assert.deepEqual(readLimits(dir), { daily: 25, monthly: 500, profiles: 10 });
+  assert.deepEqual(readLimits(dir), { daily: 25, monthly: 500, profiles: 10, pace: 'fast' });
   // REGRESSION: writeLimits wrote back only daily and monthly, so changing
   // either would have dropped the profile cap to its default without a word.
   writeLimits(dir, { daily: 50 });
   writeLimits(dir, { monthly: 250 });
-  assert.deepEqual(readLimits(dir), { daily: 50, monthly: 250, profiles: 10 });
+  assert.deepEqual(readLimits(dir), { daily: 50, monthly: 250, profiles: 10, pace: 'fast' });
   writeLimits(dir, { profiles: 100 });
-  assert.deepEqual(readLimits(dir), { daily: 50, monthly: 250, profiles: 100 }, 'and the other way round');
+  assert.deepEqual(readLimits(dir), { daily: 50, monthly: 250, profiles: 100, pace: 'fast' }, 'and the other way round');
   for (const profiles of [0, 1000, -10, 30, '25', null]) {
     writeLimits(dir, { profiles });
     assert.equal(readLimits(dir).profiles, 100, `${profiles} is not on the menu`);
   }
   // A file saying 0 (by hand, or from before) is not "no limit" for profile views.
   writeFileSync(path.join(dir, 'scan-limits.json'), JSON.stringify({ daily: 0, monthly: 0, profiles: 0 }));
-  assert.deepEqual(readLimits(dir), { daily: 0, monthly: 0, profiles: 50 });
+  assert.deepEqual(readLimits(dir), { daily: 0, monthly: 0, profiles: 50, pace: 'fast' });
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -158,7 +158,7 @@ print(json.dumps(ns['search_limits']()))
   if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout), { daily: 25, monthly: 500, profiles: 10 });
-  assert.deepEqual(JSON.parse(readFileSync(path.join(dir, 'scan-limits.json'), 'utf8')), { daily: 25, monthly: 500, profiles: 10 });
+  assert.deepEqual(JSON.parse(readFileSync(path.join(dir, 'scan-limits.json'), 'utf8')), { daily: 25, monthly: 500, profiles: 10, pace: 'fast' });
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -226,7 +226,7 @@ test('REGRESSION: importing onto a computer that has scanned keeps its searches,
   assert.equal(state.profilesToday, 1);
   assert.equal(state.cooldown.until, (sec + 86400) * 1000, 'the pause that ends later');
   assert.equal(state.cooldown.reason, 'A security check');
-  assert.deepEqual(state.limits, { daily: 25, monthly: 100, profiles: 10 }, 'the limits chosen here stay');
+  assert.deepEqual(state.limits, { daily: 25, monthly: 100, profiles: 10, pace: 'fast' }, 'the limits chosen here stay');
 
   // A pause here that ends later than the copy's stays as it is.
   write(from, 'linkedin-cooldown.json', { until: sec + 60, reason: 'shorter', set_at: sec });

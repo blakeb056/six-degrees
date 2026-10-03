@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **The Scan page has a radar, and a speed: Slow, Medium or Fast.** Mapping the 2nd degree starts
+  from a round Scan button in the middle of a radar: its sweep turns while a scan runs, and the
+  ring round it fills with today's searches against your budget. Beside it, three speeds. Fast is
+  how the scanner has always run, and nothing is faster; Medium waits 45 seconds before each page
+  of results and 3 minutes after every 10, Slow 90 seconds and 5 minutes, and both keep profiles
+  further apart (90 and 120 seconds). Each says about how many searches an hour it makes and how
+  long the rest of today's budget would take. The daily budget stays the cap at every speed:
+  slower spreads it out, it doesn't shrink it. The speed is saved with the budget and the scanner
+  says which it is using at the start of every run; the Scan page's time estimates follow it.
 - **Scores moved into Settings.** Your field, how tiers are graded and every company's score are a
   Scores section in Settings (the gear), and the Scores tab is gone from the header. Old links to
   the Scores tab land in the same place in Settings.

@@ -1286,6 +1286,18 @@ SAVE_EVERY_PAGES = 10             # save as a long read goes, so a stop loses li
 # randomised: the point is fewer searches an hour, not looking like a person.
 PAGE_PAUSE = 20                   # seconds before each next page of results
 CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES pages
+# The Scan page's speed (Blake, 2026-09-30 and 10-03: "slow, medium and fast").
+# Fast is exactly the pacing above and nothing is ever faster; Medium and Slow
+# only add waiting. Speed changes how many searches an hour, never how many a
+# day: the daily budget stays the volume cap. Read from scan-limits.json
+# ("pace") at the start of every run (apply_pace). lib/scan-pace.js holds the
+# same numbers for the page, and tests/scan-pace.test.mjs checks they agree.
+SCAN_PACES = {
+    "fast": {"page_pause": 20, "chunk_cooldown": 60, "profile_gap": 60},
+    "medium": {"page_pause": 45, "chunk_cooldown": 180, "profile_gap": 90},
+    "slow": {"page_pause": 90, "chunk_cooldown": 300, "profile_gap": 120},
+}
+DEFAULT_PACE = "fast"
 LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
 
 # Experimental all-day pacing for Auto-Bridge (--experimental; item 44, Graph
@@ -1559,6 +1571,27 @@ def _profile_wait(data, now):
     if last is not None and now - last < PROFILE_GAP:
         return int(last + PROFILE_GAP - now) + 1
     return 0
+
+
+def scan_pace():
+    """The speed saved on the Scan page: "fast", "medium" or "slow"."""
+    try:
+        name = json.loads((_home() / "scan-limits.json").read_text()).get("pace")
+    except Exception:
+        name = None
+    return name if name in SCAN_PACES else DEFAULT_PACE
+
+
+def apply_pace(name=None):
+    """Set this run's waits from the chosen speed. Never below Fast's."""
+    global PAGE_PAUSE, CHUNK_COOLDOWN, PROFILE_GAP
+    name = name if name in SCAN_PACES else scan_pace()
+    pace = SCAN_PACES[name]
+    fast = SCAN_PACES["fast"]
+    PAGE_PAUSE = max(fast["page_pause"], pace["page_pause"])
+    CHUNK_COOLDOWN = max(fast["chunk_cooldown"], pace["chunk_cooldown"])
+    PROFILE_GAP = max(fast["profile_gap"], pace["profile_gap"])
+    return name
 
 
 def search_limits():
@@ -4349,6 +4382,11 @@ Examples:
         EXPERIMENT["on"] = True
         print("Experimental Auto-Bridge: all-day pacing, and LinkedIn's own data read beside the page text.")
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
+    # The Scan page's speed. Signing in searches nothing, so it isn't said there.
+    _pace = apply_pace()
+    if not args.login:
+        print(f"Speed: {_pace.capitalize()}. {PAGE_PAUSE}s before each page of results, {CHUNK_COOLDOWN}s more after "
+              f"every {SAVE_EVERY_PAGES}, and profiles at least {PROFILE_GAP}s apart.")
 
     # A failed save ends the run with its reason, not a traceback (TRAPS §32).
     def _say_why(exc_type, exc, tb):

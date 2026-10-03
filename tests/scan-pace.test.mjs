@@ -1,0 +1,68 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PYTHON, noPython } from './python.mjs';
+import { PACES, PACE_NAMES, DEFAULT_PACE, paceSeconds, searchesPerHour, durationText } from '../lib/scan-pace.js';
+import { readLimits, writeLimits } from '../lib/linkedin-limits.js';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+
+const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+
+test('Fast is today\'s pacing, and Medium and Slow are only ever slower', () => {
+  assert.deepEqual([PACES.fast.pagePause, PACES.fast.chunkCooldown, PACES.fast.profileGap], [20, 60, 60]);
+  for (const k of ['pagePause', 'chunkCooldown', 'profileGap']) {
+    assert.ok(PACES.medium[k] > PACES.fast[k]);
+    assert.ok(PACES.slow[k] > PACES.medium[k]);
+  }
+  assert.equal(DEFAULT_PACE, 'fast');
+  assert.deepEqual(PACE_NAMES, ['slow', 'medium', 'fast']);
+});
+
+test('how long a budget takes at each speed, and searches an hour', () => {
+  // 50 searches at Fast: 50 × (6 + 20) s and 5 × 60 s = 27 min.
+  assert.equal(paceSeconds('fast', 50), 50 * 26 + 5 * 60);
+  assert.ok(paceSeconds('medium', 50) > paceSeconds('fast', 50));
+  assert.ok(paceSeconds('slow', 50) > paceSeconds('medium', 50));
+  assert.equal(paceSeconds('fast', 0), 0);
+  assert.equal(paceSeconds('nonsense', 10), paceSeconds('fast', 10));
+  assert.ok(searchesPerHour('fast') > searchesPerHour('medium') && searchesPerHour('medium') > searchesPerHour('slow'));
+  assert.equal(durationText(30), 'under a minute');
+  assert.equal(durationText(27 * 60), 'about 27 min');
+  assert.equal(durationText(67 * 60), 'about 1 h 7 min');
+  assert.equal(durationText(120 * 60), 'about 2 h');
+});
+
+test('the speed is saved with the budget, and the budget is the same at every speed', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'pace-'));
+  try {
+    assert.equal(readLimits(dir).pace, 'fast');
+    const saved = writeLimits(dir, { pace: 'slow' });
+    assert.equal(saved.pace, 'slow');
+    assert.equal(saved.daily, 50);
+    assert.equal(writeLimits(dir, { daily: 25 }).pace, 'slow', 'saving the budget keeps the speed');
+    assert.equal(writeLimits(dir, { pace: 'warp' }).pace, 'slow', 'only the three speeds');
+    writeFileSync(path.join(dir, 'scan-limits.json'), JSON.stringify({ daily: 50, pace: 'ludicrous' }));
+    assert.equal(readLimits(dir).pace, 'fast');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the scanner\'s own speeds match the page\'s', (t) => {
+  const run = spawnSync(PYTHON, ['-c', `
+import ast, json, sys
+tree = ast.parse(open(sys.argv[1]).read())
+for node in ast.walk(tree):
+    if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SCAN_PACES' for t in node.targets):
+        print(json.dumps(ast.literal_eval(node.value)))
+`, SCRAPER], { encoding: 'utf8' });
+  if (noPython(t, run)) return;
+  assert.equal(run.status, 0, run.stderr);
+  const py = JSON.parse(run.stdout);
+  for (const name of PACE_NAMES) {
+    assert.deepEqual(py[name], { page_pause: PACES[name].pagePause, chunk_cooldown: PACES[name].chunkCooldown, profile_gap: PACES[name].profileGap });
+  }
+});

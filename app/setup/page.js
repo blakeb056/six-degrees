@@ -8,6 +8,8 @@ import { stopScrape, pickedPerson, scanRequest, HIDE_CHROME_KEY } from '../../li
 import { setupStep, askForField } from '../../lib/scanner-setup';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
+import ScanRadar from '../components/ScanRadar';
+import { paceOf } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 
@@ -399,6 +401,17 @@ function SetupInner() {
                   disabled={busy}
                   onLift={() => run('lift-cooldown')}
                 />
+                {/* The radar: Scan in the middle, today's budget round it, the speed beside it */}
+                <ScanRadar
+                  li={li}
+                  running={Boolean(running)}
+                  scanning={Boolean(running && s?.action?.startsWith('auto-bridge'))}
+                  disabled={!canSearch || (order === 'score' && !tiers.length)}
+                  label={running && s?.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
+                  sublabel={batch ? `${batch} people` : 'everyone'}
+                  onScan={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })}
+                  onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
+                />
                 <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
                 {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, color: '#8b9a9a' }}>Work through</span>
@@ -474,17 +487,15 @@ function SetupInner() {
                   </span>
                 </label>
                 <div style={{ fontSize: 12, color: '#FFD700', lineHeight: 1.6 }}>
-                  Every page is a LinkedIn search, so it rests 20 seconds before each one and a
-                  minute after every 10, and a long list can take
-                  {' '}about {circleScanCost(pages).minutes} minutes a person.
+                  Every page is a LinkedIn search, so at {paceOf(li?.limits?.pace).label} it rests{' '}
+                  {paceOf(li?.limits?.pace).pagePause} seconds before each one and{' '}
+                  {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after every 10, and a long list can take
+                  {' '}about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
                   LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
                   have a monthly search limit: if LinkedIn says it has been reached, the scan saves
                   what it read and stops, and carries on from that page next time. Keep batches small.
                 </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Btn onClick={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })} disabled={!canSearch || (order === 'score' && !tiers.length)} primary>
-                  {running && s.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
-                </Btn>
                 <select
                   value={batch}
                   onChange={(e) => setBatch(Number(e.target.value))}
@@ -577,7 +588,7 @@ function SetupInner() {
 function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onStart, onUnpick }) {
   const { person, circle } = pick;
   const first = String(person.name || '').trim().split(/\s+/)[0] || 'them';
-  const cost = circleScanCost(pages);
+  const cost = circleScanCost(pages, li?.limits?.pace);
   const theirs = running && s?.target?.id === person.id;
   const short = li?.leftToday != null && li.leftToday < cost.searches;
   return (

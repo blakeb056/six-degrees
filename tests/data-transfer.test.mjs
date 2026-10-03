@@ -922,7 +922,7 @@ test('REGRESSION: importing onto a computer that has scanned keeps its LinkedIn 
   const after = linkedinState(here, now);
   assert.equal(after.searchesToday, 40);
   assert.ok(after.cooldown, 'still paused');
-  assert.deepEqual(after.limits, { daily: 25, monthly: 100, profiles: 50 });
+  assert.deepEqual(after.limits, { daily: 25, monthly: 100, profiles: 50, pace: 'fast' });
   assert.deepEqual(namesIn(dbIn(here)), ['v-0', 'v-1'], 'while the network itself was replaced');
   // A copy of the budget as it was is kept with the rest, for an undo.
   assert.equal(JSON.parse(readFileSync(path.join(here, done.keptFiles, 'linkedin-activity.json'), 'utf8')).searches.length, 40);
