@@ -1,8 +1,8 @@
 'use client';
 
-// The Scores tab: the one-time offer to keep the curated list's old scores as
+// Settings → Scores: the one-time offer to keep the curated list's old scores as
 // your own, after the list was made neutral (lib/legacy-offer.js decides who
-// sees it and what "keep" writes). It sits at the top of the Scores tab until
+// sees it and what "keep" writes). It sits at the top of the company scores until
 // it's answered, then never shows again. Not while a CSV import or the sample
 // is on screen: those aren't scored on the server, so the offer isn't theirs.
 

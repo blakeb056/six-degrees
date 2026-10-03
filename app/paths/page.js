@@ -35,13 +35,13 @@ function PathsInner() {
   const [d3Data, setD3Data] = useState([]);
   // Map and Industries are the analyzer; Companies is the list it grew from.
   // A link can open a tab (/paths?tab=companies). Company scores have a tab of
-  // their own now (app/scores): an old link to /paths?tab=scores goes there.
+  // their own (app/scores), and now live in Settings: an old link to /paths?tab=scores goes there.
   // The router's search params rather than window.location: on a click from
   // another page the address bar only changes after this page has rendered.
   const asked = useSearchParams().get('tab');
   const [tab, setTab] = useState(() => (TABS.some(([k]) => k === asked) ? asked : 'map'));
   const router = useRouter();
-  useEffect(() => { if (asked === 'scores') router.replace('/scores#companies'); }, [asked, router]);
+  useEffect(() => { if (asked === 'scores') router.replace('/settings#companies'); }, [asked, router]);
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
   // The sample or a CSV import: they live only in this tab, so a company scan could only fail.

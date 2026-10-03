@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   long the rest of today's budget would take. The daily budget stays the cap at every speed:
   slower spreads it out, it doesn't shrink it. The speed is saved with the budget and the scanner
   says which it is using at the start of every run; the Scan page's time estimates follow it.
+- **Scores moved into Settings.** Your field, how tiers are graded and every company's score are a
+  Scores section in Settings (the gear), and the Scores tab is gone from the header. Old links to
+  the Scores tab land in the same place in Settings.
+- **Profile has Insights.** An Insights button beside Profile shows network health: how much of
+  your 2nd degree you reach two or more ways, the effective reach of your connections, and the
+  connections who reach the most people no one else does. It was at the top of the Scores tab.
 - **Paths → People.** A new view beside the company map, drawn the same way but with your
   connections as the bubbles: each is sized by the value of the cluster behind them (S tier counts
   3, A tier 2, everyone else 1; or by cluster size, or by S tier inside), coloured by their sector
@@ -100,6 +106,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows in the same notch, beside them. The Filters panel now only filters.
 
 ### Fixed
+- **Separation's map lines now meet every box.** Each connection sits level with the people it
+  leads to, so a connection with one person is on that person's row and the line between them runs
+  straight; lines start and end exactly on the pill and the card, with a small dot where they plug in.
 - **"Hide the Chrome window while scanning" did nothing for scans started on the Scan page.**
   Its own buttons (Scan, Check for new, Auto scan and the rest) sent their request without the
   setting, so Chrome opened anyway; only scans started from a person's card or Resume were hidden.

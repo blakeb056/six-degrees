@@ -336,16 +336,7 @@ function HomeInner() {
             >
               Social<span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>beta</span>
             </Link>}
-            {!IS_DEMO && !csvMode && <Link
-              href="/scores"
-              style={{
-                padding: isMobile ? '6px 10px' : '8px 16px', borderRadius: 6, border: 'none', fontSize: isMobile ? 11 : 13, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', color: '#FFD700', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Scores
-            </Link>}
+            {/* Scores moved into Settings (2026-10-03); the gear above opens them. */}
             {!IS_DEMO && !csvMode && <Link
               href="/queue"
               style={{

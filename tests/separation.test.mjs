@@ -242,3 +242,19 @@ test('as cards, the map gives each row room for a card, and says what each conne
   assert.deepEqual([at('c').onlyFor, at('c').bestFor], [1, 1]);
   for (let i = 1; i < cards.bridges.length; i++) assert.ok(cards.bridges[i].y - cards.bridges[i - 1].y >= 36 - 1e-9);
 });
+
+test('each connection sits level with the people they lead to, so one-to-one lines run straight', async () => {
+  const { summitLayout, stackColumn } = await import('../lib/separation.js');
+  const b = (id, tier) => ({ id, bridge: { id, name: `Bridge ${id}`, tier } });
+  const top = [0, 1, 2, 3].map((i) => ({ key: `p${i}`, rank: i + 1, person: { name: `P${i}` }, waysIn: 1, routes: [b(`b${i}`, 'S')] }));
+  const map = summitLayout(top, 900, false, { cards: true });
+  for (const pp of map.people) {
+    const line = map.links.find((l) => l.key === pp.key);
+    assert.equal(line.y1, line.y2, 'level with its person');
+  }
+  // Wanting the same height, they share it out evenly round it; never above the top.
+  assert.deepEqual(stackColumn([100, 100, 100], 36), [64, 100, 136]);
+  assert.deepEqual(stackColumn([0, 0], 36, 16), [16, 52]);
+  assert.deepEqual(stackColumn([10, 100, 200], 36), [10, 100, 200]);
+  assert.deepEqual(stackColumn([]), []);
+});

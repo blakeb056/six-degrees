@@ -1,6 +1,6 @@
 'use client';
 
-// The Scores tab's company scores (app/scores): every company in your network, the score it carries into
+// Settings → Scores → company scores (app/settings): every company in your network, the score it carries into
 // people's power, where that score comes from, and a control to set your own.
 // Setting a score rescores everyone (app/api/company-scores → lib/scoring.js).
 
@@ -61,7 +61,7 @@ export function ScorePicker({ company, onSet, compact }) {
 
 export default function CompanyScores({ onRescored, version = 0 }) {
   const { companies, error, setScore, reload } = useCompanyScores();
-  // A save beside the list (your sector or tiers, on the Scores tab) rescores
+  // A save beside the list (your sector or tiers, in Settings) rescores
   // everyone: `version` changes, and the list is read again, keeping what you
   // searched and filtered.
   useEffect(() => {

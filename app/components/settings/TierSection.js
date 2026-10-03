@@ -1,6 +1,6 @@
 'use client';
 
-// Scores → Tiers (app/scores; it was Settings → Tiers). How the S to D rings are drawn: on your network's curve
+// Settings → Scores → Tiers (app/settings; it was a Scores tab of its own from 9/28 to 10/3). How the S to D rings are drawn: on your network's curve
 // (your top 3% are S, and so on down), or on the fixed scale, the same lines
 // for everyone. The curve only lifts, so a network full of companies the
 // curated list knows keeps its tiers. The model is lib/scoring.js (CURVE,
