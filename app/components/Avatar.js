@@ -16,7 +16,7 @@ export default function Avatar({ person, size = 32, tierColors = FALLBACK }) {
   const c = tierColors[person?.tier] || '#666';
   const photo = localPhoto(person?.profile_image_url);
   return (
-    <span style={{
+    <span className="sd-dot-html" style={{
       position: 'relative', display: 'inline-block', width: size, height: size, flexShrink: 0,
       borderRadius: '50%', boxShadow: `0 0 0 ${size >= 24 ? 2 : 1}px ${c}`,
     }}>

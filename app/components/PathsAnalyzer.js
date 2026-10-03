@@ -372,7 +372,7 @@ function CompanyMap({ companies, links, focus, onCompany, onIndustry, onClear, s
                 onPointerDown={drag ? (ev) => drag(ev, n) : undefined}
                 onClick={(ev) => { ev.stopPropagation(); if (clicked()) onCompany(n.id); }}>
                 <title>{`${n.co.name} · ${n.co.industry.label} (inferred)\n${n.co.d1} you know · ${n.co.d2} reachable${n.co.d3 ? ` · ${n.co.d3} further` : ''}`}</title>
-                <circle r={n.r} fill={hot ? heatColour(heat(n)) : n.co.industry.color} fillOpacity={hot ? 0.9 : 0.75}
+                <circle className="sd-dot" r={n.r} fill={hot ? heatColour(heat(n)) : n.co.industry.color} fillOpacity={hot ? 0.9 : 0.75}
                   stroke={sel ? 'var(--sd-fg-1, #fff)' : n.co.S ? TIER.S : 'rgba(0,0,0,0.35)'} strokeWidth={sel ? 2.5 : n.co.S ? 1.5 : 0.6} />
                 {/* the share you already know, as an inner disc */}
                 {n.co.d1 > 0 && <circle r={n.r * Math.sqrt(n.co.d1 / Math.max(1, n.co.people.length))} fill="var(--sd-fg-1, #fff)" fillOpacity={0.35} />}

@@ -840,7 +840,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                 ) : (
                   <>
                     {sel && <circle r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
-                    <circle r={pp.r} fill={c} />
+                    <circle className="sd-dot" r={pp.r} fill={c} />
                     <text x={14} dy="0.35em" fontSize={fs} fill="var(--sd-fg-1, #ddd)" style={HALO}>
                       {pp.label}
                       <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
@@ -870,7 +870,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
               : `${b.bridge.name} · ${b.bridge.tier}-tier${b.count > 1 ? ` · a way in to ${b.count} of these` : ''} · click to open`}</title>
             <g className="mv in" style={at(b.x, b.y)}>
               {cards ? <Pill b={b} c={c} big={people.length === 1 && people[0].big} /> : (<>
-              <circle
+              <circle className="sd-dot"
                 r={b.r}
                 fill={b.unresolved ? 'none' : c}
                 stroke={b.unresolved ? 'var(--sd-fg-4, #777)' : 'var(--sd-bg)'}
@@ -926,7 +926,7 @@ function Pill({ b, c, big }) {
     <g>
       <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="var(--sd-card, #14172e)"
         stroke={hot ? 'rgba(255,215,0,0.55)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={hot ? 1.3 : 1} />
-      <circle cx={-PILL_W + 15} r={10} fill={c} />
+      <circle className="sd-dot" cx={-PILL_W + 15} r={10} fill={c} />
       <text x={-PILL_W + 15} dy="0.35em" textAnchor="middle" fontSize={8} fontWeight={800} fill="#000">{initialsFor(b.bridge.name)}</text>
       <text x={-PILL_W + 31} dy="0.35em" fontSize={12} fontWeight={600} fill="var(--sd-fg-1, #e8e8f0)">
         {clipText(b.bridge.name, Math.max(6, Math.floor((PILL_W - 31 - tw - 10) / 6.4)))}

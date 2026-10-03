@@ -243,7 +243,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
         {scheme.legend.map(([label, color]) => (
           <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+            <span className="sd-dot-html" style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
             {label}
           </span>
         ))}

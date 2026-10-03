@@ -79,7 +79,7 @@ export default function ScanTrail({ inset }) {
         {dots.map((i) => {
           const cs = colours();
           const c = cs[i % cs.length];
-          return <span key={i} className={`dot${i === pages - 1 ? ' newest' : ''}`} style={{ width: 5, height: 5, borderRadius: '50%', background: c, color: c, flexShrink: 0 }} />;
+          return <span key={i} className={`dot sd-dot-html${i === pages - 1 ? ' newest' : ''}`} style={{ width: 5, height: 5, borderRadius: '50%', background: c, color: c, flexShrink: 0 }} />;
         })}
         {shown.on && <span className="seed" style={{ width: 5, height: 5, borderRadius: '50%', background: '#00ff88', flexShrink: 0 }} />}
       </Link>

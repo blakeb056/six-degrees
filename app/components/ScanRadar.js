@@ -102,7 +102,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
               <path d={dots.map((d) => `M${C} ${C}L${d.x.toFixed(1)} ${d.y.toFixed(1)}`).join('')} stroke="#fff" strokeOpacity={0.05} strokeWidth={0.6} />
               {dots.map((d, i) => (
                 <g key={i} className={`cluster-dot${d.fresh ? ' fresh' : ''}`} style={{ transform: `translate(${d.x}px, ${d.y}px)` }}>
-                  <circle r={d.fresh ? 3 : 2.5} fill={colours[d.page % colours.length]} opacity={d.fresh ? 1 : 0.85}
+                  <circle className="sd-dot" r={d.fresh ? 3 : 2.5} fill={colours[d.page % colours.length]} opacity={d.fresh ? 1 : 0.85}
                     style={d.fresh ? { filter: `drop-shadow(0 0 3px ${colours[d.page % colours.length]})` } : undefined} />
                 </g>
               ))}

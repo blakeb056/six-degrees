@@ -54,7 +54,7 @@ export default function ClusterSpinner({ size = 14, live = false, glyph = '↻' 
           // Clockwise from twelve o'clock.
           const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
           return (
-            <circle key={i} className="cs-dot" style={{ '--i': i }} cx={c + r * Math.cos(a)} cy={c + r * Math.sin(a)} r={dot}
+            <circle key={i} className="cs-dot sd-dot" style={{ '--i': i }} cx={c + r * Math.cos(a)} cy={c + r * Math.sin(a)} r={dot}
               fill={colours[i % colours.length]} />
           );
         })}

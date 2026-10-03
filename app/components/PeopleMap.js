@@ -239,7 +239,7 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top',
                 onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
                 onPointerDown={drag ? (ev) => drag(ev, n) : undefined}
                 onClick={() => { if (clicked() && p.size) onOpen(n.id); }}>
-                <circle r={n.r} fill={!p.size ? UNSCANNED : hot ? heatColour(heat(n)) : n.sector.color} fillOpacity={p.size ? 0.92 : 0.6}
+                <circle className="sd-dot" r={n.r} fill={!p.size ? UNSCANNED : hot ? heatColour(heat(n)) : n.sector.color} fillOpacity={p.size ? 0.92 : 0.6}
                   stroke={hover === n.id ? 'var(--sd-fg-1, #fff)' : p.S ? TIER.S : 'rgba(0,0,0,0.35)'}
                   strokeWidth={hover === n.id ? 2.5 : p.S ? Math.min(4, 1 + p.S / 40) : 0.6} />
                 {/* The share of their cluster only they can open, as an inner disc */}

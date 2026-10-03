@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dots in colour-blind-safe colours with black labels, thin grey lines, flat blue for what's picked,
   no gradients, glows or shadows, and every number in even columns. Less on screen, more about the
   numbers.
+- **A look's dots and panels everywhere, not just on the map.** Glass droplets, glowing dots, plain
+  outlined dots or flat ones now follow a look into Degrees (bridges, clusters, the hover preview),
+  Separation, Paths' bubbles, the Scan cluster, circle previews, the header's scan dots, legends,
+  tier dots and avatars. Each look also has its own side panels, tab bar, notch and map tooltips:
+  graphite with fine borders (Obsidian), neon edges (Synthwave), a cool rim (Space), hard outlines
+  (High contrast), soft shadows (Daylight), ruled and warm (Paper), grey hairlines (Analyst), glass
+  (Glass).
 - **Glass is Apple's Liquid Glass.** Panels of dark glass that keep their words readable, with a lit
   rim and a bright top edge, and edges that bend what's behind them the way Apple's glass does. The
   tabs sit in one glass capsule; buttons are glass capsules that spring when pressed. With Reduce
