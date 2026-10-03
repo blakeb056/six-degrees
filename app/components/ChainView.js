@@ -357,8 +357,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 
         {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
         {hovBridge && (
-          <CirclePreview bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
-            cx={cx} cy={cy} maxR={maxR} still={still} band={band} />
+          <CirclePreview key={hovBridge.id} bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
+            cx={cx} cy={cy} maxR={maxR} still={still} band={band} circleOf={(id) => bridgeMap[id] || []} />
         )}
 
         {/* Bridge nodes — hover to preview their circle, click to open it */}
@@ -486,7 +486,34 @@ function bridgeTitle(b, ready, bars) {
 }
 
 /** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
-function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band }) {
+// The preview grows out of the bridge when you hover it (Blake, 2026-10-03: "the
+// d2,3,4 clusters emerging out of the circle in the preview to show the grow but
+// make it quick and snappy"): their circle's people shoot out to their places,
+// then anyone among them whose own circle is scanned sprouts it (3rd degree),
+// then theirs (4th). Under half a second in all; still with Reduce Motion.
+const PREVIEW_CSS = `
+@keyframes pvEmerge { from { transform: translate(var(--fx), var(--fy)) scale(0.2); opacity: 0; } 55% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes pvFade { from { opacity: 0; } }
+.pv-dot { transform-box: fill-box; transform-origin: center; animation: pvEmerge .24s cubic-bezier(.2,.9,.3,1.25) both; animation-delay: var(--d, 0ms); }
+.pv-d3 { animation-duration: .22s; animation-delay: calc(150ms + var(--d, 0ms)); }
+.pv-d4 { animation-duration: .2s; animation-delay: calc(270ms + var(--d, 0ms)); }
+.pv-line { animation: pvFade .3s ease-out both; animation-delay: var(--d, 0ms); }
+@media (prefers-reduced-motion: reduce) { .pv-dot, .pv-line { animation: none; } }
+`;
+const SPROUT = 14;   // the most of a circle's own circle drawn round them
+const SPROUT_4 = 8;
+
+/** Where someone's own circle sprouts round their dot: an arc facing away from the middle. */
+function sprout(n, x, y, cx, cy, r) {
+  const out = Math.atan2(y - cy, x - cx);
+  const spread = Math.min(Math.PI * 1.1, 0.5 + n * 0.16);
+  return Array.from({ length: n }, (_, i) => {
+    const a = out - spread / 2 + (n === 1 ? spread / 2 : (i * spread) / (n - 1));
+    return { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r };
+  });
+}
+
+function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band, circleOf = () => [] }) {
   const shown = members.filter((m) => m.degree === 1 || m.tier === 'S' || m.tier === 'A' || m.tier === 'B');
   // Beyond every ring of bridges (lib/chain-layout.js previewBand).
   const { inner, outer } = band;
@@ -494,8 +521,12 @@ function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band }) {
   const layout = ringLayout(shown.length, {
     inner, outer, spacing: 11, minSpacing: 3.5, start: bridge.angle - sweep / 2, sweep,
   });
+  // Spread the start of each dot over a tenth of a second, wherever it sits.
+  const stagger = (j) => `${Math.round((j / Math.max(1, shown.length)) * 110)}ms`;
+  const from = (x, y, ox, oy) => ({ '--fx': `${(ox - x).toFixed(1)}px`, '--fy': `${(oy - y).toFixed(1)}px` });
   return (
     <g>
+      <style>{PREVIEW_CSS}</style>
       <circle cx={cx} cy={cy} r={inner} fill="none" stroke={`${DEGREE_COLORS[2]}06`} strokeWidth={1} />
       {shown.map((d2, j) => {
         const p = layout.points[j];
@@ -504,21 +535,44 @@ function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band }) {
         const state = reachState(d2, reach);
         const nr = Math.min(dotRadius(layout.spacing, d2.tier), 5) * (state ? 1.3 : 1);
         const color = state === 'hidden' ? HIDDEN : TIER_COLORS[d2.tier] || '#555';
+        // Their own circle, if it's scanned: the 3rd degree, and inside it the 4th.
+        const own = d2.degree === 1 ? circleOf(d2.id) : [];
+        const third = own.slice(0, SPROUT);
+        const thirdAt = sprout(third.length, x2, y2, cx, cy, nr + 9);
         return (
           <g key={'pv-' + d2.id}>
             {(state || shown.length <= 40) && (
-              <line x1={bridge.x} y1={bridge.y} x2={x2} y2={y2}
+              <line className="pv-line" style={{ '--d': stagger(j) }} x1={bridge.x} y1={bridge.y} x2={x2} y2={y2}
                 stroke={state ? GREEN : color} strokeWidth={0.5} strokeOpacity={state ? 0.35 : 0.15} />
             )}
-            {state === 'ready' && <Halo x={x2} y={y2} r={nr * 2.3} still={still} />}
-            <circle cx={x2} cy={y2} r={nr}
-              fill={color} fillOpacity={state ? 0.95 : 0.45}
-              stroke={state && state !== 'hidden' ? GREEN : color} strokeWidth={state ? 1 : 0.5} strokeOpacity={state ? 1 : 0.25} />
-            {(d2.tier === 'S' || state) && shown.length <= 60 && (
-              <text x={x2} y={y2 + nr + 9} textAnchor="middle" fill={state && state !== 'hidden' ? GREEN : 'var(--sd-fg-3, #aaa)'} fontSize={7}>
-                {firstName(d2)}
-              </text>
-            )}
+            <g className="pv-dot" style={{ '--d': stagger(j), ...from(x2, y2, bridge.x, bridge.y) }}>
+              {state === 'ready' && <Halo x={x2} y={y2} r={nr * 2.3} still={still} />}
+              <circle cx={x2} cy={y2} r={nr}
+                fill={color} fillOpacity={state ? 0.95 : 0.45}
+                stroke={state && state !== 'hidden' ? GREEN : color} strokeWidth={state ? 1 : 0.5} strokeOpacity={state ? 1 : 0.25} />
+              {(d2.tier === 'S' || state) && shown.length <= 60 && (
+                <text x={x2} y={y2 + nr + 9} textAnchor="middle" fill={state && state !== 'hidden' ? GREEN : 'var(--sd-fg-3, #aaa)'} fontSize={7}>
+                  {firstName(d2)}
+                </text>
+              )}
+            </g>
+            {third.map((k, i) => {
+              const t = thirdAt[i];
+              const fourth = k.degree === 1 ? circleOf(k.id).slice(0, SPROUT_4) : [];
+              const fourthAt = sprout(fourth.length, t.x, t.y, x2, y2, 6);
+              return (
+                <g key={'p3-' + k.id}>
+                  <line className="pv-line" style={{ '--d': `calc(150ms + ${stagger(j)})` }} x1={x2} y1={y2} x2={t.x} y2={t.y}
+                    stroke={TIER_COLORS[k.tier] || '#555'} strokeWidth={0.4} strokeOpacity={0.3} />
+                  <circle className="pv-dot pv-d3" style={{ '--d': `${i * 8}ms`, ...from(t.x, t.y, x2, y2) }}
+                    cx={t.x} cy={t.y} r={1.8} fill={TIER_COLORS[k.tier] || '#555'} fillOpacity={0.85} />
+                  {fourth.map((f, q) => (
+                    <circle key={'p4-' + f.id} className="pv-dot pv-d4" style={{ '--d': `${q * 6}ms`, ...from(fourthAt[q].x, fourthAt[q].y, t.x, t.y) }}
+                      cx={fourthAt[q].x} cy={fourthAt[q].y} r={1.1} fill={TIER_COLORS[f.tier] || '#555'} fillOpacity={0.75} />
+                  ))}
+                </g>
+              );
+            })}
           </g>
         );
       })}
