@@ -242,3 +242,30 @@ test('the ring round a bridge: one bar a person you added, clusters formed first
   const other = reachSegments(15, { formed: 40, ready: 1 });
   assert.equal(other.filter((s) => s.kind === 'ready').length, 1);
 });
+
+import { circleActivity } from '../lib/chain-layout.js';
+import { noteCircle } from '../lib/notifications.js';
+
+test('a notification knows its circle: who someone came through, or whose circle was scanned', () => {
+  assert.equal(noteCircle({ type: 'added_back', data: { personId: 'p-9', viaId: 'b-1' } }), 'b-1');
+  assert.equal(noteCircle({ data: JSON.stringify({ viaId: 7 }) }), '7');
+  assert.equal(noteCircle({ data: { action: 'bridge', personId: 'b-2' } }), 'b-2');
+  assert.equal(noteCircle({ data: { action: 'auto-bridge', personId: null } }), null);
+  assert.equal(noteCircle({ data: 'not json' }), null);
+  assert.equal(noteCircle({}), null);
+});
+
+test('the busiest circles first: notifications (unread twice), people ready to scan, clusters formed since', () => {
+  const circles = [{ id: 'quiet' }, { id: 'noted' }, { id: 'ready' }, { id: 'grown' }];
+  const act = circleActivity(circles, {
+    notes: [{ circle: 'noted', seen: false }, { circle: 'noted', seen: true }, { circle: 'nobody-here', seen: false }, { circle: null }],
+    ready: new Map([['ready', 2]]),
+    chained: new Map([['grown', 1]]),
+  });
+  assert.deepEqual(act.get('noted'), { score: 3, notes: 2, unread: 1, ready: 0, chains: 0 });
+  assert.equal(act.get('ready').score, 2);
+  assert.equal(act.get('grown').score, 1);
+  assert.equal(act.get('quiet').score, 0);
+  const order = [...circles].sort((a, b) => act.get(b.id).score - act.get(a.id).score).map((c) => c.id);
+  assert.deepEqual(order, ['noted', 'ready', 'grown', 'quiet']);
+});
