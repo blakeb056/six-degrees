@@ -1,6 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import AppTabs from '../components/AppTabs';
+import SocialHub from '../social/SocialHub';
+import { setNotchTabs } from '../../lib/island';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OutlinkQuest from '../components/OutlinkQuest';
@@ -34,8 +38,11 @@ function calculatePriority(person, sectors) {
 }
 
 export default function QueuePage() {
-  return <OnboardingGate><QueueInner /></OnboardingGate>;
+  // useSearchParams (which view a link opens) needs a Suspense boundary to build.
+  return <Suspense fallback={null}><OnboardingGate><QueueInner /></OnboardingGate></Suspense>;
 }
+
+const VIEWS = ['quest', 'recs', 'pending', 'messages'];
 
 function QueueInner() {
   const { userId, userProfile: ctxProfile } = useUser();
@@ -51,7 +58,9 @@ function QueueInner() {
   const [serverPending, setServerPending] = useState([]);
   const [bridgeById, setBridgeById] = useState({});
   // Circles is the game (lib/quest.js); the list and Pending are still here.
-  const [view, setView] = useState('quest'); // quest | recs | pending
+  // Messages & follow-ups is Social, folded in (Blake, 2026-10-03); a link can open any view: /queue?view=messages.
+  const asked = useSearchParams().get('view');
+  const [view, setView] = useState(() => (VIEWS.includes(asked) ? asked : 'quest')); // quest | recs | pending | messages
   const [added, setAdded] = useState([]);
   const [mappedIds, setMappedIds] = useState(() => new Set());
   // Whose circle can be scanned next, hidden lists known (lib/reach.js).
@@ -130,6 +139,21 @@ function QueueInner() {
     }
     return out;
   }, [serverPending, recs, requests, bridgeById]);
+
+  // Circles, To add, Pending and Messages & follow-ups in the notch under the tabs.
+  useEffect(() => {
+    setNotchTabs({
+      items: [
+        { key: 'quest', label: 'Circles' },
+        { key: 'recs', label: `To add (${recs.length})` },
+        { key: 'pending', label: `Pending (${pendingList.length})` },
+        { key: 'messages', label: 'Messages & follow-ups' },
+      ],
+      current: view,
+      onPick: setView,
+    });
+    return () => setNotchTabs(null);
+  }, [view, recs.length, pendingList.length]);
 
   // Demo builds: this page is excluded from the public demo
   if (IS_DEMO) {
@@ -239,35 +263,25 @@ function QueueInner() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      {/* Header */}
-      <header style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+      {/* The same header as every page: the app's tabs, Outlink lit. Circles, To add,
+          Pending and Messages & follow-ups sit in the notch under it. */}
+      <header style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Six Degrees
+            </h1>
+          </Link>
+          <AppTabs active="outlink" />
+          <Link href="/settings" title="Settings" aria-label="Settings" style={{
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', color: '#888',
+            fontSize: 16, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>⚙</Link>
+        </div>
+      </header>
+      {(view === 'recs' || view === 'pending') && (
+      <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          <Link href="/" style={{
-            display: 'flex', alignItems: 'center', gap: 6, color: '#888', textDecoration: 'none',
-            fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          }}><span style={{ fontSize: 16 }}>&larr;</span> Map</Link>
-          <h1 style={{
-            fontSize: 20, fontWeight: 700, margin: 0,
-            background: 'linear-gradient(135deg, #FF6B35, #FFD700)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>Outlink</h1>
-          {/* View toggle: Recommendations vs Pending */}
-          <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: 2 }}>
-            <button onClick={() => setView('quest')} style={{
-              padding: '5px 12px', borderRadius: 4, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              background: view === 'quest' ? 'linear-gradient(135deg, #FFD700, #FF6B35)' : 'transparent', color: view === 'quest' ? '#000' : '#FFD700',
-            }}>Circles</button>
-            <button onClick={() => setView('recs')} style={{
-              padding: '5px 12px', borderRadius: 4, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              background: view === 'recs' ? '#fff' : 'transparent', color: view === 'recs' ? '#000' : '#888',
-            }}>To Add ({recs.length})</button>
-            <button onClick={() => setView('pending')} style={{
-              padding: '5px 12px', borderRadius: 4, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              background: view === 'pending' ? 'linear-gradient(135deg, #FF6B35, #FFD700)' : 'transparent',
-              color: view === 'pending' ? '#000' : '#FF6B35',
-            }}>Pending ({pendingList.length})</button>
-          </div>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {view === 'recs' && (<>
               <button onClick={() => setGroupBy('tier')} style={{
@@ -286,7 +300,7 @@ function QueueInner() {
           </div>
         </div>
         {/* Filters (the list's; the Circles game has its own order) */}
-        <div style={{ display: view === 'quest' ? 'none' : 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           {[
             { k: 'all', l: `All (${recs.length})` },
             { k: 'S', l: `S (${tierCounts.S})`, c: TIER_COLORS.S },
@@ -300,7 +314,15 @@ function QueueInner() {
             }}>{f.l}</button>
           ))}
         </div>
-      </header>
+      </div>
+      )}
+
+      {/* Messages & follow-ups: Social, inside Outlink */}
+      {view === 'messages' && (
+        <div style={{ flex: 1, overflow: 'auto', padding: '40px 8px 0' }}>
+          <SocialHub embedded />
+        </div>
+      )}
 
       {/* Batch action bar — recs view only */}
       {view === 'recs' && selected.size > 0 && (
@@ -338,7 +360,7 @@ function QueueInner() {
       )}
 
       {/* Scrollable list */}
-      {view !== 'quest' && (
+      {(view === 'recs' || view === 'pending') && (
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 24px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
 

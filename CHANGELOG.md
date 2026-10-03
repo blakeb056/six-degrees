@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Social is part of Outlink.** Outlink has the same header as every page, and its views sit in
+  the notch: Circles, To add, Pending, and Messages & follow-ups, which is the whole Social tab (your
+  LinkedIn export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and
+  received). Adding people and keeping track of them are now one place. The Social tab is gone from
+  the header, and old links to it land on Messages & follow-ups.
 - **Notifications open.** Click one and it takes over the right panel with the detail: who it is
   about, their tier and score, who you met them through, and, for an S or A, that they're a
   valuable person to know; with buttons to open their card, their circle in Bridge Chains, or
