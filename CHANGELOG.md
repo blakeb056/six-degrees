@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed (Scan)
+### Changed
 - **The Scan page is a launch, not a manual.** It opens with what the scanner is and what it never does
   (never posts or messages anyone, never sees your password, nothing leaves this Mac, stops when you
   say), then the four steps on a rail: Get ready, Sign in, Who you know, Who they know. The one
@@ -16,8 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   window, retrying hidden lists and paused lists are in Fine-tune, closed until you want them. The
   log is one tap away, and opens by itself when a run stops badly. Scan has the same header as every
   page now.
-
-### Changed
 - **Heat: power as a thermal map.** A new Colour by in Network Circle's Physics: every dot coloured
   from cold violet through red and orange to white hot by where their power score ranks among the
   people showing, with a soft glow behind the hotter ones that pools where powerful people cluster,
