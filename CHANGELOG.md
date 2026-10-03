@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in one notification; and a scan finished ("Scan done: Yuki's circle", "Check for new: done").
   Accepted requests and high-value new connections now say who they are about, and older ones are
   matched by the name in their title.
+- **Paths has the same header as the map.** The app's tabs stay at the top, with Paths lit, and Map,
+  People, Industries and Companies sit in the notch under them, as the map page's views do; a tab
+  for Network Circle, Degrees or Separation takes you straight to it. Paths' filters moved into a
+  Filters panel on the left, like the map page's, with new ways to read the map: what a bubble's
+  size means (your people there, the S and A among them, or the ones you already know; on People,
+  cluster value, size or S tier) and which names show (the biggest, all, or none).
 - **All the way to easy, Separation aims at whoever the most of your connections lead to**, with
   every one of those lines drawn, the strongest first among equals; the "Next" names are the
   runners-up by the same measure. It used to aim at the top of the list, which could be someone
