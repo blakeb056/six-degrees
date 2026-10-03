@@ -91,7 +91,7 @@ def _assert_local_target():
     if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
         return
     if os.getenv("ALLOW_REMOTE_PUSH") == "1":
-        print(f"WARNING: pushing scraped data to remote host {host}")
+        print(f"WARNING: pushing scanned data to remote host {host}")
         return
     raise SystemExit(
         f"Refusing to push scraped data to '{APP_URL}'.\n"
@@ -370,7 +370,7 @@ def _print_sign_in_banner(say):
     print("  inside automated browsers, which is why that window comes up")
     print("  greyed out and does nothing.")
     print()
-    print("  Nothing is scraped until you are signed in, and the scrape starts")
+    print("  Nothing is scanned until you are signed in, and the scan starts")
     print("  by itself the moment you are. Take as long as you need.")
     print("  Close the browser window to cancel.")
     print("  ==================================================================")
@@ -387,11 +387,11 @@ def _wait_for_sign_in(page, context, timeout_s, say):
         # not: signing in legitimately opens and closes tabs.
         try:
             if not [pg for pg in context.pages if not pg.is_closed()]:
-                print("\n  Browser closed — nothing was scraped.")
+                print("\n  Browser closed — nothing was scanned.")
                 say("Browser closed before sign-in.")
                 return False
         except Exception:
-            print("\n  Browser closed — nothing was scraped.")
+            print("\n  Browser closed — nothing was scanned.")
             return False
 
         # The cookie belongs to the whole browser, so it is found no matter which
@@ -493,7 +493,7 @@ def resolve_active_user():
             for u in users:
                 if (u.get("name") or "").strip().lower() == wanted:
                     _active_user_id = u["id"]
-                    print(f"  Scraping into profile: {u['name']}")
+                    print(f"  Scanning into profile: {u['name']}")
                     return _active_user_id
             raise SystemExit(f"No profile named '{os.getenv('SIX_DEGREES_USER')}' in the app.")
 
@@ -510,7 +510,7 @@ def resolve_active_user():
         raise SystemExit(f"The app at {APP_URL} did not say which profile to use.")
 
     _active_user_id = me["id"]
-    print(f"  Scraping into profile: {me.get('name')}")
+    print(f"  Scanning into profile: {me.get('name')}")
     return _active_user_id
 
 
@@ -732,7 +732,7 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None, on_sav
             if p["profile_url"] in d1_urls:
                 # Unlock via API route
                 requests.post(f"{APP_URL}/api/unlock", json={"connectionId": p["id"]}, headers=app_headers())
-                print(f"  *** PATH UNLOCKED: {p['name']}! Run --bridge \"{p['name']}\" to scrape their network ***")
+                print(f"  *** PATH UNLOCKED: {p['name']}! Run --bridge \"{p['name']}\" to scan their network ***")
 
     return inserted
 
@@ -893,8 +893,8 @@ def scrape_full(headless=False):
     if searches_left()[0] <= 0:
         raise BudgetReached(0, searches_left()[1])
 
-    print("\n=== Full Account Setup Scrape ===\n")
-    print("This scrapes ALL connections via the search page (not the connections page).")
+    print("\n=== Full account scan ===\n")
+    print("This scans ALL connections via the search page (not the connections page).")
     print("Takes 3-5 minutes for ~500 connections.\n")
 
     with sync_playwright() as p:
@@ -3289,7 +3289,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     if not urn and profiles_left() <= 0:
         raise BudgetReached(0, "profiles")
 
-    print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scraping'} connections of {bridge_name} ===\n")
+    print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scanning'} connections of {bridge_name} ===\n")
 
     read = []
 
@@ -3401,7 +3401,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
         if log_fn:
             log_fn(msg)
 
-    log(f"Scraping employees at: {company_name}")
+    log(f"Scanning employees at: {company_name}")
 
     # A company scan is people searches too: the same cooldown and budget.
     cd = read_cooldown()
@@ -4078,7 +4078,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
 
 def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
     """Delete all existing cluster data for a bridge and re-scrape from scratch."""
-    print(f"\n=== Re-scraping {bridge_name} (delete + fresh scrape) ===\n")
+    print(f"\n=== Rescanning {bridge_name} (delete + fresh scan) ===\n")
 
     # Check before deleting anything: a cooldown or an empty budget would leave
     # their circle deleted and not read again.
@@ -4391,7 +4391,7 @@ Examples:
     # A failed save ends the run with its reason, not a traceback (TRAPS §32).
     def _say_why(exc_type, exc, tb):
         if issubclass(exc_type, SaveFailed):
-            print(f"\n  The app could not save what was scraped: {exc}\n", file=sys.stderr)
+            print(f"\n  The app could not save what was scanned: {exc}\n", file=sys.stderr)
         elif issubclass(exc_type, TryLater):
             print(f"\n  The photos weren't saved: {exc}.\n", file=sys.stderr)
         elif issubclass(exc_type, NotSignedIn):

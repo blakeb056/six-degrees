@@ -1226,7 +1226,9 @@ function ScanLog({ title, log, small = false }) {
       padding: '10px', borderRadius: 8, background: 'rgba(155,89,182,0.1)', border: '1px solid rgba(155,89,182,0.3)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <div style={{ width: small ? 6 : 8, height: small ? 6 : 8, borderRadius: '50%', background: '#9B59B6', animation: 'pulse 1s infinite' }} />
+        {/* Its own keyframes: the 'pulse' this named was never defined anywhere, so the dot sat still. */}
+        <style>{'@keyframes scanlogPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } } @media (prefers-reduced-motion: reduce) { .scanlog-dot { animation: none !important; } }'}</style>
+        <div className="scanlog-dot" style={{ width: small ? 6 : 8, height: small ? 6 : 8, borderRadius: '50%', background: '#9B59B6', animation: 'scanlogPulse 1s ease-in-out infinite' }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: '#9B59B6' }}>{title}</span>
       </div>
       <div style={{ fontFamily: 'monospace', fontSize: small ? 9 : 10, color: '#888', maxHeight: small ? 80 : 100, overflow: 'auto' }}>
