@@ -638,7 +638,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
 }
 
 // ── Zoom ───────────────────────────────────────────────────────────────────
-const ZOOM_MIN = 0.4;
+// Low enough that even aiming at someone with dozens of ways in fits the window
+// whole: the layout stays as it is, only smaller (Blake, 2026-10-03: "it should
+// just be more zoomed out").
+const ZOOM_MIN = 0.15;
 const ZOOM_MAX = 1.5;
 
 /** − | Fit | +, one segmented control as a Mac draws one. The middle says the zoom once you've changed it. */
