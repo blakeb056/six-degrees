@@ -17,8 +17,10 @@ import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
 
 const TIER_COLORS = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
-// People: the map with your connections as the bubbles, sized by the cluster behind them.
-const TABS = [['map', 'Map'], ['people', 'People'], ['industries', 'Industries'], ['companies', 'Companies']];
+// Map and Companies (Blake, 2026-10-03: companies are worth more than industries,
+// and an industry's detail opens from a company's card). Whether the map's bubbles
+// are companies or people is a switch in its Filters panel.
+const TABS = [['map', 'Map'], ['companies', 'Companies']];
 
 export default function PathsPage() {
   // Suspense because PathsInner reads the address's ?tab= (useSearchParams),
@@ -35,16 +37,18 @@ function PathsInner() {
   const [d1Data, setD1Data] = useState([]);
   const [d2Data, setD2Data] = useState([]);
   const [d3Data, setD3Data] = useState([]);
-  // Map and Industries are the analyzer; Companies is the list it grew from.
+  // Map is the analyzer; Companies is the list it grew from.
   // A link can open a tab (/paths?tab=companies). Company scores have a tab of
   // their own (app/scores), and now live in Settings: an old link to /paths?tab=scores goes there.
   // The router's search params rather than window.location: on a click from
   // another page the address bar only changes after this page has rendered.
+  // Old links still land: ?tab=people opens the map with people as the bubbles; ?tab=industries the map.
   const asked = useSearchParams().get('tab');
   const [tab, setTab] = useState(() => (TABS.some(([k]) => k === asked) ? asked : 'map'));
+  const initialShow = asked === 'people' ? 'people' : 'companies';
   const router = useRouter();
   useEffect(() => { if (asked === 'scores') router.replace('/settings#companies'); }, [asked, router]);
-  // Map, People, Industries and Companies in the notch under the tabs, as the
+  // Map and Companies in the notch under the tabs, as the
   // map page's views are; not while one company is open (its own bar shows).
   useEffect(() => {
     if (selectedCompany) { setNotchTabs(null); return undefined; }
@@ -312,7 +316,7 @@ function PathsInner() {
       )}
 
       {!selectedCompany && tab !== 'companies' ? (
-        <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} tab={tab}
+        <PathsAnalyzer d1={d1Data} d2={d2Data} d3={d3Data} initialShow={initialShow}
           onOpenCompany={(co) => selectCompany({ ...co, sCount: co.S, aCount: co.A })} />
       ) : (
       <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>

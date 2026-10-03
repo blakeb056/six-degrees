@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Paths reads like Network Circle.** Its notch is now Map and Companies: companies count for more
+  than industries, and an industry opens from a company's card (its industry is a link there). Whether
+  the map's bubbles are companies or your connections (what was the People tab) is a switch at the
+  top of the Filters panel. Filters use the same tiers × degrees grid as Network Circle. Colour is by
+  sector or by **Heat**: for companies, how strong your people there are (the average power of the
+  five strongest); for people, how strong their cluster is, person for person; size still says how
+  many. And **Physics**: switch it to Live to drag bubbles (the ones joined to them follow) and change
+  Spread, Pull to their group and Pull along lines. Still, as before, is the default. Old links to
+  the People or Industries tab still land on the map.
 - **Heat: power as a thermal map.** A new Colour by in Network Circle's Physics: every dot coloured
   from cold violet through red and orange to white hot by where their power score ranks among the
   people showing, with a soft glow behind the hotter ones that pools where powerful people cluster,

@@ -18,14 +18,15 @@ const DEGREE_NAMES = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
 const DEGREE_IS = {
   network: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
   degrees: { 1: 'your bridges', 2: 'people in their circles' },
+  paths: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
 };
 
 /**
  * Tiers down, six degrees across: tap a tier to hide or show it, a dot to show
  * that degree for that tier, a number at the top for that degree in every tier.
- * The same in Network Circle and in Degrees (lib/tier-grid.js).
+ * The same in Network Circle, Degrees and Paths (lib/tier-grid.js).
  */
-function TierGrid({ grid, counts, onChange, mode, isMobile }) {
+export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   const total = showing(grid, counts);
   const dot = isMobile ? 21 : 23;
   const anyAt = (d) => TIERS.some((t) => (counts[t]?.[d] || 0) > 0);
