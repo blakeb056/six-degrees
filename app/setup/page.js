@@ -73,8 +73,6 @@ function SetupInner() {
   // Scanning with no Chrome window (scripts/scrape.py --headless); lib/scraper-client.js reads it for every scan.
   const [hideChrome, setHideChrome] = useRemembered(HIDE_CHROME_KEY, false);
   const [error, setError] = useState(null);
-  // The step open on the rail: null follows the one you're on.
-  const [view, setView] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
   // loads, null when it couldn't be read. And the answer given here, if any.
@@ -182,7 +180,8 @@ function SetupInner() {
   const mapped = net.first;
   // The step you're on: the first not done. Any other opens from the rail.
   const current = !s || !step1.done ? 1 : !c.signedIn ? 2 : mapped === 0 ? 3 : 4;
-  const shown = view ?? current;
+  // Each step: done, the one you're on (now), or still to come (next).
+  const stateOf = (n, done) => (done && n !== current ? 'done' : n === current ? 'now' : n < current ? 'done' : 'next');
   // Your field, asked once before the first scan (lib/scanner-setup.js
   // askForField). The steps wait while that isn't known yet (null).
   const askField = IS_DEMO || field ? false : askForField(s, settings);
@@ -341,50 +340,49 @@ function SetupInner() {
             <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
           )}
 
-          {/* ---- the journey (Blake, 2026-10-02: "simple and easy to understand … like they are
-               launching an agent"): four steps on a rail, the one you're on open, one button to
-               launch it. Everything else waits in Fine-tune. ---- */}
-          <Journey current={current} view={shown} onView={setView} steps={[
-            { key: 1, label: 'Get ready', done: step1.done },
-            { key: 2, label: 'Sign in', done: !!c.signedIn },
-            { key: 3, label: 'Who you know', done: mapped > 0 },
-            { key: 4, label: 'Who they know', done: net.second > 0 },
-          ]} />
-
-          {shown === 1 && (
-            <Mission step={1} title="Get your scanner ready" time="A minute or two, once" body={s ? step1.text : 'Checking…'}
+          {/* ---- the steps (Blake, 2026-10-02: "simple and easy to understand … like they are
+               launching an agent"; then "the label and them to be displayed … the dots vertically
+               displayed with the line following"): every step shown at once, down a line that turns
+               green as each is done, the one you're on lit, one button each. Everything else waits
+               in Fine-tune. ---- */}
+          <div role="list" aria-label="Scanning, step by step" style={{ margin: '4px 0 8px' }}>
+          <style>{JOURNEY_CSS}</style>
+          <StepRow n={1} label="Get ready" state={stateOf(1, step1.done)}>
+            <Mission title="Get your scanner ready" time="A minute or two, once" done={step1.done} body={s ? step1.text : 'Checking…'}
               launch={s && step1.button && (
                 <Launch onClick={() => run(step1.button.action)} disabled={busy || running}>{step1.button.label}</Launch>
               )} />
-          )}
-          {shown === 2 && (
-            <Mission step={2} title="Sign in to LinkedIn, once" time="You do this part"
+          </StepRow>
+          <StepRow n={2} label="Sign in" state={stateOf(2, !!c.signedIn)}>
+            <Mission title="Sign in to LinkedIn, once" time="You do this part" done={!!c.signedIn}
               body={c.signedIn
                 ? 'Signed in on this Mac. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
                 : 'A Chrome window opens. Sign in with your email and password there: the scanner never sees them. (“Continue with Google” can’t work in it, because Google blocks its sign-in in automated browsers.)'}
               launch={c.dependencies && (
                 // Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
-                <Launch onClick={() => run('login')} disabled={busy || running} quiet={!!c.signedIn}>
+                <Launch onClick={() => run('login')} disabled={busy || running || current < 2} quiet={!!c.signedIn}>
                   {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
                 </Launch>
               )} />
-          )}
-          {shown === 3 && (
-            <Mission step={3} title="Map the people you know" time="About a minute and a half for 750 people"
-              body="It reads your connections list and saves everyone here. After the first time, Check for new only looks at who you've added since."
+          </StepRow>
+          <StepRow n={3} label="Who you know" state={stateOf(3, mapped > 0)}>
+            <Mission title="Map the people you know" time="About a minute and a half for 750 people" done={mapped > 0}
+              body={mapped > 0
+                ? `${mapped.toLocaleString()} connections saved. Check for new picks up anyone you've added since; Scan it all again reads the whole list.`
+                : 'It reads your connections list and saves everyone here. After the first time, Check for new only looks at who you\'ve added since.'}
               launch={(
-                <Launch onClick={() => run('full')} disabled={!canSearch} quiet={mapped > 0}>
+                <Launch onClick={() => run('full')} disabled={!canSearch || current < 3} quiet={mapped > 0}>
                   {running && s.action === 'full' ? 'Scanning…' : mapped > 0 ? 'Scan it all again' : 'Scan my network'}
                 </Launch>
               )}
-              more={(
-                <Btn onClick={() => run('refresh')} disabled={!canSearch} primary={mapped > 0}>
-                  {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
+              more={mapped > 0 && (
+                <Btn onClick={() => run('refresh')} disabled={!canSearch || current < 3} primary>
+                  {running && s.action === 'refresh' ? 'Checking…' : '↻ Check for new'}
                 </Btn>
               )} />
-          )}
-          {shown === 4 && (
-            <Mission step={4} title="Map who they know" time="A small batch a day, slowly"
+          </StepRow>
+          <StepRow n={4} label="Who they know" state={stateOf(4, false)} last>
+            <Mission title="Map who they know" time="A small batch a day, slowly"
               body={<>It opens your connections one at a time and reads who <i>they</i> know: that fills Degrees, Separation and Outlink. Every round picks up where the last one stopped.</>}>
               <CooldownBanner
                 cooldown={li?.cooldown}
@@ -452,7 +450,8 @@ function SetupInner() {
                 </div>
               </div>
             </Mission>
-          )}
+          </StepRow>
+          </div>
 
           {/* ---- the scanner at work: what it's doing, and Stop, right under the step ---- */}
           {running && (
@@ -693,54 +692,62 @@ const JOURNEY_CSS = `
 @media (prefers-reduced-motion: reduce) { .journey-now { animation: none; } }
 `;
 
-/** The four steps on a rail: done ones ticked, the one you're on pulsing, any of them opens on a tap. */
-function Journey({ steps, current, view, onView }) {
+/**
+ * One step down the line: its dot (a tick once done, pulsing while it's the one
+ * you're on), the line on to the next step (green once this one is done), its
+ * label, and what it does.
+ */
+function StepRow({ n, label, state, last = false, children }) {
+  const done = state === 'done';
+  const now = state === 'now';
   return (
-    <div role="tablist" aria-label="Scanning, step by step" style={{ display: 'flex', alignItems: 'flex-start', margin: '4px 0 14px' }}>
-      <style>{JOURNEY_CSS}</style>
-      {steps.map((st, i) => {
-        const now = st.key === current && !st.done;
-        const open = st.key === view;
-        const color = st.done ? '#00ff88' : now ? '#fff' : '#667';
-        return (
-          <div key={st.key} style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
-            <button type="button" role="tab" aria-selected={open} onClick={() => onView(st.key === current ? null : st.key)}
-              style={{ flex: '0 0 auto', width: 76, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-              <span className={now ? 'journey-now' : undefined} style={{
-                width: 38, height: 38, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 15, fontWeight: 800,
-                background: st.done ? 'rgba(0,255,136,0.16)' : now ? 'linear-gradient(135deg, #00ff88, #1abc9c)' : 'rgba(255,255,255,0.05)',
-                color: st.done ? '#00ff88' : now ? '#04140c' : '#778',
-                border: `2px solid ${open ? '#fff' : st.done ? 'rgba(0,255,136,0.55)' : now ? 'transparent' : 'rgba(255,255,255,0.12)'}`,
-              }}>{st.done ? '✓' : st.key}</span>
-              {/* Wraps to two lines rather than running into the next on a phone */}
-              <span style={{ fontSize: 12, fontWeight: open ? 800 : 650, color, textAlign: 'center', lineHeight: 1.25, maxWidth: 76, overflowWrap: 'break-word' }}>{st.label}</span>
-            </button>
-            {i < steps.length - 1 && (
-              <span aria-hidden="true" style={{
-                flex: 1, height: 2, marginTop: 19, borderRadius: 1, minWidth: 8,
-                background: st.done ? 'linear-gradient(90deg, rgba(0,255,136,0.7), rgba(0,255,136,0.25))' : 'rgba(255,255,255,0.1)',
-              }} />
-            )}
-          </div>
-        );
-      })}
+    <div role="listitem" aria-label={`Step ${n}, ${label}: ${done ? 'done' : now ? 'the one to do now' : 'still to come'}`}
+      style={{ display: 'grid', gridTemplateColumns: '40px 1fr', columnGap: 14 }}>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+        <span className={now ? 'journey-now' : undefined} aria-hidden="true" style={{
+          position: 'relative', zIndex: 1, width: 38, height: 38, borderRadius: '50%', display: 'grid', placeItems: 'center',
+          fontSize: 15, fontWeight: 800,
+          background: done ? 'rgba(0,255,136,0.16)' : now ? 'linear-gradient(135deg, #00ff88, #1abc9c)' : '#12142a',
+          color: done ? '#00ff88' : now ? '#04140c' : '#778',
+          border: `2px solid ${done ? 'rgba(0,255,136,0.55)' : now ? 'transparent' : 'rgba(255,255,255,0.14)'}`,
+        }}>{done ? '✓' : n}</span>
+        {!last && (
+          <span aria-hidden="true" style={{
+            position: 'absolute', top: 40, bottom: 0, left: '50%', width: 2, marginLeft: -1, borderRadius: 1,
+            background: done ? 'linear-gradient(rgba(0,255,136,0.75), rgba(0,255,136,0.3))' : 'rgba(255,255,255,0.1)',
+          }} />
+        )}
+      </div>
+      <div style={{ minWidth: 0, paddingBottom: last ? 0 : 16, opacity: state === 'next' ? 0.75 : 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 38, marginBottom: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: done ? '#00ff88' : now ? '#fff' : '#889' }}>
+            Step {n} · {label}
+          </span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
+            color: done ? '#00ff88' : now ? '#04140c' : '#889',
+            background: done ? 'rgba(0,255,136,0.12)' : now ? '#00ff88' : 'rgba(255,255,255,0.06)',
+          }}>{done ? 'Done' : now ? 'Now' : 'Next'}</span>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
 
-/** The step that's open: what it does, how long, and the one button that does it. */
-function Mission({ step, title, time, body, launch, more, children }) {
+/** A step's card: what it does, how long, and the one button that does it. Once done, a quieter card. */
+function Mission({ title, time, body, launch, more, done = false, children }) {
   return (
     <div style={{
-      padding: '20px 22px', borderRadius: 14, marginBottom: 8,
-      background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.1)',
+      padding: done ? '14px 18px' : '18px 20px', borderRadius: 14,
+      background: done ? 'rgba(0,255,136,0.03)' : 'rgba(255,255,255,0.035)',
+      border: `1px solid ${done ? 'rgba(0,255,136,0.18)' : 'rgba(255,255,255,0.1)'}`,
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#778' }}>STEP {step}</span>
-        <span style={{ fontSize: 19, fontWeight: 800 }}>{title}</span>
-        {time && <span style={{ fontSize: 12, color: '#8fd9b6', marginLeft: 'auto' }}>⏱ {time}</span>}
+        <span style={{ fontSize: done ? 16 : 19, fontWeight: 800 }}>{title}</span>
+        {time && !done && <span style={{ fontSize: 12, color: '#8fd9b6', marginLeft: 'auto' }}>⏱ {time}</span>}
       </div>
-      <div style={{ fontSize: 14, color: '#9fb0bb', lineHeight: 1.6, margin: '8px 0 14px', maxWidth: 600 }}>{body}</div>
+      <div style={{ fontSize: done ? 13 : 14, color: '#9fb0bb', lineHeight: 1.6, margin: done ? '6px 0 10px' : '8px 0 14px', maxWidth: 600 }}>{body}</div>
       {children}
       {(launch || more) && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{launch}{more}</div>}
     </div>
