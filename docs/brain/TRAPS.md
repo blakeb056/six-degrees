@@ -955,3 +955,41 @@ does. Next follows `history.replaceState`, so clearing the address there clears 
 too. `app/queue/page.js` still reads `?groupBy=` in an initializer; its one link is a plain
 `<a href>`, which loads the page, so it works, but a `<Link>` there would break it. A browser
 check of a link has to click it.
+
+## 42. On Windows, the scanner's "→" ends the scan: a piped stdout is cp1252, and `-E` ignores PYTHONUTF8
+
+Found while planning the Windows app (2026-10-02), before it ever ran there: `scripts/scrape.py`
+prints "→" (and other non-ASCII) in its progress lines. When Python's stdout is a pipe on
+Windows its encoding is the console code page, cp1252, which has no "→", so the first such
+print raises `UnicodeEncodeError` and the scan stops after its first batch. No smoke test that
+only opens the app and reaches its pages would ever see it.
+
+- **Why the usual fix doesn't work.** `PYTHONUTF8=1` would do it, but the app's own Python
+  runs with `-E` (OWN_PYTHON_FLAGS), which ignores every `PYTHON*` variable.
+- **What holds it now:** `-X utf8` in OWN_PYTHON_FLAGS (an `-X` option survives `-E`), and
+  `PYTHONUTF8=1` in the environment of any other Python the scanner runs on
+  (`noBytecodeEnv`). The Windows build's own check prints a "→" through the app's Python with
+  the same flags, so a regression fails the build.
+
+## 43. PowerShell can't pass an empty environment variable, and Windows hides Electron's stdout
+
+Two things that make a Windows CI check say less than it seems:
+
+- **An empty variable is deleted.** `$env:X = ''` (and .NET's `SetEnvironmentVariable`)
+  removes `X`; it doesn't set it to empty. The Mac check turns the app's Python off with
+  `SIX_DEGREES_PYTHON=` (empty, on purpose), which PowerShell can't express. Node's `spawn`
+  can: `scripts/smoke-desktop.mjs` starts the app from Node for that reason.
+- **The ready line can't be read.** The app prints `SIX_DEGREES_READY <address>` to stdout,
+  which a GUI-subsystem Electron on Windows doesn't reliably hand to a pipe. The app also
+  writes it to the file named by `SIX_DEGREES_SMOKE_READY`, and the check waits for that.
+
+## 44. Windows' Chrome keeps its cookies in `Default\Network\Cookies`; Ubuntu 24.04 won't start Electron without a setuid sandbox
+
+- **Signed in never ticked on Windows.** The Scan page's "signed in" check looked for
+  `chrome-profile/Default/Cookies`, where Chrome keeps them on a Mac and Linux. On Windows it's
+  `Default\Network\Cookies`. Both are checked now (`app/api/scraper/route.js`).
+- **The Linux app wouldn't start.** Ubuntu 24.04 restricts unprivileged user namespaces
+  (AppArmor), so Electron needs its `chrome-sandbox` helper owned by root and setuid (4755) or
+  it exits at once. A `.tar.gz` can't carry that; the `.deb` does (`dpkg-deb --root-owner-group`
+  plus `chmod 4755` in `scripts/build-desktop.mjs`), and CI checks it after installing. The
+  `.tar.gz`'s release notes give the two commands, or `--no-sandbox`.
