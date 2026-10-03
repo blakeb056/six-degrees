@@ -24,7 +24,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  generate, fill, fullReleases, parseChangelog, changeCounts, highlights, longDate, countTests,
+  generate, fill, fullReleases, parseChangelog, changeCounts, highlights, longDate, countTests, anchor, releaseChartHtml,
 } from './site-news.mjs';
 import { markdown, frontMatter, htmlFrontMatter, escapeHtml, plainText } from './site-markdown.mjs';
 
@@ -36,7 +36,6 @@ const TEASERS = 3;
 
 const read = (root, f) => readFileSync(path.join(root, f), 'utf8');
 const shortDate = (iso) => longDate(iso).replace(/ (\w{3})\w* /, ' $1 ');
-const anchor = (version) => `v${version}`;
 
 // ---------------------------------------------------------------- loading
 
@@ -297,66 +296,73 @@ ${post.html}
  * history, with the dates the commits carry. They were never downloads, and
  * the first two repositories are private, so nothing here links to them.
  * Not in the releases feed: they aren't releases of this app.
+ *
+ * `commits` sizes each one's bar in the chart at the top of /releases/ (Blake,
+ * 2026-10-03: the chart began at "a really stacked 0.1.0"): the commits that
+ * landed for it, from the day after the one before up to its own, counted by
+ * the day in Florida, in that milestone's own repository (the first build's
+ * repository, the static version's, then this one). There was no changelog to
+ * count changes from yet.
  */
 export const BEFORE = [
   {
-    id: 'preview-6', stage: 'Preview', date: '2026-09-10', title: 'Preview 6: one-command updates',
+    id: 'preview-6', commits: 14, stage: 'Preview', date: '2026-09-10', title: 'Preview 6: one-command updates',
     text: 'Updating became one command that can\'t half-succeed, the app said when its server was older than its files, and the front page told the truth about how to run it.',
   },
   {
-    id: 'preview-5', stage: 'Preview', date: '2026-09-09', title: 'Preview 5: the scanner, end to end',
+    id: 'preview-5', commits: 23, stage: 'Preview', date: '2026-09-09', title: 'Preview 5: the scanner, end to end',
     text: 'Who introduced whom was remembered, with a note when they accepted; each photo matched to the right person; the dial paged through every bridge; and the map said how much of the network was actually mapped.',
   },
   {
-    id: 'preview-4', stage: 'Preview', date: '2026-09-01', title: 'Preview 4: open source',
+    id: 'preview-4', commits: 4, stage: 'Preview', date: '2026-09-01', title: 'Preview 4: open source',
     text: 'The rebuild went public on GitHub, and the earlier versions\' repositories went private.',
   },
   {
-    id: 'preview-3', stage: 'Preview', date: '2026-08-25', title: 'Preview 3: signing in first',
+    id: 'preview-3', commits: 4, stage: 'Preview', date: '2026-08-25', title: 'Preview 3: signing in first',
     text: 'The scanner waited for you to sign in to LinkedIn yourself before reading anything, a first scan read your whole list, and loading the sample network could be undone.',
   },
   {
-    id: 'preview-2', stage: 'Preview', date: '2026-08-24', title: 'Preview 2: one command to run it',
+    id: 'preview-2', commits: 9, stage: 'Preview', date: '2026-08-24', title: 'Preview 2: one command to run it',
     text: 'Packaged to run with one command, with an invented sample network and a real empty state, and two security holes closed (a cross-site write and stored script injection).',
   },
   {
-    id: 'preview-1', stage: 'Preview', date: '2026-08-21', title: 'Preview 1: the open-source rebuild begins',
+    id: 'preview-1', commits: 10, stage: 'Preview', date: '2026-08-21', title: 'Preview 1: the open-source rebuild begins',
     text: 'This codebase starts: the hosted database replaced by a local one on your own computer, the scanner\'s last ties to the cloud cut, and checks that keep secrets and personal data out of the code.',
   },
   {
-    id: 'beta-3', stage: 'Beta', date: '2026-07-15', title: 'Beta 3: scanning from inside the app',
+    id: 'beta-3', commits: 2, stage: 'Beta', date: '2026-07-15', title: 'Beta 3: scanning from inside the app',
     text: 'The scanner ran from the app itself, with its progress shown live, and one command started everything.',
   },
   {
-    id: 'beta-2', stage: 'Beta', date: '2026-07-13', title: 'Beta 2: local-first, for real',
+    id: 'beta-2', commits: 6, stage: 'Beta', date: '2026-07-13', title: 'Beta 2: local-first, for real',
     text: 'A local database server on your own computer, a hardened scanner, and the first build\'s features brought back where they were safe for a demo.',
   },
   {
-    id: 'beta-static', stage: 'Beta', date: '2026-07-12', title: 'Beta 1: the static version',
+    id: 'beta-static', commits: 7, stage: 'Beta', date: '2026-07-12', title: 'Beta 1: the static version',
     text: 'Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data never left your device.',
   },
   {
-    id: 'alpha-6', stage: 'Alpha', date: '2026-06-18', title: 'Alpha 6: on your phone, and a launch page',
+    id: 'alpha-6', commits: 12, stage: 'Alpha', date: '2026-06-18', title: 'Alpha 6: on your phone, and a launch page',
     text: 'A layout for phones, with a touch dial for spinning through a bridge\'s circle, and a showcase page for the launch.',
   },
   {
-    id: 'alpha-5', stage: 'Alpha', date: '2026-06-16', title: 'Alpha 5: chains',
+    id: 'alpha-5', commits: 48, stage: 'Alpha', date: '2026-06-16', title: 'Alpha 5: chains',
     text: 'The Chain view, where Bridge Chains began: hover a bridge to see their circle, and the people in it who could lead one step further.',
   },
   {
-    id: 'alpha-4', stage: 'Alpha', date: '2026-06-15', title: 'Alpha 4: more than one network',
+    id: 'alpha-4', commits: 66, stage: 'Alpha', date: '2026-06-15', title: 'Alpha 4: more than one network',
     text: 'Each person\'s network kept apart from everyone else\'s, a bulk import, company scores of your own, and Paths reading companies from headlines.',
   },
   {
-    id: 'alpha-3', stage: 'Alpha', date: '2026-06-14', title: 'Alpha 3: who to add next',
+    id: 'alpha-3', commits: 20, stage: 'Alpha', date: '2026-06-14', title: 'Alpha 3: who to add next',
     text: 'A ranked list of who to add next (where Outlink began), a profile page with a level, points and milestones, and cluster cards you could open.',
   },
   {
-    id: 'alpha-2', stage: 'Alpha', date: '2026-06-12', title: 'Alpha 2: photos and clusters',
+    id: 'alpha-2', commits: 25, stage: 'Alpha', date: '2026-06-12', title: 'Alpha 2: photos and clusters',
     text: 'Profile photos on the map and the cards, the most valuable clusters ranked, and your bridges orbiting you by tier.',
   },
   {
-    id: 'alpha-first-build', stage: 'Alpha', date: '2026-06-11', title: 'Alpha 1: the first build',
+    id: 'alpha-first-build', commits: 58, stage: 'Alpha', date: '2026-06-11', title: 'Alpha 1: the first build',
     text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Six Degrees started.',
     archive: 'https://six-degrees-linkedin.vercel.app/',
     image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation, Map your LinkedIn power network', width: 800, height: 500, caption: 'The first build, June 2026' },
@@ -366,7 +372,7 @@ export const BEFORE = [
 export function beforeHtml() {
   const entries = BEFORE.map((b) => `      <article class="release archive" id="${b.id}">
         <header>
-          <h2><a href="#${b.id}">${escapeHtml(b.title)}</a> <span class="tag stage">${b.stage}</span></h2>
+          <h2><a href="#${b.id}">${escapeHtml(b.title)}</a> <span class="tag stage s-${b.stage.toLowerCase()}">${b.stage}</span></h2>
           <p class="post-meta"><time datetime="${b.date}">${longDate(b.date)}</time></p>${b.archive ? `
           <p class="release-links"><a href="${b.archive}">Archive: the original prototype (June 2026), kept as it was</a></p>` : ''}
         </header>
@@ -414,18 +420,23 @@ ${notes}
         </div>
       </article>`;
   }).join('\n');
-  const toc = `${full.map((r) => `<a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>`).join(' ')} <a href="#before-0-1">Before 0.1</a>`;
+  // The stages before 0.1 are in the list too, each at its newest milestone.
+  const stages = ['Preview', 'Beta', 'Alpha'].map((st) => BEFORE.find((b) => b.stage === st)).filter(Boolean);
+  const toc = `${full.map((r) => `<a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>`).join(' ')} <a href="#before-0-1">Before 0.1:</a> ${stages.map((b) => `<a class="stage-link s-${b.stage.toLowerCase()}" href="#${b.id}">${b.stage}</a>`).join(' ')}`;
   const title = 'Release notes: every version of Six Degrees';
   const description = `Everything added, changed and fixed in each of Six Degrees' ${full.length} releases, from ${full.at(-1).version} to ${full[0].version}, newest first.`;
   const main = `${pageHead({ kicker: 'Releases', title: 'Release notes', lede: `Every version, newest first, from the <a href="${REPO}/blob/main/CHANGELOG.md">changelog</a>. Downloads for each are on <a href="${REPO}/releases">GitHub Releases</a>.` })}
     <div class="panel chart-group releases-chart">
       <div class="panel-head">
-        <h2>Every release, by what it changed</h2>
-        <p class="fine">${values['change-count']} changes in ${values['release-count']} releases since ${values['first-release']}. Betas are counted in the release they became.</p>
+        <h2>Every release, and what came before</h2>
+        <p class="fine">${values['change-count']} changes in ${values['release-count']} releases since ${values['first-release']}. Betas are counted in the release they became.
+          Before that, ${BEFORE.length} milestones back to <time datetime="${BEFORE.at(-1).date}">${longDate(BEFORE.at(-1).date)}</time>: the first build (Alpha),
+          the static version (Beta) and the open-source rebuild (Preview), each by the commits that landed for it, as there was no changelog yet. Tap a bar for its notes.</p>
       </div>
       <div class="chart">
-        <div class="bars-box tall">${values['release-chart']}</div>
+        <div class="bars-box tall">${releaseChartHtml(full, BEFORE)}</div>
         <ul class="legend inline" role="list">${KINDS.slice(0, 5).map((k) => `<li class="k-${k}">${k[0].toUpperCase()}${k.slice(1)}</li>`).join('')}</ul>
+        <ul class="legend inline stages" role="list">${['Alpha', 'Beta', 'Preview'].map((s) => `<li class="k-${s.toLowerCase()}">${s}</li>`).join('')}<li class="note">before 0.1, in commits</li></ul>
       </div>
     </div>
     <nav class="release-toc" aria-label="Versions"><span>Jump to</span> ${toc}</nav>

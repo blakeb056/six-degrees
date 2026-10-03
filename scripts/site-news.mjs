@@ -171,6 +171,7 @@ export function columnSvg(columns, { label, max = Math.max(1, ...columns.map((c)
   const step = 10;
   const barW = 7;
   const bars = columns.map((c, i) => {
+    if (!c.parts.length) return '';   // a gap
     let below = 0;
     const x = round(i * step + (step - barW) / 2);
     const rects = c.parts.filter((p) => p.value > 0).map((p) => {
@@ -179,7 +180,9 @@ export function columnSvg(columns, { label, max = Math.max(1, ...columns.map((c)
       below += p.value;
       return `<rect class="${p.cls}" x="${x}" y="${round(top)}" width="${barW}" height="${round(bottom - top)}"/>`;
     }).join('');
-    return `<g><title>${escapeHtml(c.title)}</title>${rects}</g>`;
+    // The whole column's height answers a click, not just its bar, so a short one is easy to hit.
+    const bar = `<g><title>${escapeHtml(c.title)}</title><rect class="hit" x="${round(i * step)}" y="0" width="${step}" height="${H}"/>${rects}</g>`;
+    return c.href ? `<a href="${escapeHtml(c.href)}">${bar}</a>` : bar;
   }).join('');
   return `<svg class="bars" viewBox="0 0 ${columns.length * step} ${H}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(label)}">${bars}</svg>`;
 }
@@ -188,23 +191,66 @@ function labelRow(labels) {
   return `<ol class="bar-labels" aria-hidden="true">${labels.map((l) => `<li>${l ? escapeHtml(l) : ''}</li>`).join('')}</ol>`;
 }
 
-/** Every full release, oldest to newest, by how many changes of each kind. */
-export function releaseChartHtml(full) {
+/** A version's id on /releases/ (and in its links). */
+export const anchor = (version) => `v${version}`;
+const STAGES = ['Alpha', 'Beta', 'Preview'];
+const shortDate = (d) => longDate(d).replace(/ (\w{3})\w* \d{4}$/, ' $1');
+
+/**
+ * Every full release, oldest to newest, by how many changes of each kind; and
+ * before them the milestones before 0.1 (`before`, newest first, as on the
+ * page), by stage and by the commits that landed for each, since there was no
+ * changelog yet (Blake, 2026-10-03: the chart began at "a really stacked 0.1.0",
+ * as if the work had started there). A gap marks where the releases begin, and
+ * a band under the bars names each stretch. Each bar opens its notes.
+ */
+export function releaseChartHtml(full, before = []) {
   const oldestFirst = [...full].reverse();
-  const columns = oldestFirst.map((r) => {
+  const earlier = [...before].reverse();
+  const releases = oldestFirst.map((r) => {
     const c = changeCounts(r);
     const total = KINDS.reduce((s, k) => s + (c[k] || 0), 0);
     const parts = KINDS.map((k) => ({ value: c[k] || 0, cls: `k-${k}` }));
     const said = KINDS.filter((k) => c[k]).map((k) => `${c[k]} ${k}`).join(', ');
-    return { parts, title: `${r.version} · ${longDate(r.date)}: ${total} changes (${said})` };
+    return { parts, title: `${r.version} · ${longDate(r.date)}: ${total} changes (${said})`, href: `#${anchor(r.version)}` };
   });
+  const milestones = earlier.map((b) => ({
+    parts: [{ value: b.commits, cls: `k-${b.stage.toLowerCase()}` }],
+    title: `${b.title} · ${longDate(b.date)}: ${b.commits} commits (before the changelog began)`,
+    href: `#${b.id}`,
+  }));
+  const gap = milestones.length ? [{ parts: [], title: '' }] : [];
+  const columns = [...milestones, ...gap, ...releases];
   const total = full.reduce((s, r) => s + Object.values(changeCounts(r)).reduce((a, b) => a + b, 0), 0);
+  const commits = earlier.reduce((s, b) => s + b.commits, 0);
   // The first and the newest only: at phone width the columns are too narrow to name more.
-  const labels = oldestFirst.map((r, i) => (i === 0 || i === oldestFirst.length - 1 ? `${r.version} · ${longDate(r.date).replace(/ (\w{3})\w* \d{4}$/, ' $1')}` : ''));
+  const firstLabel = earlier.length ? `${earlier[0].title.split(':')[0]} · ${shortDate(earlier[0].date)}` : `${oldestFirst[0].version} · ${shortDate(oldestFirst[0].date)}`;
+  const labels = columns.map((c, i) => (i === 0 ? firstLabel : i === columns.length - 1 ? `${full[0].version} · ${shortDate(full[0].date)}` : ''));
   const svg = columnSvg(columns, {
-    label: `Changes per release, ${oldestFirst.length} releases from ${oldestFirst[0].version} to ${full[0].version}, ${total} in all`,
+    label: (earlier.length
+      ? `${earlier.length} milestones before 0.1, from ${longDate(earlier[0].date)}, by commits (${commits} in all); then changes per release, `
+      : 'Changes per release, ')
+      + `${oldestFirst.length} releases from ${oldestFirst[0].version} to ${full[0].version}, ${total} in all`,
   });
-  return `\n          ${svg}\n          ${labelRow(labels)}\n          `;
+  // The band: each stage, then the releases, as wide as their columns.
+  const band = earlier.length ? stageBand([
+    ...STAGES.map((stage) => {
+      const of = earlier.filter((b) => b.stage === stage);
+      return of.length && { n: of.length, cls: `s-${stage.toLowerCase()}`, text: stage, short: stage[0], title: `${stage}: ${of.length} milestones, ${shortDate(of[0].date)} to ${shortDate(of.at(-1).date)}` };
+    }).filter(Boolean),
+    { n: 1 },
+    { n: releases.length, cls: 's-release', text: 'Releases', short: 'Releases', title: `${releases.length} releases, from ${shortDate(oldestFirst[0].date)}` },
+  ]) : '';
+  return `\n          ${svg}\n          ${band}${labelRow(labels)}\n          `;
+}
+
+// One cell per column, as the labels row has, since the site's content policy
+// allows no inline styles to size a cell per stretch: the stretch's name sits
+// in its first cell and runs on into the rest.
+function stageBand(groups) {
+  const cells = groups.flatMap((g) => Array.from({ length: g.n }, (_, i) => (!g.cls ? '<li></li>'
+    : `<li class="${g.cls}${i === 0 ? ' first' : ''}"${i === 0 ? ` title="${escapeHtml(g.title)}"` : ''}>${i === 0 ? `<span class="long">${escapeHtml(g.text)}</span><span class="short">${escapeHtml(g.short)}</span>` : ''}</li>`)));
+  return `<ol class="stage-band" aria-hidden="true">${cells.join('')}</ol>\n          `;
 }
 
 /** The sample network's shape: who's two steps away, and through how many of your connections. */
@@ -288,7 +334,6 @@ export function generate({ changelog, testCount, sample }) {
     'change-count': thousands(full.reduce((sum, r) => sum + Object.values(changeCounts(r)).reduce((a, b) => a + b, 0), 0)),
     'test-count': thousands(testCount),
     news: newsHtml(full),
-    'release-chart': releaseChartHtml(full),
     'sample-connections': thousands(s.connections),
     'sample-degree2': thousands(s.degree2),
     'sample-bridges': String(s.bridges),
