@@ -196,10 +196,16 @@ function HomeInner() {
   const grid = isDegreesMode ? grids.degrees : grids.network;
   // Degrees draws your connections (the bridges among them) and their circles;
   // Network Circle draws whoever the grid shows, at any degree.
+  // Separation ranks the people two steps away, and every connection is a way
+  // in to them whatever its tier, so there the tiers pick who's ranked and never
+  // which connections lead to them (Blake, 2026-10-03: hiding a tier took the
+  // purple A-tier mutuals off the map; "the filter should only apply to the output").
+  const isSeparation = mode === 'separation';
   const filtered = useMemo(() => {
+    if (isSeparation) return connections;
     if (isDegreesMode) return connections.filter((c) => shows(grid, c.tier, 1));
     return [1, 2, 3].flatMap((d) => (byDegree[d] || []).filter((c) => shows(grid, c.tier, d)));
-  }, [isDegreesMode, connections, byDegree, grid]);
+  }, [isSeparation, isDegreesMode, connections, byDegree, grid]);
   // Lookups built once per load. Every click re-renders this component, and the
   // three places below used to scan one list inside another — degree1.find per
   // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
@@ -209,17 +215,21 @@ function HomeInner() {
     () => new Set(degree2.map(d => d.source_connection_id).filter(Boolean)),
     [degree2],
   );
-  // A 2nd-degree row shows when its own tier does at 2nd degree, and the bridge
-  // it came through shows at 1st.
+  // A 2nd-degree row shows when its own tier does at 2nd degree, and (in
+  // Degrees, not Separation) the bridge it came through shows at 1st.
   const filteredD2 = useMemo(() => {
     if (!isDegreesMode) return NO_DEGREE2;
+    if (isSeparation) return degree2.filter((c) => shows(grid, c.tier, 2));
     return degree2.filter((c) => shows(grid, c.tier, 2) && shows(grid, d1ById.get(c.source_connection_id)?.tier, 1));
-  }, [isDegreesMode, grid, d1ById, degree2]);
+  }, [isDegreesMode, isSeparation, grid, d1ById, degree2]);
   // How many people stand behind each dot of the grid. In Degrees, 1st degree
-  // counts the bridges, since those are the connections it draws.
-  const panelCounts = useMemo(() => gridCounts(isDegreesMode
-    ? { 1: degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
-    : byDegree), [isDegreesMode, degree1, bridgeIds, byDegree]);
+  // counts the bridges, since those are the connections it draws; Separation
+  // only ranks the 2nd.
+  const panelCounts = useMemo(() => gridCounts(isSeparation
+    ? { 2: byDegree[2] }
+    : isDegreesMode
+      ? { 1: degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
+      : byDegree), [isSeparation, isDegreesMode, degree1, bridgeIds, byDegree]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) { setSidebarCollapsed(false); setOpenNote(null); }
@@ -424,7 +434,7 @@ function HomeInner() {
         <FilterPanel
           collapsed={filterPanelCollapsed}
           onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-          mode={isDegreesMode ? 'degrees' : 'network'}
+          mode={isSeparation ? 'separation' : isDegreesMode ? 'degrees' : 'network'}
           visualMode={view.key}
           grid={grid}
           gridCounts={panelCounts}
