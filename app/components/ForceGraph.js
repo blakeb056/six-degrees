@@ -637,8 +637,12 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     g.classed('lab-focus', true);
   };
 
+  // Moving from one dot to the next shouldn't flash the whole Galaxy back on in
+  // between: the dimming lifts a moment after the pointer leaves, unless it lands on another.
+  let unlight = null;
   node.on('mouseover', function (event, d) {
     easeRadius(this, nodeRadius(d) * 1.5);
+    clearTimeout(unlight);
     if (L.on && L.branch && d.id !== CENTER_ID) lightBranch(d);
     if (d.profile_image_url && d.id !== CENTER_ID) {
       const size = Math.max(48, nodeRadius(d) * 5);
@@ -667,7 +671,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
   }).on('mouseout', function (event, d) {
     easeRadius(this, nodeRadius(d));
-    g.classed('lab-focus', false);
+    clearTimeout(unlight);
+    unlight = setTimeout(() => g.classed('lab-focus', false), 120);
     tooltip.style('opacity', 0);
     photoTooltip.style('opacity', 0);
   });
