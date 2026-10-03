@@ -14,7 +14,7 @@ import { Seg, panelHeading } from './PathsAnalyzer';
 
 export const PHYSICS_OFF = Object.freeze({ live: false, spread: 1, pull: 1, links: 1 });
 
-const hint = { fontSize: 10.5, color: '#667', lineHeight: 1.45, marginTop: 6 };
+const hint = { fontSize: 10.5, color: 'var(--sd-fg-4, #667)', lineHeight: 1.45, marginTop: 6 };
 const SLIDERS = [
   { key: 'spread', label: 'Spread', min: 0.2, max: 4, step: 0.05, tip: 'How hard bubbles push each other apart.' },
   { key: 'pull', label: 'Pull to their group', min: 0, max: 4, step: 0.05, tip: 'How hard each bubble keeps to its sector. At 0 they find their own shape.' },
@@ -35,19 +35,19 @@ export function MapLook({ colourBy, onColourBy, physics, onPhysics, heatHint }) 
         <div style={{ marginTop: 8 }}>
           {SLIDERS.map((s) => (
             <label key={s.key} title={s.tip} style={{ display: 'block', marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#aab' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--sd-fg-3, #aab)' }}>
                 <span>{s.label}</span>
-                <span style={{ color: physics[s.key] === PHYSICS_OFF[s.key] ? '#556' : '#cfe6f7', fontVariantNumeric: 'tabular-nums' }}>{physics[s.key].toFixed(2)}×</span>
+                <span style={{ color: physics[s.key] === PHYSICS_OFF[s.key] ? 'var(--sd-fg-5, #556)' : 'var(--sd-fg-1, #cfe6f7)', fontVariantNumeric: 'tabular-nums' }}>{physics[s.key].toFixed(2)}×</span>
               </div>
               <input type="range" min={s.min} max={s.max} step={s.step} value={physics[s.key]}
                 onChange={(e) => onPhysics({ ...physics, [s.key]: Number(e.target.value) })}
-                style={{ width: '100%', accentColor: '#3498DB' }} />
+                style={{ width: '100%', accentColor: 'var(--sd-accent, #3498DB)' }} />
             </label>
           ))}
           <div style={hint}>Drag a bubble and the ones joined to it follow. Click still opens it.</div>
           <button type="button" onClick={() => onPhysics({ ...PHYSICS_OFF, live: true })} style={{
             marginTop: 6, padding: '4px 10px', borderRadius: 6, fontSize: 10.5, cursor: 'pointer',
-            border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aab',
+            border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-3, #aab)',
           }}>Reset the forces</button>
         </div>
       ) : (

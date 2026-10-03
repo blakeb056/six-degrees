@@ -240,23 +240,23 @@ function PathsInner() {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 12, background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
+        gap: 12, background: 'var(--sd-page)', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.7)',
         fontFamily: 'var(--sd-font)',
       }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#fff' }}>Not part of the demo</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--sd-fg-1, #fff)' }}>Not part of the demo</h1>
         <p style={{ fontSize: 13, margin: 0 }}>The public demo includes the Network Circle and Degrees views only.</p>
-        <Link href="/" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>&larr; Back to the network</Link>
+        <Link href="/" style={{ fontSize: 13, color: 'var(--sd-fg-3, #888)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>Loading...</div>;
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)' }}>Loading...</div>;
   }
 
   return (
     <div style={{
-      height: '100vh', background: 'var(--sd-page)', color: '#fff',
+      height: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)',
       fontFamily: 'var(--sd-font)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
@@ -264,26 +264,26 @@ function PathsInner() {
           Industries and Companies sit in the notch under it. */}
       <AppHeader active="paths" csvMode={localOnly} />
       {selectedCompany && (
-        <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {selectedCompany && (
             <>
               <button onClick={() => { setSelectedCompany(null); setCompanyPeople([]); }}
-                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--sd-fg-3, #888)', cursor: 'pointer', fontSize: 12 }}>
                 ← Companies
               </button>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedCompany.name}</span>
-              <span style={{ fontSize: 11, color: '#888' }}>
+              <span style={{ fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>
                 {connectedCount}/{companyPeople.length} connected
               </span>
               {localOnly ? (
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>Scanning needs your own network</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>Scanning needs your own network</span>
               ) : (
               <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
                 title={busy ? `${busy}. One scan at a time.` : undefined}
                 style={{
                   marginLeft: 'auto', padding: '5px 12px', borderRadius: 6, border: 'none', cursor: scanning || busy ? 'not-allowed' : 'pointer',
-                  background: scanning || busy ? '#333' : 'rgba(0,255,136,0.15)', color: scanning || busy ? '#555' : '#00ff88',
+                  background: scanning || busy ? '#333' : 'rgba(0,255,136,0.15)', color: scanning || busy ? 'var(--sd-fg-5, #555)' : 'var(--sd-green, #00ff88)',
                   fontSize: 11, fontWeight: 600,
                 }}>
                 {scanning ? 'Scanning...' : busy ? 'Scanner busy' : '+ Scan Full Company'}
@@ -293,7 +293,7 @@ function PathsInner() {
                 title="Not yet tested against live LinkedIn. Results may be incomplete."
                 style={{
                   fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, padding: '3px 7px',
-                  borderRadius: 20, border: '1px solid rgba(255,215,0,0.45)', color: '#FFD700',
+                  borderRadius: 20, border: '1px solid rgba(255,215,0,0.45)', color: 'var(--sd-gold, #FFD700)',
                 }}
               >EXPERIMENTAL</span>
             </>
@@ -312,31 +312,31 @@ function PathsInner() {
           {/* Company selection grid */}
           {!selectedCompany && (
             <>
-              <p style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--sd-fg-3, #888)', marginBottom: 16 }}>
                 Pick a company to see your path to the top. Based on {d1Data.length + d2Data.length} people in your network.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {companies.slice(0, 60).map(co => (
                   <button key={co.name} onClick={() => selectCompany(co)} style={{
                     padding: '14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
-                    background: 'rgba(255,255,255,0.04)', transition: 'background 0.15s',
+                    background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', transition: 'background 0.15s',
                     borderLeft: `3px solid ${co.sCount > 0 ? '#FFD700' : co.aCount > 0 ? '#9B59B6' : '#3498DB'}`,
                   }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{co.name}</div>
-                    <div style={{ display: 'flex', gap: 8, fontSize: 10, color: '#888' }}>
-                      <span style={{ color: '#00ff88' }}>{co.d1} connected</span>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--sd-fg-1, #fff)', marginBottom: 4 }}>{co.name}</div>
+                    <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>
+                      <span style={{ color: 'var(--sd-green, #00ff88)' }}>{co.d1} connected</span>
                       <span>{co.d2 + co.d3} locked</span>
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 9 }}>
-                      {co.sCount > 0 && <span style={{ color: '#FFD700', fontWeight: 600 }}>{co.sCount}S</span>}
-                      {co.aCount > 0 && <span style={{ color: '#9B59B6', fontWeight: 600 }}>{co.aCount}A</span>}
-                      <span style={{ color: '#555' }}>{co.d1 + co.d2} total</span>
+                      {co.sCount > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 600 }}>{co.sCount}S</span>}
+                      {co.aCount > 0 && <span style={{ color: 'var(--sd-purple, #9B59B6)', fontWeight: 600 }}>{co.aCount}A</span>}
+                      <span style={{ color: 'var(--sd-fg-5, #555)' }}>{co.d1 + co.d2} total</span>
                     </div>
                     {/* Progress bar */}
-                    <div style={{ height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, marginTop: 6 }}>
+                    <div style={{ height: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', borderRadius: 2, marginTop: 6 }}>
                       <div style={{
                         height: '100%', borderRadius: 2,
                         width: `${(co.d1 / Math.max(co.d1 + co.d2 + co.d3, 1)) * 100}%`,
@@ -357,9 +357,9 @@ function PathsInner() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', animation: 'pulse 1s infinite' }} />
-                <span style={{ fontSize: 10, fontWeight: 600, color: '#00ff88' }}>Scanning LinkedIn...</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--sd-green, #00ff88)' }}>Scanning LinkedIn...</span>
               </div>
-              <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#777', maxHeight: 60, overflow: 'auto' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 9, color: 'var(--sd-fg-4, #777)', maxHeight: 60, overflow: 'auto' }}>
                 {scanLog.map((l, i) => <div key={i}>{l}</div>)}
               </div>
             </div>
@@ -377,15 +377,15 @@ function PathsInner() {
                 <div>
                   <span style={{
                     fontSize: 12, fontWeight: 700,
-                    color: level.level >= 5 ? '#FFD700' : level.level >= 3 ? '#9B59B6' : '#3498DB',
+                    color: level.level >= 5 ? 'var(--sd-gold, #FFD700)' : level.level >= 3 ? 'var(--sd-purple, #9B59B6)' : 'var(--sd-blue, #3498DB)',
                   }}>{level.label}</span>
-                  {level.level >= 5 && <span style={{ fontSize: 9, color: '#FF6B35', marginLeft: 8, fontWeight: 700 }}>TARGET</span>}
+                  {level.level >= 5 && <span style={{ fontSize: 9, color: 'var(--sd-orange, #FF6B35)', marginLeft: 8, fontWeight: 700 }}>TARGET</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, color: '#FF6B35', fontWeight: 600 }}>
+                  <span style={{ fontSize: 9, color: 'var(--sd-orange, #FF6B35)', fontWeight: 600 }}>
                     +{level.people.filter(p => !p.connected).reduce((s, p) => s + (p.xp || 0), 0)} XP
                   </span>
-                  <span style={{ fontSize: 10, color: '#666' }}>
+                  <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>
                     {level.people.filter(p => p.connected).length}/{level.people.length}
                   </span>
                 </div>
@@ -418,43 +418,43 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
     // How many people above would gain a mutual
     const aboveCount = aboveMe.length;
     if (aboveCount > 0) {
-      unlockInsights.push({ icon: '⬆️', text: `Adding them gives you a mutual with ${aboveCount} people above in the hierarchy`, color: '#00ff88' });
+      unlockInsights.push({ icon: '⬆️', text: `Adding them gives you a mutual with ${aboveCount} people above in the hierarchy`, color: 'var(--sd-green, #00ff88)' });
     }
 
     // Same level connections help with social proof
     const sameLevelConnected = sameLevel.filter(op => d1Urls.has(op.profile_url || op.profileUrl)).length;
     if (sameLevelConnected > 0) {
-      unlockInsights.push({ icon: '🤝', text: `${sameLevelConnected} people at their level already connected — high social proof`, color: '#FFD700' });
+      unlockInsights.push({ icon: '🤝', text: `${sameLevelConnected} people at their level already connected — high social proof`, color: 'var(--sd-gold, #FFD700)' });
     } else {
-      unlockInsights.push({ icon: '🎯', text: `First connection at this level — opens a new layer`, color: '#3498DB' });
+      unlockInsights.push({ icon: '🎯', text: `First connection at this level — opens a new layer`, color: 'var(--sd-blue, #3498DB)' });
     }
 
     // Bridge path value
     if (p.bridgeName) {
-      unlockInsights.push({ icon: '🔗', text: `Reachable through ${p.bridgeName} — warm intro possible`, color: '#FF6B35' });
+      unlockInsights.push({ icon: '🔗', text: `Reachable through ${p.bridgeName} — warm intro possible`, color: 'var(--sd-orange, #FF6B35)' });
     }
 
     // Role-specific value
     if (p.seniority.level >= 5) {
-      unlockInsights.push({ icon: '👑', text: `${p.seniority.label} — decision maker, high strategic value but low accept rate`, color: '#FFD700' });
+      unlockInsights.push({ icon: '👑', text: `${p.seniority.label} — decision maker, high strategic value but low accept rate`, color: 'var(--sd-gold, #FFD700)' });
     } else if (p.seniority.level >= 3) {
-      unlockInsights.push({ icon: '📊', text: `${p.seniority.label} — middle management, good balance of access and accept rate`, color: '#9B59B6' });
+      unlockInsights.push({ icon: '📊', text: `${p.seniority.label} — middle management, good balance of access and accept rate`, color: 'var(--sd-purple, #9B59B6)' });
     } else {
-      unlockInsights.push({ icon: '✅', text: `${p.seniority.label} — highest accept rate, builds mutual foundation for people above`, color: '#00ff88' });
+      unlockInsights.push({ icon: '✅', text: `${p.seniority.label} — highest accept rate, builds mutual foundation for people above`, color: 'var(--sd-green, #00ff88)' });
     }
 
     // Likelihood explanation
     if (p.likelihood >= 60) {
-      unlockInsights.push({ icon: '🔥', text: `${p.likelihood}% likely to accept — strong mutual overlap + approachable role`, color: '#00ff88' });
+      unlockInsights.push({ icon: '🔥', text: `${p.likelihood}% likely to accept — strong mutual overlap + approachable role`, color: 'var(--sd-green, #00ff88)' });
     } else if (p.likelihood >= 30) {
-      unlockInsights.push({ icon: '⚡', text: `${p.likelihood}% likely — moderate chance, add more people at their level first`, color: '#FFD700' });
+      unlockInsights.push({ icon: '⚡', text: `${p.likelihood}% likely — moderate chance, add more people at their level first`, color: 'var(--sd-gold, #FFD700)' });
     } else {
-      unlockInsights.push({ icon: '🔒', text: `${p.likelihood}% likely — low chance right now, build more connections below them first`, color: '#ff5050' });
+      unlockInsights.push({ icon: '🔒', text: `${p.likelihood}% likely — low chance right now, build more connections below them first`, color: 'var(--sd-red, #ff5050)' });
     }
   }
 
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+    <div style={{ borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.03)' }}>
       {/* Main row */}
       <div
         onClick={() => setExpanded(!expanded)}
@@ -462,11 +462,11 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
           display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
           cursor: 'pointer', opacity: p.connected ? 0.7 : 1,
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
         {/* Expand arrow */}
-        <span style={{ fontSize: 8, color: '#555', flexShrink: 0, width: 10 }}>
+        <span style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)', flexShrink: 0, width: 10 }}>
           {expanded ? '▾' : '▸'}
         </span>
 
@@ -474,9 +474,9 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
         <div style={{
           width: 18, height: 18, borderRadius: '50%', flexShrink: 0, fontSize: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: p.connected ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.05)',
-          color: p.connected ? '#00ff88' : '#555',
-          border: `1px solid ${p.connected ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`,
+          background: p.connected ? 'rgba(0,255,136,0.2)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
+          color: p.connected ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-5, #555)',
+          border: `1px solid ${p.connected ? 'rgba(0,255,136,0.3)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
         }}>{p.connected ? '✓' : '🔒'}</div>
 
         {/* Photo */}
@@ -487,21 +487,21 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
         ) : (
           <div style={{
             width: 26, height: 26, borderRadius: '50%', flexShrink: 0, fontSize: 10, fontWeight: 700,
-            background: '#333', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: '#333', color: 'var(--sd-fg-3, #888)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{p.name?.charAt(0)}</div>
         )}
 
         {/* Name + headline */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-          <div style={{ fontSize: 8, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 8, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {p.headline?.substring(0, 45)}
           </div>
         </div>
 
         {/* Bridge */}
         {!p.connected && p.bridgeName && (
-          <span style={{ fontSize: 8, color: '#FF6B35', flexShrink: 0, maxWidth: 55, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 8, color: 'var(--sd-orange, #FF6B35)', flexShrink: 0, maxWidth: 55, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             via {p.bridgeName.split(' ')[0]}
           </span>
         )}
@@ -509,10 +509,10 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
         {/* XP + Likelihood */}
         {!p.connected && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span style={{ fontSize: 8, fontWeight: 700, color: '#FF6B35' }}>+{p.xp}</span>
+            <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--sd-orange, #FF6B35)' }}>+{p.xp}</span>
             <div style={{
               fontSize: 9, fontWeight: 700, minWidth: 30, textAlign: 'right',
-              color: p.likelihood >= 60 ? '#00ff88' : p.likelihood >= 30 ? '#FFD700' : '#ff5050',
+              color: p.likelihood >= 60 ? 'var(--sd-green, #00ff88)' : p.likelihood >= 30 ? 'var(--sd-gold, #FFD700)' : 'var(--sd-red, #ff5050)',
             }}>{p.likelihood}%</div>
           </div>
         )}
@@ -531,11 +531,11 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
       {expanded && (
         <div style={{
           padding: '8px 12px 10px 44px',
-          background: 'rgba(255,255,255,0.02)',
-          borderTop: '1px solid rgba(255,255,255,0.04)',
+          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)',
+          borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)',
         }}>
           {/* Full role */}
-          <div style={{ fontSize: 11, color: '#aaa', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aaa)', marginBottom: 8 }}>
             {p.headline || 'No headline available'}
           </div>
 
@@ -544,7 +544,7 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
             <div style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 600,
               background: p.seniority.level >= 5 ? 'rgba(255,215,0,0.1)' : p.seniority.level >= 3 ? 'rgba(155,89,182,0.1)' : 'rgba(52,152,219,0.1)',
-              color: p.seniority.level >= 5 ? '#FFD700' : p.seniority.level >= 3 ? '#9B59B6' : '#3498DB',
+              color: p.seniority.level >= 5 ? 'var(--sd-gold, #FFD700)' : p.seniority.level >= 3 ? 'var(--sd-purple, #9B59B6)' : 'var(--sd-blue, #3498DB)',
               border: `1px solid ${p.seniority.level >= 5 ? 'rgba(255,215,0,0.2)' : p.seniority.level >= 3 ? 'rgba(155,89,182,0.2)' : 'rgba(52,152,219,0.2)'}`,
             }}>
               {p.seniority.label} · Level {p.seniority.level}
@@ -552,7 +552,7 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
             {!p.connected && (
               <div style={{
                 display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                background: 'rgba(255,107,53,0.1)', color: '#FF6B35',
+                background: 'rgba(255,107,53,0.1)', color: 'var(--sd-orange, #FF6B35)',
                 border: '1px solid rgba(255,107,53,0.2)',
               }}>
                 +{p.xp} XP
@@ -563,11 +563,11 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
           {/* Strategic insights */}
           {!p.connected && unlockInsights.length > 0 && (
             <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: 0.5, marginBottom: 4 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-3, #888)', letterSpacing: 0.5, marginBottom: 4 }}>
                 STRATEGIC VALUE
               </div>
               {unlockInsights.map((ins, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '2px 0', fontSize: 10, color: '#bbb' }}>
+                <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '2px 0', fontSize: 10, color: 'var(--sd-fg-2, #bbb)' }}>
                   <span style={{ fontSize: 11, lineHeight: 1 }}>{ins.icon}</span>
                   <span style={{ color: ins.color }}>{ins.text}</span>
                 </div>
@@ -577,7 +577,7 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
 
           {/* Connected state */}
           {p.connected && (
-            <div style={{ fontSize: 10, color: '#00ff88', fontWeight: 600 }}>
+            <div style={{ fontSize: 10, color: 'var(--sd-green, #00ff88)', fontWeight: 600 }}>
               ✓ Already connected — contributes as mutual for others at {selectedCompany?.name}
             </div>
           )}

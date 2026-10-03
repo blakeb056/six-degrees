@@ -25,7 +25,7 @@ import { clusterStrength } from '../../lib/map-heat';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
-const LINE = '1px solid rgba(255,255,255,0.1)';
+const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const UNSCANNED = '#3a3f55';
 const MAX_BUBBLES = 400;
 const ALL_INDUSTRIES = [...INDUSTRIES, UNKNOWN_INDUSTRY];
@@ -88,7 +88,7 @@ export default function PeopleMap({ d1 = [], d2 = [], top = null, look = null, c
         {top}
         <div style={panelHeading}>Filter</div>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a person"
-          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, marginBottom: 8 }} />
+          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, marginBottom: 8 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Seg value={who} onChange={setWho} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All (${fmt(model.people.length)})`]]} />
         </div>
@@ -103,18 +103,18 @@ export default function PeopleMap({ d1 = [], d2 = [], top = null, look = null, c
               <button key={i.key} title={off ? 'Show on the map' : 'Hide from the map'}
                 onClick={() => setHidden((h) => { const n = new Set(h); if (n.has(i.key)) n.delete(i.key); else n.add(i.key); return n; })}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 14, cursor: 'pointer',
-                  border: `1px solid ${i.color}55`, background: off ? 'transparent' : `${i.color}14`, color: '#cfd8d8', fontSize: 11.5, opacity: off ? 0.4 : 1 }}>
+                  border: `1px solid ${i.color}55`, background: off ? 'transparent' : `${i.color}14`, color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 11.5, opacity: off ? 0.4 : 1 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: i.color }} />
-                {i.label} <span style={{ color: '#778' }}>{fmt(i.count)}</span>
+                {i.label} <span style={{ color: 'var(--sd-fg-4, #778)' }}>{fmt(i.count)}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ fontSize: 10.5, color: '#667', marginTop: 6 }}>Inferred from where each connection works.</div>
+        <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #667)', marginTop: 6 }}>Inferred from where each connection works.</div>
         <div style={panelHeading}>Read the map</div>
-        <div style={{ fontSize: 11, color: '#8b9a9a', marginBottom: 4 }}>Bubble size</div>
+        <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 4 }}>Bubble size</div>
         <Seg value={sizeBy} onChange={setSizeBy} options={Object.entries(SIZE_BY).map(([k, v]) => [k, v.label])} />
-        <div style={{ fontSize: 11, color: '#8b9a9a', margin: '10px 0 4px' }}>Names</div>
+        <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', margin: '10px 0 4px' }}>Names</div>
         <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
         {look}
       </SidePanel>
@@ -221,7 +221,7 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top',
               const on = hover && (e.source.id === hover || e.target.id === hover);
               return (
                 <line key={i} x1={e.source.x} y1={e.source.y} x2={e.target.x} y2={e.target.y}
-                  stroke={on ? '#FF6B35' : '#8fa6c0'} strokeOpacity={on ? 0.8 : hover ? 0.03 : 0.09}
+                  stroke={on ? '#FF6B35' : 'var(--sd-fg-3, #8fa6c0)'} strokeOpacity={on ? 0.8 : hover ? 0.03 : 0.09}
                   strokeWidth={on ? 1 + Math.log2(1 + e.weight) : 0.4 + Math.log2(1 + e.weight) * 0.4} />
               );
             })}
@@ -240,13 +240,13 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top',
                 onPointerDown={drag ? (ev) => drag(ev, n) : undefined}
                 onClick={() => { if (clicked() && p.size) onOpen(n.id); }}>
                 <circle r={n.r} fill={!p.size ? UNSCANNED : hot ? heatColour(heat(n)) : n.sector.color} fillOpacity={p.size ? 0.92 : 0.6}
-                  stroke={hover === n.id ? '#fff' : p.S ? TIER.S : 'rgba(0,0,0,0.35)'}
+                  stroke={hover === n.id ? 'var(--sd-fg-1, #fff)' : p.S ? TIER.S : 'rgba(0,0,0,0.35)'}
                   strokeWidth={hover === n.id ? 2.5 : p.S ? Math.min(4, 1 + p.S / 40) : 0.6} />
                 {/* The share of their cluster only they can open, as an inner disc */}
-                {p.size > 0 && p.only > 0 && <circle r={n.r * Math.sqrt(p.share) * 0.85} fill="#fff" fillOpacity={0.3} />}
+                {p.size > 0 && p.only > 0 && <circle r={n.r * Math.sqrt(p.share) * 0.85} fill="var(--sd-fg-1, #fff)" fillOpacity={0.3} />}
                 {(labelled.has(n.id) || hover === n.id) && (
-                  <text y={n.r + 11} textAnchor="middle" fontSize={10} fill="#e6edf0" style={{ pointerEvents: 'none' }}
-                    paintOrder="stroke" stroke="rgba(0,0,0,0.6)" strokeWidth={3}>{p.person.name}</text>
+                  <text y={n.r + 11} textAnchor="middle" fontSize={10} fill="var(--sd-fg-1, #e6edf0)" style={{ pointerEvents: 'none' }}
+                    paintOrder="stroke" stroke="rgba(var(--sd-shade, 0, 0, 0), 0.6)" strokeWidth={3}>{p.person.name}</text>
                 )}
               </g>
             );
@@ -254,7 +254,7 @@ function Bubbles({ people, links, sizeBy, sectorOf, rank, onOpen, names = 'top',
         </svg>
       )}
       {hovered && <Card n={hovered} at={onScreen(hovered)} w={w} rank={rank(hovered.id)} />}
-      <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: '#778', lineHeight: 1.6, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6, pointerEvents: 'none' }}>
         Bubble = one of your connections, sized by {sizeBy.label.toLowerCase()} (value: S tier counts 3, A tier 2, everyone else 1){hot ? '; colour = how strong their cluster is, person for person, cold to white hot' : ''};
         white centre = the share of their cluster only they can open; gold ring = S tier inside.<br />
         A line = two of your connections whose clusters share people. Grey = not scanned yet.
@@ -273,11 +273,11 @@ function Card({ n, at, w, rank }) {
   return (
     <div style={{
       position: 'absolute', left, top: Math.max(8, at.y - 70), width, pointerEvents: 'none', zIndex: 5,
-      padding: '12px 14px', borderRadius: 12, background: 'rgba(8,10,22,0.96)', border: `1px solid ${n.sector.color}99`,
-      boxShadow: '0 12px 40px rgba(0,0,0,0.6)', fontSize: 12, lineHeight: 1.45, color: '#ddd',
+      padding: '12px 14px', borderRadius: 12, background: 'var(--sd-surface, rgba(8,10,22,0.96))', border: `1px solid ${n.sector.color}99`,
+      boxShadow: '0 12px 40px rgba(0,0,0,0.6)', fontSize: 12, lineHeight: 1.45, color: 'var(--sd-fg-1, #ddd)',
     }}>
-      <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{p.person.name}</div>
-      <div style={{ fontSize: 11.5, color: '#8a8fa8' }}>
+      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--sd-fg-1, #fff)' }}>{p.person.name}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8a8fa8)' }}>
         {role}{p.person.tier ? ` · ${p.person.tier}-tier` : ''} · {n.sector.label}
       </div>
       {p.size ? (
@@ -288,12 +288,12 @@ function Card({ n, at, w, rank }) {
             <Stat value={`${fmt(p.S)} S · ${fmt(p.A)} A`} label="the strongest among them" color="#FFD700" />
             <Stat value={`${fmt(p.only)} (${Math.round(p.share * 100)}%)`} label="only through them" color="#00E5FF" />
           </div>
-          <div style={{ fontSize: 11.5, color: '#aab' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #aab)' }}>
             {rank === 1 ? 'The most valuable cluster you’ve scanned. ' : rank != null ? `Worth more than ${Math.round(rank * 100)}% of the clusters you’ve scanned. ` : ''}Click to open it in Bridge Chains.
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 11.5, color: '#aab', marginTop: 8 }}>Their circle isn’t scanned yet, so there’s no cluster to size.</div>
+        <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #aab)', marginTop: 8 }}>Their circle isn’t scanned yet, so there’s no cluster to size.</div>
       )}
     </div>
   );
@@ -303,7 +303,7 @@ function Stat({ value, label, color = '#fff' }) {
   return (
     <div>
       <div style={{ fontSize: 15, fontWeight: 800, color }}>{value}</div>
-      <div style={{ fontSize: 10.5, color: '#8a8fa8' }}>{label}</div>
+      <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #8a8fa8)' }}>{label}</div>
     </div>
   );
 }

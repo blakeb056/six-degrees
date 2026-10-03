@@ -249,9 +249,9 @@ function HomeInner() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)' }}>
         <div style={{ fontSize: 24, fontWeight: 700 }}>Loading Six Degrees…</div>
-        <div style={{ fontSize: 14, color: '#888', marginTop: 8 }}>Mapping your LinkedIn network</div>
+        <div style={{ fontSize: 14, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>Mapping your LinkedIn network</div>
       </div>
     );
   }
@@ -260,7 +260,7 @@ function HomeInner() {
   const canScan = !IS_DEMO && !csvMode;
 
   return (
-    <div data-map style={{ height: '100vh', overflow: 'hidden', background: 'var(--sd-page)', color: '#fff', fontFamily: 'var(--sd-font)' }}>
+    <div data-map style={{ height: '100vh', overflow: 'hidden', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: 'var(--sd-font)' }}>
       <AppHeader
         active={mode}
         isMobile={isMobile}
@@ -276,14 +276,14 @@ function HomeInner() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             marginLeft: isMobile ? 4 : 10, padding: isMobile ? '4px 8px' : '5px 10px',
-            borderRadius: 999, background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 999, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
+            border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
           }}>
             <span style={{
               width: 6, height: 6, borderRadius: '50%',
               background: csvSource === 'sample' ? '#9B59B6' : '#2ecc71',
             }} />
-            <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: isMobile ? 10 : 12, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.65)', whiteSpace: 'nowrap' }}>
               {csvSource === 'sample' ? 'Sample network' : 'Your CSV'}
             </span>
             <button
@@ -291,7 +291,7 @@ function HomeInner() {
               title={csvSource === 'sample' ? 'Leave the sample network' : 'Clear this import'}
               style={{
                 border: 'none', background: 'transparent', cursor: 'pointer',
-                color: '#888', fontSize: isMobile ? 13 : 15, lineHeight: 1,
+                color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 13 : 15, lineHeight: 1,
                 padding: '0 0 0 2px',
               }}
             >
@@ -304,7 +304,7 @@ function HomeInner() {
         {isDegreesMode && !csvMode && pendingCount > 0 && (
           <Link href="/queue" style={{
             padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, textDecoration: 'none',
-            background: 'rgba(255,107,53,0.12)', color: '#FF6B35',
+            background: 'rgba(255,107,53,0.12)', color: 'var(--sd-orange, #FF6B35)',
             border: '1px solid rgba(255,107,53,0.25)',
             display: 'inline-flex', alignItems: 'center', gap: 5,
           }}>
@@ -340,16 +340,16 @@ function HomeInner() {
               }}>
                 <div style={{ maxWidth: 440 }}>
                   <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>&#128279;</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px', color: '#fff' }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px', color: 'var(--sd-fg-1, #fff)' }}>
                     Degrees need 2nd-degree data
                   </h2>
-                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
+                  <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
                     This view maps who <em>your connections</em>{' '}know &mdash; the people you haven&rsquo;t met yet.
                     LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.
                   </p>
-                  <p style={{ color: '#666', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
+                  <p style={{ color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
                     The local scanner maps those circles (and captures real photos).{' '}
-                    <Link href="/setup" style={{ color: '#3498DB', textDecoration: 'none' }}>Set up scanning &rarr;</Link>
+                    <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Set up scanning &rarr;</Link>
                   </p>
                 </div>
               </div>

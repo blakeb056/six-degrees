@@ -159,14 +159,14 @@ function QueueInner() {
   if (IS_DEMO) {
     return (
       <div style={{
-        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(255,255,255,0.7)',
+        minHeight: '100vh', background: 'var(--sd-page)', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.7)',
         fontFamily: 'var(--sd-font)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
         textAlign: 'center', padding: 24,
       }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff' }}>Not part of the demo</h2>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>Not part of the demo</h2>
         <div style={{ fontSize: 13 }}>The public demo includes the Network Circle and Degrees views only.</div>
-        <Link href="/" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
+        <Link href="/" style={{ fontSize: 12, color: 'rgba(var(--sd-ink, 255, 255, 255), 0.5)', textDecoration: 'none' }}>&larr; Back to the network</Link>
       </div>
     );
   }
@@ -231,8 +231,8 @@ function QueueInner() {
     const html = `<!DOCTYPE html><html><head><title>Outlink — ${toOpen.length} profiles</title>
     <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px;margin:0}
     h2{color:#FFD700;margin-bottom:4px}p{color:#888;font-size:13px;margin-bottom:16px}
-    .btn{display:block;padding:12px 16px;margin-bottom:6px;background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-decoration:none;
+    .btn{display:block;padding:12px 16px;margin-bottom:6px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
+    border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:8px;color:#fff;text-decoration:none;
     font-size:13px;transition:background 0.15s}.btn:hover{background:rgba(0,119,181,0.2)}
     .name{font-weight:700}.tier{font-size:11px;margin-left:8px;font-weight:600}
     .open-all{display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#FFD700,#FF6B35);
@@ -254,12 +254,12 @@ function QueueInner() {
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: '#fff' }}>Loading...</div>;
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)' }}>Loading...</div>;
   }
 
   return (
     <div style={{
-      height: '100vh', background: 'var(--sd-page)', color: '#fff',
+      height: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)',
       fontFamily: 'var(--sd-font)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
@@ -267,21 +267,21 @@ function QueueInner() {
           Pending and Messages & follow-ups sit in the notch under it. */}
       <AppHeader active="outlink" />
       {(view === 'recs' || view === 'pending') && (
-      <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ padding: '10px 24px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {view === 'recs' && (<>
               <button onClick={() => setGroupBy('tier')} style={{
                 padding: '4px 10px', borderRadius: 4, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                background: groupBy === 'tier' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', color: groupBy === 'tier' ? '#fff' : '#666',
+                background: groupBy === 'tier' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.15)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: groupBy === 'tier' ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-4, #666)',
               }}>By Tier</button>
               <button onClick={() => setGroupBy('bridge')} style={{
                 padding: '4px 10px', borderRadius: 4, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                background: groupBy === 'bridge' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', color: groupBy === 'bridge' ? '#fff' : '#666',
+                background: groupBy === 'bridge' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.15)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: groupBy === 'bridge' ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-4, #666)',
               }}>By Bridge</button>
               <button onClick={() => setGroupBy('company')} style={{
                 padding: '4px 10px', borderRadius: 4, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                background: groupBy === 'company' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', color: groupBy === 'company' ? '#fff' : '#666',
+                background: groupBy === 'company' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.15)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: groupBy === 'company' ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-4, #666)',
               }}>By Company</button>
             </>)}
           </div>
@@ -296,8 +296,8 @@ function QueueInner() {
           ].map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)} style={{
               padding: '4px 12px', borderRadius: 16, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              background: filter === f.k ? (f.c || '#fff') : 'rgba(255,255,255,0.06)',
-              color: filter === f.k ? '#000' : (f.c || '#888'),
+              background: filter === f.k ? (f.c || '#fff') : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)',
+              color: filter === f.k ? '#000' : (f.c || 'var(--sd-fg-3, #888)'),
             }}>{f.l}</button>
           ))}
         </div>
@@ -318,16 +318,16 @@ function QueueInner() {
           borderBottom: '1px solid rgba(255,215,0,0.2)',
           display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
         }}>
-          <span style={{ fontSize: 12, color: '#FFD700', fontWeight: 600 }}>{selected.size} selected</span>
+          <span style={{ fontSize: 12, color: 'var(--sd-gold, #FFD700)', fontWeight: 600 }}>{selected.size} selected</span>
           <button onClick={openSelected} style={{
             padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
             background: '#0077B5', color: '#fff', fontWeight: 700, fontSize: 12,
           }}>
             Open {selected.size} on LinkedIn
           </button>
-          <span style={{ fontSize: 10, color: '#888' }}>+{filtered.filter(r => selected.has(r.id)).reduce((s, r) => s + r.xp, 0)} XP potential</span>
+          <span style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>+{filtered.filter(r => selected.has(r.id)).reduce((s, r) => s + r.xp, 0)} XP potential</span>
           <button onClick={() => setSelected(new Set())} style={{
-            marginLeft: 'auto', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11,
+            marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--sd-fg-3, #888)', cursor: 'pointer', fontSize: 11,
           }}>Clear</button>
         </div>
       )}
@@ -355,14 +355,14 @@ function QueueInner() {
           {view === 'pending' && (
             <>
               {pendingList.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#555' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--sd-fg-5, #555)' }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>No pending requests</div>
-                  <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>Click &quot;Add&quot; on someone to track your outreach</div>
+                  <div style={{ fontSize: 11, color: 'var(--sd-fg-5, #444)', marginTop: 4 }}>Click &quot;Add&quot; on someone to track your outreach</div>
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 10, color: '#666', marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', marginBottom: 12 }}>
                     Waiting for response. When they accept, their cluster unlocks for bridging.
                   </div>
                   {pendingList.map(p => (
@@ -380,7 +380,7 @@ function QueueInner() {
                       ) : (
                         <div style={{
                           width: 36, height: 36, borderRadius: '50%', flexShrink: 0, fontSize: 14, fontWeight: 700,
-                          background: TIER_COLORS[p.tier] || '#555', color: p.tier === 'S' ? '#000' : '#fff',
+                          background: TIER_COLORS[p.tier] || '#555', color: p.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>{p.name?.charAt(0)}</div>
                       )}
@@ -388,11 +388,11 @@ function QueueInner() {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
-                        <div style={{ fontSize: 10, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.headline?.substring(0, 55)}
                         </div>
                         {p.bridge && (
-                          <div style={{ fontSize: 9, color: '#FF6B35', marginTop: 2 }}>
+                          <div style={{ fontSize: 9, color: 'var(--sd-orange, #FF6B35)', marginTop: 2 }}>
                             via {p.bridge.name?.split(' ')[0]} &middot; unlocks bridge cluster
                           </div>
                         )}
@@ -405,7 +405,7 @@ function QueueInner() {
                           padding: '2px 8px', borderRadius: 4,
                           background: `${TIER_COLORS[p.tier] || '#555'}15`,
                         }}>{p.tier}</div>
-                        <div style={{ fontSize: 8, color: '#FF6B35', marginTop: 2, fontWeight: 600 }}>PENDING</div>
+                        <div style={{ fontSize: 8, color: 'var(--sd-orange, #FF6B35)', marginTop: 2, fontWeight: 600 }}>PENDING</div>
                       </div>
 
                       {/* Actions */}
@@ -416,7 +416,7 @@ function QueueInner() {
                         </a>
                         <button onClick={() => { undoRequest(p).catch(() => {}); }} style={{
                           padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 600,
-                          background: 'rgba(255,255,255,0.06)', color: '#666', border: 'none', cursor: 'pointer',
+                          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-4, #666)', border: 'none', cursor: 'pointer',
                         }}>Undo</button>
                       </div>
                     </div>
@@ -432,7 +432,7 @@ function QueueInner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0}
               onChange={selectAll} style={{ cursor: 'pointer' }} />
-            <span style={{ fontSize: 10, color: '#666' }}>Select all ({filtered.length})</span>
+            <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>Select all ({filtered.length})</span>
           </div>
 
           {sortedGroups.map(([group, items]) => (
@@ -461,29 +461,29 @@ function QueueInner() {
                       ) : (
                         <div style={{
                           width: 36, height: 36, borderRadius: '50%', fontSize: 14, fontWeight: 700,
-                          background: TIER_COLORS[bridge.tier], color: bridge.tier === 'S' ? '#000' : '#fff',
+                          background: TIER_COLORS[bridge.tier], color: bridge.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>{bridge.name?.charAt(0)}</div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{bridge.name}</div>
-                        <div style={{ fontSize: 9, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>{bridge.name}</div>
+                        <div style={{ fontSize: 9, color: 'var(--sd-fg-3, #888)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {bridge.headline?.substring(0, 50)}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: TIER_COLORS[bridge.tier] }}>{bridge.tier}</div>
-                        <div style={{ fontSize: 8, color: '#666' }}>{items.length} to add</div>
+                        <div style={{ fontSize: 8, color: 'var(--sd-fg-4, #666)' }}>{items.length} to add</div>
                       </div>
                     </div>
                     {/* Cluster power pill */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <div style={{ display: 'flex', gap: 4, fontSize: 9 }}>
-                        {sCount > 0 && <span style={{ color: '#FFD700', fontWeight: 700 }}>{sCount}S</span>}
-                        {aCount > 0 && <span style={{ color: '#9B59B6', fontWeight: 700 }}>{aCount}A</span>}
-                        {bCount > 0 && <span style={{ color: '#3498DB', fontWeight: 700 }}>{bCount}B</span>}
+                        {sCount > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 700 }}>{sCount}S</span>}
+                        {aCount > 0 && <span style={{ color: 'var(--sd-purple, #9B59B6)', fontWeight: 700 }}>{aCount}A</span>}
+                        {bCount > 0 && <span style={{ color: 'var(--sd-blue, #3498DB)', fontWeight: 700 }}>{bCount}B</span>}
                       </div>
-                      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+                      <div style={{ flex: 1, height: 4, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 2 }}>
                         <div style={{
                           height: '100%', borderRadius: 2,
                           width: `${Math.min(100, (clusterPower / maxPower) * 100)}%`,
@@ -495,8 +495,8 @@ function QueueInner() {
                         if (urls.length === 1) { window.open(urls[0], '_blank'); return; }
                         const bh = `<!DOCTYPE html><html><head><title>Top ${Math.min(10,urls.length)}</title>
                         <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px}
-                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
+                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
+                        border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
                         .btn:hover{background:rgba(0,119,181,0.2)}
                         .oa{display:inline-block;padding:10px 20px;background:#0077B5;color:#fff;border-radius:6px;
                         font-weight:700;font-size:13px;cursor:pointer;border:none;margin-bottom:16px}</style></head>
@@ -514,14 +514,14 @@ function QueueInner() {
               })() : (
                 <div style={{
                   padding: '6px 10px', marginBottom: 4,
-                  background: groupBy === 'tier' ? `${TIER_COLORS[group] || '#555'}15` : 'rgba(255,255,255,0.04)',
+                  background: groupBy === 'tier' ? `${TIER_COLORS[group] || '#555'}15` : 'rgba(var(--sd-ink, 255, 255, 255), 0.04)',
                   borderLeft: `3px solid ${groupBy === 'tier' ? (TIER_COLORS[group] || '#555') : '#FF6B35'}`,
                   borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: groupBy === 'tier' ? (TIER_COLORS[group] || '#888') : '#FF6B35' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: groupBy === 'tier' ? (TIER_COLORS[group] || 'var(--sd-fg-3, #888)') : 'var(--sd-orange, #FF6B35)' }}>
                     {groupBy === 'tier' ? `${group}-Tier` : group}
                   </span>
-                  <span style={{ fontSize: 10, color: '#666' }}>{items.length}</span>
+                  <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>{items.length}</span>
                 </div>
               )}
 
@@ -548,13 +548,13 @@ function QueueInner() {
                         style={{ cursor: 'pointer', flexShrink: 0 }} />
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: TIER_COLORS[tier] }} />
                       <span style={{ fontSize: 9, fontWeight: 700, color: TIER_COLORS[tier] }}>{tier}-Tier</span>
-                      <span style={{ fontSize: 8, color: '#555' }}>{tierItems.length}</span>
+                      <span style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)' }}>{tierItems.length}</span>
                       <button onClick={() => {
                         if (tierItems.length === 1) { window.open(tierItems[0].profile_url, '_blank'); return; }
                         const h2 = `<!DOCTYPE html><html><head><title>${tier}-Tier — ${tierItems.length}</title>
                         <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px}
-                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
+                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
+                        border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
                         .btn:hover{background:rgba(0,119,181,0.2)}
                         .oa{display:inline-block;padding:10px 20px;background:#0077B5;color:#fff;border-radius:6px;
                         font-weight:700;font-size:13px;cursor:pointer;border:none;margin-bottom:16px}</style></head>
@@ -570,11 +570,11 @@ function QueueInner() {
                     {tierItems.map(r => (
                       <div key={r.id} style={{
                         display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px 5px 16px',
-                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                        borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.02)',
                         background: selected.has(r.id) ? 'rgba(255,215,0,0.05)' : 'transparent',
                         cursor: 'pointer',
                       }}
-                        onMouseEnter={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                        onMouseEnter={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'; }}
                         onMouseLeave={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'transparent'; }}
                       >
                         <input type="checkbox" checked={selected.has(r.id)}
@@ -588,17 +588,17 @@ function QueueInner() {
                         ) : (
                           <div style={{
                             width: 28, height: 28, borderRadius: '50%', flexShrink: 0, fontSize: 10, fontWeight: 700,
-                            background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : '#fff',
+                            background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>{r.name?.charAt(0)}</div>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }} onClick={() => toggleSelect(r.id)}>
                           <div style={{ fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                          <div style={{ fontSize: 8, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.headline?.substring(0, 45)}</div>
+                          <div style={{ fontSize: 8, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.headline?.substring(0, 45)}</div>
                         </div>
                         <span style={{ fontSize: 9, fontWeight: 700, color: TIER_COLORS[r.tier], flexShrink: 0 }}>{parseFloat(r.power_score || 0).toFixed(1)}</span>
                         {sentIds.has(r.id) ? (
-                          <span style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: 'rgba(255,107,53,0.15)', color: '#FF6B35', flexShrink: 0 }}>Sent</span>
+                          <span style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: 'rgba(255,107,53,0.15)', color: 'var(--sd-orange, #FF6B35)', flexShrink: 0 }}>Sent</span>
                         ) : (
                           <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
                             onClick={(e) => {
@@ -614,11 +614,11 @@ function QueueInner() {
               }) : items.map(r => (
                 <div key={r.id} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
-                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.03)',
                   background: selected.has(r.id) ? 'rgba(255,215,0,0.05)' : 'transparent',
                   cursor: 'pointer',
                 }}
-                  onMouseEnter={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                  onMouseEnter={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'; }}
                   onMouseLeave={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'transparent'; }}
                 >
                   {/* Checkbox */}
@@ -635,7 +635,7 @@ function QueueInner() {
                   ) : null}
                   <div style={{
                     width: 32, height: 32, borderRadius: '50%', flexShrink: 0, fontSize: 12, fontWeight: 700,
-                    background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : '#fff',
+                    background: TIER_COLORS[r.tier] || '#555', color: r.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                     display: localPhoto(r.profile_image_url) ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>{r.name?.charAt(0)}</div>
 
@@ -644,14 +644,14 @@ function QueueInner() {
                     <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.name}
                     </div>
-                    <div style={{ fontSize: 9, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 9, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.headline?.substring(0, 50)}
                     </div>
                   </div>
 
                   {/* Bridge via */}
                   {r.bridge && (
-                    <span style={{ fontSize: 8, color: '#555', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       via {r.bridge.name?.split(' ')[0]}
                     </span>
                   )}
@@ -667,7 +667,7 @@ function QueueInner() {
                   {sentIds.has(r.id) ? (
                     <span style={{
                       padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                      background: 'rgba(255,107,53,0.15)', color: '#FF6B35', flexShrink: 0,
+                      background: 'rgba(255,107,53,0.15)', color: 'var(--sd-orange, #FF6B35)', flexShrink: 0,
                     }}>⏳ Sent</span>
                   ) : (
                     <a href={r.profile_url} target="_blank" rel="noopener noreferrer"

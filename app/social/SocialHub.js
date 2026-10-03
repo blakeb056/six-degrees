@@ -237,17 +237,17 @@ export default function SocialHub({ embedded = false }) {
     return counts;
   }, [net, merged, asOf]);
 
-  if (IS_DEMO) return <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: '#aaa', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
+  if (IS_DEMO) return <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-3, #aaa)', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
   const running = job?.running;
-  const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', marginTop: 10 };
+  const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', marginTop: 10 };
   const h2 = { fontSize: 16, margin: '24px 0 6px' };
 
   return (
-    <div style={embedded ? { color: '#fff', fontFamily: FONT } : { minHeight: '100vh', background: 'var(--sd-page)', color: '#fff', fontFamily: FONT }}>
+    <div style={embedded ? { color: 'var(--sd-fg-1, #fff)', fontFamily: FONT } : { minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: FONT }}>
       {!embedded && (
         <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/" style={{ color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: LINE }}>← Back to Map</Link>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#FFD700' }}>Social <span style={{ fontSize: 12, color: '#8b9a9a', fontWeight: 600 }}>experimental</span></h1>
+          <Link href="/" style={{ color: 'var(--sd-fg-3, #888)', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE }}>← Back to Map</Link>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--sd-gold, #FFD700)' }}>Social <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', fontWeight: 600 }}>experimental</span></h1>
         </header>
       )}
       <main style={{ maxWidth: 1180, margin: '0 auto', padding: '8px 16px 64px' }}>
@@ -264,21 +264,21 @@ export default function SocialHub({ embedded = false }) {
             On LinkedIn: <i>Settings → Data privacy → Get a copy of your data</i>, pick the larger archive, and unzip the
             file it emails you. Then choose that folder here. It&rsquo;s read in this window; nothing goes to LinkedIn.
           </Body>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#b8c4c4', marginTop: 10 }}>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             <input type="checkbox" checked={keepEmails} onChange={(e) => setKeepEmails(e.target.checked)} style={{ marginTop: 3 }} />
             <span>Also keep email addresses from it, on this computer only, for one-click email.</span>
           </label>
           <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ padding: '7px 14px', borderRadius: 8, background: 'rgba(52,152,219,0.18)', color: '#cfe6f7', cursor: busy ? 'default' : 'pointer', fontSize: 13 }}>
+            <label style={{ padding: '7px 14px', borderRadius: 8, background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)', cursor: busy ? 'default' : 'pointer', fontSize: 13 }}>
               {busy ? 'Reading…' : social ? 'Choose a newer export' : 'Choose the export folder'}
               <input type="file" webkitdirectory="" directory="" multiple disabled={busy} style={{ display: 'none' }} onChange={(e) => importFolder(e.target.files)} />
             </label>
-            {social && <span style={{ fontSize: 12, color: '#8b9a9a' }}>From an export up to {day(social.asOf)}{social.liveAt ? ` · messages synced ${day(Date.parse(social.liveAt))}` : ''}</span>}
-            {social && <button onClick={forget} style={{ background: 'none', border: 'none', color: '#ff9b9b', cursor: 'pointer', fontSize: 12 }}>Forget it</button>}
+            {social && <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)' }}>From an export up to {day(social.asOf)}{social.liveAt ? ` · messages synced ${day(Date.parse(social.liveAt))}` : ''}</span>}
+            {social && <button onClick={forget} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-2, #ff9b9b)', cursor: 'pointer', fontSize: 12 }}>Forget it</button>}
           </div>
         </div>
 
-        <h2 style={h2}>Live messages sync <span style={{ fontSize: 11, color: '#FFD700' }}>experimental</span></h2>
+        <h2 style={h2}>Live messages sync <span style={{ fontSize: 11, color: 'var(--sd-gold, #FFD700)' }}>experimental</span></h2>
         <div style={box}>
           <Body style={{ margin: 0 }}>
             Reads your messages list once, in your own Chrome: who each conversation is with, connections or not, when it
@@ -288,19 +288,19 @@ export default function SocialHub({ embedded = false }) {
             (at most 60 scrolls, about 1,000 conversations), at the same slow, fixed pace, so it takes a few minutes.
           </Body>
           <div style={{ marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => syncNow(false)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: running ? '#333' : 'rgba(0,255,136,0.15)', color: running ? '#777' : '#00ff88', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
+            <button onClick={() => syncNow(false)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: running ? '#333' : 'rgba(0,255,136,0.15)', color: running ? 'var(--sd-fg-4, #777)' : 'var(--sd-green, #00ff88)', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
               {running ? 'The scanner is busy' : 'Sync messages now'}
             </button>
-            <button onClick={() => syncNow(true)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: LINE, background: 'none', color: running ? '#777' : '#cfe6f7', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
+            <button onClick={() => syncNow(true)} disabled={running} style={{ padding: '7px 14px', borderRadius: 8, border: LINE, background: 'none', color: running ? 'var(--sd-fg-4, #777)' : 'var(--sd-fg-1, #cfe6f7)', cursor: running ? 'default' : 'pointer', fontSize: 13 }}>
               Read my whole history
             </button>
-            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: '#b8c4c4' }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>
               <input type="checkbox" checked={social?.autoSync === true} onChange={(e) => setAuto(e.target.checked)} />
               Once a day while the app is open (daytime only)
             </label>
           </div>
         </div>
-        {note && <div style={{ marginTop: 10, fontSize: 13, color: note.good ? '#00ff88' : '#ff9b9b' }}>{note.text}</div>}
+        {note && <div style={{ marginTop: 10, fontSize: 13, color: note.good ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-2, #ff9b9b)' }}>{note.text}</div>}
 
         <h2 style={h2}>People</h2>
         <Crm net={net} asOf={social ? asOf : null} keep={keep} onKeep={setKeep} switching={switching || busy} token={listToken} crmToken={crmToken} />
@@ -312,11 +312,11 @@ export default function SocialHub({ embedded = false }) {
               {Object.entries(WARMTH).map(([k, [label, color]]) => (
                 <div key={k} style={{ ...box, marginTop: 0 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color }}>{(warmth[k] || 0).toLocaleString()}</div>
-                  <div style={{ fontSize: 12.5, color: '#b8c4c4' }}>{label}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>{label}</div>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11.5, color: '#778', marginTop: 6 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #778)', marginTop: 6 }}>
               Of your connections. Warm: messaged in the last 30 days, or 3+ messages in 90. Cool: within a year. Dormant: longer ago.
             </div>
 
@@ -327,9 +327,9 @@ export default function SocialHub({ embedded = false }) {
                   {social.chapters.map((c) => {
                     const warm = (c.people || []).filter((u) => ['warm', 'cool'].includes(warmthOf(merged.get(keyFor({ profile_url: u })), asOf))).length;
                     return (
-                      <div key={`${c.company}-${c.from}`} style={{ display: 'flex', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13, alignItems: 'baseline' }}>
-                        <span style={{ flex: 1 }}><b>{c.company}</b> <span style={{ color: '#8b9a9a' }}>{c.title} · {new Date(c.from).getFullYear()}–{c.to ? new Date(c.to).getFullYear() : 'now'}</span></span>
-                        <span style={{ color: '#b8c4c4' }}>{c.made.toLocaleString()} connections made</span>
+                      <div key={`${c.company}-${c.from}`} style={{ display: 'flex', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)', fontSize: 13, alignItems: 'baseline' }}>
+                        <span style={{ flex: 1 }}><b>{c.company}</b> <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{c.title} · {new Date(c.from).getFullYear()}–{c.to ? new Date(c.to).getFullYear() : 'now'}</span></span>
+                        <span style={{ color: 'var(--sd-fg-2, #b8c4c4)' }}>{c.made.toLocaleString()} connections made</span>
                         <span style={{ color: '#ff9f43', minWidth: 90, textAlign: 'right' }}>{c.made ? `${Math.round((100 * warm) / c.made)}% still in touch` : ''}</span>
                       </div>
                     );
@@ -345,10 +345,10 @@ export default function SocialHub({ embedded = false }) {
                   <div style={{ fontSize: 13 }}>
                     In the week after a post you made <b>{social.posts.afterPosts.toFixed(1)}</b> new connections on average; a usual week, <b>{social.posts.usualWeek.toFixed(1)}</b>.
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#778', marginTop: 4 }}>What came after a post, not proof it came from it.</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #778)', marginTop: 4 }}>What came after a post, not proof it came from it.</div>
                   {[...social.posts.posts].sort((a, b) => b.week - a.week).slice(0, 3).map((p) => (
-                    <div key={p.t} style={{ fontSize: 12.5, color: '#b8c4c4', marginTop: 6 }}>
-                      {day(p.t)}: {p.week} new connections that week {p.link ? <a href={p.link} target="_blank" rel="noreferrer" style={{ color: '#3498DB', textDecoration: 'none' }}>Post ↗</a> : null}
+                    <div key={p.t} style={{ fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 6 }}>
+                      {day(p.t)}: {p.week} new connections that week {p.link ? <a href={p.link} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Post ↗</a> : null}
                     </div>
                   ))}
                 </div>

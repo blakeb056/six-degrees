@@ -21,9 +21,9 @@ function summary(companies) {
 
 const button = (primary) => ({
   padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-  border: primary ? 'none' : '1px solid rgba(255,255,255,0.15)',
+  border: primary ? 'none' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.15)',
   background: primary ? 'linear-gradient(135deg, #00ff88, #3498DB)' : 'transparent',
-  color: primary ? '#000' : '#cfd8d8',
+  color: primary ? '#000' : 'var(--sd-fg-2, #cfd8d8)',
 });
 
 /** `onAnswered({kept, scored, error?})` runs once the answer is saved. */
@@ -78,11 +78,11 @@ export default function LegacyScoresCard({ onAnswered }) {
   return (
     <section aria-label="Built-in scores changed" style={{
       marginBottom: 14, padding: 14, borderRadius: 10, border: '1px solid rgba(255,215,0,0.35)',
-      background: 'rgba(255,215,0,0.06)', fontSize: 12.5, color: '#cfd8d8', lineHeight: 1.6,
+      background: 'rgba(255,215,0,0.06)', fontSize: 12.5, color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.6,
     }}>
-      <b style={{ color: '#fff' }}>Built-in scores changed in this version:</b> {summary(offer.companies)}.
+      <b style={{ color: 'var(--sd-fg-1, #fff)' }}>Built-in scores changed in this version:</b> {summary(offer.companies)}.
       {' '}Keep any of the old ones as your own?
-      <div style={{ marginTop: 4, color: '#8b9a9a' }}>
+      <div style={{ marginTop: 4, color: 'var(--sd-fg-3, #8b9a9a)' }}>
         The built-in list now holds only companies most professionals would recognise, scored the same for
         everyone; anything else is estimated from your network. A score you keep is yours, like one you set
         below, and Auto hands it back.
@@ -95,8 +95,8 @@ export default function LegacyScoresCard({ onAnswered }) {
               <label style={{ display: 'flex', gap: 8, alignItems: 'baseline', cursor: 'pointer' }}>
                 <input type="checkbox" checked={picked.has(c.name)} disabled={busy} onChange={() => toggle(c.name)} />
                 <span>
-                  <b style={{ color: '#fff' }}>{c.name}</b> {c.was} → {c.estimated ? `estimated (${c.now})` : c.now}
-                  <span style={{ color: '#778' }}>
+                  <b style={{ color: 'var(--sd-fg-1, #fff)' }}>{c.name}</b> {c.was} → {c.estimated ? `estimated (${c.now})` : c.now}
+                  <span style={{ color: 'var(--sd-fg-4, #778)' }}>
                     {` · ${c.people} ${c.people === 1 ? 'person' : 'people'} there now`}
                     {c.names.length > 1 && ` · for ${c.names.join(', ')}`}
                   </span>

@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 
-const LINE = '1px solid rgba(255,255,255,0.1)';
+const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const DAILY = [25, 50, 100, 200, 500];
 const MONTHLY = [100, 250, 500, 1000, 0];
@@ -25,7 +25,7 @@ export function CooldownBanner({ cooldown, onLift, disabled }) {
   return (
     <div role="status" style={{
       padding: '12px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.6,
-      background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.35)', color: '#f3c9c9',
+      background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.35)', color: 'var(--sd-fg-2, #f3c9c9)',
     }}>
       <b style={{ color: '#ff8080' }}>Scanning is paused until {when(cooldown.until)}.</b>{' '}
       {cooldown.reason}. Nothing that searches LinkedIn will run until then, so the account can recover.
@@ -49,7 +49,7 @@ const pct = (used, cap) => (cap ? Math.min(100, Math.round((used / cap) * 100)) 
 function Bar({ used, cap }) {
   const p = pct(used, cap);
   return (
-    <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', marginTop: 4 }}>
+    <div style={{ height: 5, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', overflow: 'hidden', marginTop: 4 }}>
       <div style={{ height: '100%', width: `${p}%`, background: p >= 100 ? '#ff6b6b' : p >= 75 ? '#FFD700' : '#3498DB' }} />
     </div>
   );
@@ -69,18 +69,18 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
   };
   const note = limitNote(limits);
   return (
-    <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#b8c4c4' }}>
+    <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
         <div>
-          <div><b style={{ color: '#fff' }}>{today}</b> of {limits.daily || 'no limit'} searches in the last 24 hours</div>
+          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{today}</b> of {limits.daily || 'no limit'} searches in the last 24 hours</div>
           <Bar used={li.searchesToday || 0} cap={limits.daily} />
         </div>
         <div>
-          <div><b style={{ color: '#fff' }}>{li.searchesMonth}</b> of {limits.monthly || 'no limit'} this month · resets {day(li.monthResets)}</div>
+          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{li.searchesMonth}</b> of {limits.monthly || 'no limit'} this month · resets {day(li.monthResets)}</div>
           <Bar used={li.searchesMonth} cap={limits.monthly} />
         </div>
         <div>
-          <div><b style={{ color: '#fff' }}>{views}</b> of {limits.profiles} profile views today</div>
+          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{views}</b> of {limits.profiles} profile views today</div>
           <Bar used={li.unreadable ? limits.profiles : li.profilesToday} cap={limits.profiles} />
         </div>
       </div>
@@ -96,22 +96,22 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
           {PROFILES.map((n) => <option key={n} value={n}>{n} profile views a day</option>)}
         </select>
       </div>
-      <div style={{ marginTop: 8, color: '#778', lineHeight: 1.6 }}>
+      <div style={{ marginTop: 8, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>
         Every page of someone&rsquo;s connections is one search. LinkedIn limits a free account&rsquo;s people
         searches by the month (it doesn&rsquo;t say how many; reports put it around 250–350), resetting on the 1st.
         When a budget is used, a scan saves what it read and stops; the next one carries on from the same page.
       </div>
       {note && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: '#FFD700', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: 'var(--sd-gold, #FFD700)', lineHeight: 1.6 }}>
           <b style={{ flex: 1, minWidth: 200 }}>{note}</b>
           <button
             onClick={() => set(SAFE_LIMITS)}
             disabled={disabled}
-            style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: '#FFD700', borderColor: 'rgba(255,215,0,0.4)' }}
+            style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: 'var(--sd-gold, #FFD700)', borderColor: 'rgba(255,215,0,0.4)' }}
           >Back to {SAFE_LIMITS.daily} a day, {SAFE_LIMITS.monthly} a month</button>
         </div>
       )}
-      <div style={{ marginTop: 6, color: '#778', lineHeight: 1.6 }}>
+      <div style={{ marginTop: 6, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>
         Each circle scan opens the person&rsquo;s profile once, which is one profile view. Profile views are what
         LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
         once today&rsquo;s are used, a scan stops before the next profile and tries that person next time.
@@ -126,25 +126,25 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
   const legacy = paused.filter((p) => p.legacy).length;
   const shown = showAll ? paused : paused.slice(0, 8);
   return (
-    <div style={{ borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)' }}>
+    <div style={{ borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: LINE, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <b style={{ fontSize: 13.5 }}>Paused — {paused.length} {paused.length === 1 ? 'list' : 'lists'} with more to read</b>
-          <div style={{ fontSize: 12, color: '#8b9a9a', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 2 }}>
             Each carries on from the page it stopped at{legacy ? `; ${legacy} were read to page 10 before whole lists were read` : ''}.
           </div>
         </div>
-        <button onClick={onResumeAll} disabled={disabled} style={{ ...btn, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #3498DB, #9B59B6)' }}>
+        <button onClick={onResumeAll} disabled={disabled} style={{ ...btn, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : 'linear-gradient(135deg, #3498DB, #9B59B6)' }}>
           Resume all
         </button>
       </div>
       <div>
         {shown.map((p) => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER[p.tier] || '#667', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-              <div style={{ fontSize: 11.5, color: '#8b9a9a' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
                 Read to page {p.pagesRead} · carries on at {p.nextPage}
                 {p.at ? ` · ${day(p.at)}` : ''}
                 {p.unclear >= 2 ? ' · came back unclear twice, so it waits at the back of Resume all' : ''}
@@ -167,10 +167,10 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
 
 const btn = {
   padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-  border: LINE, background: 'rgba(255,255,255,0.08)', color: '#fff',
+  border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)',
 };
 const linkBtn = { background: 'none', border: 'none', color: '#8fb8d6', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: 0 };
 const sel = {
   padding: '6px 8px', borderRadius: 6, fontSize: 12.5, fontWeight: 600,
-  background: 'rgba(255,255,255,0.08)', color: '#fff', border: LINE,
+  background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)', border: LINE,
 };

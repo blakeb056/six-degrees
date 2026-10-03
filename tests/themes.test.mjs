@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  THEMES, STANDARD, BACKDROPS, FONTS, TIER_KEYS, cleanTheme, resolveTheme, themeVars, themeAttrs, encodeTheme, decodeTheme, presetOf,
+  THEMES, STANDARD, BACKDROPS, FONTS, BUTTONS, DOTS, TIER_KEYS, cleanTheme, resolveTheme, themeVars, themeAttrs, encodeTheme, decodeTheme, presetOf, isLight,
 } from '../lib/themes.js';
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -14,6 +14,8 @@ test('every look is complete: its colours, dots, backdrop and font are real', ()
     assert.ok(BACKDROPS.includes(t.backdrop), t.id);
     assert.ok(Object.hasOwn(FONTS, t.font), t.id);
     assert.ok(t.glass >= 0 && t.glass <= 1, t.id);
+    assert.ok(BUTTONS.includes(t.buttons), t.id);
+    assert.ok(DOTS.includes(t.dots), t.id);
   }
   assert.equal(presetOf('no such look'), STANDARD);
 });
@@ -44,8 +46,8 @@ test('the page\'s variables are built from clean values: nothing in them can end
     }
   }
   assert.equal(themeVars({ base: 'standard', custom: { bg: '#010203' } })['--sd-bg'], '#010203');
-  assert.deepEqual(themeAttrs({ base: 'space' }), { theme: 'space', backdrop: 'stars' });
-  assert.deepEqual(themeAttrs({ base: 'space', custom: { backdrop: 'none' } }), { theme: 'space', backdrop: 'none' });
+  assert.deepEqual(themeAttrs({ base: 'space' }), { theme: 'space', backdrop: 'stars', mode: 'dark', buttons: 'soft', dots: 'glow' });
+  assert.deepEqual(themeAttrs({ base: 'space', custom: { backdrop: 'none' } }), { theme: 'space', backdrop: 'none', mode: 'dark', buttons: 'soft', dots: 'glow' });
 });
 
 test('your changes sit on top of the look they started from', () => {
@@ -69,4 +71,23 @@ test('a theme code carries the look and nothing else, and a bad one is refused',
   // A hand-made code is cleaned like anything else.
   const crafted = `sd-theme:${Buffer.from(JSON.stringify({ base: 'space', custom: { bg: 'red;}' } })).toString('base64')}`;
   assert.deepEqual(decodeTheme(crafted), { base: 'space', custom: {} });
+});
+
+test('light is the background\'s own: a light look turns words and borders dark, a dark one sets none of that', () => {
+  assert.deepEqual(THEMES.filter(isLight).map((t) => t.id), ['daylight', 'paper']);
+  const dark = themeVars({ base: 'standard' });
+  for (const k of ['--sd-ink', '--sd-fg-1', '--sd-gold']) assert.equal(dark[k], undefined, `${k} stays the dark default`);
+  const light = themeVars({ base: 'daylight' });
+  assert.equal(light['--sd-ink'], '18, 22, 40');
+  assert.match(light['--sd-fg-1'], /^#[0-9a-f]{6}$/);
+  // Any light background you pick makes it a light look; a dark one takes it back.
+  assert.equal(themeAttrs({ base: 'standard', custom: { bg: '#fafafa' } }).mode, 'light');
+  assert.equal(themeVars({ base: 'daylight', custom: { bg: '#101010' } })['--sd-fg-1'], undefined);
+});
+
+test('buttons and dots are a look\'s own, and only the listed ways', () => {
+  assert.deepEqual(cleanTheme({ base: 'standard', custom: { buttons: 'neon', dots: 'droplet' } }).custom, { buttons: 'neon', dots: 'droplet' });
+  assert.deepEqual(cleanTheme({ base: 'standard', custom: { buttons: 'url(x)', dots: 'evil' } }).custom, {});
+  assert.equal(resolveTheme({ base: 'glass' }).dots, 'droplet');
+  assert.equal(resolveTheme({ base: 'obsidian' }).dots, 'flat');
 });

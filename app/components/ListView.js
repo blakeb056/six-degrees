@@ -31,8 +31,8 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
           {/* Table header */}
           <div style={{
             display: 'grid', gridTemplateColumns: '40px 1fr 50px 50px 50px 80px',
-            gap: 8, padding: '8px 12px', fontSize: 9, fontWeight: 700, color: '#555',
-            borderBottom: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: 0.5,
+            gap: 8, padding: '8px 12px', fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)',
+            borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', textTransform: 'uppercase', letterSpacing: 0.5,
           }}>
             <span>#</span><span>Bridge</span><span>S</span><span>A</span><span>Total</span><span>Value</span>
           </div>
@@ -41,13 +41,13 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
               style={{
                 display: 'grid', gridTemplateColumns: '40px 1fr 50px 50px 50px 80px',
                 gap: 8, padding: '10px 12px', alignItems: 'center', cursor: 'pointer',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)',
                 transition: 'background 0.1s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#444' }}>{i + 1}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--sd-fg-5, #444)' }}>{i + 1}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 {localPhoto(cl.bridge.profile_image_url) ? (
                   <img src={localPhoto(cl.bridge.profile_image_url)} alt="" style={{
@@ -62,17 +62,17 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
                   }}>{cl.bridge.name?.charAt(0)}</div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sd-fg-1, #fff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {cl.bridge.name}
                   </div>
                   <div style={{ fontSize: 9, color: TIER_COLORS[cl.bridge.tier], fontWeight: 600 }}>{cl.bridge.tier}-Tier</div>
                 </div>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#FFD700' }}>{cl.sCount}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#9B59B6' }}>{cl.aCount}</span>
-              <span style={{ fontSize: 12, color: '#888' }}>{cl.total}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--sd-gold, #FFD700)' }}>{cl.sCount}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--sd-purple, #9B59B6)' }}>{cl.aCount}</span>
+              <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #888)' }}>{cl.total}</span>
               <div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                <div style={{ height: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 3 }}>
                   <div style={{
                     height: '100%', borderRadius: 3,
                     background: `linear-gradient(90deg, ${TIER_COLORS[cl.bridge.tier]}, #FF6B35)`,
@@ -97,8 +97,8 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
         {/* Table header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '40px 36px 1fr 60px 120px',
-          gap: 8, padding: '8px 12px', fontSize: 9, fontWeight: 700, color: '#555',
-          borderBottom: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: 0.5,
+          gap: 8, padding: '8px 12px', fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)',
+          borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', textTransform: 'uppercase', letterSpacing: 0.5,
         }}>
           <span>#</span><span></span><span>Name</span><span>Score</span><span>Power</span>
         </div>
@@ -107,14 +107,14 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
             style={{
               display: 'grid', gridTemplateColumns: '40px 36px 1fr 60px 120px',
               gap: 8, padding: '8px 12px', alignItems: 'center', cursor: 'pointer',
-              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)',
               background: i < 3 ? `${TIER_COLORS[c.tier]}08` : 'transparent',
               transition: 'background 0.1s',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'}
             onMouseLeave={e => e.currentTarget.style.background = i < 3 ? `${TIER_COLORS[c.tier]}08` : 'transparent'}
           >
-            <span style={{ fontSize: 12, fontWeight: 700, color: i < 3 ? TIER_COLORS[c.tier] : '#444' }}>{i + 1}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: i < 3 ? TIER_COLORS[c.tier] : 'var(--sd-fg-5, #444)' }}>{i + 1}</span>
             {localPhoto(c.profile_image_url) ? (
               <img src={localPhoto(c.profile_image_url)} alt="" style={{
                 width: 28, height: 28, borderRadius: '50%', objectFit: 'cover',
@@ -123,19 +123,19 @@ export default function ListView({ connections, degree2 = [], onSelect, mode }) 
             ) : (
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', fontSize: 10, fontWeight: 700,
-                background: TIER_COLORS[c.tier], color: c.tier === 'S' ? '#000' : '#fff',
+                background: TIER_COLORS[c.tier], color: c.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>{c.name?.charAt(0)}</div>
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-              <div style={{ fontSize: 9, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.headline?.substring(0, 45)}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sd-fg-1, #fff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+              <div style={{ fontSize: 9, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.headline?.substring(0, 45)}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <span style={{ fontSize: 13, fontWeight: 800, color: TIER_COLORS[c.tier] }}>{parseFloat(c.power_score || 0).toFixed(1)}</span>
-              <div style={{ fontSize: 8, color: '#555' }}>{c.tier}</div>
+              <div style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)' }}>{c.tier}</div>
             </div>
-            <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+            <div style={{ height: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 3 }}>
               <div style={{
                 height: '100%', borderRadius: 3,
                 background: TIER_COLORS[c.tier],

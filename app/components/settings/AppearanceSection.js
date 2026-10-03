@@ -10,21 +10,23 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { Section, Body } from '../ui';
-import { THEMES, BACKDROPS, FONTS, TIER_KEYS, resolveTheme, presetOf, encodeTheme, decodeTheme } from '../../../lib/themes';
+import { THEMES, BACKDROPS, FONTS, BUTTONS, DOTS, TIER_KEYS, resolveTheme, presetOf, encodeTheme, decodeTheme, isLight } from '../../../lib/themes';
 import { themeNow, serverTheme, setTheme, watchTheme } from '../../../lib/theme-store';
 
 const BACKDROP_LABEL = { none: 'Plain', stars: 'Stars', grid: 'Grid', glow: 'Glow', horizon: 'Horizon' };
 const FONT_LABEL = { system: 'System', rounded: 'Rounded', mono: 'Mono', serif: 'Serif' };
 const TIER_NAME = { S: 'S tier', A: 'A tier', B: 'B tier', C: 'C tier', D: 'D tier' };
+const BUTTON_LABEL = { soft: 'Soft', flat: 'Flat', square: 'Square', frosted: 'Frosted glass', neon: 'Neon', bold: 'Bold outline' };
+const DOT_LABEL = { solid: 'Solid', droplet: 'Glass droplets', flat: 'Flat, like Obsidian', glow: 'Glowing' };
 
-const label = { fontSize: 11, fontWeight: 700, color: '#778', letterSpacing: 0.6, textTransform: 'uppercase', margin: '16px 0 8px' };
+const label = { fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-4, #778)', letterSpacing: 0.6, textTransform: 'uppercase', margin: '16px 0 8px' };
 
 /** A small map in a theme's colours: you, a ring of tiers, their circles, the backdrop behind. */
 export function ThemePreview({ theme, width = 168, height = 96 }) {
   const t = theme;
   const cx = width * 0.58;
   const cy = height / 2;
-  const id = `p-${t.id}-${t.customised ? 'c' : 'p'}`;
+  const id = `p-${t.id}-${t.customised ? 'c' : 'p'}-${t.dots}`;
   const glass = Math.min(1, Math.max(0, t.glass));
   const ring = TIER_KEYS.map((k, i) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / TIER_KEYS.length;
@@ -38,10 +40,18 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
         <radialGradient id={`${id}-glow`}><stop offset="0" stopColor={t.bg2} stopOpacity="0.8" /><stop offset="1" stopColor={t.bg2} stopOpacity="0" /></radialGradient>
         <radialGradient id={`${id}-glow2`}><stop offset="0" stopColor={t.accent} stopOpacity="0.55" /><stop offset="1" stopColor={t.accent} stopOpacity="0" /></radialGradient>
         <linearGradient id={`${id}-sun`} x1="0" y1="0" x2="0" y2="1"><stop offset="0.45" stopColor={t.bg2} stopOpacity="0" /><stop offset="1" stopColor={t.bg2} stopOpacity="0.45" /></linearGradient>
+        {/* The look's dots: a drop of glass, or a glow (lib/themes.js DOTS) */}
+        {TIER_KEYS.map((k) => (
+          <radialGradient key={k} id={`${id}-drop-${k}`} fx="34%" fy="30%">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.95" /><stop offset="0.25" stopColor={t.tiers[k]} stopOpacity="0.9" />
+            <stop offset="0.75" stopColor={t.tiers[k]} stopOpacity="0.5" /><stop offset="1" stopColor={t.tiers[k]} stopOpacity="0.15" />
+          </radialGradient>
+        ))}
+        <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
       </defs>
       <rect width={width} height={height} fill={t.bg} />
       {t.backdrop === 'stars' && (
-        <g fill="#fff">
+        <g fill="var(--sd-fg-1, #fff)">
           <circle cx={width * 0.8} cy={height * 0.2} r={28} fill={`url(#${id}-glow)`} />
           {[[12, 10], [40, 70], [150, 14], [128, 80], [24, 44], [96, 8], [70, 88], [158, 52]].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={0.8} opacity={0.85} />)}
         </g>
@@ -67,7 +77,7 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
       )}
       {/* The filter panel, as see-through as the theme's glass */}
       <rect x={0} y={0} width={width * 0.24} height={height} fill={t.panel} fillOpacity={0.92 - 0.82 * glass} />
-      <rect x={width * 0.24} y={0} width={0.75} height={height} fill="#fff" fillOpacity={0.12} />
+      <rect x={width * 0.24} y={0} width={0.75} height={height} fill="var(--sd-fg-1, #fff)" fillOpacity={0.12} />
       {[0, 1, 2, 3, 4].map((i) => <rect key={i} x={6} y={12 + i * 14} width={width * 0.24 - 12} height={6} rx={3} fill={t.tiers[TIER_KEYS[i]]} fillOpacity={0.55} />)}
       {/* The map */}
       {ring.map((p) => <line key={`l${p.k}`} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={line(p.k)} strokeOpacity={0.55} strokeWidth={0.8} />)}
@@ -82,7 +92,13 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
           </g>
         );
       }))}
-      {ring.map((p) => <circle key={`d${p.k}`} cx={p.x} cy={p.y} r={p.k === 'S' ? 4.5 : 3.6} fill={t.tiers[p.k]} />)}
+      <g filter={t.dots === 'glow' ? `url(#${id}-glow)` : undefined}>
+        {ring.map((p) => (
+          <circle key={`d${p.k}`} cx={p.x} cy={p.y} r={p.k === 'S' ? 4.5 : 3.6}
+            fill={t.dots === 'droplet' ? `url(#${id}-drop-${p.k})` : t.tiers[p.k]}
+            stroke={t.dots === 'droplet' ? t.tiers[p.k] : 'none'} strokeOpacity={0.5} strokeWidth={0.6} />
+        ))}
+      </g>
       <circle cx={cx} cy={cy} r={5.5} fill={t.you} stroke={t.accent} strokeWidth={1.2} />
     </svg>
   );
@@ -90,9 +106,9 @@ export function ThemePreview({ theme, width = 168, height = 96 }) {
 
 function Swatch({ name, value, onChange, title }) {
   return (
-    <label title={title || name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px 6px 6px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}>
+    <label title={title || name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px 6px 6px', borderRadius: 8, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', cursor: 'pointer' }}>
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
-      <span style={{ fontSize: 12.5, color: '#cdd' }}>{name}</span>
+      <span style={{ fontSize: 12.5, color: 'var(--sd-fg-2, #cdd)' }}>{name}</span>
     </label>
   );
 }
@@ -103,9 +119,9 @@ function Pick({ options, value, onPick }) {
       {options.map(([v, text]) => (
         <button key={v} type="button" aria-pressed={value === v} onClick={() => onPick(v)} style={{
           padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-          border: value === v ? '1px solid var(--sd-accent)' : '1px solid rgba(255,255,255,0.1)',
-          background: value === v ? 'color-mix(in srgb, var(--sd-accent) 18%, transparent)' : 'rgba(255,255,255,0.03)',
-          color: value === v ? '#fff' : '#99a',
+          border: value === v ? '1px solid var(--sd-accent)' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
+          background: value === v ? 'color-mix(in srgb, var(--sd-accent) 18%, transparent)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+          color: value === v ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #99a)',
         }}>{text}</button>
       ))}
     </div>
@@ -135,6 +151,7 @@ export default function AppearanceSection() {
   return (
     <Section id="appearance" title="Appearance" intro="How the whole app looks: pick one of ours, then make it yours. It changes as you go, and stays in this browser.">
       <div style={label}>Looks</div>
+      <Body style={{ marginTop: -4, marginBottom: 10, fontSize: 12.5 }}>Daylight and Paper are light; the rest are dark. Each has its own buttons and its own way of drawing the map&rsquo;s dots.</Body>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
         {THEMES.map((p) => {
           const on = choice.base === p.id;
@@ -143,34 +160,34 @@ export default function AppearanceSection() {
             <button key={p.id} type="button" aria-pressed={on} onClick={() => setTheme({ base: p.id, custom: {} })}
               title={on && theme.customised ? `${p.name}, with your changes. Click to go back to plain ${p.name}.` : p.blurb}
               style={{
-                textAlign: 'left', padding: 8, borderRadius: 12, cursor: 'pointer', color: '#fff',
-                border: on ? '2px solid var(--sd-accent)' : '1px solid rgba(255,255,255,0.1)',
-                background: on ? 'color-mix(in srgb, var(--sd-accent) 10%, transparent)' : 'rgba(255,255,255,0.03)',
+                textAlign: 'left', padding: 8, borderRadius: 12, cursor: 'pointer', color: 'var(--sd-fg-1, #fff)',
+                border: on ? '2px solid var(--sd-accent)' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
+                background: on ? 'color-mix(in srgb, var(--sd-accent) 10%, transparent)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
               }}>
               <ThemePreview theme={shown} width={172} height={96} />
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '8px 2px 2px' }}>
                 <span style={{ fontSize: 13.5, fontWeight: 700 }}>{p.name}</span>
                 {on && theme.customised && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--sd-accent)' }}>yours</span>}
               </div>
-              <div style={{ fontSize: 11.5, color: '#889', lineHeight: 1.4, margin: '0 2px' }}>{p.blurb}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #889)', lineHeight: 1.4, margin: '0 2px' }}>{p.blurb}</div>
             </button>
           );
         })}
       </div>
 
-      <div style={{ marginTop: 22, padding: '4px 16px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ marginTop: 22, padding: '4px 16px 16px', borderRadius: 12, border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ ...label, flex: 1 }}>Make it yours{theme.customised ? '' : `: starting from ${presetOf(choice.base).name}`}</div>
           {theme.customised && (
             <button type="button" onClick={() => setTheme({ base: choice.base, custom: {} })} style={{
-              padding: '4px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'none', color: '#aab',
+              padding: '4px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'none', color: 'var(--sd-fg-3, #aab)',
             }}>Back to plain {presetOf(choice.base).name}</button>
           )}
         </div>
 
         <div style={label}>Background</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-          <Swatch name="Colour" value={theme.bg} onChange={(v) => change({ bg: v })} title="Behind everything" />
+          <Swatch name={isLight(theme) ? 'Colour (light)' : 'Colour'} value={theme.bg} onChange={(v) => change({ bg: v })} title="Behind everything. A light colour makes the whole look light: dark words, dark borders" />
           <Swatch name="Second colour" value={theme.bg2} onChange={(v) => change({ bg2: v })} title="The backdrop's: the nebula, the grid, the glow or the sunset" />
           <Swatch name="Accent" value={theme.accent} onChange={(v) => change({ accent: v })} title="What's picked, and the backdrop's glow" />
         </div>
@@ -188,14 +205,20 @@ export default function AppearanceSection() {
           {theme.lines === 'one' && <Swatch name="Line colour" value={theme.line} onChange={(v) => change({ line: v })} />}
         </div>
 
+        <div style={label}>Buttons</div>
+        <Pick value={theme.buttons} options={BUTTONS.map((b) => [b, BUTTON_LABEL[b]])} onPick={(v) => change({ buttons: v })} />
+
+        <div style={label}>Dots on the map</div>
+        <Pick value={theme.dots} options={DOTS.map((d) => [d, DOT_LABEL[d]])} onPick={(v) => change({ dots: v })} />
+
         <div style={label}>Panels</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
           <Swatch name="Tint" value={theme.panel} onChange={(v) => change({ panel: v })} title="The side panels' colour" />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: '#cdd' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: 'var(--sd-fg-2, #cdd)' }}>
             Glass
             <input type="range" min={0} max={100} value={Math.round(theme.glass * 100)} onChange={(e) => change({ glass: Number(e.target.value) / 100 })}
               style={{ width: 160, accentColor: 'var(--sd-accent)' }} />
-            <span style={{ color: '#889', fontVariantNumeric: 'tabular-nums', width: 34 }}>{Math.round(theme.glass * 100)}%</span>
+            <span style={{ color: 'var(--sd-fg-3, #889)', fontVariantNumeric: 'tabular-nums', width: 34 }}>{Math.round(theme.glass * 100)}%</span>
           </label>
         </div>
 
@@ -206,18 +229,18 @@ export default function AppearanceSection() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <button type="button" onClick={copy} style={{
             padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
-            border: '1px solid var(--sd-accent)', background: 'color-mix(in srgb, var(--sd-accent) 16%, transparent)', color: '#fff',
+            border: '1px solid var(--sd-accent)', background: 'color-mix(in srgb, var(--sd-accent) 16%, transparent)', color: 'var(--sd-fg-1, #fff)',
           }}>Copy theme code</button>
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste a theme code (sd-theme:…)" spellCheck={false}
             onKeyDown={(e) => { if (e.key === 'Enter') paste(); }}
-            style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 10px', borderRadius: 8, fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.25)', color: '#dde' }} />
+            style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 10px', borderRadius: 8, fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.25)', color: 'var(--sd-fg-1, #dde)' }} />
           <button type="button" onClick={paste} disabled={!code.trim()} style={{
             padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: code.trim() ? 'pointer' : 'default',
-            border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: code.trim() ? '#dde' : '#667',
+            border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: code.trim() ? 'var(--sd-fg-1, #dde)' : 'var(--sd-fg-4, #667)',
           }}>Use it</button>
         </div>
         {note && <Body style={{ fontSize: 12, marginTop: 8 }}>{note}</Body>}
-        <Body style={{ fontSize: 11.5, color: '#667', marginTop: 8 }}>
+        <Body style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #667)', marginTop: 8 }}>
           A code holds colours and choices only, nothing about your network.
         </Body>
       </div>

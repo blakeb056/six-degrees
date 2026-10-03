@@ -42,8 +42,8 @@ const VIEWS = [
 ];
 
 const chip = (bg, color = '#dfe8e8') => ({ fontSize: 10.5, padding: '1px 6px', borderRadius: 4, background: bg, color, whiteSpace: 'nowrap' });
-const btn = { background: 'rgba(255,255,255,0.06)', border: LINE, borderRadius: 6, color: '#cfe6f7', cursor: 'pointer', fontSize: 12, padding: '4px 10px' };
-const field = { padding: '6px 10px', borderRadius: 6, border: LINE, background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: 13 };
+const btn = { background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE, borderRadius: 6, color: 'var(--sd-fg-1, #cfe6f7)', cursor: 'pointer', fontSize: 12, padding: '4px 10px' };
+const field = { padding: '6px 10px', borderRadius: 6, border: LINE, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.3)', color: 'var(--sd-fg-1, #fff)', fontSize: 13 };
 
 /** A download made in this window, as the app's other exports are (lib/galaxy-export.js). */
 function save(text, name) {
@@ -233,17 +233,17 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
   }
 
   const loading = !data || !crm || !net;
-  const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.03)', marginTop: 10 };
+  const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', marginTop: 10 };
   const selectedGroup = picked?.type === 'group' ? groups.find((g) => g.id === picked.id) : null;
   const selected = pickedKey ? contacts.get(pickedKey) : null;
 
   return (
     <>
       <div style={box}>
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, color: '#fff', cursor: switching ? 'default' : 'pointer' }}>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, color: 'var(--sd-fg-1, #fff)', cursor: switching ? 'default' : 'pointer' }}>
           <input type="checkbox" checked={keep} disabled={switching} onChange={(e) => onKeep(e.target.checked)} />
           <b>Keep my messages on this computer</b>
-          <span style={{ fontSize: 11.5, color: keep ? '#00ff88' : '#8b9a9a' }}>{keep ? 'on' : 'off'}</span>
+          <span style={{ fontSize: 11.5, color: keep ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-3, #8b9a9a)' }}>{keep ? 'on' : 'off'}</span>
         </label>
         <Body style={{ margin: '6px 0 0', fontSize: 12.5 }}>
           Off unless you turn it on. When it&rsquo;s on, the messages themselves, including what other people wrote to
@@ -265,11 +265,11 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
                 onClick={() => { setView(id); setShown(LIST_PAGE); }}
                 style={{
                   ...btn, padding: '4px 9px', fontSize: 12,
-                  background: view === id ? 'rgba(52,152,219,0.28)' : 'rgba(255,255,255,0.04)',
-                  color: view === id ? '#fff' : '#b8c4c4',
+                  background: view === id ? 'rgba(52,152,219,0.28)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.04)',
+                  color: view === id ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #b8c4c4)',
                 }}
               >
-                {label} <span style={{ color: view === id ? '#cfe6f7' : '#778' }}>{loading ? '' : counts[id].toLocaleString()}</span>
+                {label} <span style={{ color: view === id ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-4, #778)' }}>{loading ? '' : counts[id].toLocaleString()}</span>
               </button>
             ))}
           </div>
@@ -285,7 +285,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
             <button onClick={exportCsv} disabled={loading} style={btn} title="A spreadsheet of everyone here, with your stages, tags, follow-ups and notes">Export CSV</button>
           </div>
           {view === 'awaiting' && (
-            <div style={{ padding: '8px 12px', borderBottom: LINE, fontSize: 12.5, color: '#b8c4c4', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ padding: '8px 12px', borderBottom: LINE, fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               You wrote last and nothing came back for
               <input
                 type="number" min={1} max={365} value={awaitDays} aria-label="Days with no reply"
@@ -295,12 +295,12 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
               days or more{asOf ? `, as of ${day(asOf)}` : ''}.
             </div>
           )}
-          {note && <div style={{ padding: '8px 12px', fontSize: 12.5, color: '#00ff88', borderBottom: LINE }}>{note}</div>}
+          {note && <div style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--sd-green, #00ff88)', borderBottom: LINE }}>{note}</div>}
 
-          {loading && <div style={{ padding: 12, fontSize: 13, color: '#8b9a9a' }}>Loading…</div>}
+          {loading && <div style={{ padding: 12, fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>Loading…</div>}
           {!loading && view === 'pipeline' && <Board pipeline={pipeline} picked={pickedKey} onPick={(key) => pick({ type: 'person', key })} />}
           {!loading && view !== 'pipeline' && rows.length === 0 && (
-            <div style={{ padding: 12, fontSize: 13, color: '#8b9a9a' }}>{words ? 'Nothing matches that.' : EMPTY[view]}</div>
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>{words ? 'Nothing matches that.' : EMPTY[view]}</div>
           )}
           {!loading && view !== 'pipeline' && (
             <div>
@@ -314,7 +314,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
                 />
               ))}
               {rows.length > shown && (
-                <button onClick={() => setShown(shown + LIST_PAGE)} style={{ width: '100%', padding: 10, background: 'none', border: 'none', color: '#3498DB', cursor: 'pointer', fontSize: 13 }}>
+                <button onClick={() => setShown(shown + LIST_PAGE)} style={{ width: '100%', padding: 10, background: 'none', border: 'none', color: 'var(--sd-blue, #3498DB)', cursor: 'pointer', fontSize: 13 }}>
                   Show {Math.min(LIST_PAGE, rows.length - shown).toLocaleString()} more of {rows.length.toLocaleString()}
                 </button>
               )}
@@ -323,7 +323,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
         </div>
 
         <div ref={panel} className={view === 'pipeline' ? 'crm-wide' : undefined} style={{ ...box, marginTop: 0, minWidth: 0, scrollMarginTop: 80 }}>
-          {!picked && <div style={{ fontSize: 13, color: '#8b9a9a' }}>Pick someone to see everything with them, and to add a stage, tags, notes or a follow-up.</div>}
+          {!picked && <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)' }}>Pick someone to see everything with them, and to add a stage, tags, notes or a follow-up.</div>}
           {selected && (
             <Person
               key={selected.key}
@@ -342,14 +342,14 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
           )}
         </div>
       </div>
-      <div style={{ fontSize: 11.5, color: '#778', marginTop: 6 }}>
+      <div style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #778)', marginTop: 6 }}>
         Everyone from your export and the live sync, connections or not; groups are listed and marked. Sponsored
         messages are marked and kept out of the Inbox. Awaiting reply and warmth are judged as of the newest thing
         your data knows.
         {Object.keys(crm?.people || {}).length > 0 && (
           <>
             {' '}Your notes are in the app&rsquo;s data folder, not in &ldquo;Save a copy of my network&rdquo;.{' '}
-            <button onClick={deleteNotes} style={{ background: 'none', border: 'none', color: '#ff9b9b', cursor: 'pointer', fontSize: 11.5, padding: 0 }}>Delete my CRM notes</button>
+            <button onClick={deleteNotes} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-2, #ff9b9b)', cursor: 'pointer', fontSize: 11.5, padding: 0 }}>Delete my CRM notes</button>
           </>
         )}
       </div>
@@ -374,9 +374,9 @@ function Badges({ c }) {
   return (
     <>
       {c && !c.connection && <span style={chip('rgba(255,159,67,0.18)', '#ffc58a')}>{c.degree === 2 ? '2nd degree' : 'Not a connection'}</span>}
-      {c?.kind === 'sponsored' && <span style={chip('rgba(255,255,255,0.08)')}>Sponsored</span>}
+      {c?.kind === 'sponsored' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>Sponsored</span>}
       {c?.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>InMail</span>}
-      {c?.crm?.stage && <span style={chip('rgba(255,255,255,0.06)', STAGE_COLOUR[c.crm.stage])}>{stageLabel(c.crm.stage)}</span>}
+      {c?.crm?.stage && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)', STAGE_COLOUR[c.crm.stage])}>{stageLabel(c.crm.stage)}</span>}
     </>
   );
 }
@@ -397,7 +397,7 @@ function Row({ r, nameOf, active, onPick }) {
     );
   } else {
     title = groupLabel(r.g, nameOf);
-    extra = <span style={chip('rgba(255,255,255,0.08)')}>{r.g.unknown ? 'To someone unnamed' : 'Group'}</span>;
+    extra = <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>{r.g.unknown ? 'To someone unnamed' : 'Group'}</span>;
   }
   const company = r.type === 'person' ? (r.c?.row?.company || r.row?.company) : null;
   return (
@@ -407,14 +407,14 @@ function Row({ r, nameOf, active, onPick }) {
       aria-pressed={active}
       onClick={onPick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(); } }}
-      style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', background: active ? 'rgba(52,152,219,0.14)' : 'none' }}
+      style={{ padding: '8px 12px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)', cursor: 'pointer', background: active ? 'rgba(52,152,219,0.14)' : 'none' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, minWidth: 0, flexWrap: 'wrap' }}>
         <Dot tier={tier} />
         <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{title}</b>
         {extra}
       </div>
-      <div style={{ fontSize: 11.5, color: '#8b9a9a', marginTop: 2, paddingLeft: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 2, paddingLeft: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {[company, r.sub].filter(Boolean).join(' · ')}
       </div>
     </div>
@@ -435,9 +435,9 @@ function Board({ pipeline, picked, onPick }) {
         <div key={s.id} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 12, fontWeight: 650, color: STAGE_COLOUR[s.id], margin: '0 0 6px', display: 'flex', justifyContent: 'space-between' }}>
             <span>{s.label}</span>
-            <span style={{ color: '#778' }}>{pipeline[s.id].length.toLocaleString()}</span>
+            <span style={{ color: 'var(--sd-fg-4, #778)' }}>{pipeline[s.id].length.toLocaleString()}</span>
           </div>
-          {pipeline[s.id].length === 0 && <div style={{ fontSize: 11.5, color: '#667', padding: '6px 0' }}>No one</div>}
+          {pipeline[s.id].length === 0 && <div style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #667)', padding: '6px 0' }}>No one</div>}
           {pipeline[s.id].slice(0, 200).map((c) => (
             <div
               key={c.key}
@@ -447,23 +447,23 @@ function Board({ pipeline, picked, onPick }) {
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(c.key); } }}
               style={{
                 padding: '7px 9px', marginBottom: 6, borderRadius: 6, border: LINE, cursor: 'pointer', fontSize: 12.5,
-                background: picked === c.key ? 'rgba(52,152,219,0.18)' : 'rgba(255,255,255,0.03)',
+                background: picked === c.key ? 'rgba(52,152,219,0.18)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
               }}
             >
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Dot tier={c.row?.tier} /><b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</b></div>
-              <div style={{ color: '#8b9a9a', fontSize: 11, marginTop: 2 }}>
+              <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 11, marginTop: 2 }}>
                 {[c.row?.company, c.crm.followUp ? `Follow up ${ymd(c.crm.followUp)}` : null].filter(Boolean).join(' · ')}
               </div>
             </div>
           ))}
-          {pipeline[s.id].length > 200 && <div style={{ fontSize: 11, color: '#778' }}>and {(pipeline[s.id].length - 200).toLocaleString()} more (search to find them)</div>}
+          {pipeline[s.id].length > 200 && <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #778)' }}>and {(pipeline[s.id].length - 200).toLocaleString()} more (search to find them)</div>}
         </div>
       ))}
     </div>
   );
 }
 
-const h4 = { fontSize: 12, fontWeight: 650, color: '#b8c4c4', margin: '16px 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 };
+const h4 = { fontSize: 12, fontWeight: 650, color: 'var(--sd-fg-2, #b8c4c4)', margin: '16px 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 };
 
 function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickGroup }) {
   const row = c.row;
@@ -478,26 +478,26 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Dot tier={row?.tier} />
         <h3 style={{ margin: 0, fontSize: 17 }}>{c.name}</h3>
-        {row?.tier && <span style={chip('rgba(255,255,255,0.06)', TIER[row.tier])}>{row.tier} tier</span>}
+        {row?.tier && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)', TIER[row.tier])}>{row.tier} tier</span>}
         <Badges c={c} />
       </div>
       {(row?.headline || row?.company) && (
-        <div style={{ color: '#b8c4c4', marginTop: 4 }}>{row.headline || [row.role, row.company].filter(Boolean).join(' at ')}</div>
+        <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 4 }}>{row.headline || [row.role, row.company].filter(Boolean).join(' at ')}</div>
       )}
-      <div style={{ color: '#8b9a9a', marginTop: 4, fontSize: 12.5 }}>
+      <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4, fontSize: 12.5 }}>
         {how}
-        {c.introducers.length > 0 && <> Who can introduce you: <b style={{ color: '#dfe8e8' }}>{c.introducers.slice(0, 6).join(', ')}</b>{c.introducers.length > 6 ? ` and ${c.introducers.length - 6} more` : ''}.</>}
-        {row?.unlocked_from_name && c.connection && <> You met through <b style={{ color: '#dfe8e8' }}>{row.unlocked_from_name}</b>.</>}
+        {c.introducers.length > 0 && <> Who can introduce you: <b style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{c.introducers.slice(0, 6).join(', ')}</b>{c.introducers.length > 6 ? ` and ${c.introducers.length - 6} more` : ''}.</>}
+        {row?.unlocked_from_name && c.connection && <> You met through <b style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{row.unlocked_from_name}</b>.</>}
       </div>
       <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap', fontSize: 12.5 }}>
-        {profile && <a href={profile} target="_blank" rel="noreferrer" style={{ color: '#3498DB', textDecoration: 'none' }}>Profile on LinkedIn ↗</a>}
-        {thread && <a href={thread} target="_blank" rel="noreferrer" style={{ color: '#3498DB', textDecoration: 'none' }}>Conversation on LinkedIn ↗</a>}
+        {profile && <a href={profile} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Profile on LinkedIn ↗</a>}
+        {thread && <a href={thread} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Conversation on LinkedIn ↗</a>}
       </div>
 
       <Yours c={c} onChange={onChange} />
 
       <div style={h4}>Conversations</div>
-      {c.conversations.length === 0 && <div style={{ color: '#8b9a9a', fontSize: 12.5 }}>None one to one.</div>}
+      {c.conversations.length === 0 && <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5 }}>None one to one.</div>}
       {c.conversations.map((conv) => (
         <div key={conv.id} style={{ border: LINE, borderRadius: 6, marginBottom: 6, overflow: 'hidden' }}>
           <div
@@ -506,29 +506,29 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
             aria-expanded={open === conv.id}
             onClick={() => setOpen(open === conv.id ? null : conv.id)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(open === conv.id ? null : conv.id); } }}
-            style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '7px 10px', cursor: 'pointer', fontSize: 12.5, background: open === conv.id ? 'rgba(255,255,255,0.04)' : 'none' }}
+            style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '7px 10px', cursor: 'pointer', fontSize: 12.5, background: open === conv.id ? 'rgba(var(--sd-ink, 255, 255, 255), 0.04)' : 'none' }}
           >
-            <span style={{ color: '#dfe8e8' }}>{day(conv.last) || 'No date'}</span>
-            {conv.lastFromThem != null && <span style={{ color: conv.lastFromThem ? '#ff9f43' : '#8b9a9a' }}>{conv.lastFromThem ? 'They wrote last' : 'You wrote last'}</span>}
-            {conv.count != null && <span style={{ color: '#8b9a9a' }}>{plural(conv.count, 'message')}</span>}
-            {conv.mine != null && conv.count != null && conv.mine === conv.count && <span style={chip('rgba(255,255,255,0.06)')}>Only you wrote</span>}
-            {conv.folder && conv.folder !== 'inbox' && <span style={chip('rgba(255,255,255,0.06)')}>{conv.folder}</span>}
+            <span style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{day(conv.last) || 'No date'}</span>
+            {conv.lastFromThem != null && <span style={{ color: conv.lastFromThem ? '#ff9f43' : 'var(--sd-fg-3, #8b9a9a)' }}>{conv.lastFromThem ? 'They wrote last' : 'You wrote last'}</span>}
+            {conv.count != null && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{plural(conv.count, 'message')}</span>}
+            {conv.mine != null && conv.count != null && conv.mine === conv.count && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)')}>Only you wrote</span>}
+            {conv.folder && conv.folder !== 'inbox' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)')}>{conv.folder}</span>}
             {conv.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>InMail</span>}
-            {conv.kind === 'sponsored' && <span style={chip('rgba(255,255,255,0.08)')}>Sponsored</span>}
+            {conv.kind === 'sponsored' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>Sponsored</span>}
             {conv.unread > 0 && <span style={chip('#3498DB', '#fff')}>{conv.unread} unread</span>}
           </div>
           {open === conv.id && <Thread key={`${conv.id}:${token}:${keep}`} id={conv.id} keep={keep} group={false} token={token} />}
         </div>
       ))}
       {c.groups.length > 0 && (
-        <div style={{ fontSize: 12.5, color: '#8b9a9a', marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4 }}>
           Also in {plural(c.groups.length, 'group')}:{' '}
           {c.groups.slice(0, 8).map((id, i) => {
             const g = groups.find((x) => x.id === id);
             return (
               <span key={id}>
                 {i > 0 ? ', ' : ''}
-                <button onClick={() => onPickGroup(id)} style={{ background: 'none', border: 'none', color: '#3498DB', cursor: 'pointer', padding: 0, fontSize: 12.5 }}>{g ? groupLabel(g, nameOf) : 'a group'}</button>
+                <button onClick={() => onPickGroup(id)} style={{ background: 'none', border: 'none', color: 'var(--sd-blue, #3498DB)', cursor: 'pointer', padding: 0, fontSize: 12.5 }}>{g ? groupLabel(g, nameOf) : 'a group'}</button>
               </span>
             );
           })}
@@ -536,18 +536,18 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
       )}
 
       <div style={h4}>Requests</div>
-      {c.invitesOut.length + c.invitesIn.length === 0 && !c.request && <div style={{ color: '#8b9a9a', fontSize: 12.5 }}>None on file.</div>}
+      {c.invitesOut.length + c.invitesIn.length === 0 && !c.request && <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5 }}>None on file.</div>}
       {[...c.invitesOut, ...c.invitesIn].sort((a, b) => (b.t || 0) - (a.t || 0)).map((inv) => (
         <div key={inv.id} style={{ fontSize: 12.5, marginBottom: 6 }}>
-          <span style={{ color: '#dfe8e8' }}>{inv.dir === 'out' ? 'You asked to connect' : 'They asked to connect'}</span>
-          <span style={{ color: '#8b9a9a' }}> · {day(inv.t) || 'no date'} · {c.connection ? 'accepted' : inv.dir === 'out' ? 'pending' : 'not accepted yet'}</span>
-          {keep && inviteNotes[inv.id] && <div style={{ marginTop: 3, padding: '6px 9px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{inviteNotes[inv.id]}</div>}
+          <span style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{inv.dir === 'out' ? 'You asked to connect' : 'They asked to connect'}</span>
+          <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}> · {day(inv.t) || 'no date'} · {c.connection ? 'accepted' : inv.dir === 'out' ? 'pending' : 'not accepted yet'}</span>
+          {keep && inviteNotes[inv.id] && <div style={{ marginTop: 3, padding: '6px 9px', borderRadius: 8, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{inviteNotes[inv.id]}</div>}
         </div>
       ))}
       {c.request && (
         <div style={{ fontSize: 12.5 }}>
-          <span style={{ color: '#dfe8e8' }}>Request tracked in the app</span>
-          <span style={{ color: '#8b9a9a' }}> · {c.request.status}</span>
+          <span style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>Request tracked in the app</span>
+          <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}> · {c.request.status}</span>
         </div>
       )}
     </div>
@@ -595,14 +595,14 @@ function Yours({ c, onChange }) {
   return (
     <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: 'rgba(52,152,219,0.06)', border: '1px solid rgba(52,152,219,0.18)' }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ fontSize: 11.5, color: '#8b9a9a', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <label style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', display: 'flex', flexDirection: 'column', gap: 3 }}>
           Stage
           <select value={entry.stage || ''} onChange={(e) => put({ stage: e.target.value || null })} style={{ ...field, padding: '5px 8px' }}>
             <option value="">Not set (looks like {stageLabel(suggested)})</option>
             {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </label>
-        <label style={{ fontSize: 11.5, color: '#8b9a9a', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <label style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', display: 'flex', flexDirection: 'column', gap: 3 }}>
           Next follow-up
           <input type="date" value={entry.followUp || ''} onChange={(e) => put({ followUp: e.target.value || null })} style={{ ...field, padding: '4px 8px', colorScheme: 'dark' }} />
         </label>
@@ -617,9 +617,9 @@ function Yours({ c, onChange }) {
       )}
       <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {tags.map((t) => (
-          <span key={t} style={{ ...chip('rgba(255,255,255,0.08)'), fontSize: 11.5, display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+          <span key={t} style={{ ...chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)'), fontSize: 11.5, display: 'inline-flex', gap: 4, alignItems: 'center' }}>
             {t}
-            <button aria-label={`Remove ${t}`} onClick={() => put({ tags: tags.filter((x) => x !== t) })} style={{ background: 'none', border: 'none', color: '#8b9a9a', cursor: 'pointer', padding: 0, fontSize: 12 }}>×</button>
+            <button aria-label={`Remove ${t}`} onClick={() => put({ tags: tags.filter((x) => x !== t) })} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-3, #8b9a9a)', cursor: 'pointer', padding: 0, fontSize: 12 }}>×</button>
           </span>
         ))}
         <input
@@ -641,7 +641,7 @@ function Yours({ c, onChange }) {
         rows={4}
         style={{ ...field, width: '100%', marginTop: 10, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.45, boxSizing: 'border-box' }}
       />
-      <div style={{ fontSize: 11, color: state && state !== 'Saved' && state !== 'Saving…' ? '#ff9b9b' : '#778', marginTop: 4, minHeight: 14 }}>{state || ''}</div>
+      <div style={{ fontSize: 11, color: state && state !== 'Saved' && state !== 'Saving…' ? 'var(--sd-fg-2, #ff9b9b)' : 'var(--sd-fg-4, #778)', marginTop: 4, minHeight: 14 }}>{state || ''}</div>
     </div>
   );
 }
@@ -652,13 +652,13 @@ function Group({ g, contacts, nameOf, keep, token, onPick }) {
     <div style={{ fontSize: 13 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: 17 }}>{groupLabel(g, nameOf)}</h3>
-        <span style={chip('rgba(255,255,255,0.08)')}>{g.unknown ? 'To someone unnamed' : 'Group'}</span>
+        <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>{g.unknown ? 'To someone unnamed' : 'Group'}</span>
         {g.unread > 0 && <span style={chip('#3498DB', '#fff')}>{g.unread} unread</span>}
       </div>
-      <div style={{ color: '#8b9a9a', marginTop: 4, fontSize: 12.5 }}>
+      <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4, fontSize: 12.5 }}>
         {[g.last ? `Last active ${day(g.last)}` : null, g.count != null ? plural(g.count, 'message') : null].filter(Boolean).join(' · ')}
       </div>
-      {href && <a href={href} target="_blank" rel="noreferrer" style={{ color: '#3498DB', textDecoration: 'none', fontSize: 12.5, display: 'inline-block', marginTop: 6 }}>Conversation on LinkedIn ↗</a>}
+      {href && <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontSize: 12.5, display: 'inline-block', marginTop: 6 }}>Conversation on LinkedIn ↗</a>}
       {g.people.length > 0 && (
         <>
           <div style={h4}>Who&rsquo;s in it</div>

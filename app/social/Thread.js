@@ -47,9 +47,9 @@ export default function Thread({ id, keep, group, token }) {
     setT({ ...t, start: d.start, messages: [...d.messages, ...t.messages] });
   }
 
-  const pad = { padding: '10px 14px 14px', fontSize: 12.5, color: '#8b9a9a' };
+  const pad = { padding: '10px 14px 14px', fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)' };
   if (!keep) return <div style={pad}>Turn on <b>Keep my messages</b> to read them here.</div>;
-  if (err) return <div style={{ ...pad, color: '#ff9b9b' }}>{err}</div>;
+  if (err) return <div style={{ ...pad, color: 'var(--sd-fg-2, #ff9b9b)' }}>{err}</div>;
   if (!t) return <div style={pad}>Opening…</div>;
   if (!t.total) {
     return (
@@ -60,10 +60,10 @@ export default function Thread({ id, keep, group, token }) {
     );
   }
   return (
-    <div ref={scroller} style={{ maxHeight: 440, overflowY: 'auto', padding: '8px 14px 12px', background: 'rgba(0,0,0,0.2)' }}>
+    <div ref={scroller} style={{ maxHeight: 440, overflowY: 'auto', padding: '8px 14px 12px', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.2)' }}>
       {t.start > 0 && (
         <div style={{ textAlign: 'center', margin: '4px 0 10px' }}>
-          <button onClick={earlier} style={{ background: 'rgba(255,255,255,0.06)', border: LINE, borderRadius: 6, color: '#cfe6f7', cursor: 'pointer', fontSize: 12, padding: '4px 12px' }}>
+          <button onClick={earlier} style={{ background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE, borderRadius: 6, color: 'var(--sd-fg-1, #cfe6f7)', cursor: 'pointer', fontSize: 12, padding: '4px 12px' }}>
             Show earlier ({t.start.toLocaleString()} more)
           </button>
         </div>
@@ -73,13 +73,13 @@ export default function Thread({ id, keep, group, token }) {
           <div style={{ maxWidth: '72%' }}>
             <div style={{
               padding: '7px 11px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-              background: m.fromMe ? 'rgba(52,152,219,0.35)' : 'rgba(255,255,255,0.08)', color: '#eef',
+              background: m.fromMe ? 'rgba(52,152,219,0.35)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #eef)',
               borderBottomRightRadius: m.fromMe ? 4 : 12, borderBottomLeftRadius: m.fromMe ? 12 : 4,
             }}
             >
-              {m.text || <i style={{ color: '#8b9a9a' }}>(no words: an attachment or a reaction)</i>}
+              {m.text || <i style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>(no words: an attachment or a reaction)</i>}
             </div>
-            <div style={{ fontSize: 10.5, color: '#778', marginTop: 2, textAlign: m.fromMe ? 'right' : 'left' }}>
+            <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)', marginTop: 2, textAlign: m.fromMe ? 'right' : 'left' }}>
               {m.fromMe ? 'You' : group ? 'Someone in the group' : 'Them'} · {when(m.t)}
             </div>
           </div>

@@ -337,16 +337,16 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       aria-label="Search people, companies, or who knows them"
       style={{
         width: isMobile ? '100%' : 300, flexShrink: 0, minWidth: 0, height: isMobile ? 44 : 32, boxSizing: 'border-box',
-        padding: '0 12px', borderRadius: 8, outline: 'none', color: '#fff',
+        padding: '0 12px', borderRadius: 8, outline: 'none', color: 'var(--sd-fg-1, #fff)',
         fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
-        border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
       }}
     />
   );
   // "Only show": the rarity chips, beside the tiers on a computer, on their own row on a phone.
   const rarityChips = (
     <>
-      <span title={RARITY_NOTE} style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
+      <span title={RARITY_NOTE} style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
       {RARITY.map((r) => {
         const on = rarities.has(r.key);
         return (
@@ -354,12 +354,12 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
               height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
               fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
-              border: `1px solid ${on ? r.color : 'rgba(255,255,255,0.1)'}`,
-              background: on ? `${r.color}22` : 'rgba(255,255,255,0.03)',
-              color: on ? r.color : '#999',
+              border: `1px solid ${on ? r.color : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
+              background: on ? `${r.color}22` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+              color: on ? r.color : 'var(--sd-fg-3, #999)',
             }}>
             {r.label}
-            <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : '#666', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+            <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : 'var(--sd-fg-4, #666)', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
           </button>
         );
       })}
@@ -369,7 +369,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   return (
     <div style={{
       flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-      background: 'var(--sd-page)', color: '#fff', overflow: 'hidden',
+      background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', overflow: 'hidden',
     }}>
       {/* ── Header: what this is, how many, and what it can't say ── */}
       <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
@@ -379,7 +379,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>Separation</h2>
-          <span style={{ fontSize: 12, color: '#aaa', ...(isMobile ? {} : { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
+          <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #aaa)', ...(isMobile ? {} : { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
             {isMobile
               ? `${plural(summary.people, 'person', 'people')} · ${fmt(summary.byTier.S)} S · ${fmt(summary.multi)} with 2+ ways`
               : `${plural(summary.people, 'person', 'people')} two steps away · ${fmt(summary.byTier.S)} S-tier · ${fmt(summary.multi)} reachable 2+ ways · through ${fmt(summary.bridges)} of your connections`}
@@ -387,14 +387,14 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           {!isMobile && searchBox}
         </div>
         {/* The whole population at a glance: one segment per tier, to scale. */}
-        <div aria-hidden="true" style={{ display: 'flex', gap: 1, height: 6, borderRadius: 3, overflow: 'hidden', margin: '8px 0 6px', background: 'rgba(255,255,255,0.04)' }}>
+        <div aria-hidden="true" style={{ display: 'flex', gap: 1, height: 6, borderRadius: 3, overflow: 'hidden', margin: '8px 0 6px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
           {TIERS.filter((t) => summary.byTier[t] > 0).map((t) => (
             <div key={t} style={{ flex: summary.byTier[t], background: tierColors[t] || '#555' }} />
           ))}
         </div>
         {/* On a computer the line says it on its own; what it ranks is the title's tooltip (RANK_NOTE). */}
         {isMobile && (
-          <div style={{ fontSize: 11, color: '#777', lineHeight: 1.4 }}>Ranks reachability, not people · lists scanned so far</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', lineHeight: 1.4 }}>Ranks reachability, not people · lists scanned so far</div>
         )}
         {summary.peopleOnlyUnresolved > 0 && (
           <div style={{
@@ -413,12 +413,12 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       </div>
 
       {/* ── Controls: search, then the slider with their tier and rarity ── */}
-      <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)' }}>
         <style>{SLIDER_CSS}</style>
         {isMobile && searchBox}
         <div style={{
           marginTop: isMobile ? 8 : 2, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12, position: 'relative',
-          border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)',
+          border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.025)',
         }}>
           {pathOpen && (
             <PathPicker facets={facets} text={pathText} onText={setPathText} isMobile={isMobile}
@@ -427,21 +427,21 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
             // A phone scrolls this strip sideways, so the page itself never does.
             overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
-            <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
+            <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
             {['all', ...TIERS].map((t) => {
               const on = tier === t;
-              const c = t === 'all' ? '#fff' : tierColors[t] || '#888';
+              const c = t === 'all' ? 'var(--sd-fg-1, #fff)' : tierColors[t] || '#888';
               const n = t === 'all' ? summary.people : summary.byTier[t];
               return (
                 <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
                   height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
                   fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                  border: `1px solid ${on ? c : 'rgba(255,255,255,0.1)'}`,
-                  background: on ? `${c === '#fff' ? '#ffffff' : c}22` : 'rgba(255,255,255,0.03)',
-                  color: on ? c : '#999',
+                  border: `1px solid ${on ? c : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
+                  background: on ? (t === 'all' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.13)' : `${c}22`) : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+                  color: on ? c : 'var(--sd-fg-3, #999)',
                 }}>
                   {t === 'all' ? 'All' : t}
-                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : '#666', opacity: 0.85 }}>{fmt(n)}</span>
+                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : 'var(--sd-fg-4, #666)', opacity: 0.85 }}>{fmt(n)}</span>
                 </button>
               );
             })}
@@ -453,7 +453,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   padding: path ? '0 6px 0 12px' : '0 12px', border: 'none', background: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: PATH, maxWidth: isMobile ? 200 : 300, overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                {path ? <>Path<span style={{ fontWeight: 500, color: '#cfe' }}> · {path.label}</span></> : 'Path ▾'}
+                {path ? <>Path<span style={{ fontWeight: 500, color: 'var(--sd-fg-1, #cfe)' }}> · {path.label}</span></> : 'Path ▾'}
               </button>
               {path && (
                 <button type="button" aria-label={`Clear the path: ${path.label}`} onClick={() => pickPath(null)} style={{
@@ -462,7 +462,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               )}
             </span>
             {!isMobile && <>
-              <span aria-hidden="true" style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)', margin: '0 2px' }} />
+              <span aria-hidden="true" style={{ width: 1, height: 18, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', margin: '0 2px' }} />
               {rarityChips}
             </>}
             {isMobile && pillEl}
@@ -472,7 +472,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           {/* On a computer the pill saying where the slider is sits over its middle, in place of "Power" */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'baseline' : 'center', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
             <span style={{ color: RARE, flex: isMobile ? undefined : 1 }}>Rare{isMobile ? '' : ' · one way in'}</span>
-            {isMobile ? <span style={{ color: '#FFD700' }}>Power</span> : pillEl}
+            {isMobile ? <span style={{ color: 'var(--sd-gold, #FFD700)' }}>Power</span> : pillEl}
             <span style={{ color: EASY, flex: isMobile ? undefined : 1, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
           </div>
           <input
@@ -487,13 +487,13 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             {[[0, 'Rarest'], [25, ''], [SLIDER_MIDDLE, 'By power'], [75, ''], [100, 'Easiest']].map(([v, name]) => (
               <button key={v} type="button" onClick={() => changeAt(v)} aria-label={`Set the slider to ${v}${name ? `: ${name}` : ''}`} style={{
                 padding: '2px 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 10,
-                color: at === v ? '#fff' : '#667', fontWeight: at === v ? 700 : 500, fontVariantNumeric: 'tabular-nums',
+                color: at === v ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-4, #667)', fontWeight: at === v ? 700 : 500, fontVariantNumeric: 'tabular-nums',
               }}>{v}{name && !isMobile ? ` · ${name}` : ''}</button>
             ))}
           </div>
           {/* On a phone: the sentence, and the rarity chips on a row of their own */}
           {isMobile && <>
-            <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: '#bbb' }}>
+            <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: 'var(--sd-fg-2, #bbb)' }}>
               <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: 'nowrap',
@@ -515,7 +515,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             <div style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
               <div style={{ height: captionH - 10, overflow: 'hidden', display: isMobile ? 'block' : 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div title={isMobile ? undefined : `${!single && askedShown > 0 ? `${fmt(askedShown)} asked or connected, so it moved on. ` : ''}Solid orange: the top-scored bridge. Dashed: other routes.${single ? ' Pick anyone in the list to aim at them instead.' : cards ? ' A lit pill is someone’s best way in.' : ' Dot size: ways in.'}`}
-                  style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: 'var(--sd-fg-1, #ddd)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {single
                     ? <>Aiming at {target.person.name} · {layout.unscanned
                       ? `${fmt(target.waysIn + layout.unscanned)} mutual connections: ${fmt(target.waysIn)} drawn, ${fmt(layout.unscanned)} in circles not scanned yet`
@@ -526,8 +526,8 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                   onOut={() => setZoom(Math.max(ZOOM_MIN, Math.round((scale - 0.1) * 10) / 10))}
                   onFit={() => setZoom(null)}
                   onIn={() => setZoom(Math.min(ZOOM_MAX, Math.round((scale + 0.1) * 10) / 10))} />}
-                {isMobile && <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
-                  {!single && askedShown > 0 && <span style={{ color: '#FFD700' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
+                {isMobile && <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2, whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
+                  {!single && askedShown > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)' }}>{fmt(askedShown)} asked or connected, so it moved on · </span>}
                   <span style={{ color: ORANGE }}>solid orange</span> = top-scored bridge · dashed = other routes
                   {single ? ' · pick anyone in the list to aim at them instead' : cards ? ' · a lit pill is someone’s best way in' : ' · dot size = ways in'}
                 </div>}
@@ -552,17 +552,17 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                 <>
                   {nextUp.length > 0 && (
                     <div style={{ height: NEXT_H, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Next</span>
+                      <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Next</span>
                       {nextUp.map((p) => (
                         <button key={p.key} type="button" onClick={() => onPick(p)} title={`Aim at ${p.person.name}`} style={{
                           height: 26, padding: '0 10px', borderRadius: 13, cursor: 'pointer', flexShrink: 1, minWidth: 0,
                           fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          border: `1px solid ${(tierColors[p.tier] || '#888')}55`, background: 'rgba(255,255,255,0.03)', color: '#ccc',
+                          border: `1px solid ${(tierColors[p.tier] || '#888')}55`, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', color: 'var(--sd-fg-2, #ccc)',
                         }}>
                           {shortName(p.person.name)}
                           <span style={{ marginLeft: 5, color: tierColors[p.tier] || '#888', fontWeight: 700 }}>{p.score.toFixed(1)}</span>
                           {/* The count they're ordered by: every mutual, scanned or not */}
-                          <span style={{ marginLeft: 5, color: '#667', fontWeight: 500 }}>
+                          <span style={{ marginLeft: 5, color: 'var(--sd-fg-4, #667)', fontWeight: 500 }}>
                             {(() => { const n = Math.max(rarityBy.get(p.key)?.count || 0, p.waysIn); return n === 1 ? '1 mutual' : `${fmt(n)} mutuals`; })()}
                           </span>
                         </button>
@@ -577,13 +577,13 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           {visible.length > 0 && !isMobile && (
             <div style={{
               height: TITLE_ROW, display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 0 15px', boxSizing: 'border-box',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
+              borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)',
             }}>
               <span style={{ fontSize: 15, fontWeight: 800 }}>Ranked by reach</span>
               <span style={{ fontSize: 11, fontWeight: 800, color: '#000', background: '#FFD700', borderRadius: 10, padding: '2px 8px' }}>
                 {fmt(visible.length)}{filtered ? ` of ${fmt(summary.people)}` : ''}
               </span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#777' }}>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sd-fg-4, #777)' }}>
                 order follows the slider · <span style={{ color: slideColor }}>{slide.name.toLowerCase()}</span>
               </span>
             </div>
@@ -592,8 +592,8 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             <div style={{
               height: LABEL_ROW, display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px 0 15px',
               gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
-              fontSize: 9, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5,
-              borderBottom: '1px solid rgba(255,255,255,0.08)', boxSizing: 'border-box',
+              fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', textTransform: 'uppercase', letterSpacing: 0.5,
+              borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', boxSizing: 'border-box',
             }}>
               <span title="Rank by score, then ways in. = means tied">#</span>
               <span />
@@ -619,14 +619,14 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
           ))}
 
           {visible.length === 0 && (
-            <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', color: '#888', fontSize: 13, padding: '0 16px' }}>
+            <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', color: 'var(--sd-fg-3, #888)', fontSize: 13, padding: '0 16px' }}>
               {q
                 ? <>No one matches ‘{query.trim()}’. Search covers names, headlines, companies and who knows them.</>
                 : <>No one here with those filters.</>}
               <div style={{ marginTop: 12 }}>
                 <button type="button" onClick={clearAll} style={{
                   padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                  border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff',
+                  border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.15)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-1, #fff)',
                 }}>Clear</button>
               </div>
             </div>
@@ -644,22 +644,22 @@ const ZOOM_MAX = 1.5;
 /** − | Fit | +, one segmented control as a Mac draws one. The middle says the zoom once you've changed it. */
 function ZoomControl({ scale, fitted, onOut, onFit, onIn }) {
   const seg = (extra = {}) => ({
-    height: 22, minWidth: 26, padding: '0 7px', border: 'none', background: 'none', color: '#c9cdd6',
+    height: 22, minWidth: 26, padding: '0 7px', border: 'none', background: 'none', color: 'var(--sd-fg-2, #c9cdd6)',
     fontSize: 12, fontWeight: 600, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
     ...extra,
   });
-  const line = { width: 1, alignSelf: 'stretch', margin: '4px 0', background: 'rgba(255,255,255,0.14)' };
+  const line = { width: 1, alignSelf: 'stretch', margin: '4px 0', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.14)' };
   return (
     <div role="group" aria-label="Zoom the map" style={{
       display: 'inline-flex', alignItems: 'center', flexShrink: 0, borderRadius: 7, overflow: 'hidden',
-      background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
-      boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 1px 2px rgba(0,0,0,0.35)',
+      background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.13)',
+      boxShadow: '0 1px 0 rgba(var(--sd-ink, 255, 255, 255), 0.05) inset, 0 1px 2px rgba(0,0,0,0.35)',
     }}>
       <button type="button" onClick={onOut} disabled={scale <= ZOOM_MIN + 0.001} title="Zoom out" aria-label="Zoom out"
         style={seg({ fontSize: 15, opacity: scale <= ZOOM_MIN + 0.001 ? 0.35 : 1 })}>−</button>
       <span style={line} />
       <button type="button" onClick={onFit} title={fitted ? 'The whole map fits the window' : 'Fit the whole map in the window'}
-        style={seg({ minWidth: 44, fontSize: 11, fontVariantNumeric: 'tabular-nums', color: fitted ? '#8f96a3' : '#e6e9ef' })}>
+        style={seg({ minWidth: 44, fontSize: 11, fontVariantNumeric: 'tabular-nums', color: fitted ? 'var(--sd-fg-3, #8f96a3)' : 'var(--sd-fg-1, #e6e9ef)' })}>
         {fitted ? 'Fit' : `${Math.round(scale * 100)}%`}
       </button>
       <span style={line} />
@@ -756,7 +756,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
           })}
           {ghosts.map((g, i) => <circle key={`gd-${i}`} cx={g.x} cy={g.y} r={3.3} fill="#4a4f68" stroke="#6b7090" strokeWidth={0.6} strokeOpacity={0.6} />)}
           {ghostLabel && (
-            <text x={ghostLabel.x} y={ghostLabel.y} fontSize={10.5} fontWeight={700} fill="#8a8fa8" style={HALO}>
+            <text x={ghostLabel.x} y={ghostLabel.y} fontSize={10.5} fontWeight={700} fill="var(--sd-fg-3, #8a8fa8)" style={HALO}>
               {`+${fmt(unscanned)} more mutual${unscanned === 1 ? '' : 's'}, in circles not scanned yet`}
               {unscanned > ghosts.length ? ` (${fmt(ghosts.length)} shown)` : ''}
             </text>
@@ -818,12 +818,12 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                   <>
                     <circle r={pp.r} fill="var(--sd-bg)" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
                     <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
-                    <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
-                    <text x={lx} y={-4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
+                    <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="var(--sd-fg-1, #fff)" style={HALO}>{clip(p.person.name)}</text>
+                    <text x={lx} y={-4} fontSize={fs} fill="var(--sd-fg-3, #aaa)" style={HALO}>{clip(subline(p.person))}</text>
                     <text x={lx} y={13} fontSize={fs} fontWeight={700} fill={c} style={HALO}>
                       #{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}
                     </text>
-                    <text x={lx} y={29} fontSize={fs} fill="#ccc" style={HALO}>
+                    <text x={lx} y={29} fontSize={fs} fill="var(--sd-fg-2, #ccc)" style={HALO}>
                       {clip(tag.more
                         ? `${fmt(tag.more)} mutual connections · ${fmt(p.waysIn)} drawn here`
                         : p.waysIn === 1 ? '1 mutual connection: the only way in' : `${fmt(p.waysIn)} mutual connections, all drawn`)}
@@ -838,12 +838,12 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                   <>
                     {sel && <circle r={pp.r + 3.5} fill="none" stroke="#fff" strokeWidth={1.5} />}
                     <circle r={pp.r} fill={c} />
-                    <text x={14} dy="0.35em" fontSize={fs} fill="#ddd" style={HALO}>
+                    <text x={14} dy="0.35em" fontSize={fs} fill="var(--sd-fg-1, #ddd)" style={HALO}>
                       {pp.label}
                       <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
                       {/* How many mutual connections lead to them: one is the rare kind */}
                       {doors && (
-                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? RARE : '#778'}>{tag.text}</tspan>
+                        <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? RARE : 'var(--sd-fg-4, #778)'}>{tag.text}</tspan>
                       )}
                     </text>
                   </>
@@ -870,7 +870,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
               <circle
                 r={b.r}
                 fill={b.unresolved ? 'none' : c}
-                stroke={b.unresolved ? '#777' : 'var(--sd-bg)'}
+                stroke={b.unresolved ? 'var(--sd-fg-4, #777)' : 'var(--sd-bg)'}
                 strokeWidth={b.unresolved ? 1 : 1.5}
                 strokeDasharray={b.unresolved ? '2 2' : undefined}
               />
@@ -907,8 +907,8 @@ function Pill({ b, c, big }) {
   if (b.unresolved) {
     return (
       <g>
-        <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="#11132a" stroke="#555" strokeDasharray="3 3" />
-        <text x={-PILL_W + 14} dy="0.35em" fontSize={11.5} fontStyle="italic" fill="#888">{clipText(b.label, 30)}</text>
+        <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="var(--sd-card, #11132a)" stroke="#555" strokeDasharray="3 3" />
+        <text x={-PILL_W + 14} dy="0.35em" fontSize={11.5} fontStyle="italic" fill="var(--sd-fg-3, #888)">{clipText(b.label, 30)}</text>
       </g>
     );
   }
@@ -921,11 +921,11 @@ function Pill({ b, c, big }) {
   const tw = chipW(tag);
   return (
     <g>
-      <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="#14172e"
-        stroke={hot ? 'rgba(255,215,0,0.55)' : 'rgba(255,255,255,0.09)'} strokeWidth={hot ? 1.3 : 1} />
+      <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="var(--sd-card, #14172e)"
+        stroke={hot ? 'rgba(255,215,0,0.55)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={hot ? 1.3 : 1} />
       <circle cx={-PILL_W + 15} r={10} fill={c} />
       <text x={-PILL_W + 15} dy="0.35em" textAnchor="middle" fontSize={8} fontWeight={800} fill="#000">{initialsFor(b.bridge.name)}</text>
-      <text x={-PILL_W + 31} dy="0.35em" fontSize={12} fontWeight={600} fill="#e8e8f0">
+      <text x={-PILL_W + 31} dy="0.35em" fontSize={12} fontWeight={600} fill="var(--sd-fg-1, #e8e8f0)">
         {clipText(b.bridge.name, Math.max(6, Math.floor((PILL_W - 31 - tw - 10) / 6.4)))}
       </text>
       <rect x={-tw - 7} y={-9} width={tw} height={18} rx={9} fill={`${c}22`} />
@@ -939,13 +939,13 @@ function SmallCard({ p, c, tag, width, sel }) {
   const tw = chipW(tag.text);
   return (
     <g>
-      <rect x={0} y={-20} width={width} height={40} rx={10} fill="#151830" stroke={sel ? '#fff' : 'rgba(255,255,255,0.09)'} strokeWidth={sel ? 1.5 : 1} />
+      <rect x={0} y={-20} width={width} height={40} rx={10} fill="var(--sd-card, #151830)" stroke={sel ? 'var(--sd-fg-1, #fff)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={sel ? 1.5 : 1} />
       <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''}</text>
-      <text x={60} y={-3} fontSize={13} fontWeight={700} fill="#fff">{clipText(p.person.name, Math.floor((width - 60 - 70) / 7))}</text>
-      <text x={60} y={12} fontSize={10.5} fill="#8a8fa8">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
+      <text x={60} y={-3} fontSize={13} fontWeight={700} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor((width - 60 - 70) / 7))}</text>
+      <text x={60} y={12} fontSize={10.5} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
       <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} fill={c}>{p.score.toFixed(1)}</text>
       <rect x={width - 12 - tw} y={4} width={tw} height={14} rx={7}
-        fill={tag.rare ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.06)'} stroke={tag.rare ? 'rgba(0,229,255,0.35)' : 'rgba(255,255,255,0.14)'} />
+        fill={tag.rare ? 'rgba(0,229,255,0.1)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'} stroke={tag.rare ? 'rgba(0,229,255,0.35)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.14)'} />
       <text x={width - 12 - tw / 2} y={11} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tag.rare ? RARE : '#cfd3e6'}>{tag.text}</text>
     </g>
   );
@@ -962,15 +962,15 @@ function BigCard({ p, c, tag, width, fs }) {
   const room = Math.floor((width - tx - 14) / 6.6);
   return (
     <g>
-      <rect x={0} y={-76} width={width} height={152} rx={16} fill="#151830" stroke="rgba(255,215,0,0.45)" />
+      <rect x={0} y={-76} width={width} height={152} rx={16} fill="var(--sd-card, #151830)" stroke="rgba(255,215,0,0.45)" />
       <circle cx={48} r={32} fill="var(--sd-bg)" stroke={c} strokeWidth={3} />
       <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
       <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="#FFD700">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
-      <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="#fff">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
-      <text x={tx} y={1} fontSize={12} fill="#8a8fa8">{clipText(subline(p.person), room)}</text>
+      <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
+      <text x={tx} y={1} fontSize={12} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), room)}</text>
       <rect x={tx} y={12} width={w1} height={20} rx={10} fill="rgba(255,112,67,0.12)" stroke="rgba(255,112,67,0.4)" />
       <text x={tx + w1 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill={EASY}>{first}</text>
-      <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)" />
+      <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(var(--sd-ink, 255, 255, 255), 0.06)" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.14)" />
       <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#cfd3e6">{second}</text>
       <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
         {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count. The other ${fmt(tag.more - p.waysIn)}` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
@@ -991,13 +991,13 @@ const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'no
 function Via({ p, route, tierColors, compact }) {
   if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} />;
   if (!route?.bridge) {
-    return <span style={{ ...ellipsis, color: '#777', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
+    return <span style={{ ...ellipsis, color: 'var(--sd-fg-4, #777)', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
   }
   const b = route.bridge;
   const extra = p.waysIn - 1;
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, fontSize: compact ? 11 : 12 }}>
-      <span style={{ color: '#666', flexShrink: 0 }}>via</span>
+      <span style={{ color: 'var(--sd-fg-4, #666)', flexShrink: 0 }}>via</span>
       {!compact && <Avatar person={b} size={16} tierColors={tierColors} />}
       <span style={{ ...ellipsis, color: tierColors[b.tier] || '#aaa', fontWeight: 600, minWidth: 0 }}>{compact ? shortName(b.name) : b.name}</span>
       {extra > 0 && (
@@ -1018,10 +1018,10 @@ function WayIn({ p, route, tierColors }) {
     <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }} title={`Every way in:\n${everyRoute(p)}`}>
       {b ? <Avatar person={b} size={26} tierColors={tierColors} /> : <span style={{ width: 26, height: 26, borderRadius: '50%', border: '1px dashed #666', flexShrink: 0 }} />}
       <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <span style={{ ...ellipsis, fontSize: 13, fontWeight: 700, color: b ? tierColors[b.tier] || '#ddd' : '#777', fontStyle: b ? 'normal' : 'italic' }}>
+        <span style={{ ...ellipsis, fontSize: 13, fontWeight: 700, color: b ? tierColors[b.tier] || 'var(--sd-fg-1, #ddd)' : 'var(--sd-fg-4, #777)', fontStyle: b ? 'normal' : 'italic' }}>
           {b ? b.name : CANT_NAME}
         </span>
-        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? '#99a' : RARE, fontWeight: extra > 0 ? 500 : 700 }}>
+        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? 'var(--sd-fg-3, #99a)' : RARE, fontWeight: extra > 0 ? 500 : 700 }}>
           {extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}
         </span>
       </span>
@@ -1038,7 +1038,7 @@ function RarityBar({ p, rarity }) {
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}
       title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (LinkedIn’s count)'}. ${RARITY_NOTE}`}>
-      <span style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+      <span style={{ height: 6, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', overflow: 'hidden' }}>
         <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, borderRadius: 3, background: info.color }} />
       </span>
       <span style={{ ...ellipsis, fontSize: 10.5, fontWeight: 700, color: info.color }}>
@@ -1055,12 +1055,12 @@ function Tags({ status, rarity }) {
     <>
       {status === 'asked' && (
         <span title="You sent a request. It shows everywhere in the app." style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 800, color: '#FFD700', border: '1px dashed rgba(255,215,0,0.6)', borderRadius: 4, padding: '0 4px',
+          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-gold, #FFD700)', border: '1px dashed rgba(255,215,0,0.6)', borderRadius: 4, padding: '0 4px',
         }}>Request sent</span>
       )}
       {status === 'connected' && (
         <span title="Already one of your connections" style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 800, color: '#00ff88', border: '1px solid rgba(0,255,136,0.5)', borderRadius: 4, padding: '0 4px',
+          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-green, #00ff88)', border: '1px solid rgba(0,255,136,0.5)', borderRadius: 4, padding: '0 4px',
         }}>Connected</span>
       )}
       {info && status !== 'connected' && (
@@ -1086,21 +1086,21 @@ function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
       else if (companies.length === 1 && !sectors.length) onPick({ kind: 'company', key: companies[0].name, label: companies[0].name });
     }
   };
-  const sub = { fontSize: 9, fontWeight: 700, color: '#667', letterSpacing: 1, textTransform: 'uppercase', margin: '10px 0 6px' };
+  const sub = { fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-4, #667)', letterSpacing: 1, textTransform: 'uppercase', margin: '10px 0 6px' };
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
       <div role="dialog" aria-label="Pick a sector or a company" style={{
         position: 'absolute', zIndex: 41, top: isMobile ? 52 : 44, left: isMobile ? 6 : 14, width: isMobile ? 'calc(100% - 12px)' : 'min(560px, calc(100% - 28px))',
         maxHeight: 340, overflowY: 'auto', boxSizing: 'border-box', padding: 12, borderRadius: 12,
-        background: '#0c101e', border: `1px solid ${PATH}55`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+        background: 'var(--sd-surface, #0c101e)', border: `1px solid ${PATH}55`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
       }}>
         <input
           autoFocus type="search" value={text} onChange={(e) => onText(e.target.value)} onKeyDown={onKey}
           placeholder="Type a sector or a company" aria-label="Type a sector or a company"
           style={{
             width: '100%', height: isMobile ? 44 : 34, boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, outline: 'none',
-            color: '#fff', fontSize: isMobile ? 16 : 13, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)',
+            color: 'var(--sd-fg-1, #fff)', fontSize: isMobile ? 16 : 13, border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.14)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)',
           }}
         />
         {sectors.length > 0 && <div style={sub}>Sectors · inferred from company names and headlines</div>}
@@ -1108,11 +1108,11 @@ function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
           {sectors.map((i) => (
             <button key={i.key} type="button" onClick={() => onPick({ kind: 'sector', key: i.key, label: i.label, color: i.color })} style={{
               height: 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
-              border: `1px solid ${i.color}66`, background: `${i.color}14`, color: '#ddd', display: 'inline-flex', alignItems: 'center', gap: 6,
+              border: `1px solid ${i.color}66`, background: `${i.color}14`, color: 'var(--sd-fg-1, #ddd)', display: 'inline-flex', alignItems: 'center', gap: 6,
             }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: i.color }} />
               {i.label}
-              <span style={{ fontWeight: 500, color: '#889' }}>{fmt(i.count)}</span>
+              <span style={{ fontWeight: 500, color: 'var(--sd-fg-3, #889)' }}>{fmt(i.count)}</span>
             </button>
           ))}
         </div>
@@ -1121,15 +1121,15 @@ function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
           {companies.map((c) => (
             <button key={c.name} type="button" onClick={() => onPick({ kind: 'company', key: c.name, label: c.name })} style={{
               height: 28, padding: '0 10px', borderRadius: 14, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
-              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#ccc',
+              border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-2, #ccc)',
             }}>
               {c.name}
-              <span style={{ marginLeft: 6, fontWeight: 500, color: '#889' }}>{fmt(c.count)}</span>
+              <span style={{ marginLeft: 6, fontWeight: 500, color: 'var(--sd-fg-3, #889)' }}>{fmt(c.count)}</span>
             </button>
           ))}
         </div>
         {!sectors.length && !companies.length && (
-          <div style={{ fontSize: 12, color: '#888', padding: '12px 2px 4px' }}>
+          <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #888)', padding: '12px 2px 4px' }}>
             {facets ? `Nothing matches ‘${text.trim()}’.` : 'Reading where everyone works…'}
           </div>
         )}
@@ -1145,10 +1145,10 @@ const EASY = '#FF7043';
 const SLIDER_CSS = `
 .sepslide { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; background: transparent; cursor: pointer; }
 .sepslide::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
 .sepslide::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.45); }
-.sepslide:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 3px; border-radius: 6px; }
+.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
+.sepslide:focus-visible { outline: 2px solid rgba(var(--sd-ink, 255, 255, 255), 0.7); outline-offset: 3px; border-radius: 6px; }
 `;
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
@@ -1173,47 +1173,47 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
       aria-pressed={selected}
       onClick={() => onPick(p)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(p); } }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = base; }}
       style={{
         position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box',
         display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px',
         gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
         borderLeft: `3px solid ${selected ? ORANGE : 'transparent'}`,
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)',
         background: base, cursor: 'pointer',
       }}
     >
-      <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, color: podium ? c : '#555', whiteSpace: 'nowrap' }}>{rank}</span>
+      <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, color: podium ? c : 'var(--sd-fg-5, #555)', whiteSpace: 'nowrap' }}>{rank}</span>
       <Avatar person={person} size={32} tierColors={tierColors} />
 
       {isMobile ? (
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-            <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff', minWidth: 0 }}>
-              {person.name}{member && <span style={{ fontSize: 10, color: '#666', fontWeight: 400 }}> · out of network</span>}
+            <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)', minWidth: 0 }}>
+              {person.name}{member && <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', fontWeight: 400 }}> · out of network</span>}
             </span>
             <Tags status={status} rarity={rarity} />
           </span>
           <Via p={p} route={route} tierColors={tierColors} compact />
-          <span style={{ ...ellipsis, fontSize: 10, color: '#666' }}>{subline(person)}</span>
+          <span style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>{subline(person)}</span>
         </div>
       ) : (
         <>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? '#888' : '#fff' }}>{person.name}</span>
+              <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)' }}>{person.name}</span>
               <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}55`, borderRadius: 4, padding: '0 4px' }}>{p.tier}</span>
               {/* The rarity has its own column here */}
               <Tags status={status} rarity={null} />
-              {member && <span style={{ flexShrink: 0, fontSize: 10, color: '#666' }}>out of network</span>}
+              {member && <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>out of network</span>}
             </div>
-            <div style={{ ...ellipsis, fontSize: 10, color: '#777', marginTop: 2 }}>{subline(person)}</div>
+            <div style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2 }}>{subline(person)}</div>
           </div>
           <Via p={p} route={route} tierColors={tierColors} />
           <RarityBar p={p} rarity={rarity} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+            <div style={{ flex: 1, height: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 3 }}>
               <div style={{ height: '100%', borderRadius: 3, background: c, width: `${Math.max(0, Math.min(1, p.score / 10)) * 100}%` }} />
             </div>
             <span style={{ fontSize: 15, fontWeight: 800, color: c, width: 30, textAlign: 'right' }}>{p.score.toFixed(1)}</span>
@@ -1224,7 +1224,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
       {isMobile && (
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: c }}>{p.score.toFixed(1)}</div>
-          <div style={{ fontSize: 9, color: '#666', fontWeight: 700 }}>{p.tier}</div>
+          <div style={{ fontSize: 9, color: 'var(--sd-fg-4, #666)', fontWeight: 700 }}>{p.tier}</div>
         </div>
       )}
     </div>

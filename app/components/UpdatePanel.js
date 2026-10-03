@@ -77,7 +77,7 @@ function GitUpdates({ local }) {
           <Body>
             Updated to <Mono>{done.sha}</Mono> — “{done.subject}”.
           </Body>
-          <Body style={{ color: done.needsRestart ? '#FFD700' : undefined }}>
+          <Body style={{ color: done.needsRestart ? 'var(--sd-gold, #FFD700)' : undefined }}>
             {done.needsRestart
               ? 'Stop the app in your terminal and start it again — this update changed how it starts.'
               : 'The page will pick up most changes on its own. Restart the app if anything looks odd.'}
@@ -93,7 +93,7 @@ function GitUpdates({ local }) {
 
           {result && result.behind > 0 && (
             <>
-              <Body style={{ color: '#00ff88' }}>
+              <Body style={{ color: 'var(--sd-green, #00ff88)' }}>
                 {result.behind} update{result.behind === 1 ? '' : 's'} available.
               </Body>
               <pre style={pre}>{result.commits.join('\n')}</pre>
@@ -121,9 +121,9 @@ function GitUpdates({ local }) {
         </>
       )}
 
-      {error && <Body style={{ color: '#ff7676' }}>{error}</Body>}
+      {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Body style={{ fontSize: 12, color: '#667', marginTop: 12 }}>
+      <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 12 }}>
         Nothing is checked automatically and nothing about you is sent — this runs the
         same <Mono>git fetch</Mono> and <Mono>git pull</Mono> you would type yourself.
       </Body>
@@ -303,13 +303,13 @@ function InstalledUpdates({ local }) {
           {result?.latest && !result.newer && (
             <Status tone="ok">
               You&rsquo;re up to date: {result.latest.version} is the newest version.
-              {checkedAt && <span style={{ color: '#8b9a9a' }}> Checked at {checkedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</span>}
+              {checkedAt && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}> Checked at {checkedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</span>}
             </Status>
           )}
 
           {result?.newer && (
             <>
-              <Body style={{ color: '#00ff88' }}>Version {result.latest.version} is available.</Body>
+              <Body style={{ color: 'var(--sd-green, #00ff88)' }}>Version {result.latest.version} is available.</Body>
               {canInstall && (
                 <>
                   <Body>
@@ -376,15 +376,15 @@ function InstalledUpdates({ local }) {
         </>
       )}
 
-      {error && <Body style={{ color: '#ff7676' }}>{error}</Body>}
+      {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Body style={{ fontSize: 12, color: '#667', marginTop: 12 }}>
+      <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 12 }}>
         Nothing is checked automatically. The button asks GitHub for the newest version
         number, and nothing about you is sent.
         {mac && ' Only a second click, Install and restart, downloads the new version.'}
       </Body>
       {local.testReleases && (
-        <Body style={{ fontSize: 12, color: '#FFD700', marginTop: 6 }}>
+        <Body style={{ fontSize: 12, color: 'var(--sd-gold, #FFD700)', marginTop: 6 }}>
           Test mode: releases are read from <Mono>{local.testReleases}</Mono> on this computer, not from GitHub.
         </Body>
       )}
@@ -424,10 +424,10 @@ function Progress({ job, restarting, slow, onCancel }) {
           : 'Preparing the new version…';
   return (
     <div role="status" aria-live="polite" style={{ marginTop: 12 }}>
-      <Body style={{ color: '#e8e8ee' }}>{text}</Body>
+      <Body style={{ color: 'var(--sd-fg-1, #e8e8ee)' }}>{text}</Body>
       {job.phase === 'downloading' && pct !== null && (
         <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Download"
-          style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.08)', marginTop: 10, overflow: 'hidden', maxWidth: 420 }}>
+          style={{ height: 6, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', marginTop: 10, overflow: 'hidden', maxWidth: 420 }}>
           <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #9B59B6, #3498DB)', transition: 'width 0.4s ease' }} />
         </div>
       )}
@@ -448,9 +448,9 @@ function LastUpdate({ report }) {
   const when = new Date(report.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   return (
     <Status tone={report.tone === 'ok' ? 'ok' : 'bad'}>
-      {report.text} <span style={{ color: '#8b9a9a' }}>({when})</span>
+      {report.text} <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>({when})</span>
       {report.tone === 'ok' && report.previous && (
-        <span style={{ display: 'block', fontSize: 12.5, color: '#8b9a9a', marginTop: 4 }}>
+        <span style={{ display: 'block', fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4 }}>
           A copy of the version you had is kept in <Mono>{report.previous}</Mono> until the next update.
           To go back to it, open that file and drag the app it gives you into your Applications folder.
         </span>
@@ -462,7 +462,7 @@ function LastUpdate({ report }) {
 function WhatChanged({ url }) {
   if (!url) return null;
   return (
-    <a href={url} target="_blank" rel="noreferrer" style={{ color: '#3498DB', fontSize: 13.5 }}>
+    <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', fontSize: 13.5 }}>
       What changed →
     </a>
   );
@@ -475,8 +475,8 @@ function Row({ children }) {
 }
 
 const pre = {
-  background: 'rgba(0,0,0,0.45)', border: LINE, borderRadius: 8, padding: 12,
-  margin: '8px 0 0', fontSize: 12, lineHeight: 1.7, color: '#b9c6c6',
+  background: 'rgba(var(--sd-shade, 0, 0, 0), 0.45)', border: LINE, borderRadius: 8, padding: 12,
+  margin: '8px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--sd-fg-2, #b9c6c6)',
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
   whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto',
 };

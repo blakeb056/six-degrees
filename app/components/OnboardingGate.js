@@ -16,7 +16,7 @@ export default function OnboardingGate({ children }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--sd-page)', color: '#fff', padding: 24, textAlign: 'center',
+      background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', padding: 24, textAlign: 'center',
       fontFamily: 'var(--sd-font)',
     }}>
       {!ready ? (
@@ -26,7 +26,7 @@ export default function OnboardingGate({ children }) {
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
             Can’t reach Six Degrees’ local server
           </div>
-          <div style={{ color: '#888', fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ color: 'var(--sd-fg-3, #888)', fontSize: 14, lineHeight: 1.6 }}>
             The page loaded but the app behind it is not answering. If you started it
             from a terminal, check that window for an error, then reload this page.
           </div>

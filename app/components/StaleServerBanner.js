@@ -36,15 +36,15 @@ export default function StaleServerBanner() {
       <span>
         You have newer code on disk ({info.sha}) than this server is running ({info.bootSha}).
         Restart it to see the changes — <code style={{
-          background: 'rgba(0,0,0,0.16)', padding: '1px 6px', borderRadius: 4,
+          background: 'rgba(var(--sd-shade, 0, 0, 0), 0.16)', padding: '1px 6px', borderRadius: 4,
         }}>Ctrl-C</code> in the terminal, then <code style={{
-          background: 'rgba(0,0,0,0.16)', padding: '1px 6px', borderRadius: 4,
+          background: 'rgba(var(--sd-shade, 0, 0, 0), 0.16)', padding: '1px 6px', borderRadius: 4,
         }}>npm run dev</code>.
       </span>
       <button
         onClick={() => setInfo(null)}
         style={{
-          border: 'none', background: 'rgba(0,0,0,0.18)', color: '#1a1200',
+          border: 'none', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.18)', color: '#1a1200',
           borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer',
         }}
       >Dismiss</button>

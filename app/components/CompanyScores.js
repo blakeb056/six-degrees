@@ -7,13 +7,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import LegacyScoresCard from './LegacyScoresCard';
 
-const LINE = '1px solid rgba(255,255,255,0.1)';
+const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const SOURCE = {
-  yours: { label: 'your score', color: '#00ff88' },
-  known: { label: 'known list', color: '#3498DB' },
+  yours: { label: 'your score', color: 'var(--sd-green, #00ff88)' },
+  known: { label: 'known list', color: 'var(--sd-blue, #3498DB)' },
   data: { label: 'public data', color: '#1abc9c' },
-  network: { label: 'estimated: many of your people', color: '#FF6B35' },
-  default: { label: 'unknown company', color: '#778' },
+  network: { label: 'estimated: many of your people', color: 'var(--sd-orange, #FF6B35)' },
+  default: { label: 'unknown company', color: 'var(--sd-fg-4, #778)' },
 };
 
 async function fetchScores() {
@@ -52,7 +52,7 @@ export function ScorePicker({ company, onSet, compact }) {
   return (
     <select disabled={busy} value={company.source === 'yours' ? String(company.score) : 'auto'} onChange={(e) => pick(e.target.value)}
       title="Set this company's score. Auto uses the known list or an estimate."
-      style={{ padding: compact ? '2px 4px' : '4px 6px', borderRadius: 6, border: LINE, background: '#11131c', color: '#dfe6e9', fontSize: 12 }}>
+      style={{ padding: compact ? '2px 4px' : '4px 6px', borderRadius: 6, border: LINE, background: 'var(--sd-card, #11131c)', color: 'var(--sd-fg-1, #dfe6e9)', fontSize: 12 }}>
       <option value="auto">Auto ({company.source === 'yours' ? (company.suggested ?? 'est.') : company.score})</option>
       {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n}</option>)}
     </select>
@@ -99,7 +99,7 @@ export default function CompanyScores({ onRescored, version = 0 }) {
   }, [companies, query, only]);
 
   if (error) return <div style={{ padding: 24, color: '#e74c3c' }}>{error}</div>;
-  if (!companies) return <div style={{ padding: 24, color: '#778' }}>Loading companies…</div>;
+  if (!companies) return <div style={{ padding: 24, color: 'var(--sd-fg-4, #778)' }}>Loading companies…</div>;
 
   const count = (src) => companies.filter((c) => c.source === src).length;
 
@@ -107,56 +107,56 @@ export default function CompanyScores({ onRescored, version = 0 }) {
     <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <LegacyScoresCard onAnswered={legacyAnswered} />
-        <div style={{ padding: 14, borderRadius: 10, border: LINE, background: 'rgba(255,255,255,0.03)', fontSize: 12.5, color: '#cfd8d8', lineHeight: 1.6 }}>
-          <b style={{ color: '#fff' }}>How a power score works.</b> power = <b>title</b> × <b>company weight</b> + bonus.
+        <div style={{ padding: 14, borderRadius: 10, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', fontSize: 12.5, color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.6 }}>
+          <b style={{ color: 'var(--sd-fg-1, #fff)' }}>How a power score works.</b> power = <b>title</b> × <b>company weight</b> + bonus.
           The title (student 1 … founder or C-suite 10) comes from someone&rsquo;s roles, with former roles at 70%; an audience of their own counts like a title (1M+ followers like a director).
           The company weight runs from 0.725 for a company we don’t know (or none found), the middle of the scale, to 1.0 (a company scored 10), so seniority counts for more at a bigger company.
           The bonus is at most +1.5, for investor, YC, an audience in the millions or the top award of any field, and counts half at an unknown company.
           A 1st-degree person whose circle is unusually strong gets up to +2 more: up to +1 for a high share of it at A or S, or +1 for every 25 people there.
-          Tiers are graded on your network’s curve unless you choose the fixed scale (<a href="#tiers" style={{ color: '#3498DB' }}>Tiers</a>, above): your top 3% are S, the next 12% A, the next 25% B (it only lifts, and never lifts anyone under 4 into S or A). On the fixed scale, S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
-          <div style={{ marginTop: 6, color: '#8b9a9a' }}>
+          Tiers are graded on your network’s curve unless you choose the fixed scale (<a href="#tiers" style={{ color: 'var(--sd-blue, #3498DB)' }}>Tiers</a>, above): your top 3% are S, the next 12% A, the next 25% B (it only lifts, and never lifts anyone under 4 into S or A). On the fixed scale, S ≥ 7.5 · A ≥ 5.5 · B ≥ 4 · C ≥ 2.5.
+          <div style={{ marginTop: 6, color: 'var(--sd-fg-3, #8b9a9a)' }}>
             So a VP at a 10 scores 9.0, a founder at an unknown company 7.3, a director at an unknown company 5.4, and an intern at a 10 scores 2.0.
             Set a company&rsquo;s score below and everyone there is rescored.
-            Companies in the sectors you pick (<a href="#sector" style={{ color: '#3498DB' }}>Your sector</a>, above) get +1 or +2; a score you set is never changed.
+            Companies in the sectors you pick (<a href="#sector" style={{ color: 'var(--sd-blue, #3498DB)' }}>Your sector</a>, above) get +1 or +2; a score you set is never changed.
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 10px' }}>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
-            style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, minWidth: 180 }} />
+            style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, minWidth: 180 }} />
           {[['all', `All ${companies.length}`], ['known', `Known list ${count('known')}`], ['data', `Public data ${count('data')}`], ['yours', `Yours ${count('yours')}`], ['network', `Estimated ${count('network')}`], ['default', `Unknown ${count('default')}`]].map(([k, l]) => (
             <button key={k} onClick={() => setOnly(k)} style={{
               padding: '5px 10px', borderRadius: 7, border: LINE, cursor: 'pointer', fontSize: 11.5, fontWeight: 600,
-              background: only === k ? 'rgba(52,152,219,0.25)' : 'transparent', color: only === k ? '#cfe6f7' : '#8b9a9a',
+              background: only === k ? 'rgba(52,152,219,0.25)' : 'transparent', color: only === k ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9a9a)',
             }}>{l}</button>
           ))}
         </div>
 
         <div style={{ borderRadius: 10, border: LINE, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 70px 70px 60px 180px 110px', gap: 8, padding: '8px 12px', fontSize: 10.5, letterSpacing: 0.6, color: '#8b9a9a', background: 'rgba(255,255,255,0.04)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 70px 70px 60px 180px 110px', gap: 8, padding: '8px 12px', fontSize: 10.5, letterSpacing: 0.6, color: 'var(--sd-fg-3, #8b9a9a)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
             <span>COMPANY</span><span style={{ textAlign: 'right' }}>PEOPLE</span><span style={{ textAlign: 'right' }}>YOU KNOW</span><span style={{ textAlign: 'right' }}>DIRECTOR+</span>
             <span style={{ textAlign: 'right' }}>SCORE</span><span>SOURCE</span><span>SET</span>
           </div>
           {shown.slice(0, limit).map((c) => (
-            <div key={c.name} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 70px 70px 60px 180px 110px', gap: 8, padding: '7px 12px', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12.5 }}>
+            <div key={c.name} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 70px 70px 60px 180px 110px', gap: 8, padding: '7px 12px', alignItems: 'center', borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.05)', fontSize: 12.5 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <span title={`${c.industry.label} (inferred)`} style={{ width: 8, height: 8, borderRadius: '50%', background: c.industry.color, flexShrink: 0 }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
               </span>
               <span style={{ textAlign: 'right' }}>{c.people}</span>
-              <span style={{ textAlign: 'right', color: c.d1 ? '#00ff88' : '#556' }}>{c.d1}</span>
-              <span style={{ textAlign: 'right', color: c.senior ? '#FFD700' : '#556' }}>{c.senior}</span>
+              <span style={{ textAlign: 'right', color: c.d1 ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-5, #556)' }}>{c.d1}</span>
+              <span style={{ textAlign: 'right', color: c.senior ? 'var(--sd-gold, #FFD700)' : 'var(--sd-fg-5, #556)' }}>{c.senior}</span>
               <b style={{ textAlign: 'right', fontSize: 15 }}>{c.score}</b>
               <span style={{ fontSize: 11, color: SOURCE[c.source]?.color }}>
                 {SOURCE[c.source]?.label}
-                {c.sectorBonus > 0 && <span style={{ color: '#00ff88' }}> + {c.sectorBonus} your sector</span>}
+                {c.sectorBonus > 0 && <span style={{ color: 'var(--sd-green, #00ff88)' }}> + {c.sectorBonus} your sector</span>}
               </span>
               <ScorePicker company={c} onSet={set} compact />
             </div>
           ))}
         </div>
         {shown.length > limit && (
-          <button onClick={() => setLimit((n) => n + 300)} style={{ marginTop: 10, padding: '7px 14px', borderRadius: 8, border: LINE, background: 'rgba(255,255,255,0.05)', color: '#dfe6e9', cursor: 'pointer', fontSize: 12 }}>
+          <button onClick={() => setLimit((n) => n + 300)} style={{ marginTop: 10, padding: '7px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #dfe6e9)', cursor: 'pointer', fontSize: 12 }}>
             Show more ({shown.length - limit} left)
           </button>
         )}

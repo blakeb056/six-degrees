@@ -74,8 +74,8 @@ export default function TierSection({ onSaved } = {}) {
             const on = saved === o.key;
             return (
               <button key={o.key} type="button" role="radio" aria-checked={on} disabled={saving} onClick={() => choose(o.key)} style={{
-                textAlign: 'left', padding: '12px 14px', borderRadius: 8, cursor: saving ? 'wait' : on ? 'default' : 'pointer', color: '#fff',
-                background: on ? 'rgba(155,89,182,0.14)' : 'rgba(255,255,255,0.03)',
+                textAlign: 'left', padding: '12px 14px', borderRadius: 8, cursor: saving ? 'wait' : on ? 'default' : 'pointer', color: 'var(--sd-fg-1, #fff)',
+                background: on ? 'rgba(155,89,182,0.14)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
                 border: on ? '1px solid rgba(155,89,182,0.6)' : LINE,
               }}>
                 <div style={{ fontSize: 14, fontWeight: 650 }}>{on ? '● ' : '○ '}{o.label}{o.key === 'curve' ? ' (recommended)' : ''}</div>
@@ -86,7 +86,7 @@ export default function TierSection({ onSaved } = {}) {
         </div>
       )}
       {onScreen && (
-        <Body style={{ color: '#FFD700', marginTop: 10 }}>
+        <Body style={{ color: 'var(--sd-gold, #FFD700)', marginTop: 10 }}>
           {onScreen === 'sample'
             ? 'The sample network open in this window keeps its own tiers (they’re the same either way).'
             : 'The CSV import open in this window is always graded on its own curve.'}{' '}

@@ -54,7 +54,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
   return (
     <header style={{
-      position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0,
+      position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', flexShrink: 0,
       // Clear, or frosted glass on a glass theme (lib/themes.js).
       background: 'var(--sd-header)', backdropFilter: 'var(--sd-header-blur)', WebkitBackdropFilter: 'var(--sd-header-blur)',
     }}>
@@ -72,7 +72,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
           {/* Settings: also in CSV or sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <Link href="/settings" title="Settings" aria-label="Settings" style={{
             width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
+            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{'⚙︎'}</Link>}
           {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
@@ -121,7 +121,7 @@ function NotificationBell({ isMobile, onOpen, openId }) {
     <div style={{ position: 'relative' }}>
       <button onClick={() => setOpen(!open)} title="Notifications" aria-label={unseen ? `Notifications, ${unseen} new` : 'Notifications'} style={{
         width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
-        background: 'rgba(255,255,255,0.06)', color: '#888', fontSize: isMobile ? 12 : 14,
+        background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 12 : 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
       }}>
         🔔
@@ -136,41 +136,41 @@ function NotificationBell({ isMobile, onOpen, openId }) {
       {open && (
         <div style={{
           position: 'absolute', top: 40, right: 0, width: 320, maxHeight: 400,
-          background: 'color-mix(in srgb, var(--sd-bg) 97%, transparent)', border: '1px solid rgba(255,255,255,0.1)',
+          background: 'color-mix(in srgb, var(--sd-bg) 97%, transparent)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
           borderRadius: 12, overflow: 'hidden', zIndex: 100,
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700, fontSize: 14 }}>Notifications</span>
             {unseen > 0 && (
               <button onClick={() => {
                 fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark-all-seen' }) });
                 setNotes((prev) => prev.map((n) => ({ ...n, seen: true })));
-              }} style={{ background: 'none', border: 'none', color: '#3498DB', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+              }} style={{ background: 'none', border: 'none', color: 'var(--sd-blue, #3498DB)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
                 Mark all read
               </button>
             )}
           </div>
           <div style={{ overflowY: 'auto', maxHeight: 340 }}>
             {notes.length === 0 ? (
-              <div style={{ padding: 20, textAlign: 'center', color: '#555', fontSize: 12 }}>No notifications yet</div>
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--sd-fg-5, #555)', fontSize: 12 }}>No notifications yet</div>
             ) : notes.slice(0, 20).map((n) => (
               <div key={n.id} role="button" tabIndex={0}
                 onClick={() => show(n)}
                 onKeyDown={(e) => { if (e.key === 'Enter') show(n); }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = n.seen ? 'transparent' : 'rgba(255,215,0,0.04)'; }}
                 style={{
-                  padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer',
+                  padding: '10px 16px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)', cursor: 'pointer',
                   background: n.seen ? 'transparent' : 'rgba(255,215,0,0.04)',
                 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>{n.icon || '📌'}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: n.seen ? '#888' : '#fff' }}>{n.title}<span style={{ color: '#556', marginLeft: 6 }}>›</span></div>
-                    {n.message && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{n.message}</div>}
-                    <div style={{ fontSize: 9, color: '#444', marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: n.seen ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)' }}>{n.title}<span style={{ color: 'var(--sd-fg-5, #556)', marginLeft: 6 }}>›</span></div>
+                    {n.message && <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', marginTop: 2 }}>{n.message}</div>}
+                    <div style={{ fontSize: 9, color: 'var(--sd-fg-5, #444)', marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString()}</div>
                   </div>
                 </div>
               </div>
@@ -219,7 +219,7 @@ function RefreshButton({ isMobile }) {
         // connections"), and the same words as the Scan page's button.
         height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
         border: '1px solid rgba(0,255,136,0.3)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.45 : 1,
-        background: 'rgba(0,255,136,0.08)', color: '#bff5d9', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
+        background: 'rgba(0,255,136,0.08)', color: 'var(--sd-fg-1, #bff5d9)', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
         display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0,
       }}
     >

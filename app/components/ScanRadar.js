@@ -76,12 +76,12 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
 
   return (
     <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap', padding: '14px 16px', borderRadius: 14,
-      border: '1px solid rgba(0,255,136,0.18)', background: 'radial-gradient(circle at 20% 50%, rgba(0,255,136,0.06), rgba(255,255,255,0.02) 60%)' }}>
+      border: '1px solid rgba(0,255,136,0.18)', background: 'radial-gradient(circle at 20% 50%, rgba(0,255,136,0.06), rgba(var(--sd-ink, 255, 255, 255), 0.02) 60%)' }}>
       <style>{CSS}</style>
       <div style={{ position: 'relative', width: SIZE, height: SIZE, flexShrink: 0 }}>
         <svg width={SIZE} height={SIZE} aria-hidden="true" style={{ position: 'absolute', inset: 0 }}>
           <defs>
-            <radialGradient id="radarBg"><stop offset="0" stopColor="#0f2a22" /><stop offset="1" stopColor="#0a0a1a" /></radialGradient>
+            <radialGradient id="radarBg"><stop offset="0" stopColor="color-mix(in srgb, var(--sd-bg, #0a0a1a) 80%, #00ff88)" /><stop offset="1" stopColor="var(--sd-bg, #0a0a1a)" /></radialGradient>
             <linearGradient id="radarBeam" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#00ff88" stopOpacity="0" /><stop offset="1" stopColor="#00ff88" stopOpacity="0.45" />
             </linearGradient>
@@ -109,15 +109,15 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
             </g>
           )}
           {/* Today's searches against the budget, round the edge */}
-          <path d={arc(R + 5, top, top + 2 * Math.PI - 0.001)} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={5} />
+          <path d={arc(R + 5, top, top + 2 * Math.PI - 0.001)} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.08)" strokeWidth={5} />
           {share > 0 && <path d={arc(R + 5, top, top + 2 * Math.PI * share - 0.001)} fill="none" stroke={tone} strokeWidth={5} strokeLinecap="round" />}
         </svg>
         <button type="button" className="radar-go" onClick={onScan} disabled={disabled}
           style={{
             position: 'absolute', left: C - 62, top: C - 62, width: 124, height: 124, borderRadius: '50%', cursor: disabled ? 'not-allowed' : 'pointer',
-            border: `2px solid ${disabled ? 'rgba(255,255,255,0.12)' : '#00ff88'}`,
-            background: disabled ? 'rgba(20,24,40,0.92)' : 'radial-gradient(circle at 50% 35%, #134d3a, #0b2a22 70%)',
-            color: disabled ? '#667' : '#eafff5', boxShadow: disabled ? 'none' : '0 0 22px rgba(0,255,136,0.25)',
+            border: `2px solid ${disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' : '#00ff88'}`,
+            background: disabled ? 'var(--sd-card, rgba(20,24,40,0.92))' : 'radial-gradient(circle at 50% 35%, #134d3a, #0b2a22 70%)',
+            color: disabled ? 'var(--sd-fg-4, #667)' : 'var(--sd-fg-1, #eafff5)', boxShadow: disabled ? 'none' : '0 0 22px rgba(0,255,136,0.25)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 8,
           }}>
           <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{scanning ? '•••' : 'SCAN'}</span>
@@ -132,7 +132,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
       </div>
 
       <div style={{ flex: 1, minWidth: 260 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: '#6b7090', textTransform: 'uppercase', marginBottom: 8 }}>Speed</div>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--sd-fg-4, #6b7090)', textTransform: 'uppercase', marginBottom: 8 }}>Speed</div>
         <div role="radiogroup" aria-label="Scan speed" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {PACE_NAMES.map((name) => {
             const p = PACES[name];
@@ -144,17 +144,17 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
                 title={`${p.pagePause} s before each page, ${p.chunkCooldown / 60} min more after every 10, profiles ${p.profileGap} s apart`}
                 style={{
                   padding: '10px 8px', borderRadius: 10, cursor: running ? 'not-allowed' : 'pointer', textAlign: 'left',
-                  border: `1.5px solid ${on ? color : 'rgba(255,255,255,0.1)'}`, background: on ? `${color}1a` : 'rgba(255,255,255,0.03)',
-                  color: '#ddd',
+                  border: `1.5px solid ${on ? color : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, background: on ? `${color}1a` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+                  color: 'var(--sd-fg-1, #ddd)',
                 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: on ? color : '#ccd' }}>{p.label}</div>
-                <div style={{ fontSize: 11, color: '#8a8fa8', marginTop: 2 }}>~{searchesPerHour(name)} searches an hour</div>
-                <div style={{ fontSize: 10.5, color: '#6b7090', marginTop: 1 }}>{p.pagePause} s between pages</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: on ? color : 'var(--sd-fg-2, #ccd)' }}>{p.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8a8fa8)', marginTop: 2 }}>~{searchesPerHour(name)} searches an hour</div>
+                <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #6b7090)', marginTop: 1 }}>{p.pagePause} s between pages</div>
               </button>
             );
           })}
         </div>
-        <div style={{ marginTop: 10, fontSize: 12.5, color: '#b8c4c4', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', lineHeight: 1.6 }}>
           {!li
             ? <>Today&rsquo;s searches show here once the scanner can read them.</>
             : left == null
@@ -162,7 +162,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
             : <><b style={{ color: tone }}>{left}</b> of {daily} searches left today
               {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left))} to use them</>}.</>}
         </div>
-        <div style={{ marginTop: 4, fontSize: 11.5, color: '#778', lineHeight: 1.55 }}>
+        <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.55 }}>
           Fast is how the scanner has always run; Medium and Slow only add waiting, so fewer searches an hour reach
           LinkedIn. Your daily budget stays the cap at every speed: slower spreads it out, it doesn&rsquo;t shrink it.
           Slower lowers the odds of a check from LinkedIn; it can&rsquo;t promise there won&rsquo;t be one.

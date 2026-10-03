@@ -31,13 +31,13 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
             <div key={cl.bridge.id} onClick={() => onSelect && onSelect(cl.bridge)}
               style={{
                 padding: 16, borderRadius: 12, cursor: 'pointer',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
                 border: `1px solid ${TIER_COLORS[cl.bridge.tier] || '#333'}30`,
                 borderLeft: `4px solid ${TIER_COLORS[cl.bridge.tier] || '#555'}`,
                 transition: 'all 0.15s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.03)'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 {localPhoto(cl.bridge.profile_image_url) ? (
@@ -53,24 +53,24 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                   }}>{cl.bridge.name?.charAt(0)}</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{cl.bridge.name}</div>
-                  <div style={{ fontSize: 9, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>{cl.bridge.name}</div>
+                  <div style={{ fontSize: 9, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {cl.bridge.headline?.substring(0, 40)}
                   </div>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 800, color: TIER_COLORS[cl.bridge.tier] }}>{cl.bridge.tier}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, fontSize: 10 }}>
-                {cl.sCount > 0 && <span style={{ color: '#FFD700', fontWeight: 600 }}>{cl.sCount}S</span>}
-                {cl.aCount > 0 && <span style={{ color: '#9B59B6', fontWeight: 600 }}>{cl.aCount}A</span>}
-                <span style={{ color: '#666' }}>{cl.total} total</span>
+                {cl.sCount > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 600 }}>{cl.sCount}S</span>}
+                {cl.aCount > 0 && <span style={{ color: 'var(--sd-purple, #9B59B6)', fontWeight: 600 }}>{cl.aCount}A</span>}
+                <span style={{ color: 'var(--sd-fg-4, #666)' }}>{cl.total} total</span>
               </div>
               <div style={{ display: 'flex', marginTop: 8 }}>
                 {cl.members.slice(0, 8).map((m, i) => (
                   <div key={m.id} style={{
                     width: 22, height: 22, borderRadius: '50%', fontSize: 8, fontWeight: 700,
                     background: localPhoto(m.profile_image_url) ? 'transparent' : (TIER_COLORS[m.tier] || '#333'),
-                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--sd-fg-1, #fff)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: '2px solid var(--sd-bg)', marginLeft: i > 0 ? -6 : 0, position: 'relative', zIndex: 8 - i,
                     overflow: 'hidden',
                   }}>
@@ -79,7 +79,7 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                     ) : m.name?.charAt(0)}
                   </div>
                 ))}
-                {cl.total > 8 && <span style={{ fontSize: 9, color: '#555', marginLeft: 4, alignSelf: 'center' }}>+{cl.total - 8}</span>}
+                {cl.total > 8 && <span style={{ fontSize: 9, color: 'var(--sd-fg-5, #555)', marginLeft: 4, alignSelf: 'center' }}>+{cl.total - 8}</span>}
               </div>
             </div>
           ))}
@@ -117,7 +117,7 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                   width: 10, height: 10, borderRadius: '50%', background: TIER_COLORS[tier],
                 }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: TIER_COLORS[tier] }}>{tier}-Tier</span>
-                <span style={{ fontSize: 12, color: '#555' }}>{people.length}</span>
+                <span style={{ fontSize: 12, color: 'var(--sd-fg-5, #555)' }}>{people.length}</span>
               </div>
               {/* Cards grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
@@ -125,12 +125,12 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                   <div key={c.id} onClick={() => onSelect && onSelect(c)}
                     style={{
                       padding: 10, borderRadius: 8, cursor: 'pointer',
-                      background: 'rgba(255,255,255,0.03)',
+                      background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
                       border: `1px solid ${TIER_COLORS[tier]}20`,
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.03)'}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {localPhoto(c.profile_image_url) ? (
@@ -141,18 +141,18 @@ export default function GridView({ connections, degree2 = [], onSelect, mode }) 
                       ) : (
                         <div style={{
                           width: 32, height: 32, borderRadius: '50%', fontSize: 12, fontWeight: 700,
-                          background: TIER_COLORS[tier], color: tier === 'S' ? '#000' : '#fff',
+                          background: TIER_COLORS[tier], color: tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>{c.name?.charAt(0)}</div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                        <div style={{ fontSize: 8, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.headline?.substring(0, 30)}</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--sd-fg-1, #fff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                        <div style={{ fontSize: 8, color: 'var(--sd-fg-4, #666)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.headline?.substring(0, 30)}</div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, alignItems: 'center' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: TIER_COLORS[tier] }}>{parseFloat(c.power_score || 0).toFixed(1)}</span>
-                      <div style={{ flex: 1, marginLeft: 8, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                      <div style={{ flex: 1, marginLeft: 8, height: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', borderRadius: 2 }}>
                         <div style={{ height: '100%', borderRadius: 2, background: TIER_COLORS[tier], width: `${Math.min(100, (parseFloat(c.power_score) || 0) * 10)}%` }} />
                       </div>
                     </div>
