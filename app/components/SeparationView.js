@@ -33,7 +33,7 @@
 // appearing cannot feed a resize loop.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostWaysIn, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostMutuals, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
 import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel, easeOf } from '../../lib/rarity';
 import { hasRequest } from '../../lib/requests-client';
@@ -195,11 +195,12 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
   // Down to one: the person picked, if they're in what's showing, else the top of the list.
   const single = shown === 1;
-  // Down to one, it aims at whoever the most of your connections lead to (all
-  // their lines can be drawn), unless you picked someone; "Next" are the runners-up.
+  // Down to one, it aims at whoever you share the most mutual connections with,
+  // scanned or not (the ones not scanned are grey dots), unless you picked
+  // someone; "Next" are the runners-up.
   const aimable = useMemo(() => {
     if (!single) return [];
-    return mostWaysIn(visible.filter((p) => !statusOf(p)), (p) => rarityBy.get(p.key)?.count || 0, (isMobile ? 3 : 6) + 1);
+    return mostMutuals(visible.filter((p) => !statusOf(p)), (p) => rarityBy.get(p.key)?.count || 0, (isMobile ? 3 : 6) + 1);
   }, [single, visible, statusOf, rarityBy, isMobile]);
   const target = useMemo(() => {
     if (!single) return null;
@@ -237,8 +238,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // Wide enough: connections as pills and people as cards (Blake, 2026-10-03); a phone keeps the dots.
   const cards = !isMobile && cw >= 760;
   const layout = useMemo(
-    () => (single ? convergeLayout(target, cw || 800, isMobile, { cards }) : summitLayout(top, cw || 800, isMobile, { cards })),
-    [single, target, top, cw, isMobile, cards],
+    () => (single
+      ? convergeLayout(target, cw || 800, isMobile, { cards, mutuals: target ? rarityBy.get(target.key)?.count || 0 : 0 })
+      : summitLayout(top, cw || 800, isMobile, { cards })),
+    [single, target, top, cw, isMobile, cards, rarityBy],
   );
   const captionH = isMobile ? 58 : 40;   // fixed, so HEAD is arithmetic; the phone legend takes two lines
   const NEXT_H = nextUp.length ? 38 : 0;
@@ -485,7 +488,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
               <div style={{ height: captionH - 10, overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {single
-                    ? <>Aiming at {target.person.name} · {target.waysIn === 1 ? 'the one connection of yours who leads to them' : `all ${fmt(target.waysIn)} connections of yours who lead to them`}</>
+                    ? <>Aiming at {target.person.name} · {layout.unscanned
+                      ? `${fmt(target.waysIn + layout.unscanned)} mutual connections: ${fmt(target.waysIn)} drawn, ${fmt(layout.unscanned)} in circles not scanned yet`
+                      : target.waysIn === 1 ? 'the one connection of yours who leads to them' : `all ${fmt(target.waysIn)} connections of yours who lead to them`}</>
                     : <>Top {fmt(top.length)} you haven’t asked, of {fmt(visible.length)}{filtered ? ' shown' : ''}{at !== SLIDER_MIDDLE ? ` · ${slide.name.toLowerCase()}` : ''} · every way in drawn</>}
                 </div>
                 <div style={{ fontSize: 10, color: '#777', marginTop: 2, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.35 }}>
@@ -522,7 +527,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
                         }}>
                           {shortName(p.person.name)}
                           <span style={{ marginLeft: 5, color: tierColors[p.tier] || '#888', fontWeight: 700 }}>{p.score.toFixed(1)}</span>
-                          <span style={{ marginLeft: 5, color: '#667', fontWeight: 500 }}>{p.waysIn === 1 ? '1 way' : `${p.waysIn} ways`}</span>
+                          {/* The count they're ordered by: every mutual, scanned or not */}
+                          <span style={{ marginLeft: 5, color: '#667', fontWeight: 500 }}>
+                            {(() => { const n = Math.max(rarityBy.get(p.key)?.count || 0, p.waysIn); return n === 1 ? '1 mutual' : `${fmt(n)} mutuals`; })()}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -636,7 +644,7 @@ function waysTag(p, mutuals) {
 }
 
 const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false, cards = false }) {
-  const { width, height, you, people, bridges, links, spokes } = layout;
+  const { width, height, you, people, bridges, links, spokes, ghosts = [], unscanned = 0, ghostLabel = null, drawn = 1 } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
     for (const l of links) { if (!m.has(l.key)) m.set(l.key, []); m.get(l.key).push(l); }
@@ -662,8 +670,28 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
         <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${cards ? s.x2 - PILL_W : s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
       ))}
 
+      {/* Not as bright when most of the way in is still unscanned: the glow follows the share drawn. */}
       {cards && people.length === 1 && people[0].big && (
-        <circle className="mv" style={at(people[0].x + Math.min(200, (width - people[0].x) / 2), people[0].y)} r={170} fill="url(#sepAimHalo)" />
+        <circle className="mv" style={{ ...at(people[0].x + Math.min(200, (width - people[0].x) / 2), people[0].y), opacity: 0.3 + 0.7 * drawn }} r={170} fill="url(#sepAimHalo)" />
+      )}
+
+      {/* Mutual connections in circles you haven't scanned: grey, each with a faint line in. */}
+      {people.length === 1 && people[0].big && ghosts.length > 0 && (
+        <g className="in" pointerEvents="none">
+          {ghosts.map((g, i) => {
+            const t = people[0];
+            const x2 = cards ? t.x : t.x - t.r - 2;
+            const mx = (g.x + x2) / 2;
+            return <path key={`gl-${i}`} d={`M${g.x},${g.y} C${mx},${g.y} ${mx},${t.y} ${x2},${t.y}`} fill="none" stroke="#8a8fa8" strokeOpacity={0.09} strokeWidth={0.8} />;
+          })}
+          {ghosts.map((g, i) => <circle key={`gd-${i}`} cx={g.x} cy={g.y} r={3.3} fill="#4a4f68" stroke="#6b7090" strokeWidth={0.6} strokeOpacity={0.6} />)}
+          {ghostLabel && (
+            <text x={ghostLabel.x} y={ghostLabel.y} fontSize={10.5} fontWeight={700} fill="#8a8fa8" style={HALO}>
+              {`+${fmt(unscanned)} more mutual${unscanned === 1 ? '' : 's'}, in circles not scanned yet`}
+              {unscanned > ghosts.length ? ` (${fmt(ghosts.length)} shown)` : ''}
+            </text>
+          )}
+        </g>
       )}
       <g className="ppl">
         {people.map((pp) => {
@@ -718,7 +746,7 @@ const SummitMap = memo(function SummitMap({ layout, selectedKey, tierColors, you
                   <SmallCard p={p} c={c} tag={tag} width={Math.max(240, Math.min(340, width - pp.x - 4))} sel={sel} />
                 ) : pp.big ? (
                   <>
-                    <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} />
+                    <circle r={pp.r} fill="#0a0a1a" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
                     <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
                     <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="#fff" style={HALO}>{clip(p.person.name)}</text>
                     <text x={lx} y={-4} fontSize={fs} fill="#aaa" style={HALO}>{clip(subline(p.person))}</text>
@@ -875,11 +903,11 @@ function BigCard({ p, c, tag, width, fs }) {
       <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)" />
       <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#cfd3e6">{second}</text>
       <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
-        {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count;` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
+        {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count. The other ${fmt(tag.more - p.waysIn)}` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
       </text>
       {tag.more > 0 && (
         <text x={tx} y={64} fontSize={10.5} fill="#6b7090">
-          {clipText(`the other ${fmt(tag.more - named)} are in circles you haven’t scanned yet.`, Math.floor((width - tx - 14) / 5.4))}
+          {clipText('are in circles not scanned yet: the grey dots.', Math.floor((width - tx - 14) / 5.4))}
         </text>
       )}
     </g>
