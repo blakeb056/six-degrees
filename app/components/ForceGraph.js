@@ -6,9 +6,10 @@ import { localPhoto } from '../../lib/photos';
 import { recentre } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
-import { LAB_DEFAULTS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
+import { keyFor, routeIndex } from '../../lib/separation';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -64,6 +65,8 @@ const RING_CSS = `
 .lab-focus .dot-rings, .lab-focus .catalyst-ring { opacity: 0.15; }
 .lab-find .gn:not(.found), .lab-find .gl:not(.found) { opacity: 0.07; }
 .lab-find .gn.found { stroke: #fff; stroke-width: 2px; }
+.far text:not(.hub) { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) { .far text, g:not(.far) > text { transition: opacity 0.25s; } }
 @keyframes lab-pop { from { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) { .lab-pop .gn, .lab-pop .gl { animation: lab-pop 0.5s ease-out; } }
 @media (prefers-reduced-motion: reduce) {
@@ -85,6 +88,10 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     }
     return out;
   }, [connections, fullDegree1, fullDegree2, scanNotes]);
+  // Every circle each person two steps away is in, from every circle scanned:
+  // the Galaxy links them to each of those connections, not only the one their
+  // row came through, so a shared person sits between the hubs they join.
+  const routes = useMemo(() => routeIndex(fullDegree2 || []), [fullDegree2]);
   const svgRef = useRef(null);
   const ringRef = useRef(null);
   const sceneRef = useRef(null);  // The scene on screen: { resize, select }
@@ -109,6 +116,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const c = clockNow();
     sceneRef.current?.setTime(c.at);
     sceneRef.current?.setFind(c.find, c.fly);
+    sceneRef.current?.setFit(c.fit);
   }), []);
   useEffect(() => () => stopReplay(), []);
 
@@ -180,7 +188,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? recentre(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current);
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current, routes);
     sceneRef.current = scene;
     scene.select(selectedIdRef.current);
     setClock({ min: scene.range.min, max: scene.range.max, of: scene.range.of });
@@ -201,6 +209,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       // the same nodes, so they fought each other and the graph shook.
       // Refreshing made it worse because nothing ever stopped the old ones.
       scene.simulation.stop();
+      scene.dispose();
       unregister();
       // And any glide or fly-to still under way, which would otherwise go on
       // moving the next scene's view. viewRef already holds where it was going.
@@ -212,7 +221,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     // why onSelect is not a dependency. The size is read through sizeRef: a new
     // size re-fits the view rather than rebuilding.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connections, tierColors, measured, marks]);
+  }, [connections, tierColors, measured, marks, routes]);
 
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -273,7 +282,7 @@ function easeRadius(el, r) {
 // Graph coordinates put you at 0,0, whatever the size of the box; the zoom
 // transform places that in the box. So a new size only moves the view, and a
 // rebuild can start from the view as it was.
-function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null) {
+function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null, routes = new Map()) {
   let colourOf = scheme?.of ?? ((d) => tierColors[d.tier] || '#666');
   const centerNode = {
     id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
@@ -324,6 +333,30 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     const via = parentOf.get(c.id) ?? CENTER_ID;
     return { source: via, target: c.id, near: via !== CENTER_ID };
   });
+  // Every other way in, for someone two steps away who is in more than one
+  // circle on screen: a line to each of those connections too, so they sit
+  // between the hubs they join and tie them together, as a note linked from
+  // two others does in Obsidian. After the first lines, so links[i] stays
+  // connections[i] for the replay.
+  const alsoVia = new Map();   // id → the other connections they're reached through
+  for (const n of nodes) {
+    if (n.degree !== 2 || !parentOf.has(n.id)) continue;
+    const ways = routes.get(keyFor(n));
+    if (!ways || ways.size < 2) continue;
+    const others = [...ways].filter((id) => id != null && id !== parentOf.get(n.id) && drawnD1.has(id));
+    if (others.length) alsoVia.set(n.id, others);
+  }
+  for (const [id, others] of alsoVia) for (const via of others) links.push({ source: via, target: id, near: true, also: true });
+  // How many lines meet at each dot (Size by → Links, as Obsidian sizes a note),
+  // and who has a circle on screen (a hub).
+  const linkCount = new Map();
+  for (const l of links) {
+    linkCount.set(l.source, (linkCount.get(l.source) || 0) + 1);
+    linkCount.set(l.target, (linkCount.get(l.target) || 0) + 1);
+  }
+  const hubs = new Set(parentOf.values());
+  const circleOf = new Map();   // hub → how many hang off them
+  for (const p of parentOf.values()) circleOf.set(p, (circleOf.get(p) || 0) + 1);
 
   const tierRadius = (tier) => {
     switch (tier) { case 'S': return 150; case 'A': return 250; case 'B': return 350; case 'C': return 450; default: return 520; }
@@ -353,7 +386,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const reach = reachCounts(nodes, parentOf);
 
   const nodeRadius = (d) => {
-    if (d.id === CENTER_ID) return 18;
+    if (d.id === CENTER_ID) return L.sizeBy === 'links' ? 24 : 18;
+    // Sized by links, a dot grows with the lines that meet at it: a connection
+    // with a scanned circle is a big hub, someone in three circles a little
+    // bigger than someone in one.
+    if (L.sizeBy === 'links') return Math.min(44, 3.5 + 2.1 * Math.sqrt(linkCount.get(d.id) || 1)) * L.dotSize;
     // Sized by reach, a dot grows with everyone who hangs off it: a 2nd-degree
     // person with a full circle behind them next to one with nobody.
     if (L.sizeBy === 'reach') return Math.min(28, 2.5 + 1.6 * Math.sqrt(reach.get(d.id) || 0)) * L.dotSize;
@@ -398,9 +435,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // through re-fits the destination, and a rebuild starts from it, rather than
   // from a point along the way.
   let heading = null;
-  const zoomBehavior = d3.zoom().scaleExtent([0.3, 4]).on('zoom', (e) => {
+  // Names fade out zoomed out, as Obsidian's text does, all but the hubs'.
+  let labelsG = null;
+  const FAR = 0.85;
+  const zoomBehavior = d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => {
     g.attr('transform', e.transform);
     viewRef.current = { transform: heading ?? e.transform, size: box };
+    labelsG?.classed('far', e.transform.k < FAR);
     placeRing();
   });
   svg.call(zoomBehavior);
@@ -491,14 +532,28 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Each force is today's value times its slider in the lab (1 when it's off).
   const linkBase = isMobileGraph ? 0 : layered ? 0.06 : 0.1;
   const radialBase = layered ? 0.45 : 0.3;
-  const linkDistance = d => (d.near ? Math.max(40, radiusOf(d.target) - radiusOf(d.source)) : radiusOf(d.target)) * L.distance;
+  const linkDistance = (d) => {
+    const base = (d.near ? Math.max(40, radiusOf(d.target) - radiusOf(d.source)) : radiusOf(d.target)) * L.distance;
+    if (L.sizeBy !== 'links') return base;
+    // Sized by links a hub is big, so its circle starts at its edge rather than
+    // under it; and a hub sits as far from you as its circle is wide, so the
+    // circles go round you like petals instead of piling up in the middle.
+    const petal = d.source.id === CENTER_ID ? 7 * Math.sqrt(circleOf.get(d.target.id) || 0) : 0;
+    return base + nodeRadius(d.source) + nodeRadius(d.target) + petal;
+  };
   const charge = d => (d.id === CENTER_ID ? -20 : -1) * L.push;
+  // The center force pulls you, your connections and every hub; someone in a
+  // circle mostly follows their hub, so each circle holds together round it
+  // rather than being drawn into one even disc with all the others.
+  const gravity = d => 0.15 * L.gravity * (hubs.has(d.id) ? 0.5 : d.degree >= 2 ? 0.2 : 1);
+  // Thicker lines show more of themselves too, so a cluster's links read at a distance.
+  const lineOpacity = () => Math.min(0.45, 0.1 + 0.05 * L.lines);
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(Math.min(1, linkBase * L.pull)))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge))
     .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
-    .force('gravityX', isMobileGraph ? null : d3.forceX(0).strength(0.15 * L.gravity))
-    .force('gravityY', isMobileGraph ? null : d3.forceY(0).strength(0.15 * L.gravity))
+    .force('gravityX', isMobileGraph ? null : d3.forceX(0).strength(gravity))
+    .force('gravityY', isMobileGraph ? null : d3.forceY(0).strength(gravity))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
     .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : radiusOf(d), 0, 0).strength(radialBase * L.rings));
   guidesG?.attr('opacity', Math.min(1, L.rings));
@@ -544,7 +599,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const link = g.append('g').selectAll('line').data(links).join('line')
     .attr('class', 'gl')
     .attr('stroke', lineColour)
-    .attr('stroke-opacity', 0.15).attr('stroke-width', 0.5 * L.lines);
+    .attr('stroke-opacity', lineOpacity()).attr('stroke-width', 0.5 * L.lines);
 
   // Catalyst outer glow rings (rendered behind the nodes)
   // A catalyst is the green outline on their dot (design C, with the scan
@@ -691,15 +746,17 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const labelled = (n) => {
     if (findHit && findHit.size <= 40 && findHit.has(n.id)) return true;
     if (!L.labels) return false;
-    return n.id === CENTER_ID || (n.degree === 1 && (L.names === 'all' || n.tier === 'S' || n.is_catalyst));
+    return n.id === CENTER_ID || (n.degree === 1 && (L.names === 'all' || n.tier === 'S' || n.is_catalyst || hubs.has(n.id)));
   };
-  const labelsG = g.append('g');
+  labelsG = g.append('g').classed('far', d3.zoomTransform(svg.node()).k < FAR);
   let labels = labelsG.selectAll('text');
   const drawLabels = () => {
     labels = labelsG.selectAll('text').data(nodes.filter(labelled), d => d.id).join('text')
       .text(d => d.is_catalyst && d.tier !== 'S' ? d.name + ' ⚡' : d.name)
-      .attr('font-size', d => d.id === CENTER_ID ? 14 : 10)
-      .attr('font-weight', d => d.id === CENTER_ID ? 700 : 500)
+      .attr('class', d => (d.id === CENTER_ID || hubs.has(d.id) ? 'hub' : null))
+      // A hub's name grows with its dot, so it still reads with everyone on screen.
+      .attr('font-size', d => d.id === CENTER_ID ? 14 : hubs.has(d.id) ? Math.max(12, Math.min(22, nodeRadius(d) * 0.5)) : 10)
+      .attr('font-weight', d => d.id === CENTER_ID || hubs.has(d.id) ? 700 : 500)
       .attr('fill', d => {
         if (d.id === CENTER_ID) return '#fff';
         if (d.is_catalyst) return '#00ff88';
@@ -713,7 +770,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   const catalystRings = g.selectAll('.catalyst-ring');
 
-  simulation.on('tick', () => {
+  const paint = () => {
     link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
     node.attr('cx', d => d.x).attr('cy', d => d.y);
     catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
@@ -721,7 +778,76 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     labels.attr('x', d => d.x).attr('y', d => d.y);
     if (heatFn) heatDots.attr('cx', d => d.x).attr('cy', d => d.y);
     placeRing();
+  };
+  let tickedAt = 0;
+  simulation.on('tick', () => {
+    tickedAt = performance.now();
+    paint();
+    if (fitArmed && simulation.alpha() < SETTLED) { fitArmed = false; fitView(); }
   });
+
+  // Fit: everyone on screen, once the layout has settled (a layout picked in
+  // the lab, or its Fit button). Asked for through the clock's `fit` count.
+  const SETTLED = 0.06;
+  let fitArmed = false;
+  let lastFit = clockNow().fit;
+  const fitView = () => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    nodes.forEach((n, i) => {
+      if (!shown[i]) return;
+      const r = nodeRadius(n);
+      x0 = Math.min(x0, n.x - r); y0 = Math.min(y0, n.y - r); x1 = Math.max(x1, n.x + r); y1 = Math.max(y1, n.y + r);
+    });
+    if (!Number.isFinite(x0) || !box.width || !box.height) return;
+    const k = Math.max(0.1, Math.min(2, Math.min(box.width / (x1 - x0 + 80), box.height / (y1 - y0 + 80))));
+    moveView(d3.zoomIdentity.translate(box.width / 2 - ((x0 + x1) / 2) * k, box.height / 2 - ((y0 + y1) / 2) * k).scale(k), 750);
+  };
+  let fitCheck = null;
+  const setFit = (fit) => {
+    if (fit === lastFit) return;
+    lastFit = fit;
+    fitArmed = true;
+    // A layout just picked restarts the forces a moment later; a settled one fits now.
+    clearTimeout(fitCheck);
+    fitCheck = setTimeout(() => {
+      if (fitArmed && simulation.alpha() < SETTLED && performance.now() - tickedAt > 100) { fitArmed = false; fitView(); }
+    }, 150);
+  };
+
+  // Orbit (the lab's slider): the whole map turns round you, everyone at once,
+  // so nothing moves against anything else and the layout keeps its shape
+  // (each circle spinning on its own hub was tried: while the forces were still
+  // settling it dragged every circle off its hub). Moved in place every frame
+  // rather than by the forces, so it costs a repaint; a big network repaints
+  // every second or third frame, at the same speed. Never with Reduce Motion,
+  // nor on a phone (whose layout has no physics).
+  const every = nodes.length > 12000 ? 3 : nodes.length > 3000 ? 2 : 1;
+  let orbitTimer = null;
+  let lastT = 0;
+  let frame = 0;
+  const turn = (elapsed) => {
+    if (++frame % every) return;
+    const dt = Math.min(0.1, (elapsed - lastT) / 1000);
+    lastT = elapsed;
+    if (dt <= 0) return;
+    const a = 0.1 * L.orbit * dt;   // radians this frame
+    const c = Math.cos(a), sn = Math.sin(a);
+    for (const n of nodes) {
+      if (n.fx != null) continue;   // you, and anyone being dragged
+      const { x, y } = n;
+      n.x = x * c - y * sn;
+      n.y = x * sn + y * c;
+      // Its momentum turns with it, or while the forces settle it drifts the old way.
+      if (n.vx) { const vx = n.vx; n.vx = vx * c - n.vy * sn; n.vy = vx * sn + n.vy * c; }
+    }
+    // While the forces run, their tick paints.
+    if (performance.now() - tickedAt > 50) paint();
+  };
+  const setOrbit = () => {
+    const on = !isMobileGraph && L.orbit > 0 && !reducedMotion();
+    if (on && !orbitTimer) { lastT = 0; frame = 0; orbitTimer = d3.timer(turn); }
+    if (!on && orbitTimer) { orbitTimer.stop(); orbitTimer = null; }
+  };
 
   // A slider moved: change the running layout in place and let it settle again.
   const setLab = (next) => {
@@ -739,16 +865,17 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       simulation.force('collision').radius(d => nodeRadius(d) + 2);
       if (ringNode) select(ringNode.id);
     }
-    if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines);
+    if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines).attr('stroke-opacity', lineOpacity());
     if (sized || prev.names !== L.names || prev.labels !== L.labels) { drawLabels(); showBorn(); }
     if (!L.on || !L.branch) g.classed('lab-focus', false);
     g.classed('lab-pop', L.on && nodes.length < 5000);
-    const forces = ['gravity', 'rings', 'push', 'pull', 'distance'].some(k => prev[k] !== L[k]);
+    if (prev.orbit !== L.orbit) setOrbit();
+    const forces = FORCE_KEYS.some(k => prev[k] !== L[k]);
     if (!forces && !sized) return;
     simulation.force('link').distance(linkDistance).strength(Math.min(1, linkBase * L.pull));
     simulation.force('charge').strength(charge);
-    simulation.force('gravityX').strength(0.15 * L.gravity);
-    simulation.force('gravityY').strength(0.15 * L.gravity);
+    simulation.force('gravityX').strength(gravity);
+    simulation.force('gravityY').strength(gravity);
     simulation.force('radial').strength(radialBase * L.rings);
     guidesG?.attr('opacity', Math.min(1, L.rings));
     simulation.alpha(Math.max(simulation.alpha(), 0.5)).restart();
@@ -765,6 +892,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   dotRings.each(function (d) { extraEls.set(d.id, [this]); });
   catalystRings.each(function (d) { extraEls.set(d.id, [...(extraEls.get(d.id) || []), this]); });
   const shown = new Uint8Array(nodes.length).fill(1);
+  const idxOf = new Map(nodes.map((n, i) => [n.id, i]));
   const d1 = nodes.filter(n => n.degree === 1);
   const dated = d1.map(n => bornById.get(n.id)).filter(Number.isFinite);
   const range = { min: dated.length ? dated.reduce((m, t) => Math.min(m, t)) : null, max: dated.length ? dated.reduce((m, t) => Math.max(m, t)) : null, of: d1.length };
@@ -788,6 +916,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       nodeEls[i].style.display = display;
       if (linkEls[i - 1]) linkEls[i - 1].style.display = display;
       for (const el of extraEls.get(nodes[i].id) || []) el.style.display = display;
+    }
+    // A line to another way in shows while both its ends do.
+    for (let j = connections.length; j < links.length; j++) {
+      const vis = shown[idxOf.get(links[j].source.id)] && shown[idxOf.get(links[j].target.id)];
+      linkEls[j].style.display = vis ? '' : 'none';
     }
     showBorn();
     if (!stamp) return;
@@ -839,7 +972,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
   };
 
-  return { simulation, resize, select, setLab, setTime, setColours, setFind, range };
+  setOrbit();
+  const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); };
+  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, dispose, range };
 }
 
 function setupDrag(node, simulation, fixedId) {

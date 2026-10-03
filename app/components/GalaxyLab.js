@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, CLUSTERS, ORBIT, layoutOf, labNow, setLab, watchLab,
+  LAB_DEFAULTS, CLUSTERS, ORBIT, LAYOUT_LOOKS, layoutOf, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
@@ -21,16 +21,20 @@ const noLayouts = [];
 
 const DAY = 86400000;
 
+// Obsidian's four forces, by its names, saying what each does to a network
+// (Blake, 2026-10-03: "give the obsidian adjustments making sense to our data
+// sets"), then our own two: the tier rings, and Orbit.
 const FORCES = [
-  { key: 'gravity', label: 'Gravity', min: 0, max: 3, step: 0.01, fmt: (v) => v.toFixed(2), hint: 'Pulls every dot in towards you.' },
-  { key: 'rings', label: 'Rings', min: 0, max: 5, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How hard each tier holds its ring. At 0 the Galaxy finds its own shape.' },
-  { key: 'push', label: 'Push', min: 0, max: 300, step: 1, fmt: (v) => String(v), hint: 'How hard dots push each other apart.' },
-  { key: 'pull', label: 'Pull', min: 0, max: 15, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How hard each person pulls the people who came through them.' },
-  { key: 'distance', label: 'Distance', min: 0.05, max: 6, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How far out those people sit.' },
+  { key: 'gravity', label: 'Center force', min: 0, max: 3, step: 0.01, fmt: (v) => v.toFixed(2), hint: 'Pulls everyone in towards you. Higher keeps the whole network a tighter, rounder disc.' },
+  { key: 'push', label: 'Repel force', min: 0, max: 300, step: 1, fmt: (v) => String(v), hint: 'How hard people push each other apart: the space between clusters.' },
+  { key: 'pull', label: 'Link force', min: 0, max: 15, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How tightly a line holds: your connections to you, a circle to its connection, and someone in several circles to each of them.' },
+  { key: 'distance', label: 'Link distance', min: 0.05, max: 6, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How long the lines are: how far a circle sits from its connection, and your connections from you.' },
+  { key: 'rings', label: 'Rings', min: 0, max: 5, step: 0.05, fmt: (v) => `${v.toFixed(2)}×`, hint: 'How hard each tier holds its ring round you. At 0 the network finds its own shape.' },
 ];
+const ORBIT_SLIDER = { key: 'orbit', label: 'Orbit', min: 0, max: 5, step: 0.05, fmt: (v) => (v ? `${v.toFixed(2)}×` : 'still'), hint: 'Sets the whole map turning round you, every circle with it, so nothing loses its shape. 0 holds still.' };
 const DISPLAY = [
-  { key: 'dotSize', label: 'Dot size', min: 0.2, max: 8, step: 0.05, fmt: (v) => `${v.toFixed(2)}×` },
-  { key: 'lines', label: 'Lines', min: 0, max: 20, step: 0.1, fmt: (v) => `${v.toFixed(1)}×` },
+  { key: 'dotSize', label: 'Node size', min: 0.2, max: 8, step: 0.05, fmt: (v) => `${v.toFixed(2)}×` },
+  { key: 'lines', label: 'Link thickness', min: 0, max: 20, step: 0.1, fmt: (v) => `${v.toFixed(1)}×` },
 ];
 
 const heading = { fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: 1, margin: '12px 0 6px', textTransform: 'uppercase' };
@@ -78,6 +82,15 @@ export function NamesSwitch() {
   );
 }
 
+// Reduce Motion, the computer's accessibility setting: Orbit holds still under it.
+const MOTION = '(prefers-reduced-motion: reduce)';
+const reducedMotion = () => window.matchMedia?.(MOTION).matches ?? false;
+const subscribeMotion = (f) => {
+  const m = window.matchMedia?.(MOTION);
+  m?.addEventListener('change', f);
+  return () => m?.removeEventListener('change', f);
+};
+
 const month = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
 export default function GalaxyLab() {
@@ -99,6 +112,14 @@ export default function GalaxyLab() {
   };
   const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
   const preset = layoutOf(lab);
+  const fit = () => setClock({ fit: clockNow().fit + 1 });
+  // A layout: its forces and its look, then everyone on screen once it settles.
+  const pickLayout = (v) => {
+    const forces = v === 'rings' ? { ...Object.fromEntries(FORCES.map((f) => [f.key, LAB_DEFAULTS[f.key]])), sizeBy: 'power' } : v === 'orbit' ? ORBIT : CLUSTERS;
+    setLab({ ...forces, ...LAYOUT_LOOKS[v] });
+    fit();
+  };
+  const still = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
 
   return (
     <div style={{ marginBottom: 18, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
@@ -128,23 +149,32 @@ export default function GalaxyLab() {
           <Choice
             value={preset}
             options={[['rings', 'Rings'], ['orbit', 'Orbit'], ['clusters', 'Clusters']]}
-            onPick={(v) => setLab(v === 'rings' ? { ...Object.fromEntries(FORCES.map((f) => [f.key, LAB_DEFAULTS[f.key]])), sizeBy: 'power' } : v === 'orbit' ? ORBIT : CLUSTERS)}
+            onPick={pickLayout}
           />
           <div style={{ ...small, marginBottom: 6 }}>
             {preset === 'clusters'
-              ? 'No rings: each connection pulls their circle round them, and a dot grows with everyone behind it.'
+              ? 'As Obsidian draws notes: each connection with a scanned circle is a hub, its circle round it, and everyone sized by their lines. Someone in several circles sits between those hubs, linked to each.'
               : preset === 'orbit'
                 ? 'Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them. Drag a bridge and its circle follows.'
                 : 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.'}
           </div>
 
+          <button onClick={fit} title="Zoom so everyone on the map is on screen" style={{
+            width: '100%', padding: '5px 10px', marginBottom: 4, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#aab',
+          }}>⤢ Fit everyone on screen</button>
+
           <div style={heading}>Forces</div>
           {FORCES.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
+          <Slider spec={ORBIT_SLIDER} value={lab.orbit} />
+          {still && lab.orbit > 0 && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>Reduce Motion is on in your computer&rsquo;s settings, so the map holds still.</div>
+          )}
 
           <div style={heading}>Display</div>
           {DISPLAY.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
           <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Size dots by</div>
-          <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
+          <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['links', 'Links'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
           <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Colour by</div>
           <Choice
             value={lab.colourBy}
@@ -162,7 +192,8 @@ export default function GalaxyLab() {
             </div>
           )}
           <div style={{ fontSize: 11, color: '#aab', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
-          <Choice value={lab.names === 'all' ? 'all' : 'key'} options={[['key', 'S + catalysts'], ['all', 'All 1st']]} onPick={(v) => setLab({ names: v })} />
+          <Choice value={lab.names === 'all' ? 'all' : 'key'} options={[['key', 'Hubs, S, catalysts'], ['all', 'All 1st']]} onPick={(v) => setLab({ names: v })} />
+          <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>Zoomed out, only the hubs keep their names.</div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#aab', cursor: 'pointer' }}>
             <input type="checkbox" checked={lab.branch} onChange={(e) => setLab({ branch: e.target.checked })} style={{ accentColor: '#3498DB' }} />
             Light up a branch on hover
