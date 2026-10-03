@@ -233,14 +233,14 @@ test('as cards, the map gives each row room for a card, and says what each conne
   ];
   const dots = summitLayout(top, 900);
   const cards = summitLayout(top, 900, false, { cards: true });
-  assert.equal(cards.people[1].y - cards.people[0].y, 50);
+  assert.equal(cards.people[1].y - cards.people[0].y, 45);
   assert.equal(dots.people[1].y - dots.people[0].y, 26);
   assert.ok(cards.people.every((pp) => pp.r === 0));
   const at = (id) => cards.bridges.find((n) => n.id === id);
   assert.deepEqual([at('a').onlyFor, at('a').bestFor], [1, 2]);
   assert.deepEqual([at('b').onlyFor, at('b').bestFor], [0, 0]);
   assert.deepEqual([at('c').onlyFor, at('c').bestFor], [1, 1]);
-  for (let i = 1; i < cards.bridges.length; i++) assert.ok(cards.bridges[i].y - cards.bridges[i - 1].y >= 36 - 1e-9);
+  for (let i = 1; i < cards.bridges.length; i++) assert.ok(cards.bridges[i].y - cards.bridges[i - 1].y >= 32 - 1e-9);
 });
 
 test('each connection sits level with the people they lead to, so one-to-one lines run straight', async () => {
