@@ -35,14 +35,14 @@ export default function TierSection({ onSaved } = {}) {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
   const [loadError, setLoadError] = useState(null);
-  // A CSV import or the sample network held in this window: neither is changed
-  // by this (a CSV is always graded on its own curve; the sample keeps its
-  // tiers). This section only renders in the browser (OnboardingGate), so
-  // reading sessionStorage here can't disagree with a server render.
-  const [onScreen] = useState(() => (typeof window === 'undefined' ? null : csvNetworkSource()));
+  // A CSV import or the sample network open instead of yours: neither is
+  // changed by this (a CSV is always graded on its own curve; the sample keeps
+  // its tiers).
+  const [onScreen, setOnScreen] = useState(null);
 
   useEffect(() => {
     let off = false;
+    csvNetworkSource().then((source) => { if (!off) setOnScreen(source); });
     fetch('/api/settings')
       .then((r) => r.json().then((d) => (r.ok ? d : Promise.reject(new Error(d.error || 'Could not load how tiers are graded.')))))
       .then((d) => { if (!off) setSaved(d.settings?.tierScale || 'curve'); })
@@ -89,7 +89,7 @@ export default function TierSection({ onSaved } = {}) {
         <Body style={{ color: 'var(--sd-gold, #FFD700)', marginTop: 10 }}>
           {onScreen === 'sample'
             ? 'The sample network open in this window keeps its own tiers (they’re the same either way).'
-            : 'The CSV import open in this window is always graded on its own curve.'}{' '}
+            : 'The CSV import you have open is always graded on its own curve.'}{' '}
           This applies to networks you&rsquo;ve scanned.
         </Body>
       )}
