@@ -170,6 +170,11 @@ a.dl.primary:hover { color: #1b1400; filter: brightness(1.04); box-shadow: 0 1px
 .dl-alt { margin: 16px 0 0; color: var(--faint); font-size: 14.5px; }
 .dl-alt a { color: var(--text); text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.35); }
 .dl-alt a:hover { text-decoration-color: var(--gold); }
+/* Every platform under the main button, whichever computer this is (Windows and Linux in beta). */
+.dl-platforms { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.dl-platforms a { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; color: var(--text); text-decoration: none; border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.04); }
+.dl-platforms a:hover { border-color: var(--gold); }
+.dl-platforms .beta { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 0 7px; }
 .dl-alt code { color: #d8f5dc; }
 .hero .fine { margin: 8px 0 0; }
 

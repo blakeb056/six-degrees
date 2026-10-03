@@ -143,7 +143,7 @@ const DOWNLOADS = {
       if (chip === 'silicon' && silicon) size = ` · ${silicon} MB`;
       else if (chip === 'intel' && intel) size = ` · ${intel} MB`;
       else if (silicon && intel) size = ` · ${silicon} MB (Apple Silicon), ${intel} MB (Intel)`;
-      line.textContent = `Version ${version} · macOS 13.5 or later${size} · free and open source`;
+      line.textContent = `Version ${version} · macOS 13.5 or later${size} · Windows and Linux in beta · free and open source`;
     })
     .catch(() => { /* keep the fallback lines */ });
 

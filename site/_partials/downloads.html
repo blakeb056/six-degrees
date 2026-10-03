@@ -1,5 +1,6 @@
-<!-- The three download cards on /download/ (gen:downloads). The Linux and Windows
-     buttons are dimmed "Coming soon" buttons; DOWNLOADS at the top of site/app.js turns them on. -->
+<!-- The three download cards on /download/ (gen:downloads). Windows and Linux are a beta
+     (docs/brain/DESKTOP.md D3), so their links name the pre-release, v0.5.1-beta.1; once
+     promoted, point them at releases/latest/download/ like the Mac's (and DOWNLOADS in site/app.js). -->
       <div class="os-grid">
         <article class="os" id="os-mac">
           <header>
@@ -24,48 +25,49 @@
           <p class="os-links"><a href="/download/#install">Install guide</a> · <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS">Checksums</a></p>
         </article>
 
+        <article class="os" id="os-windows">
+          <header>
+            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.8"/></svg>
+            <h3>Windows <span class="pill">beta</span></h3>
+            <span class="os-req">10 or 11</span>
+          </header>
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">
+            <span class="dl-text">
+              <span class="dl-title">Download for Windows</span>
+              <span class="dl-sub">One click · Setup.exe · 177 MB</span>
+            </span>
+          </a>
+          <p class="fine">Installs for you alone, no administrator password, with Start Menu and Desktop shortcuts. Not
+            signed yet: if SmartScreen asks, choose <strong>More info → Run anyway</strong>.</p>
+          <p class="os-links"><a href="/download/#windows">Windows guide</a> · <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/SHA256SUMS">Checksums</a></p>
+        </article>
+
         <article class="os" id="os-linux">
           <header>
             <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m6.5 9.5 3 2.5-3 2.5M11.5 15h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <h3>Linux</h3>
-            <span class="os-req soon" data-when-soon="linux">Coming soon</span>
+            <h3>Linux <span class="pill">beta</span></h3>
+            <span class="os-req">64-bit</span>
           </header>
-          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
-               download is one line in app.js: DOWNLOADS.linux. -->
-          <button type="button" class="dl is-soon" data-soon="linux" data-ready-title="Download for Linux" data-ready-sub="The Linux app" aria-disabled="true">
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">
             <span class="dl-text">
-              <span class="dl-title">Linux app</span>
-              <span class="dl-sub">Coming soon</span>
+              <span class="dl-title">Ubuntu and Debian</span>
+              <span class="dl-sub">.deb · 165 MB</span>
             </span>
-          </button>
+          </a>
+          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz">
+            <span class="dl-text">
+              <span class="dl-title">Any distribution</span>
+              <span class="dl-sub">.tar.gz · 227 MB</span>
+            </span>
+          </a>
           <div class="os-note">
-            <p><strong>Or run it today from the Terminal</strong>, with Node 22.13 or later:</p>
+            <p><strong>Or run it from the Terminal</strong>, with Node 22.13 or later:</p>
             <div class="cmd">
               <code id="cmd-npx">npx six-degrees</code>
               <button type="button" class="copy" data-copy="cmd-npx" aria-label="Copy the Linux command">Copy</button>
             </div>
-            <p class="os-links"><a href="/download/#linux">Linux guide</a> · <a href="https://www.npmjs.com/package/six-degrees">On npm</a></p>
+            <p class="os-links"><a href="/download/#linux">Linux guide</a> · <a href="https://www.npmjs.com/package/six-degrees">On npm</a> · <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/SHA256SUMS">Checksums</a></p>
           </div>
-        </article>
-
-        <article class="os" id="os-windows">
-          <header>
-            <svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.8"/></svg>
-            <h3>Windows</h3>
-            <span class="os-req soon" data-when-soon="windows">Coming soon</span>
-          </header>
-          <!-- A dimmed "Coming soon" button, not a link. The switch that turns it into a
-               download is one line in app.js: DOWNLOADS.windows. -->
-          <button type="button" class="dl is-soon" data-soon="windows" data-ready-title="Download for Windows" data-ready-sub="The Windows app" aria-disabled="true">
-            <span class="dl-text">
-              <span class="dl-title">Windows app</span>
-              <span class="dl-sub">Coming soon</span>
-            </span>
-          </button>
-          <p class="fine" data-when-soon="windows">There's no Windows version yet, and <code>npx six-degrees</code> doesn't run
-            on Windows either.</p>
-          <p class="os-links" data-when-soon="windows"><a href="https://github.com/blakeb056/six-degrees">Watch releases on GitHub</a>
-            (Watch → Custom → Releases) to hear when it's out.</p>
         </article>
       </div>
       <p class="fine center">Every release is on <a href="https://github.com/blakeb056/six-degrees/releases">GitHub

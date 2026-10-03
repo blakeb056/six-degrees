@@ -48,7 +48,9 @@ no server.
 
 <p align="center">
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Six Degrees for a Mac with Apple Silicon (M1 or newer)"></a>
-  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a><br>
+  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Six Degrees for Windows 10 or 11 (beta): one-click Setup.exe"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Six Degrees for Linux (beta): .deb for Ubuntu and Debian"></a>
 </p>
 
 | Platform | Download | Needs |
