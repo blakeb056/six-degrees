@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **All the way to easy, Separation aims at whoever the most of your connections lead to**, with
+  every one of those lines drawn, the strongest first among equals; the "Next" names are the
+  runners-up by the same measure. It used to aim at the top of the list, which could be someone
+  with many mutual connections by LinkedIn's count but only one the app could draw.
 - **The Scan page has a radar, and a speed: Slow, Medium or Fast.** Mapping the 2nd degree starts
   from a round Scan button in the middle of a radar: its sweep turns while a scan runs, and the
   ring round it fills with today's searches against your budget. Beside it, three speeds. Fast is
