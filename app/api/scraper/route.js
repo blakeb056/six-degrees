@@ -69,6 +69,19 @@ function stopChild() {
   state.stopping = true;
   push('Stopping…');
   const pid = child.pid;
+  // Windows has no process groups or SIGTERM. taskkill /T walks the tree the
+  // scanner started; without /F it asks Chrome's windows to close, so the
+  // browser shuts down cleanly and keeps the LinkedIn session. Forced after 5 s.
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/pid', String(pid), '/T'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
+    setTimeout(() => {
+      if (state.child && state.child.pid === pid) {
+        push('Still running — forcing it.');
+        spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
+      }
+    }, 5000);
+    return;
+  }
   try { process.kill(-pid, 'SIGTERM'); }
   catch { try { child.kill('SIGTERM'); } catch {} }
 
@@ -234,11 +247,22 @@ async function look() {
   const chrome =
     process.platform === 'darwin' ? existsSync('/Applications/Google Chrome.app')
       : process.platform === 'linux' ? existsSync('/opt/google/chrome/chrome')
-        : true; // elsewhere Playwright resolves the channel itself
+        : process.platform === 'win32' ? windowsChrome()
+          : true; // elsewhere Playwright resolves the channel itself
 
-  const signedIn = existsSync(path.join(dataDir(), 'chrome-profile', 'Default', 'Cookies'));
+  // Windows' Chrome keeps its cookies one folder down, in Default\Network.
+  const profile = path.join(dataDir(), 'chrome-profile', 'Default');
+  const signedIn = existsSync(path.join(profile, 'Cookies')) || existsSync(path.join(profile, 'Network', 'Cookies'));
 
   return { root, python, chrome, signedIn };
+}
+
+/** Google Chrome on Windows, where Playwright's "chrome" channel looks: for this user, then for everyone. */
+function windowsChrome() {
+  const env = process.env;
+  return [env.LOCALAPPDATA, env.PROGRAMFILES, env['PROGRAMFILES(X86)']]
+    .filter(Boolean)
+    .some((root) => existsSync(path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe')));
 }
 
 function machineChecks() {
@@ -764,7 +788,10 @@ export async function POST(request) {
     try {
       // Its own process group, so cancelling reaches the browser as well. A
       // step's env() makes its own environment from this one.
-      child = spawn(step.cmd, step.args, { cwd: root, env: step.env ? step.env(childEnv) : childEnv, detached: true });
+      // On Windows `detached` means a console of its own, a visible window for
+      // Playwright's driver: there taskkill /T reaches the tree instead (stopChild).
+      const win = process.platform === 'win32';
+      child = spawn(step.cmd, step.args, { cwd: root, env: step.env ? step.env(childEnv) : childEnv, detached: !win, windowsHide: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);

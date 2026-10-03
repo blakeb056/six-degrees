@@ -38,13 +38,14 @@ test('each computer has one pinned build: a name with the version and release, a
   const { release, version, builds } = STANDALONE_PYTHON;
   assert.match(release, /^\d{8}$/);
   assert.match(version, /^3\.12\.\d+$/);
-  assert.deepEqual(Object.keys(builds).sort(), ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']);
+  assert.deepEqual(Object.keys(builds).sort(), ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'win32-x64']);
   const triple = {
     'darwin-arm64': 'aarch64-apple-darwin-install_only',
     'darwin-x64': 'x86_64-apple-darwin-install_only',
     // Linux: the same build without debug symbols (a third of the download).
     'linux-x64': 'x86_64-unknown-linux-gnu-install_only_stripped',
     'linux-arm64': 'aarch64-unknown-linux-gnu-install_only_stripped',
+    'win32-x64': 'x86_64-pc-windows-msvc-install_only_stripped',
   };
   for (const [key, b] of Object.entries(builds)) {
     assert.equal(b.file, `cpython-${version}+${release}-${triple[key]}.tar.gz`, key);
@@ -52,7 +53,7 @@ test('each computer has one pinned build: a name with the version and release, a
     assert.ok(Number.isInteger(b.size) && b.size > 10e6 && b.size < 60e6, `${key}: ${b.size}`);
     assert.ok(Object.isFrozen(b), `${key} can't be changed at run time`);
   }
-  assert.equal(new Set(Object.values(builds).map((b) => b.sha256)).size, 4, 'four different files');
+  assert.equal(new Set(Object.values(builds).map((b) => b.sha256)).size, 5, 'five different files');
 });
 
 test('the download address is GitHub\'s release download for exactly that file', () => {
@@ -64,7 +65,7 @@ test('the download address is GitHub\'s release download for exactly that file',
   assert.equal(b.version, STANDALONE_PYTHON.version);
   assert.equal(standaloneUrl({ file: 'a+b c.tar.gz' }, { release: 'r1' }), `${STANDALONE_BASE}/r1/a%2Bb%20c.tar.gz`);
   assert.equal(standaloneBuild(null), null);
-  assert.equal(standaloneBuild('win32-x64'), null);
+  assert.equal(standaloneBuild('win32-arm64'), null);
   assert.equal(standaloneBuild('constructor'), null, 'only its own keys');
 });
 
@@ -78,10 +79,12 @@ test('the operating system and chip pick the download', () => {
   assert.equal(hostKey({ platform: 'darwin', arch: 'x64', sysctlArm64: '0' }), 'darwin-x64');
   assert.equal(hostKey({ platform: 'linux', arch: 'x64' }), 'linux-x64');
   assert.equal(hostKey({ platform: 'linux', arch: 'arm64' }), 'linux-arm64');
-  for (const [platform, arch] of [['linux', 'ia32'], ['linux', 'arm'], ['linux', 'ppc64'], ['linux', 's390x'], ['win32', 'x64'], ['freebsd', 'x64']]) {
+  // Windows: the desktop app carries its own Python; Set up isn't offered there yet.
+  for (const [platform, arch] of [['linux', 'ia32'], ['linux', 'arm'], ['linux', 'ppc64'], ['linux', 's390x'], ['win32', 'x64'], ['win32', 'arm64'], ['freebsd', 'x64']]) {
     assert.equal(hostKey({ platform, arch }), null, `${platform} ${arch}`);
     assert.equal(standaloneBuild(hostKey({ platform, arch })), null);
   }
+  assert.ok(standaloneBuild('win32-x64'), 'pinned for the Windows desktop build');
 });
 
 test('a Python on this computer fits when the pinned packages install into it: 3.10 to 3.14', () => {
@@ -104,7 +107,7 @@ test('one look says a Python\'s version, whether it can make environments, and w
 test('the app\'s own Python runs on its own packages only, and writes nothing into the app', () => {
   // Isolated by its flags (no PYTHON* setting, no user site-packages, no
   // bytecode, unbuffered for the Scan page's log), not only by its environment.
-  assert.deepEqual([...OWN_PYTHON_FLAGS], ['-E', '-s', '-B', '-u']);
+  assert.deepEqual([...OWN_PYTHON_FLAGS], ['-E', '-s', '-B', '-u', '-X', 'utf8']);   // utf8: Windows' piped stdout is cp1252
   assert.ok(!OWN_PYTHON_FLAGS.includes('-I'), 'not -I: it would hide scrape.py\'s own folder, and image_store with it');
   const given = {
     PATH: '/usr/bin', HOME: '/Users/someone', PYTHONPATH: '/somewhere', PYTHONHOME: '/elsewhere',
@@ -114,7 +117,7 @@ test('the app\'s own Python runs on its own packages only, and writes nothing in
   assert.equal(env.PYTHONNOUSERSITE, '1');
   assert.equal(env.PYTHONDONTWRITEBYTECODE, '1');
   // Nothing else of the user's PYTHON* settings reaches it or what it starts.
-  assert.deepEqual(Object.keys(env).filter((k) => k.startsWith('PYTHON')).sort(), ['PYTHONDONTWRITEBYTECODE', 'PYTHONNOUSERSITE']);
+  assert.deepEqual(Object.keys(env).filter((k) => k.startsWith('PYTHON')).sort(), ['PYTHONDONTWRITEBYTECODE', 'PYTHONNOUSERSITE', 'PYTHONUTF8']);
   assert.equal(env.PATH, '/usr/bin');
   assert.equal(env.PIP_INDEX_URL, 'https://mirror.example/simple', 'not a Python setting: kept');
   assert.equal(given.PYTHONPATH, '/somewhere', 'the environment passed in is left alone');
@@ -136,7 +139,7 @@ test('a scan on the user\'s own Python keeps their environment, and never writes
     assert.deepEqual(cmd.args, [...OWN_PYTHON_FLAGS, script, '--bridge=Ana'], source);
     assert.deepEqual(cmd.env(given), ownPythonEnv(given), source);
   }
-  assert.deepEqual(noBytecodeEnv({ A: '1' }), { A: '1', PYTHONDONTWRITEBYTECODE: '1' });
+  assert.deepEqual(noBytecodeEnv({ A: '1' }), { A: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1' });
 });
 
 // A copy of the scanner's layout: scripts/scrape.py importing image_store from

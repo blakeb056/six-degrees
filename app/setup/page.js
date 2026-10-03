@@ -535,7 +535,7 @@ function SetupInner() {
                 <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
                   Retry hidden ones
                 </Btn>
-                <span style={{ fontSize: 12, color: '#8b9a9a', marginLeft: 10 }}>People whose list was hidden last time, in case they've opened it.</span>
+                <span style={{ fontSize: 12, color: '#8b9a9a', marginLeft: 10 }}>People whose list was hidden last time, in case they&rsquo;ve opened it.</span>
               </div>
               <PausedList
                 paused={s?.paused || []}

@@ -23,7 +23,8 @@
 //           "starting" page meanwhile and comes back to Settings
 //
 // For CI: SIX_DEGREES_SMOKE=1 prints "SIX_DEGREES_READY <address>" once the app
-// has drawn, and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
+// has drawn (and writes the address to SIX_DEGREES_SMOKE_READY=<file>, if given),
+// and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
 
 import { app, BrowserWindow, Menu, dialog, shell, session, nativeTheme } from 'electron';
 
@@ -45,7 +46,8 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..'); // only meaningful when run from a checkout (npm run desktop)
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(REPO, '.next', 'standalone');
-const NODE = app.isPackaged ? path.join(process.resourcesPath, 'node') : (process.env.SIX_DEGREES_NODE || 'node');
+// node.exe on Windows (DESKTOP.md D3); the same Node binary as the Mac's otherwise.
+const NODE = app.isPackaged ? path.join(process.resourcesPath, process.platform === 'win32' ? 'node.exe' : 'node') : (process.env.SIX_DEGREES_NODE || 'node');
 const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/scrape.py
 // The scanner's own Python, inside the app (DESKTOP.md D2): a standalone CPython
 // with the scanner's packages installed when the app was built. The server runs
@@ -53,17 +55,29 @@ const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/s
 // A SIX_DEGREES_PYTHON the app was started with wins, an empty one included,
 // which turns it off: CI does that to check the fallback (the Scan page's
 // Install) still works, and to have a job to stop while quitting.
-const PYTHON = app.isPackaged ? path.join(process.resourcesPath, 'python', 'bin', 'python3') : null;
+// python.exe sits at the top of the folder on Windows, bin/python3 elsewhere.
+const PYTHON = app.isPackaged
+  ? path.join(process.resourcesPath, 'python', ...(process.platform === 'win32' ? ['python.exe'] : ['bin', 'python3']))
+  : null;
 // Absolute before it reaches the server, which runs from its own folder.
 const DATA_DIR = path.resolve(dataDirArg(process.argv) || process.env.SIX_DEGREES_HOME || path.join(os.homedir(), '.six-degrees'));
-const LOG = path.join(os.tmpdir(), 'six-degrees.log');
+// Per user off the Mac: Linux's /tmp is shared, and a second user's copy
+// couldn't open the first one's log, and so couldn't start. (The Mac's tmpdir is per user already.)
+const LOG = path.join(os.tmpdir(), process.platform === 'darwin' ? 'six-degrees.log' : `six-degrees-${os.userInfo().username}.log`);
 const REPO_URL = 'https://github.com/blakeb056/six-degrees';
 const SMOKE = process.env.SIX_DEGREES_SMOKE === '1';
 // This app's own bundle, for the in-app updater, which replaces it. The shell
 // knows it for certain; the server would otherwise have to guess from its folder.
 // process.execPath, not app.getPath('exe'): the same path, and it can't throw
 // here, before the app is ready.
-const APP_BUNDLE = app.isPackaged ? bundlePathFromExe(process.execPath) : null;
+// On Windows and Linux it is the folder the app is installed in (DESKTOP.md D3):
+// the server needs it to know the Python in it is the app's own ('bundled').
+const APP_BUNDLE = !app.isPackaged ? null
+  : process.platform === 'darwin' ? bundlePathFromExe(process.execPath)
+    : path.dirname(process.execPath);
+// What kind of install this is, for Settings → Updates (lib/release.js): only the
+// Mac app replaces itself; on Windows and Linux an update is the new installer.
+const INSTALL_KIND = { darwin: 'mac-app', win32: 'windows-app', linux: 'linux-app' }[process.platform] || 'mac-app';
 
 let server = null;   // the Node server process
 let origin = null;   // http://127.0.0.1:<port>, once chosen
@@ -75,6 +89,8 @@ let pendingPath = startPathArg(process.argv);
 
 app.setName('Six Degrees');
 app.enableSandbox();
+// Windows groups the taskbar button and the Start Menu shortcut by this (scripts/windows/six-degrees.iss).
+if (process.platform === 'win32') app.setAppUserModelId('com.blakeburford.sixdegrees');
 
 if (!app.requestSingleInstanceLock()) {
   // Another copy is running; it brings its window forward (second-instance).
@@ -116,11 +132,13 @@ async function startServer(port, { logMode }) {
       // Tells the server this shell starts it again when it exits with this
       // code, so Settings can offer "Restart now".
       SIX_DEGREES_RESTART_CODE: String(RESTART_EXIT_CODE),
-      ...(app.isPackaged ? { SIX_DEGREES_INSTALL: 'mac-app' } : {}),
+      ...(app.isPackaged ? { SIX_DEGREES_INSTALL: INSTALL_KIND } : {}),
       ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
       ...(PYTHON && process.env.SIX_DEGREES_PYTHON === undefined && existsSync(PYTHON) ? { SIX_DEGREES_PYTHON: PYTHON } : {}),
     },
     stdio: ['ignore', log, log],
+    // No console window for node.exe on Windows (the app has none of its own to share).
+    windowsHide: true,
   });
   closeSync(log);
   server = child;
@@ -236,7 +254,54 @@ function openInApp(pathname) {
 }
 
 function buildMenu() {
-  return Menu.buildFromTemplate([
+  return Menu.buildFromTemplate(process.platform === 'darwin' ? macMenu() : otherMenu());
+}
+
+// Windows and Linux: the menu bar inside the window, with the usual File menu
+// and no Mac-only roles (Services, Hide). About lives under Help there.
+function otherMenu() {
+  return [
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Check for Updates…', click: () => openInApp('/settings?check=updates') },
+        { label: 'Settings…', accelerator: 'Ctrl+,', click: () => openInApp('/settings') },
+        { type: 'separator' },
+        { role: 'quit', label: 'Exit' },
+      ],
+    },
+    { role: 'editMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+        { type: 'separator' },
+        { role: 'toggleDevTools' },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        { label: 'Six Degrees on GitHub', click: () => shell.openExternal(REPO_URL) },
+        { label: 'What Changed', click: () => shell.openExternal(`${REPO_URL}/releases`) },
+        { type: 'separator' },
+        { label: 'Show the Data Folder', click: () => shell.openPath(DATA_DIR) },
+        { label: 'Show the Log', click: () => shell.showItemInFolder(LOG) },
+        { type: 'separator' },
+        { role: 'about', label: 'About Six Degrees' },
+      ],
+    },
+  ];
+}
+
+function macMenu() {
+  return [
     {
       label: 'Six Degrees',
       submenu: [
@@ -279,7 +344,7 @@ function buildMenu() {
         { label: 'Show the Log', click: () => shell.showItemInFolder(LOG) },
       ],
     },
-  ]);
+  ];
 }
 
 // ── quitting ─────────────────────────────────────────────────────────────────
@@ -355,6 +420,10 @@ function reportReadyOnce() {
       }
     } finally {
       console.log(`SIX_DEGREES_READY ${origin}`);
+      // Also to a file: Electron's stdout is hard to catch on Windows (scripts/smoke-desktop.mjs).
+      if (process.env.SIX_DEGREES_SMOKE_READY) {
+        try { writeFileSync(process.env.SIX_DEGREES_SMOKE_READY, `${origin}\n`); } catch { /* the stdout line still says it */ }
+      }
     }
   }, 4000);
 }

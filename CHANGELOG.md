@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1-beta.1] - 2026-10-02 (beta: a pre-release, never installed automatically)
+
+### Added
+- **Six Degrees for Windows and Linux (beta).** The same app as on the Mac, with the scanner's
+  own Python inside, so nothing needs installing before a scan. **Windows:**
+  *Six-Degrees-Windows-Setup.exe* installs it for you with one click (no admin rights), with Start
+  Menu and Desktop shortcuts, and opens it; running a newer one over it updates it. It isn't
+  signed yet, so SmartScreen may ask the first time (*More info → Run anyway*). **Linux:** a
+  `.deb` (`sudo apt install ./Six-Degrees-Linux-x64.deb`) or a `.tar.gz`. Scanning needs Google
+  Chrome on both. Your network stays in your home folder's `.six-degrees`, as on the Mac;
+  uninstalling never touches it. Settings → Updates points to the new installer there.
+
+### Fixed
+- On Windows the scanner would have stopped after its first batch: its progress lines
+  ("→") can't be written in Windows' default text encoding. Its Python now always writes UTF-8.
+
 ## [0.5.0] - 2026-10-02
 
 ### Added

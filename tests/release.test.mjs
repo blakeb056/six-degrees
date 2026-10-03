@@ -26,9 +26,9 @@ test('the launcher says how it was installed', () => {
   assert.equal(installKind({ SIX_DEGREES_INSTALL: 'npm' }, '/Applications/Six Degrees.app/Contents/Resources/app'), 'npm');
 });
 
-test('an older Mac app is recognised by its path', () => {
-  assert.equal(installKind({}, '/Applications/Six Degrees.app/Contents/Resources/app'), 'mac-app');
-  assert.equal(installKind({}, '/Users/x/.npm/_npx/abc/node_modules/six-degrees'), 'npm');
+test('an older Mac app is recognised by its path, on a Mac', () => {
+  assert.equal(installKind({}, '/Applications/Six Degrees.app/Contents/Resources/app', 'darwin'), 'mac-app');
+  assert.equal(installKind({}, '/Users/x/.npm/_npx/abc/node_modules/six-degrees', 'darwin'), 'npm');
 });
 
 test('each install kind gets its own update line', () => {
@@ -44,4 +44,17 @@ test('an npx copy with its own data folder is restarted with it', () => {
   assert.equal(updateCommand('npm', 'owner/repo', { dataDir: null }), 'npx six-degrees@latest');
   // The other kinds keep their data where the app puts it.
   assert.doesNotMatch(updateCommand('mac-app', 'owner/repo', { dataDir: '/data/six' }), /data-dir/);
+});
+
+import { INSTALLER_KINDS } from '../lib/release.js';
+
+test('Windows and Linux apps update by their installer: no Terminal line, and never taken for the Mac app', () => {
+  assert.deepEqual([...INSTALLER_KINDS], ['windows-app', 'linux-app']);
+  assert.equal(installKind({ SIX_DEGREES_INSTALL: 'windows-app' }), 'windows-app');
+  assert.equal(installKind({ SIX_DEGREES_INSTALL: 'linux-app' }), 'linux-app');
+  assert.equal(updateCommand('windows-app', 'owner/repo'), null);
+  assert.equal(updateCommand('linux-app', 'owner/repo'), null);
+  // A path that looks like a Mac app means one only on a Mac.
+  assert.equal(installKind({}, '/x/Six Degrees.app/Contents/Resources/server', 'darwin'), 'mac-app');
+  assert.equal(installKind({}, '/x/Six Degrees.app/Contents/Resources/server', 'linux'), 'npm');
 });
