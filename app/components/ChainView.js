@@ -125,7 +125,7 @@ function trailTo(id, rows) {
   return from != null && rows.some((r) => r.id === from) ? [from, id] : [id];
 }
 
-export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened }) {
+export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened, onCircle }) {
   const containerRef = useRef(null);
   const [hovered, setHovered] = useState(null);
   // The overview's zoom: null until it's changed, which means "fit" (homeZoom below).
@@ -190,6 +190,10 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     trail.push(row);
   }
   const focused = trail.length > 0;
+  // Whose circle is open, for the right panel (page.js → Sidebar → CirclePanel).
+  const inCircle = trail.length ? trail[trail.length - 1] : null;
+  useEffect(() => { onCircle?.(inCircle); }, [inCircle, onCircle]);
+  useEffect(() => () => onCircle?.(null), [onCircle]);
 
   // Esc goes back one circle, unless it's closing something else (the card's
   // large map) or leaving a text box.
