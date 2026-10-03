@@ -10,6 +10,7 @@ import TierSection from '../components/settings/TierSection';
 import TitleSection from '../components/settings/TitleSection';
 import AppearanceSection from '../components/settings/AppearanceSection';
 import CompanyScores from '../components/CompanyScores';
+import UsageSection from '../components/settings/UsageSection';
 import { Section, Body, Mono, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 
@@ -85,6 +86,8 @@ function SettingsInner() {
         {error && <Body style={{ color: 'var(--sd-red, #ff7676)', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
+        {/* How close the LinkedIn account is to the line; the notch and the Scan page's budget link here (#usage). */}
+        <UsageSection />
         <AppearanceSection />
         <Section id="scoring" title="Scores">
           <Body>

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress } from '../../../lib/scan-progress';
-import { linkedinState, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
+import { linkedinState, linkedinUsage, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
@@ -450,6 +450,16 @@ export async function GET(request) {
   if (q.has('job')) return Response.json(job());
   if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
   if (q.has('reach')) return Response.json(scanNotes());
+  // Settings → LinkedIn usage: the scanner's record of searches, profile views
+  // and pauses, counted (lib/linkedin-limits.js linkedinUsage). Reads only; no
+  // checks, no Python, nothing written.
+  if (q.has('usage')) {
+    try {
+      return Response.json(linkedinUsage(dataDir()));
+    } catch {
+      return Response.json({ error: 'The record of LinkedIn searches on this computer could not be read.' }, { status: 500 });
+    }
+  }
   if (q.has('person')) return Response.json(pickedPerson(q.get('person')));
   return Response.json(await status());
 }
