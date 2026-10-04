@@ -56,8 +56,11 @@ This app is designed to run **on your own machine, against your own network**.
   and has no link pointing outside itself. The checksums come from the same
   release, so they catch a corrupted, truncated or swapped download, not a
   compromised GitHub account; that is the same trust as the Terminal
-  installer. The app is only signed ad hoc, so the signature proves it is
-  whole, not who made it. The swap is done by a script shipped inside the app
+  installer. Releases from the first signed one on are signed with Blake
+  Burford's Developer ID and notarized by Apple (docs/brain/DESKTOP.md D4), but
+  the updater checks only that the signature is intact, not who made it (0.8.0
+  and earlier were signed ad hoc, and have nobody to compare against), so the
+  trust is still the release's. The swap is done by a script shipped inside the app
   (`scripts/apply-update.sh`), started with a clean environment, and it moves
   only the app: the data folder is never read, moved or written. It stops only
   the app's own processes, the ones the server names and those whose
@@ -71,8 +74,10 @@ This app is designed to run **on your own machine, against your own network**.
   scanner's packages installed from PyPI when the app is built. Those packages
   are pinned in `scripts/requirements.txt`: an exact version and the SHA-256 of
   every file pip may install, wheels only, so pip refuses any other file and
-  nothing is built from source. The Python is signed ad hoc like the rest of the
-  app and sealed into its signature, which `codesign --verify --deep --strict`
+  nothing is built from source. The Python is signed like the rest of the app
+  (in releases with the Developer ID and the hardened runtime, each program and
+  library on its own; ad hoc in a build without the certificate) and sealed into
+  the app's signature, which `codesign --verify --deep --strict`
   checks (in CI, and before the in-app updater uses a download). It runs
   isolated from the user's Python settings (`-E -s`: no `PYTHON*` variable and
   no user site-packages count), so nothing of the user's can stand in for its

@@ -21,10 +21,15 @@
 // Chromium instead would make the scanner MORE detectable, not less, which
 // defeats the point of driving the user's real browser.
 //
-// Unsigned, because notarisation needs a paid Apple Developer account. macOS
-// will refuse the first launch; the user allows it once in System Settings.
-// An ad-hoc signature is applied anyway — it costs nothing and avoids the
-// separate "app is damaged" failure that unsigned arm64 binaries otherwise hit.
+// Signing (DESKTOP.md D4, scripts/mac-sign.mjs). With a Developer ID identity
+// in SIX_DEGREES_SIGN_IDENTITY, every program and library is signed inside out
+// with the hardened runtime, and with SIX_DEGREES_NOTARY_KEY, _KEY_ID and
+// _ISSUER the app and the disk image are notarized by Apple and stapled: it
+// opens like any Mac app. Releases do this (release.yml). Without an identity
+// (forks, pull requests, a local build) the app is signed ad hoc, exactly as
+// before D4: it costs nothing and avoids the separate "app is damaged" failure
+// that unsigned arm64 binaries otherwise hit, and a copy downloaded in a
+// browser then needs one approval in System Settings.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -38,6 +43,9 @@ import { fileURLToPath } from 'node:url';
 import {
   standaloneBuild, downloadVerified, machoSlices, machoSlice, megabytes, IMPORTS,
 } from '../lib/scanner-python.js';
+import {
+  signingSetup, signDeveloperId, signatureInfo, signerName, signImage, notarize, staple, stapleValid, assess, SigningError,
+} from './mac-sign.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -53,6 +61,16 @@ if (!['classic', 'electron'].includes(SHELL)) {
   console.error(`\n  ✗ --shell must be classic or electron, not ${SHELL}\n`);
   process.exit(1);
 }
+// How this build is signed: ad hoc, or Developer ID (and notarized) when the
+// environment names an identity (scripts/mac-sign.mjs). A setting that can't be
+// right stops the build here, before anything is built.
+const SIGNING = signingSetup(process.env, { exists: existsSync });
+if (SIGNING.error) {
+  console.error(`\n  ✗ ${SIGNING.error}\n`);
+  process.exit(1);
+}
+const DEVELOPER_ID = SIGNING.mode === 'developer-id';
+const NOTARIZE = Boolean(DEVELOPER_ID && SIGNING.notary);
 const APP_NAME = 'Six Degrees';
 const OUT = path.join(ROOT, 'dist');
 const APP = path.join(OUT, `${APP_NAME}.app`);
@@ -115,6 +133,9 @@ function detach(mountPoint, device) {
 rmSync(OUT, { recursive: true, force: true });
 
 step('Building the app');
+console.log(DEVELOPER_ID
+  ? `  it will be signed with Developer ID${NOTARIZE ? ' and notarized by Apple' : ', not notarized (no SIX_DEGREES_NOTARY_* settings)'}`
+  : '  it will be signed ad hoc (no SIX_DEGREES_SIGN_IDENTITY)');
 if (process.argv.includes('--fast') && existsSync(path.join(ROOT, '.next', 'standalone', 'server.js'))) {
   console.log('  --fast: reusing the existing build (make sure it is current)');
 } else {
@@ -290,13 +311,17 @@ writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" enc
 </plist>
 `);
 
-// ---- 4. sign, ad-hoc -------------------------------------------------------
+// ---- 4. sign ---------------------------------------------------------------
+if (DEVELOPER_ID) {
+  signWithDeveloperId(APP);
+} else {
 step('Signing (ad-hoc)');
 try {
   run('codesign', ['--force', '--deep', '--sign', '-', APP]);
   console.log('  signed ad-hoc — no Apple account needed, still unnotarised');
 } catch {
   console.log('  codesign failed; the app will still run after the one-time approval');
+}
 }
 } // end of the classic shell
 
@@ -348,6 +373,10 @@ async function buildElectronShell() {
   // and nothing copies them again (TRAPS §37).
   await bundlePython(path.join(APP, 'Contents', 'Resources'));
 
+  if (DEVELOPER_ID) {
+    signWithDeveloperId(APP);
+    return;
+  }
   step('Signing (ad-hoc)');
   // Electron's framework and helpers must all carry the same kind of signature,
   // or macOS refuses to load them; re-signing the whole bundle ad hoc does that.
@@ -357,6 +386,96 @@ async function buildElectronShell() {
   run('codesign', ['--force', '--deep', '--sign', '-', APP]);
   run('codesign', ['--verify', '--deep', '--strict', APP]);
   console.log('  signed ad-hoc and verified — no Apple account needed, still unnotarised');
+}
+
+// ---- Developer ID and notarization (DESKTOP.md D4) ----------------------------
+// Inside out with the hardened runtime (scripts/mac-sign.mjs signDeveloperId:
+// every loose program and library, then the helper apps and frameworks deepest
+// first, then the app), then the signed programs are run once to prove their
+// entitlements are enough. With the notary settings, the app goes to Apple and
+// comes back with its ticket stapled to it, and only then is the disk image made
+// from it: the app people drag to Applications carries its own ticket, and so
+// does the copy install.sh and the in-app updater put in place with ditto.
+function signWithDeveloperId(app) {
+  step('Signing with Developer ID (inside out, hardened runtime, timestamped)');
+  const { info } = guard(() => signDeveloperId(app, SIGNING));
+  checkSignedRuntime(app, info);
+  if (!NOTARIZE) return;
+  step('Notarizing the app (Apple; usually a few minutes)');
+  const zip = path.join(OUT, 'notarize-app.zip');
+  run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, zip]);
+  guard(() => notarize(zip, SIGNING.notary, { what: 'the app' }));
+  rmSync(zip, { force: true });
+  guard(() => staple(app));
+  const verdict = assess(app, 'exec');
+  if (!verdict.ok && !verdict.disabled) fail(`Gatekeeper doesn't accept the stapled app as notarized: ${oneLine(verdict.text)}`);
+  console.log(verdict.ok ? `  stapled; Gatekeeper says: ${verdict.source}` : gatekeeperOff());
+}
+
+// The signed programs, run as the app runs them: the server's Node (and sharp,
+// the one native module it loads), the scanner's Python with its packages, and
+// Playwright's driver. A missing entitlement or a library that fails library
+// validation stops the build here, minutes before notarization would, and long
+// before a user's scan. Nothing here writes into the app (no bytecode: -B and
+// PYTHONDONTWRITEBYTECODE), which the image check would catch anyway.
+function checkSignedRuntime(app, info) {
+  step('Running the signed programs under the hardened runtime');
+  if (!info.team) {
+    // A self-signed test identity has no Team ID, and library validation then
+    // refuses even the app's own libraries. A Developer ID always has one.
+    console.log('  skipped: this identity has no Team ID (a test identity, not a Developer ID)');
+    return;
+  }
+  const res = path.join(app, 'Contents', 'Resources');
+  const env = {
+    HOME: os.homedir(), TMPDIR: os.tmpdir(), PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8',
+    PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1',
+  };
+  const server = [path.join(res, 'server'), path.join(res, 'app')].find((d) => existsSync(path.join(d, 'server.js')));
+  const sharp = server && existsSync(path.join(server, 'node_modules', 'sharp')) ? path.join(server, 'node_modules', 'sharp') : null;
+  console.log(`  the server's Node: ${mustRun(path.join(res, 'node'), ['-e',
+    `require('node:sqlite');${sharp ? ` require(${JSON.stringify(sharp)});` : ''} console.log(process.version${sharp ? ", '· sharp loads'" : ''})`],
+  env, 'The app\'s Node doesn\'t run once signed (its entitlements: scripts/entitlements/node.plist)')}`);
+  const py = path.join(res, 'python');
+  if (!existsSync(path.join(py, 'bin', 'python3'))) return;
+  console.log(`  the scanner's Python: ${mustRun(path.join(py, 'bin', 'python3'), ['-E', '-s', '-B', '-c',
+    `${IMPORTS}; import sys; print(sys.version.split()[0], "· its packages load")`],
+  env, 'The scanner\'s Python doesn\'t run once signed')}`);
+  const xy = readdirSync(path.join(py, 'lib')).find((n) => /^python3\.\d+$/.test(n));
+  const driver = path.join(py, 'lib', xy || 'python3', 'site-packages', 'playwright', 'driver');
+  if (existsSync(path.join(driver, 'node'))) {
+    console.log(`  Playwright's driver: ${mustRun(path.join(driver, 'node'), [path.join(driver, 'package', 'cli.js'), '--version'],
+      env, 'Playwright\'s driver doesn\'t start once signed')}`);
+  }
+}
+
+// A step of the signing that failed: its reason, never a credential (mac-sign.mjs
+// never puts one in a message), and the build stops.
+function guard(fn) {
+  try {
+    return fn();
+  } catch (err) {
+    fail(err instanceof SigningError ? err.message : `Signing failed: ${String(err.message || err).split('\n')[0]}`);
+  }
+  return undefined;
+}
+
+function fail(message) {
+  console.error(`\n  ✗ ${message}\n`);
+  process.exit(1);
+}
+
+// When this machine has Gatekeeper's assessments turned off, spctl accepts
+// anything and can't confirm notarization; Apple's "Accepted" and the stapled
+// tickets (validated) are what's left, and the log says so.
+function gatekeeperOff() {
+  return '  stapled; Gatekeeper\'s assessments are turned off on this machine, so it can\'t be asked: '
+    + 'the stapled tickets and Apple\'s Accepted are the check';
+}
+
+// (Function declarations, not consts: the shells call these before this line runs.)
+function oneLine(text) {
+  return String(text || '').trim().split('\n').join(' | ');
 }
 
 // ---- the scanner's Python (Electron app only; DESKTOP.md D2) ------------------
@@ -602,9 +721,11 @@ mkdirSync(staging, { recursive: true });
 // on the build machine: anywhere else those paths do not exist (TRAPS §37).
 run('ditto', [APP, path.join(staging, `${APP_NAME}.app`)]);
 
-// The picture behind the window says what to do: drag across, then the one-time
-// Open Anyway step, since the app is unsigned. It replaces the READ ME text file
-// this image used to carry. Made by scripts/make-dmg-background.mjs from
+// The picture behind the window says what to do: drag across, and that the app
+// is signed and notarized, so it opens like any Mac app (it said Open Anyway
+// until D4). It replaces the READ ME text file this image used to carry. A build
+// signed ad hoc gets the same picture: it never left this Mac, so macOS doesn't
+// ask about it either. Made by scripts/make-dmg-background.mjs from
 // scripts/dmg/background.html; its geometry and the positions below are one
 // layout, so change them together.
 const BACKGROUND = path.join(ROOT, 'scripts', 'dmg', 'background.tiff');
@@ -742,6 +863,21 @@ detach(mount, device);
 run('hdiutil', ['convert', rw, '-format', 'UDZO', '-imagekey', 'zlib-level=9', '-o', dmg, '-ov']);
 rmSync(rw, { force: true });
 rmSync(staging, { recursive: true, force: true });
+
+// The image gets its own signature and ticket (DESKTOP.md D4): Gatekeeper judges
+// a downloaded .dmg by them before it looks at the app inside. Made from the
+// stapled app, so the app keeps its own ticket once it is copied out.
+if (DEVELOPER_ID) {
+  step('Signing the disk image');
+  guard(() => signImage(dmg, SIGNING));
+  console.log('  signed and verified');
+  if (NOTARIZE) {
+    step('Notarizing the disk image (Apple; usually a few minutes)');
+    guard(() => notarize(dmg, SIGNING.notary, { what: 'the disk image' }));
+    guard(() => staple(dmg));
+    console.log('  stapled');
+  }
+}
 checkImage(dmg);
 
 // Check the app as people will get it: inside the finished image, not the copy
@@ -763,6 +899,12 @@ function checkImage(image) {
     } catch (err) {
       problem = `its signature does not verify: ${(err.stderr || '').toString().trim().split('\n').slice(0, 2).join(' ')}`;
     }
+    // Notarized: the app inside carries its ticket, and Gatekeeper accepts it.
+    if (NOTARIZE && !problem) {
+      const verdict = assess(inside, 'exec');
+      if (!stapleValid(inside)) problem = 'it has no valid stapled notarization ticket';
+      else if (!verdict.ok && !verdict.disabled) problem = `Gatekeeper doesn't accept it as notarized (${oneLine(verdict.text)})`;
+    }
     const escaping = execFileSync('find', [inside, '-type', 'l'])
       .toString().split('\n').filter(Boolean)
       .filter((link) => {
@@ -778,10 +920,24 @@ function checkImage(image) {
     console.error(`\n  ✗ The app inside ${path.basename(image)} is broken: ${problem}\n`);
     process.exit(1);
   }
-  console.log('  signature verifies, and every link stays inside the app');
+  // And the image itself, as Gatekeeper judges a downloaded one: by its own
+  // signature (context:primary-signature) and its own ticket.
+  if (NOTARIZE) {
+    const verdict = assess(image, 'open');
+    if (!stapleValid(image)) fail(`${path.basename(image)} has no valid stapled notarization ticket.`);
+    if (!verdict.ok && !verdict.disabled) fail(`Gatekeeper doesn't accept ${path.basename(image)} as notarized: ${oneLine(verdict.text)}`);
+    if (verdict.disabled) console.log(gatekeeperOff());
+  }
+  console.log(`  signature verifies, and every link stays inside the app${NOTARIZE ? '; the app and the image are notarized and stapled, and Gatekeeper accepts both' : ''}`);
 }
 
 const size = execFileSync('du', ['-h', dmg]).toString().split('\t')[0];
 console.log(`\n✓ ${dmg}  (${size})\n`);
-console.log('  Unsigned by design: notarisation needs a paid Apple account.');
-console.log('  First launch needs one approval in System Settings > Privacy & Security.\n');
+if (DEVELOPER_ID) {
+  const who = signerName(signatureInfo(APP).authority) || 'this Developer ID';
+  if (NOTARIZE) console.log(`  Signed by ${who} and notarized by Apple: it opens like any Mac app.\n`);
+  else console.log(`  Signed by ${who}, not notarized: a copy downloaded in a browser still needs one approval\n  in System Settings > Privacy & Security.\n`);
+} else {
+  console.log('  Signed ad hoc (no Developer ID here: SIX_DEGREES_SIGN_IDENTITY). A copy downloaded in a browser');
+  console.log('  needs one approval in System Settings > Privacy & Security.\n');
+}

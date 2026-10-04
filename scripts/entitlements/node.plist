@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The Node inside the app (Contents/Resources/node), which runs the server, and
+  Playwright's driver's Node when it isn't a link to that one. Signed with
+  Developer ID and the hardened runtime (scripts/mac-sign.mjs, DESKTOP.md D4).
+
+  allow-jit                          V8 compiles JavaScript as it runs. Without it
+                                     Node 24 stops before running anything: "Failed
+                                     to reserve virtual memory for CodeRange"
+                                     (checked on this build's Node, 2026-10-04).
+  allow-unsigned-executable-memory   what V8 still uses where it can't use MAP_JIT
+                                     (Intel Macs). Node's own release signature
+                                     carries both.
+
+  Never disable-library-validation, which Node's own signature does carry so that
+  anyone's native addons load: the only native code this server loads is the
+  app's own (sharp and its libvips), signed by the same team in the same pass.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+</dict>
+</plist>

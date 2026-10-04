@@ -34,8 +34,9 @@ updated: 2026-09-29
         <video controls muted playsinline preload="metadata" poster="/video/install-mac-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: installing Six Degrees on a Mac">
           <source src="/video/install-mac.mp4?v=0.2.1" type="video/mp4">
         </video>
-        <figcaption><strong>Installing on a Mac, step by step</strong> (about a minute): the download, the one-time macOS
-          warning and Open Anyway, or the one-line Terminal install, then a first look.</figcaption>
+        <figcaption><strong>Installing on a Mac, step by step</strong> (about a minute): the download, or the one-line
+          Terminal install, then a first look. It was filmed before the app was signed, so it still shows a warning
+          and an Open Anyway step you won't see now.</figcaption>
       </figure>
       <div class="which">
         <strong>Which download?</strong> Apple menu → <strong>About This Mac</strong>.
@@ -49,21 +50,15 @@ updated: 2026-09-29
             In the window that opens, drag <strong>Six Degrees</strong> onto the <strong>Applications</strong> folder.</p>
         </li>
         <li>
-          <h3>Open it once, and close the warning</h3>
-          <p>Open <strong>Six Degrees</strong> from Applications. macOS says it can't check the app for malware,
-            because it isn't signed with a paid Apple certificate yet. Close that message with <strong>Done</strong>
-            (on macOS 13 or 14: <strong>OK</strong> or <strong>Cancel</strong>). Anything except <em>Move to Trash</em>.</p>
-        </li>
-        <li>
-          <h3>Allow it in System Settings</h3>
-          <p>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll down to
-            <em>"Six Degrees" was blocked</em>, and click <strong>Open Anyway</strong>. Confirm with
-            <strong>Open Anyway</strong> again (on macOS 13 or 14: <strong>Open</strong>), and your password if asked. That's once per download; after that it opens like any app.</p>
+          <h3>Open it</h3>
+          <p>Open <strong>Six Degrees</strong> from Applications. Signed by Blake Burford and notarized by Apple: it
+            opens like any Mac app. The first time, macOS asks whether to open an app downloaded from the internet:
+            click <strong>Open</strong>.</p>
         </li>
       </ol>
 
       <div class="terminal">
-        <h3>Or skip those steps with Terminal</h3>
+        <h3>Or install it with Terminal</h3>
         <p>Press <kbd>⌘</kbd> <kbd>Space</kbd>, type <em>Terminal</em> and press Return. Paste this line and press Return:</p>
         <div class="cmd">
           <code id="cmd">curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash</code>
@@ -182,9 +177,9 @@ updated: 2026-09-29
       <dl>
         <div>
           <dt>macOS says it can't check the app for malware</dt>
-          <dd>The app isn't signed with Apple's paid developer certificate yet. Close the message (not <em>Move to Trash</em>),
-            then allow it once in System Settings → Privacy &amp; Security → Open Anyway, as in <a href="#install">step 3</a>.
-            Or use the Terminal line, which checks the download against the published checksums first.</dd>
+          <dd>That's a copy from version 0.8.0 or earlier, before the app was signed. Download the newest one above (signed
+            by Blake Burford and notarized by Apple), or allow that copy once: close the message (not <em>Move to Trash</em>),
+            then System Settings → Privacy &amp; Security → Open Anyway.</dd>
         </div>
         <div>
           <dt>I'm not sure whether I have Apple Silicon or Intel</dt>

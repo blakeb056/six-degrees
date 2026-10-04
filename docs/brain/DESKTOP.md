@@ -207,7 +207,8 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
 - [x] Every program and library in it (32 on arm64) is signed ad hoc one by one
       (`codesign --deep` doesn't reach loose Mach-O files in Resources), then sealed into
       the app's own signature. `codesign --verify --deep --strict` passes on the built
-      app and inside its disk image. Real signing is D4.
+      app and inside its disk image. In a signed build (D4) each is signed again with the
+      Developer ID and the hardened runtime, with no entitlements, and run once that way.
 - [x] `npx six-degrees` and source copies keep the fallback, and gain **Set up the
       scanner** where the page used to end with "install it from python.org": when the
       computer has no Python 3.10–3.14 that can make an environment, the Scan page
@@ -260,7 +261,10 @@ else in 0.3.0 (Settings, Your sector, Your data, the one-click updater).
       to Install/Set up and says why ("The Python that comes with the app didn't work (…).
       macOS may have blocked it."). The fix is then D4's signing, or clearing the
       quarantine on the app's own `python/` at first launch: **Blake's decision, after
-      that test**. Nothing clears it today.
+      that test**. Nothing clears it today. **With D4** a release's Python is signed with
+      the Developer ID and notarized with the app, so Gatekeeper's first-open check covers
+      it; the same look (Scan page ready, from a browser-downloaded `.dmg`, no Open Anyway)
+      is still worth doing once on the first signed release.
 
 Scanning still needs **Google Chrome**. That's deliberate: the scanner drives the user's
 real browser, and the Scan page already checks for it. The download grows by about 22 MB
@@ -306,13 +310,18 @@ a real Windows PC.
       installed there)? That's a small behaviour change, so it needs a watched run first.
 - [ ] Linux arm64 (`ubuntu-24.04-arm`) and Windows on Arm.
 
-### D4 — Signing (when Blake decides to pay)
+### D4 — Signing
 
-- [ ] Apple Developer ID ($99/year): sign and notarize every binary. The `.dmg` then opens
-      with no warning, the standard Electron updater works, and Homebrew's official
-      catalog becomes possible.
+- [x] Apple Developer ID: every program signed and the app and its `.dmg` notarized by
+      Apple, so the download opens like any Mac app (no Open Anyway). Blake's paid account
+      (Individual, his legal name) since 2026-10-04: the identity is "Developer ID
+      Application: BLAKE DANIEL BURFORD (3X5624446L)", team 3X5624446L, G2 sub-CA, valid
+      to 2031-09-17. Built on branch `developer-id`; how it works is under
+      [Signing](#signing) below. **Not yet seen:** a release workflow run with the real
+      secrets (the dry run in [Releasing a signed build](#releasing-a-signed-build)), and
+      the first update from 0.8.0 to a signed release on a real Mac.
 - [ ] Windows: Microsoft's Trusted Signing (about $10/month), so there is no SmartScreen
-      warning.
+      warning. Windows stays an unsigned beta until then.
 - [ ] Until then, **one-click updates without signing:** the app downloads the new build,
       checks its SHA-256 against `SHA256SUMS`, swaps itself and relaunches. This is
       `install.sh`'s logic inside the app, with a rollback `install.sh` doesn't have.
@@ -391,7 +400,10 @@ a real Windows PC.
         allowed with Open Anyway). That needs a copy installed that way, on macOS 13, 14,
         15 and 26 if possible, and a plan of its own for which copy and data to use. If it
         refuses, the update ends like step 5 below ("Nothing was changed") and the
-        Terminal line still works.
+        Terminal line still works. Signing changes half of this: from one signed release to
+        the next, the app replacing itself and the app replaced are the same team, which
+        App Management allows by design. The update from the ad hoc 0.8.0 to the first
+        signed release is still the old case (see [Signing](#signing)).
   - [ ] CI (rule 6, extended): after the smoke test, install the previous release (N-1,
         once it has this button) from its `.dmg`, serve the `.dmg` just built with
         `scripts/test-release-server.mjs`, start N-1 with `SIX_DEGREES_TEST_RELEASES`
@@ -479,6 +491,133 @@ Three rules for the whole test:
    this, and 0.2.1 doesn't use it.) Then open your real Six Degrees from Applications, as
    usual.
 
+#### Signing
+
+Built 2026-10-04 on branch `developer-id`. The build signs with Developer ID only when the
+environment names an identity; without one (forks, pull requests, a local build) it signs
+ad hoc exactly as before, with the same `codesign --sign -` lines.
+
+- **The settings** (`scripts/mac-sign.mjs signingSetup`): `SIX_DEGREES_SIGN_IDENTITY` (a
+  "Developer ID Application" identity, by name or SHA-1), optional
+  `SIX_DEGREES_SIGN_KEYCHAIN`; notarization when all three of `SIX_DEGREES_NOTARY_KEY` (the
+  `.p8` path), `SIX_DEGREES_NOTARY_KEY_ID` and `SIX_DEGREES_NOTARY_ISSUER` are set. Half the
+  notary settings, or notary settings without an identity, stop the build before it starts.
+- **Inside out, never `--deep`** (`signDeveloperId`): every loose program and library in the
+  app (Electron's dylibs, its crashpad handler and ShipIt, the server's Node, sharp's `.node`
+  and libvips, the Python and every `.so` in it, Playwright's driver when it isn't a link),
+  then the nested bundles deepest first (Electron Framework, Mantle, ReactiveObjC, Squirrel,
+  the four helper apps), then the app. A bundle's own executable is signed with its bundle.
+  `--deep` reaches nested bundles but not loose Mach-O files in Resources, and gives
+  everything one set of entitlements. Every signature: `--options runtime --timestamp
+  --force`. Then `codesign --verify --deep --strict`, as before.
+- **Entitlements** (`scripts/entitlements/`), only on programs:
+  - `electron.plist` for the app and its helper apps, `node.plist` for the server's Node and
+    the driver's own Node: `allow-jit` (V8 compiles as it runs; Node 24 signed with the
+    hardened runtime and no entitlements stops at once, "Failed to reserve virtual memory
+    for CodeRange", checked here) and `allow-unsigned-executable-memory` (what V8 uses where
+    it can't use MAP_JIT, on Intel). Discord and Node's own signatures carry both.
+  - The Python, Electron's crashpad handler and every library: none.
+  - **No `disable-library-validation` anywhere.** Library validation lets a program load
+    only Apple's libraries or its own team's, and every library in the app is signed by the
+    same identity in the same pass. Nothing outside the app is ever loaded by a program in
+    it: the scanner's own environment (Install, Set up the scanner) is built from this
+    computer's Python or a downloaded one, never the app's (`installSteps`).
+  - Checked at build time: after signing, the build runs the server's Node (with
+    `node:sqlite` and sharp), the Python with the scanner's imports, and Playwright's driver,
+    under the hardened runtime (`checkSignedRuntime`). A self-signed test identity has no
+    Team ID, so library validation would refuse even the app's own libraries; the check is
+    skipped for one and says so.
+- **Notarized and stapled** (with the notary settings): the signed app is zipped with
+  `ditto`, sent with `xcrun notarytool submit --wait`, and its ticket stapled to it
+  (`stapler`, tried again for a minute or two while Apple's ticket isn't served yet).
+  Gatekeeper must then say "source=Notarized Developer ID" (`spctl -a -t exec`). Only then
+  is the `.dmg` made, from the stapled app, then signed with the identity, notarized and
+  stapled itself. The image check then also wants both tickets valid and Gatekeeper to accept
+  the app inside and the image (`spctl -a -t open --context context:primary-signature`). On
+  a machine with Gatekeeper's assessments turned off, spctl accepts anything, so the build
+  and the smoke test say so and go by the tickets and Apple's answer instead. A
+  refusal prints Apple's log (`notarytool log`: each issue's file and message) and fails the
+  build. Nothing prints a credential: notarytool's command line holds the key id and issuer,
+  so its errors are shown only as its own output with those replaced by `***`.
+- **Release workflow** (`release.yml`, both Mac jobs): `scripts/ci-mac-signing.sh setup`
+  first asks `mac-sign.mjs release-plan`. All five secrets: it signs, dry runs included.
+  None: ad hoc, unless this is a real release (a tag, not a dry run) of **1.0.0 or later,
+  which must be signed** and fails there, before the build. Some but not all: always fails,
+  naming the missing ones. When it signs: the `.p12` (Blake's key, his certificate and
+  Apple's Developer ID G2 intermediate) goes into a temporary keychain with a random password
+  (`security create-keychain`, `set-keychain-settings -lut 21600`, `unlock-keychain`,
+  `import -P … -T /usr/bin/codesign`, `set-key-partition-list -S apple-tool:,apple:`), added
+  to the search list (codesign finds identities only there; checked), and the first valid
+  "Developer ID Application" identity in it is used, by its SHA-1. The `.p12` file is
+  deleted once imported; the `.p8` stays for notarytool. The key id and issuer reach the
+  build step straight from the secrets. `cleanup` (`if: always()`) deletes the keychain,
+  puts the search list back as it was, and removes every decoded file. The smoke test then
+  checks Gatekeeper and the tickets on the `.dmg` and on the app installed from it, and the
+  hardened runtime, and everything after it (the app, its server, its Python, a quit
+  mid-job) runs under the hardened runtime: that is the real test of the entitlements. Each
+  job records how it signed, and the release notes say "Signed by Blake Burford and
+  notarized by Apple" only when both chips' builds were (the Open Anyway steps otherwise).
+- **Across the switch: the updater.** Nothing in it compares signers, asks for an ad hoc
+  signature, strips a signature or rewrites the app: it checks `codesign --verify --deep
+  --strict` on the app in the image and on the staged copy (any valid signature, ad hoc or
+  Developer ID), copies with `ditto` (the stapled ticket is a file, `Contents/CodeResources`,
+  outside the seal, and comes along byte for byte), clears the quarantine flag (which isn't
+  part of the signature), and the helper only renames the staged copy into place, or copies
+  it with `ditto`. `install.sh` does the same. So the ad hoc 0.8.0 updates to a signed
+  release, and a signed one to the next. `tests/updater-job.test.mjs` "SIGNED" runs a whole
+  update with a hardened-runtime app carrying a stapled-ticket file: accepted, staged, the
+  runtime and the ticket intact, no quarantine flag; it was also run here with a real
+  (throwaway, self-signed) identity, timestamped. What can't be checked here: App
+  Management on the 0.8.0 → signed swap, the same open question as before (the item
+  above). If it refuses, the update says "Nothing was changed" and the Terminal line works;
+  from then on, signed to signed is the same team, which App Management allows. One thing
+  the updater could add later: since the running app knows its own team, it could require
+  the new version to have the same one (`codesign -R`), which would also stop a build
+  signed by anyone else. Not done: the release and its checksums are still the trust.
+- **What was checked here** (no real certificate on this Mac): the ad hoc build, unchanged,
+  end to end; a full Electron build signed inside out with a throwaway self-signed identity
+  in a temporary keychain (timestamped by Apple's server; the keychain search list put back
+  exactly), with stand-ins for `notarytool`, `stapler` and `spctl`, through the signed and
+  stapled `.dmg` and the image check; `ci-mac-signing.sh setup` and `cleanup` with that
+  certificate (imported, search list changed and restored, keychain deleted; it stops at
+  "no valid identity", as it must for a self-signed one); and the decisions, notarytool's
+  answers and the two scripts in `tests/mac-sign.test.mjs` and
+  `tests/signing-scripts.test.mjs`. To sign locally with such an identity, as those runs
+  did: make one with `openssl req -x509` (extendedKeyUsage codeSigning), import it into a
+  keychain of its own, put that keychain on the search list only while signing, and set
+  `SIX_DEGREES_SIGN_IDENTITY` to its SHA-1 (codesign takes an untrusted identity by hash,
+  not by name). `SIX_DEGREES_TEST_SIGN_IDENTITY` (and `_KEYCHAIN`) runs the tests that need
+  one.
+
+#### Releasing a signed build
+
+1. **The secrets**, once (and again for a renewed certificate or a new key). Blake runs, on
+   his Mac:
+   `scripts/set-signing-secrets.sh <cert.p12> <AuthKey_XXXXXXXXXX.p8> <KEY_ID> <ISSUER_ID>`.
+   It checks the files and the IDs' shapes, that `gh` is signed in, asks for the `.p12`'s
+   password (not shown) and checks it opens the certificate, then sets
+   `MACOS_SIGN_P12_BASE64`, `MACOS_SIGN_P12_PASSWORD`, `APPLE_API_KEY_P8_BASE64`,
+   `APPLE_API_KEY_ID` and `APPLE_API_ISSUER_ID` on blakeb056/six-degrees, each value on
+   `gh secret set`'s standard input, never as an argument, never printed, never in a file.
+   `gh secret list` shows their names and dates, never their values.
+2. **A dry run** after any change to signing, `build-app.mjs` or `release.yml`:
+   `gh workflow run release.yml --ref <branch> -f dry_run=true`. With the secrets it signs
+   and notarizes both chips (two submissions each, a few minutes apiece; notarizing
+   publishes nothing).
+3. **Check it:** both Mac jobs green; their logs say "Signing: Developer ID Application: …
+   from a temporary keychain", "Running the signed programs under the hardened runtime"
+   with Node, Python and the driver, "submission …, Accepted" twice, "Gatekeeper says:
+   Notarized Developer ID", and the smoke test's "Notarized and stapled". By hand, on any
+   Mac, without opening anything: download a dry run's `dmg-arm64` artifact in a browser,
+   unzip it, then `spctl -a -vvv -t open --context context:primary-signature <dmg>` (says
+   "source=Notarized Developer ID"), `xcrun stapler validate <dmg>`, and
+   `codesign -dv --verbose=2 <app inside>` (Authority=Developer ID Application: BLAKE
+   DANIEL BURFORD (3X5624446L), flags …(runtime)). Don't open a test copy while the real
+   app runs, or without `--data-dir` ([the morning test](#the-morning-test) says why); the
+   first real open is Blake's, of the first signed release.
+4. **Release** as usual (tag). From 1.0.0 a real release without the secrets fails before
+   it builds anything.
+
 ### D5 — Optional: the scanner in JavaScript
 
 **Not needed for any goal above:** D2 already removes the Python install. What it would
@@ -517,5 +656,5 @@ is ever attempted, it must answer each reason first:
 | D1 Electron, Mac | ✅ **shipped in 0.2.0** (beta first, promoted the same day) |
 | D2 Python inside | ✅ built on branch `python-inside` for 0.3.0, one release with Settings (Blake confirmed 2026-09-25); the x64 build and a quarantined install still to see |
 | D3 Windows (+ Linux) | ✅ built 2026-10-02: Setup.exe, .deb and .tar.gz, checked in CI; shipping as a beta until opened on a real Windows PC |
-| D4 Signing | when Blake decides to pay; one-click updates without signing are built on a draft branch, waiting on the spec approval and a real-Mac test |
+| D4 Signing | Mac: Developer ID and notarization built (branch `developer-id`, 2026-10-04), required for every real release from 1.0.0; first dry run with the real secrets still to see. Windows: unsigned beta. One-click updates: built, Blake's real-Mac test still to do |
 | D5 Scanner in JS | optional; spec still rejects it |

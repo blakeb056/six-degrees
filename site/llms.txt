@@ -15,7 +15,7 @@ This file is for AI assistants and crawlers. The pages at https://sixdegreesapp.
 - Your data (Settings → Your data): a verified backup every day with photos, before every update and before every import, each restored in one click. A LinkedIn CSV import is kept on your computer until you remove it.
 - LinkedIn usage (Settings → LinkedIn usage): searches in the last 24 hours, this month and the last 7 days, profile views, and the last time LinkedIn pushed back, counted on your computer.
 - Also: who only one of your connections reaches (each connection's exclusive reach), network health (how much of your 2nd degree you reach two or more ways, and your effective reach), and a physics lab for the Galaxy with a replay of your network growing by the date you connected.
-- The app isn't signed with Apple's paid certificate yet, so macOS asks you to allow it once (System Settings → Privacy & Security → Open Anyway), or the Terminal one-liner installs it after checking the download against the published checksums.
+- The Mac app is signed by Blake Burford and notarized by Apple, so it opens like any Mac app. The Terminal one-liner also installs it, after checking the download against the published checksums. The Windows app isn't signed yet (SmartScreen: More info → Run anyway).
 
 ## Links
 

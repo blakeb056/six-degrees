@@ -71,21 +71,17 @@ The links above always fetch the newest release.</sub>
 (Ventura) or later**, and it's about 210 MB. Everything the scanner needs except Google
 Chrome is inside, Python included, so there's nothing else to install.
 
-**The first time you open it**, macOS stops it, because the app isn't signed with a
-paid Apple certificate yet:
-
 1. Open the file you downloaded (**Six-Degrees-Mac-….dmg**, in your Downloads folder).
    In the window that opens, drag **Six Degrees** onto the **Applications** folder.
-2. Open **Six Degrees** from Applications. macOS says it can't check the app for
-   malware. Close that message with **Done** (on macOS 13 or 14 it may say **OK** or
-   **Cancel**). Anything except *Move to Trash*.
-3. Open **System Settings → Privacy & Security**, scroll down to *"Six Degrees" was
-   blocked*, and click **Open Anyway**. Confirm with **Open Anyway** again (on macOS
-   13 or 14 the button says **Open**), and enter your password if asked.
+2. Open **Six Degrees** from Applications. Signed by Blake Burford and notarized by
+   Apple: it opens like any Mac app. The first time, macOS asks whether to open an app
+   downloaded from the internet: click **Open**.
 
-That's once per download; after that it opens like any app.
+(A copy of 0.8.0 or earlier wasn't signed yet: if macOS says it can't check it for
+malware, close that message, not *Move to Trash*, then **System Settings → Privacy &
+Security → Open Anyway**. Or update it, below.)
 
-**Or install it from Terminal** (no approval step). Press ⌘ Space, type *Terminal* and
+**Or install it from Terminal.** Press ⌘ Space, type *Terminal* and
 press Return. Paste this line into the window that opens and press Return:
 
 ```bash
@@ -108,7 +104,7 @@ misbehaves later, unzip it and drag the app into Applications to go back. When t
 can't update itself (for example, it's running from the disk image), it says why and what
 to do, usually with a Terminal line to paste and what that line will do. Copies of 0.2.1
 and older don't have the button yet, so they take the Terminal line once more.
-Downloading the new `.dmg` works too; you'll repeat step 3 once for it.
+Downloading the new `.dmg` and dragging it to Applications works too.
 
 Your network isn't stored in the app. It's in a hidden folder in your home folder,
 `.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never

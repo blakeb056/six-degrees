@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Render scripts/dmg/background.html into scripts/dmg/background.tiff — the
-// picture behind the .dmg window: drag across, then the one-time Open Anyway step.
+// picture behind the .dmg window: drag across, and that the app is signed and
+// notarized, so it opens like any Mac app (it showed the Open Anyway step until D4).
 //
 // Run by hand when the picture changes, and commit the .tiff. The build only
 // copies it, so packaging never depends on a browser being installed (the

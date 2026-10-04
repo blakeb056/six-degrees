@@ -12,7 +12,7 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -40,7 +40,13 @@ const dmg = {};
 
 // A pretend Six Degrees.app: a real Mach-O executable (a copy of /usr/bin/true,
 // which has both chips) and an Info.plist, signed ad hoc.
-function makeApp(dir, { version = NEW, id = TEST_ID, minimum = '13.5', thin = false, escape = false } = {}) {
+//
+// `signed`: the way a Developer ID release is (DESKTOP.md D4): the hardened
+// runtime, and a notarization ticket stapled at Contents/CodeResources, where
+// `stapler` puts it, after the signature. Signed ad hoc with the runtime flag,
+// since CI has no Developer ID; SIX_DEGREES_TEST_SIGN_IDENTITY (and
+// _KEYCHAIN) sign it with a real identity instead, timestamped.
+function makeApp(dir, { version = NEW, id = TEST_ID, minimum = '13.5', thin = false, escape = false, signed = false } = {}) {
   fs.mkdirSync(path.join(dir, 'Contents', 'MacOS'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'Contents', 'Resources'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
@@ -66,9 +72,21 @@ function makeApp(dir, { version = NEW, id = TEST_ID, minimum = '13.5', thin = fa
   fs.chmodSync(exe, 0o755);
   fs.writeFileSync(path.join(dir, 'Contents', 'Resources', 'VERSION'), `${version}\n`);
   if (escape) fs.symlinkSync('/etc', path.join(dir, 'Contents', 'Resources', 'escape'));
+  if (signed) {
+    const identity = process.env.SIX_DEGREES_TEST_SIGN_IDENTITY;
+    const keychain = process.env.SIX_DEGREES_TEST_SIGN_KEYCHAIN;
+    execFileSync('/usr/bin/codesign', ['--force', '--options', 'runtime',
+      ...(identity ? ['--sign', identity, '--timestamp', ...(keychain ? ['--keychain', keychain] : [])] : ['--sign', '-']),
+      dir], { stdio: 'ignore' });
+    fs.writeFileSync(path.join(dir, 'Contents', 'CodeResources'), TICKET);
+    return dir;
+  }
   execFileSync('/usr/bin/codesign', ['--sign', '-', '--force', '--deep', dir], { stdio: 'ignore' });
   return dir;
 }
+
+// Stands in for a stapled notarization ticket: bytes the update must carry over exactly.
+const TICKET = Buffer.from(Array.from({ length: 2304 }, (_, i) => (i * 37 + 11) % 256));
 
 // A disk image holding one app, as "Six Degrees.app", the way releases do.
 // hdiutil can take several seconds per image, so they are made side by side.
@@ -84,11 +102,12 @@ async function makeDmg(name, options) {
 before(async () => {
   if (skip) return;
   fixtures = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-job-fixtures-'));
-  [dmg.good, dmg.wrongId, dmg.escape, dmg.thin] = await Promise.all([
+  [dmg.good, dmg.wrongId, dmg.escape, dmg.thin, dmg.signed] = await Promise.all([
     makeDmg('good'),
     makeDmg('wrong-id', { id: 'com.example.not-six-degrees' }),
     makeDmg('escape', { escape: true }),
     makeDmg('thin', { thin: true }),
+    makeDmg('signed', { signed: true }),
   ]);
   server = await startTestReleaseServer({ slug: SLUG });
 });
@@ -243,6 +262,27 @@ test('HAPPY PATH: checks, downloads, verifies, stages beside the app, then hands
   assert.equal(status.outcome, 'started');
   assert.equal(status.from, OLD);
   assert.equal(status.to, NEW);
+});
+
+// From the ad hoc 0.8.0 to the first Developer ID release, and from one signed
+// release to the next (DESKTOP.md D4): the updater never compares signers or
+// asks for an ad hoc one, only that the signature verifies strictly, and the
+// staged copy (ditto, then the quarantine flag cleared) keeps the signature,
+// the hardened runtime and the stapled ticket byte for byte. The helper only
+// renames the staged copy into place, so what is staged is what opens.
+test('SIGNED: a Developer ID release (hardened runtime, a stapled ticket) is accepted, and staged with its ticket intact', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release({ assets: [{ name: ARM, file: dmg.signed }, { name: INTEL, file: dmg.signed }] }));
+  const { c, calls } = context(w);
+  const job = await run(c);
+  assert.equal(job.phase, 'restarting', job.error);
+  assert.equal(calls.launch.length, 1, 'handed over');
+  execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', w.staged]);
+  const detail = spawnSync('/usr/bin/codesign', ['-dv', w.staged], { encoding: 'utf8' }).stderr;
+  assert.match(detail, /flags=0x[0-9a-f]+\([^)]*runtime[^)]*\)/, 'the hardened runtime is still there');
+  assert.deepEqual(fs.readFileSync(path.join(w.staged, 'Contents', 'CodeResources')), TICKET, 'the stapled ticket, byte for byte');
+  const quarantine = spawnSync('/usr/bin/xattr', ['-p', 'com.apple.quarantine', w.staged], { encoding: 'utf8' });
+  assert.notEqual(quarantine.status, 0, 'no quarantine flag on the staged copy');
 });
 
 test('the Intel build for an Intel Mac, and never the Apple Silicon one', { skip }, async (t) => {

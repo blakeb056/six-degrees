@@ -85,10 +85,9 @@ const DOWNLOADS = {
     }
   }
 
-  // Once a Mac download starts, the steps a first open needs, under the button:
-  // the app isn't signed with a paid Apple certificate yet, so macOS blocks it
-  // until it's allowed once. Those steps were only on /download/. The click
-  // still downloads; this only shows them.
+  // Once a Mac download starts, what to do with the file, under the button:
+  // drag it to Applications and open it (signed and notarized, so no Open
+  // Anyway step since D4). The click still downloads; this only shows them.
   const after = $('after-dl');
   if (after) {
     for (const link of [$('dl-main'), $('dl-alt')]) {
