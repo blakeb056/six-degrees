@@ -29,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Settings' sections, which follow you as you scroll. The notch changes with the page: in the
   built app, the Scan page showed the page before's tabs for a moment. On a page that scrolls, the
   notch follows the header up and waits at the top of the window; it used to stay over the page,
-  then vanish off the top the moment anything on the page changed.
+  then vanish off the top the moment anything on the page changed. And while a scan ran, its green
+  edge grew a line across the top, where it hangs from the tabs; it doesn't now.
 
 ## [1.0.0] - 2026-10-04
 

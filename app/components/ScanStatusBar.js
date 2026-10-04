@@ -140,6 +140,8 @@ export default function ScanStatusBar() {
 
   // What the pill says, smallest first.
   const dot = running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB') : '#556';
+  // Its edge: green while a scan runs.
+  const edge = running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)';
   const label = running ? (WHAT[job.action] || 'Scanning') : other ? other.label : 'Auto scan';
   const short = running ? step : other ? other.detail : null;
 
@@ -157,7 +159,12 @@ export default function ScanStatusBar() {
         position: 'fixed', left, top, transform: 'translateX(-50%)', zIndex: 60,
         maxWidth: 'calc(100vw - 16px)',
         padding: expanded && status ? '4px 6px 10px' : '4px 6px 5px',
-        borderRadius: '0 0 14px 14px', border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, borderTop: 'none',
+        // Each side on its own, never the `border` shorthand beside `borderTop`: when
+        // a scan started, the shorthand's colour changed under the longhand and React
+        // said so ("Updating a style property during rerender (border) when a
+        // conflicting property is set (borderTop)").
+        borderRadius: '0 0 14px 14px', borderTop: 'none',
+        borderLeft: `1px solid ${edge}`, borderRight: `1px solid ${edge}`, borderBottom: `1px solid ${edge}`,
         background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 12,
         opacity: tabs || running || other || expanded ? 1 : 0.55,
         boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',
