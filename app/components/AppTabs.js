@@ -17,6 +17,10 @@ const MODES = [
 ];
 const PAGES = [
   { key: 'paths', href: '/paths', label: 'Paths', color: 'var(--sd-green, #00ff88)', on: 'linear-gradient(135deg, #00ff88, #3498DB)', demo: true },
+  // Your network ranked by power, and the boards that read it (Blake, 2026-10-03:
+  // "stats and insights … based off their circles"). Purple to gold, its own colour.
+  // The sample and a CSV import have something to rank too, so it isn't `own`.
+  { key: 'insights', href: '/insights', label: 'Insights', color: 'var(--sd-purple, #c39bd3)', on: 'linear-gradient(135deg, #9B59B6, #FFD700)' },
   // Social is part of Outlink now (Messages & follow-ups); /social forwards there.
   { key: 'outlink', href: '/queue', label: 'Outlink', color: 'var(--sd-orange, #FF6B35)', on: 'linear-gradient(135deg, #FF6B35, #FFD700)', own: true },
   { key: 'scan', href: '/setup', label: 'Scan', color: 'var(--sd-fg-4, #666)', on: 'linear-gradient(135deg, #00ff88, #1abc9c)', own: true },

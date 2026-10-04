@@ -59,6 +59,20 @@ test('the industry words are the same for everyone: no job title, and no one per
   assert.equal(industryOf(null, 'Gifts, snacks and whatnot'), UNKNOWN_INDUSTRY);
 });
 
+test('a company named "Foods" or "Beverages" reads as retail, not from its people\'s headlines', () => {
+  // Found on an invented network: "food" was a word and "foods" wasn't, so
+  // Northwind Foods took the headlines' vote and came out as tech.
+  assert.equal(industryOf('Northwind Foods', 'Software Engineer at Northwind Foods').key, 'consumer');
+  assert.equal(industryOf('Halcyon Beverages', null).key, 'consumer');
+  assert.equal(industryOf('Northwind Food Co', null).key, 'consumer');
+  const rows = [
+    p('a', 1, { headline: 'Software Engineer at Northwind Foods' }),
+    p('b', 2, { headline: 'Data Engineer at Northwind Foods' }),
+    p('c', 2, { headline: 'Product Manager at Northwind Foods' }),
+  ];
+  assert.equal(buildCompanyIndex(rows).get('Northwind Foods').industry.key, 'consumer');
+});
+
 test('each person counts once, at their closest degree', () => {
   const rows = [p('a', 2, { company: 'Acme' }), p('a', 1, { company: 'Acme' }), p('b', 2, { company: 'Acme', tier: 'S' })];
   const acme = buildCompanyIndex(rows).get('Acme');

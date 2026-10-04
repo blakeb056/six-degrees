@@ -522,7 +522,7 @@ test('an edited word list makes stored scores stale, and they are redone once', 
 // at 4 + 2 (strong) 7.8 (S).
 //   Acme Widgets          recruiting: consulting by the vote
 //   Initech               talent: consulting by the vote
-//   Pinecrest Foods       software engineering: tech by the vote
+//   Pinecrest Holdings    software engineering: tech by the vote
 //   Northwind Consulting  its name says consulting
 //   Umbrella Staffing     its name says consulting, and places it in HR & Recruiting
 function jobTitleNetwork() {
@@ -530,7 +530,7 @@ function jobTitleNetwork() {
   return [
     p('r', 'Rae Holt', 'Founder, Recruiting at Acme Widgets'),
     p('t', 'Tomas Ek', 'Founder, Talent at Initech'),
-    p('w', 'Wen Park', 'Founder, Software Engineering at Pinecrest Foods'),
+    p('w', 'Wen Park', 'Founder, Software Engineering at Pinecrest Holdings'),
     p('c', 'Cora Vale', 'Founder at Northwind Consulting'),
     p('u', 'Uli Brandt', 'Founder at Umbrella Staffing'),
   ];
@@ -543,7 +543,7 @@ test('a broad pick doesn\'t count an industry voted by job titles: the preview, 
   const db = getDb();
   const read = readForScoring(scoringRows(db));
   // Paths still colours them by the vote (lib/companies.js); where it came from rides along.
-  assert.deepEqual(['Acme Widgets', 'Initech', 'Pinecrest Foods', 'Northwind Consulting', 'Umbrella Staffing'].map((n) => {
+  assert.deepEqual(['Acme Widgets', 'Initech', 'Pinecrest Holdings', 'Northwind Consulting', 'Umbrella Staffing'].map((n) => {
     const c = read.companies.get(n);
     return [c.industry, c.industryFrom];
   }), [['consulting', 'people'], ['consulting', 'people'], ['tech', 'people'], ['consulting', 'name'], ['consulting', 'name']]);
@@ -561,7 +561,7 @@ test('a broad pick doesn\'t count an industry voted by job titles: the preview, 
     const name = again.people.get(r).roles.find((x) => !x.former)?.company;
     assert.equal(companyScoreIn(again, name, { overrides: companyOverrides(db), focus: sectorFocusOf(db) }).score, row(r.id).company_prestige_score, name);
   }
-  // Tech doesn't lift Pinecrest Foods for its engineer either: nothing scores higher.
+  // Tech doesn't lift Pinecrest Holdings for its engineer either: nothing scores higher.
   const tech = previewAsRoute(db, strong('tech'));
   assert.deepEqual([tech.companiesUp, tech.companiesDown], [0, 2]);
 });

@@ -178,6 +178,8 @@ const SIZES = {
   card: { padding: '10px 18px', fontSize: 13, radius: 8, minWidth: 104 },
   quest: { padding: '7px 14px', fontSize: 12.5, radius: 8, minWidth: 92 },
   row: { padding: '4px 9px', fontSize: 9.5, radius: 4, minWidth: 0 },
+  // Insights' Power Index rows: the size of the table's other buttons (Open circle, Scan circle).
+  table: { padding: '6px 11px', fontSize: 12, radius: 7, minWidth: 0 },
 };
 
 /** The Auto button itself: the gradient, the better pick. */
@@ -207,7 +209,7 @@ const resultColor = (r) => (r.ok ? 'var(--sd-green, #00ff88)' : 'var(--sd-coral,
  * second (an outline) or alone (as it always looked). Without Auto (`canAuto`
  * false: the sample, a CSV, someone with no profile on file) Connect stands
  * alone. `size`: 'card' (the person card: a line under it says what Auto does),
- * 'quest' (Outlink's move cards) or 'row' (a list row: the line is the
+ * 'quest' (Outlink's move cards), 'table' (Insights' rows) or 'row' (a list row: the line is the
  * button's tooltip, and how it went shows in a small note under the buttons).
  */
 export default function ConnectChoice({ person, canAuto = true, size = 'card', connect, onSent, style }) {
@@ -222,11 +224,11 @@ function WithAuto({ person, size, connect, onSent, style }) {
   const auto = useAutoConnect(person, onSent);
   const ask = auto.asking && <AutoAsk onSend={auto.confirm} onCancel={auto.cancel} />;
 
-  if (size === 'row') {
+  if (size === 'row' || size === 'table') {
     return (
       <span style={{ position: 'relative', display: 'inline-flex', gap: 4, alignItems: 'center', flexShrink: 0, ...style }}
         onClick={(e) => e.stopPropagation()}>
-        <AutoButton auto={auto} size="row" />
+        <AutoButton auto={auto} size={size} />
         {connect(true)}
         {auto.result && (
           <span role="status" style={{

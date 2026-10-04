@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Insights: your network ranked by power.** A new tab between Paths and Outlink. The Power
+  Index ranks everyone within two steps of you, each person once, with shared ranks for ties and
+  a line saying why a big tie shares its score; filter by degree, tier and rarity, search by name,
+  company or who knows them, and from any row open their circle, scan it, or ask (their LinkedIn
+  profile opens and the request is marked sent, as on their card). Beside it: Untapped (S and A
+  in your 2nd degree with no request out), Kingmakers (the connections with the most S and A
+  behind them), Gatekeepers (who your S and A reach hangs on), Hidden giants (S-tier with one way
+  in), Company power, How sure (how much of the ranking rests on a guess), and Richest?, which
+  says plainly that the app never sees money. Kingmakers, Gatekeepers, Companies, Industries and
+  a scrolling Report are views of their own in the notch. Every number says where it came from;
+  a CSV import gets the boards that need no circles, and says so for the rest. On your own network every 2nd-degree row offers Auto beside Ask.
 - **Auto: one press sends someone a connection request for you.** Next to every Connect (a person's
   card, and Outlink's lists and next best moves) there's now an Auto button, the bright one. Press it
   and the scanner's Chrome opens their profile, presses Connect and sends the request without a note,
@@ -39,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of hanging over a blank screen while it loads.
 
 ### Fixed
+- **A company called "Foods" or "Beverages" is in Retail, Consumer & Hospitality.** The word list
+  had "food" and "beverage" but not the plurals, so a company like Northwind Foods took its
+  industry from its people's headlines instead (tech, on a test network). Scores are worked out
+  again once after the update, since a company's industry can change its estimate and your sector.
 - **Scan dots are whole on Paths.** The dots along the header's line while a scan runs were cut in
   half above Paths' left panel; they also stop short of the tabs now that the tabs sit on the line.
 - **The 3rd-degree dot in Degrees and Separation says why it can't be tapped.** It said "No one at
