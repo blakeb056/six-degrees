@@ -20,6 +20,17 @@ It captures:
 - profile photos, re-encoded to permanent local WebP files (LinkedIn's CDN URLs
   are signed and expire in about three weeks).
 
+The one thing it ever sends: **a connection request, only when you press Auto** on a
+person (their card, or Outlink), one person per press, never a batch and never on a timer.
+It opens their profile once (a profile view), presses their Connect, and sends without a
+note. If LinkedIn asks for their email address, or for anything else it can't answer
+without a note, it closes that and sends nothing. It counts the request as sent only when
+their profile shows it pending. At most 15 in any 24 hours and 80 in any 7 days (LinkedIn
+doesn't publish its invitation limit; about 100 a week is commonly reported), recorded with
+the searches and profile views and shown in Settings → LinkedIn usage. A pause after
+LinkedIn pushed back holds it too. `python3 scripts/scrape.py --connect <profile URL>` does
+the same from a terminal.
+
 ## The easy way — no terminal
 
 Start the app, open **Scan** in the nav (or `/setup`), and use the buttons. The page
@@ -94,8 +105,9 @@ When the cap is reached, a scan stops before opening the next profile. Nothing a
 person is recorded, so the next run starts with them. Carrying on with someone whose
 search id is already known doesn't open their profile, so it doesn't count.
 
-**Paused lists.** Everyone whose list was only partly read is listed on the Scan page with
-the page they carry on from. **Resume** carries on with one of them; **Resume all** with
+**Paused lists.** Everyone whose list was only partly read is listed on the Scan page under
+**In progress**, right after step 4, with the page they carry on from, and their card says so by
+their name. **Resume** carries on with one of them; **Resume all** with
 every paused list, and nobody new. For every result it keeps the profile link, name, photo and headline;
 "LinkedIn Member" (people outside your network) each keep their own link, and the
 screen-reader line LinkedIn puts after each name ("View … profile") is skipped rather

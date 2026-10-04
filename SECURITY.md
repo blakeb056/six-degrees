@@ -129,6 +129,14 @@ Everything stays local:
 If you run the scanner, `chrome-profile/` in the data directory holds a live
 logged-in LinkedIn session. Never copy, sync, or commit it.
 
+The scanner reads LinkedIn. The one thing it ever sends there is a connection request,
+and only when you press **Auto** on a person: one request per press, without a note, at
+most 15 in any 24 hours and 80 in any 7 days. The app looks the person up by the id the
+page sends and passes the scanner their profile URL from the database, never a URL or name
+from the request, and refuses before anything starts during a cooldown, past those caps,
+or before Auto's one-time question has been answered (`app/api/scraper/route.js`,
+`lib/auto-connect.js`).
+
 ### Moving your data (Settings → Your data)
 
 - **An export** is one `.sixdegrees` file the user saves and carries. It is

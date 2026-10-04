@@ -9,13 +9,15 @@ import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
 import { scanDoneNotification } from '../../../lib/notifications';
-import { registerScanState } from '../../../lib/scan-state';
+import { registerScanState, runningNow } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
+import { AUTO_REFUSAL, connectResultIn, connectMarks, inviteRefusal, personRefusal } from '../../../lib/auto-connect';
+import { markSentRows, awardXP, whose, requestStanding } from '../../../lib/requests';
 import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
@@ -51,6 +53,8 @@ const state = registerScanState({
   failure: null,   // the last lines of stderr from a run that failed — its reason
   pages: 0,        // pages the running scan has read: the dots along the header's line (app/components/ScanTrail.js)
   found: [],       // how many people each of those pages found: the Scan page's cluster (app/components/ScanRadar.js)
+  invitee: null,   // Auto's person: { id, name, profileUrl, userId, bridgeId }, looked up here (connectTarget)
+  outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
 });
 
 // A page read, as scripts/scrape.py prints it: "  Page 3... " as a circle or a
@@ -122,6 +126,9 @@ function push(line) {
     }
     const got = t.match(PAGE_FOUND);
     if (got && state.found.length) state.found[state.found.length - 1] = Number(got[1]);
+    // Auto's one line saying how the request went (scrape.py main, --connect).
+    const result = state.action === 'connect' && connectResultIn(t);
+    if (result) state.outcome = result;
   }
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
 }
@@ -529,7 +536,47 @@ const ACTIONS = {
   // 1,000 conversations at most), for the Social tab's "Read my whole history".
   'messages-full': { flag: '--messages --full-history', label: 'Reading your whole messages history' },
   photos:        { flag: '--save-photos', label: 'Saving profile photos to this computer' },
+  // Auto (Blake, 2026-10-03): one connection request, without a note, to one
+  // person pressed on a card. By id, looked up here (connectTarget); the URL
+  // and name that reach the command line come from the database, never the page.
+  connect:       { flag: '--connect', label: 'Sending a connection request to' },
 };
+
+/**
+ * Auto's person, by id: { person: { id, name, profileUrl, userId, bridgeId } },
+ * or why not: { error, status }. Anyone in your network on this computer with a
+ * LinkedIn profile who isn't already one of your connections (no copy of them
+ * at degree 1) and has no request out. The URL is checked like every other
+ * that reaches a command line.
+ */
+function connectTarget(id) {
+  try {
+    const me = resolveProfile({ create: false });
+    const db = getDb();
+    const row = me && db.prepare(
+      'SELECT id, name, degree, profile_url, source_connection_id FROM linkedin_connections WHERE id = ? AND user_id = ?',
+    ).get(String(id ?? ''), me.id);
+    if (!row) return personRefusal(null);
+    const why = personRefusal(row, requestStanding(db, { profileUrl: row.profile_url, userId: me.id }));
+    if (why) return why;
+    const profileUrl = cleanProfileUrl(row.profile_url);
+    if (!profileUrl) return { status: 400, error: `${row.name || 'Their'} LinkedIn profile address on file can’t be used.` };
+    return {
+      person: {
+        id: row.id, name: cleanName(row.name) || null, profileUrl, userId: me.id,
+        // Who you'd be asking through: the connection whose circle they're in.
+        bridgeId: row.degree === 2 ? row.source_connection_id ?? null : null,
+      },
+    };
+  } catch {
+    return personRefusal(null);
+  }
+}
+
+/** Auto's one-time yes (lib/auto-connect.js), given on the page that first offers it. */
+function autoAccepted() {
+  try { return Boolean(readSettings(getDb()).autoConnectAccepted); } catch { return false; }
+}
 
 /** Only a plain linkedin.com/in/ profile URL becomes an argument. */
 function cleanProfileUrl(raw) {
@@ -651,6 +698,15 @@ export async function POST(request) {
   if (!Object.hasOwn(ACTIONS, action)) {
     return Response.json({ error: `Unknown action '${action}'` }, { status: 400 });
   }
+  // Auto: who, by id, and whether a request can go to them at all, before
+  // anything else is asked. Then its own one-time yes (the page asks it).
+  let invitee = null;
+  if (action === 'connect') {
+    const found = connectTarget(body.id);
+    if (found.error) return Response.json({ error: found.error }, { status: found.status });
+    invitee = found.person;
+    if (!autoAccepted()) return Response.json({ error: AUTO_REFUSAL, needsAutoAcceptance: true }, { status: 409 });
+  }
   // Nothing opens LinkedIn before the one-time "I understand" on the Scan page,
   // whichever button asked (lib/scan-risk.js).
   if (touchesLinkedIn(action) && !scanRisk()) {
@@ -707,12 +763,14 @@ export async function POST(request) {
   // never reaches the command line (a name or the URL looked up for it does),
   // and anything not shaped like one of our ids is dropped.
   const hintId = typeof body.id === 'string' && /^[\w-]{1,64}$/.test(body.id) ? body.id : null;
-  const target = name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
+  const target = invitee ? { id: invitee.id, name: invitee.name }
+    : name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
   // too, this just says so before a process is spawned.
   // The 1st-degree scans aren't searches, but they open LinkedIn with automation too.
+  // Auto's request too: a pause after LinkedIn pushed back holds everything.
   const searches = spec.searches || action.startsWith('auto-bridge')
-    || ['bridge', 'rescrape', 'company', 'full', 'refresh'].includes(action);
+    || ['bridge', 'rescrape', 'company', 'full', 'refresh', 'connect'].includes(action);
   // A staged import replaces the network at the next start, so anything scanned
   // now would land in the copy that is about to be set aside. Setting the
   // scanner up touches no network data.
@@ -723,7 +781,15 @@ export async function POST(request) {
   if (searches && cooldown) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()}: ${cooldown.reason}.`, cooldown }, { status: 409 });
   }
+  // Auto's caps (15 in any 24 hours, 80 in any 7 days) and the profile view it
+  // takes, said before a process starts; the scanner checks them again.
+  if (invitee) {
+    const capped = inviteRefusal(linkedinState(dataDir()));
+    if (capped) return Response.json({ error: capped }, { status: 409 });
+  }
   if (state.running) {
+    // One thing at a time: Auto waits for a scan like any other job.
+    if (invitee) return Response.json({ error: `${runningNow(state.action)}. Press Auto again once it has finished.`, action: state.action }, { status: 409 });
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
   }
 
@@ -759,7 +825,8 @@ export async function POST(request) {
       // "-" can then never be read as a flag of its own. Anyone found by
       // id is --bridge-url, which carries on where their last read stopped
       // unless told to start at page 1.
-      ...(name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
+      ...(invitee ? [`--connect=${invitee.profileUrl}`, ...(invitee.name ? [`--connect-name=${invitee.name}`] : [])]
+        : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
       ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
@@ -793,6 +860,8 @@ export async function POST(request) {
   state.found = [];
   state.stderrTail = [];
   state.failure = null;
+  state.invitee = invitee;
+  state.outcome = null;
   forgetChecks();
 
   // Name the profile outright. The scraper would otherwise ask the app which one
@@ -810,7 +879,29 @@ export async function POST(request) {
     SIX_DEGREES_FROM_APP: '1',
   };
 
+  /**
+   * Auto: a request LinkedIn showed as pending (or one already pending there)
+   * is marked as sent through the same store as the Connect button
+   * (lib/requests.js), before the job is seen to end, so every view that looks
+   * next finds it; its XP follows. Anything else marks nothing (TRAPS §7).
+   */
+  function markAutoSent() {
+    const who = state.invitee;
+    if (state.action !== 'connect' || !who || who.marked || !connectMarks(state.outcome)) return;
+    who.marked = true;
+    try {
+      const { saved, xp, user } = markSentRows(getDb(), {
+        connectionId: who.id, profileUrl: who.profileUrl, userId: who.userId, bridgeId: who.bridgeId,
+      });
+      if (saved) Promise.resolve(awardXP(whose(user), xp)).catch(() => {});
+      push('Marked as sent in Six Degrees.');
+    } catch (err) {
+      push(`Sent on LinkedIn, but it couldn’t be marked as sent here: ${err.message}`);
+    }
+  }
+
   function finish(code) {
+    markAutoSent();
     // A failure must say why. stderr is filtered while running because pip and
     // Playwright are noisy there, and that filter once swallowed the only line
     // explaining a failed scan, leaving just "exit 1". On a failure, show the
@@ -834,6 +925,8 @@ export async function POST(request) {
     state.exitCode = code;
     state.recent = [{
       action: state.action, target: state.target, startedAt: state.startedAt, exitCode: code, failure: state.failure,
+      // How Auto's request went, for the button that started it (lib/auto-connect.js connectOutcome).
+      ...(state.action === 'connect' ? { outcome: state.outcome } : {}),
     }, ...state.recent].slice(0, 5);
     // A scan that finished leaves a notification ("Scan done: …"); a stop or a failure doesn't.
     const done = scanDoneNotification({ action: state.action, target: state.target, exitCode: code, stopped, log: state.log.slice(-12), userId: profileId || null });

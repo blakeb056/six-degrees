@@ -35,6 +35,7 @@ import { useRouter } from 'next/navigation';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
+import { stoppedLine } from '../../lib/in-progress';
 import { reachSegments, RING } from '../../lib/dot-rings';
 import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
 import { noteCircle } from '../../lib/notifications';
@@ -42,7 +43,7 @@ import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
-import { watchScanner, scannerNow, isCircleScan } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, isCircleScan, beginScrape, scraperStatus, notReadyMessage, busyReason, resumePoint } from '../../lib/scraper-client';
 import useRequests from './useRequests';
 import { TIER_COLORS } from '../../lib/themes';
 
@@ -1111,6 +1112,17 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   const next = ordinal(depth + 1);
   const yours = person.degree === 1;
   const state = yours ? circleState(person, reach) : null;
+  // Read partway with nothing saved yet (everyone on those pages was already
+  // yours): that isn't a list that has been read, so it says it stopped, with
+  // the card's Resume (Blake, 2026-10-03: "the ones they stopped and would like
+  // to resume"). Where it stopped is the card's own answer, asked of the server
+  // (GET /api/scraper?resume=<id>): the map's scan notes don't say how far a
+  // list got. Undefined while it's asked.
+  const stopped = useStoppedAt(state === 'scanned' && !scanning ? person.id : null);
+  // Why Resume didn't start, kept here: a start greys this to "Scanning…" for a
+  // moment even when it's refused, and the button's own state would go with it.
+  const [problem, setProblem] = useState(null);
+  if (state === 'scanned' && !scanning && stopped === undefined) return null;   // never "has been read" by mistake
   const cost = circleScanCost();
   let title;
   let body;
@@ -1118,6 +1130,10 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   if (scanning) {
     title = `Scanning ${first}’s circle now`;
     body = 'Their people appear here as the scan saves them, every 10 pages.';
+  } else if (stopped) {
+    title = `${first}’s scan stopped partway`;
+    body = `${stoppedLine(stopped)}. Everyone on those pages was already one of your connections, so nobody new is here yet. Resume carries on from page ${stopped.nextPage}.`;
+    if (canScan) action = <ResumeHere person={person} stopped={stopped} problem={problem} setProblem={setProblem} />;
   } else if (state === 'hidden') {
     title = `${first} keeps their connections hidden`;
     body = 'LinkedIn doesn’t show their list, so there is no circle to scan.';
@@ -1149,7 +1165,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   return (
     <div role="status" style={{
       position: 'absolute', left: '50%', top, transform: 'translateX(-50%)', width: 'min(360px, calc(100% - 32px))',
-      background: 'color-mix(in srgb, var(--sd-bg) 94%, transparent)', border: `1px solid ${state === 'hidden' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' : 'rgba(0,255,136,0.25)'}`,
+      background: 'color-mix(in srgb, var(--sd-bg) 94%, transparent)', border: `1px solid ${state === 'hidden' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' : stopped && !scanning ? 'rgba(255,215,0,0.4)' : 'rgba(0,255,136,0.25)'}`,
       borderRadius: 12, padding: '14px 16px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: state === 'hidden' ? 'var(--sd-fg-3, #aaa)' : 'var(--sd-fg-1, #fff)', marginBottom: 6 }}>
@@ -1158,6 +1174,63 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
       <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #9aa)', lineHeight: 1.55, marginBottom: action ? 12 : 0 }}>{body}</div>
       {action}
     </div>
+  );
+}
+
+/**
+ * Where Resume would carry on with one of your connections ({ nextPage,
+ * pagesRead }), null when there's nothing to carry on with, undefined while
+ * it's asked; and never asked for null. Asked again whenever `id` comes back,
+ * as it does when a scan of theirs ends.
+ */
+function useStoppedAt(id) {
+  const [got, setGot] = useState({ id: null, resume: undefined });
+  useEffect(() => {
+    if (!id) return undefined;
+    let live = true;
+    resumePoint(id).then((r) => { if (live) setGot({ id, resume: r }); }, () => { if (live) setGot({ id, resume: null }); });
+    return () => { live = false; };
+  }, [id]);
+  if (!id) return null;
+  return got.id === id ? got.resume : undefined;
+}
+
+/**
+ * Resume for a circle that stopped partway, from the map: what the card's
+ * Resume does (Sidebar.js CreateClusterCard), the same check first, carrying on
+ * from the page it stopped at, never page 1 again. Once it starts, the empty
+ * circle says it's being scanned. Greyed out, saying why, while another scan runs.
+ */
+function ResumeHere({ person, stopped, problem, setProblem }) {
+  const busy = useSyncExternalStore(watchScanner, () => busyReason(scannerNow()), () => null);
+  const [checking, setChecking] = useState(false);
+  async function go() {
+    setProblem(null);
+    setChecking(true);
+    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    setChecking(false);
+    if (blocked) {
+      setProblem(`${blocked} Open the Scan page to finish setting the scanner up.`);
+      return;
+    }
+    try {
+      await beginScrape('resume', { id: person.id });
+    } catch (e) {
+      setProblem(e.message || 'Could not start the scan.');
+    }
+  }
+  const off = Boolean(busy) || checking;
+  return (
+    <>
+      <button type="button" onClick={go} disabled={off} style={{
+        ...primary, border: 'none', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
+      }}>Resume from page {stopped.nextPage}</button>
+      {(busy || problem) && (
+        <div style={{ fontSize: 10.5, color: problem ? '#ff8080' : 'var(--sd-fg-3, #888)', marginTop: 8 }}>
+          {problem || `${busy}. One scan at a time: this one can start when it finishes.`}
+        </div>
+      )}
+    </>
   );
 }
 

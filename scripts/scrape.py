@@ -19,6 +19,7 @@ Usage:
   python3 scripts/scrape.py --auto-bridge --tiers=S,A --max-bridges=10
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
   python3 scripts/scrape.py --auto-bridge --deeper   # ...and finish lists read only partly
+  python3 scripts/scrape.py --connect URL            # Auto: one connection request, no note
 
 IMPORTANT: Only scrape ONE bridge at a time. Do NOT batch multiple bridges
 in one session — LinkedIn detects automation and flags your account.
@@ -1425,7 +1426,8 @@ def note_unclear(profile_url, clear=False):
 # profile in the app: three app profiles must not triple the budget. The app's
 # Scan page reads and edits the same files (lib/linkedin-limits.js).
 #
-#   linkedin-activity.json  {"searches": [epoch s, ...], "profiles": [...]}
+#   linkedin-activity.json  {"searches": [epoch s, ...], "profiles": [...],
+#                            "invites": [...]}   Auto's connection requests (--connect)
 #   scan-limits.json        {"daily": 50, "monthly": 250, "profiles": 50}
 #                           0 = no cap on searches; profile views always have one
 #   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
@@ -1437,6 +1439,13 @@ DEFAULT_MONTHLY_SEARCHES = 250
 DEFAULT_DAILY_PROFILES = 50
 PROFILE_GAP = 60                  # seconds between any two profile opens, whatever opened them
 DAY_SECONDS = 24 * 3600
+WEEK_SECONDS = 7 * DAY_SECONDS
+# Auto's connection requests (--connect), in any 24 hours and any 7 days. The
+# app shows and enforces the same two (lib/auto-connect.js INVITE_CAPS; a test
+# checks they match). LinkedIn doesn't publish its invitation limit; people
+# commonly report about 100 a week, so the week stays well under it.
+INVITE_DAY_CAP = 15
+INVITE_WEEK_CAP = 80
 PACIFIC = "America/Los_Angeles"
 
 
@@ -1517,9 +1526,10 @@ def _read_activity():
         if not isinstance(data, dict):
             raise ValueError("not an object")
         return {"searches": [float(x) for x in data.get("searches", [])],
-                "profiles": [float(x) for x in data.get("profiles", [])]}
+                "profiles": [float(x) for x in data.get("profiles", [])],
+                "invites": [float(x) for x in data.get("invites", [])]}
     except FileNotFoundError:
-        return {"searches": [], "profiles": []}
+        return {"searches": [], "profiles": [], "invites": []}
     except Exception:
         # Kept aside, and replaced by a record that says today's budget is used —
         # written, so it holds for the whole day rather than one check. (Failing
@@ -1531,7 +1541,8 @@ def _read_activity():
             pass
         print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
         lim = search_limits()
-        fresh = {"searches": [now] * max(1, lim["daily"] or 1), "profiles": [now] * lim["profiles"]}
+        fresh = {"searches": [now] * max(1, lim["daily"] or 1), "profiles": [now] * lim["profiles"],
+                 "invites": [now] * INVITE_DAY_CAP}
         try:
             _write_json_atomic(path, fresh)
         except Exception:
@@ -1540,7 +1551,7 @@ def _read_activity():
 
 
 def charge_linkedin(kind="searches", n=1):
-    """Write down n searches (or profile views) made just now."""
+    """Write down n searches (or profile views, or connection requests) made just now."""
     with _Locked("linkedin-activity"):
         _charge(_read_activity(), kind, n, time.time())
 
@@ -1548,9 +1559,9 @@ def charge_linkedin(kind="searches", n=1):
 def _charge(data, kind, n, now):
     """Add n of `kind` at `now` to the record and write it. The caller holds the lock."""
     keep_from = month_start_pacific(now) - 32 * DAY_SECONDS
-    data[kind] = [t for t in data.get(kind, []) if t >= keep_from] + [now] * n
-    other = "profiles" if kind == "searches" else "searches"
-    data[other] = [t for t in data.get(other, []) if t >= keep_from]
+    for each in ("searches", "profiles", "invites"):
+        data[each] = [t for t in data.get(each, []) if t >= keep_from]
+    data[kind] = data.get(kind, []) + [now] * n
     try:
         _write_json_atomic(_home() / "linkedin-activity.json", data)
     except Exception as exc:
@@ -4133,6 +4144,529 @@ def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
     scrape_bridge(bridge_name, headless=headless, max_pages=max_pages, fresh=True)
 
 
+# ---------------------------------------------------------------------------
+# Auto: one connection request, for the person whose Auto was pressed (--connect)
+# ---------------------------------------------------------------------------
+# Blake, 2026-10-03: "auto add and basically adds the person for them in the
+# card or wherever its available ... sometimes when adding it'll prompt the user
+# to have a email from their work or to send a personal note if they have
+# premium so if thats the case then have it close out of that in the scanner
+# for adding but it should be seamless."
+#
+# This is the one thing the scanner ever does on LinkedIn besides reading, and
+# only because a person pressed Auto on one card: one person per run, never a
+# batch, never on a timer. It is openly slow like everything else here: fixed
+# waits, a profile view taken like any other (cap and gap), no "human" timing
+# and no mouse movement made up to look like someone (Blake's standing scanner
+# boundary). The app looks the person up by id and refuses first (cooldown,
+# caps, already connected or requested; app/api/scraper/route.js); this checks
+# the cooldown and the caps again before anything opens.
+#
+# How it finds things, without a CSS class (TRAPS §5): by role and accessible
+# name, the way a screen reader would. Their Connect is a button (or link, or
+# menu item) labelled "Invite <their name> to connect"; the name must be theirs,
+# word for word, because the same page lists other people with Connect buttons
+# of their own ("People also viewed"). When it isn't on the front of their
+# profile, it is under "More". A bare "Connect" with no name is only taken from
+# that menu, and only when the menu is what brought it on screen: on the page
+# itself, a nameless Connect could be anyone's.
+#
+# What LinkedIn asks next is answered like this:
+#   a note?                       "Send without a note", or the only Send there is
+#   a personal note (Premium)     the same: never a note, never Premium
+#   their email address           closed, nothing sent ("email-needed")
+#   its invitation limit          closed, nothing sent ("linkedin-limit")
+#   anything else                 closed, nothing sent ("not-sent")
+# It is "sent" only when their profile then shows it Pending (or LinkedIn says
+# the invitation to them was sent). Anything else after pressing Send is
+# "unclear", and the app doesn't mark it as sent: never a confident wrong answer
+# (TRAPS §7). A security check or a sign-in wall is LinkedIn pushing back, as in
+# every other run: the page is kept, everything pauses for a day, and it stops.
+#
+# None of this has been run against LinkedIn's real page: the labels above are
+# what LinkedIn is known to use, and tests/auto-connect.test.mjs runs it against
+# a stand-in page. Watch the first real one.
+
+CONNECT_LOAD_ATTEMPTS = 6         # looks for their profile to render, CONNECT_LOAD_STEP apart
+CONNECT_LOAD_STEP = 5             # seconds
+CONNECT_STEP = 1                  # seconds between looks for LinkedIn's answer
+DIALOG_WAIT = 10                  # seconds to wait for the invitation window after Connect
+CONFIRM_WAIT = 12                 # seconds to wait for Pending after Send
+
+# Every result a run can end with, printed as "Connect result: <name>" for the
+# app (lib/auto-connect.js OUTCOMES has the same names and their words; a test
+# checks the two lists match).
+CONNECT_RESULTS = (
+    "sent", "already-pending", "email-needed", "no-connect", "not-sent", "unclear", "not-loaded",
+    "unavailable", "linkedin-limit", "pushback", "stopped", "not-signed-in", "cooldown",
+    "invites-day", "invites-week", "profiles", "not-found",
+)
+
+ACTION_ROLES = ("button", "link", "menuitem")
+INVITE_LABEL = re.compile(r"^\s*Invite\s+(.+?)\s+to\s+connect\s*$", re.I)
+PENDING_LABEL = re.compile(r"^\s*Pending\b", re.I)
+BARE_CONNECT = re.compile(r"^\s*Connect\s*$", re.I)
+BARE_PENDING = re.compile(r"^\s*Pending\s*$", re.I)
+MORE_LABEL = re.compile(r"^\s*More( actions)?\s*$", re.I)
+SEND_PLAIN = re.compile(r"^\s*Send without a note\s*$", re.I)
+SEND_ANY = re.compile(r"^\s*Send( now| invitation)?\s*$", re.I)
+CLOSE_LABEL = re.compile(r"^\s*(Dismiss|Close|Cancel|Got it|Not now)\s*$", re.I)
+EMAIL_BOX = re.compile(r"e-?mail", re.I)
+EMAIL_ASK = re.compile(r"enter (their|his|her|the member.?s) e-?mail|e-?mail( address)? to connect|knows you.{0,60}e-?mail", re.I)
+INVITE_LIMIT = re.compile(r"invitation limit|reached the (weekly )?limit|too many (pending )?invitations", re.I)
+PREMIUM_NOTE = re.compile(r"premium|personali[sz]ed (invitation|note)", re.I)
+SENT_NOTICE = re.compile(r"invitation to (.+?) (?:was|has been) sent", re.I)
+
+
+def invites_left(now=None):
+    """(how many more requests Auto may send, "day" | "week": whichever runs out first)."""
+    now = now if now is not None else time.time()
+    invites = _read_activity()["invites"]
+    day = INVITE_DAY_CAP - sum(1 for t in invites if t > now - DAY_SECONDS)
+    week = INVITE_WEEK_CAP - sum(1 for t in invites if t > now - WEEK_SECONDS)
+    return (max(0, day), "day") if day <= week else (max(0, week), "week")
+
+
+def take_invite(now=None):
+    """Write down one connection request about to be sent, if the caps allow one.
+
+    None once it is written down; "day" or "week" when that cap is reached and
+    nothing was written. The check and the write are one step under the lock.
+    """
+    with _Locked("linkedin-activity"):
+        now = now if now is not None else time.time()
+        data = _read_activity()
+        invites = data["invites"]
+        if sum(1 for t in invites if t > now - DAY_SECONDS) >= INVITE_DAY_CAP:
+            return "day"
+        if sum(1 for t in invites if t > now - WEEK_SECONDS) >= INVITE_WEEK_CAP:
+            return "week"
+        _charge(data, "invites", 1, now)
+        return None
+
+
+def invite_message(kind):
+    """Why Auto sent nothing: a cap on its requests is reached, and when one frees up."""
+    now = time.time()
+    window = WEEK_SECONDS if kind == "week" else DAY_SECONDS
+    cap = INVITE_WEEK_CAP if kind == "week" else INVITE_DAY_CAP
+    sent = sorted(t for t in _read_activity()["invites"] if t > now - window)
+    extra = len(sent) - cap
+    free = f" The next one frees up at {_when(sent[extra] + window)}." if extra >= 0 else ""
+    span = "7 days" if kind == "week" else "24 hours"
+    return f"Auto has sent {cap} connection requests in the last {span}, its limit.{free} Nothing was opened or sent."
+
+
+def _names_words(text):
+    """The words of a name, lower case, letters only (any alphabet)."""
+    return re.findall(r"[^\W\d_]+", str(text or "").lower())
+
+
+def _same_person(shown, name):
+    """Does what LinkedIn shows (a label, a heading) name this person: their first and last name, as whole words?"""
+    want = _names_words(str(name or "").split(",")[0])
+    have = set(_names_words(shown))
+    return bool(want) and want[0] in have and want[-1] in have
+
+
+def _shown(loc, limit=40):
+    """The items of a locator that are on screen."""
+    out = []
+    try:
+        n = loc.count()
+    except Exception:
+        return out
+    for i in range(min(n, limit)):
+        item = loc.nth(i)
+        try:
+            if item.is_visible():
+                out.append(item)
+        except Exception:
+            pass
+    return out
+
+
+def _label(item):
+    """An element's accessible name as LinkedIn wrote it: its aria-label, else its text."""
+    try:
+        label = item.get_attribute("aria-label")
+        if label:
+            return label
+    except Exception:
+        pass
+    try:
+        return item.inner_text() or ""
+    except Exception:
+        return ""
+
+
+def _enabled(item):
+    try:
+        return item.is_enabled()
+    except Exception:
+        return False
+
+
+def _in_main(page):
+    """The profile's <main>, where its own buttons are, or the page if there is none."""
+    try:
+        main = page.locator("main")
+        if main.count() > 0:
+            return main.first
+    except Exception:
+        pass
+    return page
+
+
+def _actions(scope, name_pattern):
+    """Every button, link or menu item on screen whose accessible name matches."""
+    found = []
+    for role in ACTION_ROLES:
+        try:
+            found.extend(_shown(scope.get_by_role(role, name=name_pattern)))
+        except Exception:
+            pass
+    return found
+
+
+def _invite_for(page, name):
+    """Their own Connect: "Invite <their name> to connect", never someone else's."""
+    for item in _actions(page, INVITE_LABEL):
+        m = INVITE_LABEL.match(_label(item))
+        if m and _same_person(m.group(1), name):
+            return item
+    return None
+
+
+def _pending_for(page, name):
+    """Their profile says a request to them is pending, naming them."""
+    return any(_same_person(_label(item), name) for item in _actions(page, PENDING_LABEL))
+
+
+def _bare_pending(page):
+    """How many nameless "Pending" buttons their profile shows."""
+    return len(_actions(_in_main(page), BARE_PENDING))
+
+
+def _sent_shown(page, name, bare_before):
+    """LinkedIn shows the request to them as sent: Pending naming them, a new
+    "Pending" on their profile, or its notice that the invitation to them was sent."""
+    if _pending_for(page, name):
+        return True
+    if _bare_pending(page) > bare_before:
+        return True
+    try:
+        for item in _shown(page.get_by_text(SENT_NOTICE)):
+            m = SENT_NOTICE.search(_label(item))
+            if m and _same_person(m.group(1), name):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _press_escape(page):
+    try:
+        page.keyboard.press("Escape")
+    except Exception:
+        pass
+
+
+def _connect_under_more(page, name):
+    """Connect from their profile's More menu, or None (the menu is closed again)."""
+    more = _actions(_in_main(page), MORE_LABEL)
+    if not more:
+        return None
+    bare_before = len(_actions(page, BARE_CONNECT))
+    print("  Connect isn't on the front of their profile; looking under More...")
+    try:
+        more[0].click(timeout=10000)
+    except Exception:
+        return None
+    time.sleep(CONNECT_STEP)
+    found = _invite_for(page, name)
+    if found:
+        return found
+    # A nameless "Connect" only when opening the menu is what brought it on screen.
+    bare = _actions(page, BARE_CONNECT)
+    if bare_before == 0 and len(bare) == 1:
+        return bare[0]
+    _press_escape(page)
+    return None
+
+
+def _dialog(page):
+    """LinkedIn's window on top of the page (the newest), or None."""
+    shown = []
+    for role in ("dialog", "alertdialog"):
+        try:
+            shown.extend(_shown(page.get_by_role(role)))
+        except Exception:
+            pass
+    return shown[-1] if shown else None
+
+
+def _close_dialog(page, dialog):
+    """Close LinkedIn's window without answering it: its Dismiss (or Close, Cancel), else Escape."""
+    try:
+        close = _shown(dialog.get_by_role("button", name=CLOSE_LABEL))
+        if close:
+            close[0].click(timeout=5000)
+        else:
+            _press_escape(page)
+    except Exception:
+        _press_escape(page)
+    time.sleep(CONNECT_STEP)
+
+
+def _asks_for_email(dialog, text):
+    """The invitation window wants their email address before it sends."""
+    for loc in (lambda: dialog.get_by_role("textbox", name=EMAIL_BOX), lambda: dialog.locator("input[type=email]")):
+        try:
+            if _shown(loc()):
+                return True
+        except Exception:
+            pass
+    return bool(EMAIL_ASK.search(text or ""))
+
+
+def _send_button(dialog):
+    """"Send without a note", or the one Send there is. Never "Add a note", never Premium."""
+    plain = [b for b in _shown(dialog.get_by_role("button", name=SEND_PLAIN)) if _enabled(b)]
+    if plain:
+        return plain[0]
+    sends = [b for b in _shown(dialog.get_by_role("button", name=SEND_ANY)) if _enabled(b)]
+    return sends[0] if len(sends) == 1 else None
+
+
+def _dialog_text(dialog):
+    try:
+        return dialog.inner_text() or ""
+    except Exception:
+        return ""
+
+
+def _connect_pushback(page, why):
+    """LinkedIn pushed back while Auto was on their profile: keep the page, pause for a day."""
+    print(f"  LinkedIn is pushing back ({why}). Stopping here.")
+    _keep_pushback_evidence(page, why)
+    set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+
+
+def _confirm_sent(page, name, bare_before):
+    """After Send: "sent" once their profile shows it, else "unclear" (or "pushback", "linkedin-limit")."""
+    waited = 0
+    while waited < CONFIRM_WAIT:
+        time.sleep(CONNECT_STEP)
+        waited += CONNECT_STEP
+        why = _pushback(page)
+        if why:
+            _connect_pushback(page, why)
+            return "pushback"
+        dialog = _dialog(page)
+        if dialog is not None and INVITE_LIMIT.search(_dialog_text(dialog)):
+            _close_dialog(page, dialog)
+            print("  LinkedIn says this account has reached its invitation limit.")
+            return "linkedin-limit"
+        if _sent_shown(page, name, bare_before):
+            return "sent"
+    leftover = _dialog(page)
+    if leftover is not None:
+        _close_dialog(page, leftover)
+    return "unclear"
+
+
+def _answer_invitation(page, name, bare_before):
+    """What LinkedIn asks once Connect is pressed, answered without a note."""
+    dialog = None
+    waited = 0
+    while waited < DIALOG_WAIT:
+        time.sleep(CONNECT_STEP)
+        waited += CONNECT_STEP
+        dialog = _dialog(page)
+        if dialog is not None:
+            break
+        if _sent_shown(page, name, bare_before):
+            # Some accounts send straight from Connect, with nothing to answer.
+            charge_linkedin("invites")
+            print("  LinkedIn sent it straight from Connect; their profile shows it pending.")
+            return "sent"
+    if dialog is None:
+        # Nothing came up and nothing shows it pending. It may have gone, so it
+        # counts toward Auto's caps; it isn't called sent.
+        charge_linkedin("invites")
+        print("  Nothing came up after Connect, and their profile doesn't show it pending.")
+        return "unclear"
+
+    text = _dialog_text(dialog)
+    if _asks_for_email(dialog, text):
+        _close_dialog(page, dialog)
+        print("  LinkedIn wants their email address before it sends this one. Closed that; nothing was sent.")
+        return "email-needed"
+    if INVITE_LIMIT.search(text):
+        _close_dialog(page, dialog)
+        print("  LinkedIn says this account has reached its invitation limit. Closed that; nothing was sent.")
+        return "linkedin-limit"
+    send = _send_button(dialog)
+    if send is None:
+        _close_dialog(page, dialog)
+        print("  LinkedIn's invitation window had no way to send without a note. Closed it; nothing was sent.")
+        return "not-sent"
+    if PREMIUM_NOTE.search(text):
+        print("  LinkedIn offered a personal note (Premium). Sending without one.")
+    if stop_requested() or _window_closed(page):
+        _close_dialog(page, dialog)
+        return "stopped"
+    taken = take_invite()
+    if taken:
+        _close_dialog(page, dialog)
+        print("  " + invite_message(taken))
+        return f"invites-{taken}"
+    print("  Sending without a note...")
+    try:
+        send.click(timeout=10000)
+    except Exception as exc:
+        print(f"  Send couldn't be pressed ({str(exc)[:60]}).")
+        _close_dialog(page, dialog)
+        return "unclear"
+    result = _confirm_sent(page, name, bare_before)
+    if result == "sent":
+        print(f"  Sent. {name}'s profile shows the request pending.")
+    elif result == "unclear":
+        print("  Send was pressed, but their profile doesn't show the request pending. Not calling it sent.")
+    return result
+
+
+def _connect_on_page(page, profile_url, name):
+    """Open their profile (one profile view) and send the request. Returns a CONNECT_RESULTS name."""
+    why = _wait_for_profile_view(page)
+    if why == "budget":
+        print(budget_message("profiles"))
+        return "profiles"
+    if why:
+        return "stopped"
+
+    print(f"  Opening {name}'s profile...")
+    try:
+        page.goto(profile_url, wait_until="commit")
+    except Exception as exc:
+        print(f"  Navigation slow: {str(exc)[:50]}... carrying on")
+
+    shown = False
+    for _ in range(CONNECT_LOAD_ATTEMPTS):
+        time.sleep(CONNECT_LOAD_STEP)
+        if stop_requested() or _window_closed(page):
+            return "stopped"
+        why = _pushback(page)
+        if why:
+            _connect_pushback(page, why)
+            return "pushback"
+        if _profile_unavailable(page):
+            print("  LinkedIn says their profile isn't available. Nothing was sent.")
+            return "unavailable"
+        try:
+            shown = bool(page.evaluate(PROFILE_SHOWN_JS, name))
+        except Exception:
+            shown = False
+        if shown:
+            break
+    if not shown:
+        print("  Their profile didn't load properly, so nothing was pressed.")
+        return "not-loaded"
+
+    if _pending_for(page, name):
+        print(f"  A request to {name} is already pending on LinkedIn. Nothing new was sent.")
+        return "already-pending"
+    bare_before = _bare_pending(page)
+    target = _invite_for(page, name) or _connect_under_more(page, name)
+    if target is None:
+        print("  LinkedIn shows no Connect for them here (only Follow or Message, say). Nothing was sent.")
+        return "no-connect"
+    if stop_requested() or _window_closed(page):
+        return "stopped"
+    left, kind = invites_left()
+    if left <= 0:
+        print("  " + invite_message(kind))
+        return f"invites-{kind}"
+    print(f"  Pressing Connect for {name}...")
+    try:
+        target.click(timeout=10000)
+    except Exception as exc:
+        print(f"  Connect couldn't be pressed ({str(exc)[:60]}). Nothing was sent.")
+        return "not-sent"
+    return _answer_invitation(page, name, bare_before)
+
+
+def connect_person(profile_url, name=None, headless=False):
+    """Send one connection request, without a note, to the person at profile_url.
+
+    Returns one of CONNECT_RESULTS; main() prints it as "Connect result: ...".
+    Nothing opens during a cooldown, with Auto's caps reached, or with no
+    profile view left: each is checked before a browser starts.
+    """
+    from playwright.sync_api import sync_playwright
+
+    cd = read_cooldown()
+    if cd:
+        print(cooldown_message(cd))
+        return "cooldown"
+    left, kind = invites_left()
+    if left <= 0:
+        print(invite_message(kind))
+        return f"invites-{kind}"
+    if profiles_left() <= 0:
+        print(budget_message("profiles"))
+        return "profiles"
+    if not name:
+        params = {"profile_url": f"eq.{profile_url}", "limit": "1"}
+        if _active_user_id:
+            params["user_id"] = f"eq.{_active_user_id}"
+        rows = read_connections(params=params)
+        if not rows:
+            print(f"  {profile_url} isn't in your network on this computer. Nothing was sent.")
+            return "not-found"
+        name = rows[0].get("name") or ""
+
+    print(f"\n=== Sending {name} a connection request, without a note ===\n")
+    result = None
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch_persistent_context(
+                user_data_dir=get_scraper_profile_path(),
+                headless=headless,
+                channel="chrome",
+                args=["--disable-blink-features=AutomationControlled"],
+                timeout=120000,
+            )
+            try:
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                page.set_default_timeout(120000)
+                page.set_default_navigation_timeout(120000)
+                # A security check or a sign-out here is LinkedIn pushing back,
+                # as for a circle scan: it raises, after pausing everything.
+                if not ensure_logged_in(page, stop_on_checkpoint=True):
+                    result = "stopped" if stop_requested() else "not-signed-in"
+                else:
+                    result = _connect_on_page(page, profile_url, name)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+    except LinkedInPushedBack as exc:
+        print(f"  LinkedIn pushed back ({exc.reason}). Nothing was sent.")
+        result = "pushback"
+    except Exception:
+        # A stop takes the browser down with it. Anything else is a failure
+        # with its reason, never a result that could read as sent.
+        if result is None:
+            if stop_requested():
+                result = "stopped"
+            else:
+                raise
+    return result
+
+
 def run_server(port=5555):
     """
     Run a local HTTP server that the website's Setup page can talk to.
@@ -4397,6 +4931,12 @@ Examples:
                              "The app's Scan buttons use it, since two connections can share a name")
     parser.add_argument("--only-unfinished", action="store_true",
                         help="With --auto-bridge: only people whose read was cut short (Resume all)")
+    parser.add_argument("--connect", type=str,
+                        help="Auto: send one connection request, without a note, to the person at this LinkedIn "
+                             f"profile URL. Never with a note; at most {INVITE_DAY_CAP} in any 24 hours and "
+                             f"{INVITE_WEEK_CAP} in any 7 days")
+    parser.add_argument("--connect-name", type=str, default="",
+                        help="With --connect: their name as the app has it (else it is looked up in the app)")
     parser.add_argument("--save-photos", action="store_true",
                         help="Save the profile photos still kept as links to LinkedIn, then exit "
                              "(every scan also does this at its end)")
@@ -4408,7 +4948,10 @@ Examples:
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
     # The Scan page's speed. Signing in searches nothing, so it isn't said there.
     _pace = apply_pace()
-    if not args.login:
+    if args.connect:
+        # Auto reads no pages: only the gap before opening their profile applies.
+        print(f"Speed: {_pace.capitalize()}. Profiles at least {PROFILE_GAP}s apart.")
+    elif not args.login:
         print(f"Speed: {_pace.capitalize()}. {PAGE_PAUSE}s before each page of results, {CHUNK_COOLDOWN}s more after "
               f"every {SAVE_EVERY_PAGES}, and profiles at least {PROFILE_GAP}s apart.")
 
@@ -4454,6 +4997,23 @@ Examples:
     # A budget or a cooldown ending a run is the design working, not a failure:
     # say why and exit 0, so the Scan page doesn't show it as a red error.
     try:
+        if args.connect:
+            # Auto (lib/auto-connect.js): one request, then out. Its last line is
+            # the result the app reads; no photos are saved after it, since it
+            # read no one. A pushback or no sign-in ends it as a failure, with why.
+            if not re.match(r"^https?://([a-z]{2,3}\.|www\.)?linkedin\.com/in/[^/?#\s]+/?$", args.connect, re.I):
+                print("  --connect takes a LinkedIn profile URL (https://www.linkedin.com/in/...).", file=sys.stderr)
+                raise SystemExit(2)
+            result = connect_person(args.connect, name=args.connect_name.strip() or None, headless=args.headless)
+            print(f"Connect result: {result}", flush=True)
+            if result == "pushback":
+                print(f"\n  LinkedIn pushed back, so nothing more is sent. {_pushback_advice('')}\n", file=sys.stderr)
+                raise SystemExit(1)
+            if result == "not-signed-in":
+                print("\n  LinkedIn isn't signed in, so nothing was sent. Sign in with --login (or the Scan page), "
+                      "then try again.\n", file=sys.stderr)
+                raise SystemExit(1)
+            raise SystemExit(0)
         if args.company:
             # The server mode scraped and pushed as one step; the CLI has to do the
             # same or the scan appears to work and saves nothing.

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import { inProgressSummary } from '../../lib/in-progress';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -125,33 +126,57 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
   );
 }
 
+/**
+ * Everyone whose list was only partly read: the Scan page's In progress card,
+ * with Resume for each and Resume all. Blake, 2026-10-03: "we need to have some
+ * sort of in progress ones in the scanner as well to see all the ones they
+ * stopped and would like to resume". It used to be folded away in Fine-tune the
+ * scanner, where nobody who had just stopped a scan would look; now it stands
+ * on its own right after step 4, and only while someone is stopped partway.
+ * Each name opens their circle on the map (/?chain=<id>, the link Watch it fill
+ * in uses), to see how far it got.
+ */
 export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
   const [showAll, setShowAll] = useState(false);
   if (!paused.length) return null;
-  const legacy = paused.filter((p) => p.legacy).length;
   const shown = showAll ? paused : paused.slice(0, 8);
   return (
-    <div style={{ borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: LINE, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <b style={{ fontSize: 13.5 }}>Paused: {paused.length} {paused.length === 1 ? 'list' : 'lists'} with more to read</b>
-          <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 2 }}>
-            Each carries on from the page it stopped at{legacy ? `; ${legacy} were read to page 10 before whole lists were read` : ''}.
+    <section aria-labelledby="in-progress-title" style={{
+      margin: '20px 0 4px', borderRadius: 14, overflow: 'hidden',
+      border: '1px solid rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.035)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 14px', borderBottom: LINE, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h2 id="in-progress-title" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+            {/* The pause sign the person card shows by a name that stopped partway (Sidebar.js StoppedPartway). */}
+            <span aria-hidden="true" style={{ display: 'inline-flex', gap: 2 }}>
+              <span style={{ width: 3, height: 12, borderRadius: 1, background: 'var(--sd-gold, #FFD700)' }} />
+              <span style={{ width: 3, height: 12, borderRadius: 1, background: 'var(--sd-gold, #FFD700)' }} />
+            </span>
+            In progress
+          </h2>
+          <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4, lineHeight: 1.5 }}>
+            {inProgressSummary(paused)}
           </div>
         </div>
-        <button onClick={onResumeAll} disabled={disabled} style={{ ...btn, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : 'linear-gradient(135deg, #3498DB, #9B59B6)' }}>
+        <button onClick={onResumeAll} disabled={disabled} style={{ ...btn, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : 'linear-gradient(135deg, #3498DB, #9B59B6)', ...(disabled ? {} : { color: '#fff' }) }}>
           Resume all
         </button>
       </div>
       <div>
         {shown.map((p) => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 18px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER[p.tier] || '#667', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Link href={`/?chain=${encodeURIComponent(p.id)}`} title={`See ${p.name}’s circle on the map`} style={{
+                  color: 'var(--sd-fg-1, #fff)', textDecoration: 'underline', textDecorationColor: 'rgba(var(--sd-ink, 255, 255, 255), 0.35)', textUnderlineOffset: 3,
+                }}>{p.name}</Link>
+              </div>
               <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
                 Read to page {p.pagesRead} · carries on at {p.nextPage}
-                {p.at ? ` · ${day(p.at)}` : ''}
+                {/* Kept whole: on a phone "Oct" and "3" landed on two lines. */}
+                {p.at ? <> <span style={{ whiteSpace: 'nowrap' }}>· {day(p.at)}</span></> : ''}
                 {p.unclear >= 2 ? ' · came back unclear twice, so it waits at the back of Resume all' : ''}
               </div>
             </div>
@@ -162,11 +187,11 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
         ))}
       </div>
       {paused.length > 8 && (
-        <button onClick={() => setShowAll(!showAll)} style={{ ...linkBtn, padding: '10px 14px' }}>
+        <button onClick={() => setShowAll(!showAll)} style={{ ...linkBtn, padding: '10px 18px' }}>
           {showAll ? 'Show fewer' : `Show all ${paused.length}`}
         </button>
       )}
-    </div>
+    </section>
   );
 }
 

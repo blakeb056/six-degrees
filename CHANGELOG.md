@@ -18,8 +18,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says plainly that the app never sees money. Kingmakers, Gatekeepers, Companies, Industries and
   a scrolling Report are views of their own in the notch. Every number says where it came from;
   a CSV import gets the boards that need no circles, and says so for the rest.
+- **Auto: one press sends someone a connection request for you.** Next to every Connect (a person's
+  card, and Outlink's lists and next best moves) there's now an Auto button, the bright one. Press it
+  and the scanner's Chrome opens their profile, presses Connect and sends the request without a note,
+  then shows "Request sent" and marks it pending everywhere in the app. Connect still opens their
+  profile for you to do it yourself. One press is one person: never a batch, never on a timer, and it
+  waits while a scan runs. It asks once before the first one. When LinkedIn wants their email address
+  first, Auto closes that and sends nothing ("Use Connect to add them yourself"); when LinkedIn offers
+  a personal note (Premium), it sends without one. It only calls a request sent once their profile
+  shows it pending, and says so plainly when it can't tell. It stops at 15 requests in any 24 hours and
+  80 in any 7 days (LinkedIn doesn't publish its limit; about 100 a week is commonly reported), opens
+  their profile once like a scan does, holds during a pause after LinkedIn pushed back, and shows in
+  Settings → LinkedIn usage as Connection requests (Auto).
 
 ### Changed
+- **A scan that stopped partway says so, on the person's card and on the Scan page.** Open someone
+  whose circle scan didn't finish and a line by their name says which page it stopped after, with
+  Resume right there; their scan box now reads Scan in progress, with Resume from page N as its main
+  button, instead of Cluster active. The card's Insights offer Resume for them too, not a scan that
+  reads the list again from page 1, and an empty circle in Bridge Chains whose scan stopped partway
+  says so, with Resume from page N, instead of saying their list has been read. On the Scan page, everyone stopped partway is in a new In progress
+  card right after step 4, with Resume for each person and Resume all, and each name opens their circle
+  on the map. It used to be folded away under Fine-tune the scanner.
 - **The tabs sit on the header's line, and the notch hangs from them.** On a computer the row of
   tabs rests on the line under the header, so a page's own buttons in the notch below join onto
   it. The header is the same height on every tab: the Pending count that added a row on Degrees
