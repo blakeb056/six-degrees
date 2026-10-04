@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Bridge Chains shows the connections whose circle isn't scanned yet, and one click scans it.**
+  Beyond each tier's scanned circles sit your connections of that tier with no circle yet, as
+  hollow dots. Hover one for who they are and what a scan costs (one profile view, then a search a
+  page of their list, up to 100, about 55 minutes). Click it and their circle starts scanning right
+  there, with no question and no trip to the Scan page, and their card opens on the right. While it
+  runs they become the hub of a big cluster forming round them, dots building clockwise in the look's
+  gold, purple and blue, with the page it's on and how many it has found (still with Reduce Motion).
+  When it ends a line at the top says their circle is in and where it sits now, or what the scanner
+  said instead (a used budget, say). Busy with another scan, or the scanner not set up yet, and a
+  small note by the dot says so. Lists the scanner has already read (hidden, or read with nobody new)
+  aren't drawn; the depth tracker's tooltip says how many it left out. With no circle scanned at all
+  yet, Bridge Chains shows them too, so the first scan can start from it.
+
+### Changed
+- **Bridge Chains stacks its rings by tier, so more tiers no longer make the circle grow.** From the
+  middle out: the circles with something new to act on (people in them ready to scan, or an accepted
+  request you haven't seen), whatever their tier; then each tier the Filters grid shows, S first,
+  in a band of its own like Network Circle's orbits, its scanned circles on one ring, or more when
+  one would crowd, then its connections not scanned yet. With every tier showing it all still fits
+  the window: the rings move in, reach out and then close up, dots and all, instead of growing past
+  the edge. Drag moves the map and scrolling zooms it, as in an opened circle. The Filters grid's 1st
+  degree in Degrees counts every connection, not only those with a circle.
+
 ## [1.0.0] - 2026-10-04
 
 ### Added

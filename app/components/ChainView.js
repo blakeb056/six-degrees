@@ -3,6 +3,10 @@
 // Bridge Chains: your bridges round you. Click one for their circle, and any
 // dot in it for that person's circle in turn, as far as your scans reach.
 //
+// The overview is stacked by tier (Blake, 2026-10-04), and shows the
+// connections whose circle isn't scanned yet beyond each tier's bridges: a
+// click on one scans it in place. BridgeRings below says how.
+//
 // Blake, 2026-09-28: "for bridges when i scan someone and have a lot of 2nd
 // degree its almost a solid line and needs to expand more and we need to be
 // able to click on the actual 2nd degree within the bridge so we can see the
@@ -34,17 +38,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
-import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
+import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars, notScannedYet } from '../../lib/reach';
 import { stoppedLine } from '../../lib/in-progress';
 import { reachSegments, RING } from '../../lib/dot-rings';
-import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
-import { noteCircle } from '../../lib/notifications';
+import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity, bridgeGroups, overviewRings } from '../../lib/chain-layout';
+import { noteCircle, acceptedNote } from '../../lib/notifications';
 import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
 import { watchScanner, scannerNow, isCircleScan, beginScrape, scraperStatus, notReadyMessage, busyReason, resumePoint } from '../../lib/scraper-client';
 import useRequests from './useRequests';
+import useScanner from './useScanner';
+import { FormingCluster } from './ClusterSpinner';
 import { TIER_COLORS } from '../../lib/themes';
 
 const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 5: '#00ff88', 6: '#ff5050' };
@@ -130,9 +136,6 @@ function trailTo(id, rows) {
 
 export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened, onCircle }) {
   const containerRef = useRef(null);
-  const [hovered, setHovered] = useState(null);
-  // The overview's zoom: null until it's changed, which means "fit" (homeZoom below).
-  const [zoomSet, setZoom] = useState(null);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   // Every row, whatever the tier filter: a circle opened from a bridge the
   // filter shows is drawn whole, and so is anyone's circle opened from it.
@@ -185,7 +188,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     if (!userId) return undefined;
     let live = true;
     fetch(`/api/notifications?userId=${encodeURIComponent(userId)}`).then((r) => r.json())
-      .then((d) => { if (live) setNotes((d.notifications || []).map((n) => ({ circle: noteCircle(n), seen: !!n.seen }))); })
+      .then((d) => { if (live) setNotes((d.notifications || []).map((n) => ({ circle: noteCircle(n), seen: !!n.seen, accepted: acceptedNote(n) }))); })
       .catch(() => {});
     return () => { live = false; };
   }, [userId]);
@@ -222,109 +225,6 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     return () => window.removeEventListener('keydown', onKey);
   }, [focused]);
 
-  // Build bridge map
-  const bridgeMap = {};
-  degree2.forEach(d2 => {
-    if (!d2.source_connection_id) return;
-    if (!bridgeMap[d2.source_connection_id]) bridgeMap[d2.source_connection_id] = [];
-    bridgeMap[d2.source_connection_id].push(d2);
-  });
-
-  const bridges = connections.filter(c => bridgeMap[c.id] && bridgeMap[c.id].length > 0)
-    .sort((a, b) => (bridgeMap[b.id]?.length || 0) - (bridgeMap[a.id]?.length || 0));
-
-  const cx = dims.w / 2;
-  const cy = dims.h / 2;
-  const maxR = Math.min(cx, cy) - 30;
-
-  // Someone met through another bridge's circle isn't a bridge of their own
-  // here: they're a link in that bridge's chain, shown inside its circle.
-  const withCircle = new Set(bridges.map((b) => b.id));
-  const chained = new Map();
-  for (const b of bridges) {
-    if (withCircle.has(b.unlocked_from_bridge_id)) chained.set(b.unlocked_from_bridge_id, (chained.get(b.unlocked_from_bridge_id) || 0) + 1);
-  }
-  // (A loop in who-introduced-whom shouldn't happen; if one does, they all stay here.)
-  const bridgeById = new Map(bridges.map((b) => [b.id, b]));
-  const linked = (b) => {
-    const seen = new Set([b.id]);
-    for (let from = b.unlocked_from_bridge_id; withCircle.has(from); from = bridgeById.get(from).unlocked_from_bridge_id) {
-      if (seen.has(from)) return false;
-      seen.add(from);
-    }
-    return withCircle.has(b.unlocked_from_bridge_id);
-  };
-  // The inner ring holds the circles with the most going on (lib/chain-layout.js
-  // circleActivity): notifications about them, people in them ready to scan,
-  // clusters formed from them since. The biggest first among the rest.
-  const activity = circleActivity(bridges, { notes, ready: readyCount, chained });
-  const roots = bridges.filter((b) => !linked(b))
-    .sort((a, b) => activity.get(b.id).score - activity.get(a.id).score);
-  // Bridges round you: one ring while they fit, more once there are many, each
-  // ring far enough from the last for the names under it.
-  const bridgeLayout = ringLayout(roots.length, {
-    inner: maxR * 0.55, innerMin: maxR * 0.4, outer: maxR * 0.62, spacing: 46, minSpacing: 20, ringGap: 62,
-  });
-  const bridgePos = roots.map((b, i) => {
-    const p = bridgeLayout.points[i];
-    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0, activity: activity.get(b.id) };
-  });
-  // More than one ring: the counts under each name wait for a hover.
-  const crowded = bridgeLayout.rings.length > 1;
-  // Where a hovered circle is previewed, and the zoom at which that still fits the window.
-  const band = previewBand(maxR, bridgeLayout.rings);
-  const homeZoom = Math.max(0.6, Math.min(1.3, Math.min(cx, cy) / (band.outer + 8)));
-  const zoom = zoomSet ?? homeZoom;
-
-  // Touch rotary dial on the overview: drag a finger round the circle to pick a bridge.
-  const bridgeAnglesRef = useRef([]);
-  useEffect(() => {
-    bridgeAnglesRef.current = bridgePos.map((b) => ({ id: b.id, angle: b.angle }));
-  });
-  const lastTouchRef = useRef(0);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || focused) return undefined;
-
-    const findNearest = (touchX, touchY) => {
-      const rect = el.getBoundingClientRect();
-      const tx = touchX - rect.left;
-      const ty = touchY - rect.top;
-      const touchAngle = Math.atan2(ty - dims.h / 2, tx - dims.w / 2);
-      let nearest = null;
-      let nearestDist = Infinity;
-      bridgeAnglesRef.current.forEach(b => {
-        let diff = Math.abs(touchAngle - b.angle) % (Math.PI * 2);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < nearestDist) { nearestDist = diff; nearest = b.id; }
-      });
-      return nearest;
-    };
-
-    const onTouchStart = (e) => {
-      if (e.touches[0]) {
-        const n = findNearest(e.touches[0].clientX, e.touches[0].clientY);
-        if (n) setHovered(n);
-      }
-    };
-    const onTouchMove = (e) => {
-      e.preventDefault();
-      // Throttle to 60fps
-      const now = Date.now();
-      if (now - lastTouchRef.current < 16) return;
-      lastTouchRef.current = now;
-      if (e.touches[0]) {
-        const n = findNearest(e.touches[0].clientX, e.touches[0].clientY);
-        if (n) setHovered(n);
-      }
-    };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: false });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); };
-  }, [dims, zoom, focused]);
-
   // === ONE CIRCLE: a bridge's, or anyone's in it, opened in place ===
   if (focused) {
     return (
@@ -341,146 +241,618 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     );
   }
 
-  // === OVERVIEW: all bridges, click to open one ===
-  const totalD2 = degree2.length;
-  const d2S = degree2.filter(d => d.tier === 'S').length;
-  const d2A = degree2.filter(d => d.tier === 'A').length;
-  const hovBridge = hovered ? bridgePos.find(b => b.id === hovered) : null;
-
+  // === OVERVIEW: every circle round you, stacked by tier, and everyone not scanned yet ===
   return (
     <div ref={containerRef} style={{ flex: 1, background: 'var(--sd-page)', position: 'relative', overflow: 'hidden' }}>
-      <svg width={dims.w} height={dims.h}>
-      <g transform={`translate(${cx * (1 - zoom)}, ${cy * (1 - zoom)}) scale(${zoom})`}>
-        {/* A guide line for every ring of bridges */}
-        {bridgeLayout.rings.map((ring) => (
-          <circle key={'ring-' + ring.radius} cx={cx} cy={cy} r={ring.radius} fill="none" stroke={`${DEGREE_COLORS[1]}10`} strokeWidth={1} />
-        ))}
+      <BridgeRings
+        connections={connections} degree2={degree2} index={index} reach={reach} readyCount={readyCount}
+        notes={notes} twoWays={twoWays} dims={dims} still={still} scanningId={scanningId} canScan={canScan}
+        userName={userName} onOpen={(id) => setPath([id])} onSelect={onSelect}
+      />
+    </div>
+  );
+}
 
-        {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
-        {hovBridge && (
-          <CirclePreview key={hovBridge.id} bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
-            cx={cx} cy={cy} maxR={maxR} still={still} band={band} circleOf={(id) => bridgeMap[id] || []} />
-        )}
+/**
+ * The overview: you in the middle, and round you, from the middle out (Blake,
+ * 2026-10-04: "we should have the inner most ring people who have new people to
+ * scan and accepted, the out s ring will just be more people in the ring then if
+ * that fills up too much another s ring or if not then have the unscanned
+ * bridges for s shown"):
+ *
+ *   1. the circles with something new to act on, whatever their tier: people in
+ *      them ready for a scan, or an accepted request you haven't seen
+ *      (lib/chain-layout.js circleActivity `fresh`);
+ *   2. then each tier the Filters grid shows, S first, as a band of its own like
+ *      Network Circle's orbits ("we need to have the rings separated by tier they
+ *      cant be all together"): its scanned circles, on more rings only when one
+ *      would crowd, then its connections whose circle isn't scanned yet, hollow.
+ *
+ * Everyone once (bridgeGroups), and all of it inside the window at the home
+ * zoom: the rings start further in, reach out and then close up, dots and all,
+ * rather than grow past the edge (lib/chain-layout.js overviewRings).
+ *
+ * A click on a circle opens it, as before. A click on someone not scanned yet
+ * starts the scan of their circle there and then, the way their card's Scan
+ * does (lib/scraper-client.js beginScrape), with no question and no trip to the
+ * Scan page, and opens their card. While it runs they become the hub of a big
+ * forming cluster (ClusterSpinner.js FormingCluster). When it can't start (the
+ * scanner busy or not set up) a small note by the dot says why; the scanner
+ * keeps its own rules, and when it refuses (LinkedIn's budget used) the line at
+ * the top says what it said, as it does for every end. People the scanner has already
+ * read (a hidden list, one read with nobody new) aren't drawn: a hollow dot
+ * always means "click to scan", and the depth tracker says how many were left out.
+ */
+function BridgeRings({ connections, degree2, index, reach, readyCount, notes, twoWays, dims, still, scanningId, canScan, userName, onOpen, onSelect }) {
+  const [hovered, setHovered] = useState(null);     // a dot's id
+  // The view: null until it's zoomed or moved, which means the home view (homeZoom below).
+  const [viewSet, setViewSet] = useState(null);
+  const [problem, setProblem] = useState(null);     // why a click didn't start a scan: { id, text, setup }
+  const [starting, setStarting] = useState(null);   // whose scan is being asked for, before the scanner has it
+  // Whose scan just ended, for the line at the top: kept while the next render works it out.
+  const [watched, setWatched] = useState({ id: null, ended: null });
+  if (scanningId && watched.id !== scanningId) setWatched({ id: scanningId, ended: null });
+  else if (!scanningId && watched.id) setWatched({ id: null, ended: watched.id });
+  const drag = useRef(null);
+  const svgRef = useRef(null);
 
-        {/* Bridge nodes — hover to preview their circle, click to open it */}
-        {bridgePos.map(b => {
-          const isHov = hovered === b.id;
-          const sCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'S').length;
-          const aCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'A').length;
-          const ready = readyCount.get(b.id) || 0;
-          return (
-            <g key={'b-' + b.id}
-              onClick={() => { setHovered(null); setPath([b.id]); }}
-              onMouseEnter={() => setHovered(b.id)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: 'pointer' }}>
-              <title>{bridgeTitle(b, ready, scanBars(b, reach))}</title>
-              {/* Glow */}
-              <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 21 : 18} fill={`${TIER_COLORS[b.tier]}${isHov ? '14' : '08'}`} />
-              {/* The ring, tight on the dot: one bar for each person you added through
-                  this circle. Orange: scanned since, with a cluster of their own.
-                  Green: ready for a scan. Nobody yet: one faint line. */}
-              <g transform={`translate(${b.x} ${b.y})`} pointerEvents="none">
-                {b.chains + ready === 0 && (
-                  <circle r={(isHov ? 13 : 11) + 3.6} fill="none" stroke={RING.empty} strokeWidth={1} />
-                )}
-                {reachSegments((isHov ? 13 : 11) + 3.6, { formed: b.chains, ready }).map((seg, i) => (
-                  <path key={i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={2}
-                    stroke={seg.kind === 'ready' ? GREEN : DEGREE_COLORS[2]} />
-                ))}
-              </g>
-              {/* Node */}
-              <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 13 : 11}
-                fill={localPhoto(b.profile_image_url) ? '#1a1a2e' : TIER_COLORS[b.tier]}
-                stroke={isHov ? 'var(--sd-fg-1, #fff)' : TIER_COLORS[b.tier]}
-                strokeWidth={isHov ? 2.5 : 2} />
-              {/* Photo */}
-              {localPhoto(b.profile_image_url) && (
-                <>
-                  <clipPath id={'bc-' + b.id}><circle cx={b.x} cy={b.y} r={isHov ? 11 : 9} /></clipPath>
-                  <image href={localPhoto(b.profile_image_url)} x={b.x - (isHov ? 11 : 9)} y={b.y - (isHov ? 11 : 9)}
-                    width={isHov ? 22 : 18} height={isHov ? 22 : 18} clipPath={`url(#bc-${b.id})`} />
-                </>
-              )}
-              {!localPhoto(b.profile_image_url) && (
-                <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
-                  fontSize={11} fontWeight={700}>{b.name?.charAt(0)}</text>
-              )}
-              {/* The circle's notifications, top right (Blake, 2026-10-02: "the circle degree
-                  outline on the top right with the number of notifications for that cluster"):
-                  new notifications about it and the people in it ready to scan. Gold when
-                  there's news, green when it's only people ready. */}
-              {(() => {
-                const news = (b.activity?.unread || 0) + ready;
-                if (!news) return null;
-                const tone = b.activity?.unread ? 'var(--sd-gold, #FFD700)' : 'var(--sd-green, #00ff88)';   // deeper on a light look
-                return (
-                  <g pointerEvents="none">
-                    <circle cx={b.x + 14} cy={b.y - 14} r={6} fill="var(--sd-bg)" stroke={tone} strokeWidth={1.2} />
-                    <text x={b.x + 14} y={b.y - 11.4} textAnchor="middle" fill={tone} fontSize={news > 9 ? 6 : 7} fontWeight={800}>{news > 99 ? '99+' : news}</text>
-                  </g>
-                );
-              })()}
-              {/* Name + count */}
-              <text x={b.x} y={b.y + (isHov ? 24 : 22)} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={9} fontWeight={600}>
-                {b.name?.split(' ')[0]}
-              </text>
-              {(!crowded || isHov) && (
-                <text x={b.x} y={b.y + (isHov ? 34 : 32)} textAnchor="middle" fill={isHov ? 'var(--sd-fg-2, #bbb)' : 'var(--sd-fg-3, #888)'} fontSize={7}>
-                  {b.clusterSize} · {sCount > 0 ? sCount + 'S ' : ''}{aCount > 0 ? aCount + 'A' : ''}
-                </text>
-              )}
+  const cx = dims.w / 2;
+  const cy = dims.h / 2;
+  const maxR = Math.min(cx, cy) - 30;
+
+  // Each circle's people as the filter shows them: the counts under a name, and the preview's sprouts.
+  const shownIn = useMemo(() => {
+    const m = new Map();
+    for (const d2 of degree2) {
+      if (!d2.source_connection_id) continue;
+      let list = m.get(d2.source_connection_id);
+      if (!list) m.set(d2.source_connection_id, (list = []));
+      list.push(d2);
+    }
+    return m;
+  }, [degree2]);
+
+  const model = useMemo(() => {
+    // A bridge is someone whose circle has been scanned: anyone in it is saved,
+    // whatever the filter shows of it (their circle opens whole).
+    const size = (row) => index.circles.get(row.id)?.length || 0;
+    const bridges = connections.filter((c) => size(c) > 0);
+    // Someone met through another bridge's circle isn't a bridge of their own
+    // here: they're a link in that bridge's chain, shown inside its circle.
+    const withCircle = new Set(bridges.map((b) => b.id));
+    const chained = new Map();
+    for (const b of bridges) {
+      if (withCircle.has(b.unlocked_from_bridge_id)) chained.set(b.unlocked_from_bridge_id, (chained.get(b.unlocked_from_bridge_id) || 0) + 1);
+    }
+    // (A loop in who-introduced-whom shouldn't happen; if one does, they all stay here.)
+    const bridgeById = new Map(bridges.map((b) => [b.id, b]));
+    const linked = (b) => {
+      const seen = new Set([b.id]);
+      for (let from = b.unlocked_from_bridge_id; withCircle.has(from); from = bridgeById.get(from).unlocked_from_bridge_id) {
+        if (seen.has(from)) return false;
+        seen.add(from);
+      }
+      return withCircle.has(b.unlocked_from_bridge_id);
+    };
+    // Most going on first (lib/chain-layout.js circleActivity), then the biggest.
+    const activity = circleActivity(bridges, { notes, ready: readyCount, chained });
+    const roots = bridges.filter((b) => !linked(b))
+      .sort((a, b) => activity.get(b.id).score - activity.get(a.id).score || size(b) - size(a));
+    const { todo, hidden, read } = notScannedYet(connections, reach);
+    const groups = bridgeGroups(roots, todo, (b) => activity.get(b.id).fresh);
+    const layout = overviewRings(groups, maxR);
+    const dots = [];
+    groups.forEach((g, gi) => {
+      const lg = layout.groups[gi];
+      g.rows.forEach((row, i) => {
+        const p = lg.points[i];
+        const own = shownIn.get(row.id) || [];
+        const ring = layout.rings[p.ring];
+        dots.push({
+          ...row, x: cx + p.x, y: cy + p.y, angle: p.angle, dotR: lg.dot, dotKind: g.kind === 'unscanned' ? 'unscanned' : 'bridge',
+          arc: (2 * Math.PI * ring.radius) / ring.count,   // the room round its ring for each dot
+          clusterSize: size(row), sCount: own.filter((d) => d.tier === 'S').length, aCount: own.filter((d) => d.tier === 'A').length,
+          chains: chained.get(row.id) || 0, activity: activity.get(row.id), ready: readyCount.get(row.id) || 0,
+          bars: g.kind === 'unscanned' ? null : scanBars(row, reach), reached: g.kind === 'unscanned' ? reachState(row, reach) : null,
+        });
+      });
+    });
+    // More than one ring of circles: the counts under each name wait for a hover, as they always did.
+    const circleRings = layout.rings.filter((r) => groups[r.group].kind !== 'unscanned').length;
+    return { groups, layout, dots, byId: new Map(dots.map((d) => [d.id, d])), roots, bridges, todo, hidden, read, circleRings };
+  }, [connections, index, reach, notes, readyCount, shownIn, maxR, cx, cy]);
+
+  // Where a hovered circle is previewed, beyond every ring, and the zoom at which that still fits the window.
+  const band = previewBand(maxR, model.layout.rings);
+  const reachesTo = model.roots.length ? band.outer : model.layout.edge + 24;
+  const homeZoom = Math.max(0.6, Math.min(1.3, Math.min(cx, cy) / (reachesTo + 8)));
+  const view = viewSet ?? { k: homeZoom, x: 0, y: 0 };
+  const k = view.k;
+  const setView = (next) => setViewSet((v) => (typeof next === 'function' ? next(v ?? { k: homeZoom, x: 0, y: 0 }) : next));
+  // World → screen, and back.
+  const toScreen = (d) => ({ x: (d.x - cx) * k + cx + view.x, y: (d.y - cy) * k + cy + view.y });
+
+  // The dots, drawn once per layout and zoom; hovering only draws on top of them.
+  // A circle's name sits under it while the layout kept room for names; where it
+  // didn't (many sparse rings: a small network with every tier showing), a name
+  // still shows on a ring with room round each dot for it, with a halo where it
+  // crosses a ring.
+  const named = model.layout.named;
+  const counted = named && model.circleRings <= 1;
+  const layer = useMemo(() => model.dots.map((d) => (d.dotKind === 'bridge'
+    ? <BridgeDot key={d.id} d={d} named={named || (d.arc * k >= 48 && d.dotR * k >= 5)} halo={!named} counted={counted} />
+    : <UnscannedDot key={d.id} d={d} still={still} />)), [model, named, counted, still, k]);
+
+  // The person a scan is being asked for or running on: the hub of the forming cluster.
+  const hubId = scanningId ?? starting;
+  const hub = hubId != null ? model.byId.get(hubId) : null;
+  const clusterR = 64 / k;
+
+  // Pointer → the dot under it (nearest within reach); the forming cluster takes clicks for its hub.
+  const hitAt = (clientX, clientY) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const wx = (clientX - rect.left - cx - view.x) / k + cx;
+    const wy = (clientY - rect.top - cy - view.y) / k + cy;
+    if (hub && Math.hypot(hub.x - wx, hub.y - wy) <= clusterR * 1.24) return hub;
+    let best = null;
+    let bestD = Infinity;
+    for (const d of model.dots) {
+      const dist = Math.hypot(d.x - wx, d.y - wy);
+      if (dist < bestD && dist <= Math.max(d.dotR * 1.8, 8 / k)) { bestD = dist; best = d; }
+    }
+    return best;
+  };
+
+  // A scan of their circle, here and now: the card's own checks and start
+  // (Sidebar.js CreateClusterCard). Every refusal is said by the dot.
+  async function scanHere(person) {
+    setProblem(null);
+    const busy = busyReason(scannerNow());
+    if (busy) {
+      setProblem({ id: person.id, text: `${busy}. One scan at a time: this one can start when it finishes.` });
+      return;
+    }
+    setStarting(person.id);
+    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    if (blocked) {
+      setStarting(null);
+      setProblem({ id: person.id, text: blocked, setup: true });
+      return;
+    }
+    try {
+      await beginScrape('bridge', { name: person.name, id: person.id });
+    } catch (e) {
+      const d = e.details || {};
+      setProblem({ id: person.id, text: e.message || 'Could not start the scan.', setup: Boolean(d.needsRiskAcceptance || d.needsChrome) });
+    } finally {
+      setStarting(null);
+    }
+  }
+
+  const pick = (d) => {
+    if (!d) return;
+    setProblem(null);
+    if (d.dotKind === 'bridge') {
+      setHovered(null);
+      onOpen(d.id);
+      return;
+    }
+    onSelect?.(d);
+    if (canScan && d.id !== hubId) scanHere(d);
+  };
+
+  const onPointerDown = (e) => {
+    drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false, touch: e.pointerType === 'touch' };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current;
+    if (d) {
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) > 5) d.moved = true;
+      // A mouse drags the map; a finger dragged round it picks whoever it passes.
+      if (d.moved && !d.touch) {
+        setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
+        return;
+      }
+    }
+    const hit = hitAt(e.clientX, e.clientY);
+    setHovered((h) => (h === (hit?.id ?? null) ? h : hit?.id ?? null));
+  };
+  const onPointerUp = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || (d.moved && !d.touch)) return;
+    pick(hitAt(e.clientX, e.clientY));
+  };
+  const zoomBy = (f, at = { x: 0, y: 0 }) => setView((v) => {
+    const nk = Math.max(0.4, Math.min(6, v.k * f));
+    return { k: nk, x: at.x - ((at.x - v.x) * nk) / v.k, y: at.y - ((at.y - v.y) * nk) / v.k };
+  });
+  const onWheel = (e) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    zoomBy(Math.exp(-e.deltaY * 0.0015), { x: e.clientX - rect.left - cx, y: e.clientY - rect.top - cy });
+  };
+
+  const hov = hovered != null ? model.byId.get(hovered) : null;
+  const hovBridge = hov?.dotKind === 'bridge' ? hov : null;
+  const problemAt = problem ? model.byId.get(problem.id) : null;
+  // Whoever it was, wherever they sit now (a circle met through another one is inside it).
+  const endedRow = watched.ended != null ? connections.find((c) => c.id === watched.ended) ?? null : null;
+
+  // The depth tracker's numbers.
+  const totalD2 = degree2.length;
+  const { d2S, d2A } = useMemo(() => ({
+    d2S: degree2.filter((d) => d.tier === 'S').length, d2A: degree2.filter((d) => d.tier === 'A').length,
+  }), [degree2]);
+  const left = model.hidden + model.read;
+
+  return (
+    <>
+      <svg ref={svgRef} width={dims.w} height={dims.h}
+        style={{ display: 'block', touchAction: 'none', cursor: hov ? 'pointer' : 'grab' }}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+        onPointerLeave={() => { if (!drag.current) setHovered(null); }} onWheel={onWheel}
+        role="img" aria-label={`Your circles: ${model.roots.length} scanned, ${model.todo.length} not scanned yet`}>
+        <g transform={`translate(${cx * (1 - k) + view.x}, ${cy * (1 - k) + view.y}) scale(${k})`}>
+          {/* Each band, faintly, in its tier's colour: the circles with something new in green */}
+          {model.layout.bands.map((b) => {
+            const span = b.outer - b.inner;
+            return (
+              <circle key={'band-' + b.band} cx={cx} cy={cy} r={(b.inner + b.outer) / 2} fill="none" pointerEvents="none"
+                stroke={b.band === 'new' ? GREEN : TIER_COLORS[b.band] || 'var(--sd-fg-5, #555)'} strokeOpacity={0.05}
+                strokeWidth={span + Math.max(10, model.layout.groups[0]?.spacing || 10) * 0.7} />
+            );
+          })}
+          {/* A guide line for every ring of circles */}
+          {model.layout.rings.filter((r) => model.groups[r.group].kind !== 'unscanned').map((ring) => (
+            <circle key={'ring-' + ring.radius} cx={cx} cy={cy} r={ring.radius} fill="none" pointerEvents="none"
+              stroke={`${DEGREE_COLORS[1]}10`} strokeWidth={1} />
+          ))}
+
+          {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
+          {hovBridge && (
+            <CirclePreview key={hovBridge.id} bridge={hovBridge} members={membersOf(hovBridge, index)} reach={reach}
+              cx={cx} cy={cy} maxR={maxR} still={still} band={band} circleOf={(id) => shownIn.get(id) || []} />
+          )}
+
+          {layer}
+
+          {/* The one under the pointer, on top, with its name */}
+          {hov && hov.id !== hub?.id && (hov.dotKind === 'bridge'
+            ? <BridgeDot d={hov} hov k={k} named counted idPrefix="bch-" />
+            : <UnscannedDot d={hov} hov k={k} still={still} />)}
+
+          {/* A scan running here: they're the hub, and their cluster forms round them */}
+          {hub && (
+            <g>
+              <FormingCluster x={hub.x} y={hub.y} r={clusterR} hub={Math.max(hub.dotR * 1.5, 12 / k)} still={still} />
+              <Hub d={hub} r={Math.max(hub.dotR * 1.5, 12 / k)} />
+              <ClusterLabel x={hub.x} y={hub.y + clusterR * 1.24 + 14 / k} k={k} person={hub} asked={starting === hub.id} />
             </g>
-          );
-        })}
+          )}
 
-        {/* Center: YOU */}
-        <circle cx={cx} cy={cy} r={22} fill="var(--sd-bg)" stroke="#FFD700" strokeWidth={3} />
-        <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--sd-gold, #FFD700)" fontSize={11} fontWeight={800}>
-          {userName?.split(' ')[0] || 'YOU'}
-        </text>
-      </g>
+          {/* Center: YOU */}
+          <circle cx={cx} cy={cy} r={22} fill="var(--sd-bg)" stroke="#FFD700" strokeWidth={3} pointerEvents="none" />
+          <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--sd-gold, #FFD700)" fontSize={11} fontWeight={800} pointerEvents="none">
+            {userName?.split(' ')[0] || 'YOU'}
+          </text>
+        </g>
+        {hov?.dotKind === 'unscanned' && (() => {
+          const at = toScreen(hov);
+          return (
+            <Tip x={at.x} y={at.y - hov.dotR * k * 1.6} w={dims.w}
+              lines={unscannedTip(hov, { hubId, canScan, busy: busyReason(scannerNow()), via: hov.unlocked_from_name })}
+              accent={hov.reached === 'ready' ? GREEN : TIER_COLORS[hov.tier]} />
+          );
+        })()}
       </svg>
 
-      {/* Zoom controls, clear of the Galaxy switch below them */}
-      <ZoomButtons
-        onIn={() => setZoom(z => Math.min(3, (z ?? homeZoom) + 0.3))}
-        onReset={() => setZoom(null)}
-        onOut={() => setZoom(z => Math.max(0.4, (z ?? homeZoom) - 0.3))}
-      />
+      {/* Why a click didn't start a scan, by the dot it was on. Never a dialog. */}
+      {problem && problemAt && (() => {
+        const at = toScreen(problemAt);
+        return (
+          <div role="status" style={{
+            position: 'absolute', left: Math.max(12, Math.min(dims.w - 292, at.x - 140)), top: Math.min(dims.h - 90, at.y + problemAt.dotR * k + 12),
+            width: 280, ...note, borderColor: problem.setup ? 'rgba(255,128,128,0.45)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.22)',
+            color: 'var(--sd-fg-1, #e6e6ee)', lineHeight: 1.45, display: 'flex', gap: 8, alignItems: 'flex-start',
+          }}>
+            <span style={{ flex: 1 }}>
+              {problem.text}
+              {problem.setup && <> <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', fontWeight: 700, textDecoration: 'none' }}>Open Scan →</Link></>}
+            </span>
+            <button type="button" onClick={() => setProblem(null)} aria-label="Dismiss" style={dismiss}>×</button>
+          </div>
+        );
+      })()}
+
+      {/* How a scan started here ended, once it has */}
+      {endedRow && (
+        <div style={{ position: 'absolute', top: 54, left: 64, right: 64, pointerEvents: 'none', display: 'flex' }}>
+          <ScanEnded person={endedRow} size={index.circles.get(endedRow.id)?.length || 0} onMap={model.byId.has(endedRow.id)}
+            onOpen={() => onOpen(endedRow.id)} onClose={() => setWatched({ id: null, ended: null })} />
+        </div>
+      )}
+
+      <ZoomButtons onIn={() => zoomBy(1.3)} onReset={() => setViewSet(null)} onOut={() => zoomBy(1 / 1.3)} />
 
       {/* Depth tracker: just the dots, no box (Blake, 2026-10-03: the box grew with
           a theme's font and stopped fitting; "just have the dots there instead so
-          its more clean looking"). What they add up to is the tooltip. */}
-      <div
-        title={[
-          `${roots.length} bridges${bridges.length > roots.length ? ` + ${bridges.length - roots.length} along their chains` : ''} · ${d2S} S + ${d2A} A at 2nd degree`,
-          twoWays > 0 ? `${Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways` : null,
-          'The inner ring: the circles with the most going on (notifications, people ready to scan, clusters formed since)',
-          'Click a bridge to open their circle, then anyone in it to open theirs',
-        ].filter(Boolean).join('\n')}
-        style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-        {[1, 2, 3, 4, 5, 6].map((d) => {
-          const lit = d <= 2;
-          const n = d === 1 ? connections.length : d === 2 ? totalD2 : null;
-          return (
-            <div key={d} title={lit ? `${d === 1 ? '1st degree: your bridges' : '2nd degree: the people in their circles'} (${n.toLocaleString('en-US')})` : `${d}th degree: further along a chain, as your scans reach it`}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span className={lit ? 'sd-dot-html' : undefined} style={{
-                width: 11, height: 11, borderRadius: '50%',
-                background: lit ? DEGREE_COLORS[d] : 'transparent',
-                border: lit ? 'none' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.22)',
-                boxShadow: lit ? `0 0 8px ${DEGREE_COLORS[d]}80` : 'none',
-              }} />
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: lit ? 'var(--sd-fg-2, #c8cdd8)' : 'var(--sd-fg-5, #556)', fontVariantNumeric: 'tabular-nums', textShadow: HALO_TEXT }}>
-                {lit ? n.toLocaleString('en-US') : `D${d}`}
-              </span>
-            </div>
-          );
-        })}
+          its more clean looking"). What they add up to is the tooltip. Beside it,
+          what the two kinds of dot mean. */}
+      <div style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 18 }}>
+        <div
+          title={[
+            `${model.roots.length} circles scanned${model.bridges.length > model.roots.length ? ` + ${model.bridges.length - model.roots.length} along their chains` : ''} · ${d2S} S + ${d2A} A at 2nd degree`,
+            twoWays > 0 ? `${Math.round(twoWays * 100)}% of your 2nd degree you reach two or more ways` : null,
+            'The inner ring: circles with something new (people ready to scan, requests accepted)',
+            'Then each tier, S first: its scanned circles, then the people whose circle isn’t scanned yet (hollow)',
+            left > 0 ? `${left} left out, already read by the scanner: ${[model.hidden ? `${model.hidden} hidden ${model.hidden === 1 ? 'list' : 'lists'}` : null, model.read ? `${model.read} read with nobody new` : null].filter(Boolean).join(', ')}` : null,
+            'Click a circle to open it, or a hollow dot to scan theirs',
+          ].filter(Boolean).join('\n')}
+          style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+          {[1, 2, 3, 4, 5, 6].map((d) => {
+            const lit = d <= 2;
+            const n = d === 1 ? connections.length : d === 2 ? totalD2 : null;
+            return (
+              <div key={d} title={lit ? `${d === 1 ? '1st degree: your connections' : '2nd degree: the people in their circles'} (${n.toLocaleString('en-US')})` : `${d}th degree: further along a chain, as your scans reach it`}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span className={lit ? 'sd-dot-html' : undefined} style={{
+                  width: 11, height: 11, borderRadius: '50%',
+                  background: lit ? DEGREE_COLORS[d] : 'transparent',
+                  border: lit ? 'none' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.22)',
+                  boxShadow: lit ? `0 0 8px ${DEGREE_COLORS[d]}80` : 'none',
+                }} />
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: lit ? 'var(--sd-fg-2, #c8cdd8)' : 'var(--sd-fg-5, #556)', fontVariantNumeric: 'tabular-nums', textShadow: HALO_TEXT }}>
+                  {lit ? n.toLocaleString('en-US') : `D${d}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {model.todo.length > 0 && (
+          <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--sd-fg-3, #99a)', textShadow: HALO_TEXT, paddingBottom: 1 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span className="sd-dot-html" style={{ width: 9, height: 9, borderRadius: '50%', background: TIER_COLORS.S }} />scanned
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', border: `1.5px solid ${TIER_COLORS.S}` }} />
+              not scanned yet{canScan ? ': click to scan' : ''}
+            </span>
+          </div>
+        )}
       </div>
+    </>
+  );
+}
+
+/**
+ * A scanned circle on the overview, as it has always been drawn at full size
+ * (r 11): its glow, the ring of bars for the people added through it, the dot
+ * with their photo or initial, the badge for news, and the name and counts
+ * under it. Everything scales with `d.dotR` once the rings close up. `hov`: the
+ * one under the pointer, a little bigger, named at a size that reads at zoom `k`.
+ */
+function BridgeDot({ d, hov = false, k = 1, named, halo = false, counted, idPrefix = 'bc-' }) {
+  const s = d.dotR / 11;
+  const r = hov ? (d.dotR * 13) / 11 : d.dotR;
+  const tier = TIER_COLORS[d.tier] || '#555';
+  const photo = r >= 5 ? localPhoto(d.profile_image_url) : null;
+  const ringR = r + 3.6 * s;
+  const ready = d.ready;
+  const news = (d.activity?.unread || 0) + ready;
+  const tone = d.activity?.unread ? 'var(--sd-gold, #FFD700)' : 'var(--sd-green, #00ff88)';   // deeper on a light look
+  // The name: 9 as it always was; on a hovered dot in a crowded stack, big enough to read.
+  const font = hov ? Math.max(9 * Math.min(1, s), 9.5 / k) : 9;
+  return (
+    <g data-person={d.id}>
+      {!hov && <title>{bridgeTitle(d, ready, d.bars)}</title>}
+      {/* Glow */}
+      <circle className="sd-dot" cx={d.x} cy={d.y} r={(hov ? 21 : 18) * s} fill={`${tier}${hov ? '14' : '08'}`} />
+      {/* The ring, tight on the dot: one bar for each person you added through
+          this circle. Orange: scanned since, with a cluster of their own.
+          Green: ready for a scan. Nobody yet: one faint line. */}
+      <g transform={`translate(${d.x} ${d.y})`} pointerEvents="none">
+        {d.chains + ready === 0 && (
+          <circle r={ringR} fill="none" stroke={RING.empty} strokeWidth={Math.max(0.5, s)} />
+        )}
+        {reachSegments(ringR, { formed: d.chains, ready }).map((seg, i) => (
+          <path key={i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={Math.max(0.8, 2 * s)}
+            stroke={seg.kind === 'ready' ? GREEN : DEGREE_COLORS[2]} />
+        ))}
+      </g>
+      {/* Node */}
+      <circle className="sd-dot" cx={d.x} cy={d.y} r={r}
+        fill={photo ? '#1a1a2e' : tier}
+        stroke={hov ? 'var(--sd-fg-1, #fff)' : tier}
+        strokeWidth={(hov ? 2.5 : 2) * s} />
+      {/* Photo */}
+      {photo && (
+        <>
+          <clipPath id={idPrefix + d.id}><circle cx={d.x} cy={d.y} r={r - 2 * s} /></clipPath>
+          <image href={photo} x={d.x - (r - 2 * s)} y={d.y - (r - 2 * s)}
+            width={2 * (r - 2 * s)} height={2 * (r - 2 * s)} clipPath={`url(#${idPrefix}${d.id})`} />
+        </>
+      )}
+      {!photo && r >= 5 && (
+        <text x={d.x} y={d.y + 4 * s} textAnchor="middle" fill={d.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
+          fontSize={11 * s} fontWeight={700} pointerEvents="none">{d.name?.charAt(0)}</text>
+      )}
+      {/* The circle's notifications, top right (Blake, 2026-10-02: "the circle degree
+          outline on the top right with the number of notifications for that cluster"):
+          new notifications about it and the people in it ready to scan. Gold when
+          there's news, green when it's only people ready. */}
+      {news > 0 && r >= 4 && (
+        <g pointerEvents="none">
+          <circle cx={d.x + 14 * s} cy={d.y - 14 * s} r={6 * s} fill="var(--sd-bg)" stroke={tone} strokeWidth={1.2 * s} />
+          <text x={d.x + 14 * s} y={d.y - 11.4 * s} textAnchor="middle" fill={tone} fontSize={(news > 9 ? 6 : 7) * s} fontWeight={800}>{news > 99 ? '99+' : news}</text>
+        </g>
+      )}
+      {/* Name + count */}
+      {named && (
+        <text x={d.x} y={d.y + r + font * 1.25} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={font} fontWeight={600}
+          pointerEvents="none" stroke={hov || halo ? 'var(--sd-bg)' : undefined} strokeWidth={hov || halo ? font * 0.28 : undefined} paintOrder="stroke">
+          {hov ? d.name : d.name?.split(' ')[0]}
+        </text>
+      )}
+      {counted && (
+        <text x={d.x} y={d.y + r + font * 2.35} textAnchor="middle" fill={hov ? 'var(--sd-fg-2, #bbb)' : 'var(--sd-fg-3, #888)'} fontSize={font * 0.78}
+          pointerEvents="none" stroke={hov ? 'var(--sd-bg)' : undefined} strokeWidth={hov ? font * 0.24 : undefined} paintOrder="stroke">
+          {d.clusterSize.toLocaleString('en-US')} · {d.sCount > 0 ? d.sCount + 'S ' : ''}{d.aCount > 0 ? d.aCount + 'A' : ''}
+        </text>
+      )}
+    </g>
+  );
+}
+
+/**
+ * One of your connections whose circle isn't scanned yet: a hollow dot in their
+ * tier's colour (just a dim one when it's too small to be hollow), with the
+ * breathing halo when they came through a circle and are ready for a scan.
+ */
+function UnscannedDot({ d, hov = false, k = 1, still }) {
+  const tier = TIER_COLORS[d.tier] || '#555';
+  const r = hov ? Math.max(d.dotR * 1.5, 4.5 / k) : d.dotR;
+  const ready = d.reached === 'ready';
+  const ring = hov || r >= 2.4;
+  return (
+    <g data-person={d.id}>
+      {ready && !hov && <Halo x={d.x} y={d.y} r={r * 2.2} still={still} />}
+      {ring ? (
+        <circle cx={d.x} cy={d.y} r={r} fill="var(--sd-bg)" fillOpacity={0.75}
+          stroke={hov ? 'var(--sd-fg-1, #fff)' : ready ? GREEN : tier} strokeWidth={Math.max(0.6, r * (hov ? 0.3 : 0.34))} strokeOpacity={hov ? 1 : 0.9} />
+      ) : (
+        <circle cx={d.x} cy={d.y} r={r} fill={ready ? GREEN : tier} fillOpacity={0.42} />
+      )}
+      {hov && <circle cx={d.x} cy={d.y} r={r * 0.45} fill={tier} pointerEvents="none" />}
+    </g>
+  );
+}
+
+/** The person at the middle of a forming cluster: their dot, bigger, with photo or initial. */
+function Hub({ d, r }) {
+  const tier = TIER_COLORS[d.tier] || '#555';
+  const photo = localPhoto(d.profile_image_url);
+  return (
+    <g pointerEvents="none">
+      <circle cx={d.x} cy={d.y} r={r} fill={photo ? '#1a1a2e' : tier} stroke="var(--sd-fg-1, #fff)" strokeWidth={r * 0.14} />
+      {photo ? (
+        <>
+          <clipPath id={'hub-' + d.id}><circle cx={d.x} cy={d.y} r={r * 0.86} /></clipPath>
+          <image href={photo} x={d.x - r * 0.86} y={d.y - r * 0.86} width={r * 1.72} height={r * 1.72} clipPath={`url(#hub-${d.id})`} />
+        </>
+      ) : (
+        <text x={d.x} y={d.y + r * 0.36} textAnchor="middle" fill={d.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'} fontSize={r} fontWeight={800}>
+          {d.name?.charAt(0)}
+        </text>
+      )}
+    </g>
+  );
+}
+
+/**
+ * Under a forming cluster: whose circle, and how far the scan has got, from the
+ * scanner's own answer (lib/scraper-client.js). Its own component, so the
+ * answer changing every second or two redraws these two lines, not the map.
+ */
+function ClusterLabel({ x, y, k, person, asked }) {
+  const scan = useScanner();
+  const mine = scan.running && scan.target?.id === person.id;
+  const found = mine ? scan.found.reduce((a, b) => a + b, 0) : 0;
+  const how = !mine || scan.pending
+    ? (asked ? 'Asking the scanner…' : 'Starting…')
+    : scan.pages > 0 ? `page ${scan.pages} · ${found.toLocaleString('en-US')} found` : 'Opening their profile…';
+  return (
+    <g pointerEvents="none">
+      <text x={x} y={y} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={11 / k} fontWeight={700}
+        stroke="var(--sd-bg)" strokeWidth={3 / k} paintOrder="stroke">
+        Scanning {firstName(person)}’s circle
+      </text>
+      <text x={x} y={y + 13 / k} textAnchor="middle" fill="var(--sd-fg-3, #aab)" fontSize={9.5 / k}
+        stroke="var(--sd-bg)" strokeWidth={3 / k} paintOrder="stroke">
+        {how}
+      </text>
+    </g>
+  );
+}
+
+/** The lines of a hollow dot's tooltip: who, and what a click does and costs. */
+function unscannedTip(row, { hubId, canScan, busy, via }) {
+  const cost = circleScanCost();
+  const status = row.id === hubId ? 'Their circle is being scanned now'
+    : row.reached === 'ready' ? `Ready to scan · met through ${via ? firstName({ name: via }) : 'a circle'}`
+    : 'Their circle isn’t scanned yet';
+  const next = row.id === hubId ? ['Click to open their card']
+    : !canScan ? ['Scanning needs your own network']
+    : busy ? [`${busy}:`, 'one scan at a time']
+    : ['Click to scan their circle here', `${cost.profileViews} profile view, ≤${cost.searches} searches, ~${cost.minutes} min`];
+  return [row.name, `${row.tier}-tier · ${score(row).toFixed(1)}`, status, ...next];
+}
+
+/**
+ * The line at the top once a scan of someone on the overview has ended: their
+ * circle is in (and where), or why it isn't. Read from what the network now
+ * holds and what the scanner said, never guessed: a scan whose saves haven't
+ * reached the map yet says how many it saved, not "nobody".
+ */
+function ScanEnded({ person, size, onMap, onOpen, onClose }) {
+  const scan = useScanner();
+  const job = scan.finished.find((j) => j.target?.id === person.id);
+  const first = firstName(person);
+  const saved = savedIn(job?.log || []);
+  let text;
+  let open = false;
+  if (size > 0) {
+    // Where they are now: with the scanned circles, or, met through someone's
+    // circle, a link in that circle's chain, drawn inside it.
+    const where = onMap ? ` ${first} sits with your scanned circles now.`
+      : person.unlocked_from_name ? ` It’s on the chain from ${firstName({ name: person.unlocked_from_name })}’s circle.` : '';
+    text = `${first}’s circle is in: ${size.toLocaleString('en-US')} ${size === 1 ? 'person' : 'people'}.${where}`;
+    open = true;
+  } else if (saved > 0) {
+    text = `${first}’s scan saved ${saved.toLocaleString('en-US')} ${saved === 1 ? 'person' : 'people'}. They’ll be on the map in a moment.`;
+  } else if (!job) {
+    text = `${first}’s scan has ended.`;
+  } else if ((job.log || []).includes('Stopped.')) {
+    // Stopped by hand (the Scan page's Stop, or Stop scanning on the bar).
+    text = `${first}’s scan was stopped before anyone new was saved.`;
+  } else if (job.failure?.length) {
+    text = `${first}’s scan stopped: ${job.failure[job.failure.length - 1]}`;
+  } else if (job.exitCode != null && job.exitCode !== 0) {
+    text = `${first}’s scan stopped (exit ${job.exitCode}).`;
+  } else {
+    text = lastSaid(job.log) || `${first}’s scan ended with nobody new saved.`;
+  }
+  return (
+    <div role="status" style={{ ...note, pointerEvents: 'auto', borderColor: open ? 'rgba(0,255,136,0.4)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.2)', color: 'var(--sd-fg-1, #e6e6ee)', display: 'flex', gap: 10, alignItems: 'center', maxWidth: 560 }}>
+      <span>{text}</span>
+      {open && <button type="button" onClick={onOpen} style={{ ...crumb, color: 'var(--sd-green, #00ff88)', whiteSpace: 'nowrap' }}>Open it →</button>}
+      <button type="button" onClick={onClose} aria-label="Dismiss" style={dismiss}>×</button>
     </div>
   );
+}
+
+/** How many people a scan's log says it saved: its "Sent N → M new" lines. */
+function savedIn(log) {
+  let n = 0;
+  for (const line of log) {
+    const m = /→\s*(\d+)\s+new/.exec(String(line));
+    if (m) n += Number(m[1]);
+  }
+  return n;
+}
+
+/** The last thing a scan said that explains how it ended (a used budget, a hidden list), not "Finished.". */
+function lastSaid(log) {
+  const skip = /^(Finished\.|Stopped\.|Stopping…|Stopped \(exit|Speed:|Made today|Today’s backup couldn|Mapping the circle behind)/;
+  for (let i = log.length - 1; i >= 0; i--) {
+    const line = String(log[i]).trim();
+    if (line && !skip.test(line)) return line;
+  }
+  return null;
 }
 
 /** What a bridge's ring and number mean, in words, for its tooltip. */
@@ -1235,6 +1607,7 @@ function ResumeHere({ person, stopped, problem, setProblem }) {
 }
 
 const crumb = { background: 'none', border: 'none', color: '#8fb8d6', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 };
+const dismiss = { background: 'none', border: 'none', color: 'var(--sd-fg-3, #999)', fontSize: 15, lineHeight: 1, cursor: 'pointer', padding: '0 2px' };
 const note = {
   fontSize: 11, padding: '6px 10px', borderRadius: 8, border: '1px solid', background: 'rgba(var(--sd-shade, 0, 0, 0), 0.6)', pointerEvents: 'auto',
 };

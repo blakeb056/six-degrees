@@ -262,7 +262,7 @@ test('the busiest circles first: notifications (unread twice), people ready to s
     ready: new Map([['ready', 2]]),
     chained: new Map([['grown', 1]]),
   });
-  assert.deepEqual(act.get('noted'), { score: 3, notes: 2, unread: 1, ready: 0, chains: 0 });
+  assert.deepEqual(act.get('noted'), { score: 3, notes: 2, unread: 1, ready: 0, chains: 0, accepted: 0, newlyAccepted: 0, fresh: false });
   assert.equal(act.get('ready').score, 2);
   assert.equal(act.get('grown').score, 1);
   assert.equal(act.get('quiet').score, 0);

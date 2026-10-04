@@ -202,10 +202,6 @@ function HomeInner() {
   const d1ById = useMemo(() => new Map(degree1.map(c => [c.id, c])), [degree1]);
   // Your level, in the round button at the top right (lib/level.js).
   const level = useMemo(() => networkLevel(degree1, degree2), [degree1, degree2]);
-  const bridgeIds = useMemo(
-    () => new Set(degree2.map(d => d.source_connection_id).filter(Boolean)),
-    [degree2],
-  );
   // A 2nd-degree row shows when its own tier does at 2nd degree, and (in
   // Degrees, not Separation) the bridge it came through shows at 1st.
   const filteredD2 = useMemo(() => {
@@ -214,13 +210,14 @@ function HomeInner() {
     return degree2.filter((c) => shows(grid, c.tier, 2) && shows(grid, d1ById.get(c.source_connection_id)?.tier, 1));
   }, [isDegreesMode, isSeparation, grid, d1ById, degree2]);
   // How many people stand behind each dot of the grid. In Degrees, 1st degree
-  // counts the bridges, since those are the connections it draws; Separation
-  // only ranks the 2nd.
+  // counts every connection: Bridge Chains draws the ones whose circle isn't
+  // scanned yet too, beyond each tier's bridges (Blake, 2026-10-04), and Pyramid
+  // and List always drew them all. Separation only ranks the 2nd.
   const panelCounts = useMemo(() => gridCounts(isSeparation
     ? { 2: byDegree[2] }
     : isDegreesMode
-      ? { 1: degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
-      : byDegree), [isSeparation, isDegreesMode, degree1, bridgeIds, byDegree]);
+      ? { 1: degree1, 2: byDegree[2] }
+      : byDegree), [isSeparation, isDegreesMode, degree1, byDegree]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) { setSidebarCollapsed(false); setOpenNote(null); }
@@ -324,8 +321,11 @@ function HomeInner() {
           // say why instead of rendering an empty canvas. Why depends on where
           // the network came from: a CSV import (csvMode) can never have them,
           // while a scanned network just hasn't had step 4 yet. It used to tell
-          // everyone the CSV reason, scanner users included.
-          if (isDegreesMode && degree2.length === 0) {
+          // everyone the CSV reason, scanner users included. Bridge Chains is
+          // the exception on your own network: it draws your connections not
+          // scanned yet, and a click on one scans their circle there, so the
+          // first circle can start from it.
+          if (isDegreesMode && degree2.length === 0 && !(view.key === 'chain' && canScan)) {
             return (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
