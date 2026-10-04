@@ -85,3 +85,29 @@ test('whose circle a batch is reading now, from the line it prints as each perso
   assert.equal(mappingNow(log, null), null);
   assert.equal(mappingNow(null, 'auto-bridge'), null);
 });
+
+// The scanner's Chrome stays out of sight and comes forward only when LinkedIn
+// needs you (Blake, 2026-10-04: "we want seamlessness"). While it waits there,
+// the notch and the Scan page say what for, from the line it prints.
+test('LinkedIn needs you: from the scanner\'s line, until you are through', async () => {
+  const { needsYou } = await import('../lib/scan-progress.js');
+  const waiting = [
+    'Checking for new connections…',
+    'LinkedIn needs you: sign in to LinkedIn in the Chrome window in front.',
+    '',
+    '  ==================================================================',
+    '  Sign into LinkedIn in the Chrome window in front of you.',
+    '  waiting for sign-in... (15s)',
+  ];
+  assert.equal(needsYou(waiting), 'sign in to LinkedIn in the Chrome window in front.');
+  assert.equal(needsYou(['LinkedIn needs you: finish its security check in the Chrome window in front.']),
+    'finish its security check in the Chrome window in front.');
+  // Through, or given up: nothing needed any more.
+  assert.equal(needsYou([...waiting, '', '  Signed in — LinkedIn is clear.', '  LinkedIn reports 40 connections']), null);
+  assert.equal(needsYou([...waiting, '  Browser closed — nothing was scanned.']), null);
+  assert.equal(needsYou([...waiting, '  Gave up waiting for sign-in. Whatever you completed is saved in the']), null);
+  // Never asked.
+  assert.equal(needsYou(['Checking for new connections…', '  LinkedIn reports 40 connections']), null);
+  assert.equal(needsYou([]), null);
+  assert.equal(needsYou(null), null);
+});

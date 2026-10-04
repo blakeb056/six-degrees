@@ -20,7 +20,7 @@ Accounts have been restricted for this, and no amount of pacing makes the risk z
 - **The sample network**: 150 invented connections and the 598 people they know, built into the app, for trying every view.
 - **LinkedIn's own export**: *Settings & Privacy → Data privacy → Get a copy of your data → Connections*. It's read on your computer and shows the people you know, though not who they know.
 
-If you do scan, everything below is there to keep it slow, visible and easy to stop.
+If you do scan, everything below is there to keep it slow, easy to follow and easy to stop.
 
 ## You sign in, not the app
 
@@ -53,7 +53,11 @@ Then a **cooldown lock** blocks anything that searches, for a day, or until the 
 
 And a scanner that can't read its page says so. It never reports "you have no connections" because a page failed to load.
 
-## Always visible
+## Out of your way
+
+The scanner's Chrome works in the background. Once you've signed in, its window stays out of sight (hidden, on a Mac), so it doesn't cover the app or keep your typing, and Chrome doesn't stop it to ask about saving a password, translating, notifications or restoring pages. It comes forward only when LinkedIn needs you: to sign in again, or to finish a check it asks for, and the notch says so on every page while it waits. If you'd rather watch it work, **Show the scanner's Chrome window** in the Scan page's *Fine-tune* keeps it in front.
+
+## What it's doing, on every page
 
 While a scan runs, the **notch**, a small bar hanging under the header's tabs, says on every page what it's doing and how far it's got, and a dot collects along the header's line for each page read. Hover or click the notch to open it: who it's scanning, your searches over the last 24 hours against your budget, the latest line, and **Stop**. Stop saves what was read, and *Resume* on the Scan page carries on from that page.
 
@@ -63,10 +67,11 @@ The scanner reads. The one thing it sends is a connection request, without a not
 
 ## The experimental parts
 
-Two newer options are marked experimental on the Scan page, and off by default:
+One newer option is marked experimental on the Scan page, and off by default:
 
 - **All-day pacing (Auto-Bridge)**, with an **Auto scan** button once it's ticked. Up to 8 pages in a sitting, then **an hour's rest**; searches only between **09:00 and 18:00** on your computer's clock; never more than 40 searches in a day or 200 in a week, however high your budget; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn't yet been tried on a live account, which is why it's labelled the way it is.
-- **Hide the Chrome window while scanning.** Scans run without a window popping up; the notch and Stop still work, and signing in always opens the window. The Scan page spells out the risks beside the box: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a warning or restriction more likely, and if LinkedIn asks you to prove it's you, you won't see it, so the scan stops instead of waiting. It changes nothing about pacing or budgets.
+
+There used to be a second, *Hide the Chrome window while scanning*, which ran Chrome with no window at all. Every scan now runs out of sight in a real Chrome window instead, which comes forward when LinkedIn needs you, so that option is gone.
 
 ## Why go to this trouble?
 

@@ -30,8 +30,6 @@
 //   many chains lead on from each.
 
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
@@ -43,7 +41,8 @@ import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
-import { watchScanner, scannerNow, isCircleScan, beginScrape, scraperStatus, notReadyMessage, busyReason, resumePoint } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, resumePoint } from '../../lib/scraper-client';
+import InlineNote, { useFadingNote } from './InlineNote';
 import useRequests from './useRequests';
 import { TIER_COLORS } from '../../lib/themes';
 
@@ -56,8 +55,6 @@ const byTierThenScore = (a, b) => (TIER_RANK[a.tier] ?? 9) - (TIER_RANK[b.tier] 
   || score(b) - score(a)
   || String(a.name || '').localeCompare(String(b.name || ''));
 const firstName = (row) => String(row?.name || '').trim().split(/\s+/)[0] || 'them';
-// The Scan page with them picked; nothing starts until it's confirmed there.
-const scanPageFor = (row) => `/setup?scan=${encodeURIComponent(row.id)}`;
 const ordinal = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 // Whose circle is being scanned now, by id: a string, so the view re-renders
@@ -647,7 +644,6 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
   const [viewSet, setViewSet] = useState(null);
   const drag = useRef(null);
   const svgRef = useRef(null);
-  const router = useRouter();
 
   const cx = dims.w / 2;
   const cy = dims.h / 2;
@@ -732,9 +728,18 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
     };
   }), [members, reach, requests, index]);
   // Someone ready for a scan has nobody in their circle yet, so a click on them
-  // goes to the Scan page with them picked (backlog 2.4, pick 3). Everyone else
-  // opens in place, and so do they while their circle is scanned, to watch it fill in.
+  // starts the scan of their circle right here, the card's own start
+  // (startHere): it used to go to the Scan page to be confirmed there (Blake,
+  // 2026-10-04: no pop-ups, nothing in the way). Everyone else opens in place,
+  // and so do they while their circle is scanned, to watch it fill in. Why a
+  // scan didn't start is a line at the top that fades by itself.
   const goesToScan = (i) => canScan && facts[i].reached === 'ready' && members[i].id !== scanningId;
+  const [scanNote, sayScan] = useFadingNote(8000);
+  const scanFrom = async (row) => {
+    sayScan(null);
+    const why = await startHere('bridge', { name: row.name, id: row.id });
+    sayScan(why ? `${firstName(row)}’s scan didn’t start: ${why}` : null);
+  };
 
   const k = view.k;
   // The dots, drawn once per layout and zoom; hovering only draws on top of them.
@@ -826,7 +831,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
     const hit = hitAt(e.clientX, e.clientY);
     if (hit === 'center') onSelect?.(person);
     else if (typeof hit === 'string') onOpen(chainTo(Number(hit.slice(1))));
-    else if (hit != null && goesToScan(hit)) router.push(scanPageFor(members[hit]));
+    else if (hit != null && goesToScan(hit)) scanFrom(members[hit]);
     else if (hit != null) onOpen(members[hit].id);
   };
   const zoomBy = (f, at = { x: 0, y: 0 }) => setView((v) => {
@@ -1010,6 +1015,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
             Scanning {firstName(person)}’s circle now. More people appear here as it saves, every 10 pages.
           </div>
         )}
+        <InlineNote note={scanNote} style={{ ...note, marginTop: 0, borderColor: 'rgba(255,107,107,0.45)', color: 'var(--sd-fg-1, #ffd0d0)', maxWidth: 420 }} />
       </div>
 
       {members.length === 0 && (
@@ -1070,7 +1076,7 @@ function clusterPaths(cluster) {
   return Object.entries(paths);
 }
 
-/** The lines of a dot's tooltip. `toScan`: a click goes to the Scan page with them picked. */
+/** The lines of a dot's tooltip. `toScan`: a click starts the scan of their circle. */
 function tipFor(row, f, scanningId, depth, toScan) {
   const first = firstName(row);
   const status = row.id === scanningId ? 'Their circle is being scanned now'
@@ -1079,7 +1085,7 @@ function tipFor(row, f, scanningId, depth, toScan) {
     : f.reached === 'scanned' ? `You added them · ${f.own.toLocaleString('en-US')} in their circle`
     : f.requested ? 'Request sent'
     : 'Not connected yet';
-  const next = toScan ? `Click to scan ${first}’s circle on the Scan page`
+  const next = toScan ? `Click to scan ${first}’s circle`
     : f.own > 0 ? `Click to open ${first}’s circle (${ordinal(depth + 2)} degree)` : `Click to open ${first}’s circle`;
   return [row.name, `${row.tier}-tier · ${score(row).toFixed(1)}`, status, next];
 }
@@ -1119,7 +1125,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   // (GET /api/scraper?resume=<id>): the map's scan notes don't say how far a
   // list got. Undefined while it's asked.
   const stopped = useStoppedAt(state === 'scanned' && !scanning ? person.id : null);
-  // Why Resume didn't start, kept here: a start greys this to "Scanning…" for a
+  // Why Scan or Resume didn't start, kept here: a start greys this to "Scanning…" for a
   // moment even when it's refused, and the button's own state would go with it.
   const [problem, setProblem] = useState(null);
   if (state === 'scanned' && !scanning && stopped === undefined) return null;   // never "has been read" by mistake
@@ -1133,7 +1139,9 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
   } else if (stopped) {
     title = `${first}’s scan stopped partway`;
     body = `${stoppedLine(stopped)}. Everyone on those pages was already one of your connections, so nobody new is here yet. Resume carries on from page ${stopped.nextPage}.`;
-    if (canScan) action = <ResumeHere person={person} stopped={stopped} problem={problem} setProblem={setProblem} />;
+    if (canScan) {
+      action = <ScanHere person={person} action="resume" label={`Resume from page ${stopped.nextPage}`} problem={problem} setProblem={setProblem} />;
+    }
   } else if (state === 'hidden') {
     title = `${first} keeps their connections hidden`;
     body = 'LinkedIn doesn’t show their list, so there is no circle to scan.';
@@ -1144,12 +1152,14 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
     title = `${first}’s circle isn’t scanned yet`;
     body = `${first} is your connection, so their circle can be scanned. That brings in the people they know: ${next} degree${depth > 1 ? ', counted along this chain' : ''}.`;
     if (canScan) {
+      // Starts here, as the card's Scan does; it used to send you to the Scan
+      // page to confirm it (Blake, 2026-10-04: no pop-ups, nothing in the way).
       action = (
         <>
-          <Link href={scanPageFor(person)} style={primary}>Scan {first}’s circle →</Link>
+          <ScanHere person={person} action="bridge" label={`Scan ${first}’s circle`} problem={problem} setProblem={setProblem} />
           <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>
             {cost.profileViews} profile view, then one LinkedIn search per page of their list (up to {cost.searches}, about {cost.minutes} min).
-            It starts only once you confirm it on the Scan page.
+            It runs in the background; the notch shows how it&apos;s going.
           </div>
         </>
       );
@@ -1196,37 +1206,30 @@ function useStoppedAt(id) {
 }
 
 /**
- * Resume for a circle that stopped partway, from the map: what the card's
- * Resume does (Sidebar.js CreateClusterCard), the same check first, carrying on
- * from the page it stopped at, never page 1 again. Once it starts, the empty
- * circle says it's being scanned. Greyed out, saying why, while another scan runs.
+ * Scan a circle from the map, or Resume one that stopped partway: what the
+ * card's buttons do (Sidebar.js CreateClusterCard), the same check first
+ * (startHere). Scan reads their list from page 1; Resume carries on from the
+ * page it stopped at, never page 1 again. Once it starts, the empty circle says
+ * it's being scanned. Greyed out, saying why, while another scan runs.
  */
-function ResumeHere({ person, stopped, problem, setProblem }) {
+function ScanHere({ person, action, label, problem, setProblem }) {
   const busy = useSyncExternalStore(watchScanner, () => busyReason(scannerNow()), () => null);
   const [checking, setChecking] = useState(false);
   async function go() {
     setProblem(null);
     setChecking(true);
-    const blocked = notReadyMessage(await scraperStatus().catch(() => null));
+    const why = await startHere(action, action === 'resume' ? { id: person.id } : { name: person.name, id: person.id });
     setChecking(false);
-    if (blocked) {
-      setProblem(`${blocked} Open the Scan page to finish setting the scanner up.`);
-      return;
-    }
-    try {
-      await beginScrape('resume', { id: person.id });
-    } catch (e) {
-      setProblem(e.message || 'Could not start the scan.');
-    }
+    setProblem(why);
   }
   const off = Boolean(busy) || checking;
   return (
     <>
       <button type="button" onClick={go} disabled={off} style={{
         ...primary, border: 'none', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
-      }}>Resume from page {stopped.nextPage}</button>
+      }}>{label}</button>
       {(busy || problem) && (
-        <div style={{ fontSize: 10.5, color: problem ? '#ff8080' : 'var(--sd-fg-3, #888)', marginTop: 8 }}>
+        <div role="status" style={{ fontSize: 10.5, color: problem ? '#ff8080' : 'var(--sd-fg-3, #888)', marginTop: 8 }}>
           {problem || `${busy}. One scan at a time: this one can start when it finishes.`}
         </div>
       )}

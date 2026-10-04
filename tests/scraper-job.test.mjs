@@ -43,7 +43,7 @@ const ask = async (query) => (await GET(new Request(`http://127.0.0.1/api/scrape
 test('?job=1 says what runs and whose scan it is, and how the last jobs ended', async () => {
   assert.deepEqual(await ask('?job=1'), {
     running: false, action: null, target: null, startedAt: null, exitCode: null,
-    failure: null, progress: null, pages: 0, found: [], log: [], recent: [], budget: null,
+    failure: null, progress: null, pages: 0, found: [], log: [], recent: [], budget: null, needsYou: null,
   });
 
   const state = registerScanState({});
@@ -60,6 +60,12 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
   assert.equal(job.pages, 7);
   assert.deepEqual(job.found, [10, 10, 9]);
   assert.deepEqual(job.recent.map((j) => [j.startedAt, j.exitCode]), [[900, 0]]);
+  assert.equal(job.needsYou, null, 'LinkedIn needs nothing of you yet');
+  // The scanner's Chrome came forward for a sign-in: what for, from its own line (lib/scan-progress.js).
+  state.log = [...state.log, 'LinkedIn needs you: sign in to LinkedIn in the Chrome window in front.', '  waiting for sign-in... (15s)'];
+  assert.equal((await ask('?job=1')).needsYou, 'sign in to LinkedIn in the Chrome window in front.');
+  state.log = [...state.log, '  Signed in, LinkedIn is clear.'];
+  assert.equal((await ask('?job=1')).needsYou, null);
 
   // A second scan is refused while it runs, naming what does.
   const res = await POST(new Request('http://127.0.0.1/api/scraper', {

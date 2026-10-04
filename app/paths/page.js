@@ -12,6 +12,7 @@ import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
 import { useUser } from '../components/UserProvider';
 import useScanner from '../components/useScanner';
+import InlineNote, { useFadingNote } from '../components/InlineNote';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
@@ -21,6 +22,12 @@ import { TIER_COLORS } from '../../lib/themes';
 // and an industry's detail opens from a company's card). Whether the map's bubbles
 // are companies or people is a switch in its Filters panel.
 const TABS = [['map', 'Map'], ['companies', 'Companies']];
+
+// What the EXPERIMENTAL badge and the Scan Full Company button say on hover: it
+// was a window.confirm before the first company scan.
+const COMPANY_SCAN_NOTE = 'Experimental: company scans haven’t been tested against live LinkedIn yet, so the '
+  + 'results may be incomplete. Like any scan it runs in the background and counts toward the profile views '
+  + 'LinkedIn watches.';
 
 export default function PathsPage() {
   // Suspense because PathsInner reads the address's ?tab= (useSearchParams),
@@ -113,6 +120,8 @@ function PathsInner() {
 
   const [scanning, setScanning] = useState(false);
   const [scanLog, setScanLog] = useState([]);
+  // Why a company scan didn't start, beside its button; it fades by itself.
+  const [scanNote, say] = useFadingNote(9000);
   // Anything else the scanner runs (a profile card's scan, say) greys this out too.
   const scan = useScanner();
   const busy = !scanning && scan.running ? busyReason(scan) : null;
@@ -148,25 +157,19 @@ function PathsInner() {
     if (IS_DEMO || localOnly) return;
     if (!selectedCompany) return;
     // Company scans shipped in 0.1.0 without ever having been run against live
-    // LinkedIn (docs/brain/PHASES.md). Say so once per browser before the first
-    // one, rather than let an untested path look like a finished one.
-    let warned = false;
-    try { warned = localStorage.getItem('six-degrees-company-scan-ok') === '1'; } catch {}
-    if (!warned) {
-      const ok = window.confirm(
-        'Company scans are experimental: they have not been tested against live LinkedIn yet, ' +
-        'so the results may be incomplete. Like any scan, it opens a Chrome window and counts ' +
-        'toward the profile views LinkedIn watches.\n\nRun it anyway?',
-      );
-      if (!ok) return;
-      try { localStorage.setItem('six-degrees-company-scan-ok', '1'); } catch {}
-    }
+    // LinkedIn (docs/brain/PHASES.md). That's said on the EXPERIMENTAL badge
+    // beside the button and in the button's tooltip (COMPANY_SCAN_NOTE); it was
+    // a window.confirm before the first one (Blake, 2026-10-04: "we want
+    // seamlessness … not to have any disruption through pop ups or windows").
+    say(null);
     setScanning(true);
     setScanLog(['Checking the scanner...']);
 
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
     if (blocked) {
-      setScanLog([blocked]);
+      // Said beside the button: the log box goes with `scanning`, so a reason
+      // put there vanished before anyone could read it.
+      say(blocked);
       setScanning(false);
       return;
     }
@@ -194,7 +197,7 @@ function PathsInner() {
         }
       }
     } catch (e) {
-      setScanLog([e.message || 'Failed to start the scan']);
+      say(e.message || 'The scan could not start.');
     } finally {
       setScanning(false);
     }
@@ -279,18 +282,21 @@ function PathsInner() {
               {localOnly ? (
                 <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>Scanning needs your own network</span>
               ) : (
-              <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
-                title={busy ? `${busy}. One scan at a time.` : undefined}
-                style={{
-                  marginLeft: 'auto', padding: '5px 12px', borderRadius: 6, border: 'none', cursor: scanning || busy ? 'not-allowed' : 'pointer',
-                  background: scanning || busy ? '#333' : 'rgba(0,255,136,0.15)', color: scanning || busy ? 'var(--sd-fg-5, #555)' : 'var(--sd-green, #00ff88)',
-                  fontSize: 11, fontWeight: 600,
-                }}>
-                {scanning ? 'Scanning...' : busy ? 'Scanner busy' : '+ Scan Full Company'}
-              </button>
+              <span style={{ marginLeft: 'auto', position: 'relative', display: 'inline-flex' }}>
+                <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
+                  title={busy ? `${busy}. One scan at a time.` : `Scan everyone visible at ${selectedCompany.name}. ${COMPANY_SCAN_NOTE}`}
+                  style={{
+                    padding: '5px 12px', borderRadius: 6, border: 'none', cursor: scanning || busy ? 'not-allowed' : 'pointer',
+                    background: scanning || busy ? '#333' : 'rgba(0,255,136,0.15)', color: scanning || busy ? 'var(--sd-fg-5, #555)' : 'var(--sd-green, #00ff88)',
+                    fontSize: 11, fontWeight: 600,
+                  }}>
+                  {scanning ? 'Scanning...' : busy ? 'Scanner busy' : '+ Scan Full Company'}
+                </button>
+                <InlineNote note={scanNote} float />
+              </span>
               )}
               <span
-                title="Not yet tested against live LinkedIn. Results may be incomplete."
+                title={COMPANY_SCAN_NOTE}
                 style={{
                   fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, padding: '3px 7px',
                   borderRadius: 20, border: '1px solid rgba(255,215,0,0.45)', color: 'var(--sd-gold, #FFD700)',

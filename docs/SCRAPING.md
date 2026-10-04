@@ -197,7 +197,7 @@ python3 scripts/scrape.py --bridge "Jane Doe"
 python3 scripts/scrape.py --rescrape "Jane Doe"
 
 # Everyone visible at one company. EXPERIMENTAL: shipped in 0.1.0 without ever
-# having been run against live LinkedIn; the Paths page asks before the first one
+# having been run against live LinkedIn; the Paths page marks it so
 python3 scripts/scrape.py --company "Acme"
 
 # Run as a local server so the app's buttons can drive it
@@ -218,19 +218,26 @@ python3 scripts/scrape.py --clear-skips                    # forget every skip
 Ctrl-C stops it cleanly: it finishes what it is doing, closes the browser, and prints
 a summary rather than leaving a window open.
 
-## Running it without a visible window
+## The window
 
-Every mode accepts `--headless`. Log in once with a window so the profile has a
-session, then later runs need no window at all:
+The scanner drives a real Chrome window, kept out of your way: on a Mac it is
+hidden as soon as it starts (as ⌘H hides an app), elsewhere it opens off the
+edge of the screen. It never covers the app or keeps your typing, and its
+profile is set so Chrome doesn't stop it with a bubble (saving passwords,
+translating, notifications, "Restore pages?") or a warning bar. It comes
+forward only when LinkedIn needs you, to sign in or to finish a security
+check, and goes back once you're through. `--login` is always in front.
 
 ```bash
-python3 scripts/scrape.py --full --headless
+python3 scripts/scrape.py --full --show-window   # a normal window in front, to watch it work
+python3 scripts/scrape.py --full --headless      # no window at all
 ```
 
-One caveat worth knowing: headless Chrome is *more* detectable than a visible
-one — it is a fingerprint sites check for. Running invisibly and staying
-unflagged pull in opposite directions, so prefer a visible window if you are
-scanning much at once.
+`--show-window` is the Scan page's *Show the scanner's Chrome window* (in
+Fine-tune). `--headless` is for the command line only: headless Chrome is
+*more* detectable than a real window, a fingerprint sites check for, and a
+check LinkedIn asks for can't be seen or finished in it, so the scan stops
+instead. Log in once with a window first, so the profile has a session.
 
 ## Please be considerate
 

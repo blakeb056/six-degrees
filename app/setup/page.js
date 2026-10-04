@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
-import { stopScrape, pickedPerson, scanRequest, HIDE_CHROME_KEY } from '../../lib/scraper-client';
+import { stopScrape, pickedPerson, beginScrape, SHOW_CHROME_KEY } from '../../lib/scraper-client';
 import { setupStep, askForField, appManagementStep } from '../../lib/scanner-setup';
 import { saveSettings } from '../../lib/settings-client';
 import { RISK_POINTS } from '../../lib/scan-risk';
@@ -75,8 +75,10 @@ function SetupInner() {
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
   // Experimental Auto-Bridge: all-day pacing and LinkedIn's own data (scripts/scrape.py --experimental).
   const [experimental, setExperimental] = useRemembered('six-degrees-experimental-auto', false);
-  // Scanning with no Chrome window (scripts/scrape.py --headless); lib/scraper-client.js reads it for every scan.
-  const [hideChrome, setHideChrome] = useRemembered(HIDE_CHROME_KEY, false);
+  // Scanning in a normal Chrome window in front, to watch it (scripts/scrape.py
+  // --show-window). Off, the window stays out of sight. lib/scraper-client.js
+  // reads it for every scan, wherever it starts.
+  const [showChrome, setShowChrome] = useRemembered(SHOW_CHROME_KEY, false);
   const [error, setError] = useState(null);
   const logRef = useRef(null);
   // What's saved, for the question about your field: undefined while it
@@ -85,8 +87,9 @@ function SetupInner() {
   const [field, setField] = useState(null);
   // Step 1's App Management item, answered here ('done' or 'skipped'), if it was.
   const [appAnswer, setAppAnswer] = useState(null);
-  // Someone sent here to have their circle scanned (Bridge Chains, the Degrees
-  // panel's Ready to scan): /setup?scan=<id>. Nothing starts until it's confirmed.
+  // Someone sent here to have their circle scanned (Insights' Scan circle):
+  // /setup?scan=<id>, with what it costs and one button that starts it. Bridge
+  // Chains and the Degrees panel start theirs in place now.
   // The router's search params rather than window.location: every way here is a
   // click, and the address bar only changes after this page has rendered, so the
   // pick was lost on all of them and only a reload showed it.
@@ -174,21 +177,38 @@ function SetupInner() {
     }
   }
 
-  async function run(action, extra = {}) {
+  // The two settings this page changes (the budget, lifting a cooldown) start nothing.
+  async function setting(action, extra = {}) {
     setError(null);
     setBusy(true);
     try {
       const r = await fetch('/api/scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // With "Hide the Chrome window" from the switch below; this page's own
-        // buttons used to leave it out, so it never hid anything started here.
-        body: JSON.stringify(scanRequest(action, extra, hideChrome)),
+        body: JSON.stringify({ action, ...extra }),
       });
       const d = await r.json();
-      if (!r.ok) setError(d.error || 'Could not start.');
+      if (!r.ok) setError(d.error || 'Could not change that.');
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusy(false);
+      poll();
+    }
+  }
+
+  // Everything else starts a job, through beginScrape like every other Scan
+  // button, so the header's Check for new, the notch and every card react at
+  // once: posting straight to the scanner left them up to 5 seconds behind.
+  // It adds "Show the scanner's Chrome window" itself (scanRequest).
+  async function run(action, extra = {}) {
+    if (action === 'set-limits' || action === 'lift-cooldown') return setting(action, extra);
+    setError(null);
+    setBusy(true);
+    try {
+      await beginScrape(action, extra);
+    } catch (e) {
+      setError(e.message || 'Could not start.');
     } finally {
       setBusy(false);
       poll();
@@ -269,8 +289,11 @@ function SetupInner() {
             </>}
           </h1>
           <div style={{ fontSize: 14.5, color: 'var(--sd-fg-2, #aab7c4)', lineHeight: 1.6, maxWidth: 560 }}>
-            It works in your own Chrome on this Mac, slowly and in the open, and keeps everything here.
-            You launch it; it does the reading; you watch it go.
+            {/* Blake, 2026-10-04: "we want seamlessness … not to have any disruption through pop ups
+                or windows". It said "slowly and in the open … you watch it go" until then. */}
+            It works slowly in your own Chrome on this Mac, in the background and out of your way, and
+            keeps everything here. You launch it; it does the reading; its window comes forward only if
+            LinkedIn needs you.
           </div>
           <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', marginTop: 16 }}>
             {['Never posts or messages anyone; sends a request only when you press Auto', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
@@ -535,6 +558,12 @@ function SetupInner() {
               <div style={{ flex: 1, fontSize: 13.5 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: 'var(--sd-green, #00ff88)', marginBottom: 2 }}>YOUR SCANNER IS WORKING</div>
                 <b>{ACTION_LABELS[s.action] || 'Working'}</b>
+                {/* The one time its window comes forward (scripts/scrape.py bring_forward). */}
+                {s.needsYou && (
+                  <div role="status" style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 700, marginTop: 4 }}>
+                    LinkedIn needs you: {s.needsYou}
+                  </div>
+                )}
                 {s.progress && <Progress p={s.progress} action={s.action} />}
                 <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5, marginTop: 2 }}>
                   Stopping closes the browser cleanly and keeps everything found so far.
@@ -560,7 +589,7 @@ function SetupInner() {
           <details style={{ margin: '18px 0 4px', borderRadius: 10, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' }}>
             <summary style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13.5, fontWeight: 650, color: 'var(--sd-fg-2, #cfd8d8)' }}>
               Fine-tune the scanner
-              <span style={{ fontWeight: 500, color: 'var(--sd-fg-4, #778)', marginLeft: 8 }}>daily budget, how much of each list, the hidden window</span>
+              <span style={{ fontWeight: 500, color: 'var(--sd-fg-4, #778)', marginLeft: 8 }}>daily budget, how much of each list, watching it work</span>
             </summary>
             <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
@@ -588,20 +617,20 @@ function SetupInner() {
                   the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
                 </span>
               </label>
+              {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
+                  every scan runs in a real Chrome window kept out of sight (hidden on a Mac), which comes
+                  forward only when LinkedIn needs you. This is for anyone who wants to watch instead. It
+                  replaced "Hide the Chrome window while scanning", which ran Chrome headless: hidden is now
+                  how every scan runs, without headless Chrome's risks. */}
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', cursor: running ? 'default' : 'pointer' }}>
-                <input type="checkbox" checked={hideChrome} disabled={running} style={{ marginTop: 3 }}
-                  onChange={(e) => setHideChrome(e.target.checked)} />
+                <input type="checkbox" checked={showChrome} disabled={running} style={{ marginTop: 3 }}
+                  onChange={(e) => setShowChrome(e.target.checked)} />
                 <span>
-                  <b style={{ color: 'var(--sd-gold, #FFD700)' }}>Hide the Chrome window while scanning.</b> Every scan runs with no
-                  window popping up; the status bar still shows what it&rsquo;s doing, and Stop still works. Signing
-                  in always opens the window.
-                  <span style={{ display: 'block', marginTop: 4, color: '#e0a080' }}>
-                    The risks: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a
-                    warning or restriction more likely. If LinkedIn asks you to check it&rsquo;s you (a code, a
-                    puzzle, signing in again) you won&rsquo;t see it, and the scan will stop instead of waiting for
-                    you. Untick this and scan again to see what LinkedIn wants. It changes nothing about pacing or
-                    your daily budget.
-                  </span>
+                  <b style={{ color: 'var(--sd-fg-1, #fff)' }}>Show the scanner&rsquo;s Chrome window.</b> Scans run in a
+                  normal Chrome window in front of you, to watch it work. Left off, the window stays out of sight
+                  and comes forward only when LinkedIn needs you: to sign in, or to finish a check it asks for. The
+                  notch shows what it&rsquo;s doing either way, and Stop works the same. It changes nothing about
+                  pacing or your daily budget.
                 </span>
               </label>
               <div style={{ fontSize: 12, color: 'var(--sd-gold, #FFD700)', lineHeight: 1.6 }}>
@@ -653,8 +682,8 @@ function SetupInner() {
   );
 }
 
-// One person's circle, picked elsewhere and scanned only once it's confirmed
-// here, beside what it costs and what the budget has left (backlog 2.4). Their
+// One person's circle, picked in Insights (Scan circle): what it costs beside
+// what the budget has left, and one button that starts it (backlog 2.4). Their
 // read goes as deep as "Read up to" below says; Bridge Chains shows it filling in.
 function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onStart, onUnpick }) {
   const { person, circle } = pick;

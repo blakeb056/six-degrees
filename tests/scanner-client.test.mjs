@@ -184,18 +184,78 @@ test('why the buttons are grey, for each kind of job', async () => {
   assert.equal(busyReason({ running: false, action: 'full' }), null);
 });
 
-test('"Hide the Chrome window" goes with every scan start, the Scan page\'s own buttons too', async () => {
-  const { scanRequest, hideChromeOn, HIDE_CHROME_KEY } = await client();
-  const store = (v) => ({ getItem: (k) => (k === HIDE_CHROME_KEY ? v : null) });
-  assert.equal(hideChromeOn(store('true')), true);
-  assert.equal(hideChromeOn(store('false')), false);
-  assert.equal(hideChromeOn(store(null)), false);
-  assert.equal(hideChromeOn(store('not json')), false);
-  assert.equal(hideChromeOn(null), false);
-  assert.deepEqual(scanRequest('auto-bridge', { maxPages: 10 }, true), { action: 'auto-bridge', maxPages: 10, headless: true });
+test('"Show the scanner\'s Chrome window" goes with every scan start; the old "Hide the Chrome window" is no longer read', async () => {
+  const { scanRequest, showChromeOn, SHOW_CHROME_KEY } = await client();
+  const store = (v, key = SHOW_CHROME_KEY) => ({ getItem: (k) => (k === key ? v : null) });
+  assert.equal(SHOW_CHROME_KEY, 'six-degrees-show-chrome');
+  assert.equal(showChromeOn(store('true')), true);
+  assert.equal(showChromeOn(store('false')), false);
+  assert.equal(showChromeOn(store(null)), false);
+  assert.equal(showChromeOn(store('not json')), false);
+  assert.equal(showChromeOn(null), false);
+  // Someone who had ticked the old switch (headless Chrome) gets the window out of sight, as every scan now does.
+  assert.equal(showChromeOn(store('true', 'six-degrees-hide-chrome')), false);
+  assert.deepEqual(scanRequest('auto-bridge', { maxPages: 10 }, true), { action: 'auto-bridge', maxPages: 10, showWindow: true });
   assert.deepEqual(scanRequest('refresh', {}, false), { action: 'refresh' });
-  // A caller can't switch it off by passing headless: false while the switch is on.
-  assert.equal(scanRequest('refresh', { headless: false }, true).headless, true);
+  // A caller can't switch it off by passing showWindow: false while the switch is on.
+  assert.equal(scanRequest('refresh', { showWindow: false }, true).showWindow, true);
+});
+
+// Blake, 2026-10-04: "we need to make it so theres no pop up or nothing". Every
+// Scan button outside the card started by sending you to the Scan page, or by
+// asking; now they start where they are, and a refusal comes back as words.
+test('starting where the button is: one press starts it; not ready, or refused, comes back as a line to show', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const server = fakeScanner();
+  const statusOf = { ready: true, checks: { scriptsFound: true, dependencies: true, chrome: true } };
+  const fetchJob = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (String(url) === '/api/scraper' && opts.method !== 'POST') return response(200, statusOf);
+    if (opts.method === 'POST') posts++;
+    return fetchJob(url, opts);
+  };
+  server.post = async (body) => {
+    server.job = running({ action: body.action, target: { id: body.id ?? null, name: body.name ?? null }, startedAt: 2000 });
+    return { status: 200, body: { ok: true, startedAt: 2000 } };
+  };
+  const { startHere, scannerNow } = await client();
+
+  // Ready: it starts, and every button greys out at once.
+  assert.equal(await startHere('bridge', { name: 'Ada Park', id: 'p-ada' }), null);
+  assert.equal(posts, 1);
+  assert.equal(scannerNow().running, true);
+
+  // Refused (a cooldown, say): the server's own words, and nothing runs.
+  server.job = idle();
+  server.post = async () => ({ status: 409, body: { error: 'Scanning is paused until tomorrow: LinkedIn pushed back.' } });
+  assert.equal(await startHere('refresh'), 'Scanning is paused until tomorrow: LinkedIn pushed back.');
+
+  // Not set up: said without asking the scanner to start anything.
+  statusOf.checks = { scriptsFound: true, dependencies: false, python: true };
+  const before = posts;
+  assert.match(await startHere('refresh'), /not set up yet/);
+  assert.equal(posts, before);
+
+  // The app not answering at all: still words, never a throw.
+  globalThis.fetch = async () => { throw new Error('offline'); };
+  assert.equal(await startHere('refresh'), 'Could not reach the app.');
+});
+
+test('what LinkedIn needs you to do at the scanner\'s window travels with the job, and only while it runs', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const server = fakeScanner();
+  server.job = running({ action: 'refresh', target: null, needsYou: 'sign in to LinkedIn in the Chrome window in front.' });
+  const { watchScanner, scannerNow, SCANNER_UNKNOWN } = await client();
+  assert.equal(SCANNER_UNKNOWN.needsYou, null);
+  const stop = watchScanner(() => {});
+  await flush();
+  assert.equal(scannerNow().needsYou, 'sign in to LinkedIn in the Chrome window in front.');
+  server.job = { ...idle(), needsYou: 'left over' };
+  mock.timers.tick(1500);
+  await flush();
+  assert.equal(scannerNow().needsYou, null);
+  stop();
 });
 
 test('the map keeps looking while circles fill in: one person\'s scan, or a batch of them', async () => {

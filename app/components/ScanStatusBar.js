@@ -121,10 +121,14 @@ export default function ScanStatusBar() {
   const last = running ? [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim() : null;
   const expanded = open || pinned;
 
+  // The scanner's Chrome stays out of sight and comes forward only when LinkedIn
+  // needs you (signing in, a security check): then the notch says so, in gold,
+  // on every page (Blake, 2026-10-04: no pop-ups, no windows unless needed).
+  const needs = running ? job.needsYou : null;
   // What the pill says, smallest first.
-  const dot = running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB') : '#556';
-  const label = running ? (WHAT[job.action] || 'Scanning') : other ? other.label : 'Auto scan';
-  const short = running ? step : other ? other.detail : null;
+  const dot = needs ? '#FFD700' : running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB') : '#556';
+  const label = needs ? 'LinkedIn needs you' : running ? (WHAT[job.action] || 'Scanning') : other ? other.label : 'Auto scan';
+  const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail : null;
 
   // Kept inside the window: centred under the tab buttons, but never off an edge.
   const left = centre != null ? `clamp(170px, ${centre}px, calc(100vw - 170px))` : '50%';
@@ -139,7 +143,10 @@ export default function ScanStatusBar() {
         position: 'fixed', left, top, transform: 'translateX(-50%)', zIndex: 60,
         maxWidth: 'calc(100vw - 16px)',
         padding: expanded && status ? '4px 6px 10px' : '4px 6px 5px',
-        borderRadius: '0 0 14px 14px', border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, borderTop: 'none',
+        // Width, style and colour apart: the colour changes while it shows (gold when
+        // LinkedIn needs you), and React warns about a shorthand beside borderTop.
+        borderRadius: '0 0 14px 14px', borderStyle: 'solid', borderWidth: '0 1px 1px',
+        borderColor: needs ? 'rgba(255,215,0,0.5)' : running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)',
         background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 12,
         opacity: tabs || running || other || expanded ? 1 : 0.55,
         boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',

@@ -25,8 +25,9 @@ import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
 import ClusterSpinner from './ClusterSpinner';
 import useScanner from './useScanner';
+import InlineNote, { useFadingNote } from './InlineNote';
 import { useUser } from './UserProvider';
-import { scraperStatus, beginScrape, notReadyMessage, busyReason } from '../../lib/scraper-client';
+import { startHere, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { networkLevel, rememberLevel, levelNow, watchLevel } from '../../lib/level';
 import { IS_DEMO } from '../../lib/demo';
@@ -199,53 +200,59 @@ function NotificationBell({ isMobile, onOpen, openId }) {
   );
 }
 
+// What Check for new does and costs, on the button itself: it used to be a
+// window.confirm before every check.
+const REFRESH_TITLE = 'Check for new connections. Reads your LinkedIn connections list from the newest, in the '
+  + 'background, and stops once it reaches people already saved: usually under a minute. It reads your own list, '
+  + 'not a search, so it doesn’t use your search budget, but like any scan it is LinkedIn traffic from your account.';
+
 // Its own component so the scanner's answer, which changes every second or two
 // while a scan runs, re-renders this button and not the whole page.
 //
-// It asks first, as a company scan does, and says what it will do and what it
-// costs: one click on a small icon used to open a Chrome window on LinkedIn
-// with no word of what it was about to do.
+// One click starts it. Blake, 2026-10-04: "the top right quick refresh button
+// that says check for [new] prompts them to a pop up and then another one … we
+// need to make it so theres no pop up or nothing". It used to raise up to three
+// boxes (not ready, "Check for new connections?", "Checking for new
+// connections…"). Now the cluster spinning on the button and the notch say it's
+// running, what it does and costs is the button's tooltip, and a reason it
+// didn't start is a short line under the button that fades by itself.
 function RefreshButton({ isMobile }) {
   const scan = useScanner();
   const checking = scan.running && scan.action === 'refresh';
   const busy = busyReason(scan);
+  const [asking, setAsking] = useState(false);   // the scanner's readiness, asked on the click
+  const [note, say] = useFadingNote(8000);
+  const off = Boolean(busy) || asking;
   return (
-    <button
-      className="cluster-host"
-      onClick={async () => {
-        try {
-          const blocked = notReadyMessage(await scraperStatus());
-          if (blocked) { alert(blocked); return; }
-          const ok = window.confirm(
-            'Check for new connections?\n\nThis opens a Chrome window on your LinkedIn connections ' +
-            'list and reads it from the newest, stopping once it reaches people already saved. It ' +
-            'usually takes under a minute. It reads your own list, not a search, so it doesn’t ' +
-            'use your search budget, but like any scan it is LinkedIn traffic from your account.',
-          );
-          if (!ok) return;
-          await beginScrape('refresh');
-          alert('Checking for new connections. Watch it on the Scan page.');
-        } catch (e) {
-          alert(e.message);
-        }
-      }}
-      disabled={Boolean(busy)}
-      title={busy ? `${busy}. One scan at a time.` : 'Check for new connections: reads your LinkedIn connections list from the newest'}
-      aria-label="Check for new connections"
-      style={{
-        // Words, not a bare ↻ (Blake, 2026-10-02: "make it easier to check for new
-        // connections"), and the same words as the Scan page's button.
-        height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
-        // Its own check running stays bright, its cluster building; something else running greys it.
-        border: '1px solid rgba(0,255,136,0.3)', cursor: checking ? 'progress' : busy ? 'not-allowed' : 'pointer', opacity: busy && !checking ? 0.45 : 1,
-        background: 'rgba(0,255,136,0.08)', color: 'var(--sd-fg-1, #bff5d9)', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
-        display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0,
-      }}
-    >
-      {/* A cluster forming: built once on hover, round and round while it checks */}
-      <ClusterSpinner size={isMobile ? 12 : 14} live={checking} />
-      {checking ? 'Checking…' : isMobile ? 'New' : 'Check for new'}
-    </button>
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        className="cluster-host"
+        onClick={async () => {
+          say(null);
+          setAsking(true);
+          const why = await startHere('refresh');
+          setAsking(false);
+          say(why);
+        }}
+        disabled={off}
+        title={busy ? `${busy}. One scan at a time.` : REFRESH_TITLE}
+        aria-label="Check for new connections"
+        style={{
+          // Words, not a bare ↻ (Blake, 2026-10-02: "make it easier to check for new
+          // connections"), and the same words as the Scan page's button.
+          height: isMobile ? 28 : 32, padding: isMobile ? '0 10px' : '0 14px', borderRadius: 16,
+          // Its own check running stays bright, its cluster building; something else running greys it.
+          border: '1px solid rgba(0,255,136,0.3)', cursor: checking || asking ? 'progress' : busy ? 'not-allowed' : 'pointer', opacity: busy && !checking ? 0.45 : 1,
+          background: 'rgba(0,255,136,0.08)', color: 'var(--sd-fg-1, #bff5d9)', fontSize: isMobile ? 11 : 12.5, fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0,
+        }}
+      >
+        {/* A cluster forming: built once on hover, round and round while it checks */}
+        <ClusterSpinner size={isMobile ? 12 : 14} live={checking} />
+        {checking ? 'Checking…' : isMobile ? 'New' : 'Check for new'}
+      </button>
+      <InlineNote note={note} float />
+    </div>
   );
 }
 

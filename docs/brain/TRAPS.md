@@ -1014,3 +1014,30 @@ Found building D4 (DESKTOP.md, Signing) with a throwaway self-signed identity, 2
   in Node and in Electron (`scripts/entitlements/`). The scanner's Python needs nothing:
   checked with its imports, Pillow and Playwright's driver under the hardened runtime (the
   self-signed test copy with library validation turned off for that run only, never shipped).
+
+## 46. Chrome started by Playwright takes the focus on a Mac, and a window can't be put off-screen there
+
+Found on 2026-10-04 building Blake's rule change (SCRAPER.md *The window*): "we want
+seamlessness … not to have any disruption through pop ups or windows". Measured on scratch
+profiles with `lsappinfo front` polled every 100 ms.
+
+- **Every launch made the scanner's Chrome the active app**, about a second in, and it kept
+  the keyboard: plain, `--window-position` off-screen, minimised over CDP right after, moved
+  off-screen right after. Whatever you were typing in lost the focus once per launch, and
+  Auto-Bridge launches once per person. Chrome activates itself as its first window opens;
+  there is no flag against it, and `--no-startup-window` hangs a persistent context (Playwright
+  waits for its first page).
+- **macOS moves a window placed off-screen back onto it.** `--window-position=-32000,-32000`
+  opened at (0, 30); `Browser.setWindowBounds` to -32000 afterwards left 40 px on screen.
+  Windows keeps a window at -32000; a Mac doesn't.
+- **Hiding works.** `NSRunningApplication` `hide`, from a thread watching for the new Chrome
+  (by its `--user-data-dir` in `ps`) from before the launch, gives the focus back within about
+  0.2 s, and the page keeps working hidden. `MacChrome` in `scrape.py` does it, through ctypes,
+  so the bundled Python needs nothing installed and no entitlement. Look apps up by pid inside
+  an autorelease pool each time: an `NSRunningApplication` kept past its pool can be freed.
+- **Don't measure the front app with `NSWorkspace.frontmostApplication` from a script**: with
+  no run loop it never updates. `lsappinfo front` does.
+- **"Restore pages?" is Chrome's own crash bubble**, shown before `--test-type` is looked at
+  (`infobar_utils.cc`), whenever `profile.exit_type` says it crashed, which a stop that has
+  to kill Chrome leaves behind. Write it back to "Normal" before every launch
+  (`quiet_chrome_profile`).

@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **No pop-ups when you scan: one click starts it, and Chrome stays out of your way.** Check for
+  new in the header used to raise up to three boxes before and after it started; now one click
+  starts it, the cluster spins on the button and the notch shows it running, and what it does and
+  costs is the button's tooltip. Anything that can't start (the scanner not set up, a cooldown,
+  one scan at a time) says why in a short line under the button that fades by itself. The same
+  goes for every other way to start a scan: a click on someone ready to scan in Bridge Chains,
+  *Scan their circle* in an empty circle, the Degrees panel's Ready to scan, the people panel's
+  Scan rows and the card's Insights all start it right there instead of sending you to the Scan
+  page to confirm it (a scan that stopped partway carries on with Resume, never reads the list
+  again from page 1). The Paths company scan no longer asks
+  first (its EXPERIMENTAL badge says what it asked), raising the budget past the safe limits is a
+  question in the budget box instead of a box over the page, and Auto scan says why when it can't
+  start. The Scan page's own buttons now grey out the header and the notch at once instead of a
+  few seconds later. The two one-time questions stay (the "I understand" before the first scan,
+  and Auto's before its first request), and so does every question before deleting something.
+- **The scanner's Chrome works in the background.** After you've signed in, its window stays out
+  of sight (hidden, on a Mac) and doesn't keep the focus or cover the app; it comes forward only
+  when LinkedIn needs you, to sign in again or finish a security check, and the notch says
+  *LinkedIn needs you* in gold until you're through. Chrome no longer shows the yellow
+  "unsupported command-line flag … Stability and security will suffer" bar, and the scanner's
+  profile is set so Chrome never asks to restore pages after a stopped scan, to save a password, to
+  translate, or to show LinkedIn's notifications. On a Mac, Chrome's own sandbox is on. Fine-tune
+  → *Show the scanner's Chrome window* keeps it in front for anyone who wants to watch. It replaces
+  *Hide the Chrome window while scanning*, which ran Chrome with no window at all: more
+  detectable, and blind to LinkedIn's checks. Pacing, budgets, caps and cooldowns are exactly as
+  they were.
+
 ## [1.0.0] - 2026-10-04
 
 ### Added

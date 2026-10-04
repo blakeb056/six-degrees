@@ -74,6 +74,8 @@ ns.update({
     'mark_bridge_hidden': lambda url, name: None,
     'push_connections': lambda *a, **kw: None,
     'get_scraper_profile_path': lambda: '/nonexistent',
+    # Every launch goes through launch_chrome (tests/chrome-launch.test.mjs): here, the stand-in browser.
+    'launch_chrome': lambda p, headless=False, sign_in=False: p.chromium.launch_persistent_context(),
     'ensure_logged_in': lambda page, **kw: True,
     'stop_requested': lambda: False,
     # LinkedIn pushed back partway through the list: nothing read, nothing concluded.
