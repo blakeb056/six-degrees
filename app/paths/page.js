@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
-import { setNotchTabs } from '../../lib/island';
+import useNotchTabs from '../components/useNotchTabs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { runScrape, scraperStatus, notReadyMessage, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
@@ -50,11 +50,8 @@ function PathsInner() {
   useEffect(() => { if (asked === 'scores') router.replace('/settings#companies'); }, [asked, router]);
   // Map and Companies in the notch under the tabs, as the
   // map page's views are; not while one company is open (its own bar shows).
-  useEffect(() => {
-    if (selectedCompany) { setNotchTabs(null); return undefined; }
-    setNotchTabs({ items: TABS.map(([key, label]) => ({ key, label })), current: tab, onPick: setTab });
-    return () => setNotchTabs(null);
-  }, [tab, selectedCompany]);
+  useNotchTabs(useMemo(() => (selectedCompany ? null
+    : { items: TABS.map(([key, label]) => ({ key, label })), current: tab, onPick: setTab }), [tab, selectedCompany]));
   // Bumped when company scores change, so the network reloads with new tiers.
   const [reloadKey, setReloadKey] = useState(0);
   // The sample or a CSV import: neither is in the database, so a company scan could only fail.

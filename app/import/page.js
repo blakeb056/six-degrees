@@ -1,5 +1,10 @@
 'use client';
 
+// Import: LinkedIn's Connections.csv, read and scored on this computer and kept
+// in the data folder (lib/csv-store.js). The same header as every page, and its
+// one tab in the notch under it (Blake, 2026-10-04: "make sure all the uis are
+// compliant"): it used to be a page of its own with only a Back link.
+
 import { useState, useRef, useEffect } from 'react';
 import {
   parseConnectionsCsv, saveCsvNetwork, ConnectionsCsvError, CSV_USER, keptBehindScan, closeCsvNetwork, REMOVE_CSV_QUESTION,
@@ -7,6 +12,23 @@ import {
 import { setUser } from '../../lib/user';
 import Link from 'next/link';
 import { TIER_COLORS } from '../../lib/themes';
+import AppHeader from '../components/AppHeader';
+import useNotchTabs from '../components/useNotchTabs';
+import { useUser } from '../components/UserProvider';
+
+// The notch's one tab: the page is one thing, so the tab is the page, lit.
+const IMPORT_TAB = { items: [{ key: 'import', label: 'Import a CSV' }], current: 'import', onPick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
+
+/** The page's frame: the header every page has, then the page in the middle. */
+function Shell({ children }) {
+  const { userId } = useUser();
+  return (
+    <div style={page}>
+      <AppHeader active="import" csvMode={userId === CSV_USER.id} />
+      <div style={wrap}>{children}</div>
+    </div>
+  );
+}
 
 
 const card = {
@@ -25,6 +47,7 @@ export default function ImportPage() {
   // own connections (lib/csv.js openNetworkSource).
   const [behindScan, setBehindScan] = useState(null);
   const inputRef = useRef(null);
+  useNotchTabs(IMPORT_TAB);
 
   useEffect(() => {
     let off = false;
@@ -70,7 +93,7 @@ export default function ImportPage() {
 
   if (result) {
     return (
-      <div style={wrap}>
+      <Shell>
         <div style={{ maxWidth: 560, width: '100%' }}>
           <div style={{ fontSize: 13, color: '#2ecc71', fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>IMPORTED</div>
           <h1 style={{ fontSize: 38, fontWeight: 800, margin: '0 0 8px' }}>
@@ -107,12 +130,12 @@ export default function ImportPage() {
             </p>
           )}
         </div>
-      </div>
+      </Shell>
     );
   }
 
   return (
-    <div style={wrap}>
+    <Shell>
       <div style={{ maxWidth: 620, width: '100%' }}>
         <h1 style={{ fontSize: 40, fontWeight: 800, margin: '0 0 10px', letterSpacing: -1 }}>
           Map <span style={{ background: 'linear-gradient(135deg,#FFD700,#9B59B6,#3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>your</span> network
@@ -192,7 +215,7 @@ export default function ImportPage() {
           <Link href="/" style={{ color: 'var(--sd-fg-5, #555)', fontSize: 13, textDecoration: 'none' }}>← Back</Link>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }
 
@@ -227,10 +250,13 @@ function BehindScan({ onRemoved }) {
   );
 }
 
+const page = {
+  minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: 'var(--sd-font)',
+};
+
+// Room at the top for the notch.
 const wrap = {
-  minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', padding: '56px 24px',
-  fontFamily: 'var(--sd-font)',
-  display: 'flex', justifyContent: 'center',
+  padding: '64px 24px 56px', display: 'flex', justifyContent: 'center',
 };
 
 const code = {

@@ -401,7 +401,7 @@ test('the look and the saved Galaxy layouts are kept with the network, so a back
   assert.throws(() => writeSettings(db, { galaxyLayouts: { name: 'x' } }), /list/);
 
   const made = makeBackup('manual', opts(dir, db));
-  writeSettings(db, { theme: { base: 'paper', custom: {} }, galaxyLayouts: [] });
+  writeSettings(db, { theme: { base: 'daylight', custom: {} }, galaxyLayouts: [] });
   db.close();
   restoreBackup(made.name, { dir, backupsDir: backupsIn(dir), ...checks, replacedPeople: 1 });
   applyPendingImport({ dir, dbFile: dbIn(dir) });

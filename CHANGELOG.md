@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Insights is in your Profile, not a tab of its own.** The level button at the top right opens
+  your Profile, and ✦ Insights beside Profile in the notch shows its boards after a thin line:
+  People, Kingmakers, Gatekeepers, Companies, Industries, Report, and Health, the network health
+  that Profile → Insights showed before. Every number and the rule under them are the same. Old
+  links to Insights land on the same board, and the level button no longer reloads the whole app
+  on the way there.
+
+### Removed
+- **The Paper look.** Eight looks are left, light or dark, and your own colours on top of any of
+  them. A look saved or shared as Paper opens as Daylight, the other light one, with your own
+  changes kept.
+
+### Fixed
+- **Every page has its notch, hanging from the tabs.** Network Circle and Separation had none
+  unless a scan put its status there, because the notch only showed for a page with two or more
+  views. A page with one view shows it now, lit: Network Circle's notch holds the Galaxy's layouts,
+  Rings, Clusters and Orbit (picking one does what the Physics panel's Layout row does), and Scan
+  and Separation have their own. Settings, Profile and Import have the same header as every other
+  page, with the tabs, notifications, Check for new and your level, and a notch of their own:
+  Settings' sections, which follow you as you scroll. The notch changes with the page: in the
+  built app, the Scan page showed the page before's tabs for a moment. On a page that scrolls, the
+  notch follows the header up and waits at the top of the window; it used to stay over the page,
+  then vanish off the top the moment anything on the page changed.
+
 ## [1.0.0] - 2026-10-04
 
 ### Added

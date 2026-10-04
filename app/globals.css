@@ -129,7 +129,7 @@ html:has([data-field-question]) {
    Buttons carry their own colours inline, so a look adds what they don't set:
    shadow, frost, glow, outline, and the corner where a look has its own shape.
    Round buttons (50%) stay round. The tab row's links count as buttons. */
-/* Flat: Obsidian, Paper. No depth, a quiet hover. */
+/* Flat: Obsidian. No depth, a quiet hover. */
 html[data-buttons="flat"] :is(button, #main-tabs > a) { box-shadow: none !important; text-shadow: none !important; }
 html[data-buttons="flat"] :is(button, #main-tabs > a):not(:disabled):hover { filter: brightness(1.12); }
 html[data-buttons="flat"] :is(button, select, input[type="search"], input[type="text"], #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 5px !important; }
@@ -269,15 +269,11 @@ html[data-theme="contrast"] .graph-tooltip { background: #000 !important; border
 /* Daylight: white panels with soft, layered shadows, as light Mac apps draw them */
 html[data-theme="daylight"] [data-glass-panel] { box-shadow: 0 0 0 1px rgba(18, 22, 40, 0.07), 0 1px 2px rgba(18, 22, 40, 0.06), 0 10px 30px rgba(18, 22, 40, 0.08) !important; }
 html[data-theme="daylight"] #main-tabs { background: #ffffff !important; }
-/* Paper: ruled, flat, warm */
-html[data-theme="paper"] [data-glass-panel] { box-shadow: inset 0 0 0 1px #d8cdb8 !important; }
-html[data-theme="paper"] #main-tabs { background: #efe7d6 !important; }
 /* Analyst: grey, flat, hairlines */
 html[data-theme="analyst"] [data-glass-panel] { box-shadow: inset 0 0 0 1px #d0d0d0 !important; }
 html[data-theme="analyst"] #main-tabs { background: #ececec !important; }
 /* Light looks: the map's tooltip is a light card with ink words */
 html[data-mode="light"] .graph-tooltip { background: rgba(255, 255, 255, 0.98) !important; color: #11141c !important; border: 1px solid rgba(18, 22, 40, 0.12) !important; box-shadow: 0 6px 20px rgba(18, 22, 40, 0.14); }
-html[data-theme="paper"] .graph-tooltip { background: #fbf8f1 !important; border-color: #d8cdb8 !important; font-family: var(--sd-font); }
 html[data-theme="analyst"] .graph-tooltip { border-radius: 2px !important; box-shadow: none; }
 /* Glass: the tooltip is a pane of glass too */
 html[data-buttons="frosted"] .graph-tooltip { background: rgba(18, 18, 30, 0.45) !important; -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8); border: 1px solid rgba(255, 255, 255, 0.18) !important; border-radius: 12px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 30px rgba(0, 0, 0, 0.35); }

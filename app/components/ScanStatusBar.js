@@ -3,8 +3,9 @@
 // The notch: a small bar hanging from the bottom of the header, under its tab
 // buttons. It holds the page's own buttons (its views or sub-tabs, set through
 // lib/island.js setNotchTabs) and, beside them, what the app is doing. On
-// every page (Blake, 2026-09-29: "a notch ui of the thing scanning"). It stays
-// out of the way: nothing at all while nothing runs; a tiny dimmed "Auto scan"
+// every page (Blake, 2026-09-29: "a notch ui of the thing scanning"), and every
+// page has buttons there, if only its one view lit. What's running stays out of
+// the way: nothing at all while nothing runs; a tiny dimmed "Auto scan"
 // when the all-day mode is on but idle; while a scan runs, what it's doing and
 // how far it's got. Hover or click it to open it: who, the LinkedIn budget over
 // the last 24 hours (a link to Settings → LinkedIn usage), the latest line,
@@ -13,12 +14,15 @@
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
-import { watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown } from '../../lib/island';
+import { watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown, isCurrentTab, notchGroups } from '../../lib/island';
+
+// The thin line between the page's buttons and what's running, and between two rows of choice.
+const DIVIDER = { width: 1, alignSelf: 'stretch', margin: '3px 4px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' };
 
 const WHAT = {
   full: 'Scanning your network',
@@ -57,7 +61,12 @@ export default function ScanStatusBar() {
   }), []);
 
   // Hangs from the header's bottom edge, measured: the header can load late,
-  // be swapped for a new one, or wrap to two rows.
+  // be swapped for a new one, or wrap to two rows. On a page that scrolls
+  // (Settings, Profile, Scan) it follows the header up and then waits at the
+  // window's top edge, so the page's buttons stay in reach. It used to be
+  // measured only when something on the page changed: scrolled, it stayed
+  // where it was, over the page, until any change sent it off the top with the
+  // header, and scrolling back left it there.
   const pathname = usePathname();
   const [top, setTop] = useState(null);
   const barRef = useRef(null);
@@ -75,7 +84,9 @@ export default function ScanStatusBar() {
         header = now;
         if (header) { ro = new ResizeObserver(later); ro.observe(header); }
       }
-      const at = header ? Math.round(header.getBoundingClientRect().bottom) : null;
+      const at = header ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : null;
+      // Straight onto the bar too, so a scroll moves it in the frame it scrolls in.
+      if (barRef.current && at != null) barRef.current.style.top = `${at}px`;
       setTop((was) => (was === at ? was : at));
       // Under the header's tab buttons when the page has them, else the window's middle.
       const group = document.getElementById('main-tabs')?.getBoundingClientRect();
@@ -93,7 +104,13 @@ export default function ScanStatusBar() {
     });
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', later);
-    return () => { cancelAnimationFrame(queued); ro?.disconnect(); mo.disconnect(); window.removeEventListener('resize', later); };
+    // At once, not on the next frame: a scroll is drawn in the frame it happens.
+    const onScroll = () => { cancelAnimationFrame(queued); measure(); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(queued); ro?.disconnect(); mo.disconnect();
+      window.removeEventListener('resize', later); window.removeEventListener('scroll', onScroll);
+    };
   }, [pathname]);
 
   const running = !!job?.running;
@@ -133,6 +150,7 @@ export default function ScanStatusBar() {
     <div
       ref={barRef}
       data-glass-panel="bar"
+      data-notch=""
       className="notch-in"
       onMouseLeave={() => setOpen(false)}
       style={{
@@ -147,28 +165,32 @@ export default function ScanStatusBar() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto' }}>
-        {tabs && (
-          <div role="tablist" aria-label="View" style={{ display: 'flex', gap: 2 }}>
-            {tabs.items.map((t) => {
-              const on = t.key === tabs.current;
-              return (
-                <button
-                  key={t.key} role="tab" aria-selected={on} title={t.title}
-                  onClick={() => tabs.onPick(t.key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 8, border: 'none',
-                    cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
-                    background: on ? 'rgba(52,152,219,0.22)' : 'transparent', color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9aa8)',
-                  }}
-                >
-                  {t.icon && <span aria-hidden="true">{t.icon}</span>}
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {tabs && status && <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', margin: '3px 4px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' }} />}
+        {/* One row of tabs, or two after a thin line (lib/island.js `divided`), each with its own lit tab */}
+        {tabs && notchGroups(tabs.items).map((group, g) => (
+          <Fragment key={group[0].key}>
+            {g > 0 && <span aria-hidden="true" style={DIVIDER} />}
+            <div role="tablist" aria-label={group[0].group || 'View'} style={{ display: 'flex', gap: 2 }}>
+              {group.map((t) => {
+                const on = isCurrentTab(tabs, t.key);
+                return (
+                  <button
+                    key={t.key} role="tab" aria-selected={on} title={t.title}
+                    onClick={() => tabs.onPick(t.key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 8, border: 'none',
+                      cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
+                      background: on ? 'rgba(52,152,219,0.22)' : 'transparent', color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9aa8)',
+                    }}
+                  >
+                    {t.icon && <span aria-hidden="true">{t.icon}</span>}
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Fragment>
+        ))}
+        {tabs && status && <span aria-hidden="true" style={DIVIDER} />}
         {status && (
           <button
             onMouseEnter={() => setOpen(true)}

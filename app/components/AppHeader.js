@@ -31,10 +31,13 @@ import { loadNetwork } from '../../lib/network';
 import { networkLevel, rememberLevel, levelNow, watchLevel } from '../../lib/level';
 import { IS_DEMO } from '../../lib/demo';
 
+// A phone by the window's own width (a media query), not innerWidth: on a phone
+// innerWidth grows with anything wider than the screen, so the header's first,
+// computer-sized drawing made the page 991 wide and it never became a phone's.
 function useIsMobile() {
   const [m, setM] = useState(false);
   useEffect(() => {
-    const check = () => setM(window.innerWidth < 768);
+    const check = () => setM(window.matchMedia('(max-width: 767px)').matches);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -265,13 +268,15 @@ function ProfileButton({ isMobile, csvMode, level }) {
     levelLoad.then((l) => { if (l != null) rememberLevel(l, source); });
   }, [level, remembered, csvMode, source, userId]);
   const shown = level ?? remembered;
+  // A <Link>, as every other button up here is: a plain link reloaded the whole
+  // app on the way to Profile, blank screen and all, now that Insights is there.
   return (
-    <a href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} title={shown != null ? `Your profile · level ${shown}` : 'Your profile'} style={{
+    <Link href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} title={shown != null ? `Your profile · level ${shown}` : 'Your profile'} style={{
       width: isMobile ? 30 : 36, height: isMobile ? 30 : 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(135deg, #FFD700, #FF6B35)', color: '#000', fontWeight: 800, fontSize: isMobile ? 11 : 14,
       textDecoration: 'none', marginLeft: isMobile ? 2 : 4, flexShrink: 0,
     }}>
       {shown ?? ''}
-    </a>
+    </Link>
   );
 }
