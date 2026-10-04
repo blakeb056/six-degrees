@@ -11,6 +11,10 @@
 </p>
 
 <p align="center">
+  <strong>1.0:</strong> complete, signed and notarized by Apple, and maintained. New features come slowly.
+</p>
+
+<p align="center">
   <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/v/release/blakeb056/six-degrees?label=release&color=ffd700" alt="Latest release"></a>
   <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/release-date/blakeb056/six-degrees?label=released&color=3ee08f" alt="Release date"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/blakeb056/six-degrees?color=9b59b6" alt="MIT licence"></a>
