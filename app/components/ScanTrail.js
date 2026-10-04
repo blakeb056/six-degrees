@@ -57,9 +57,17 @@ export default function ScanTrail({ inset }) {
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return undefined;
-    const ro = new ResizeObserver(() => setRoom(Math.max(8, Math.floor(el.clientWidth / STEP) - 4)));
+    // On a computer the tabs sit on this same line (AppHeader): the dots stop short of them.
+    const fit = () => {
+      const box = el.getBoundingClientRect();
+      const tabs = document.getElementById('main-tabs')?.getBoundingClientRect();
+      const width = tabs && tabs.left > box.left ? Math.min(box.width, tabs.left - box.left - 12) : box.width;
+      setRoom(Math.max(8, Math.floor(width / STEP) - 4));
+    };
+    const ro = new ResizeObserver(fit);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', fit);
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
   }, []);
 
   const { pages } = shown;
@@ -69,7 +77,9 @@ export default function ScanTrail({ inset }) {
   for (let i = first; i < pages; i++) dots.push(i);
   const title = `${shown.label}: ${pages === 0 ? 'starting' : `${pages.toLocaleString('en-US')} page${pages === 1 ? '' : 's'} read`}. Open the Scan page`;
   return (
-    <div ref={boxRef} aria-hidden={!shown.on} style={{ position: 'absolute', left: inset, right: inset, bottom: -4, height: 7, pointerEvents: 'none' }}>
+    // Above the page under the header: the dots straddle its line, and a page
+    // drawn after the header (Paths' panel) covered their lower half.
+    <div ref={boxRef} aria-hidden={!shown.on} style={{ position: 'absolute', left: inset, right: inset, bottom: -4, height: 7, pointerEvents: 'none', zIndex: 5 }}>
       <style>{CSS}</style>
       <Link href="/setup" title={title} tabIndex={shown.on ? 0 : -1} className="scan-trail" style={{
         position: 'absolute', left: 0, top: 0, height: 7, display: 'flex', alignItems: 'center', gap: STEP - 5,

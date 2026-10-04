@@ -10,6 +10,12 @@
 // The row is a grid of 1fr | auto | 1fr: the two sides share what's left
 // equally, so the tabs sit in the middle whatever is beside them. A window too
 // narrow for that lets the sides shrink to fit before anything overlaps.
+//
+// On a computer the tabs sit on the header's bottom line, so the notch that
+// hangs under the line (ScanStatusBar) hangs from the tabs themselves (Blake,
+// 2026-10-03: "lower the section of buttons right to the line so the notch is
+// touching"). They're moved down, not laid out lower, so the header keeps its
+// height and every page under it stays where it was.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
@@ -36,6 +42,11 @@ function useIsMobile() {
   return m;
 }
 
+// The header's padding top and bottom, and the gap under the row: the tabs
+// move down by the last two to reach the line.
+const PAD_Y = 20;
+const ROW_GAP = 8;
+
 const TITLE = { fontWeight: 700, margin: 0, whiteSpace: 'nowrap', background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
 
 /**
@@ -53,22 +64,27 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const mobileSeen = useIsMobile();
   const isMobile = mobileProp ?? mobileSeen;
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
+  const tabs = (
+    <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} onMode={onMode}
+      after={own ? <AutoScanButton isMobile={isMobile} /> : null}>
+      {chips}
+    </AppTabs>
+  );
   return (
     <header style={{
-      position: 'relative', padding: isMobile ? '10px 12px' : '20px 30px', borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', flexShrink: 0,
+      position: 'relative', padding: isMobile ? '10px 12px' : `${PAD_Y}px 30px`, borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', flexShrink: 0,
       // Clear, or frosted glass on a glass theme (lib/themes.js).
       background: 'var(--sd-header)', backdropFilter: 'var(--sd-header-blur)', WebkitBackdropFilter: 'var(--sd-header-blur)',
     }}>
       <div style={isMobile
         ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }
-        : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+        : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: ROW_GAP }}>
         <Link href="/" style={{ textDecoration: 'none', justifySelf: 'start' }}>
           <Brand style={{ ...TITLE, fontSize: isMobile ? 16 : 28 }}>Six Degrees</Brand>
         </Link>
-        <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} onMode={onMode}
-          after={own ? <AutoScanButton isMobile={isMobile} /> : null}>
-          {chips}
-        </AppTabs>
+        {isMobile ? tabs : (
+          <div style={{ alignSelf: 'end', position: 'relative', top: ROW_GAP + PAD_Y, zIndex: 2 }}>{tabs}</div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', justifySelf: 'end', gap: isMobile ? 4 : 8 }}>
           {/* Settings: also in CSV or sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <Link href="/settings" title="Settings" aria-label="Settings" style={{

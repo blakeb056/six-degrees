@@ -34,9 +34,16 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   const what = (d) => DEGREE_IS[mode]?.[d];
   // Separation: your connections are the ways in, and all of them stay, whatever their tier.
   const waysIn = mode === 'separation';
+  // Degrees and Separation draw no one past the 2nd degree: the 3rd, the people
+  // company scans find, is on Network Circle. Its dot says so instead of "no one
+  // yet", which read as locked (Blake, 2026-10-03: "the 3rd one is locked even
+  // though … we have 3rd degrees unlocked by now").
+  const elsewhere = (d) => d === 3 && (mode === 'degrees' || mode === 'separation');
   const emptyTitle = (d, t) => (waysIn && d === 1
     ? 'Every connection stays a way in here, whatever their tier: the tiers choose who is ranked'
-    : `No ${t ? `${t}-Tier ` : 'one '}at ${DEGREE_NAMES[d]} degree yet`);
+    : elsewhere(d)
+      ? `${t ? `${t}-Tier at 3rd degree` : '3rd degree'}, the people company scans find, isn't drawn here. Network Circle shows ${t ? 'them' : 'it'}.`
+      : `No ${t ? `${t}-Tier ` : 'one '}at ${DEGREE_NAMES[d]} degree yet`);
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
