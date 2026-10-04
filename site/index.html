@@ -62,13 +62,15 @@
       "releaseNotes": "https://github.com/blakeb056/six-degrees/releases",
       "image": "https://sixdegreesapp.com/img/og-image.jpg",
       "screenshot": [
-        "https://sixdegreesapp.com/img/app-window.png",
-        "https://sixdegreesapp.com/img/degrees.png",
-        "https://sixdegreesapp.com/img/paths.png"
+        "https://sixdegreesapp.com/img/app/hero.jpg",
+        "https://sixdegreesapp.com/img/app/separation.jpg",
+        "https://sixdegreesapp.com/img/app/power-index.jpg",
+        "https://sixdegreesapp.com/img/app/paths.jpg"
       ],
       "featureList": [
         "Network Circle: your connections on rings by how much they can open up for you",
-        "Degrees: people two steps away, ranked, with who can introduce you",
+        "Degrees: each connection's circle, and the chains that lead on from them",
+        "Separation: people two steps away, ranked, with who can introduce you",
         "Paths: your network by company and industry",
         "Insights: the Power Index, everyone within two steps ranked by power, with Kingmakers and Gatekeepers",
         "Outlink: getting introduced, as a game",
@@ -166,7 +168,7 @@
       <img class="app-icon" src="/img/icon.svg" alt="" width="88" height="88">
       <a class="badge" href="/releases/">
         <span class="badge-dot" aria-hidden="true"></span>
-        <span>v<!-- gen:latest-version -->0.4.7<!-- /gen:latest-version --> · <!-- gen:latest-date --><time datetime="2026-09-29">29 September 2026</time><!-- /gen:latest-date --></span>
+        <span>v<!-- gen:latest-version -->1.0.0<!-- /gen:latest-version --> · <!-- gen:latest-date --><time datetime="2026-10-04">4 October 2026</time><!-- /gen:latest-date --></span>
         <span class="badge-cta"><span class="badge-cta-text">What's new </span>→</span>
       </a>
       <h1>See your LinkedIn network <br>as a <span class="glow">galaxy</span>.</h1>
@@ -260,12 +262,12 @@
       <h2 class="sr-only" id="numbers-h">Six Degrees in numbers</h2>
       <ul class="stats" role="list">
         <li>
-          <span class="stat-n"><!-- gen:release-count -->23<!-- /gen:release-count --></span>
+          <span class="stat-n"><!-- gen:release-count -->32<!-- /gen:release-count --></span>
           <span class="stat-l">releases shipped</span>
           <span class="stat-s">since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></span>
         </li>
         <li>
-          <span class="stat-n"><!-- gen:test-count -->737<!-- /gen:test-count --></span>
+          <span class="stat-n"><!-- gen:test-count -->1,044<!-- /gen:test-count --></span>
           <span class="stat-l">automated tests</span>
           <span class="stat-s">run on Node 22 and 24 for every change</span>
         </li>
@@ -285,9 +287,9 @@
           <span class="stat-s">free, no paid tier, every line on GitHub</span>
         </li>
         <li>
-          <span class="stat-n">2</span>
+          <span class="stat-n">3</span>
           <span class="stat-l">platforms today</span>
-          <span class="stat-s">Mac, Windows and Linux</span>
+          <span class="stat-s">Mac, plus Windows and Linux in beta</span>
         </li>
       </ul>
       <p class="fine center">Releases and tests are counted from the code each time this site is published
@@ -354,7 +356,7 @@
       <p>Open anyone's card to see their circle, how many people only they can reach, who opens the same doors, and
         where their people work.</p>
       <figure class="shot">
-        <img src="/img/app/insights.jpg" srcset="/img/app/insights-1200.jpg 1200w, /img/app/insights.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="An invented connection's card: their circle drawn in rings, with its tiers and rarity" width="2400" height="1500" loading="lazy">
+        <img src="/img/app/insights.jpg" srcset="/img/app/insights-1200.jpg 1200w, /img/app/insights.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="An invented connection's card: where their scan stopped, with Resume, and their circle drawn in rings, with its tiers and rarity" width="2400" height="1500" loading="lazy">
       </figure>
     </section>
 
@@ -363,7 +365,7 @@
       <p>Outlink offers each connection's best five people at a time, and the next best moves. Mark an invite as sent to
         fill the ring and unlock five more. Points come from introductions you ask for, never from browsing.</p>
       <figure class="shot">
-        <img src="/img/app/outlink.jpg" srcset="/img/app/outlink-1200.jpg 1200w, /img/app/outlink.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Outlink: a level bar, three next best moves, and a card for each connection's circle" width="2400" height="1500" loading="lazy">
+        <img src="/img/app/outlink.jpg" srcset="/img/app/outlink-1200.jpg 1200w, /img/app/outlink.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Outlink: a level bar, three next best moves, each with Auto, and a card for each connection's circle" width="2400" height="1500" loading="lazy">
       </figure>
     </section>
 
@@ -371,6 +373,19 @@
     <section class="chapter reveal" id="know">
       <p class="kicker"><span class="num">03</span> Know your network</p>
       <h2 class="chapter-title">Where you're strong, and where one person is your only door.</h2>
+    </section>
+
+    <section class="moment reveal" id="insights">
+      <div class="moment-text">
+        <h3>Your network, ranked by power.</h3>
+        <p>The Power Index, on the Insights tab, ranks everyone within two steps of you, each person once. Kingmakers
+          have the most powerful people behind them, Gatekeepers are the ones your reach hangs on, and Untapped counts
+          the top-tier people you haven't asked yet. Every row ends in a next step: open their circle, ask, or Auto.</p>
+        <p class="small">Richest? It never sees anyone's money, and says so. Power is the honest measure it has.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/app/power-index.jpg" srcset="/img/app/power-index-1200.jpg 1200w, /img/app/power-index.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Insights: the Power Index, invented people within two steps ranked by power, with Untapped, Kingmakers and Gatekeepers beside it" width="2400" height="1500" loading="lazy">
+      </figure>
     </section>
 
     <section class="moment reveal">
@@ -412,7 +427,7 @@
           <div class="chart exclusive">
             <p class="chart-title">People only they reach, for each scanned connection</p>
             <div class="bars-box"><!-- gen:sample-exclusive-chart -->
-            <svg class="bars" viewBox="0 0 140 100" preserveAspectRatio="none" role="img" aria-label="The 14 connections with a scanned circle in the sample network, by how many people only they reach: from 51 down to 15"><g><title>Connection 1: 51 people only they reach</title><rect class="k-top" x="1.5" y="0" width="7" height="100"/></g><g><title>Connection 2: 48 people only they reach</title><rect class="k-bridge" x="11.5" y="5.88" width="7" height="94.12"/></g><g><title>Connection 3: 46 people only they reach</title><rect class="k-bridge" x="21.5" y="9.8" width="7" height="90.2"/></g><g><title>Connection 4: 44 people only they reach</title><rect class="k-bridge" x="31.5" y="13.73" width="7" height="86.27"/></g><g><title>Connection 5: 43 people only they reach</title><rect class="k-bridge" x="41.5" y="15.69" width="7" height="84.31"/></g><g><title>Connection 6: 41 people only they reach</title><rect class="k-bridge" x="51.5" y="19.61" width="7" height="80.39"/></g><g><title>Connection 7: 39 people only they reach</title><rect class="k-bridge" x="61.5" y="23.53" width="7" height="76.47"/></g><g><title>Connection 8: 37 people only they reach</title><rect class="k-bridge" x="71.5" y="27.45" width="7" height="72.55"/></g><g><title>Connection 9: 32 people only they reach</title><rect class="k-bridge" x="81.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 10: 32 people only they reach</title><rect class="k-bridge" x="91.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 11: 28 people only they reach</title><rect class="k-bridge" x="101.5" y="45.1" width="7" height="54.9"/></g><g><title>Connection 12: 26 people only they reach</title><rect class="k-bridge" x="111.5" y="49.02" width="7" height="50.98"/></g><g><title>Connection 13: 21 people only they reach</title><rect class="k-bridge" x="121.5" y="58.82" width="7" height="41.18"/></g><g><title>Connection 14: 15 people only they reach</title><rect class="k-bridge" x="131.5" y="70.59" width="7" height="29.41"/></g></svg>
+            <svg class="bars" viewBox="0 0 140 100" preserveAspectRatio="none" role="img" aria-label="The 14 connections with a scanned circle in the sample network, by how many people only they reach: from 51 down to 15"><g><title>Connection 1: 51 people only they reach</title><rect class="hit" x="0" y="0" width="10" height="100"/><rect class="k-top" x="1.5" y="0" width="7" height="100"/></g><g><title>Connection 2: 48 people only they reach</title><rect class="hit" x="10" y="0" width="10" height="100"/><rect class="k-bridge" x="11.5" y="5.88" width="7" height="94.12"/></g><g><title>Connection 3: 46 people only they reach</title><rect class="hit" x="20" y="0" width="10" height="100"/><rect class="k-bridge" x="21.5" y="9.8" width="7" height="90.2"/></g><g><title>Connection 4: 44 people only they reach</title><rect class="hit" x="30" y="0" width="10" height="100"/><rect class="k-bridge" x="31.5" y="13.73" width="7" height="86.27"/></g><g><title>Connection 5: 43 people only they reach</title><rect class="hit" x="40" y="0" width="10" height="100"/><rect class="k-bridge" x="41.5" y="15.69" width="7" height="84.31"/></g><g><title>Connection 6: 41 people only they reach</title><rect class="hit" x="50" y="0" width="10" height="100"/><rect class="k-bridge" x="51.5" y="19.61" width="7" height="80.39"/></g><g><title>Connection 7: 39 people only they reach</title><rect class="hit" x="60" y="0" width="10" height="100"/><rect class="k-bridge" x="61.5" y="23.53" width="7" height="76.47"/></g><g><title>Connection 8: 37 people only they reach</title><rect class="hit" x="70" y="0" width="10" height="100"/><rect class="k-bridge" x="71.5" y="27.45" width="7" height="72.55"/></g><g><title>Connection 9: 32 people only they reach</title><rect class="hit" x="80" y="0" width="10" height="100"/><rect class="k-bridge" x="81.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 10: 32 people only they reach</title><rect class="hit" x="90" y="0" width="10" height="100"/><rect class="k-bridge" x="91.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 11: 28 people only they reach</title><rect class="hit" x="100" y="0" width="10" height="100"/><rect class="k-bridge" x="101.5" y="45.1" width="7" height="54.9"/></g><g><title>Connection 12: 26 people only they reach</title><rect class="hit" x="110" y="0" width="10" height="100"/><rect class="k-bridge" x="111.5" y="49.02" width="7" height="50.98"/></g><g><title>Connection 13: 21 people only they reach</title><rect class="hit" x="120" y="0" width="10" height="100"/><rect class="k-bridge" x="121.5" y="58.82" width="7" height="41.18"/></g><g><title>Connection 14: 15 people only they reach</title><rect class="hit" x="130" y="0" width="10" height="100"/><rect class="k-bridge" x="131.5" y="70.59" width="7" height="29.41"/></g></svg>
             <ol class="bar-labels" aria-hidden="true"><li>51</li><li>48</li><li>46</li><li>44</li><li>43</li><li>41</li><li>39</li><li>37</li><li>32</li><li>32</li><li>28</li><li>26</li><li>21</li><li>15</li></ol>
             <!-- /gen:sample-exclusive-chart --></div>
             <p class="fine">One bar per connection. The tallest reaches <!-- gen:sample-top-exclusive -->51<!-- /gen:sample-top-exclusive -->
@@ -489,7 +504,7 @@
         <p>The optional scanner reads your own LinkedIn in a Chrome window you sign into yourself, in four steps with one
           button each. It keeps to a daily budget, rests between pages, and stops at the first sign of push-back. Pick
           Slow, Medium or Fast: Fast is the pace it has always had, the others only add waiting. The notch under the header
-          shows what it's doing on every page, and a paused list carries on where it stopped. It reads; the one thing it
+          shows what it's doing on every page, and the In progress list carries on where each scan stopped. It reads; the one thing it
           sends is a connection request, without a note, when you press Auto on someone.</p>
         <p class="honest">Automating LinkedIn may break its User Agreement, and LinkedIn can restrict accounts that do it.
           The risk is yours. LinkedIn's own export and the sample network carry none.
@@ -564,7 +579,7 @@
             </tr>
             <tr>
               <th scope="row">Everyone two steps away, ranked, with who can introduce you</th>
-              <td class="us yes" data-label="Six Degrees">Yes: Degrees (needs a scan, or the sample)</td>
+              <td class="us yes" data-label="Six Degrees">Yes: Separation and Insights (needs a scan, or the sample)</td>
               <td class="partly" data-label="LinkedIn's own search">Partly: search 2nd-degree people, and see mutual connections on each</td>
               <td class="no" data-label="Spreadsheets and CRMs">No: the export holds 1st degree only</td>
               <td class="partly" data-label="Network tools">If you bring the ties yourself</td>
@@ -639,20 +654,22 @@
       </div>
       <div class="posts"><!-- gen:news -->
         <article class="post latest-post">
-          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.7</span><span class="tag latest">Latest</span></p>
-          <h3><a href="/releases/#v0.4.7">Hide the Chrome window while scanning</a></h3>
-          <ul class="chips" aria-label="What changed"><li class="k-added">1 added</li></ul>
+          <p class="post-meta"><time datetime="2026-10-04">4 October 2026</time><span class="tag">v1.0.0</span><span class="tag latest">Latest</span></p>
+          <h3><a href="/releases/#v1.0.0">On a Mac, the Scan page offers App Management once, so macOS stops asking while you scan</a></h3>
+          <p class="post-more">Also: The Mac app is signed by Blake Burford and notarized by Apple: no more Open Anyway</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">1 added</li><li class="k-changed">1 changed</li></ul>
         </article>
         <article class="post">
-          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.6</span></p>
-          <h3><a href="/releases/#v0.4.6">The window's frame matches the app</a></h3>
-          <ul class="chips" aria-label="What changed"><li class="k-changed">1 changed</li></ul>
+          <p class="post-meta"><time datetime="2026-10-03">3 October 2026</time><span class="tag">v0.8.0</span></p>
+          <h3><a href="/releases/#v0.8.0">Insights: your network ranked by power</a></h3>
+          <p class="post-more">Also: Auto: one press sends someone a connection request for you · A scan that stopped partway says so, on the person's card and on the Scan page · The tabs sit on the header's line, and the notch hangs from them</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">2 added</li><li class="k-changed">4 changed</li><li class="k-fixed">4 fixed</li></ul>
         </article>
         <article class="post">
-          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span class="tag">v0.4.5</span></p>
-          <h3><a href="/releases/#v0.4.5">Physics lab for the Galaxy (experimental)</a></h3>
-          <p class="post-more">Also: More in the physics lab · Names on or off</p>
-          <ul class="chips" aria-label="What changed"><li class="k-added">3 added</li></ul>
+          <p class="post-meta"><time datetime="2026-10-03">3 October 2026</time><span class="tag">v0.7.0</span></p>
+          <h3><a href="/releases/#v0.7.0">Download for Mac shows how to open it the first time</a></h3>
+          <p class="post-more">Also: Watch a circle fill in while it's scanned · An &quot;I understand&quot; before the first scan · Light looks, and every look its own all the way through</p>
+          <ul class="chips" aria-label="What changed"><li class="k-added">14 added</li><li class="k-changed">11 changed</li><li class="k-fixed">7 fixed</li></ul>
         </article>
         <!-- /gen:news --></div>
     </section>
@@ -664,7 +681,7 @@
       </div>
       <div class="posts"><!-- gen:blog-teaser -->
         <article class="post">
-          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span>3 min read</span></p>
+          <p class="post-meta"><time datetime="2026-09-29">29 September 2026</time><span>4 min read</span></p>
           <h3><a href="/blog/galaxy-physics-lab/">Inside the Galaxy physics lab, and the replay of your network growing</a></h3>
           <p class="post-more">The Galaxy is a force simulation. The physics lab hands you its controls: what each slider does, the Clusters preset, colour by, find, and a replay of your network by the day you connected that you can save as a video.</p>
         </article>
@@ -689,7 +706,7 @@
           <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="dl-text">
             <span class="dl-title">Get Six Degrees</span>
-            <span class="dl-sub">Mac today · Linux and Windows soon</span>
+            <span class="dl-sub">Mac · Windows and Linux in beta</span>
           </span>
         </a>
       </div>
@@ -729,6 +746,7 @@
     <p class="fine">MIT licence · No trackers · Every person shown on this site is invented ·
       Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
     <p class="fine">It estimates network position, not what anyone is worth as a person.</p>
+    <p class="fine">Not affiliated with or endorsed by LinkedIn.</p>
   </footer>
 <!-- /gen:footer -->
 </body>

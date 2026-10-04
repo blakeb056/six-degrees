@@ -2,6 +2,7 @@
 title: Scanning slowly and safely: pacing, budgets and the honest risk
 description: How the optional Six Degrees scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your LinkedIn account really is.
 date: 2026-09-29
+updated: 2026-10-04
 tags: [scanning, safety]
 image: /img/app/scan-budget.jpg
 ---
@@ -42,7 +43,7 @@ Between the budgets, the pacing is deliberately unhurried:
 - about **two minutes** between one person's circle and the next;
 - so a long list can take **around 55 minutes** for one person.
 
-The waits are fixed. They're never randomised to look like a person: the scanner doesn't pretend to be anything it isn't. It reads each list to the end by default (or 10, 25 or 50 pages if you choose), saves every 10 pages, and a read that stops carries on from the same page next time. A **Paused** list on the Scan page shows every circle with more to read, with *Resume* beside each.
+The waits are fixed. They're never randomised to look like a person: the scanner doesn't pretend to be anything it isn't. It reads each list to the end by default (or 10, 25 or 50 pages if you choose), saves every 10 pages, and a read that stops carries on from the same page next time. An **In progress** list on the Scan page shows everyone whose scan stopped partway, with *Resume* beside each and *Resume all*.
 
 ## It stops at the first push-back
 
@@ -54,14 +55,18 @@ And a scanner that can't read its page says so. It never reports "you have no co
 
 ## Always visible
 
-While a scan runs, a **status bar** sits under the tabs on every page: what's running and for whom, how far it's got, today's searches against your daily budget (green, then amber past 60%, red past 90%), what it's doing right now (for example, the wait before the next profile), and **Stop**. Stop saves what was read.
+While a scan runs, the **notch**, a small bar hanging under the header's tabs, says on every page what it's doing and how far it's got, and a dot collects along the header's line for each page read. Hover or click the notch to open it: who it's scanning, your searches over the last 24 hours against your budget, the latest line, and **Stop**. Stop saves what was read, and *Resume* on the Scan page carries on from that page.
+
+## The one thing it sends
+
+The scanner reads. The one thing it sends is a connection request, without a note, and only when you press **Auto** on someone: one press is one person, never a batch and never on a timer. Auto stops at 15 requests in any 24 hours and 80 in any 7 days, opens their profile once like a scan does, and waits while a scan runs.
 
 ## The experimental parts
 
 Two newer options are marked experimental on the Scan page, and off by default:
 
-- **All-day pacing (Auto-Bridge)**, with an **Auto scan** button once it's ticked. Up to 10 pages in a sitting, then a **45-minute rest**; searches only between **09:00 and 19:00** on your computer's clock; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn't yet been tried on a live account, which is why it's labelled the way it is.
-- **Hide the Chrome window while scanning.** Scans run without a window popping up; the status bar and Stop still work, and signing in always opens the window. The Scan page spells out the risks beside the box: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a warning or restriction more likely, and if LinkedIn asks you to prove it's you, you won't see it, so the scan stops instead of waiting. It changes nothing about pacing or budgets.
+- **All-day pacing (Auto-Bridge)**, with an **Auto scan** button once it's ticked. Up to 8 pages in a sitting, then **an hour's rest**; searches only between **09:00 and 18:00** on your computer's clock; never more than 40 searches in a day or 200 in a week, however high your budget; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn't yet been tried on a live account, which is why it's labelled the way it is.
+- **Hide the Chrome window while scanning.** Scans run without a window popping up; the notch and Stop still work, and signing in always opens the window. The Scan page spells out the risks beside the box: a hidden Chrome is easier for LinkedIn to tell apart from a person, so it may make a warning or restriction more likely, and if LinkedIn asks you to prove it's you, you won't see it, so the scan stops instead of waiting. It changes nothing about pacing or budgets.
 
 ## Why go to this trouble?
 
@@ -69,4 +74,4 @@ Because the people your connections know are the most useful part of your networ
 
 The full details, down to what each page of the scanner reads, are in [docs/SCRAPING.md](https://github.com/blakeb056/six-degrees/blob/main/docs/SCRAPING.md).
 
-![The Scan page's budget: searches today and this month, and profile views today](/img/app/scan-budget.jpg "The budget, on the Scan page.")
+![The Scan page's budget: searches in the last 24 hours and this month, and profile views in the last 24 hours](/img/app/scan-budget.jpg "The budget, on the Scan page.")
