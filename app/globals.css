@@ -107,13 +107,12 @@ html:has([data-field-question]) {
   border-radius: 3px;
 }
 
-/* Where the scan status bar sits: just under the header (app/components/ScanStatusBar.js). */
-:root { --scan-bar-top: 94px; }
-@media (max-width: 767px) { :root { --scan-bar-top: 66px; } }
 
 /* The notch's running dot (app/components/ScanStatusBar.js). */
 @keyframes notch-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: no-preference) { .notch-pulse { animation: notch-pulse 1.6s ease-in-out infinite; } }
+@keyframes notch-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) { .notch-in { animation: notch-in 0.25s ease-out; } }
 
 /* The Social tab's CRM (app/social/Crm.js): the list and the person side by
    side, stacked on a phone. In Pipeline the board takes the whole width and
