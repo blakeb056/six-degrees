@@ -35,6 +35,7 @@ const WHAT = {
   photos: 'Saving photos',
   messages: 'Reading your messages list',
   'messages-full': 'Reading your whole messages history',
+  connect: 'Sending a connection request',
 };
 
 // Green while there's plenty left, amber past 60%, red past 90%.

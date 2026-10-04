@@ -19,6 +19,10 @@ import { localPhoto } from '../../lib/photos';
 import { reachIndex } from '../../lib/reach';
 import { loadScanNotes } from '../../lib/scraper-client';
 import { TIER_COLORS } from '../../lib/themes';
+import ConnectChoice, { secondaryLook } from '../components/AutoConnect';
+
+// Add, standing second to Auto: LinkedIn's blue, as an outline.
+const BLUE_OUTLINE = { color: '#5aa9e6', line: 'rgba(0,119,181,0.75)' };
 
 
 // Who to reach first: power, +1 when the company their score is built on is a
@@ -342,6 +346,7 @@ function QueueInner() {
             reach={reach}
             onSend={(r) => markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {})}
             onUndo={(r) => undoRequest(r).catch(() => {})}
+            canAuto={!IS_DEMO}
           />
         </div>
       )}
@@ -600,12 +605,16 @@ function QueueInner() {
                         {sentIds.has(r.id) ? (
                           <span style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: 'rgba(255,107,53,0.15)', color: 'var(--sd-orange, #FF6B35)', flexShrink: 0 }}>Sent</span>
                         ) : (
-                          <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
-                            }}
-                            style={{ padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>Add</a>
+                          // Auto first, then Add as an outline (components/AutoConnect.js).
+                          <ConnectChoice person={r} canAuto={!IS_DEMO} size="row" connect={(second) => (
+                            <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
+                              }}
+                              style={second ? { ...secondaryLook('row', BLUE_OUTLINE), padding: '3px 6px', fontSize: 8 }
+                                : { padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>Add</a>
+                          )} />
                         )}
                       </div>
                     ))}
@@ -670,18 +679,21 @@ function QueueInner() {
                       background: 'rgba(255,107,53,0.15)', color: 'var(--sd-orange, #FF6B35)', flexShrink: 0,
                     }}>⏳ Sent</span>
                   ) : (
-                    <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Opens LinkedIn, and marks the request sent everywhere.
-                        markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
-                      }}
-                      style={{
-                        padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                        background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0,
-                      }}>
-                      Add
-                    </a>
+                    // Auto first, the better pick; Add beside it as an outline (components/AutoConnect.js).
+                    <ConnectChoice person={r} canAuto={!IS_DEMO} size="row" connect={(second) => (
+                      <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Opens LinkedIn, and marks the request sent everywhere.
+                          markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
+                        }}
+                        style={second ? secondaryLook('row', BLUE_OUTLINE) : {
+                          padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+                          background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0,
+                        }}>
+                        Add
+                      </a>
+                    )} />
                   )}
                 </div>
               ))}

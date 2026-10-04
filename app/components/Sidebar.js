@@ -17,6 +17,7 @@ import Avatar from './Avatar';
 import NoteDetail from './NoteDetail';
 import CirclePanel from './CirclePanel';
 import { localPhoto } from '../../lib/photos';
+import ConnectChoice, { secondaryLook } from './AutoConnect';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote, circle = null }) {
   const isDegreesMode = mode === 'degrees';
@@ -468,21 +469,27 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                   Didn&apos;t send it? Undo
                 </button>
               ) : (
-                <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'block', padding: '10px 16px',
-                    background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-                    color: '#000', borderRadius: 8, textDecoration: 'none',
-                    fontWeight: 700, fontSize: 13,
-                  }}
-                  onClick={() => {
-                    // Opens their profile to connect, and marks the request
-                    // sent, through the bridge whose circle you found them in.
-                    markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
-                  }}
-                >
-                  Connect to Unlock Path
-                </a>
+                // Auto first, the better pick; Connect beside it as an outline
+                // (AutoConnect.js; Blake, 2026-10-03). Your own network only.
+                <ConnectChoice person={selected} canAuto={canScan} size="card" connect={(second) => (
+                  <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
+                    title={second ? 'Opens their LinkedIn profile, to connect yourself' : undefined}
+                    style={second ? { ...secondaryLook('card'), flex: 1 } : {
+                      display: 'block', padding: '10px 16px',
+                      background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+                      color: '#000', borderRadius: 8, textDecoration: 'none',
+                      fontWeight: 700, fontSize: 13,
+                    }}
+                    onClick={() => {
+                      // Opens their profile to connect, and marks the request
+                      // sent, through the bridge whose circle you found them in.
+                      markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
+                    }}
+                  >
+                    {/* Beside Auto there's room for one word (a 320 px panel). */}
+                    {second ? 'Connect' : 'Connect to Unlock Path'}
+                  </a>
+                )} />
               )}
             </div>
           );

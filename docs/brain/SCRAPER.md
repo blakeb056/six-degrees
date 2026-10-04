@@ -21,6 +21,7 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
 | `--bridge-url URL` | The same, for the person with that profile URL: two connections can share a name, and by name the first one saved is read. Carries on where their last read stopped (Resume); with `--from-start`, from page 1 (every Scan button in the app). |
 | `--company "Name"` | Everyone visible at one company. |
+| `--connect URL` | **Auto**: one connection request, without a note, to the person at that profile URL (`--connect-name` gives their name; otherwise it's looked up in the app). Prints `Connect result: <name>` last. See *Auto* below. |
 | `--auto-bridge` | Map every bridge in turn, highest tier first. Hidden profiles are recorded and skipped on later runs. |
 | `--retry-private` | With `--auto-bridge`: try the people previously found to be hidden. |
 | `--clear-skips` | Forget every hidden-profile skip. |
@@ -154,6 +155,81 @@ Automating LinkedIn may violate its User Agreement and accounts have been restri
 it. This runs locally, against the user's own account, at their own risk, and the README
 and `docs/SCRAPING.md` both say so plainly. LinkedIn's official CSV export is the
 supported path and needs none of this.
+
+## Auto: one connection request (`--connect`)
+
+Blake, 2026-10-03: *"auto add and basically adds the person for them in the card or
+wherever its available … if [LinkedIn asks for] a email from their work or to send a
+personal note if they have premium … have it close out of that in the scanner for adding
+but it should be seamless."* It reverses the standing "no automated LinkedIn actions" rule
+for this one action only: **one press, one person**, never a batch, never on a timer.
+
+**Never run against LinkedIn while building it.** `connect_person` has only ever run against
+the stand-in page in `tests/auto-connect.test.mjs`. The labels below are what LinkedIn is
+known to use, not what this code has seen. Watch the first real one, and expect the labels
+to rot like everything else here.
+
+**How it's started.** Auto (`app/components/AutoConnect.js`, next to every Connect on a
+person's card and in Outlink) posts `{action: 'connect', id}`. The route looks the person
+up by id (`connectTarget`): anyone in your network with a profile URL who has no copy at
+degree 1 and no request out. The URL and name on the command line come from the database,
+never the request. It refuses, in this order, with a plain sentence:
+
+| Refusal | Status |
+|---|---|
+| unknown id | 400 *That person could not be found.* |
+| already a connection (any copy at degree 1, or accepted) | 409 |
+| a request already out (any copy sent or pending) | 409 |
+| no profile URL on file, or one that isn't a plain `linkedin.com/in/` | 400 |
+| Auto's one-time question not answered (`autoConnectAccepted`, `needsAutoAcceptance`) | 409 |
+| the scan's own "I understand" not given (`needsRiskAcceptance`) | 409 |
+| no Google Chrome (`CHROME_REFUSAL`, `needsChrome`) | 409 |
+| an import waiting to finish | 409 |
+| a cooldown after LinkedIn pushed back | 409 |
+| Auto's caps: 15 in any 24 hours, 80 in any 7 days (`inviteRefusal`, says when one frees) | 409 |
+| no profile view left today | 409 |
+| anything running (*A scan is running. Press Auto again once it has finished.*) | 409 |
+
+**What the scanner does.** It checks the cooldown, Auto's caps and the profile views again
+before a browser opens (so none of those ever opens anything), takes a profile view like a
+circle scan does (the cap and the minute's gap), opens their profile, and waits for it to
+render (their first name in the heading or title, `PROFILE_SHOWN_JS`). Then, by role and
+accessible name, never a CSS class (TRAPS §5):
+
+- **Pending already** (a button or link whose name starts "Pending" and names them):
+  `already-pending`, nothing pressed.
+- **Their Connect**: a button, link or menu item named `Invite <their name> to connect`.
+  The name must be theirs, first and last word: "People also viewed" has Connect buttons
+  for other people on the same page. Not on the front: open **More** (`More` / `More
+  actions`) and look again. A nameless "Connect" is taken only from that menu, and only when
+  opening it is what brought one on screen; on the page itself a nameless Connect could be
+  anyone's. None: `no-connect`.
+- **LinkedIn's window** (role `dialog` or `alertdialog`), answered without a note:
+  *Send without a note* if it's there, else the only enabled *Send* / *Send now*. Never
+  *Add a note*, never Premium. Their email asked for (an email box, or the words): closed,
+  `email-needed`. Its invitation limit: closed, `linkedin-limit`. Anything else (no way to
+  send without a note): closed, `not-sent`. Closing is its *Dismiss* (or Close, Cancel, Got
+  it), else Escape.
+- **Confirmed** only when their profile then shows it Pending (naming them, or a new
+  nameless "Pending" on their profile), or LinkedIn's notice says the invitation *to them*
+  was sent. Otherwise `unclear`: the app doesn't mark it (TRAPS §7).
+- **Push-back** (`PUSHBACK_JS`, a security check or sign-in wall, before or after): the page
+  is kept in `pushback/`, everything pauses a day (`set_cooldown`), `pushback`, exit 1.
+
+**Counting.** `linkedin-activity.json` has a third list, `invites`: written under the lock
+(`take_invite`) just before Send is pressed, and also when Connect alone may have sent it
+(no window came up). An email or limit window counts nothing. A damaged record counts the
+day as used. The app reads the same list (`lib/linkedin-limits.js`: `invitesToday`,
+`invitesWeek`, `invitesFreeAt`), merges it on an import, and shows it in Settings → LinkedIn
+usage. The caps are `INVITE_DAY_CAP` / `INVITE_WEEK_CAP` here and `INVITE_CAPS` in
+`lib/auto-connect.js`; a test keeps them equal, and the result names too
+(`CONNECT_RESULTS` / `OUTCOMES`).
+
+**Afterwards.** The route reads the `Connect result:` line as it arrives. On `sent` or
+`already-pending` it marks the request through the same store as Connect
+(`lib/requests.js markSentRows`: every copy of them, through the circle they were found in,
+XP once) before the job is seen to end, and the job's `recent` entry carries `outcome`.
+The button says how it went in `OUTCOMES`' words.
 
 ## Experimental Auto-Bridge (`--experimental`)
 

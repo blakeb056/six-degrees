@@ -13,6 +13,7 @@ import { buildQuest, XP_SEND, STAGE_SIZE } from '../../lib/quest';
 import { initialsFor } from '../../lib/tiers';
 import { localPhoto } from '../../lib/photos';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import ConnectChoice from './AutoConnect';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
@@ -49,7 +50,8 @@ function Ring({ progress, size = 86, color = '#FF6B35', children }) {
   );
 }
 
-export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, onSend, onUndo }) {
+// canAuto: Auto beside every invite (components/AutoConnect.js; Blake, 2026-10-03), on your own network.
+export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, onSend, onUndo, canAuto = false }) {
   const quest = useMemo(() => buildQuest({ recs, sentIds, added, mappedIds, reach }), [recs, sentIds, added, mappedIds, reach]);
   const [open, setOpen] = useState(null);         // bridge id of the expanded cluster
   const [toast, setToast] = useState(null);
@@ -57,6 +59,11 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
 
   async function send(person, cluster) {
     await onSend(person);
+    cheer(person, cluster);
+  }
+
+  // The points and the circle's progress, for an invite sent by hand or by Auto.
+  function cheer(person, cluster) {
     const done = cluster.done + 1;
     const first = String(cluster.bridge.name || '').split(/[\s,]+/)[0];
     setToast(done >= cluster.targets.length
@@ -119,12 +126,17 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                 <div style={{ fontSize: 11.5, color: 'var(--sd-fg-2, #aab7b7)', margin: '10px 0' }}>
                   via <b style={{ color: TIER[cluster.bridge.tier] }}>{cluster.bridge.name}</b> · their circle {cluster.done}/{cluster.targets.length} this stage
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {person.profile_url && (
-                    <a href={person.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Open on LinkedIn</a>
-                  )}
-                  <button onClick={() => send(person, cluster)} style={btnHot}>I sent an invite · +{XP_SEND[person.tier] || 2}</button>
-                </div>
+                <ConnectChoice person={person} canAuto={canAuto} size="quest" onSent={(p) => cheer(p, cluster)} connect={(second) => {
+                  const by = (
+                    <>
+                      {person.profile_url && (
+                        <a href={person.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Open on LinkedIn</a>
+                      )}
+                      <button onClick={() => send(person, cluster)} style={second ? btnGhost : btnHot}>I sent an invite · +{XP_SEND[person.tier] || 2}</button>
+                    </>
+                  );
+                  return second ? by : <div style={{ display: 'flex', gap: 8 }}>{by}</div>;
+                }} />
               </div>
             ))}
           </div>
@@ -186,10 +198,19 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name} <span style={{ color: TIER[p.tier], fontSize: 11 }}>{p.tier}</span></div>
                   <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.headline}</div>
                 </div>
-                {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
-                {sent
-                  ? <button onClick={() => onUndo(p)} style={{ ...btnGhost, color: 'var(--sd-green, #00ff88)' }}>Sent ✓ (undo)</button>
-                  : <button onClick={() => send(p, expanded)} style={btnHot}>Sent · +{XP_SEND[p.tier] || 2}</button>}
+                {sent ? (
+                  <>
+                    {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
+                    <button onClick={() => onUndo(p)} style={{ ...btnGhost, color: 'var(--sd-green, #00ff88)' }}>Sent ✓ (undo)</button>
+                  </>
+                ) : (
+                  <ConnectChoice person={p} canAuto={canAuto} size="quest" onSent={(x) => cheer(x, expanded)} connect={(second) => (
+                    <>
+                      {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
+                      <button onClick={() => send(p, expanded)} style={second ? btnGhost : btnHot}>Sent · +{XP_SEND[p.tier] || 2}</button>
+                    </>
+                  )} />
+                )}
               </div>
             );
           })}

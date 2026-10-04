@@ -60,8 +60,11 @@ test('usage counts the last 24 hours and LinkedIn\'s month', () => {
   writeFileSync(path.join(dir, 'linkedin-activity.json'), JSON.stringify({
     searches: [s(1), s(5), s(23), s(25), s(24 * 20), s(24 * 30)],   // the last is in August
     profiles: [s(2), s(30)],
+    invites: [s(3), s(30), s(24 * 8)],   // Auto's connection requests: a day, a week
   }));
-  assert.deepEqual(usage(dir, now), { searchesToday: 3, searchesMonth: 5, profilesToday: 1 });
+  assert.deepEqual(usage(dir, now), {
+    searchesToday: 3, searchesMonth: 5, profilesToday: 1, invitesToday: 1, invitesWeek: 2,
+  });
   rmSync(dir, { recursive: true, force: true });
 });
 
