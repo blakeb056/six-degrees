@@ -1,6 +1,7 @@
-import { db as supabase } from '../../../lib/db';
 import { getDb, decodeRow } from '../../../lib/db-client';
-import { resolveProfile } from '../../../lib/profile';
+import {
+  XP_SEND, XP_ACCEPT, awardXP, whose, copiesOf, inList, bestTier, markSent,
+} from '../../../lib/requests';
 
 // Requests you've sent, kept per PERSON.
 //
@@ -13,56 +14,8 @@ import { resolveProfile } from '../../../lib/profile';
 // asked through is kept (so once they accept, their card and circle say who
 // introduced you: lib/promote.js keeps it), XP comes once per person, and Undo
 // takes back all of it. lib/requests-client.js is the one way the pages call this.
-
-// XP rewards by tier
-const XP_SEND = { S: 25, A: 15, B: 10, C: 5, D: 2 };
-const XP_ACCEPT = { S: 100, A: 60, B: 35, C: 15, D: 5 };
-const TIER_ORDER = ['S', 'A', 'B', 'C', 'D'];
-
-async function awardXP(userId, amount) {
-  if (!userId || !amount) return;
-  // Upsert: create if not exists, change if exists. Never below zero: an Undo
-  // takes back what a send gave, including sends from before sends gave any.
-  const { data: existing } = await supabase.from('user_stats').select('xp').eq('id', userId).single();
-  if (existing) {
-    await supabase.from('user_stats').update({ xp: Math.max(0, (existing.xp || 0) + amount) }).eq('id', userId);
-  } else if (amount > 0) {
-    await supabase.from('user_stats').insert([{ id: userId, xp: amount, level: 1 }]).catch(() => {});
-  }
-}
-
-/** The profile a request belongs to: the one sent, else this machine's. */
-function whose(userId) {
-  if (userId) return String(userId);
-  try { return resolveProfile({ create: false })?.id || null; } catch { return null; }
-}
-
-/** Every copy of one person: by the clicked row's profile URL, or the URL given. */
-function copiesOf(db, { connectionId, profileUrl, userId }) {
-  let url = profileUrl ? String(profileUrl) : null;
-  let user = userId ? String(userId) : null;
-  let clicked = null;
-  if (connectionId != null) {
-    clicked = db.prepare('SELECT id, profile_url, user_id FROM linkedin_connections WHERE id = ?').get(String(connectionId)) || null;
-    if (clicked) {
-      url = clicked.profile_url || url;
-      user = user || clicked.user_id || null;
-    }
-  }
-  const cols = 'id, degree, tier, outreach_status, unlock_status, unlocked_from_bridge_id';
-  let rows = [];
-  if (url) {
-    rows = user
-      ? db.prepare(`SELECT ${cols} FROM linkedin_connections WHERE profile_url = ? AND user_id = ?`).all(url, user)
-      : db.prepare(`SELECT ${cols} FROM linkedin_connections WHERE profile_url = ?`).all(url);
-  } else if (clicked) {
-    rows = db.prepare(`SELECT ${cols} FROM linkedin_connections WHERE id = ?`).all(clicked.id);
-  }
-  return { url, user, rows };
-}
-
-const inList = (ids) => ids.map(() => '?').join(', ');
-const bestTier = (rows) => TIER_ORDER.find((t) => rows.some((r) => r.tier === t)) || 'D';
+// The marking itself is lib/requests.js markSent, which Auto's sends use too
+// (app/api/scraper/route.js).
 
 export async function POST(request) {
   try {
@@ -72,32 +25,19 @@ export async function POST(request) {
       return Response.json({ error: 'Unknown action' }, { status: 400 });
     }
     const db = getDb();
+
+    if (action === 'mark-sent') {
+      const { saved, xp, already } = await markSent(db, { connectionId, profileUrl, userId, bridgeId });
+      // Nobody on file (the sample network lives in the browser): nothing to keep.
+      if (!saved) return Response.json({ success: true, saved: 0, xp: 0 });
+      return Response.json({ success: true, saved, xp, already });
+    }
+
     const { user, rows } = copiesOf(db, { connectionId, profileUrl, userId });
     // Nobody on file (the sample network lives in the browser): nothing to keep.
     if (!rows.length) return Response.json({ success: true, saved: 0, xp: 0 });
     const ids = rows.map((r) => r.id);
     const now = new Date().toISOString();
-
-    if (action === 'mark-sent') {
-      const already = rows.some((r) => r.outreach_status === 'sent' || r.outreach_status === 'accepted');
-      db.prepare(`UPDATE linkedin_connections SET outreach_status = 'sent', updated_at = ?
-        WHERE id IN (${inList(ids)}) AND (outreach_status IS NULL OR outreach_status NOT IN ('sent', 'accepted'))`).run(now, ...ids);
-      db.prepare(`UPDATE linkedin_connections SET unlock_status = 'pending', updated_at = ?
-        WHERE id IN (${inList(ids)}) AND (unlock_status IS NULL OR unlock_status = 'locked')`).run(now, ...ids);
-      // Who you asked through: one of your own connections, or nothing.
-      if (bridgeId != null) {
-        const bridge = db.prepare(
-          `SELECT id, name FROM linkedin_connections WHERE id = ? AND degree = 1${user ? ' AND user_id = ?' : ''}`,
-        ).get(...[String(bridgeId), ...(user ? [user] : [])]);
-        if (bridge) {
-          db.prepare(`UPDATE linkedin_connections SET unlocked_from_bridge_id = ?, unlocked_from_name = ?, updated_at = ?
-            WHERE id IN (${inList(ids)}) AND degree = 2 AND unlocked_from_bridge_id IS NULL`).run(bridge.id, bridge.name, now, ...ids);
-        }
-      }
-      const xp = already ? 0 : XP_SEND[bestTier(rows)] || 2;
-      await awardXP(whose(user), xp);
-      return Response.json({ success: true, saved: ids.length, xp, already });
-    }
 
     if (action === 'mark-accepted') {
       db.prepare(`UPDATE linkedin_connections SET outreach_status = 'accepted', updated_at = ? WHERE id IN (${inList(ids)})`).run(now, ...ids);

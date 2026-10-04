@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Auto: one press sends someone a connection request for you.** Next to every Connect (a person's
+  card, and Outlink's lists and next best moves) there's now an Auto button, the bright one. Press it
+  and the scanner's Chrome opens their profile, presses Connect and sends the request without a note,
+  then shows "Request sent" and marks it pending everywhere in the app. Connect still opens their
+  profile for you to do it yourself. One press is one person: never a batch, never on a timer, and it
+  waits while a scan runs. It asks once before the first one. When LinkedIn wants their email address
+  first, Auto closes that and sends nothing ("Use Connect to add them yourself"); when LinkedIn offers
+  a personal note (Premium), it sends without one. It only calls a request sent once their profile
+  shows it pending, and says so plainly when it can't tell. It stops at 15 requests in any 24 hours and
+  80 in any 7 days (LinkedIn doesn't publish its limit; about 100 a week is commonly reported), opens
+  their profile once like a scan does, holds during a pause after LinkedIn pushed back, and shows in
+  Settings → LinkedIn usage as Connection requests (Auto).
+
 ### Changed
 - **A scan that stopped partway says so, on the person's card and on the Scan page.** Open someone
   whose circle scan didn't finish and a line by their name says which page it stopped after, with

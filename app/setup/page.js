@@ -35,6 +35,7 @@ const ACTION_LABELS = {
   'auto-bridge-retry': 'Mapping 2nd degree, hidden ones included',
   resume: 'Carrying on with one paused list',
   'resume-all': 'Carrying on with every paused list',
+  connect: 'Sending a connection request (Auto)',
 };
 
 export default function SetupPage() {
@@ -256,7 +257,7 @@ function SetupInner() {
             You launch it; it does the reading; you watch it go.
           </div>
           <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', marginTop: 16 }}>
-            {['Never posts or messages anyone', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
+            {['Never posts or messages anyone; sends a request only when you press Auto', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
               <span key={t} style={{ fontSize: 12.5, color: 'var(--sd-fg-1, #cfe8dc)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 900 }}>✓</span>{t}
               </span>

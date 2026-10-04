@@ -202,6 +202,15 @@ circle offers its best five people at a time; mark invites as sent to fill the r
 unlock the next five. It also shows the next best moves, levels and points (from
 invites sent and people who accepted, never from browsing).
 
+**Auto** *(needs a scan)*. Next to every Connect (a person's card, Outlink), Auto sends
+that one person a connection request for you, from the scanner's Chrome, without a note.
+One press, one person: never a batch, never on a timer. It asks once before the first one.
+If LinkedIn wants their email address first, Auto closes that and sends nothing (use
+Connect to add them yourself); if it offers a personal note (Premium), Auto sends without
+one. It calls a request sent only once their profile shows it pending. It stops at 15 in
+any 24 hours and 80 in any 7 days, opens their profile once (a profile view), and counts in
+Settings → LinkedIn usage.
+
 **Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
 lock, and a **Paused** list you can carry on from.
 
@@ -286,6 +295,10 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 > [how scanning works and what it risks](docs/SCRAPING.md).
 >
 > The app asks for an explicit "I understand" once, before the first scan.
+>
+> **The scanner reads; the one thing it ever sends is a connection request, and only when
+> you press Auto** on a person (one each press, without a note, at most 15 a day and 80 a
+> week). Auto asks once before its first request.
 >
 > Six Degrees is not affiliated with or endorsed by LinkedIn.
 
@@ -395,7 +408,8 @@ It estimates **network position**, not what anyone is worth as a person.
   data folder as `csv-network.json` (names, positions, companies, profile links and when
   you connected; never email addresses) until you click × beside *Your CSV*.
 - The app contacts only these, and only when you act:
-  - **LinkedIn**, while you scan. Each profile photo is saved on your computer as the
+  - **LinkedIn**, while you scan, and when you press **Auto** (one connection request,
+    sent from the scanner's Chrome). Each profile photo is saved on your computer as the
     scan reads it, and the app shows photos only from there, so looking at your network
     never contacts LinkedIn. (Photos an older version kept as links to LinkedIn show
     initials until the next scan, or *Save photos* on the Scan page, saves them.)

@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { Section, Body, LINE } from '../ui';
 import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, warningParts, estimate,
-  barMax, pacificText, whenText, untilText, agoText, hoursText,
+  barMax, pacificText, whenText, untilText, agoText, hoursText, INVITE_CAPS, REPORTED_WEEKLY_INVITES,
 } from '../../../lib/usage';
 import { RESTRICTED_AT, RISKY_DAILY, SAFE_LIMITS } from '../../../lib/search-risk';
 import { paceOf, searchesPerHour } from '../../../lib/scan-pace';
@@ -96,6 +96,51 @@ function Meter({ title, used, of, max, color, ticks = [], band, children }) {
         </div>
       )}
       <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 2 }}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Auto's connection requests (lib/auto-connect.js): the last 24 hours and the
+ * last 7 days, each against its cap, one bar under the other. Its own caps,
+ * not the search budget: a request is the one thing Six Degrees sends.
+ */
+function InviteMeter({ day, week, freesAt, weekFreesAt, now }) {
+  const known = Number.isFinite(day) && Number.isFinite(week);
+  const bars = [
+    { label: 'Last 24 hours', used: day, cap: INVITE_CAPS.day },
+    { label: 'Last 7 days', used: week, cap: INVITE_CAPS.week },
+  ];
+  const left = known ? Math.max(0, Math.min(INVITE_CAPS.day - day, INVITE_CAPS.week - week)) : null;
+  return (
+    <div style={{ marginTop: 18 }} data-usage="invites">
+      <div style={{ fontSize: 13.5, fontWeight: 650, color: 'var(--sd-fg-1, #e8e8ee)' }}>Connection requests (Auto)</div>
+      {bars.map((b) => (
+        <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+          <span style={{ flex: '0 0 88px', fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)' }}>{b.label}</span>
+          <div style={{ position: 'relative', flex: 1, height: 10, borderRadius: 5, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)' }}>
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 5, transition: 'width 0.4s ease',
+              width: Number.isFinite(b.used) ? at(b.used, Math.max(b.cap, b.used)) : 0,
+              background: b.used >= b.cap ? '#ff6b6b' : 'linear-gradient(90deg, #FFD700, #FF6B35)',
+            }} />
+          </div>
+          <span style={{ flex: '0 0 auto', fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', fontVariantNumeric: 'tabular-nums', minWidth: 58, textAlign: 'right' }}>
+            <b style={{ fontSize: 15, color: 'var(--sd-fg-1, #fff)' }}>{count(b.used)}</b> of {b.cap}
+          </span>
+        </div>
+      ))}
+      <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 6 }}>
+        {!known ? null
+          : freesAt ? <>Auto&rsquo;s {INVITE_CAPS.day} a day are used. The next one frees {whenAndUntil(freesAt, now)}.</>
+          : weekFreesAt ? <>Auto&rsquo;s {INVITE_CAPS.week} a week are used. The next one frees {whenAndUntil(weekFreesAt, now)}.</>
+          : <>{plural(left, 'request')} left for Auto now.</>}
+        <div style={small}>
+          Each press of Auto sends one request from the scanner&rsquo;s Chrome, without a note, and opens their
+          profile once (a profile view). It stops at {INVITE_CAPS.day} in any 24 hours and {INVITE_CAPS.week} in any 7 days.
+          LinkedIn doesn&rsquo;t publish its invitation limit; people commonly report about {REPORTED_WEEKLY_INVITES} a week.
+        </div>
+      </div>
     </div>
   );
 }
@@ -260,6 +305,8 @@ export default function UsageSection() {
         </div>
       </Meter>
 
+      <InviteMeter day={u.invitesToday} week={u.invitesWeek} freesAt={u.invitesFreeAt} weekFreesAt={u.invitesWeekFreeAt} now={now} />
+
       <div style={{ marginTop: 22 }}>
         <Row label="Speed">
           {pace.label}: about {searchesPerHour(limits.pace)} searches an hour at most while a scan runs.
@@ -301,8 +348,8 @@ export default function UsageSection() {
       </div>
 
       <div style={{ ...small, marginTop: 14, paddingTop: 12, borderTop: LINE }}>
-        Where these numbers come from: Six Degrees writes down every search and profile view it makes on your
-        LinkedIn account, on this computer, and counts them here. Searches you make yourself on linkedin.com
+        Where these numbers come from: Six Degrees writes down every search, profile view and Auto request it makes
+        on your LinkedIn account, on this computer, and counts them here. Searches you make yourself on linkedin.com
         aren&rsquo;t in it, and LinkedIn shows no count of its own. The {RESTRICTED_AT} searches and the 20 to 25
         profile views are what happened to one real account, not safe limits. Change the budget on the
         {' '}<Link href="/setup" style={link}>Scan page</Link>, under Fine-tune the scanner. Nothing here is sent anywhere.
