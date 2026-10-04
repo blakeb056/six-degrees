@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The 3rd-degree dot in Degrees and Separation says why it can't be tapped.** It said "No one at
   3rd degree yet" even with people found by company scans; it now says those are drawn on Network
   Circle.
+- **The ring round a scanned connection's dot shows how much of their list was read.** It showed 2
+  of 5 bars, "partly read", for everyone scanned, even when their whole list was in, and the card's
+  Insights offered to finish lists that were finished. The app now takes in how far each list was
+  read, which the scanner had been noting all along.
 
 ## [0.7.0] - 2026-10-03
 
