@@ -14,6 +14,7 @@ import { TIER_COLORS, luminance } from '../../../lib/themes';
 import { RARITY } from '../../../lib/rarity';
 import { roleLine } from '../../../lib/insights-board';
 import { markRequested } from '../../../lib/requests-client';
+import ConnectChoice, { secondaryLook } from '../AutoConnect';
 
 export const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 export const one = (x) => (Math.round(Number(x || 0) * 10) / 10).toFixed(1);
@@ -199,20 +200,27 @@ export function ScanCircle({ id, compact }) {
  * Ask: what the person card's Connect does. Their LinkedIn profile opens in
  * a new tab to send the request there, and it's marked sent through the
  * connection who is your best way in (lib/requests-client.js), everywhere at once.
+ * On your own network Auto stands first, the better pick, and Ask steps back
+ * to an outline beside it, as everywhere else Connect is offered
+ * (components/AutoConnect.js; Blake, 2026-10-03: "wherever its available").
  */
-export function AskButton({ row, bridgeId, asked, compact }) {
+export function AskButton({ row, bridgeId, asked, compact, canAuto = false }) {
   if (asked) {
     return <span title="A request is marked sent. The next check of your own connections notices when they accept." style={{ ...ACT, cursor: 'default', color: 'var(--sd-fg-4, #6f7a88)', border: `1px dashed ${LINE}`, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }}>Asked</span>;
   }
   if (!row?.profile_url) return null;
-  return (
+  const size = compact ? { padding: '4px 9px', fontSize: 11 } : null;
+  const ask = (second) => (
     <a href={row.profile_url} target="_blank" rel="noopener noreferrer"
       title="Opens their LinkedIn profile in a new tab to send the request there, and marks it sent here"
       onClick={() => { markRequested(row, { bridgeId }).catch(() => {}); }}
-      style={{ ...ACT, color: '#000', border: 'none', background: 'linear-gradient(135deg, #FF6B35, #FFD700)', ...(compact ? { padding: '4px 9px', fontSize: 11 } : null) }}>
+      style={second
+        ? { ...ACT, ...secondaryLook(compact ? 'row' : 'table'), ...size }
+        : { ...ACT, color: '#000', border: 'none', background: 'linear-gradient(135deg, #FF6B35, #FFD700)', ...size }}>
       Ask
     </a>
   );
+  return <ConnectChoice person={row} canAuto={canAuto} size={compact ? 'row' : 'table'} connect={ask} />;
 }
 
 /** A horizontal bar made of parts: [{ value, color, label? }] over `max`. */

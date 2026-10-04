@@ -259,7 +259,7 @@ function Way({ p, max = 2, csv }) {
 }
 
 function Action({ p, scoped, asked, compact }) {
-  if (p.degree === 2) return <AskButton row={p.row} bridgeId={p.routes[0]?.id ?? p.row.source_connection_id} asked={asked} compact={compact} />;
+  if (p.degree === 2) return <AskButton row={p.row} bridgeId={p.routes[0]?.id ?? p.row.source_connection_id} asked={asked} compact={compact} canAuto={scoped} />;
   if (p.circle.state === 'scanned') return <OpenCircle id={p.row.id} compact={compact} />;
   if (p.circle.state === 'todo' && scoped) return <ScanCircle id={p.row.id} compact={compact} />;
   return null;

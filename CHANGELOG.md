@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in), Company power, How sure (how much of the ranking rests on a guess), and Richest?, which
   says plainly that the app never sees money. Kingmakers, Gatekeepers, Companies, Industries and
   a scrolling Report are views of their own in the notch. Every number says where it came from;
-  a CSV import gets the boards that need no circles, and says so for the rest.
+  a CSV import gets the boards that need no circles, and says so for the rest. On your own network every 2nd-degree row offers Auto beside Ask.
 - **Auto: one press sends someone a connection request for you.** Next to every Connect (a person's
   card, and Outlink's lists and next best moves) there's now an Auto button, the bright one. Press it
   and the scanner's Chrome opens their profile, presses Connect and sends the request without a note,
