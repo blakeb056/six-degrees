@@ -234,9 +234,15 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                   <div style={row}>
                     <span style={label}>Scanned</span>
                     <span style={{ flex: 1 }}>{scanned}</span>
-                    {i.bars !== 5 && canScan && (
+                    {/* Stopped partway: carry on from that page, the line by their name's own
+                        Resume. The Scan page's Scan one circle reads the list again from page 1,
+                        which spends the searches already spent; that stays for anyone else. */}
+                    {i.bars !== 5 && canScan && (scansHere && resume ? (
+                      <button type="button" style={act} title={`Resume from page ${resume.nextPage}`}
+                        onClick={() => resumeInScanBox(scanningThem)}>Resume →</button>
+                    ) : (resume === null || i.bars == null || !scansHere) && (
                       <a href={`/setup?scan=${encodeURIComponent(selected.id)}`} style={act}>{i.bars == null ? 'Scan →' : 'Finish →'}</a>
-                    )}
+                    ))}
                   </div>
                   {(() => {
                     const since = selected.connected_date ? new Date(selected.connected_date) : null;
@@ -1116,6 +1122,20 @@ function useResume(person) {
 }
 
 /**
+ * Resume, from anywhere on the card: bring the scan box into view and press its
+ * own Resume, so the same checks run and the scan's log or any problem shows
+ * where it's seen. While their scan runs (or Resume is greyed out) it only
+ * brings the box into view, which says why.
+ */
+function resumeInScanBox(scanning = false) {
+  const box = document.getElementById('scan-box');
+  if (!box) return;
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.animate?.([{ boxShadow: '0 0 0 3px rgba(255,215,0,0.75)' }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)' }], { duration: 1600 });
+  if (!scanning) box.querySelector('button[data-resume]:not([disabled])')?.click();
+}
+
+/**
  * The line by their name when the read of their list stopped partway (Blake,
  * 2026-10-03: "if someone was scanned but not finished it needs to show that in
  * their profile card"). The scan box is far down the card, so this says it where
@@ -1124,16 +1144,9 @@ function useResume(person) {
  * While their scan runs it says so, and only takes you to the box.
  */
 function StoppedPartway({ resume, scanning }) {
-  function go() {
-    const box = document.getElementById('scan-box');
-    if (!box) return;
-    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    box.animate?.([{ boxShadow: '0 0 0 3px rgba(255,215,0,0.75)' }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)' }], { duration: 1600 });
-    if (!scanning) box.querySelector('button[data-resume]:not([disabled])')?.click();
-  }
   const gold = 'var(--sd-gold, #FFD700)';
   return (
-    <button type="button" onClick={go}
+    <button type="button" onClick={() => resumeInScanBox(scanning)}
       aria-label={scanning ? 'Scanning their circle now: go to the scan' : `${stoppedLine(resume)}. Resume from page ${resume.nextPage}`}
       style={{
         display: 'flex', alignItems: 'center', gap: 9, width: '100%', boxSizing: 'border-box', margin: '-6px 0 16px',
