@@ -13,7 +13,7 @@
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
@@ -59,6 +59,7 @@ export default function ScanStatusBar() {
   // be swapped for a new one, or wrap to two rows.
   const pathname = usePathname();
   const [top, setTop] = useState(null);
+  const barRef = useRef(null);
   const [centre, setCentre] = useState(null);
   useEffect(() => {
     let header = null;
@@ -82,7 +83,13 @@ export default function ScanStatusBar() {
     };
     const later = () => { if (!queued) queued = requestAnimationFrame(measure); };
     later();
-    const mo = new MutationObserver(later);
+    // Measuring waits for the next frame, which drew the notch once over the
+    // blank page: hidden here, before that frame is painted, the moment the
+    // header goes (and shown again the moment it's back).
+    const mo = new MutationObserver(() => {
+      if (barRef.current) barRef.current.style.visibility = document.querySelector('header') ? '' : 'hidden';
+      later();
+    });
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', later);
     return () => { cancelAnimationFrame(queued); ro?.disconnect(); mo.disconnect(); window.removeEventListener('resize', later); };
@@ -98,6 +105,11 @@ export default function ScanStatusBar() {
     return () => setNotchShown(false);
   }, [showing]);
   if (!status && !tabs) return null;
+  // Only with a page under it: between tabs the next page has no header until
+  // it has loaded, and the notch would hang over a blank screen (Blake,
+  // 2026-10-03: "the notch is seen the whole time as the screen blanks out
+  // loading to the next … have it appear with the section"). It fades in with it.
+  if (top == null) return null;
 
   const p = job?.progress;
   const step = p?.kind === 'batch' && p.total ? `${p.current || p.done || 0} of ${p.total}`
@@ -118,10 +130,12 @@ export default function ScanStatusBar() {
 
   return (
     <div
+      ref={barRef}
       data-glass-panel="bar"
+      className="notch-in"
       onMouseLeave={() => setOpen(false)}
       style={{
-        position: 'fixed', left, top: top ?? 'var(--scan-bar-top, 94px)', transform: 'translateX(-50%)', zIndex: 60,
+        position: 'fixed', left, top, transform: 'translateX(-50%)', zIndex: 60,
         maxWidth: 'calc(100vw - 16px)',
         padding: expanded && status ? '4px 6px 10px' : '4px 6px 5px',
         borderRadius: '0 0 14px 14px', border: `1px solid ${running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, borderTop: 'none',

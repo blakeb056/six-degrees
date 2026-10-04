@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The tabs sit on the header's line, and the notch hangs from them.** On a computer the row of
+  tabs rests on the line under the header, so a page's own buttons in the notch below join onto
+  it. The header is the same height on every tab: the Pending count that added a row on Degrees
+  and Separation is gone (sent requests are still under Outlink → Pending).
+- **Separation starts with its slider.** The line counting people two steps away and the tier
+  strip under it are gone; the search box stays at the top.
+- **The notch comes with the page.** Switching tabs, it waits for the next page to appear instead
+  of hanging over a blank screen while it loads.
+
+### Fixed
+- **Scan dots are whole on Paths.** The dots along the header's line while a scan runs were cut in
+  half above Paths' left panel; they also stop short of the tabs now that the tabs sit on the line.
+- **The 3rd-degree dot in Degrees and Separation says why it can't be tapped.** It said "No one at
+  3rd degree yet" even with people found by company scans; it now says those are drawn on Network
+  Circle.
+
 ## [0.7.0] - 2026-10-03
 
 ### Added

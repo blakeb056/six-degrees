@@ -4,8 +4,6 @@ import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'rea
 import { useSearchParams } from 'next/navigation';
 import { fillsCircles, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
-import useRequests from './components/useRequests';
-import { requestCount } from '../lib/requests-client';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
@@ -105,7 +103,6 @@ function HomeInner() {
   const [scanNotes, setScanNotes] = useState(NO_SCAN_NOTES);
   const shapeRef = useRef('');
   // Everyone with a request out, shared with every view (lib/requests-client.js).
-  const pendingCount = requestCount(useRequests());
 
   useEffect(() => {
     if (!userId) return;
@@ -305,20 +302,7 @@ function HomeInner() {
             </button>
           </div>
         )}
-      >
-        {/* Pending count badge — in header: everyone with a request out, once each (lib/requests-client.js) */}
-        {isDegreesMode && !csvMode && pendingCount > 0 && (
-          <Link href="/queue" style={{
-            padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, textDecoration: 'none',
-            background: 'rgba(255,107,53,0.12)', color: 'var(--sd-orange, #FF6B35)',
-            border: '1px solid rgba(255,107,53,0.25)',
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-          }}>
-            <span style={{ fontSize: 10 }}>⏳</span>
-            {pendingCount} Pending
-          </Link>
-        )}
-      </AppHeader>
+      />
 
       <div style={{ display: 'flex', height: isMobile ? 'calc(100vh - 70px)' : 'calc(100vh - 130px)', position: 'relative' }}>
         <FilterPanel
