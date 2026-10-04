@@ -523,11 +523,23 @@ function SetupInner() {
             </div>
           )}
 
+          {/* ---- In progress: everyone whose scan stopped partway, with Resume (Blake, 2026-10-03:
+               "some sort of in progress ones in the scanner as well to see all the ones they stopped
+               and would like to resume"). Right after step 4, where someone who just stopped a scan
+               looks; it was folded away in Fine-tune, and nobody found it. Under Stop while a scan
+               runs, so Stop stays right under the step. Only there while someone is. ---- */}
+          <PausedList
+            paused={s?.paused || []}
+            disabled={!canSearch}
+            onResume={(p) => run('resume', { id: p.id })}
+            onResumeAll={() => run('resume-all', { maxBridges: batch })}
+          />
+
           {/* Everything you might want to change, out of the way until you do */}
           <details style={{ margin: '18px 0 4px', borderRadius: 10, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' }}>
             <summary style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13.5, fontWeight: 650, color: 'var(--sd-fg-2, #cfd8d8)' }}>
               Fine-tune the scanner
-              <span style={{ fontWeight: 500, color: 'var(--sd-fg-4, #778)', marginLeft: 8 }}>daily budget, how much of each list, the hidden window, paused lists</span>
+              <span style={{ fontWeight: 500, color: 'var(--sd-fg-4, #778)', marginLeft: 8 }}>daily budget, how much of each list, the hidden window</span>
             </summary>
             <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
@@ -586,12 +598,6 @@ function SetupInner() {
                 </Btn>
                 <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginLeft: 10 }}>People whose list was hidden last time, in case they&rsquo;ve opened it.</span>
               </div>
-              <PausedList
-                paused={s?.paused || []}
-                disabled={!canSearch}
-                onResume={(p) => run('resume', { id: p.id })}
-                onResumeAll={() => run('resume-all', { maxBridges: batch })}
-              />
             </div>
           </details>
 
@@ -664,7 +670,7 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
           {circle === 'scanned' && (
             <div style={{ color: 'var(--sd-gold, #FFD700)', fontSize: 12.5, marginTop: 6 }}>
               Their circle is already scanned. This reads their whole list again from page 1; to carry on
-              from where a read stopped, use Resume on their card or in the Paused list below.
+              from where a read stopped, use Resume on their card or under In progress below.
             </div>
           )}
           {circle === 'hidden' && (

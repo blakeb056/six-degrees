@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A scan that stopped partway says so, on the person's card and on the Scan page.** Open someone
+  whose circle scan didn't finish and a line by their name says which page it stopped after, with
+  Resume right there; their scan box now reads Scan in progress, with Resume from page N as its main
+  button, instead of Cluster active. On the Scan page, everyone stopped partway is in a new In progress
+  card right after step 4, with Resume for each person and Resume all, and each name opens their circle
+  on the map. It used to be folded away under Fine-tune the scanner.
+
 ## [0.7.0] - 2026-10-03
 
 ### Added
