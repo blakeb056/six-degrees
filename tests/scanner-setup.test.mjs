@@ -1,5 +1,6 @@
 // The Scan page's first step, in every state GET /api/scraper can report
-// (lib/scanner-setup.js), Google Chrome as part of it, whether it asks for
+// (lib/scanner-setup.js), Google Chrome as part of it, its optional App
+// Management item on a Mac (appManagementStep), whether it asks for
 // your field once your connections are in (askForField), whether you're
 // signed in (signedInFrom), and what other pages say when the scanner isn't
 // ready (lib/scraper-client.js notReadyMessage). DESKTOP.md D2.
@@ -7,9 +8,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  setupStep, askForField, chromeInstalled, signedInFrom,
+  setupStep, askForField, chromeInstalled, signedInFrom, appManagementStep, macosVersion,
   CHROME_MISSING, CHROME_BUTTON, CHROME_REFUSAL, CHROME_DOWNLOAD, SIGNED_IN_FILE,
+  APP_MANAGEMENT_URL, APP_MANAGEMENT_URL_OLDER, APP_MANAGEMENT_SETTING, APP_MANAGEMENT_TITLE, APP_MANAGEMENT_WHERE,
 } from '../lib/scanner-setup.js';
+import { SETTINGS } from '../lib/settings.js';
 import { notReadyMessage } from '../lib/scraper-client.js';
 
 const MB = 1024 * 1024;
@@ -266,4 +269,101 @@ test('not while something runs, and not when the app couldn\'t be asked', () => 
 test('not known until both answers are in, so the question never shows and then goes', () => {
   assert.equal(askForField(null, unasked), null);
   assert.equal(askForField(status({}, { network: FIRST }), undefined), null);
+});
+
+// ── App Management, on a Mac ────────────────────────────────────────────────
+// Blake, 2026-10-04: "shouldnt we have in the onboarding for scan … a button
+// where the user is basically brought to the app management and enables it
+// like Flow does". The scanner's Chrome updating itself is what macOS asks
+// about; allowing it is optional, so it never holds step 1 up.
+
+const onMac = (mac, extra = {}) => status({ mac }, extra);
+const TAHOE = { version: 26, app: true };
+const fresh = { ...unasked, appManagement: null };
+
+test('on a Mac, step 1 offers App Management: why macOS asks, the pane, and where it is by hand', () => {
+  const item = appManagementStep(onMac(TAHOE), fresh);
+  assert.equal(item.title, APP_MANAGEMENT_TITLE);
+  assert.equal(item.href, APP_MANAGEMENT_URL);
+  assert.equal(item.where, 'System Settings → Privacy & Security → App Management');
+  assert.equal(item.where, APP_MANAGEMENT_WHERE);
+  assert.match(item.text, /^When the scanner starts Google Chrome, macOS may ask whether Six Degrees can manage apps\./);
+  assert.match(item.text, /Chrome updating itself while the scanner uses it/);
+  assert.match(item.text, /Allow Six Degrees once in App Management and macOS won’t ask again\./);
+  assert.match(item.text, /Scanning works either way\.$/);
+  for (const words of [item.title, item.text, item.where]) {
+    assert.doesNotMatch(words, /[Ss]crap/, 'scanning, never scraping');
+    assert.doesNotMatch(words, /—/, 'no em dashes on screen');
+  }
+});
+
+test('it never holds step 1 up: the step is done or not exactly as without it', () => {
+  const ready = { python: true, dependencies: true, pythonSource: 'bundled' };
+  assert.equal(setupStep(status({ ...ready, mac: TAHOE })).done, true);
+  assert.deepEqual(setupStep(status({ ...ready, mac: TAHOE })), setupStep(status(ready)));
+  // And it is there whatever step 1 says: ready, still to set up, or without Chrome.
+  for (const checks of [ready, { python: false, download: DOWNLOAD }, { ...ready, chrome: false }]) {
+    assert.ok(appManagementStep(status({ ...checks, mac: TAHOE }), fresh), JSON.stringify(checks));
+  }
+});
+
+test('the pane where this macOS keeps it: macOS 13 and 14 have their own address', () => {
+  assert.equal(appManagementStep(onMac({ version: 13, app: true }), fresh).href, APP_MANAGEMENT_URL_OLDER);
+  assert.equal(appManagementStep(onMac({ version: 14, app: true }), fresh).href, APP_MANAGEMENT_URL_OLDER);
+  assert.equal(appManagementStep(onMac({ version: 15, app: true }), fresh).href, APP_MANAGEMENT_URL);
+  assert.equal(appManagementStep(onMac({ version: 26, app: true }), fresh).href, APP_MANAGEMENT_URL);
+  assert.equal(appManagementStep(onMac({ version: 27, app: true }), fresh).href, APP_MANAGEMENT_URL);
+  // A Mac whose version couldn't be read gets the newest address.
+  assert.equal(appManagementStep(onMac({ version: null, app: true }), fresh).href, APP_MANAGEMENT_URL);
+});
+
+test('only on a Mac with App Management (macOS 13 on), and only from a server that says', () => {
+  assert.equal(appManagementStep(status({ mac: null }), fresh), false, 'Windows and Linux');
+  assert.equal(appManagementStep(status({}), fresh), false, 'an older server says nothing about the Mac');
+  assert.equal(appManagementStep({ ready: false, checks: {}, log: [] }, fresh), false, 'the page\'s stand-in when the status fails');
+  assert.equal(appManagementStep(onMac({ version: 12, app: true }), fresh), false, 'Monterey had no App Management');
+});
+
+test('Done or Skip puts it away for good; settings that couldn\'t be read leave it out', () => {
+  assert.equal(appManagementStep(onMac(TAHOE), { ...fresh, appManagement: 'done' }), false);
+  assert.equal(appManagementStep(onMac(TAHOE), { ...fresh, appManagement: 'skipped' }), false);
+  assert.equal(appManagementStep(onMac(TAHOE), null), false);
+  // From before the setting existed: never answered.
+  const { appManagement: _, ...older } = fresh;
+  assert.ok(appManagementStep(onMac(TAHOE), older));
+});
+
+test('not known until both answers are in, so it never shows and then goes', () => {
+  assert.equal(appManagementStep(null, fresh), null);
+  assert.equal(appManagementStep(onMac(TAHOE), undefined), null);
+  // Off a Mac it's known at once: no item to wait for.
+  assert.equal(appManagementStep(status({ mac: null }), undefined), false);
+});
+
+test('started with npx, macOS names the app Six Degrees was started from, not Six Degrees', () => {
+  const item = appManagementStep(onMac({ version: 26, app: false }), fresh);
+  assert.match(item.text, /whether the app you started Six Degrees from \(Terminal, for example\) can manage apps/);
+  assert.match(item.text, /Allow that app once in App Management/);
+  assert.doesNotMatch(item.text, /Allow Six Degrees/);
+});
+
+test('macOS\'s version from the Darwin kernel\'s: 25 is macOS 26, 20 to 24 are 11 to 15', () => {
+  assert.equal(macosVersion('darwin', '25.5.0'), 26);
+  assert.equal(macosVersion('darwin', '26.0.0'), 27);
+  assert.equal(macosVersion('darwin', '24.6.0'), 15);
+  assert.equal(macosVersion('darwin', '23.1.0'), 14);
+  assert.equal(macosVersion('darwin', '22.6.0'), 13);
+  assert.equal(macosVersion('darwin', '21.6.0'), 12);
+  assert.equal(macosVersion('darwin', '20.1.0'), 11);
+  assert.equal(macosVersion('darwin', '19.6.0'), 10);
+  for (const bad of ['', 'x', undefined, null, '0.1']) assert.equal(macosVersion('darwin', bad), null, String(bad));
+  assert.equal(macosVersion('linux', '6.8.0-45-generic'), null);
+  assert.equal(macosVersion('win32', '10.0.26100'), null);
+});
+
+test('the answer is a setting, kept with your data: done, skipped or not yet', () => {
+  assert.equal(SETTINGS.appManagement, APP_MANAGEMENT_SETTING);
+  assert.equal(APP_MANAGEMENT_SETTING.default, null);
+  for (const ok of [null, 'done', 'skipped']) assert.equal(APP_MANAGEMENT_SETTING.parse(ok), ok);
+  for (const bad of [true, false, 1, '', 'yes', 'Done', {}, undefined]) assert.throws(() => APP_MANAGEMENT_SETTING.parse(bad), String(bad));
 });
