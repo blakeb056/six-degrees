@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { stopScrape, pickedPerson, scanRequest, HIDE_CHROME_KEY } from '../../lib/scraper-client';
-import { setupStep, askForField } from '../../lib/scanner-setup';
+import { setupStep, askForField, appManagementStep } from '../../lib/scanner-setup';
+import { saveSettings } from '../../lib/settings-client';
 import { RISK_POINTS } from '../../lib/scan-risk';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
@@ -82,6 +83,8 @@ function SetupInner() {
   // loads, null when it couldn't be read. And the answer given here, if any.
   const [settings, setSettings] = useState(undefined);
   const [field, setField] = useState(null);
+  // Step 1's App Management item, answered here ('done' or 'skipped'), if it was.
+  const [appAnswer, setAppAnswer] = useState(null);
   // Someone sent here to have their circle scanned (Bridge Chains, the Degrees
   // panel's Ready to scan): /setup?scan=<id>. Nothing starts until it's confirmed.
   // The router's search params rather than window.location: every way here is a
@@ -141,6 +144,15 @@ function SetupInner() {
   function answered(sectors) {
     setField({ sectors });
     window.scrollTo(0, 0);
+  }
+
+  // Done or Skip on the App Management item: it goes at once, and the answer is
+  // kept so it isn't offered again. If that can't be saved it still goes for
+  // now and comes back next time, which is all it costs (as Skip for now does,
+  // app/components/FieldStep.js).
+  async function answerAppManagement(answer) {
+    setAppAnswer(answer);
+    await saveSettings({ appManagement: answer });
   }
 
   // "I understand": when, kept with your settings so it travels with a copy.
@@ -212,6 +224,10 @@ function SetupInner() {
   // Your field, asked once when your connections are in, before who they know
   // (lib/scanner-setup.js askForField); left out while that isn't known (null).
   const askField = IS_DEMO || field ? false : askForField(s, settings);
+  // On a Mac, macOS may ask about App Management when the scanner starts Chrome
+  // (lib/scanner-setup.js appManagementStep): offered once, under step 1, and
+  // never part of whether step 1 is done.
+  const appMgmt = IS_DEMO || appAnswer ? false : appManagementStep(s, settings);
   // Step 4, honestly: the first circle shows in minutes, the rest takes days.
   const pace = li?.limits?.pace;
   const firstCircle = durationText(firstCircleSeconds(pace));
@@ -375,6 +391,10 @@ function SetupInner() {
               more={s && step1.chrome && (
                 <Launch href={step1.chrome.href} quiet={Boolean(step1.button)}>{step1.chrome.label}</Launch>
               )} />
+            {/* Blake, 2026-10-04: "shouldnt we have in the onboarding for scan … a button where the
+                user is basically brought to the app management and enables it like Flow does".
+                Optional, so it sits under the step and never holds it up. */}
+            {appMgmt && <AppManagementItem item={appMgmt} onAnswer={answerAppManagement} />}
           </StepRow>
           <StepRow n={2} label="Sign in" state={stateOf(2, !!c.signedIn)}>
             <Mission title="Sign in to LinkedIn, once" time="You do this part" done={!!c.signedIn}
@@ -800,14 +820,45 @@ function Mission({ title, time, body, launch, more, done = false, children }) {
 }
 
 /**
+ * Step 1's optional item on a Mac (lib/scanner-setup.js appManagementStep):
+ * why macOS may ask about App Management while scanning, the button that opens
+ * that pane, and Done or Skip, either of which puts it away for good.
+ */
+function AppManagementItem({ item, onAnswer }) {
+  return (
+    <section aria-labelledby="app-management-title" data-app-management style={{
+      marginTop: 10, padding: '14px 18px', borderRadius: 14,
+      background: 'rgba(var(--sd-ink, 255, 255, 255), 0.025)',
+      border: '1px dashed rgba(var(--sd-ink, 255, 255, 255), 0.16)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span id="app-management-title" style={{ fontSize: 16, fontWeight: 800 }}>{item.title}</span>
+        <span style={{ fontSize: 12, color: 'var(--sd-fg-2, #8fd9b6)', marginLeft: 'auto' }}>Optional, once</span>
+      </div>
+      <div style={{ fontSize: 13.5, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6, margin: '6px 0 12px', maxWidth: 600 }}>{item.text}</div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Launch href={item.href} quiet>Open App Management</Launch>
+        <Btn onClick={() => onAnswer('done')}>Done</Btn>
+        <Btn onClick={() => onAnswer('skipped')}>Skip</Btn>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)', marginTop: 10 }}>It&rsquo;s in {item.where}.</div>
+    </section>
+  );
+}
+
+/**
  * The big go button. `quiet` once that step is done, so the next thing to do
- * stands out. With `href`, a link that looks the same, opened outside the app
- * (the desktop app sends it to the browser): Chrome's download.
+ * stands out. With `href`, a link that looks the same: a web address (Chrome's
+ * download) opens outside the app, which the desktop app sends to the browser.
+ * A System Settings address (App Management) opens in place: a browser then
+ * asks to open System Settings without leaving an empty tab behind, and the
+ * desktop app opens System Settings itself (desktop/main.mjs).
  */
 function Launch({ children, onClick, disabled, quiet = false, href }) {
   if (href) {
+    const web = /^https?:/i.test(href);
     return (
-      <a className="launch-go" href={href} target="_blank" rel="noreferrer" style={{
+      <a className="launch-go" href={href} {...(web ? { target: '_blank', rel: 'noreferrer' } : {})} style={{
         ...launchLook(false, quiet), textDecoration: 'none',
       }}>
         <span aria-hidden="true" style={{ fontSize: quiet ? 11 : 13 }}>▶</span>{children}

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow } from '../../../lib/scan-progress';
@@ -15,7 +16,8 @@ import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
-import { chromeInstalled, signedInFrom, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
+import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
+import { installKind } from '../../../lib/release';
 import { AUTO_REFUSAL, connectResultIn, connectMarks, inviteRefusal, personRefusal } from '../../../lib/auto-connect';
 import { markSentRows, awardXP, whose, requestStanding } from '../../../lib/requests';
 import {
@@ -385,6 +387,12 @@ async function status() {
       signedIn: signedIn(),
       // The one-time "I understand" before the first scan (lib/scan-risk.js).
       riskAccepted: scanRisk(),
+      // Step 1's App Management item (lib/scanner-setup.js appManagementStep):
+      // which macOS, so its button opens the pane where that version keeps it,
+      // and whether this is the Mac app, the name macOS asks about. null off a Mac.
+      mac: process.platform === 'darwin'
+        ? { version: macosVersion(process.platform, osRelease()), app: installKind(process.env, projectRoot()) === 'mac-app' }
+        : null,
     },
     network,
     photosWaiting,

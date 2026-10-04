@@ -129,6 +129,9 @@ bash script, `Contents/MacOS/six-degrees`.)
       Electron asks where to save).
 - [x] Links: anything not on the app's own address opens in the default browser (rule 7);
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
+      Two exact System Settings addresses (App Management, for the Scan page's step 1)
+      open System Settings; any other `x-apple.systempreferences:` link is blocked
+      (`lib.mjs SETTINGS_URLS`).
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,
       and only clipboard-write and full-screen permissions.
 - [x] A native menu: About, Check for Updates… (opens Settings → Updates and runs the check), Settings… (⌘,), Edit,

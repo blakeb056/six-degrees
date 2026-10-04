@@ -7,6 +7,7 @@
 //    a window closed before signing in no longer ticks step 2; a folder from
 //    before the note keeps the old check (Chrome's cookie file).
 //  - Whose circle a batch is reading, for the Scan page's "Watch it fill in".
+//  - Which Mac this is, for step 1's App Management item.
 //
 // Chrome is answered by SIX_DEGREES_TEST_CHROME, so these don't depend on
 // whether the computer running them has it. The scanner is a stand-in, as in
@@ -20,9 +21,9 @@ import { test, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, release } from 'node:os';
 import path from 'node:path';
-import { CHROME_REFUSAL } from '../lib/scanner-setup.js';
+import { CHROME_REFUSAL, macosVersion } from '../lib/scanner-setup.js';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -189,4 +190,27 @@ test('a batch\'s current person, found among your connections, for "Watch it fil
   assert.equal((await status()).mapping, null);
   Object.assign(state, { running: false, action: 'auto-bridge', log: ['[1/5] Mira Calloway (A-tier, score 6.4)'] });
   assert.equal((await status()).mapping, null);
+});
+
+// ── which Mac ───────────────────────────────────────────────────────────────
+
+test('step 1 is told which Mac this is, for its App Management item, and nothing off a Mac', async () => {
+  const kind = process.env.SIX_DEGREES_INSTALL;
+  try {
+    delete process.env.SIX_DEGREES_INSTALL;
+    const off = (await status()).checks.mac;
+    if (process.platform !== 'darwin') {
+      assert.equal(off, null);
+      return;
+    }
+    // Started with npx (or from a checkout): macOS names whatever started it, not Six Degrees.
+    assert.deepEqual(off, { version: macosVersion('darwin', release()), app: false });
+    assert.ok(off.version >= 11, `read from Darwin ${release()}`);
+    // The Mac app says so when it starts its server (desktop/main.mjs).
+    process.env.SIX_DEGREES_INSTALL = 'mac-app';
+    assert.deepEqual((await status()).checks.mac, { version: off.version, app: true });
+  } finally {
+    if (kind === undefined) delete process.env.SIX_DEGREES_INSTALL;
+    else process.env.SIX_DEGREES_INSTALL = kind;
+  }
 });

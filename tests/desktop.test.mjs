@@ -5,8 +5,9 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import {
   routeFor, isAppUrl, findFreePort, waitForServer, scanRunning, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
-  RESTART_EXIT_CODE, UPDATE_HANDOFF_EXIT_CODE, serverExitAction,
+  RESTART_EXIT_CODE, UPDATE_HANDOFF_EXIT_CODE, serverExitAction, SETTINGS_URLS,
 } from '../desktop/lib.mjs';
+import { APP_MANAGEMENT_URLS, APP_MANAGEMENT_URL, APP_MANAGEMENT_URL_OLDER } from '../lib/scanner-setup.js';
 
 const ORIGIN = 'http://127.0.0.1:6364';
 const noSleep = async () => {};
@@ -20,6 +21,48 @@ test('links: the app stays in the app, LinkedIn goes to your browser, the rest i
   assert.equal(routeFor('javascript:alert(1)', ORIGIN), 'block');
   assert.equal(routeFor('not a url', ORIGIN), 'block');
   assert.equal(isAppUrl(`${ORIGIN}/`, null), false, 'before the server has a port, nothing is the app');
+});
+
+// The Scan page's Open App Management (lib/scanner-setup.js appManagementStep).
+// Blake, 2026-10-04: "a button where the user is basically brought to the app
+// management and enables it like Flow does".
+test('the two App Management addresses open System Settings, and nothing else of that kind gets out', () => {
+  assert.equal(routeFor('x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles', ORIGIN), 'settings', 'macOS 15 and later');
+  assert.equal(routeFor('x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles', ORIGIN), 'settings', 'macOS 13 and 14');
+  assert.equal(routeFor(APP_MANAGEMENT_URL, null), 'settings', 'before the server has a port too');
+  const nearMisses = [
+    // other panes, or the pane with no section
+    'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_FilesAndFolders',
+    'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles',
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
+    'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension',
+    'x-apple.systempreferences:com.apple.preference.security',
+    'x-apple.systempreferences:',
+    // the right pane with more on it: prefix matching would let these through
+    `${APP_MANAGEMENT_URL}&Privacy_AllFiles`,
+    `${APP_MANAGEMENT_URL}#x`,
+    `${APP_MANAGEMENT_URL} `,
+    ` ${APP_MANAGEMENT_URL}`,
+    `${APP_MANAGEMENT_URL_OLDER}/`,
+    'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?privacy_appbundles',
+    'X-APPLE.SYSTEMPREFERENCES:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles',
+    // other schemes
+    'x-apple.systempreference:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles',
+    'x-apple-systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles',
+    'macappstore://apps.apple.com/app/id1',
+    'javascript:location="x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles"',
+    'file:///System/Applications/System%20Settings.app',
+    'file:///System/Library/PreferencePanes/Security.prefPane',
+    'vnc://127.0.0.1',
+  ];
+  for (const url of nearMisses) assert.equal(routeFor(url, ORIGIN), 'block', url);
+  for (const url of [undefined, null, 42, {}]) assert.equal(routeFor(url, ORIGIN), 'block', String(url));
+});
+
+test('the desktop app lets out exactly the System Settings addresses the Scan page links to', () => {
+  // desktop/ is packaged on its own, so it keeps its own copy of the list.
+  assert.deepEqual([...SETTINGS_URLS], [...APP_MANAGEMENT_URLS]);
+  assert.ok(Object.isFrozen(SETTINGS_URLS), 'nothing can add to it while the app runs');
 });
 
 test('a free port is found past one that is taken', async () => {

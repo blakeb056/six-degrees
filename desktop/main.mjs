@@ -8,7 +8,8 @@
 //   start   pick a free port from 6363, start the server on 127.0.0.1, show a
 //           "starting" page, and swap in the app once the server answers
 //   links   the app's own pages stay in the app; anything else, LinkedIn above
-//           all, opens in the user's own browser (rule 7)
+//           all, opens in the user's own browser (rule 7), except the two
+//           System Settings panes the Scan page links to (lib.mjs SETTINGS_URLS)
 //   quit    a running scan is stopped the way the Stop button stops it, so the
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
@@ -227,14 +228,18 @@ app.on('web-contents-created', (_event, contents) => {
         },
       };
     }
-    if (route === 'browser') shell.openExternal(url);
+    // A web link goes to the user's browser; one of the System Settings panes
+    // the Scan page links to (App Management) opens System Settings there.
+    if (route === 'browser' || route === 'settings') shell.openExternal(url);
     return { action: 'deny' };
   });
   contents.on('will-navigate', (event, url) => {
     const route = routeFor(url, origin);
     if (route === 'app') return;
     event.preventDefault();
-    if (route === 'browser') shell.openExternal(url);
+    // The Scan page's Open App Management is a plain link (no new tab in a
+    // browser), so it arrives here rather than at the handler above.
+    if (route === 'browser' || route === 'settings') shell.openExternal(url);
   });
   contents.on('will-attach-webview', (event) => event.preventDefault());
 });

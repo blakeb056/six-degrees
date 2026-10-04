@@ -318,7 +318,9 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
   in a Chrome window, and then it scans. Needs Google Chrome. The Mac app brings its own
   Python; with `npx six-degrees` the page uses yours, or sets up a private one with a
   click. It checks and says what's missing. The app marks this *Recommended* because
-  it's the only way to Degrees and Outlink. Read the warning above first.
+  it's the only way to Degrees and Outlink. Read the warning above first. On a Mac,
+  macOS may ask whether Six Degrees can manage apps while you scan: that's Chrome
+  updating itself, and scanning works either way (step 1 has a button to allow it once).
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
   LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
   Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
