@@ -193,6 +193,16 @@ in, and its most powerful people.
 
 <img src="docs/img/paths.png" alt="Paths → Map with the company analyzer open: companies grouped by industry, and one company's people by level and ways in" width="100%">
 
+**Insights.** Everyone within two steps of you in one table, ranked by power, each person
+once: the **Power Index**, with filters for degree, tier and rarity, and Open circle, Scan
+circle or Ask on every row. Beside it, and each a board of its own in the notch:
+**Kingmakers** (your connections with the most S and A people behind them), **Gatekeepers**
+(who your S and A reach hangs on), **Hidden giants** (S-tier with one way in), **Untapped**
+(S and A with no request out), **Company power** and **Industries**. **Report** is the same
+numbers as a page you scroll. Every number says where it came from, and nothing is about
+money: *Richest?* says plainly that the app never sees it. Power ranks reachability, not
+people.
+
 **Scores.** How a power score is worked out, and the three things you can change about
 it, in one place: your field (the sectors you work in), how tiers are graded (on your
 network's curve or the fixed scale), and every scanned company's score.

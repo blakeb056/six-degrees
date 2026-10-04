@@ -668,7 +668,9 @@ The words are the same for everyone. Until September 2026 they also named one sc
 accounts receivable, read as media), four retired picks (Polymarket, Anduril, Sandia and
 Whatnot, which also read "whatnot", a word, as retail), and a job title, "growth", which made
 "Head of Growth at Acme Software" and "Summit Growth Equity" media. "Growth marketing" still
-reads as marketing, and "growth equity" as finance.
+reads as marketing, and "growth equity" as finance. Until October 2026 retail read "food" and
+"beverage" but not "Foods" or "Beverages", so a company named "Northwind Foods" took its
+industry from its people's headlines (tech, on an invented network); the plurals read now.
 
 `readNetwork(rows, {industryOf})` reads every headline once (roles, student, reach signals)
 and finds every company anyone names, a former employer included, with its headcount and
