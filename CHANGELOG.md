@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-03
+
 ### Added
 - **Insights: your network ranked by power.** A new tab between Paths and Outlink. The Power
   Index ranks everyone within two steps of you, each person once, with shared ranks for ties and
