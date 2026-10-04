@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason } from '../../lib/scraper-client';
+import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow } from '../../lib/scraper-client';
+import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
 import useScanner from './useScanner';
 import useRequests from './useRequests';
 import TheirCircle from './TheirCircle';
@@ -54,6 +55,12 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
   const requests = useRequests();
   const isRequested = useCallback((row) => hasRequest(row, requests), [requests]);
+  // Where Resume would carry on with the person open, asked once for the whole
+  // card: the line by their name and the scan box below both show it. Only for
+  // whoever gets a scan box (the same test as below). Above the early returns,
+  // so the hook order never changes.
+  const scansHere = Boolean(selected) && canScan && (selected.degree === 1 || selected.outreach_status === 'accepted');
+  const { resume, scanning: scanningThem } = useResume(scansHere ? selected : null);
 
   // A notification someone clicked takes the panel over until they go back (app/components/NoteDetail.js).
   if (note) {
@@ -151,6 +158,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           </div>
         </div>
 
+        {/* Their scan stopped partway: said by their name, where it's seen without scrolling. */}
+        {scansHere && resume && <StoppedPartway resume={resume} scanning={scanningThem} />}
+
         {/* Their circle, out to six degrees: who they know, who you added from
             it, and who those people know (TheirCircle.js). Your connections only:
             a 2nd-degree person's circle isn't yours to scan until they accept. */}
@@ -224,9 +234,15 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                   <div style={row}>
                     <span style={label}>Scanned</span>
                     <span style={{ flex: 1 }}>{scanned}</span>
-                    {i.bars !== 5 && canScan && (
+                    {/* Stopped partway: carry on from that page, the line by their name's own
+                        Resume. The Scan page's Scan one circle reads the list again from page 1,
+                        which spends the searches already spent; that stays for anyone else. */}
+                    {i.bars !== 5 && canScan && (scansHere && resume ? (
+                      <button type="button" style={act} title={`Resume from page ${resume.nextPage}`}
+                        onClick={() => resumeInScanBox(scanningThem)}>Resume →</button>
+                    ) : (resume === null || i.bars == null || !scansHere) && (
                       <a href={`/setup?scan=${encodeURIComponent(selected.id)}`} style={act}>{i.bars == null ? 'Scan →' : 'Finish →'}</a>
-                    )}
+                    ))}
                   </div>
                   {(() => {
                     const since = selected.connected_date ? new Date(selected.connected_date) : null;
@@ -491,7 +507,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {/* Create Cluster — for D1 connections OR accepted D2 (promoted, ready to bridge for D3) */}
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
           canScan
-            ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} />
+            ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} resume={resume} />
             : <ScansNeedYourNetwork csvSource={csvSource} style={{ marginTop: 16 }} />
         )}
 
@@ -1075,6 +1091,87 @@ function PathBox({ routes, selected, tierColors, onSelect }) {
   );
 }
 
+const noWatch = () => () => {};
+
+/**
+ * Where Resume would carry on with this person ({ nextPage, pagesRead, legacy };
+ * null when there is nothing to carry on with; undefined until known), and
+ * whether their circle is being scanned right now. One question to the server
+ * for the whole card (GET /api/scraper?resume=<id>), asked again whenever a
+ * scan ends, since every read moves it. Only those two facts are taken from the
+ * scanner, never its whole answer: that changes every time a running scan's log
+ * grows, and this panel would redraw with it.
+ */
+function useResume(person) {
+  const id = person?.id ?? null;
+  const subscribe = id ? watchScanner : noWatch;
+  const lastEnded = useSyncExternalStore(subscribe, () => scannerNow().finished[0]?.startedAt ?? null, () => null);
+  const scanning = useSyncExternalStore(subscribe, () => {
+    const now = scannerNow();
+    return Boolean(now.running && person && scansCircleOf(now, person));
+  }, () => false);
+  const [got, setGot] = useState({ id: null, resume: undefined });
+  useEffect(() => {
+    if (!id) return undefined;
+    let live = true;
+    resumePoint(id).then((r) => { if (live) setGot({ id, resume: r }); }, () => { if (live) setGot({ id, resume: null }); });
+    return () => { live = false; };
+  }, [id, lastEnded]);
+  // Another person's answer never shows on this one's card while theirs is asked.
+  return { resume: id && got.id === id ? got.resume : undefined, scanning: Boolean(id) && scanning };
+}
+
+/**
+ * Resume, from anywhere on the card: bring the scan box into view and press its
+ * own Resume, so the same checks run and the scan's log or any problem shows
+ * where it's seen. While their scan runs (or Resume is greyed out) it only
+ * brings the box into view, which says why.
+ */
+function resumeInScanBox(scanning = false) {
+  const box = document.getElementById('scan-box');
+  if (!box) return;
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.animate?.([{ boxShadow: '0 0 0 3px rgba(255,215,0,0.75)' }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)' }], { duration: 1600 });
+  if (!scanning) box.querySelector('button[data-resume]:not([disabled])')?.click();
+}
+
+/**
+ * The line by their name when the read of their list stopped partway (Blake,
+ * 2026-10-03: "if someone was scanned but not finished it needs to show that in
+ * their profile card"). The scan box is far down the card, so this says it where
+ * it's seen, and Resume here presses the box's own Resume: the same checks, and
+ * the box, brought into view, is where the scan's log and any problem show.
+ * While their scan runs it says so, and only takes you to the box.
+ */
+function StoppedPartway({ resume, scanning }) {
+  const gold = 'var(--sd-gold, #FFD700)';
+  return (
+    <button type="button" onClick={() => resumeInScanBox(scanning)}
+      aria-label={scanning ? 'Scanning their circle now: go to the scan' : `${stoppedLine(resume)}. Resume from page ${resume.nextPage}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9, width: '100%', boxSizing: 'border-box', margin: '-6px 0 16px',
+        padding: '8px 11px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', font: 'inherit',
+        background: 'rgba(255,215,0,0.07)', border: '1px solid rgba(255,215,0,0.32)', color: 'var(--sd-fg-2, #ddd)',
+      }}>
+      {/* A pause sign while stopped; a pulsing dot while it runs. */}
+      {scanning ? (
+        // ScanLog's keyframes: the box below shows its log while their scan runs.
+        <span aria-hidden="true" className="scanlog-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: gold, flexShrink: 0, animation: 'scanlogPulse 1s ease-in-out infinite' }} />
+      ) : (
+        <span aria-hidden="true" style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+          <span style={{ width: 3, height: 10, borderRadius: 1, background: gold }} />
+          <span style={{ width: 3, height: 10, borderRadius: 1, background: gold }} />
+        </span>
+      )}
+      <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.35 }}>
+        <b style={{ color: gold }}>{scanning ? 'Scanning their circle now' : `${stoppedLine(resume)}.`}</b>
+        {!scanning && <span style={{ color: 'var(--sd-fg-3, #999)' }}> Their list isn&apos;t finished.</span>}
+      </span>
+      <span style={{ fontSize: 11.5, fontWeight: 800, color: gold, whiteSpace: 'nowrap' }}>{scanning ? 'See it ↓' : 'Resume ↓'}</span>
+    </button>
+  );
+}
+
 // Scan one person's circle, or carry on with it.
 //
 // LinkedIn lists someone else's connections in its own order, with no dates,
@@ -1085,25 +1182,24 @@ function PathBox({ routes, selected, tierColors, onSelect }) {
 // Whether a scan is running comes from the scanner (useScanner), not from this
 // card: close the card mid-scan and open it again and the scan is still here,
 // and every other card greys its buttons out until it ends.
-function CreateClusterCard({ selected, degree2 }) {
+//
+// `resume` is where Resume carries on (useResume, asked once for the card),
+// null when there is nothing to resume, undefined until it's known. A read that
+// stopped partway is the first thing the box says: SCAN IN PROGRESS, in gold,
+// with Resume as the main button (Blake, 2026-10-03: "if someone was scanned but
+// not finished it needs to show that in their profile card ... showing resume
+// scanner in that actual card"). It used to sit under CLUSTER ACTIVE, which
+// reads as done.
+function CreateClusterCard({ selected, degree2, resume }) {
   const scan = useScanner();
   const [checking, setChecking] = useState(false);
   const [problem, setProblem] = useState(null);      // why a scan didn't start: { text, offline }
-  const [resume, setResume] = useState(undefined);   // where Resume carries on; null: nothing to resume
   const clusterCount = degree2?.filter(d => d.source_connection_id === selected.id).length || 0;
   const hasCluster = clusterCount > 0;
 
   const mine = scan.running && scansCircleOf(scan, selected);
   const busy = scan.running && !mine ? busyReason(scan) : null;
   const last = scan.finished.find((j) => scansCircleOf(j, selected));
-
-  // Every read moves where Resume would carry on, so ask again whenever one ends.
-  const lastEnded = scan.finished[0]?.startedAt ?? null;
-  useEffect(() => {
-    let live = true;
-    resumePoint(selected.id).then((r) => { if (live) setResume(r); }, () => { if (live) setResume(null); });
-    return () => { live = false; };
-  }, [selected.id, lastEnded]);
 
   async function start(action) {
     setProblem(null);
@@ -1122,27 +1218,32 @@ function CreateClusterCard({ selected, degree2 }) {
   }
 
   const read = hasCluster || Boolean(resume);
-  const accent = hasCluster ? '#00ff88' : '#9B59B6';
+  // Gold while a read is stopped partway, green once a circle is in, purple before.
+  const accent = resume ? '#FFD700' : hasCluster ? '#00ff88' : '#9B59B6';
+  // Gold words vanish on a light look; the theme's own gold reads on either.
+  const ink = resume ? 'var(--sd-gold, #FFD700)' : accent;
   const off = Boolean(busy) || checking;
   const button = (primary) => ({
     flex: 1, padding: '11px 8px', borderRadius: 8, fontWeight: 700, fontSize: primary ? 13 : 12,
     cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
     ...(primary
       ? { border: 'none', background: 'linear-gradient(135deg, #9B59B6, #3498DB)', color: '#fff' }
-      : { border: `1px solid ${accent}55`, background: `${accent}14`, color: accent }),
+      : { border: `1px solid ${accent}55`, background: `${accent}14`, color: ink }),
   });
 
   return (
     <div id="scan-box" style={{
-      background: hasCluster ? 'rgba(0,255,136,0.06)' : 'rgba(155,89,182,0.08)',
-      border: `1px solid ${hasCluster ? 'rgba(0,255,136,0.2)' : 'rgba(155,89,182,0.3)'}`,
+      background: resume ? 'rgba(255,215,0,0.06)' : hasCluster ? 'rgba(0,255,136,0.06)' : 'rgba(155,89,182,0.08)',
+      border: `1px solid ${resume ? 'rgba(255,215,0,0.32)' : hasCluster ? 'rgba(0,255,136,0.2)' : 'rgba(155,89,182,0.3)'}`,
       borderRadius: 10, padding: 16, marginTop: 16,
     }}>
-      <div style={{ fontSize: 10, color: accent, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: 'center' }}>
-        {hasCluster ? 'CLUSTER ACTIVE' : 'CREATE CLUSTER'}
+      <div style={{ fontSize: 10, color: ink, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: 'center' }}>
+        {scanBoxTitle({ resume, hasCluster })}
       </div>
       <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #aaa)', marginBottom: 12, textAlign: 'center' }}>
-        {hasCluster
+        {resume
+          ? (hasCluster ? `${clusterCount} connections mapped so far` : 'Their list is only partly read')
+          : hasCluster
           ? `${clusterCount} connections mapped in Six Degrees`
           : <>Scan {selected.name}&apos;s connections to map their network</>}
       </div>
@@ -1169,7 +1270,8 @@ function CreateClusterCard({ selected, degree2 }) {
           {last && <LastRead job={last} />}
           <div style={{ display: 'flex', gap: 8 }}>
             {resume && (
-              <button onClick={() => start('resume')} disabled={off} style={button(true)}>
+              // data-resume: the line by their name presses this one (StoppedPartway).
+              <button data-resume onClick={() => start('resume')} disabled={off} style={button(true)}>
                 Resume from page {resume.nextPage}
               </button>
             )}
