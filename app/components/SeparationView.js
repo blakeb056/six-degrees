@@ -380,28 +380,13 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
       flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
       background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', overflow: 'hidden',
     }}>
-      {/* ── Header: what this is, how many, and what it can't say ── */}
+      {/* ── Top: the search box, and on a phone what it ranks ── */}
       <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: isMobile ? 'baseline' : 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <h2 title={RANK_NOTE} style={{
-            margin: 0, fontSize: 18, fontWeight: 800,
-            background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>Separation</h2>
-          <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #aaa)', ...(isMobile ? {} : { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
-            {isMobile
-              ? `${plural(summary.people, 'person', 'people')} · ${fmt(summary.byTier.S)} S · ${fmt(summary.multi)} with 2+ ways`
-              : `${plural(summary.people, 'person', 'people')} two steps away · ${fmt(summary.byTier.S)} S-tier · ${fmt(summary.multi)} reachable 2+ ways · through ${fmt(summary.bridges)} of your connections`}
-          </span>
-          {!isMobile && searchBox}
-        </div>
-        {/* The whole population at a glance: one segment per tier, to scale. */}
-        <div aria-hidden="true" style={{ display: 'flex', gap: 1, height: 6, borderRadius: 3, overflow: 'hidden', margin: '8px 0 6px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)' }}>
-          {TIERS.filter((t) => summary.byTier[t] > 0).map((t) => (
-            <div key={t} style={{ flex: summary.byTier[t], background: tierColors[t] || '#555' }} />
-          ))}
-        </div>
-        {/* On a computer the line says it on its own; what it ranks is the title's tooltip (RANK_NOTE). */}
+        {/* Blake, 2026-10-03: no title, count line or tier strip up here ("remove this
+            line of text … and the actual line of visual of the tiers"); the map and the
+            slider say it. The search box keeps the row. */}
+        {!isMobile && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{searchBox}</div>}
+        {/* What it ranks, on a phone, where there's room under the search box. */}
         {isMobile && (
           <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', lineHeight: 1.4 }}>Ranks reachability, not people · lists scanned so far</div>
         )}
@@ -710,7 +695,6 @@ const MAP_CSS = `
   .sepmap .in { animation: none; }
 }
 `;
-const RANK_NOTE = 'Ranked by each person’s own score (title, company, headline). It ranks reachability, not people. From the lists scanned so far.';
 const HALO = { paintOrder: 'stroke', stroke: 'var(--sd-bg)', strokeWidth: 3, strokeLinejoin: 'round' };
 const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
 
