@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Settings → LinkedIn usage as Connection requests (Auto).
 
 ### Changed
+- **A scan that stopped partway says so, on the person's card and on the Scan page.** Open someone
+  whose circle scan didn't finish and a line by their name says which page it stopped after, with
+  Resume right there; their scan box now reads Scan in progress, with Resume from page N as its main
+  button, instead of Cluster active. The card's Insights offer Resume for them too, not a scan that
+  reads the list again from page 1, and an empty circle in Bridge Chains whose scan stopped partway
+  says so, with Resume from page N, instead of saying their list has been read. On the Scan page, everyone stopped partway is in a new In progress
+  card right after step 4, with Resume for each person and Resume all, and each name opens their circle
+  on the map. It used to be folded away under Fine-tune the scanner.
 - **The tabs sit on the header's line, and the notch hangs from them.** On a computer the row of
   tabs rests on the line under the header, so a page's own buttons in the notch below join onto
   it. The header is the same height on every tab: the Pending count that added a row on Degrees
