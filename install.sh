@@ -9,12 +9,13 @@
 #   3. copies "Six Degrees.app" into /Applications (or ~/Applications)
 #   4. opens it
 #
-# Why a script and not just the .dmg: the app is not signed with a paid Apple
-# developer certificate, so a .dmg downloaded in a browser makes macOS refuse the
-# first launch until you approve it in System Settings. A file fetched with curl
-# is not marked as "downloaded from the internet", so installed this way it
-# simply opens. The .dmg on the Releases page still works; it just needs that
-# one approval.
+# Why a script as well as the .dmg: one line that picks the right build for this
+# Mac, checks it against the published checksums, installs it and opens it, and
+# running it again updates. Until 0.8.0 the app wasn't signed, and this was also
+# the way around macOS's first-launch block (a file fetched with curl isn't
+# marked as downloaded from the internet). Since then the app is signed by Blake
+# Burford and notarized by Apple (docs/brain/DESKTOP.md D4), so the .dmg opens
+# like any Mac app too.
 #
 # Your data is never touched: it lives in ~/.six-degrees, not in the app, so
 # running this again later is also how you update.

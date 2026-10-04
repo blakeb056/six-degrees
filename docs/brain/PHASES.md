@@ -36,7 +36,8 @@ tick an item in the same change that finishes it.
       failed run shows its reason
 - [x] Updates panel for installed copies: a click-only check of the newest release
       (spec invariant 2)
-- [x] The `.dmg` window: drag-to-install picture, the one-time Open Anyway step, and an
+- [x] The `.dmg` window: drag-to-install picture, the one-time Open Anyway step (since
+      DESKTOP.md D4: "Signed by Blake Burford and notarized by Apple"), and an
       Applications drop target that shows its icon (TRAPS §28)
 - [x] README leads with installing; running from source is in CONTRIBUTING;
       `Start 6 Degrees.command` removed

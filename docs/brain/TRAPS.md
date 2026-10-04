@@ -993,3 +993,24 @@ Two things that make a Windows CI check say less than it seems:
   it exits at once. A `.tar.gz` can't carry that; the `.deb` does (`dpkg-deb --root-owner-group`
   plus `chmod 4755` in `scripts/build-desktop.mjs`), and CI checks it after installing. The
   `.tar.gz`'s release notes give the two commands, or `--no-sandbox`.
+
+## 45. Signing with Developer ID: four things that fail quietly or confusingly
+
+Found building D4 (DESKTOP.md, Signing) with a throwaway self-signed identity, 2026-10-04.
+
+- **codesign finds an identity only in a keychain on the search list.** `--keychain <path>`
+  alone says "no identity found", by name or by hash. `scripts/ci-mac-signing.sh` adds its
+  temporary keychain to the list and puts the list back in `cleanup`.
+- **An untrusted identity (a self-signed one) is found only by its SHA-1, never by its
+  name.** The release uses the hash too: names can repeat across renewals.
+- **A self-signed identity has no Team ID, so library validation refuses even the app's own
+  libraries** ("mapping process and mapped file (non-platform) have different Team IDs"):
+  sharp, Pillow, everything in a `.so` or `.node`. A test build signed that way verifies and
+  can't run. A Developer ID has a Team ID, and every library is signed with it, so the real
+  build needs no `disable-library-validation`. `checkSignedRuntime` in `build-app.mjs` runs
+  the signed programs only when there is a Team ID, and says why when there isn't.
+- **Node under the hardened runtime without `allow-jit` dies before running anything:**
+  "Fatal process out of memory: Failed to reserve virtual memory for CodeRange". V8 needs it,
+  in Node and in Electron (`scripts/entitlements/`). The scanner's Python needs nothing:
+  checked with its imports, Pillow and Playwright's driver under the hardened runtime (the
+  self-signed test copy with library validation turned off for that run only, never shipped).

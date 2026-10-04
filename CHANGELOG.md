@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The Mac app is signed by Blake Burford and notarized by Apple: no more Open Anyway.**
+  Download it, drag it to Applications and open it like any Mac app; macOS only asks once
+  whether to open an app from the internet. Every program inside it (the app, the server, the
+  scanner's Python and its parts) carries the signature, and Apple has checked the app and the
+  disk image. Updating from inside the app works the same from an unsigned copy (0.8.0 and
+  earlier) to a signed one, and from one signed version to the next. The website, the README,
+  the release notes and the picture in the disk image's window say so now. From 1.0.0 on, a
+  Mac release can't go out unsigned. The Windows app isn't signed yet: SmartScreen still asks
+  the first time.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added

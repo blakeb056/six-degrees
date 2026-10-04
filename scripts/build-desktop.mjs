@@ -14,8 +14,9 @@
 //            Menu and Desktop shortcuts. No admin rights asked for.
 //   Linux    @electron/packager, then a .deb (chrome-sandbox setuid root, which
 //            Electron needs on Ubuntu 24.04 and later) and a plain .tar.gz.
-// Unsigned, like the Mac app until D4: Windows shows SmartScreen's "More info →
-// Run anyway" the first time.
+// Unsigned (the Mac app is signed and notarized since D4; Windows signing is
+// D4's other half): Windows shows SmartScreen's "More info → Run anyway" the
+// first time.
 //
 // Built on the platform it is for (release.yml has a job each): pip installs
 // the Python's packages by running that Python. No new npm dependency: packager

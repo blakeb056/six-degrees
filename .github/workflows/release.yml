@@ -25,6 +25,13 @@ name: Release
 #
 # A dry run builds both .dmg files on GitHub's Macs and keeps them as workflow
 # artifacts. No tag, no Release, no npm.
+#
+# Mac signing (docs/brain/DESKTOP.md D4): with the five secrets
+# MACOS_SIGN_P12_BASE64, MACOS_SIGN_P12_PASSWORD, APPLE_API_KEY_P8_BASE64,
+# APPLE_API_KEY_ID and APPLE_API_ISSUER_ID (scripts/set-signing-secrets.sh sets
+# them), both Mac apps are signed with Developer ID and notarized by Apple, dry
+# runs included (notarizing publishes nothing). A real release of 1.0.0 or later
+# fails without them; before that, and on a dry run, it builds ad hoc as before.
 
 on:
   push:
@@ -91,6 +98,23 @@ jobs:
         run: node scripts/check-site-version.mjs
       - run: npm ci
       - run: npm test
+      # Developer ID (docs/brain/DESKTOP.md D4): with the five secrets, the
+      # certificate goes into a temporary keychain and the build signs every
+      # program inside out, notarizes the app and the disk image with Apple and
+      # staples both. A real release of 1.0.0 or later must be signed: without
+      # the secrets it fails here, before anything is built. Dry runs and
+      # releases before 1.0 without them are signed ad hoc, as before. Some
+      # secrets but not all always fails. The secrets reach only this step
+      # (scripts/ci-mac-signing.sh, which never prints one) and, for notarytool,
+      # the build step below.
+      - name: Signing identity, in a temporary keychain
+        run: bash scripts/ci-mac-signing.sh setup "$(node -p "require('./package.json').version")" "${{ inputs.dry_run && 'true' || 'false' }}"
+        env:
+          MACOS_SIGN_P12_BASE64: ${{ secrets.MACOS_SIGN_P12_BASE64 }}
+          MACOS_SIGN_P12_PASSWORD: ${{ secrets.MACOS_SIGN_P12_PASSWORD }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
       # Which shell (docs/brain/DESKTOP.md): the Electron app for everything since
       # 0.2.0. The classic launcher stays buildable (shell: classic) as the
       # fallback for one full release after the switch (rule 5).
@@ -103,6 +127,11 @@ jobs:
           node scripts/build-app.mjs --shell="$shell"
         env:
           BUNDLE_ARCH: ${{ matrix.arch }}
+          # Notarization's key id and issuer, straight from the secrets; the key
+          # itself, the identity and its keychain come from the step above
+          # ($GITHUB_ENV). Empty without the secrets, and then nothing notarizes.
+          SIX_DEGREES_NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          SIX_DEGREES_NOTARY_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
       # The Electron app as people get it: installed from its own disk image by
       # install.sh, not the copy in dist/ (a link that only resolves on the build
       # machine passes there and fails everywhere else, TRAPS §37). Then check
@@ -116,8 +145,30 @@ jobs:
           apps="$RUNNER_TEMP/apps"
           SIX_DEGREES_DMG="$(ls dist/*.dmg)" SIX_DEGREES_DEST="$apps" SIX_DEGREES_NO_OPEN=1 bash install.sh
           app="$apps/Six Degrees.app"
-          codesign --verify --deep --strict "$app"
+          codesign --verify --deep --strict "$app" || { echo "::error::The installed app's signature doesn't verify"; exit 1; }
           if find "$app" -type l -exec readlink {} \; | grep -q '^/'; then echo "::error::The installed app has absolute symlinks"; exit 1; fi
+
+          # Signed and notarized (DESKTOP.md D4): Gatekeeper accepts the disk image
+          # by its own signature and the app installed from it, both carry their
+          # stapled tickets (install.sh copies the app out with ditto), and the
+          # app has the hardened runtime. Everything below then runs under it, so
+          # the smoke test is also the test of the entitlements.
+          if [ "${MAC_SIGNING:-ad-hoc}" = developer-id ]; then
+            dmg="$(ls dist/*.dmg)"
+            # A runner with Gatekeeper's assessments turned off accepts anything,
+            # so there only the tickets can say (and the build's notarytool did).
+            gatekeeper=on
+            spctl --status 2>&1 | grep -q 'assessments disabled' && gatekeeper=off
+            [ "$gatekeeper" = on ] || echo "::warning::Gatekeeper's assessments are off on this runner: checking the stapled tickets only"
+            verdict="$(spctl -a -vvv -t open --context context:primary-signature "$dmg" 2>&1 || true)"; echo "$verdict"
+            [ "$gatekeeper" = off ] || echo "$verdict" | grep -qx 'source=Notarized Developer ID' || { echo "::error::Gatekeeper doesn't accept the disk image as notarized"; exit 1; }
+            xcrun stapler validate "$dmg" || { echo "::error::The disk image has no stapled ticket"; exit 1; }
+            verdict="$(spctl -a -vvv -t exec "$app" 2>&1 || true)"; echo "$verdict"
+            [ "$gatekeeper" = off ] || echo "$verdict" | grep -qx 'source=Notarized Developer ID' || { echo "::error::Gatekeeper doesn't accept the installed app as notarized"; exit 1; }
+            xcrun stapler validate "$app" || { echo "::error::The installed app has no stapled ticket"; exit 1; }
+            codesign -dv "$app" 2>&1 | grep -q 'flags=0x[0-9a-f]*(runtime)' || { echo "::error::The app isn't signed with the hardened runtime"; exit 1; }
+            echo "Notarized and stapled: the disk image and the installed app."
+          fi
 
           # The scanner's Python, inside the app (DESKTOP.md D2): it runs, as this
           # chip, and its packages load, compiled parts included (TRAPS §30).
@@ -197,6 +248,20 @@ jobs:
           echo "Installed from the image, its Python works, opened, reached, refused a second copy, quit mid-job, left nothing."
         env:
           PIP_NO_CACHE_DIR: '1'
+      # The keychain, the decoded key and certificate, and the search list, put
+      # back whatever happened above.
+      - name: Remove the signing keychain and keys
+        if: always()
+        run: bash scripts/ci-mac-signing.sh cleanup
+      # How this chip's app was signed, for the release notes: "developer-id"
+      # (notarized: the build and the smoke test above checked it) or "ad-hoc".
+      - name: Record how it was signed
+        run: echo "${MAC_SIGNING:-ad-hoc}" > "$RUNNER_TEMP/signing-${{ matrix.arch }}.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-${{ matrix.arch }}
+          path: ${{ runner.temp }}/signing-${{ matrix.arch }}.txt
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always() && env.APP_SHELL == 'electron'
         with:
@@ -354,6 +419,12 @@ jobs:
           pattern: pkg-linux-*
           merge-multiple: true
           path: out
+      # How each Mac app was signed (not published: out/ is, signing/ isn't).
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: signing-*
+          merge-multiple: true
+          path: signing
       # Two downloads with names that never change, so the README's buttons can
       # point at releases/latest/download/<name> and always get the newest app.
       # install.sh keeps using the versioned names (…-<version>-arm64.dmg).
@@ -404,22 +475,43 @@ jobs:
           EOF
           )"
           else
-            gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --title "$TAG" --notes "$(cat <<'EOF'
+            # The Mac paragraph says what this release's apps are: signed and
+            # notarized when both chips' builds were (signing/, from the Mac jobs,
+            # which checked it), and the old Open Anyway steps otherwise (a release
+            # before 1.0 built without the signing secrets).
+            mac_signed=""
+            if [ "$(cat signing/signing-arm64.txt 2>/dev/null)" = developer-id ] && [ "$(cat signing/signing-x64.txt 2>/dev/null)" = developer-id ]; then mac_signed=1; fi
+            {
+              cat <<'EOF'
           **Windows:** **Six-Degrees-Windows-Setup.exe**: one click installs it (no admin rights). Not signed yet, so SmartScreen may ask: *More info → Run anyway*. **Linux:** **Six-Degrees-Linux-x64.deb** (`sudo apt install ./Six-Degrees-Linux-x64.deb`) or the .tar.gz. Scanning needs Google Chrome on both.
 
           **Download for Mac:** **Six-Degrees-Mac-Apple-Silicon.dmg** (any Mac with an Apple M chip) or **Six-Degrees-Mac-Intel.dmg** (older Intel Macs), below. Not sure which? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel. Needs macOS 13.5 (Ventura) or later.
 
-          Open the `.dmg` and drag **Six Degrees** to Applications. It isn't signed with a paid Apple certificate yet, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.
+          EOF
+              if [ -n "$mac_signed" ]; then
+                cat <<'EOF'
+          Open the `.dmg` and drag **Six Degrees** to Applications. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. (The first time, macOS asks whether to open an app downloaded from the internet: click *Open*.)
+
+          **Or install from Terminal** (running it again updates):
+
+          EOF
+              else
+                cat <<'EOF'
+          Open the `.dmg` and drag **Six Degrees** to Applications. This build isn't signed with Apple's certificate, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.
 
           **Or install from Terminal** (no Open Anyway step, and running it again updates):
 
+          EOF
+              fi
+              cat <<'EOF'
           ```
           curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
           ```
 
           What changed: see [CHANGELOG.md](https://github.com/blakeb056/six-degrees/blob/main/CHANGELOG.md).
           EOF
-          )"
+            } > "$RUNNER_TEMP/notes.md"
+            gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
           fi
 
   npm-package:
