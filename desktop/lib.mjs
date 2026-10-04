@@ -30,15 +30,37 @@ export function isExternalWebUrl(url) {
 }
 
 /**
+ * The System Settings panes the app may open, exactly as the Scan page links
+ * them (lib/scanner-setup.js APP_MANAGEMENT_URLS; tests/desktop.test.mjs checks
+ * the two lists agree). Privacy & Security → App Management: macOS asks there
+ * whether Six Degrees may manage apps when Chrome, started by the scanner,
+ * updates itself. "shouldnt we have in the onboarding for scan … a button where
+ * the user is basically brought to the app management and enables it like Flow
+ * does" (Blake, 2026-10-04). The first is macOS 15 and later's address (checked
+ * on 26.5.1), the second macOS 13 and 14's.
+ *
+ * Whole strings only: no prefix, no other pane, no other query. A page that
+ * could send any x-apple.systempreferences: address could open any pane, and
+ * a custom scheme can start any app that claims it, so nothing else of the
+ * kind gets out.
+ */
+export const SETTINGS_URLS = Object.freeze([
+  'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AppBundles',
+  'x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles',
+]);
+
+/**
  * What to do with a link the page opens or follows:
- *   'app'      one of the app's own pages: stays in the app
- *   'browser'  a web link (LinkedIn above all): the user's own browser. LinkedIn
- *              loaded inside the app would be a second, signed-out browser
- *              (DESKTOP.md rule 7)
- *   'block'    anything else (file:, javascript:, custom schemes)
+ *   'app'       one of the app's own pages: stays in the app
+ *   'browser'   a web link (LinkedIn above all): the user's own browser. LinkedIn
+ *               loaded inside the app would be a second, signed-out browser
+ *               (DESKTOP.md rule 7)
+ *   'settings'  one of SETTINGS_URLS: System Settings opens on that pane
+ *   'block'     anything else (file:, javascript:, custom schemes)
  */
 export function routeFor(url, origin) {
   if (isAppUrl(url, origin)) return 'app';
+  if (SETTINGS_URLS.includes(url)) return 'settings';
   if (isExternalWebUrl(url)) return 'browser';
   return 'block';
 }

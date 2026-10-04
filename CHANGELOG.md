@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **On a Mac, the Scan page offers App Management once, so macOS stops asking while you scan.**
+  When the scanner starts Google Chrome, Chrome's own updater may try to update Chrome, and macOS
+  asks whether Six Degrees can manage apps. A new item under step 1 says what that is and opens
+  System Settings → Privacy & Security → App Management with one button (the right pane for macOS
+  13 and 14 too); Done or Skip puts it away for good. It's optional and never holds the step up:
+  scanning works either way, and Chrome updates itself the next time you open it. Now that the app
+  is signed, allowing it once lasts across updates. The docs page's questions and the README say
+  the same.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added
