@@ -1485,7 +1485,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The four new actions in Settings → Your data (save a copy, import, restart, show the
   folder) are gated like the routes that delete data or start processes: never reachable
   from another machine. An imported file is treated as untrusted and checked in full before
-  anything changes ([SECURITY.md](SECURITY.md)).
+  anything changes ([SECURITY.md](https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md)).
 
 ## [0.2.1] - 2026-09-25
 
