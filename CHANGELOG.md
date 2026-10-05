@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-04
+
 ### Added
 - **Unscanned, a new Degrees view: build a circle where you see it.** Right after Bridge Chains,
   it rings your connections whose circles aren't scanned yet round you the way Bridge Chains
