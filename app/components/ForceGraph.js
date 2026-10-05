@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
-import { recentre } from '../../lib/galaxy';
+import { reframe } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
@@ -142,21 +142,37 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const container = svgRef.current?.parentElement;
     if (!container) return;
     const updateSize = () => {
+      // The box on screen and the window it is in: lib/galaxy.js reframe tells
+      // a panel opening beside the map from the window being resized.
+      const width = Math.round(container.clientWidth);
+      const height = Math.round(container.clientHeight);
+      const { left, top } = container.getBoundingClientRect();
+      const was = sizeRef.current;
+      const next = { left, top, width, height, vw: window.innerWidth, vh: window.innerHeight };
+      sizeRef.current = next;
+      // Nor does a new size rebuild. Opening the side panel or the Filter panel
+      // used to rebuild the Galaxy: the layout started over, the selection ring
+      // was erased, and at 30,000 people the page stalled. Then it re-centred,
+      // through React a frame or more late and as a slide: the map jumped a
+      // panel's width with its edge cut off, then slid back half of it (Blake,
+      // 2026-10-05: "the network circle is clipping ... it shouldn't be moving
+      // my positions"). Now the view is moved here, after layout and before
+      // the frame is painted, so no frame shows the map anywhere else.
+      if (was && (was.width !== width || was.height !== height || was.left !== left || was.top !== top)) {
+        sceneRef.current?.resize(next);
+      }
       // Only publish a genuinely new size. A fresh object every observation is
       // never Object.is-equal, so React re-rendered on every callback —
       // including the sub-pixel churn a scrollbar appearing and disappearing
       // produces.
-      const width = Math.round(container.clientWidth);
-      const height = Math.round(container.clientHeight);
-      sizeRef.current = { width, height };
       setDimensions((prev) =>
         prev && prev.width === width && prev.height === height ? prev : { width, height }
       );
     };
     updateSize();
-    // A resize only re-fits the view (below), so it no longer waits to settle.
-    // It used to rebuild the whole scene, and a rebuild that itself changed the
-    // size never stopped (TRAPS §29).
+    // A resize only moves the view, so it no longer waits to settle. It used to
+    // rebuild the whole scene, and a rebuild that itself changed the size never
+    // stopped (TRAPS §29).
     const ro = new ResizeObserver(updateSize);
     ro.observe(container);
     return () => ro.disconnect();
@@ -168,14 +184,6 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     sceneRef.current?.select(selectedId);
   }, [selectedId]);
 
-  // Nor does a new size. Opening the side panel or the Filter panel used to
-  // rebuild the Galaxy: the layout started over, the selection ring was
-  // erased, and at 30,000 people the page stalled. Now the view slides over,
-  // at the same zoom, so what was in the middle stays in the middle.
-  useEffect(() => {
-    if (dimensions) sceneRef.current?.resize(dimensions);
-  }, [dimensions]);
-
   const measured = dimensions !== null;
   useEffect(() => {
     if (!measured || !svgRef.current || !connections.length) return;
@@ -185,7 +193,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     // The view as it was, moved for any change of size since it was set.
     const size = sizeRef.current;
     const { transform, size: setFor } = viewRef.current;
-    const saved = transform ? recentre(transform, setFor, size) : null;
+    const saved = transform ? reframe(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
     const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current, routes);
@@ -226,7 +234,12 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
       <style>{RING_CSS}</style>
-      <svg ref={svgRef} width={dimensions?.width ?? 800} height={dimensions?.height ?? 600} style={{ background: 'transparent' }} />
+      {/* Sized by CSS to its box, so it is the new size in the same frame as
+          the box; the width and height React writes came a render later, and
+          until then the map's far edge was cut off. Out of the flow, so it
+          cannot hold its box open either (TRAPS §29). */}
+      <svg ref={svgRef} width={dimensions?.width ?? 800} height={dimensions?.height ?? 600}
+        style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', background: 'transparent' }} />
       {/* The selection ring. The scene places it over the selected dot. */}
       <div ref={ringRef} className="galaxy-ring" style={{
         position: 'absolute', left: 0, top: 0, display: 'none',
@@ -483,11 +496,16 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     placeRing();
   };
 
-  // A new size: the view slides by half the change, at the same zoom.
+  // A new box: the view moves with it at once, at the same zoom, in the frame
+  // the box changed (lib/galaxy.js reframe). A glide already under way goes on
+  // to the same place, moved the same way.
   const resize = (next) => {
-    const t = recentre(heading ?? d3.zoomTransform(svg.node()), box, next);
+    const now = reframe(d3.zoomTransform(svg.node()), box, next);
+    const going = heading && reframe(heading, box, next);
     box = next;
-    moveView(d3.zoomIdentity.translate(t.x, t.y).scale(t.k), 250);
+    heading = null;
+    svg.interrupt().call(zoomBehavior.transform, d3.zoomIdentity.translate(now.x, now.y).scale(now.k));
+    if (going) moveView(d3.zoomIdentity.translate(going.x, going.y).scale(going.k), 250);
   };
 
   // Restore the previous view if there is one (filter changes); otherwise put
