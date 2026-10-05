@@ -28,9 +28,7 @@ export const ONBOARDING_CSS = `
 
 /* Top: the name, where you are, and the way out */
 .ob-top { height: 68px; flex-shrink: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 36px; }
-.ob-mark { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; justify-self: start;
-  background: linear-gradient(135deg, #FFD700, #9B59B6, #3498DB); -webkit-background-clip: text; background-clip: text; color: transparent; }
-html[data-mode="light"] .ob-mark { background-image: linear-gradient(135deg, #d99a00, #8e44ad, #2f80ed); }
+.ob-mark { justify-self: start; }
 .ob-dots { display: flex; gap: 8px; align-items: center; }
 .ob-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 99px; background: rgba(var(--ob-ink), 0.16); transition: width .4s cubic-bezier(.2,.8,.2,1), background .4s; }
 .ob-dots button.done { background: rgba(var(--ob-ink), 0.5); }

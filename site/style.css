@@ -64,6 +64,13 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 750; font-size: 18px; white-space: nowrap; }
 .brand:hover { color: var(--text); }
+/* The wordmark, as the app draws it (app/components/Wordmark.js): Manrope 800 in
+   gold, the i's dot a column of six tier dots. Font: /fonts, SIL OFL. */
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 800; font-display: swap; src: url("/fonts/manrope-800.woff2") format("woff2"); }
+.wordmark { font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--gold); }
+.wm-i { position: relative; display: inline-block; line-height: 1; }
+.wm-dots { position: absolute; left: 50%; bottom: 0.715em; transform: translateX(-50%); overflow: visible; pointer-events: none; }
+
 .top nav { display: flex; gap: 4px; margin-left: auto; }
 .top nav a { color: var(--muted); text-decoration: none; font-size: 15px; white-space: nowrap; padding: 6px 11px; border-radius: 999px; }
 .top nav a:hover { color: var(--text); background: var(--panel-2); }

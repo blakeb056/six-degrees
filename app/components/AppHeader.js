@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import AppTabs from './AppTabs';
 import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
+import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
 import useScanner from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
@@ -51,7 +52,7 @@ function useIsMobile() {
 const PAD_Y = 20;
 const ROW_GAP = 8;
 
-const TITLE = { fontWeight: 700, margin: 0, whiteSpace: 'nowrap', background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
+const TITLE = { margin: 0, fontWeight: 800 };
 
 /**
  * @param {{ active: string, isMobile?: boolean, csvMode?: boolean, onMode?: (key: string) => void,
@@ -84,7 +85,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
         ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }
         : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: ROW_GAP }}>
         <Link href="/" style={{ textDecoration: 'none', justifySelf: 'start' }}>
-          <Brand style={{ ...TITLE, fontSize: isMobile ? 16 : 28 }}>Sixgree</Brand>
+          <Brand style={{ ...TITLE, fontSize: isMobile ? 16 : 28 }}><Wordmark /></Brand>
         </Link>
         {isMobile ? tabs : (
           <div style={{ alignSelf: 'end', position: 'relative', top: ROW_GAP + PAD_Y, zIndex: 2 }}>{tabs}</div>
