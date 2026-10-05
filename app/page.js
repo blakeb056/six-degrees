@@ -14,7 +14,7 @@ import { viewsForMode } from './components/views';
 import useNotchTabs from './components/useNotchTabs';
 import { LAYOUTS, layoutNow, pickLayout, watchLab } from '../lib/galaxy-lab';
 import OnboardingGate from './components/OnboardingGate';
-import EmptyState from './components/EmptyState';
+import Onboarding from './components/onboarding/Onboarding';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { loadCsvNetwork, closeCsvNetwork, REMOVE_CSV_QUESTION } from '../lib/csv';
@@ -106,6 +106,11 @@ function HomeInner() {
   // them. With the network, they say who is ready for a circle scan (lib/reach.js).
   const [scanNotes, setScanNotes] = useState(NO_SCAN_NOTES);
   const shapeRef = useRef('');
+  // No network yet: the guided setup, the whole window (app/components/onboarding).
+  // Decided once, when the network first loads, and kept until its Open the map:
+  // the network is reloaded the moment the first scan ends (NetworkRefresh), and
+  // the map would otherwise take its place before "Your galaxy is ready".
+  const [setupOpen, setSetupOpen] = useState(false);
   // Everyone with a request out, shared with every view (lib/requests-client.js).
 
   useEffect(() => {
@@ -128,6 +133,7 @@ function HomeInner() {
       setDegree1(d1);
       setDegree2(d2);
       setDegree3(d3 || []);
+      if (!IS_DEMO && !csv && d1.length === 0) setSetupOpen(true);
       shapeRef.current = networkShape(d1, d2);
       setStats(statsFor(d1, d2));
       setLoading(false);
@@ -265,6 +271,11 @@ function HomeInner() {
     );
   }
 
+  // Someone new, or someone who left the setup halfway: the setup, until Open the map.
+  if (setupOpen || degree1.length === 0) {
+    return <Onboarding onFinish={async () => { await reload(); setSetupOpen(false); }} />;
+  }
+
   // Scanning and the Scan page belong to your own network, not the sample or a CSV.
   const canScan = !IS_DEMO && !csvMode;
 
@@ -329,9 +340,6 @@ function HomeInner() {
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
-
-          // No connections at all: offer a way in rather than a black screen.
-          if (degree1.length === 0) return <EmptyState />;
 
           // Every Degrees surface is built from 2nd-degree rows, so with none
           // say why instead of rendering an empty canvas. Why depends on where

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **A guided setup for someone new.** With no network yet, the app opens on one card at a time
+  instead of the old welcome screen: *Welcome* (scan, import a CSV, or try the sample), *Get your
+  Mac ready* (Chrome and the scanner tick themselves; App Management, on macOS 13 and later, with
+  *Open System Settings*, *I've allowed it* and *Skip*, saved as before; and the "I understand"
+  about scanning risks as a checkbox right there), *Connect your LinkedIn* (opens the sign-in
+  window and turns to *Connected* by itself), *Set your pace* (speed, searches a day with the same
+  gold warning above 100, never a pop-up, and the Auto scan switch), and *Map your people* (the
+  first scan's progress, with the optional "What field are you in?" asked while it reads), then
+  *Your galaxy is ready* and the map. Someone who leaves halfway comes back to the step they were
+  on; someone with a network never sees it. The Scan page and the setup share one source for the
+  scanner's status and what each button does, so they can't disagree.
 - **No pop-ups when you scan: one click starts it, and Chrome stays out of your way.** Check for
   new in the header used to raise up to three boxes before and after it started; now one click
   starts it, the cluster spins on the button and the notch shows it running, and what it does and
