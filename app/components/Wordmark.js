@@ -24,23 +24,25 @@ const LIFT = 55;   // stem to first dot
 
 // The flat line (Blake, 2026-10-05, his brother's pick): the gold dot sits where
 // the i's dot goes, and the tiers follow it level to the right, evenly spaced to
-// the end of the word, each a little smaller: A purple, B blue, C green, D grey.
-// The row ends in a gold degree ring, so it reads "Sixgree°". The fade is gentle
-// so the last dots still show on a dark look. Left to right: diameter scale,
-// colour, opacity; `ring` draws an outline instead of a dot.
+// the end of the word, each a touch smaller: A purple, B blue, C green, D grey.
+// The row ends in a gold degree ring the same size and height as the i's dot, so
+// it reads "Sixgree°". Blake, later that day: the dots were too small to read in
+// the site's header, so the taper and the fade are gentle. Left to right:
+// diameter scale, colour, opacity; `ring` draws an outline instead of a dot,
+// its outer edge the same size as a dot of that scale.
 export const DOTS = [
   [1, 'var(--sd-tier-s, #ffd700)', 1],
-  [0.86, 'var(--sd-tier-a, #9b59b6)', 0.92],
-  [0.76, 'var(--sd-tier-b, #3498db)', 0.84],
-  [0.68, 'var(--sd-tier-c, #4caf63)', 0.76],
-  [0.6, 'var(--sd-tier-d, #bdc3c7)', 0.68],
-  [0.84, 'var(--sd-tier-s, #ffd700)', 1, 'ring'],
+  [0.92, 'var(--sd-tier-a, #9b59b6)', 1],
+  [0.86, 'var(--sd-tier-b, #3498db)', 0.96],
+  [0.81, 'var(--sd-tier-c, #4caf63)', 0.92],
+  [0.77, 'var(--sd-tier-d, #bdc3c7)', 0.9],
+  [1, 'var(--sd-tier-s, #ffd700)', 1, 'ring'],
 ];
 const D0 = 140;     // the gold dot's diameter
 const SPAN = 2760;  // from the i's centre to the last dot's centre (Manrope 800, -0.02em tracking)
 const W = SPAN + D0;
 const H = D0;
-const RING_W = D0 * 0.16;
+const RING_W = D0 * 0.26;
 const CIRCLES = DOTS.map(([k, fill, opacity, kind], i) => ({ cx: D0 / 2 + (SPAN * i) / (DOTS.length - 1), cy: H / 2, r: kind === 'ring' ? (D0 * k - RING_W) / 2 : (D0 * k) / 2, fill, opacity, ring: kind === 'ring' }));
 
 const em = (n) => `${n / 1000}em`;
