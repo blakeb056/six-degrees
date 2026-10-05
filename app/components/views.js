@@ -12,7 +12,6 @@
 
 import ForceGraph from './ForceGraph';
 import ChainView from './ChainView';
-import UnscannedView from './UnscannedView';
 import GridView from './GridView';
 import ListView from './ListView';
 import RingsView from './RingsView';
@@ -32,9 +31,6 @@ export const VIEWS = {
   // Separation is a tab of its own (Blake, 2026-10-02), not a view inside Degrees.
   separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
-  // Bridge Chains' overview for the circles not built yet (Blake, 2026-10-04: "basically the same
-  // thing we have for bridges but just make it for unscanned clusters"): a press builds one.
-  unscanned: { component: UnscannedView, modes: ['degrees'],       label: 'Unscanned',     icon: '◌', desc: 'Your connections whose circles aren’t scanned yet: build one' },
   // Pyramid and List left Network Circle (Blake, 2026-10-02: "the list and pyramid gone"): the
   // Galaxy and its physics are what that tab is for. They stay in Degrees.
   rings:    { component: RingsView,  modes: ['degrees'],            label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
@@ -47,7 +43,7 @@ export const VIEWS = {
  * it is also where resolveView lands when the chosen view isn't a Degrees one
  * (Galaxy, say, carried over from Network Circle); then Separation.
  */
-const ORDER = ['galaxy', 'chain', 'unscanned', 'separation', 'rings', 'list'];
+const ORDER = ['galaxy', 'chain', 'separation', 'rings', 'list'];
 
 export function viewsForMode(mode) {
   return ORDER

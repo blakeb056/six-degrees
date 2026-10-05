@@ -1,7 +1,13 @@
 'use client';
 
-// Degrees → Unscanned: your connections whose circles aren't scanned yet, round
-// you the way Bridge Chains rings your bridges, and a press that builds one.
+// Degrees → Bridge Chains before you have a bridge: your connections whose
+// circles aren't scanned yet, round you the way Bridge Chains rings your
+// bridges, and a press that builds one. app/page.js puts it in Bridge Chains'
+// place until there is a bridge, and while a circle started here is still
+// being built (lib/reach.js bridgeChainsSlot); then Bridge Chains takes over
+// with that circle open. Blake, 2026-10-04: "if the person has no scanned
+// bridges yet then they are opened to the unscanned bridges in degrees and
+// once they do have one or more then its back to normal." Not a tab of its own.
 //
 // Blake, 2026-10-04: "basically the same thing we have for bridges but just
 // make it for unscanned clusters and when they click on the dot instead of
@@ -350,6 +356,7 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
             <b style={{ color: 'var(--sd-fg-1, #fff)', fontVariantNumeric: 'tabular-nums' }}>{list.length.toLocaleString('en-US')}</b> not scanned yet
           </span>
           {left > 0 && <span>{left.toLocaleString('en-US')} already read, left out</span>}
+          <span style={{ color: 'var(--sd-fg-2, #ccd)' }}>No circle scanned yet: click someone to build the first, and Bridge Chains begins with them.</span>
         </div>
       )}
     </>
@@ -701,10 +708,10 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
             padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
             background: 'rgba(var(--sd-ink, 255, 255, 255), 0.1)', color: 'var(--sd-fg-1, #ddd)', fontSize: 12, fontWeight: 700,
           }}>
-            ← Unscanned
+            ← Bridge Chains
           </button>
           <nav aria-label="Trail" style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button type="button" onClick={onBack} style={crumb}>Unscanned</button>
+            <button type="button" onClick={onBack} style={crumb}>Bridge Chains</button>
             <span aria-hidden="true">›</span>
             <span style={{ color: 'var(--sd-fg-1, #fff)', fontWeight: 700 }}>{person.name}</span>
           </nav>
