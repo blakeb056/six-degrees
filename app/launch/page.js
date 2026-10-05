@@ -18,7 +18,7 @@ function useInView(options = {}) {
 }
 
 // ── Tier colors from the real app ──
-const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
+const TIER = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#4CAF63', D: '#BDC3C7' };
 const GRADIENT = 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)';
 
 // ── Animated counter ──

@@ -31,20 +31,12 @@ export const Ico = {
   spark: (p) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth="1.8" {...p}><circle cx="12" cy="12" r="2.2" fill="currentColor" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="9.5" strokeDasharray="2 3" /></svg>,
 };
 
-/** The app's own icon (desktop/icon/icon.svg). */
+/** The app's own icon: public/app-icon.svg, a copy of desktop/icon/icon.svg
+ * (tests/app-icon.test.mjs keeps the two the same), cropped to its squircle. */
 export function AppIcon(props) {
   return (
     <svg viewBox="100 100 824 824" aria-hidden="true" {...props}>
-      <defs><radialGradient id="ob-core" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stopColor="#ffffff" /><stop offset="0.3" stopColor="#ffffff" stopOpacity="0.9" /><stop offset="0.45" stopColor="#FFD700" stopOpacity="0.45" /><stop offset="1" stopColor="#FFD700" stopOpacity="0" /></radialGradient></defs>
-      <g transform="translate(100 100) scale(0.8046875)">
-        <rect width="1024" height="1024" rx="230" fill="#14142e" />
-        <circle cx="470" cy="560" r="330" fill="none" stroke="#9B59B6" strokeOpacity="0.2" strokeWidth="12" />
-        <circle cx="470" cy="560" r="410" fill="none" stroke="#3498DB" strokeOpacity="0.13" strokeWidth="12" />
-        <circle cx="470" cy="620" r="210" fill="none" stroke="#FFD700" strokeWidth="18" />
-        <path d="M 260 620 C 260 400, 400 248, 601 238" fill="none" stroke="#FFD700" strokeWidth="18" strokeLinecap="round" />
-        <circle cx="655" cy="236" r="54" fill="none" stroke="#FFD700" strokeWidth="18" />
-        <circle cx="470" cy="620" r="95" fill="url(#ob-core)" />
-      </g>
+      <image href="/app-icon.svg" x="0" y="0" width="1024" height="1024" />
     </svg>
   );
 }

@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A new Sixgree icon.** A gold S drawn as one tapered curve, with a round gold dot (you) in
+  its lower bowl so it also reads as a 6, and a degree ring: six degrees. The app icon (Mac,
+  Windows and Linux) carries faint tier rings and a glow behind the dot; the favicon and the
+  website's small icon are the same mark without them, since they vanish at tab sizes. The
+  guided setup now draws the icon from the same file the builds use.
+- **The wordmark's dots run level to the right and end in a degree.** The gold dot still sits
+  over the i; the tiers follow it in a straight line to the end of the word, each a little
+  smaller (A purple, B blue, C green, D grey), and the row ends in a gold degree ring:
+  Sixgree°. The fade is gentle, so the last dots still show on a dark look. In the app and on
+  the website.
+- **Tier C is green.** The tiers now read like a game's rarity ladder: S gold, A purple,
+  B blue, C green, D grey (C was a grey close to D's). On every look except Analyst, which keeps
+  its colour-blind-safe set.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added
