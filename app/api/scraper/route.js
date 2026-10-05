@@ -4,7 +4,7 @@ import path from 'node:path';
 import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
-import { scanProgress, mappingNow } from '../../../lib/scan-progress';
+import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
@@ -443,6 +443,9 @@ function job() {
     exitCode: state.exitCode,
     failure: state.running ? null : state.failure,
     progress: state.running ? scanProgress(state.log, state.action) : null,
+    // What LinkedIn needs you to do at the scanner's Chrome, now in front, or
+    // null: read from the whole log, since the wait can outlast what's sent.
+    needsYou: state.running ? needsYou(state.log) : null,
     pages: state.running ? state.pages : 0,
     found: state.running ? state.found : [],
     log: state.log.slice(-120),
@@ -846,9 +849,12 @@ export async function POST(request) {
       // otherwise leave everyone paused at page 11 and do nothing.
       ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
       ...(deeper ? ['--deeper'] : []),
-      // Scan page → "Hide the Chrome window": no window at all. Never for
-      // signing in, which needs you at the window.
-      ...(body.headless === true && action !== 'login' ? ['--headless'] : []),
+      // Scan page → Fine-tune → "Show the scanner's Chrome window": a normal
+      // window in front, to watch it work. Without it the window stays out of
+      // sight and comes forward only when LinkedIn needs you (Blake,
+      // 2026-10-04: "not to have any disruption through pop ups or windows").
+      // Signing in is always in front.
+      ...(body.showWindow === true && action !== 'login' ? ['--show-window'] : []),
     ])];
   }
 

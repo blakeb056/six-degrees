@@ -149,3 +149,22 @@ test('an id that is not one of your connections starts nothing, whatever name co
   assert.equal((await job()).running, false);
   assert.equal(existsSync(ARGS), false);
 });
+
+// Blake, 2026-10-04: no pop-ups and no windows unless they're needed. The
+// scanner's Chrome stays out of sight by default; Fine-tune's "Show the
+// scanner's Chrome window" sends showWindow, which becomes --show-window. The
+// old "Hide the Chrome window" (headless) is gone: a stale page sending it
+// starts the same out-of-sight scan, never a headless one.
+test('the window: out of sight unless asked to show it; never headless from the app; sign-in always in front', async () => {
+  assert.equal((await post({ action: 'refresh', showWindow: true })).status, 200);
+  assert.deepEqual(await scannerArgs(), ['--refresh', '--show-window']);
+  assert.equal((await post({ action: 'refresh' })).status, 200);
+  assert.deepEqual(await scannerArgs(), ['--refresh']);
+  assert.equal((await post({ action: 'refresh', headless: true })).status, 200);
+  assert.deepEqual(await scannerArgs(), ['--refresh']);
+  assert.equal((await post({ action: 'bridge', id: 'p-dalia-2', showWindow: true })).status, 200);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100', '--show-window']);
+  // Signing in is in front whatever the switch says (scripts/scrape.py launch_chrome sign_in=True).
+  assert.equal((await post({ action: 'login', showWindow: true })).status, 200);
+  assert.deepEqual(await scannerArgs(), ['--login']);
+});

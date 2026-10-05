@@ -27,7 +27,79 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--clear-skips` | Forget every hidden-profile skip. |
 | `--save-photos` | Saves the photos older versions kept as links (`GET /api/update-images`), once each: the file's path if it saved, and a definite no (expired, not LinkedIn's, not a picture, someone else's) forgets the link. No connection, a timeout, a 429 or 5xx keeps it (`TryLater`); three in a row, or nothing but those, end the run with the reason and exit 1. No browser, no search. Every scan that finishes does the same at its end (`save_waiting_photos`); the Scan page's *Save photos* runs this. |
 | `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
-| `--headless` | Works on every mode once signed in — but headless Chrome is **more** detectable, not less. |
+| `--show-window` | A normal Chrome window in front, to watch it work (the Scan page's *Show the scanner's Chrome window*). Without it the window stays out of sight; see *The window* below. |
+| `--headless` | Command line only: works on every mode once signed in, but headless Chrome is **more** detectable, not less, and a check LinkedIn asks for can't be seen. |
+
+## The window, and no pop-ups (rule changed 2026-10-04)
+
+**The rule changed.** Until 2026-10-04 the scanner was "openly automated": a Chrome window
+in front of you that you watched work. Blake retired that for what's on screen:
+
+> "anything that utilizes chrome playwright within the actual app need to have no pop ups or
+> security warning, double check" (Blake, 2026-10-04)
+>
+> "we are changing the rule that was during testing we are now polishing and dont want to
+> hinder the user with clicking ok for pop ups … we want seamlessness … not to have any
+> disruption through pop ups or windows" (Blake, 2026-10-04)
+
+**What did not change:** the pacing (fixed waits, never randomised to look like a person),
+the budgets, the caps, the profile-view gap and the cooldowns, exactly as they were. Only
+what reaches the screen changed.
+
+**One launch helper.** Every Chrome the scanner starts goes through `launch_chrome()`
+(`tests/chrome-launch.test.mjs` fails on any other `launch_persistent_context`):
+
+- `CHROME_ARGS`: `--disable-blink-features=AutomationControlled` (kept) and `--test-type`.
+  Playwright 1.63 passes no `--enable-automation`, so there is no "controlled by automated
+  test software" bar. The yellow bar people saw was Chromium's "You are using an unsupported
+  command-line flag … Stability and security will suffer", for Playwright's `--no-sandbox`
+  and for our blink flag, each on its own. Chrome skips its startup bars under `--test-type`
+  (`infobar_utils.cc`: the `kTestType` return comes before `ShowBadFlagsPrompt`).
+- On a Mac, `chromium_sandbox=True`: Chrome's own sandbox runs (renderers start with
+  `--seatbelt-client`), headful and headless. Windows and Linux keep Playwright's default
+  until someone tries them; `--test-type` hides the bar there too.
+- `quiet_chrome_profile()` writes `QUIET_PREFS` into `<profile>/Default/Preferences` before
+  every launch, read-modify-write (everything else kept; a file that isn't a JSON object is
+  left alone): `profile.exit_type` "Normal" and `profile.exited_cleanly` (no "Restore
+  pages?" after a stop had to kill Chrome, a crash or a shutdown), `credentials_enable_service`
+  and `profile.password_manager_enabled` false (no "Save password?"), `translate.enabled`
+  false, `profile.default_content_setting_values.notifications` 2 (LinkedIn asks).
+
+**Where the window goes** (`chrome_window_mode`):
+
+| Mode | When | What |
+|---|---|---|
+| `background` | the default | A real window kept out of sight. On a Mac, `MacChrome` hides it (as ⌘H does) from the moment it appears, through AppKit's `NSRunningApplication` (ctypes, nothing to install); elsewhere it opens at `--window-position=-32000,-32000`. If AppKit won't load on a Mac, it's minimised over CDP. |
+| `front` | `--login`, and `--show-window` (Scan page → Fine-tune → *Show the scanner's Chrome window*, off by default) | A normal window in front, placed on screen. |
+| `headless` | `--headless`, command line only | No window. Not offered in the app any more: more detectable, and a check LinkedIn asks for can't be seen. |
+
+**Forward only when LinkedIn needs you.** `ensure_logged_in` calls `bring_forward()` just
+before it waits for a sign-in or a security check (unhidden, activated, on screen, in front),
+prints `LinkedIn needs you: …` (`NEEDS_YOU`; the app's `needsYou()` in
+`lib/scan-progress.js` reads it, and the notch and the Scan page show it in gold), and
+`back_out_of_the_way()` once you're through. A mid-scan pushback with `stop_on_checkpoint`
+still ends the run; it doesn't wait for you.
+
+**Measured on this Mac, 2026-10-04, scratch profiles, a local page (never LinkedIn):**
+
+- The "unsupported flag" bar is 56 px: Chrome's own UI above the page was 143 px with
+  `--no-sandbox` alone, with the blink flag alone, and with both (1.0.0), and 87 px with
+  `--test-type` (sandbox on or off) or with neither flag.
+- `Startup.CrashBubbleShown` (chrome://histograms) after Chrome was killed: 1 without the
+  prefs, 0 with them.
+- Chrome started by Playwright makes itself the active app about a second in, whatever the
+  window's position (every variant tried: plain, off-screen flag, minimised after, moved
+  after), and keeps the focus. macOS puts a window placed at -32000 back at (0, 30); moved
+  off-screen afterwards, 40 px of it stays on screen. Hidden from the moment it appears, the
+  focus went back to the app you were in after about 0.2 s, and stayed there.
+- A hidden (or minimised) window's page keeps drawing and loading: requestAnimationFrame at
+  60 fps, `visibilityState` "visible", an IntersectionObserver firing on scroll (Playwright's
+  `--disable-backgrounding-occluded-windows` and `--disable-renderer-backgrounding`), so
+  LinkedIn's lists still load as the scanner scrolls.
+- `bring_forward` made it the active app, on screen; `back_out_of_the_way` hid it and the
+  focus went back.
+- Not tried: Windows and Linux (off-screen there, no hiding), and a live LinkedIn scan in the
+  new window. Watch the first one.
 
 ## Sign-in
 
@@ -46,6 +118,8 @@ waits for you to sign in. The Scan page's step 2 goes by that note
 makes as soon as the window first opens, so closing it without signing in ticked the step. A
 folder from before the note keeps the cookie-file check until the next scan writes one. A
 pushback mid-scan (TRAPS §35) leaves the note as it was.
+
+The window comes forward for it (`bring_forward`, above) and goes back once you're signed in.
 
 The wait has **no meaningful deadline**. Closing the browser window is the cancel signal.
 Any timer is a guess about how long a 2FA round-trip takes, and losing that race used to
@@ -233,7 +307,7 @@ The button says how it went in `OUTCOMES`' words.
 
 ## Experimental Auto-Bridge (`--experimental`)
 
-The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Openly slow, never disguised:** fixed waits only.
+The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Slow on purpose:** fixed waits only, never randomised to look like a person.
 
 - `_drip_before_search()` runs before every circle search:
   - a sitting of `SESSION_PAGES` (10), then `SESSION_REST` (45 min);

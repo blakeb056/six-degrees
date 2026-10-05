@@ -319,7 +319,9 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
 - **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It first asks
   one optional question, what field you're in (see *Your sector* below), and *Skip for
   now* is fine. Then it sets up the scanner in one click, you sign into LinkedIn yourself
-  in a Chrome window, and then it scans. Needs Google Chrome. The Mac app brings its own
+  in a Chrome window, and then it scans in the background: the scanner's Chrome stays out
+  of your way and comes forward only if LinkedIn needs you (to sign in again, or to finish
+  a check it asks for). Needs Google Chrome. The Mac app brings its own
   Python; with `npx six-degrees` the page uses yours, or sets up a private one with a
   click. It checks and says what's missing. The app marks this *Recommended* because
   it's the only way to Degrees and Outlink. Read the warning above first. On a Mac,

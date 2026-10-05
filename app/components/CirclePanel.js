@@ -6,9 +6,10 @@
 // first, with the people you added from it at the top: the ones whose own
 // circle is the next link in the chain.
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import Avatar from './Avatar';
+import InlineNote, { useFadingNote } from './InlineNote';
+import { startHere, busyReason, scansCircleOf, watchScanner, scannerNow } from '../../lib/scraper-client';
 import { circleIndex } from '../../lib/circle';
 import { reachIndex, reachState } from '../../lib/reach';
 import { score1 } from '../../lib/separation';
@@ -26,8 +27,8 @@ const rowStyle = {
   color: 'var(--sd-fg-1, #fff)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: 'none',
 };
 
-/** One person: opens their card, or (with `href`) goes there instead. */
-function Row({ person, tierColors, note, noteColor, onSelect, href, label }) {
+/** One person: opens their card, or (with `onPress`) does that instead. */
+function Row({ person, tierColors, note, noteColor, onSelect, onPress, label, disabled = false }) {
   const body = (
     <>
       <Avatar person={person} size={26} tierColors={tierColors} />
@@ -43,12 +44,30 @@ function Row({ person, tierColors, note, noteColor, onSelect, href, label }) {
       {note && <span style={{ fontSize: 10, fontWeight: 700, color: noteColor || '#888', whiteSpace: 'nowrap' }}>{note}</span>}
     </>
   );
-  return href
-    ? <Link href={href} aria-label={label} style={{ ...rowStyle, borderColor: 'rgba(0,255,136,0.2)' }}>{body}</Link>
+  return onPress
+    ? (
+      <button type="button" onClick={onPress} disabled={disabled} aria-label={label} title={label}
+        style={{ ...rowStyle, borderColor: 'rgba(0,255,136,0.2)', ...(disabled ? { cursor: 'not-allowed', opacity: 0.55 } : null) }}>
+        {body}
+      </button>
+    )
     : <button type="button" onClick={() => onSelect?.(person)} style={rowStyle}>{body}</button>;
 }
 
 export default function CirclePanel({ person, connections = [], degree2 = [], scanNotes, tierColors, onSelect, onToggle, canScan = true }) {
+  // Only what the Scan rows need from the scanner (what runs, and whose), so a
+  // running scan's log doesn't redraw the whole list every second.
+  const running = useSyncExternalStore(watchScanner, () => {
+    const s = scannerNow();
+    return s.running ? JSON.stringify([s.action, s.target?.id ?? null, s.target?.name ?? null]) : '';
+  }, () => '');
+  const scan = useMemo(() => {
+    if (!running) return { running: false };
+    const [action, id, name] = JSON.parse(running);
+    return { running: true, action, target: id || name ? { id, name } : null };
+  }, [running]);
+  const [scanNote, say] = useFadingNote(9000);
+  const [asking, setAsking] = useState(null);   // whose start is being checked
   const [tier, setTier] = useState(null);
   const [query, setQuery] = useState('');
   const [shown, setShown] = useState(PAGE);
@@ -131,12 +150,29 @@ export default function CirclePanel({ person, connections = [], degree2 = [], sc
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {added.map((p) => {
               const [note, noteColor] = stateNote(p);
-              return note === 'ready to scan' && canScan
-                ? <Row key={p.id} person={p} tierColors={tierColors} note="Scan… →" noteColor="#00ff88"
-                    href={`/setup?scan=${encodeURIComponent(p.id)}`} label={`Scan ${p.name}’s circle: opens the Scan page to confirm`} />
-                : <Row key={p.id} person={p} tierColors={tierColors} note={note} noteColor={noteColor} onSelect={onSelect} />;
+              if (note !== 'ready to scan' || !canScan) {
+                return <Row key={p.id} person={p} tierColors={tierColors} note={note} noteColor={noteColor} onSelect={onSelect} />;
+              }
+              // Starts their scan right here, as their card's Scan does (startHere);
+              // it used to open the Scan page to confirm it (Blake, 2026-10-04:
+              // "we want seamlessness"). Why it didn't start is a line above.
+              const now = scan.running && scansCircleOf(scan, p);
+              return (
+                <Row key={p.id} person={p} tierColors={tierColors} noteColor="#00ff88"
+                  note={now ? 'Scanning…' : asking === p.id ? 'Starting…' : 'Scan →'}
+                  disabled={now || scan.running || Boolean(asking)}
+                  label={now ? `Scanning ${p.name}’s circle` : scan.running ? `${busyReason(scan)}. One scan at a time.` : `Scan ${p.name}’s circle: it starts here, in the background`}
+                  onPress={async () => {
+                    say(null);
+                    setAsking(p.id);
+                    const why = await startHere('bridge', { name: p.name, id: p.id });
+                    setAsking(null);
+                    say(why ? `${first(p.name)}’s scan didn’t start: ${why}` : null);
+                  }} />
+              );
             })}
           </div>
+          <InlineNote note={scanNote} />
         </div>
       )}
 

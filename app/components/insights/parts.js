@@ -191,9 +191,9 @@ export function OpenCircle({ id, compact }) {
   return <Link href={`/?chain=${encodeURIComponent(id)}`} style={{ ...OUTLINE, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }}>Open circle</Link>;
 }
 
-/** The Scan page's "Scan one circle" for them (/setup?scan=<id>): it says the cost and asks first. */
+/** The Scan page's "Scan one circle" for them (/setup?scan=<id>): what it costs, and one button that starts it. */
 export function ScanCircle({ id, compact }) {
-  return <Link href={`/setup?scan=${encodeURIComponent(id)}`} style={{ ...OUTLINE, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }} title="Opens the Scan page with them picked: it says what the scan costs and starts nothing until you press it">Scan circle</Link>;
+  return <Link href={`/setup?scan=${encodeURIComponent(id)}`} style={{ ...OUTLINE, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }} title="Opens the Scan page with them picked: what the scan costs, and one button that starts it">Scan circle</Link>;
 }
 
 /**
