@@ -74,3 +74,117 @@ test('no box to compare with leaves the view alone', () => {
   const view = { x: 12, y: 34, k: 3 };
   assert.deepEqual(reframe(view, null, full), view);
 });
+
+// Physics off (lib/galaxy.js settle): the forces run to rest without drawing.
+import { settle, ticksToSettle } from '../lib/galaxy.js';
+import { forceSimulation, forceManyBody, forceCenter } from 'd3';
+
+test('a simulation at full heat settles in d3\'s 300 ticks, and one at rest in none', () => {
+  assert.ok(Math.abs(ticksToSettle(1) - 300) <= 1);
+  assert.ok(ticksToSettle(0.5) < 300 && ticksToSettle(0.5) > 0);
+  assert.equal(ticksToSettle(0.0005), 0);
+  assert.equal(ticksToSettle(1, { target: 0.3 }), Infinity);   // held warm by a drag: never on its own
+});
+
+// A stand-in simulation that ticks the way d3's does, and a clock it advances.
+function fakeSim(alpha = 1) {
+  const s = { a: alpha, ticks: 0, stopped: false, target: 0, decay: 1 - Math.pow(0.001, 1 / 300) };
+  return Object.assign(s, {
+    stop() { s.stopped = true; return s; },
+    tick() { s.ticks += 1; s.a += (s.target - s.a) * s.decay; return s; },
+    alpha: () => s.a, alphaMin: () => 0.001, alphaTarget: () => s.target,
+    alphaDecay(d) { if (d === undefined) return s.decay; s.decay = d; return s; },
+  });
+}
+
+test('settle stops the simulation\'s own timer and runs it to rest, then says so once', () => {
+  const sim = fakeSim();
+  let done = 0;
+  settle(sim, { done: () => { done += 1; }, budget: Infinity });
+  assert.equal(sim.stopped, true);
+  assert.equal(done, 1);
+  assert.ok(sim.a < 0.001);
+  assert.ok(Math.abs(sim.ticks - 300) <= 1);
+});
+
+test('settle works in slices, never blocking the page for longer than its budget', () => {
+  const sim = fakeSim();
+  let t = 0;
+  const queued = [];
+  let done = false;
+  settle(sim, { done: () => { done = true; }, budget: 10, now: () => (t += 1), later: (f) => queued.push(f) });
+  assert.equal(done, false);
+  assert.ok(sim.ticks > 0 && sim.ticks < 300);   // the first slice ran at once
+  while (queued.length) queued.shift()();
+  assert.equal(done, true);
+  assert.ok(sim.a < 0.001);
+});
+
+test('a settle stopped part-way does no more, so a new change can start over', () => {
+  const sim = fakeSim();
+  const queued = [];
+  let done = false;
+  let t = 0;
+  const stop = settle(sim, { done: () => { done = true; }, budget: 5, now: () => (t += 1), later: (f) => queued.push(f) });
+  const at = sim.ticks;
+  stop();
+  while (queued.length) queued.shift()();
+  assert.equal(sim.ticks, at);
+  assert.equal(done, false);
+});
+
+test('a big network, every tick slow, cools faster: about `total` ms of work, then the decay put back', () => {
+  const sim = fakeSim();
+  const decay = sim.decay;
+  let t = 0;
+  const queued = [];
+  let done = false;
+  // Each tick takes 50 ms: all 300 would be 15 seconds.
+  settle(sim, { done: () => { done = true; }, total: 3000, least: 20, budget: 30, now: () => (t += 50), later: (f) => queued.push(f) });
+  while (queued.length) queued.shift()();
+  assert.equal(done, true);
+  assert.ok(sim.ticks <= 61, `${sim.ticks} ticks`);   // 3,000 ms of 50 ms ticks
+  assert.ok(sim.a < 0.001);
+  assert.equal(sim.decay, decay);
+});
+
+test('a dot held warm by a drag cannot keep settle going for ever', () => {
+  const sim = fakeSim();
+  sim.target = 0.3;
+  settle(sim, { budget: Infinity, max: 50 });
+  assert.equal(sim.ticks, 50);
+});
+
+test('settled without drawing, a real d3 layout lands where its own timer would have', () => {
+  const make = () => forceSimulation(Array.from({ length: 40 }, (_, i) => ({ id: i })))
+    .force('charge', forceManyBody().strength(-30)).force('center', forceCenter(0, 0)).stop();
+  const ours = make();
+  settle(ours, { budget: Infinity, total: Infinity });
+  const theirs = make();
+  theirs.tick(300);
+  assert.ok(ours.alpha() < ours.alphaMin());
+  // Within a tick of each other: the last tick moves a dot by a hair.
+  for (let i = 0; i < 40; i++) assert.ok(Math.hypot(ours.nodes()[i].x - theirs.nodes()[i].x, ours.nodes()[i].y - theirs.nodes()[i].y) < 0.5);
+});
+
+import { seedAngles } from '../lib/galaxy.js';
+
+test('Physics off starts everyone round you: each connection a slice as wide as their circle, the circle inside it', () => {
+  // Invented people: Ana has a circle of three, the others none.
+  const ids = ['ana', 'ben', 'cy', 'dee', 'a1', 'a2', 'a3'];
+  const parentOf = new Map([['a1', 'ana'], ['a2', 'ana'], ['a3', 'ana']]);
+  const at = seedAngles(ids, parentOf);
+  assert.equal(at.size, ids.length);
+  const turn = 2 * Math.PI;
+  for (const a of at.values()) assert.ok(a >= -Math.PI / 2 && a < 1.5 * Math.PI);
+  // Ana's slice is 4 of 7 of the circle; her circle sits within it, round her.
+  const mine = ['a1', 'a2', 'a3'].map((k) => at.get(k));
+  assert.ok(Math.max(...mine) - Math.min(...mine) < (4 / 7) * turn);
+  for (const a of mine) assert.ok(Math.abs(a - at.get('ana')) < (2 / 7) * turn + 1e-9);
+});
+
+test('seedAngles copes with a loop and with someone whose connection isn\'t drawn', () => {
+  const at = seedAngles(['x', 'y', 'z'], new Map([['x', 'y'], ['y', 'x'], ['z', 'gone']]));
+  assert.equal(at.size, 3);
+  for (const a of at.values()) assert.ok(Number.isFinite(a));
+});
