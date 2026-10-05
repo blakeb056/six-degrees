@@ -15,7 +15,8 @@ import { viewsForMode } from './components/views';
 import useNotchTabs from './components/useNotchTabs';
 import { LAYOUTS, layoutNow, pickLayout, watchLab } from '../lib/galaxy-lab';
 import OnboardingGate from './components/OnboardingGate';
-import EmptyState from './components/EmptyState';
+import Onboarding from './components/onboarding/Onboarding';
+import { opensSetup, readSetupMemory, rememberSetup } from '../lib/onboarding';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { loadCsvNetwork, closeCsvNetwork, REMOVE_CSV_QUESTION } from '../lib/csv';
@@ -107,6 +108,12 @@ function HomeInner() {
   // them. With the network, they say who is ready for a circle scan (lib/reach.js).
   const [scanNotes, setScanNotes] = useState(NO_SCAN_NOTES);
   const shapeRef = useRef('');
+  // No network yet: the guided setup, the whole window (app/components/onboarding).
+  // Decided once, when the network first loads, and kept until its Open the map:
+  // the network is reloaded the moment the first scan ends (NetworkRefresh), and
+  // the map would otherwise take its place before "Your galaxy is ready".
+  // 'again': back after a first scan that ended before Open the map, for that card only.
+  const [setupOpen, setSetupOpen] = useState(false);
   // Everyone with a request out, shared with every view (lib/requests-client.js).
 
   useEffect(() => {
@@ -129,6 +136,12 @@ function HomeInner() {
       setDegree1(d1);
       setDegree2(d2);
       setDegree3(d3 || []);
+      // No network yet, or a first scan that finished before Open the map was
+      // pressed: that one sees "Your galaxy is ready" this once (lib/onboarding.js opensSetup).
+      if (opensSetup({ firstDegree: d1.length, demo: IS_DEMO, csv: Boolean(csv), memory: readSetupMemory() })) {
+        setSetupOpen(d1.length > 0 ? 'again' : true);
+        if (d1.length > 0) rememberSetup({ finished: true });
+      }
       shapeRef.current = networkShape(d1, d2);
       setStats(statsFor(d1, d2));
       setLoading(false);
@@ -255,7 +268,7 @@ function HomeInner() {
   const hasNetwork = degree1.length > 0;
   const layout = useSyncExternalStore(watchLab, layoutNow, () => 'rings');
   const notchTabs = useMemo(() => {
-    if (!hasNetwork) return null;
+    if (!hasNetwork || setupOpen) return null; // none over the setup, which a network can be under (setupOpen)
     if (view.key === 'galaxy') {
       return { items: GALAXY_LAYOUTS, current: layout, onPick: pickLayout };
     }
@@ -264,7 +277,7 @@ function HomeInner() {
       current: view.key,
       onPick: setVisualMode,
     };
-  }, [mode, view.key, hasNetwork, layout]);
+  }, [mode, view.key, hasNetwork, layout, setupOpen]);
   useNotchTabs(notchTabs);
 
   if (loading) {
@@ -274,6 +287,11 @@ function HomeInner() {
         <div style={{ fontSize: 14, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>Mapping your LinkedIn network</div>
       </div>
     );
+  }
+
+  // Someone new, or someone who left the setup halfway: the setup, until Open the map.
+  if (setupOpen || degree1.length === 0) {
+    return <Onboarding again={setupOpen === 'again'} onFinish={async () => { rememberSetup({ finished: true }); await reload(); setSetupOpen(false); }} />;
   }
 
   // Scanning and the Scan page belong to your own network, not the sample or a CSV.
@@ -340,9 +358,6 @@ function HomeInner() {
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
-
-          // No connections at all: offer a way in rather than a black screen.
-          if (degree1.length === 0) return <EmptyState />;
 
           // Every Degrees surface is built from 2nd-degree rows, so with none
           // say why instead of rendering an empty canvas. Why depends on where

@@ -271,6 +271,24 @@ test('not known until both answers are in, so the question never shows and then 
   assert.equal(askForField(status({}, { network: FIRST }), undefined), null);
 });
 
+test('the guided setup asks it during the first scan, and only then (duringFirstScan)', () => {
+  const during = { duringFirstScan: true };
+  const reading = status({}, { network: NOTHING, running: true, action: 'full' });
+  assert.equal(askForField(reading, unasked, during), true);
+  // The Scan page still waits for the scan to end.
+  assert.equal(askForField(reading, unasked), false);
+  // Still once: picked, answered or skipped before, never again.
+  assert.equal(askForField(reading, { ...unasked, fieldAsked: true }, during), false);
+  assert.equal(askForField(reading, { ...unasked, sectorFocus: { sectors: ['tech'], strength: 'lean' } }, during), false);
+  assert.equal(askForField(reading, undefined, during), null);
+  // Not during any other job, nor a first scan's re-read once people are in (that's the usual rule).
+  assert.equal(askForField(status({}, { network: NOTHING, running: true, action: 'login' }), unasked, during), false);
+  assert.equal(askForField(status({}, { network: { ...NOTHING, second: 3 }, running: true, action: 'full' }), unasked, during), false);
+  assert.equal(askForField(status({}, { network: FIRST, running: true, action: 'full' }), unasked, during), false);
+  // After it, as before.
+  assert.equal(askForField(status({}, { network: FIRST }), unasked, during), true);
+});
+
 // ── App Management, on a Mac ────────────────────────────────────────────────
 // Blake, 2026-10-04: "shouldnt we have in the onboarding for scan … a button
 // where the user is basically brought to the app management and enables it

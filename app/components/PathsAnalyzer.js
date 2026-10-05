@@ -17,6 +17,7 @@ import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY
 import { useCompanyScores, ScorePicker } from './CompanyScores';
 import PeopleMap from './PeopleMap';
 import { TierGrid } from './FilterPanel';
+import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import { MapLook, useLivePhysics, HeatDefs, HeatGlow, PHYSICS_OFF } from './MapControls';
 import { makeGrid, shows, gridCounts } from '../../lib/tier-grid';
 import { heatBy, heatColour } from '../../lib/galaxy-lab';
@@ -69,35 +70,27 @@ export function useSize(ref) {
 }
 
 /**
- * The left panel, as on the map page (app/components/FilterPanel.js): a
- * Filters tab at the edge until opened, then a column the map makes room for.
+ * The left panel, as on the map page (app/components/FilterPanel.js): the round
+ * Filters button at the edge (EdgeToggle) until opened, then a column the map
+ * makes room for, with the button docked on its edge to close it.
  * Paths' filters, and the ways to read the map, live here (Blake, 2026-10-02:
  * "incorporate the filter with maybe ways to read the data more").
  */
 export function SidePanel({ open, onToggle, children }) {
-  if (!open) {
-    return (
-      <button type="button" onClick={onToggle} style={{
-        position: 'fixed', left: 16, top: 140, zIndex: 30, cursor: 'pointer', height: 36, borderRadius: 18, padding: '0 14px 0 10px',
-        display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(52,152,219,0.15)', border: '2px solid rgba(52,152,219,0.5)',
-        color: 'var(--sd-blue, #3498DB)', fontWeight: 700, boxShadow: '0 0 12px rgba(52,152,219,0.3)', backdropFilter: 'blur(8px)',
-      }}>
-        <span style={{ fontSize: 18 }}>›</span><span style={{ fontSize: 11, fontWeight: 600 }}>Filters</span>
-      </button>
-    );
-  }
+  const { shown, closing } = useEdgePanel(open);
   return (
-    <aside data-glass-panel="side" style={{
-      width: 300, flexShrink: 0, height: '100%', overflowY: 'auto', boxSizing: 'border-box', padding: '16px 14px',
-      borderRight: '1px solid rgba(52,152,219,0.15)', background: 'var(--sd-panel)', fontSize: 13,
-      backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
-    }}>
-      <button type="button" onClick={onToggle} style={{
-        display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 14, padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-        background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', color: 'var(--sd-fg-3, #aaa)', fontSize: 12, fontWeight: 600,
-      }}><span style={{ fontSize: 16 }}>›</span> Close</button>
-      {children}
-    </aside>
+    <>
+      <EdgeToggle side="left" label="Filters" open={open} onToggle={onToggle} panelId="sd-paths-filters-panel" width="300px" />
+      {shown && (
+        <aside id="sd-paths-filters-panel" className={`sd-edge-panel sd-edge-panel-left${closing ? ' is-closing' : ''}`} data-glass-panel="side" style={{
+          width: 300, flexShrink: 0, height: '100%', overflowY: 'auto', boxSizing: 'border-box', padding: '16px 14px',
+          borderRight: '1px solid rgba(52,152,219,0.15)', background: 'var(--sd-panel)', fontSize: 13,
+          backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
+        }}>
+          {children}
+        </aside>
+      )}
+    </>
   );
 }
 

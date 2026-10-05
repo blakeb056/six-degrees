@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, showAllTiers } from '../../lib/tier-grid';
 import { TIER_COLORS } from '../../lib/themes';
+import EdgeToggle, { useEdgePanel } from './EdgeToggle';
+
+const PANEL_ID = 'sd-filters-panel';
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -146,66 +149,38 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
 export default function FilterPanel({ collapsed, onToggle, mode, visualMode, grid, gridCounts = {}, onGridChange }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees' || mode === 'separation';
-
-  if (collapsed) {
-    return (
-      <div
-        onClick={onToggle}
-        style={{
-          position: 'fixed', left: 16, top: 140, zIndex: 30, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 0,
-          height: 36, borderRadius: 18,
-          background: 'rgba(52,152,219,0.15)', border: '2px solid rgba(52,152,219,0.5)',
-          color: 'var(--sd-blue, #3498DB)', fontWeight: 700,
-          boxShadow: '0 0 12px rgba(52,152,219,0.3)',
-          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          overflow: 'hidden', transition: 'width 0.25s ease',
-          width: 36,
-          padding: '0 10px',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.width = '120px'; }}
-        onMouseLeave={e => { e.currentTarget.style.width = '36px'; }}
-      >
-        <span style={{ fontSize: 18, flexShrink: 0, width: 16, textAlign: 'center' }}>›</span>
-        <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 6, opacity: 0.9 }}>Filters</span>
-      </div>
-    );
-  }
-
+  // Open or closed, the round Filters button at the left edge (EdgeToggle): it
+  // docks on the open panel's edge and closes it, so the panel has no Close row.
+  const { shown, closing } = useEdgePanel(!collapsed);
+  const edge = (
+    <EdgeToggle side="left" label="Filters" open={!collapsed} onToggle={onToggle}
+      panelId={PANEL_ID} width="320px" phoneWidth="min(80vw, 300px)" />
+  );
+  // One shape, open or not, so React keeps the same button and it can travel.
   return (
-    <div style={isMobile ? {
-      position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
-      width: '100vw', pointerEvents: 'auto',
-    } : { flexShrink: 0, height: '100%' }}>
-      {isMobile && <div onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
-      <div data-glass-panel={isMobile ? undefined : 'side'} style={{
-        width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
-        borderRight: '1px solid rgba(52,152,219,0.15)',
-        padding: isMobile ? '12px 10px' : '16px 14px',
-        overflowY: 'auto', overflowX: 'hidden',
-        background: isMobile ? 'var(--sd-surface, rgba(10,15,30,0.98))' : 'var(--sd-panel)', fontSize: 13,
-        backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
-        boxShadow: 'inset 0 0 60px rgba(52,152,219,0.04), 4px 0 24px rgba(0,0,0,0.3)',
-      }}>
-        {/* Close button */}
-        <button
-          onClick={onToggle}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
-            borderRadius: 6, color: 'var(--sd-fg-3, #aaa)', fontSize: 12, cursor: 'pointer',
-            padding: '6px 12px', marginBottom: 14, fontWeight: 600, width: '100%',
-          }}
-        >
-          <span style={{ fontSize: 16 }}>›</span> Close
-        </button>
+    <>
+      {edge}
+      {shown && <div style={isMobile ? {
+        position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
+        width: '100vw', pointerEvents: closing ? 'none' : 'auto',
+      } : { flexShrink: 0, height: '100%' }}>
+        {isMobile && <div className={`sd-edge-scrim${closing ? ' is-closing' : ''}`} onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
+        <div id={PANEL_ID} className={`sd-edge-panel sd-edge-panel-left${closing ? ' is-closing' : ''}`} data-glass-panel={isMobile ? undefined : 'side'} style={{
+          width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
+          borderRight: '1px solid rgba(52,152,219,0.15)',
+          padding: isMobile ? '12px 10px' : '16px 14px',
+          overflowY: 'auto', overflowX: 'hidden',
+          background: isMobile ? 'var(--sd-surface, rgba(10,15,30,0.98))' : 'var(--sd-panel)', fontSize: 13,
+          backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
+          boxShadow: 'inset 0 0 60px rgba(52,152,219,0.04), 4px 0 24px rgba(0,0,0,0.3)',
+        }}>
+          {/* Which tiers, at which degrees: the same grid in Network Circle and in Degrees */}
+          <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} />
 
-        {/* Which tiers, at which degrees: the same grid in Network Circle and in Degrees */}
-        <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} />
-
-        {/* Network Circle's Galaxy: the physics that lays it out is what this panel is for. */}
-        {!isDegreesMode && visualMode === 'galaxy' && (isMobile ? <NamesSwitch /> : <GalaxyLab />)}
-      </div>
-    </div>
+          {/* Network Circle's Galaxy: the physics that lays it out is what this panel is for. */}
+          {!isDegreesMode && visualMode === 'galaxy' && (isMobile ? <NamesSwitch /> : <GalaxyLab />)}
+        </div>
+      </div>}
+    </>
   );
 }

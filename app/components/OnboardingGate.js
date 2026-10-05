@@ -7,7 +7,7 @@ import { useUser } from './UserProvider';
 // This used to be a "what's your name?" form. On a one-person app that question
 // only ever produced duplicate profiles — see lib/profile.js — so the profile is
 // now resolved by the server and there is nothing to ask. First-run choices
-// (scan, CSV, sample) live on the welcome screen: app/components/EmptyState.js.
+// (scan, CSV, sample) live on the guided setup's welcome screen: app/components/onboarding.
 export default function OnboardingGate({ children }) {
   const { userId, ready } = useUser();
 

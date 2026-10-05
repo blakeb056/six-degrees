@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Degrees opens on Unscanned; once you have one, it opens on Bridge Chains as before.
 
 ### Changed
+- **The Filters and Details buttons at the map's edges are lit glass, and they dock.** Each is a
+  frosted round puck with a lit rim and a glow in its colour (the look's accent for Filters, its
+  gold for Details), porcelain on Daylight, a flat hairline on Analyst, and drawn in every other
+  look's own style. Hovering lifts it, shows its name, and builds a little cluster of gold, purple
+  and blue dots round it, clockwise, the way Check for new's ↻ does. Opening a panel streams the
+  dots along its edge, lights the edge, and docks the button there, chevron turned, as the panel's
+  close control; closing plays it back. So the panels' separate *Close* rows are gone, Esc still
+  closes a panel from inside it, the buttons are 44 pt to tap on a phone, and with Reduce Motion
+  the panel simply fades. Neither button shows a count. Paths' Filters button is the same one.
+- **A guided setup for someone new.** With no network yet, the app opens on one card at a time
+  instead of the old welcome screen: *Welcome* (scan, import a CSV, or try the sample), *Get your
+  Mac ready* (Chrome and the scanner tick themselves; App Management, on macOS 13 and later, with
+  *Open System Settings*, *I've allowed it* and *Skip*, saved as before; and the "I understand"
+  about scanning risks as a checkbox right there), *Connect your LinkedIn* (opens the sign-in
+  window and turns to *Connected* by itself), *Set your pace* (speed, searches a day with the same
+  gold warning above 100, never a pop-up, and the Auto scan switch), and *Map your people* (the
+  first scan's progress, with the optional "What field are you in?" asked while it reads), then
+  *Your galaxy is ready* and the map. Someone who leaves halfway comes back to the step they were
+  on; someone with a network never sees it. The Scan page and the setup share one source for the
+  scanner's status and what each button does, so they can't disagree.
 - **No pop-ups when you scan: one click starts it, and Chrome stays out of your way.** Check for
   new in the header used to raise up to three boxes before and after it started; now one click
   starts it, the cluster spins on the button and the notch shows it running, and what it does and

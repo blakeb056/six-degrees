@@ -7,6 +7,7 @@ import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
 import useScanner from './useScanner';
 import useRequests from './useRequests';
 import InlineNote, { useFadingNote } from './InlineNote';
+import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import TheirCircle from './TheirCircle';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { useUser } from './UserProvider';
@@ -541,7 +542,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
     return (
       <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
         <CirclePanel key={circle.id} person={circle} connections={connections} degree2={degree2} scanNotes={scanNotes}
-          tierColors={tierColors} onSelect={onSelect} onToggle={onToggle} canScan={canScan} />
+          tierColors={tierColors} onSelect={onSelect} canScan={canScan} />
       </SidebarWrapper>
     );
   }
@@ -549,15 +550,6 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   if (isDegreesMode) {
     return (
       <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
-        <button
-          onClick={onToggle}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-            color: 'var(--sd-fg-3, #888)', fontSize: 12, cursor: 'pointer', padding: '0 0 10px', fontWeight: 600,
-          }}
-        >
-          <span style={{ fontSize: 16 }}>&larr;</span> Close
-        </button>
         <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, color: 'var(--sd-orange, #FF6B35)' }}>Degrees</h3>
         <p style={{ fontSize: 12, color: 'var(--sd-fg-3, #888)', marginBottom: 12 }}>
           Your bridge connections and who they unlock.
@@ -780,18 +772,6 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
 
   return (
     <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
-      {/* Close button */}
-      <button
-        onClick={onToggle}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)',
-          borderRadius: 6, color: 'var(--sd-fg-3, #aaa)', fontSize: 12, cursor: 'pointer',
-          padding: '6px 12px', marginBottom: 12, fontWeight: 600,
-        }}
-      >
-        <span style={{ fontSize: 16 }}>&larr;</span> Close
-      </button>
       <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 0 }}>Network Circle</h3>
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
@@ -954,54 +934,42 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   );
 }
 
+// The Details panel, and the round Details button at the right edge that opens
+// it (EdgeToggle): open, the button docks on the panel's edge and closes it, so
+// none of the panel's views has a Close row of its own.
+const PANEL_ID = 'sd-details-panel';
+
 function SidebarWrapper({ children, collapsed, onToggle }) {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 768); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c); }, []);
-  if (collapsed) {
-    // When collapsed: floating button with hover label
-    return (
-      <div
-        onClick={onToggle}
-        style={{
-          position: 'fixed', right: 16, top: 140, zIndex: 30, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 0,
-          height: 36, borderRadius: 18,
-          background: 'rgba(255,215,0,0.15)', border: '2px solid rgba(255,215,0,0.5)',
-          color: 'var(--sd-gold, #FFD700)', fontWeight: 700,
-          boxShadow: '0 0 12px rgba(255,215,0,0.3)',
-          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          overflow: 'hidden', transition: 'width 0.25s ease',
-          width: 36,
-          padding: '0 10px',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.width = '120px'; }}
-        onMouseLeave={e => { e.currentTarget.style.width = '36px'; }}
-      >
-        <span style={{ fontSize: 18, flexShrink: 0, width: 16, textAlign: 'center' }}>‹</span>
-        <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', marginRight: 6, opacity: 0.9 }}>Details</span>
-      </div>
-    );
-  }
-
+  const { shown, closing } = useEdgePanel(!collapsed);
+  const edge = (
+    <EdgeToggle side="right" label="Details" open={!collapsed} onToggle={onToggle}
+      panelId={PANEL_ID} width="320px" phoneWidth="min(80vw, 300px)" />
+  );
+  // One shape, open or not, so React keeps the same button and it can travel.
   return (
-    <div style={isMobile ? {
-      position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 100,
-      width: '100vw', pointerEvents: 'auto',
-    } : { flexShrink: 0, height: '100%' }}>
-      {isMobile && <div onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
-      <div data-glass-panel={isMobile ? undefined : 'side'} style={{
-        width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
-        borderLeft: '1px solid rgba(255,215,0,0.12)',
-        padding: isMobile ? '12px 10px' : '16px 16px',
-        overflowY: 'auto', overflowX: 'hidden',
-        background: isMobile ? 'var(--sd-surface, rgba(15,12,5,0.98))' : 'var(--sd-panel)', fontSize: 13,
-        backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
-        boxShadow: 'inset 0 0 60px rgba(255,215,0,0.03), -4px 0 24px rgba(0,0,0,0.3)',
-        marginLeft: isMobile ? 'auto' : 0,
-      }}>
-        {children}
-      </div>
-    </div>
+    <>
+      {edge}
+      {shown && <div style={isMobile ? {
+        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 100,
+        width: '100vw', pointerEvents: closing ? 'none' : 'auto',
+      } : { flexShrink: 0, height: '100%' }}>
+        {isMobile && <div className={`sd-edge-scrim${closing ? ' is-closing' : ''}`} onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
+        <div id={PANEL_ID} className={`sd-edge-panel sd-edge-panel-right${closing ? ' is-closing' : ''}`} data-glass-panel={isMobile ? undefined : 'side'} style={{
+          width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
+          borderLeft: '1px solid rgba(255,215,0,0.12)',
+          padding: isMobile ? '12px 10px' : '16px 16px',
+          overflowY: 'auto', overflowX: 'hidden',
+          background: isMobile ? 'var(--sd-surface, rgba(15,12,5,0.98))' : 'var(--sd-panel)', fontSize: 13,
+          backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
+          boxShadow: 'inset 0 0 60px rgba(255,215,0,0.03), -4px 0 24px rgba(0,0,0,0.3)',
+          marginLeft: isMobile ? 'auto' : 0,
+        }}>
+          {children}
+        </div>
+      </div>}
+    </>
   );
 }
 
