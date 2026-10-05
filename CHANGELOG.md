@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Unscanned, a new Degrees view: build a circle where you see it.** Right after Bridge Chains,
+  it rings your connections whose circles aren't scanned yet round you the way Bridge Chains
+  rings your bridges: S nearest, strongest first, names, hover, zoom and drag, and the Filters
+  tiers. Lists the scanner already read (hidden, or nobody new) are left out and counted. Click
+  someone and their empty circle opens with a *Build their circle* button in the middle (what it
+  costs on hover); one press starts the scan right there, and a refusal is a short line under it.
+  From then on dots join the circle one after another on a clock kept to the scanner's speed:
+  hollow "on its way" dots, never more than a page ahead of what it has read, and as it saves
+  people they take those places in their tier colours. The words above it always say what was
+  really found and saved. When it ends the hollow dots go, the circle settles into tier bands,
+  and a link opens them in Bridge Chains. Everything is worked out from when the scan started
+  and what it has read, so leaving the view, the tab or the page and coming back shows the same
+  progress; Stop in the notch leaves the people saved so far.
+
 ### Changed
 - **No pop-ups when you scan: one click starts it, and Chrome stays out of your way.** Check for
   new in the header used to raise up to three boxes before and after it started; now one click

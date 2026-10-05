@@ -685,7 +685,9 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
         </button>
         {offerBuild && (
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', lineHeight: 1.5 }}>
-            {busy ? `${busy}. One scan at a time: this one can start when it finishes.` : `${first}’s circle isn’t scanned yet. Hover the button for what it costs.`}
+            {busy ? `${busy}. One scan at a time: this one can start when it finishes.`
+              : job ? <span role="status" style={{ color: 'var(--sd-fg-2, #dde)' }}>{endedLine(first, job, state)}</span>
+              : `${first}’s circle isn’t scanned yet. Hover the button for what it costs.`}
           </div>
         )}
         <InlineNote note={problem} style={{ pointerEvents: 'auto', maxWidth: 300 }} />
