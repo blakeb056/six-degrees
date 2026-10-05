@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   B blue, C green, D grey (C was a grey close to D's). On every look except Analyst, which keeps
   its colour-blind-safe set.
 
+### Fixed
+- **Opening or closing Filters or Details no longer moves the Galaxy.** The map used to jump a
+  panel's width with its far edge cut off, then slide back half of it, so everything ended up
+  somewhere new. Now every dot stays exactly where it was on screen, at the same zoom, in every
+  frame: the panel covers or uncovers the map's edge and nothing else changes. Resizing the
+  window still keeps whatever was in the middle in the middle. The layout and your pan and zoom
+  were never rebuilt; it was the view being re-centred, late and as a slide.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added
