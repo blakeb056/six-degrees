@@ -3,30 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sixgree — see your LinkedIn network as a galaxy</title>
-  <meta name="description" content="Find out who can introduce you to anyone. Sixgree maps your LinkedIn network, and the people your connections know, on your own computer. Free and open source.">
+  <title>Sixgree: six degrees of your LinkedIn, as a map of what your network is worth</title>
+  <meta name="description" content="Your network is your net worth. Sixgree maps your LinkedIn out to six degrees on your own computer: who you know, who they know, every person in a tier, and the shortest way in to anyone. Free and open source.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="author" content="Blake Burford">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <link rel="canonical" href="https://sixgree.com/">
   <link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
   <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sixgree">
   <meta property="og:url" content="https://sixgree.com/">
-  <meta property="og:title" content="Sixgree: see your LinkedIn network as a galaxy">
-  <meta property="og:description" content="A free, open-source Mac app that maps your LinkedIn network: who you know, who they know, and the shortest path to someone you haven't met. Nothing is uploaded.">
+  <meta property="og:title" content="Sixgree: six degrees of your LinkedIn">
+  <meta property="og:description" content="Your network is your net worth. A free, open-source app that maps your LinkedIn out to six degrees: every person in a tier, and the shortest way in to anyone. Nothing is uploaded.">
   <meta property="og:image" content="https://sixgree.com/img/og-image.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="810">
-  <meta property="og:image:alt" content="Sixgree on a Mac: a network drawn as circles around you, the most powerful people closest">
+  <meta property="og:image:alt" content="Sixgree's Galaxy: an invented network on tier rings around you, the most powerful people closest">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Sixgree: see your LinkedIn network as a galaxy">
-  <meta name="twitter:description" content="Free, open-source Mac app. Who you know, who they know, and the shortest path to anyone. Nothing is uploaded.">
+  <meta name="twitter:title" content="Sixgree: six degrees of your LinkedIn">
+  <meta name="twitter:description" content="Your network is your net worth. Free, open source, on your own computer: who you know, who they know, and the shortest way in to anyone.">
   <meta name="twitter:image" content="https://sixgree.com/img/og-image.jpg">
-  <meta name="theme-color" content="#0b0a1c">
+  <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0a1c" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script type="application/ld+json">
@@ -43,7 +44,7 @@
         "Sixgree app"
       ],
       "url": "https://sixgree.com/",
-      "description": "A free, open-source Mac app that maps your LinkedIn network as a galaxy: who you know, who they know, who bridges you into new circles, and the shortest path to someone you haven't met. Runs on your own Mac; nothing is uploaded.",
+      "description": "Six degrees of your LinkedIn. A free, open-source app that maps your LinkedIn network as a galaxy: who you know, who they know, who bridges you into new circles, and the shortest path to someone you haven't met. Runs on your own Mac; nothing is uploaded.",
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "Professional networking",
       "operatingSystem": "macOS 13.5 or later; Windows 10 or 11 (beta); Linux (beta)",
@@ -66,7 +67,8 @@
         "https://sixgree.com/img/app/hero.jpg",
         "https://sixgree.com/img/app/separation.jpg",
         "https://sixgree.com/img/app/power-index.jpg",
-        "https://sixgree.com/img/app/paths.jpg"
+        "https://sixgree.com/img/app/bridge-chains.jpg",
+        "https://sixgree.com/img/app/scan-page.jpg"
       ],
       "featureList": [
         "Network Circle: your connections on rings by how much they can open up for you",
@@ -139,50 +141,53 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="/style.css?v=2026-10-03-1">
-  <script src="/app.js?v=2026-10-03-1" defer></script>
+  <link rel="stylesheet" href="/style.css?v=2026-10-04-2">
+  <script src="/app.js?v=2026-10-04-2" defer></script>
 </head>
 <body class="home">
 <!-- gen:header -->
 <a class="skip" href="#main">Skip to the page</a>
   <header class="top">
-    <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 140 631" width="0.14em" height="0.631em" aria-hidden="true" focusable="false"><circle cx="70" cy="561" r="70" fill="#ffd700"/><circle cx="70" cy="415.5" r="57.5" fill="#9b59b6" fill-opacity="0.6"/><circle cx="70" cy="293" r="47" fill="#3498db" fill-opacity="0.42"/><circle cx="70" cy="189.5" r="38.5" fill="#95a5a6" fill-opacity="0.28"/><circle cx="70" cy="101.5" r="31.5" fill="#bdc3c7" fill-opacity="0.17"/><circle cx="70" cy="26" r="26" fill="#bdc3c7" fill-opacity="0.09"/></svg></span>xgree</span></span></a>
-    <nav aria-label="Main">
-      <a href="/#features">Features</a>
-      <a href="/download/">Download</a>
-      <a href="/docs/">Docs</a>
-      <a href="/releases/">Releases</a>
-      <a href="/blog/">Blog</a>
-      <a href="/roadmap/">Roadmap</a>
-      <a href="/about/">About</a>
-    </nav>
-    <a class="gh" href="https://github.com/blakeb056/six-degrees">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      GitHub
-    </a>
+    <div class="top-bar">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 140 631" width="0.14em" height="0.631em" aria-hidden="true" focusable="false"><circle cx="70" cy="561" r="70" fill="#ffd700"/><circle cx="70" cy="415.5" r="57.5" fill="#9b59b6" fill-opacity="0.6"/><circle cx="70" cy="293" r="47" fill="#3498db" fill-opacity="0.42"/><circle cx="70" cy="189.5" r="38.5" fill="#95a5a6" fill-opacity="0.28"/><circle cx="70" cy="101.5" r="31.5" fill="#bdc3c7" fill-opacity="0.17"/><circle cx="70" cy="26" r="26" fill="#bdc3c7" fill-opacity="0.09"/></svg></span>xgree</span></span></a>
+      <nav aria-label="Main">
+        <a href="/#how">How it works</a>
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/releases/">Releases</a>
+        <a href="/blog/">Blog</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/about/">About</a>
+      </nav>
+      <a class="top-get" href="/download/">Download</a>
+      <a class="gh" href="https://github.com/blakeb056/six-degrees" aria-label="Sixgree on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
   </header>
 <!-- /gen:header -->
 
   <main id="main">
-    <section class="hero">
-      <div class="sky" aria-hidden="true"><span></span><span></span><span></span></div>
-      <img class="app-icon" src="/img/icon.svg" alt="" width="88" height="88">
+    <!-- The hero: one short headline, the two downloads, then the 1-2-3 strip
+         (app.js steps through it; without JavaScript it shows the whole map). -->
+    <section class="hero" aria-labelledby="hero-h">
       <a class="badge" href="/releases/">
         <span class="badge-dot" aria-hidden="true"></span>
         <span>v<!-- gen:latest-version -->1.1.0<!-- /gen:latest-version --> · <!-- gen:latest-date --><time datetime="2026-10-04">4 October 2026</time><!-- /gen:latest-date --></span>
         <span class="badge-cta"><span class="badge-cta-text">What's new </span>→</span>
       </a>
-      <h1>See your LinkedIn network <br>as a <span class="glow">galaxy</span>.</h1>
-      <p class="lede"><strong>Sixgree: six degrees of your LinkedIn.</strong> Find out who can introduce you to anyone. Sixgree maps the people you know and the people they
-        know, on your own computer. Free and open source.</p>
+      <h1 id="hero-h">Your network is <br>your <span class="hl">net worth.</span></h1>
+      <p class="lede"><strong>Sixgree: six degrees of your LinkedIn.</strong> Scan the people you know, then the
+        people they know, and see everyone out to six degrees: ranked, mapped, and the shortest way in to each.</p>
 
       <p class="not-mac" id="not-mac" role="status" hidden>
         Sixgree runs on a Mac, and now on Windows and Linux too (beta).
         <a href="/download/">All downloads</a>.
       </p>
 
-      <!-- The one download button, for the visitor's computer: app.js shows one of these
-           three. Without JavaScript the Mac one shows. -->
+      <!-- Two downloads. The first is for this computer: app.js shows one of the three
+           (Mac without JavaScript). The second offers Windows to a Mac, and hides on
+           Windows and Linux, where the first already is theirs. -->
       <div class="cta-row">
         <div class="cta-main" data-for="mac">
           <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg">
@@ -197,8 +202,8 @@
           <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">
             <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="dl-text">
-              <span class="dl-title">Download for Linux (beta)</span>
-              <span class="dl-sub">Free · .deb for Ubuntu and Debian</span>
+              <span class="dl-title">Download for Linux</span>
+              <span class="dl-sub">Free · beta · .deb for Ubuntu and Debian</span>
             </span>
           </a>
         </div>
@@ -206,30 +211,25 @@
           <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">
             <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="dl-text">
-              <span class="dl-title">Download for Windows (beta)</span>
-              <span class="dl-sub">Free · Windows 10 or 11</span>
+              <span class="dl-title">Download for Windows</span>
+              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
             </span>
           </a>
         </div>
-        <a class="dl ghost" href="https://github.com/blakeb056/six-degrees">
-          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="dl-text">
-            <span class="dl-title">View on GitHub</span>
-            <span class="dl-sub">MIT licence · read every line</span>
-          </span>
-        </a>
+        <div class="cta-main" data-for="mac">
+          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">
+            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Windows</span>
+              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
+            </span>
+          </a>
+        </div>
       </div>
-      <ul class="dl-platforms" aria-label="Every download">
-        <li><a href="/download/#os-mac">macOS</a></li>
-        <li><a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe">Windows <span class="beta">beta</span></a></li>
-        <li><a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">Linux <span class="beta">beta</span></a></li>
-      </ul>
-      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg">Download for Intel</a> · </span><a href="/download/">All downloads and install help</a></p>
+      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg">Download for Intel</a> · </span><a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb">Linux (beta)</a> · <a href="/download/">All downloads and install help</a></p>
       <p class="fine" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
 
-      <!-- Shown once a Mac download starts (app.js): what to do with the file. The app
-           is signed and notarized by Apple since D4, so there is no Open Anyway step
-           any more; this said how to allow an unsigned app until then. -->
+      <!-- Shown once a Mac download starts (app.js): what to do with the file. -->
       <section class="after-dl" id="after-dl" aria-labelledby="after-dl-title" tabindex="-1" hidden>
         <h2 id="after-dl-title">Your download has started. Then:</h2>
         <ol>
@@ -241,418 +241,357 @@
         <p class="fine"><a href="/download/#install">The install guide, with a one-line Terminal way</a></p>
       </section>
 
-      <figure class="hero-shot">
-        <img src="/img/app/hero.jpg" srcset="/img/app/hero-1200.jpg 1200w, /img/app/hero.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Sixgree on a Mac: an invented sample network drawn as rings around you, the most powerful people closest" width="2400" height="1601" fetchpriority="high">
-      </figure>
-    </section>
+      <!-- 1, 2, 3: the whole idea in three steps, drawn. -->
+      <div class="demo" id="how" data-step="3">
+        <div class="demo-tabs" role="tablist" aria-label="How it works, in three steps">
+          <button type="button" role="tab" id="demo-tab-1" aria-controls="demo-panel" aria-selected="false" data-step="1"><span class="demo-n">1</span> Scan your network</button>
+          <button type="button" role="tab" id="demo-tab-2" aria-controls="demo-panel" aria-selected="false" data-step="2"><span class="demo-n">2</span> Build bridges</button>
+          <button type="button" role="tab" id="demo-tab-3" aria-controls="demo-panel" aria-selected="true" data-step="3"><span class="demo-n">3</span> Find the way in</button>
+        </div>
+        <div class="demo-stage" id="demo-panel" role="tabpanel" aria-live="polite">
+          <svg class="demo-map" viewBox="0 0 600 380" role="img" aria-labelledby="demo-map-t">
+          <title id="demo-map-t">You in the middle, your connections on the first ring, and the circles of the four you scanned around them: one path runs from you, through a connection, to someone gold two steps away</title>
+          <g class="guides"><circle cx="300" cy="190" r="66"/><circle cx="300" cy="190" r="140"/><circle cx="300" cy="190" r="178"/></g>
+          <g class="edges1"><line x1="300" y1="190" x2="307.9" y2="124.5"/><line x1="300" y1="190" x2="329.8" y2="131.1"/><line x1="300" y1="190" x2="348.2" y2="144.9"/><line x1="300" y1="190" x2="360.7" y2="164.1"/><line x1="300" y1="190" x2="365.9" y2="186.4"/><line x1="300" y1="190" x2="363.2" y2="209.2"/><line x1="300" y1="190" x2="352.8" y2="229.6"/><line x1="300" y1="190" x2="336.1" y2="245.3"/><line x1="300" y1="190" x2="315.0" y2="254.3"/><line x1="300" y1="190" x2="292.1" y2="255.5"/><line x1="300" y1="190" x2="270.2" y2="248.9"/><line x1="300" y1="190" x2="251.8" y2="235.1"/><line x1="300" y1="190" x2="239.3" y2="215.9"/><line x1="300" y1="190" x2="234.1" y2="193.6"/><line x1="300" y1="190" x2="236.8" y2="170.8"/><line x1="300" y1="190" x2="247.2" y2="150.4"/><line x1="300" y1="190" x2="263.9" y2="134.7"/><line x1="300" y1="190" x2="285.0" y2="125.7"/></g>
+          <g class="edges2"><line class="e2 c0" x1="329.8" y1="131.1" x2="443.4" y2="70.4"/><line class="e2 c0" x1="329.8" y1="131.1" x2="384.2" y2="72.2"/><line class="e2 c0" x1="329.8" y1="131.1" x2="415.6" y2="103.7"/><line class="e2 c0" x1="329.8" y1="131.1" x2="422.5" y2="51.0"/><line class="e2 c0" x1="329.8" y1="131.1" x2="391.3" y2="28.4"/><line class="e2 c0" x1="329.8" y1="131.1" x2="324.3" y2="35.7"/><line class="e2 c0" x1="329.8" y1="131.1" x2="377.9" y2="24.2"/><line class="e2 c0" x1="329.8" y1="131.1" x2="453.2" y2="57.8"/><line class="e2 c0" x1="329.8" y1="131.1" x2="351.2" y2="68.4"/><line class="e2 c0" x1="329.8" y1="131.1" x2="484.7" y2="85.2"/><line class="e2 c0" x1="329.8" y1="131.1" x2="443.1" y2="84.0"/><line class="e2 c0" x1="329.8" y1="131.1" x2="394.0" y2="91.5"/><line class="e2 c0" x1="329.8" y1="131.1" x2="442.2" y2="90.4"/><line class="e2 c0" x1="329.8" y1="131.1" x2="304.7" y2="31.3"/><line class="e2 c1" x1="352.8" y1="229.6" x2="452.4" y2="297.1"/><line class="e2 c1" x1="352.8" y1="229.6" x2="516.8" y2="286.8"/><line class="e2 c1" x1="352.8" y1="229.6" x2="508.5" y2="281.6"/><line class="e2 c1" x1="352.8" y1="229.6" x2="462.0" y2="235.9"/><line class="e2 c1" x1="352.8" y1="229.6" x2="407.3" y2="288.9"/><line class="e2 c1" x1="352.8" y1="229.6" x2="459.8" y2="279.1"/><line class="e2 c1" x1="352.8" y1="229.6" x2="498.8" y2="229.9"/><line class="e2 c1" x1="352.8" y1="229.6" x2="469.8" y2="288.5"/><line class="e2 c1" x1="352.8" y1="229.6" x2="554.4" y2="239.8"/><line class="e2 c1" x1="352.8" y1="229.6" x2="441.7" y2="308.3"/><line class="e2 c1" x1="352.8" y1="229.6" x2="431.9" y2="319.7"/><line class="e2 c1" x1="352.8" y1="229.6" x2="498.1" y2="257.8"/><line class="e2 c1" x1="352.8" y1="229.6" x2="410.3" y2="323.0"/><line class="e2 c1" x1="352.8" y1="229.6" x2="476.5" y2="230.3"/><line class="e2 c1" x1="352.8" y1="229.6" x2="436.2" y2="287.8"/><line class="e2 c2" x1="270.2" y1="248.9" x2="142.6" y2="291.3"/><line class="e2 c2" x1="270.2" y1="248.9" x2="259.3" y2="309.0"/><line class="e2 c2" x1="270.2" y1="248.9" x2="158.6" y2="281.9"/><line class="e2 c2" x1="270.2" y1="248.9" x2="219.0" y2="352.4"/><line class="e2 c2" x1="270.2" y1="248.9" x2="296.6" y2="306.9"/><line class="e2 c2" x1="270.2" y1="248.9" x2="200.8" y2="306.9"/><line class="e2 c2" x1="270.2" y1="248.9" x2="230.4" y2="339.8"/><line class="e2 c2" x1="270.2" y1="248.9" x2="191.3" y2="337.3"/><line class="e2 c2" x1="270.2" y1="248.9" x2="175.3" y2="311.2"/><line class="e2 c2" x1="270.2" y1="248.9" x2="244.3" y2="332.9"/><line class="e2 c2" x1="270.2" y1="248.9" x2="216.2" y2="312.7"/><line class="e2 c2" x1="270.2" y1="248.9" x2="216.2" y2="299.5"/><line class="e2 c2" x1="270.2" y1="248.9" x2="150.4" y2="297.7"/><line class="e2 c2" x1="270.2" y1="248.9" x2="248.5" y2="352.0"/><line class="e2 c3" x1="236.8" y1="170.8" x2="105.2" y2="140.5"/><line class="e2 c3" x1="236.8" y1="170.8" x2="52.6" y2="137.3"/><line class="e2 c3" x1="236.8" y1="170.8" x2="48.7" y2="191.4"/><line class="e2 c3" x1="236.8" y1="170.8" x2="129.5" y2="127.3"/><line class="e2 c3" x1="236.8" y1="170.8" x2="99.4" y2="182.3"/><line class="e2 c3" x1="236.8" y1="170.8" x2="99.2" y2="121.6"/><line class="e2 c3" x1="236.8" y1="170.8" x2="96.5" y2="146.4"/><line class="e2 c3" x1="236.8" y1="170.8" x2="56.4" y2="213.7"/><line class="e2 c3" x1="236.8" y1="170.8" x2="56.3" y2="213.0"/><line class="e2 c3" x1="236.8" y1="170.8" x2="141.5" y2="145.0"/><line class="e2 c3" x1="236.8" y1="170.8" x2="107.1" y2="75.1"/><line class="e2 c3" x1="236.8" y1="170.8" x2="93.7" y2="190.6"/><line class="e2 c3" x1="236.8" y1="170.8" x2="121.0" y2="78.9"/></g>
+          <g class="d2"><circle class="t-b c0" cx="443.4" cy="70.4" r="4"/><circle class="t-a c0" cx="384.2" cy="72.2" r="4"/><circle class="t-a c0" cx="415.6" cy="103.7" r="4"/><circle class="t-s c0 target" cx="422.5" cy="51.0" r="7"/><circle class="t-b c0" cx="391.3" cy="28.4" r="4"/><circle class="t-d c0" cx="324.3" cy="35.7" r="4"/><circle class="t-s c0" cx="377.9" cy="24.2" r="5"/><circle class="t-d c0" cx="453.2" cy="57.8" r="4"/><circle class="t-c c0" cx="351.2" cy="68.4" r="4"/><circle class="t-d c0" cx="484.7" cy="85.2" r="4"/><circle class="t-a c0" cx="443.1" cy="84.0" r="4"/><circle class="t-d c0" cx="394.0" cy="91.5" r="4"/><circle class="t-c c0" cx="442.2" cy="90.4" r="4"/><circle class="t-d c0" cx="304.7" cy="31.3" r="4"/><circle class="t-c c1" cx="452.4" cy="297.1" r="4"/><circle class="t-d c1" cx="516.8" cy="286.8" r="4"/><circle class="t-b c1" cx="508.5" cy="281.6" r="4"/><circle class="t-s c1" cx="462.0" cy="235.9" r="5"/><circle class="t-a c1" cx="407.3" cy="288.9" r="4"/><circle class="t-b c1" cx="459.8" cy="279.1" r="4"/><circle class="t-a c1" cx="498.8" cy="229.9" r="4"/><circle class="t-d c1" cx="469.8" cy="288.5" r="4"/><circle class="t-d c1" cx="554.4" cy="239.8" r="4"/><circle class="t-b c1" cx="441.7" cy="308.3" r="4"/><circle class="t-b c1" cx="431.9" cy="319.7" r="4"/><circle class="t-a c1" cx="498.1" cy="257.8" r="4"/><circle class="t-d c1" cx="410.3" cy="323.0" r="4"/><circle class="t-d c1" cx="476.5" cy="230.3" r="4"/><circle class="t-c c1" cx="436.2" cy="287.8" r="4"/><circle class="t-b c2" cx="142.6" cy="291.3" r="4"/><circle class="t-c c2" cx="259.3" cy="309.0" r="4"/><circle class="t-c c2" cx="158.6" cy="281.9" r="4"/><circle class="t-b c2" cx="219.0" cy="352.4" r="4"/><circle class="t-s c2" cx="296.6" cy="306.9" r="5"/><circle class="t-c c2" cx="200.8" cy="306.9" r="4"/><circle class="t-d c2" cx="230.4" cy="339.8" r="4"/><circle class="t-a c2" cx="191.3" cy="337.3" r="4"/><circle class="t-a c2" cx="175.3" cy="311.2" r="4"/><circle class="t-c c2" cx="244.3" cy="332.9" r="4"/><circle class="t-b c2" cx="216.2" cy="312.7" r="4"/><circle class="t-c c2" cx="216.2" cy="299.5" r="4"/><circle class="t-b c2" cx="150.4" cy="297.7" r="4"/><circle class="t-b c2" cx="248.5" cy="352.0" r="4"/><circle class="t-a c3" cx="105.2" cy="140.5" r="4"/><circle class="t-b c3" cx="52.6" cy="137.3" r="4"/><circle class="t-c c3" cx="48.7" cy="191.4" r="4"/><circle class="t-a c3" cx="129.5" cy="127.3" r="4"/><circle class="t-d c3" cx="99.4" cy="182.3" r="4"/><circle class="t-b c3" cx="99.2" cy="121.6" r="4"/><circle class="t-c c3" cx="96.5" cy="146.4" r="4"/><circle class="t-c c3" cx="56.4" cy="213.7" r="4"/><circle class="t-b c3" cx="56.3" cy="213.0" r="4"/><circle class="t-c c3" cx="141.5" cy="145.0" r="4"/><circle class="t-a c3" cx="107.1" cy="75.1" r="4"/><circle class="t-b c3" cx="93.7" cy="190.6" r="4"/><circle class="t-b c3" cx="121.0" cy="78.9" r="4"/></g>
+          <g class="d1"><circle class="t-s" cx="307.9" cy="124.5" r="5.5"/><circle class="t-a bridge" cx="329.8" cy="131.1" r="7.5"/><circle class="t-a" cx="348.2" cy="144.9" r="5.5"/><circle class="t-s" cx="360.7" cy="164.1" r="5.5"/><circle class="t-c" cx="365.9" cy="186.4" r="5.5"/><circle class="t-a" cx="363.2" cy="209.2" r="5.5"/><circle class="t-b bridge" cx="352.8" cy="229.6" r="7.5"/><circle class="t-b" cx="336.1" cy="245.3" r="5.5"/><circle class="t-b" cx="315.0" cy="254.3" r="5.5"/><circle class="t-a" cx="292.1" cy="255.5" r="5.5"/><circle class="t-a bridge" cx="270.2" cy="248.9" r="7.5"/><circle class="t-c" cx="251.8" cy="235.1" r="5.5"/><circle class="t-s" cx="239.3" cy="215.9" r="5.5"/><circle class="t-a" cx="234.1" cy="193.6" r="5.5"/><circle class="t-b bridge" cx="236.8" cy="170.8" r="7.5"/><circle class="t-c" cx="247.2" cy="150.4" r="5.5"/><circle class="t-a" cx="263.9" cy="134.7" r="5.5"/><circle class="t-s" cx="285.0" cy="125.7" r="5.5"/></g>
+          <path class="path" d="M300 190 L329.8 131.1 L422.5 51.0" pathLength="100"/>
+          <circle class="target-ring" cx="422.5" cy="51.0" r="13"/>
+          <g class="you"><circle cx="300" cy="190" r="12"/><text x="300" y="220" text-anchor="middle">You</text></g>
+          </svg>
+          <ul class="demo-key" aria-label="Tiers">
+            <li class="t-s">S</li><li class="t-a">A</li><li class="t-b">B</li><li class="t-c">C</li><li class="t-d">D</li>
+          </ul>
+        </div>
+        <div class="demo-captions">
+          <p data-step="1"><strong>One click maps everyone you know.</strong> Paced, kept under daily limits, and it stops cleanly if LinkedIn pushes back.</p>
+          <p data-step="2"><strong>Scan a friend's circle and their people join your map.</strong> A few friends, and hundreds of people are one introduction away.</p>
+          <p data-step="3"><strong>See who is worth reaching, and who can introduce you.</strong> Every person ranked S to D, out to six degrees, with the way in drawn.</p>
+        </div>
+        <p class="demo-proof"><span class="mono"><!-- gen:sample-connections -->150<!-- /gen:sample-connections --></span> connections in the sample
+          that ships with the app lead to <span class="mono gold"><!-- gen:sample-degree2 -->598<!-- /gen:sample-degree2 --></span> people one introduction away.</p>
+        <a class="pill-link" href="/docs/#get-started">Learn how it works <span aria-hidden="true">→</span></a>
+      </div>
 
-    <section class="problem reveal" id="why">
-      <p class="kicker">The problem</p>
-      <h2 class="statement">Your network is bigger than you can see.</h2>
-      <p class="statement-sub">Every person you know knows people you don't. The introduction you need is usually one step
-        away, but a list of connections can't tell you who it runs through.</p>
-      <p class="statement-sub strong">Sixgree draws the whole shape, and shows you the way in.</p>
-      <p class="proof"><span class="proof-n"><!-- gen:sample-connections -->150<!-- /gen:sample-connections --></span> connections in the
-        sample network that ships with the app lead to <span class="proof-n gold"><!-- gen:sample-degree2 -->598<!-- /gen:sample-degree2 --></span>
-        people one introduction away.</p>
-    </section>
-
-    <!-- The numbers. Releases and tests are counted by scripts/build-site.mjs;
-         30,000 is LinkedIn's cap, which CHANGELOG 0.2.1 records an import of. -->
-    <section class="numbers" aria-labelledby="numbers-h">
-      <h2 class="sr-only" id="numbers-h">Sixgree in numbers</h2>
-      <ul class="stats" role="list">
-        <li>
-          <span class="stat-n"><!-- gen:release-count -->33<!-- /gen:release-count --></span>
-          <span class="stat-l">releases shipped</span>
-          <span class="stat-s">since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></span>
-        </li>
-        <li>
-          <span class="stat-n"><!-- gen:test-count -->1,098<!-- /gen:test-count --></span>
-          <span class="stat-l">automated tests</span>
-          <span class="stat-s">run on Node 22 and 24 for every change</span>
-        </li>
-        <li>
-          <span class="stat-n">30,000</span>
-          <span class="stat-l">connections</span>
-          <span class="stat-s">LinkedIn's own maximum, imported and drawn</span>
-        </li>
-        <li>
-          <span class="stat-n">0</span>
-          <span class="stat-l">accounts, servers or trackers</span>
-          <span class="stat-s">no telemetry, analytics or crash reports</span>
-        </li>
-        <li>
-          <span class="stat-n">MIT</span>
-          <span class="stat-l">licence</span>
-          <span class="stat-s">free, no paid tier, every line on GitHub</span>
-        </li>
-        <li>
-          <span class="stat-n">3</span>
-          <span class="stat-l">platforms today</span>
-          <span class="stat-s">Mac, plus Windows and Linux in beta</span>
-        </li>
+      <ul class="trust" aria-label="In short">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Stays on your computer</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Every scan paced and capped</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free, open source, no account</li>
       </ul>
-      <p class="fine center">Releases and tests are counted from the code each time this site is published
-        (<a href="https://github.com/blakeb056/six-degrees/blob/main/scripts/build-site.mjs">how</a>).</p>
     </section>
 
-    <!-- 01 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="features">
-      <p class="kicker"><span class="num">01</span> See your network</p>
-      <h2 class="chapter-title">Everyone you know. And everyone they know.</h2>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Everyone, at a glance.</h3>
-      <p>Network Circle puts your connections on rings around you, the ones who can open the most doors closest in.
-        Prefer a pyramid or a ranked list? One click.</p>
-      <figure class="shot">
-        <img src="/img/app/network-circle.jpg" srcset="/img/app/network-circle-1200.jpg 1200w, /img/app/network-circle.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Network Circle: 160 invented connections on tier rings around You, under the header every page shares" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Then everyone they know.</h3>
-      <p>Scan a connection's circle and their people join the picture, a band further out, each one next to the person
-        you'd go through.</p>
-      <figure class="shot">
-        <img src="/img/app/who-they-know.jpg" srcset="/img/app/who-they-know-1200.jpg 1200w, /img/app/who-they-know.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="The Galaxy with 2nd degree on: your connections on an inner ring, the people they know in bands outside it" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <!-- 02 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="find">
-      <p class="kicker"><span class="num">02</span> Find your way in</p>
-      <h2 class="chapter-title">The shortest path to anyone.</h2>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Who can introduce you. Ranked.</h3>
-      <p>Separation lists everyone two steps away, strongest first, with every connection who knows them. So you know
-        exactly who to ask.</p>
-      <figure class="shot">
-        <img src="/img/app/separation.jpg" srcset="/img/app/separation-1200.jpg 1200w, /img/app/separation.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Separation: invented people two steps away, ranked, with the slider from the rarest way in to the most mutual connections and the connections who can introduce you" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Follow the chain.</h3>
-      <p>Bridge Chains opens any connection's circle, then circles inside circles, as far as your scans reach. Orbit, one of
-        the Galaxy's layouts, fans them out behind the person they came through.</p>
-      <div class="shot-pair">
-        <figure class="shot">
-          <img src="/img/app/bridge-chains.jpg" srcset="/img/app/bridge-chains-1200.jpg 1200w, /img/app/bridge-chains.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 530px" alt="Bridge Chains: fourteen invented connections whose circles are scanned, around You" width="2400" height="1500" loading="lazy">
-          <figcaption>Bridge Chains</figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="/img/app/orbit.jpg" srcset="/img/app/orbit-1200.jpg 1200w, /img/app/orbit.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 530px" alt="Orbit, a layout of the Galaxy: each tier on its own orbit, with the people in each scanned circle behind their connection" width="2400" height="1500" loading="lazy">
-          <figcaption>Orbit</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Every connection, explained.</h3>
-      <p>Open anyone's card to see their circle, how many people only they can reach, who opens the same doors, and
-        where their people work.</p>
-      <figure class="shot">
-        <img src="/img/app/insights.jpg" srcset="/img/app/insights-1200.jpg 1200w, /img/app/insights.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="An invented connection's card: where their scan stopped, with Resume, and their circle drawn in rings, with its tiers and rarity" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Introductions, as a game.</h3>
-      <p>Outlink offers each connection's best five people at a time, and the next best moves. Mark an invite as sent to
-        fill the ring and unlock five more. Points come from introductions you ask for, never from browsing.</p>
-      <figure class="shot">
-        <img src="/img/app/outlink.jpg" srcset="/img/app/outlink-1200.jpg 1200w, /img/app/outlink.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Outlink: a level bar, three next best moves, each with Auto, and a card for each connection's circle" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <!-- 03 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="know">
-      <p class="kicker"><span class="num">03</span> Know your network</p>
-      <h2 class="chapter-title">Where you're strong, and where one person is your only door.</h2>
-    </section>
-
-    <section class="moment reveal" id="insights">
-      <div class="moment-text">
-        <h3>Your network, ranked by power.</h3>
-        <p>The Power Index, under Insights in your profile, ranks everyone within two steps of you, each person once. Kingmakers
-          have the most powerful people behind them, Gatekeepers are the ones your reach hangs on, and Untapped counts
-          the top-tier people you haven't asked yet. Every row ends in a next step: open their circle, ask, or Auto.</p>
-        <p class="small">Richest? It never sees anyone's money, and says so. Power is the honest measure it has.</p>
-      </div>
-      <figure class="shot">
-        <img src="/img/app/power-index.jpg" srcset="/img/app/power-index-1200.jpg 1200w, /img/app/power-index.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Insights: the Power Index, invented people within two steps ranked by power, with Untapped, Kingmakers and Gatekeepers beside it" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <div class="moment-text">
-        <h3>See who's your only way in.</h3>
-        <p>Some people you can reach through one connection and no one else. Network health shows how much of your
-          network you can reach more than one way, and the five connections who reach the most people no one else does.</p>
-        <p class="small">Only your own numbers. Never a ranking against anyone else.</p>
-      </div>
-      <figure class="shot clip">
-        <img src="/img/app/network-health.jpg" srcset="/img/app/network-health-1200.jpg 1200w, /img/app/network-health.jpg 2280w" sizes="(max-width: 960px) calc(100vw - 32px), 920px" alt="Network health: 16% of the 2nd degree reachable two or more ways, and the five connections who reach the most people no one else does" width="2280" height="768" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <div class="panel sample chart-group">
-        <div class="panel-head">
-          <h3>What that looks like, in the sample network</h3>
-          <p class="fine">The app ships with a network of invented people, so you can try every view first. These are its
-            numbers, counted from <a href="https://github.com/blakeb056/six-degrees/blob/main/public/demo-data.json">the sample's file</a>.
-            Yours will differ.</p>
+    <!-- A new way: four small cards, each with its own little picture. -->
+    <section class="band" id="features" aria-labelledby="new-way-h">
+      <div class="wrap">
+        <h2 id="new-way-h" class="big-h">A new way to see <br>who you know.</h2>
+        <p class="intro">LinkedIn gives you a list. Sixgree gives you the map: who you know, who they know, how much
+          each of them can open up for you, and the shortest way in to anyone.</p>
+        <div class="way-grid">
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><circle class="ring" cx="60" cy="32" r="26"/><circle class="ring" cx="60" cy="32" r="15"/><path class="sweep" d="M60 32 L60 6 A26 26 0 0 1 84.5 23.5 Z"/><circle class="dot t-s" cx="74" cy="20" r="3.2"/><circle class="dot t-a" cx="44" cy="44" r="2.8"/><circle class="dot t-b" cx="70" cy="49" r="2.6"/><circle class="dot t-c" cx="41" cy="22" r="2.4"/><circle class="you-dot" cx="60" cy="32" r="4"/></svg>
+            <h3>Scan your network</h3>
+            <p>One button maps everyone you know. It reads slowly, keeps to daily limits, and stops cleanly.</p>
+            <a class="more" href="/blog/scanning-slowly/">How scanning works <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><path class="link" d="M30 32 H90"/><circle class="dot t-a" cx="30" cy="32" r="6"/><circle class="dot t-b" cx="90" cy="32" r="6"/><g class="cloud"><circle cx="14" cy="18" r="2.4"/><circle cx="10" cy="34" r="2.4"/><circle cx="16" cy="48" r="2.4"/><circle cx="24" cy="12" r="2.4"/><circle cx="106" cy="16" r="2.4"/><circle cx="111" cy="31" r="2.4"/><circle cx="104" cy="47" r="2.4"/><circle cx="96" cy="54" r="2.4"/></g><circle class="you-dot" cx="60" cy="32" r="4"/></svg>
+            <h3>Build bridges</h3>
+            <p>Scan a connection's circle and everyone they know joins your map. Each one is a bridge into a new crowd.</p>
+            <a class="more" href="/docs/#scanning">How bridges work <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><g class="tiers"><rect class="t-s" x="14" y="10" width="92" height="7" rx="3.5"/><rect class="t-a" x="14" y="20" width="74" height="7" rx="3.5"/><rect class="t-b" x="14" y="30" width="58" height="7" rx="3.5"/><rect class="t-c" x="14" y="40" width="40" height="7" rx="3.5"/><rect class="t-d" x="14" y="50" width="24" height="7" rx="3.5"/></g></svg>
+            <h3>See the scale</h3>
+            <p>Everyone in tiers, S to D, out to six degrees. Power ranks how far someone can open doors, not who they are.</p>
+            <a class="more" href="/blog/who-can-introduce-you/">How the tiers work <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><path class="track" d="M14 40 H106"/><path class="track-on" d="M14 40 H74"/><circle class="thumb" cx="74" cy="40" r="7"/><text class="tick" x="14" y="22">rare</text><text class="tick end" x="106" y="22">easy</text></svg>
+            <h3>Find the way in</h3>
+            <p>Separation's slider runs from the rarest ways in to the most mutual. The score meter finds who is worth it.</p>
+            <a class="more" href="/blog/who-can-introduce-you/">How Separation works <span aria-hidden="true">→</span></a>
+          </article>
         </div>
-        <div class="sample-grid">
-          <div class="big">
-            <p class="big-n"><!-- gen:sample-degree2 -->598<!-- /gen:sample-degree2 --></p>
-            <p class="big-l">people two steps away</p>
-            <p class="fine">from <!-- gen:sample-connections -->150<!-- /gen:sample-connections --> connections, through the
-              <!-- gen:sample-bridges -->14<!-- /gen:sample-bridges --> whose circles were scanned</p>
+        <figure class="frame">
+          <img src="/img/app/hero.jpg" srcset="/img/app/hero-1200.jpg 1200w, /img/app/hero.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Sixgree's Galaxy: an invented network of 1,500 connections on rings around You, gold S tier closest, then A, B, C and D" width="2400" height="1500" loading="lazy">
+          <figcaption>The Galaxy: every connection on its tier's ring, the most powerful closest to you. An invented network.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Who it's for: Blake's four audiences. -->
+    <section class="for" id="for" aria-labelledby="for-h">
+      <h2 id="for-h" class="big-h">Made for you, <br>wherever you start.</h2>
+      <p class="intro">It can feel cold to score people by their employer and title. But your network is your net
+        worth, and you deserve to see it. <strong>Power ranks reachability, not people.</strong></p>
+      <div class="for-grid">
+        <article class="for-card">
+          <img src="/img/app/bridge-chains.jpg" srcset="/img/app/bridge-chains-1200.jpg 1200w, /img/app/bridge-chains.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 528px" alt="Bridge Chains: the invented connections whose circles are scanned, on rings around You" width="2400" height="1500" loading="lazy">
+          <div class="for-text">
+            <p class="for-who">Just starting out</p>
+            <h3>A few connections is plenty.</h3>
+            <p>Scan your few friends' circles and the map opens up: everyone they know, ranked, one introduction away.</p>
           </div>
-          <div class="chart ways">
-            <p class="chart-title">How many ways in</p>
-            <!-- gen:sample-ways-bar --><svg class="stack" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="Of 598 people two steps away: 503 through one connection only, 65 through two, 30 through three or more"><rect class="k-one" x="0" y="0" width="84.11" height="10"/><rect class="k-two" x="84.11" y="0" width="10.87" height="10"/><rect class="k-more" x="94.98" y="0" width="5.02" height="10"/></svg><!-- /gen:sample-ways-bar -->
-            <ul class="legend" role="list">
-              <li class="k-one"><b><!-- gen:sample-one-way -->503<!-- /gen:sample-one-way --></b> through one connection only (<!-- gen:sample-one-way-share -->84%<!-- /gen:sample-one-way-share -->)</li>
-              <li class="k-two"><b><!-- gen:sample-two-way -->65<!-- /gen:sample-two-way --></b> through two</li>
-              <li class="k-more"><b><!-- gen:sample-more-way -->30<!-- /gen:sample-more-way --></b> through three or more</li>
-            </ul>
+        </article>
+        <article class="for-card">
+          <img src="/img/app/lab-clusters.jpg" srcset="/img/app/lab-clusters-1200.jpg 1200w, /img/app/lab-clusters.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 528px" alt="The Galaxy laid out as Clusters beside its physics controls: an invented network, every tier coloured" width="2400" height="1500" loading="lazy">
+          <div class="for-text">
+            <p class="for-who">Already well connected</p>
+            <h3>See the fibre of your network.</h3>
+            <p>Thousands of connections, drawn: the quality of each, the clusters they form, and what the whole thing is really worth.</p>
           </div>
-          <div class="chart exclusive">
-            <p class="chart-title">People only they reach, for each scanned connection</p>
-            <div class="bars-box"><!-- gen:sample-exclusive-chart -->
-            <svg class="bars" viewBox="0 0 140 100" preserveAspectRatio="none" role="img" aria-label="The 14 connections with a scanned circle in the sample network, by how many people only they reach: from 51 down to 15"><g><title>Connection 1: 51 people only they reach</title><rect class="hit" x="0" y="0" width="10" height="100"/><rect class="k-top" x="1.5" y="0" width="7" height="100"/></g><g><title>Connection 2: 48 people only they reach</title><rect class="hit" x="10" y="0" width="10" height="100"/><rect class="k-bridge" x="11.5" y="5.88" width="7" height="94.12"/></g><g><title>Connection 3: 46 people only they reach</title><rect class="hit" x="20" y="0" width="10" height="100"/><rect class="k-bridge" x="21.5" y="9.8" width="7" height="90.2"/></g><g><title>Connection 4: 44 people only they reach</title><rect class="hit" x="30" y="0" width="10" height="100"/><rect class="k-bridge" x="31.5" y="13.73" width="7" height="86.27"/></g><g><title>Connection 5: 43 people only they reach</title><rect class="hit" x="40" y="0" width="10" height="100"/><rect class="k-bridge" x="41.5" y="15.69" width="7" height="84.31"/></g><g><title>Connection 6: 41 people only they reach</title><rect class="hit" x="50" y="0" width="10" height="100"/><rect class="k-bridge" x="51.5" y="19.61" width="7" height="80.39"/></g><g><title>Connection 7: 39 people only they reach</title><rect class="hit" x="60" y="0" width="10" height="100"/><rect class="k-bridge" x="61.5" y="23.53" width="7" height="76.47"/></g><g><title>Connection 8: 37 people only they reach</title><rect class="hit" x="70" y="0" width="10" height="100"/><rect class="k-bridge" x="71.5" y="27.45" width="7" height="72.55"/></g><g><title>Connection 9: 32 people only they reach</title><rect class="hit" x="80" y="0" width="10" height="100"/><rect class="k-bridge" x="81.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 10: 32 people only they reach</title><rect class="hit" x="90" y="0" width="10" height="100"/><rect class="k-bridge" x="91.5" y="37.25" width="7" height="62.75"/></g><g><title>Connection 11: 28 people only they reach</title><rect class="hit" x="100" y="0" width="10" height="100"/><rect class="k-bridge" x="101.5" y="45.1" width="7" height="54.9"/></g><g><title>Connection 12: 26 people only they reach</title><rect class="hit" x="110" y="0" width="10" height="100"/><rect class="k-bridge" x="111.5" y="49.02" width="7" height="50.98"/></g><g><title>Connection 13: 21 people only they reach</title><rect class="hit" x="120" y="0" width="10" height="100"/><rect class="k-bridge" x="121.5" y="58.82" width="7" height="41.18"/></g><g><title>Connection 14: 15 people only they reach</title><rect class="hit" x="130" y="0" width="10" height="100"/><rect class="k-bridge" x="131.5" y="70.59" width="7" height="29.41"/></g></svg>
-            <ol class="bar-labels" aria-hidden="true"><li>51</li><li>48</li><li>46</li><li>44</li><li>43</li><li>41</li><li>39</li><li>37</li><li>32</li><li>32</li><li>28</li><li>26</li><li>21</li><li>15</li></ol>
-            <!-- /gen:sample-exclusive-chart --></div>
-            <p class="fine">One bar per connection. The tallest reaches <!-- gen:sample-top-exclusive -->51<!-- /gen:sample-top-exclusive -->
-              people no one else in the network does. <a href="/blog/who-can-introduce-you/">How it's counted</a>.</p>
+        </article>
+        <article class="for-card">
+          <img src="/img/app/separation.jpg" srcset="/img/app/separation-1200.jpg 1200w, /img/app/separation.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 528px" alt="Separation: invented people two steps away, ranked by power, with the slider from rarest to easiest and the connections who can introduce you" width="2400" height="1500" loading="lazy">
+          <div class="for-text">
+            <p class="for-who">Climbing</p>
+            <h3>Reach peers at the top.</h3>
+            <p>Separation lists the most powerful people two steps away, and which of your connections are mutual with each.</p>
           </div>
+        </article>
+        <article class="for-card">
+          <img src="/img/app/power-index.jpg" srcset="/img/app/power-index-1200.jpg 1200w, /img/app/power-index.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 528px" alt="The Power Index: invented founders and C-suite people within two steps, ranked by power, with Kingmakers and Gatekeepers beside them" width="2400" height="1500" loading="lazy">
+          <div class="for-text">
+            <p class="for-who">Founders, and co-founder hunters</p>
+            <h3>Find the founders a founder knows.</h3>
+            <p>Scan one founder's circle and the Power Index lists every founder in it. Faster than whoever is hunting the same people.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- The scanner: one click, tested, safeguarded. -->
+    <section class="band" id="scanning" aria-labelledby="scan-h">
+      <div class="wrap split">
+        <div class="split-text">
+          <p class="kicker">The scanner</p>
+          <h2 id="scan-h" class="left">One click. <br>Paced. Safeguarded.</h2>
+          <p>Every scan button works in one click, and each one is tested and held to the same rules.</p>
+          <ul class="checks">
+            <li><strong>Paced.</strong> Slow, Medium or Fast, measured in searches an hour.</li>
+            <li><strong>Capped.</strong> Daily and monthly limits, with your usage on the Scan page.</li>
+            <li><strong>Stops cleanly.</strong> At the first push-back it stops and says so, and Resume picks up where it left off.</li>
+            <li><strong>No pop-ups.</strong> On a Mac it asks for App Management once, then leaves you alone.</li>
+          </ul>
+          <p class="stat-line"><span class="mono"><!-- gen:test-count -->1,098<!-- /gen:test-count --></span> automated tests ·
+            <span class="mono"><!-- gen:release-count -->33<!-- /gen:release-count --></span> releases since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></p>
+          <p class="fine">Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that automate it.
+            <a href="/blog/scanning-slowly/">The honest risk</a>. Rather not? Import LinkedIn's own CSV instead.</p>
         </div>
-      </div>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Your network, by company.</h3>
-      <p>Paths groups your companies by industry. Pick one to see who you know there, who you can reach, and the warmest
-        way in.</p>
-      <figure class="shot">
-        <img src="/img/app/paths.jpg" srcset="/img/app/paths-1200.jpg 1200w, /img/app/paths.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Paths: invented companies as bubbles grouped by industry, with the tiers × degrees filter beside them" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <p class="pill-line"><span class="pill">experimental</span></p>
-      <h3>Who's warm. Who's waiting.</h3>
-      <p>Outlink's Messages &amp; follow-ups reads LinkedIn's own export of your data: who you're in touch with, who's waiting on a
-        reply, and the connections each chapter of your career brought. It keeps dates and counts, never what a message says.</p>
-      <figure class="shot">
-        <img src="/img/app/social.jpg" srcset="/img/app/social-1200.jpg 1200w, /img/app/social.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Messages &amp; follow-ups, ready to read LinkedIn's export of your data" width="2400" height="1300" loading="lazy">
-      </figure>
-    </section>
-
-    <!-- 04 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="play">
-      <p class="kicker"><span class="num">04</span> Watch it grow</p>
-      <h2 class="chapter-title">Your network, in motion.</h2>
-    </section>
-
-    <section class="moment reveal">
-      <p class="pill-line"><span class="pill">experimental</span></p>
-      <h3>A physics lab for your galaxy.</h3>
-      <p>Obsidian's forces, center, repel, link force and link distance, saying what each does to your network. Pick
-        Clusters and it draws like Obsidian: one round disc, each scanned connection a big hub with their circle around
-        them, and anyone in two circles tying them together. Turn up Orbit and it all slowly turns round you.</p>
-      <figure class="shot">
-        <img src="/img/app/lab-clusters.jpg" srcset="/img/app/lab-clusters-1200.jpg 1200w, /img/app/lab-clusters.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Physics beside the Galaxy, laid out as Clusters: a round disc of invented people, big hubs each with their circle around them" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Colour it. Find anyone.</h3>
-      <p>Colour the Galaxy by tier, degree, company or warmth. Type a name, a company or a role, and everyone who matches
-        lights up. Names on, or off.</p>
-      <figure class="shot">
-        <img src="/img/app/lab-find.jpg" srcset="/img/app/lab-find-1200.jpg 1200w, /img/app/lab-find.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Find: everyone at one invented company lit up in the Galaxy, the rest dimmed" width="2400" height="1500" loading="lazy">
-      </figure>
-    </section>
-
-    <section class="moment reveal">
-      <h3>Watch it grow.</h3>
-      <p>Replay your network by the day you made each connection, with your job changes marked along the way. Save it as
-        a video, or the Galaxy as a picture.</p>
-      <figure class="shot">
-        <img src="/img/app/replay.jpg" srcset="/img/app/replay-1200.jpg 1200w, /img/app/replay.jpg 2400w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="The replay part-way through: 65 of 160 invented connections by May 2019" width="2400" height="1500" loading="lazy">
-        <figcaption>The replay needs the dates you connected, from a scan or LinkedIn's export.</figcaption>
-      </figure>
-    </section>
-
-    <!-- 05 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="grow">
-      <p class="kicker"><span class="num">05</span> Grow it, carefully</p>
-      <h2 class="chapter-title">A scanner that takes its time.</h2>
-    </section>
-
-    <section class="moment reveal">
-      <div class="moment-text">
-        <h3>Slow on purpose.</h3>
-        <p>The optional scanner reads your own LinkedIn in Chrome, after you sign in yourself, in four steps with one
-          button each. Then it works in the background, out of your way: its window comes forward only if LinkedIn
-          needs you. It keeps to a daily budget, rests between pages, and stops at the first sign of push-back. Pick
-          Slow, Medium or Fast: Fast is the pace it has always had, the others only add waiting. The notch under the header
-          shows what it's doing on every page, and the In progress list carries on where each scan stopped. It reads; the one thing it
-          sends is a connection request, without a note, when you press Auto on someone.</p>
-        <p class="honest">Automating LinkedIn may break its User Agreement, and LinkedIn can restrict accounts that do it.
-          The risk is yours. LinkedIn's own export and the sample network carry none.
-          <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
-      </div>
-      <div class="shot-stack">
-        <figure class="shot">
-          <img src="/img/app/scan-launch.jpg" srcset="/img/app/scan-launch-1200.jpg 1200w, /img/app/scan-launch.jpg 1440w" sizes="(max-width: 960px) calc(100vw - 32px), 720px" alt="The Scan page's fourth step: a radar Scan button, the three speeds (Slow, Medium, Fast) with searches an hour, and how many people this round" width="1440" height="1420" loading="lazy">
-          <figcaption>Step 4: who they know, at the speed you pick</figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="/img/app/scan-paused.jpg" srcset="/img/app/scan-paused-1200.jpg 1200w, /img/app/scan-paused.jpg 1384w" sizes="(max-width: 960px) calc(100vw - 32px), 920px" alt="The In progress list on the Scan page: six invented connections whose scans stopped partway, each with Resume, and Resume all" width="1384" height="760" loading="lazy">
+        <figure class="frame tight">
+          <img src="/img/app/scan-page.jpg" srcset="/img/app/scan-page-1200.jpg 1200w, /img/app/scan-page.jpg 2400w" sizes="(max-width: 860px) calc(100vw - 32px), 600px" alt="The Scan page: 1,500 invented connections mapped, the Scan button with Slow, Medium and Fast, and the setup checklist" width="2400" height="1500" loading="lazy">
         </figure>
       </div>
     </section>
 
-    <section class="moment reveal">
-      <div class="moment-text">
-        <p class="pill-line"><span class="pill">experimental</span></p>
-        <h3>Auto scan, and a quiet window.</h3>
-        <p>All-day pacing that rests between sittings and searches only in the daytime, with one Auto scan button to
-          start it. And no window in your way: the scanner's Chrome stays out of sight unless LinkedIn needs you, with an
-          option to show it if you'd like to watch.</p>
+    <!-- What you already have, and what it doesn't show. -->
+    <section class="compare" id="compare" aria-labelledby="compare-h">
+      <h2 id="compare-h" class="big-h">LinkedIn already lists your network. <br>Here is what it doesn't show.</h2>
+      <p class="intro">LinkedIn is where your connections live, and its search is good at finding one person. It
+        isn't built to show you the whole shape.</p>
+      <div class="vs">
+        <article class="vs-card">
+          <h3>On LinkedIn</h3>
+          <ul>
+            <li>Your connections, as a list to scroll</li>
+            <li>2nd-degree people one search at a time, with mutuals on each profile</li>
+            <li>No map, no tiers, no ranking of who matters most</li>
+            <li>Who only one of your connections reaches: not shown</li>
+          </ul>
+        </article>
+        <article class="vs-card us">
+          <h3><span class="wordmark tiny" aria-hidden="true">Sixgree</span><span class="sr-only">In Sixgree</span></h3>
+          <ul>
+            <li>Everyone you know and everyone they know, drawn as one galaxy</li>
+            <li>Every person in a tier, S to D, out to six degrees, with the score's working shown</li>
+            <li>Separation: the most valuable targets, or the rarest ways in, on one slider</li>
+            <li>Who in your clusters is mutual, and who is your only door</li>
+          </ul>
+        </article>
       </div>
-      <figure class="shot clip">
-        <img src="/img/app/scan-options.jpg" srcset="/img/app/scan-options-1200.jpg 1200w, /img/app/scan-options.jpg 2280w" sizes="(max-width: 960px) calc(100vw - 32px), 920px" alt="The Scan page's Fine-tune options: experimental all-day pacing, and showing the scanner's Chrome window for anyone who wants to watch it work" width="2280" height="610" loading="lazy">
-      </figure>
+      <details class="full-compare">
+        <summary>The full comparison, with spreadsheets and network tools</summary>
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Sixgree compared with LinkedIn's own search, spreadsheets and CRMs, and general network-analysis tools</caption>
+            <thead>
+              <tr>
+                <th scope="col">What you want</th>
+                <th scope="col" class="us">Sixgree</th>
+                <th scope="col">LinkedIn's own search</th>
+                <th scope="col">Spreadsheets and CRMs</th>
+                <th scope="col">Network tools (SocNetV, Gephi)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Your connections, from LinkedIn's export</th>
+                <td class="us yes" data-label="Sixgree">Yes: drop in <code>Connections.csv</code></td>
+                <td class="yes" data-label="LinkedIn's own search">Yes: it's where they live</td>
+                <td class="yes" data-label="Spreadsheets and CRMs">Yes: import the CSV</td>
+                <td class="partly" data-label="Network tools">Partly: as nodes, with no ties between them</td>
+              </tr>
+              <tr>
+                <th scope="row">Everyone two steps away, ranked, with who can introduce you</th>
+                <td class="us yes" data-label="Sixgree">Yes: Separation and Insights (needs a scan, or the sample)</td>
+                <td class="partly" data-label="LinkedIn's own search">Partly: search 2nd-degree people, and see mutual connections on each</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No: the export holds 1st degree only</td>
+                <td class="partly" data-label="Network tools">If you bring the ties yourself</td>
+              </tr>
+              <tr>
+                <th scope="row">Who only one of your connections reaches</th>
+                <td class="us yes" data-label="Sixgree">Yes: for every scanned circle</td>
+                <td class="no" data-label="LinkedIn's own search">Not shown</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No</td>
+                <td class="partly" data-label="Network tools">Partly: brokerage measures, on data you bring</td>
+              </tr>
+              <tr>
+                <th scope="row">A score per person, with the working shown</th>
+                <td class="us yes" data-label="Sixgree">Yes: title × company, and the formula is open</td>
+                <td class="no" data-label="LinkedIn's own search">Not shown</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Your own formulas</td>
+                <td class="partly" data-label="Network tools">General centrality measures</td>
+              </tr>
+              <tr>
+                <th scope="row">Your network by company and industry</th>
+                <td class="us yes" data-label="Sixgree">Yes: Paths</td>
+                <td class="partly" data-label="LinkedIn's own search">Partly: filter a search by company</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Pivot tables, by hand</td>
+                <td class="partly" data-label="Network tools">Partly: by any attribute you import</td>
+              </tr>
+              <tr>
+                <th scope="row">A layout you can tune, and a replay by date</th>
+                <td class="us yes" data-label="Sixgree">Yes: the Galaxy's physics lab (experimental)</td>
+                <td class="no" data-label="LinkedIn's own search">No</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No</td>
+                <td class="yes" data-label="Network tools">Yes: many layouts, and Gephi's timeline</td>
+              </tr>
+              <tr>
+                <th scope="row">Any network, any data, research-grade statistics</th>
+                <td class="us no" data-label="Sixgree">No: LinkedIn networks only</td>
+                <td class="no" data-label="LinkedIn's own search">No</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Any data, few network tools</td>
+                <td class="yes" data-label="Network tools">Yes: what they're built for</td>
+              </tr>
+              <tr>
+                <th scope="row">Runs on your computer, with no account</th>
+                <td class="us yes" data-label="Sixgree">Yes</td>
+                <td class="no" data-label="LinkedIn's own search">No: an online service with your account</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Varies: most CRMs are online</td>
+                <td class="yes" data-label="Network tools">Yes: desktop apps</td>
+              </tr>
+              <tr>
+                <th scope="row">Price</th>
+                <td class="us yes" data-label="Sixgree">Free, MIT licence</td>
+                <td class="partly" data-label="LinkedIn's own search">Free, with paid plans</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Free to paid</td>
+                <td class="yes" data-label="Network tools">Free, open source</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="fine center">Something here out of date, or unfair to another tool?
+          <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a> and it'll be put right.</p>
+      </details>
     </section>
 
-    <!-- 06 ─────────────────────────────────────────────── -->
-    <section class="chapter reveal" id="privacy">
-      <p class="kicker"><span class="num">06</span> Yours alone</p>
-      <h2 class="chapter-title">Private by design. Open to the last line.</h2>
-    </section>
-
-    <section class="moment reveal">
-      <div class="moment-text">
-        <h3>It never leaves your computer.</h3>
-        <p>No account. No server. No telemetry. Your network is one folder on your computer, and the app goes online only
-          when you ask it to: LinkedIn while you scan or press Auto, GitHub when you check for an update.</p>
-        <p>Every line is on GitHub under the MIT licence, so you can check exactly what it does.</p>
-        <p class="links"><a href="/blog/local-first/">Why local-first</a> · <a href="https://github.com/blakeb056/six-degrees">Read the code</a></p>
+    <!-- The questions people ask first. -->
+    <section class="faq-home" id="questions" aria-labelledby="faq-h">
+      <h2 id="faq-h" class="big-h left-on-wide">The questions people ask first</h2>
+      <div class="qa">
+        <details>
+          <summary>Is it really free?</summary>
+          <p>Yes. No paid tier, no account and no trial. Sixgree is open source under the MIT licence, and every line is on
+            <a href="https://github.com/blakeb056/six-degrees">GitHub</a>.</p>
+        </details>
+        <details>
+          <summary>Who is Sixgree for?</summary>
+          <p>Anyone on LinkedIn who wants to see their network rather than scroll it: people starting out with a handful of
+            connections, people with thousands who want to see what they add up to, climbers looking for peers at the top,
+            and founders looking for other founders, or a co-founder.</p>
+        </details>
+        <details>
+          <summary>Does my network leave my computer?</summary>
+          <p>No. There is no Sixgree server. Your network is one folder on your computer, and the app goes online only when you
+            ask it to: LinkedIn while you scan, GitHub when you check for an update. <a href="/blog/local-first/">Why local-first</a>.</p>
+        </details>
+        <details>
+          <summary>Will scanning get my LinkedIn account restricted?</summary>
+          <p>It might, and we say so plainly. Scanning uses your own account in a Chrome window you sign into. It reads slowly,
+            keeps to daily and monthly limits, and stops at the first sign of push-back. If you'd rather take no risk, import
+            LinkedIn's own <code>Connections.csv</code> or try the sample. <a href="/blog/scanning-slowly/">The details</a>.</p>
+        </details>
+        <details>
+          <summary>What do the tiers S, A, B, C and D mean?</summary>
+          <p>Each person gets a power score from their title and their company, and the tiers group those scores: S is the
+            top. Power ranks reachability, not people: it estimates how many doors someone can open, never what they're worth.
+            The formula is open.</p>
+        </details>
+        <details>
+          <summary>What's a bridge, and what does six degrees mean here?</summary>
+          <p>A bridge is a connection whose circle you've scanned: everyone they know joins your map, two steps from you. Scan
+            circles further out and the map keeps going, out to six degrees.</p>
+        </details>
+        <details>
+          <summary>What does it run on?</summary>
+          <p>macOS 13.5 or later, on Apple Silicon or Intel, signed and notarized by Apple. Windows 10 or 11 and Linux are in
+            beta. <a href="/download/">All downloads</a>.</p>
+        </details>
       </div>
-      <figure class="shot clip">
-        <img src="/img/app/your-data.jpg" srcset="/img/app/your-data-1200.jpg 1200w, /img/app/your-data.jpg 2280w" sizes="(max-width: 960px) calc(100vw - 32px), 920px" alt="Settings, Your data: the network, photos, backups and LinkedIn sign-in, all in one folder on this computer" width="2280" height="660" loading="lazy">
-      </figure>
+      <p class="fine center more-q"><a href="/docs/#faq">More questions, answered in the docs</a></p>
     </section>
 
-    <section class="compare reveal" id="compare">
-      <p class="kicker">How it compares</p>
-      <h2>Built for one job: your own LinkedIn network.</h2>
-      <p class="intro">Good tools, each made for something different. This is what each does out of the box, put as
-        fairly as we can.</p>
-      <div class="table-wrap">
-        <table>
-          <caption class="sr-only">Sixgree compared with LinkedIn's own search, spreadsheets and CRMs, and general network-analysis tools</caption>
-          <thead>
-            <tr>
-              <th scope="col">What you want</th>
-              <th scope="col" class="us">Sixgree</th>
-              <th scope="col">LinkedIn's own search</th>
-              <th scope="col">Spreadsheets and CRMs</th>
-              <th scope="col">Network tools (SocNetV, Gephi)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">Your connections, from LinkedIn's export</th>
-              <td class="us yes" data-label="Sixgree">Yes: drop in <code>Connections.csv</code></td>
-              <td class="yes" data-label="LinkedIn's own search">Yes: it's where they live</td>
-              <td class="yes" data-label="Spreadsheets and CRMs">Yes: import the CSV</td>
-              <td class="partly" data-label="Network tools">Partly: as nodes, with no ties between them</td>
-            </tr>
-            <tr>
-              <th scope="row">Everyone two steps away, ranked, with who can introduce you</th>
-              <td class="us yes" data-label="Sixgree">Yes: Separation and Insights (needs a scan, or the sample)</td>
-              <td class="partly" data-label="LinkedIn's own search">Partly: search 2nd-degree people, and see mutual connections on each</td>
-              <td class="no" data-label="Spreadsheets and CRMs">No: the export holds 1st degree only</td>
-              <td class="partly" data-label="Network tools">If you bring the ties yourself</td>
-            </tr>
-            <tr>
-              <th scope="row">Who only one of your connections reaches</th>
-              <td class="us yes" data-label="Sixgree">Yes: for every scanned circle</td>
-              <td class="no" data-label="LinkedIn's own search">Not shown</td>
-              <td class="no" data-label="Spreadsheets and CRMs">No</td>
-              <td class="partly" data-label="Network tools">Partly: brokerage measures, on data you bring</td>
-            </tr>
-            <tr>
-              <th scope="row">A score per person, with the working shown</th>
-              <td class="us yes" data-label="Sixgree">Yes: title × company, and the formula is open</td>
-              <td class="no" data-label="LinkedIn's own search">Not shown</td>
-              <td class="partly" data-label="Spreadsheets and CRMs">Your own formulas</td>
-              <td class="partly" data-label="Network tools">General centrality measures</td>
-            </tr>
-            <tr>
-              <th scope="row">Your network by company and industry</th>
-              <td class="us yes" data-label="Sixgree">Yes: Paths</td>
-              <td class="partly" data-label="LinkedIn's own search">Partly: filter a search by company</td>
-              <td class="partly" data-label="Spreadsheets and CRMs">Pivot tables, by hand</td>
-              <td class="partly" data-label="Network tools">Partly: by any attribute you import</td>
-            </tr>
-            <tr>
-              <th scope="row">A layout you can tune, and a replay by date</th>
-              <td class="us yes" data-label="Sixgree">Yes: the Galaxy's physics lab (experimental)</td>
-              <td class="no" data-label="LinkedIn's own search">No</td>
-              <td class="no" data-label="Spreadsheets and CRMs">No</td>
-              <td class="yes" data-label="Network tools">Yes: many layouts, and Gephi's timeline</td>
-            </tr>
-            <tr>
-              <th scope="row">Any network, any data, research-grade statistics</th>
-              <td class="us no" data-label="Sixgree">No: LinkedIn networks only</td>
-              <td class="no" data-label="LinkedIn's own search">No</td>
-              <td class="partly" data-label="Spreadsheets and CRMs">Any data, few network tools</td>
-              <td class="yes" data-label="Network tools">Yes: what they're built for</td>
-            </tr>
-            <tr>
-              <th scope="row">Runs on your computer, with no account</th>
-              <td class="us yes" data-label="Sixgree">Yes</td>
-              <td class="no" data-label="LinkedIn's own search">No: an online service with your account</td>
-              <td class="partly" data-label="Spreadsheets and CRMs">Varies: most CRMs are online</td>
-              <td class="yes" data-label="Network tools">Yes: desktop apps</td>
-            </tr>
-            <tr>
-              <th scope="row">Price</th>
-              <td class="us yes" data-label="Sixgree">Free, MIT licence</td>
-              <td class="partly" data-label="LinkedIn's own search">Free, with paid plans</td>
-              <td class="partly" data-label="Spreadsheets and CRMs">Free to paid</td>
-              <td class="yes" data-label="Network tools">Free, open source</td>
-            </tr>
-            <tr>
-              <th scope="row">Windows</th>
-              <td class="us yes" data-label="Sixgree">Yes, in beta</td>
-              <td class="yes" data-label="LinkedIn's own search">Yes, in a browser</td>
-              <td class="yes" data-label="Spreadsheets and CRMs">Yes</td>
-              <td class="yes" data-label="Network tools">Yes</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Watch: the tour, with chapter markers (app.js plays it). -->
+    <section class="watch" id="watch" aria-labelledby="watch-h">
+      <p class="kicker"><span class="live-dot" aria-hidden="true"></span>Watch</p>
+      <h2 id="watch-h" class="sr-only">The tour</h2>
+      <div class="tour" id="tour">
+        <div class="tour-screen">
+          <p class="tour-title">From a few connections to <span class="hl">six degrees.</span></p>
+          <div class="tour-frames">
+            <img class="on" src="/img/app/setup-1200.jpg" alt="The guided setup: scan your LinkedIn, import LinkedIn's CSV, or try the sample" width="1200" height="750" loading="lazy" data-chapter="0">
+            <img src="/img/app/scan-page-1200.jpg" alt="The Scan page: one Scan button, three speeds, and the setup checklist" width="1200" height="750" loading="lazy" data-chapter="1">
+            <img src="/img/app/bridge-chains-1200.jpg" alt="Bridge Chains: the circles you've scanned, around You" width="1200" height="750" loading="lazy" data-chapter="2">
+            <img src="/img/app/hero-1200.jpg" alt="The Galaxy: every connection on its tier's ring" width="1200" height="750" loading="lazy" data-chapter="3">
+            <img src="/img/app/separation-1200.jpg" alt="Separation: the slider, and everyone two steps away ranked" width="1200" height="750" loading="lazy" data-chapter="4">
+            <img src="/img/app/power-index-1200.jpg" alt="The Power Index: everyone within two steps, ranked by power" width="1200" height="750" loading="lazy" data-chapter="5">
+          </div>
+          <button type="button" class="tour-play" id="tour-play" aria-controls="tour" hidden><span class="tour-icon" aria-hidden="true"></span><span class="tour-label">Play</span> <span class="mono">0:48</span></button>
+          <div class="tour-progress" aria-hidden="true"><span id="tour-bar"></span></div>
+        </div>
+        <ol class="chapters">
+          <li><button type="button" data-chapter="0"><span class="mono">0:00</span> Start in one click</button></li>
+          <li><button type="button" data-chapter="1"><span class="mono">0:08</span> Scan your network</button></li>
+          <li><button type="button" data-chapter="2"><span class="mono">0:16</span> Build bridges</button></li>
+          <li><button type="button" data-chapter="3"><span class="mono">0:24</span> The scale of tiers</button></li>
+          <li><button type="button" data-chapter="4"><span class="mono">0:32</span> Separation</button></li>
+          <li><button type="button" data-chapter="5"><span class="mono">0:40</span> Your net worth</button></li>
+        </ol>
       </div>
-      <p class="fine center">Something here out of date, or unfair to another tool?
-        <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a> and it'll be put right.</p>
+      <p class="watch-links"><a href="/docs/#get-started">Read the guide</a> <a class="pill-link" href="/download/">Install help and videos <span aria-hidden="true">→</span></a></p>
     </section>
 
-    <section class="news reveal" id="latest">
+    <!-- Everything else in the box. -->
+    <section class="extras" aria-labelledby="extras-h">
+      <h2 id="extras-h" class="big-h">Everything else in the box</h2>
+      <p class="intro">Eight tools on one map of your network. All of them free, all of them on your computer.</p>
+      <ul class="tool-grid">
+        <li><a href="/blog/galaxy-physics-lab/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.6"/></svg></span><span class="tool-t"><strong>Galaxy</strong><span>Your whole network on tier rings, with a physics lab and a replay.</span></span></a></li>
+        <li><a href="/docs/#scanning"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5" fill="currentColor"/><circle cx="12" cy="6" r="2.5" fill="currentColor"/><circle cx="19" cy="12" r="2.5" fill="currentColor"/><path d="M7 11 10.2 7.6M13.8 7.6 17 11" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="tool-t"><strong>Degrees and Bridge Chains</strong><span>Each scanned circle, and the chains that lead on from it.</span></span></a></li>
+        <li><a href="/blog/who-can-introduce-you/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="15" r="3.4" fill="currentColor"/><path d="M5 9h4M15 9h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="tool-t"><strong>Separation</strong><span>Everyone two steps away, ranked, with who can introduce you.</span></span></a></li>
+        <li><a href="/docs/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="14" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="18" r="2.2" fill="currentColor"/></svg></span><span class="tool-t"><strong>Paths</strong><span>Your network by company and industry, as bubbles.</span></span></a></li>
+        <li><a href="/blog/who-can-introduce-you/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M10 19V5M15 19v-6M20 19V8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span class="tool-t"><strong>Insights and the Power Index</strong><span>Everyone within two steps ranked by power, with Kingmakers and Gatekeepers.</span></span></a></li>
+        <li><a href="/docs/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5 14.4 9l5.6.5-4.3 3.7 1.3 5.6L12 15.9l-5 2.9 1.3-5.6L4 9.5 9.6 9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="tool-t"><strong>Outlink</strong><span>Getting introduced, as a game: levels, next best moves and Auto.</span></span></a></li>
+        <li><a href="/blog/scanning-slowly/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 12 18 6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg></span><span class="tool-t"><strong>Auto scan</strong><span>Circles mapped a few at a time, under its own stricter limits.</span></span></a></li>
+        <li><a href="/docs/#your-data"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Zm0 0v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="tool-t"><strong>Backups and CSV</strong><span>Daily backups restored in one click, and LinkedIn's CSV in or out.</span></span></a></li>
+      </ul>
+      <p class="center"><a class="pill-link" href="/docs/">See everything in the docs <span aria-hidden="true">→</span></a></p>
+    </section>
+
+    <section class="news" id="latest" aria-labelledby="latest-h">
       <div class="section-head">
-        <h2>Latest releases</h2>
+        <h2 id="latest-h">Latest releases</h2>
         <a href="/releases/">All release notes →</a>
       </div>
       <div class="posts"><!-- gen:news -->
@@ -675,11 +614,8 @@
           <ul class="chips" aria-label="What changed"><li class="k-added">2 added</li><li class="k-changed">4 changed</li><li class="k-fixed">4 fixed</li></ul>
         </article>
         <!-- /gen:news --></div>
-    </section>
-
-    <section class="news reveal" id="from-the-blog">
       <div class="section-head">
-        <h2>From the blog</h2>
+        <h2 id="blog-h">From the blog</h2>
         <a href="/blog/">All posts →</a>
       </div>
       <div class="posts"><!-- gen:blog-teaser -->
@@ -701,55 +637,65 @@
         <!-- /gen:blog-teaser --></div>
     </section>
 
-    <section class="again reveal" id="get">
-      <h2>See the shape of your network.</h2>
-      <p class="intro">Free. Start with the sample, and bring your own in when you're ready.</p>
+    <!-- The close: the six dots, the tagline, the downloads. -->
+    <section class="close" id="get" aria-labelledby="close-h">
+      <ol class="six" aria-label="Six degrees">
+        <li class="on">1</li><li class="on">2</li><li class="on">3</li><li>4</li><li>5</li><li>6</li>
+      </ol>
+      <h2 id="close-h" class="big-h">Locally built. Completely free. <br><span class="hl">Made for you.</span></h2>
+      <p class="intro">Start with your own network, build a few bridges, and see how far six degrees really goes.</p>
       <div class="cta-row">
-        <a class="dl primary" href="/download/">
+        <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg">
           <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="dl-text">
-            <span class="dl-title">Get Sixgree</span>
-            <span class="dl-sub">Mac · Windows and Linux in beta</span>
+            <span class="dl-title">Download for Mac</span>
+            <span class="dl-sub">Free · Apple Silicon</span>
+          </span>
+        </a>
+        <a class="dl" href="/download/">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 20h8M12 16.5V20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Every download</span>
+            <span class="dl-sub">Intel Mac · Windows and Linux in beta</span>
           </span>
         </a>
       </div>
+      <ul class="points" aria-label="In short">
+        <li>Free, no paid tier</li>
+        <li>On your computer, no account</li>
+        <li>Paced scans with daily limits</li>
+      </ul>
+      <p class="fine">Sixgree: six degrees of your LinkedIn. Not affiliated with or endorsed by LinkedIn.</p>
     </section>
   </main>
 
 <!-- gen:footer -->
-<footer>
-    <div class="foot-cols">
-      <div class="foot-brand">
-        <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="26" height="26"> Sixgree</a>
-        <p>See your LinkedIn network as a galaxy. Free and open source, on your own computer.</p>
-        <p><a class="button small" href="/download/">Download</a></p>
-      </div>
-      <nav aria-label="Product">
-        <h2>Product</h2>
-        <a href="/#features">Features</a>
-        <a href="/#compare">Compare</a>
-        <a href="/download/">Download</a>
-        <a href="/roadmap/">Roadmap</a>
-      </nav>
-      <nav aria-label="Learn">
-        <h2>Learn</h2>
-        <a href="/docs/">Docs</a>
-        <a href="/docs/#faq">Questions</a>
-        <a href="/blog/">Blog</a>
-        <a href="/releases/">Release notes</a>
-      </nav>
-      <nav aria-label="Project">
-        <h2>Project</h2>
-        <a href="/about/">About</a>
-        <a href="https://github.com/blakeb056/six-degrees">Source on GitHub</a>
-        <a href="https://github.com/blakeb056/six-degrees/blob/main/CONTRIBUTING.md">Contributing</a>
-        <a href="https://www.npmjs.com/package/sixgree">npm</a>
-      </nav>
+<footer class="foot">
+    <div class="foot-top">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="28" height="28"> <span class="wordmark small" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 140 631" width="0.14em" height="0.631em" aria-hidden="true" focusable="false"><circle cx="70" cy="561" r="70" fill="#ffd700"/><circle cx="70" cy="415.5" r="57.5" fill="#9b59b6" fill-opacity="0.6"/><circle cx="70" cy="293" r="47" fill="#3498db" fill-opacity="0.42"/><circle cx="70" cy="189.5" r="38.5" fill="#95a5a6" fill-opacity="0.28"/><circle cx="70" cy="101.5" r="31.5" fill="#bdc3c7" fill-opacity="0.17"/><circle cx="70" cy="26" r="26" fill="#bdc3c7" fill-opacity="0.09"/></svg></span>xgree</span></span></a>
+      <p class="foot-tag">Six degrees of your LinkedIn. Locally built. Completely free. Made for you.</p>
     </div>
-    <p class="fine">MIT licence · No trackers · Every person shown on this site is invented ·
-      Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
-    <p class="fine">It estimates network position, not what anyone is worth as a person.</p>
-    <p class="fine">Not affiliated with or endorsed by LinkedIn.</p>
+    <nav class="foot-links" aria-label="Everything on this site">
+      <a href="/#how">How it works</a>
+      <a href="/#features">Features</a>
+      <a href="/#compare">Compare</a>
+      <a href="/download/">Download</a>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/#faq">Questions</a>
+      <a href="/blog/">Blog</a>
+      <a href="/releases/">Release notes</a>
+      <a href="/roadmap/">Roadmap</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/blakeb056/six-degrees">Source on GitHub</a>
+      <a href="https://github.com/blakeb056/six-degrees/blob/main/CONTRIBUTING.md">Contributing</a>
+      <a href="https://www.npmjs.com/package/sixgree">npm</a>
+    </nav>
+    <div class="foot-bottom">
+      <p class="fine">MIT licence · No accounts, no trackers · Every person shown on this site is invented ·
+        Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
+      <p class="fine">Power ranks reachability, not people: it estimates network position, not what anyone is worth as a person.
+        Not affiliated with or endorsed by LinkedIn.</p>
+    </div>
   </footer>
 <!-- /gen:footer -->
 </body>

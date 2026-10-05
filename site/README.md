@@ -54,7 +54,7 @@ image: /img/app/separation.jpg
 The post, in Markdown. ## and ### headings, lists, **bold**, *italic*, `code`,
 [links](/download/), > quotes, tables, and images on a line of their own:
 
-![What the picture shows](/img/app/replay.jpg "An optional caption.")
+![What the picture shows](/img/app/lab-clusters.jpg "An optional caption.")
 ```
 
 `title`, `description` and `date` are required; `updated` (a later date), `tags` and

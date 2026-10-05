@@ -113,7 +113,7 @@ export function layout(site, { path: pagePath, title, description, graph, main, 
   <meta name="referrer" content="no-referrer">
   <meta name="author" content="Blake Burford">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <link rel="canonical" href="${url}">
   ${FEEDS}
   <meta property="og:type" content="${type}">
@@ -126,7 +126,8 @@ export function layout(site, { path: pagePath, title, description, graph, main, 
   <meta name="twitter:title" content="${t}">
   <meta name="twitter:description" content="${d}">
   <meta name="twitter:image" content="${img}">
-  <meta name="theme-color" content="#0b0a1c">
+  <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0a1c" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script type="application/ld+json">

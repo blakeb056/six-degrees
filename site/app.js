@@ -13,6 +13,8 @@
 //      computer asks for reduced motion.
 //   5. The charts grow in, and the home page's sections fade in, as they come on
 //      screen (CSS does it, and skips it for reduced motion).
+//   6. The home page's 1-2-3 strip steps through itself; its tabs pick a step.
+//   7. The home page's tour plays its chapters over the screenshots.
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
@@ -203,8 +205,81 @@ const DOWNLOADS = {
     });
   }
 
-  // 4 and 5: things that happen as they come on screen.
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 6. The home page's 1-2-3 strip: the tabs pick a step, and it steps through
+  //    by itself until someone picks one (not with reduced motion).
+  const demo = document.querySelector('.demo');
+  if (demo) {
+    const tabs = [...demo.querySelectorAll('.demo-tabs button')];
+    let timer = null;
+    const show = (step) => {
+      demo.dataset.step = String(step);
+      for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.step === String(step)));
+    };
+    for (const t of tabs) t.addEventListener('click', () => { clearInterval(timer); show(t.dataset.step); });
+    show(1);
+    if (!reduceMotion) {
+      let step = 1;
+      timer = setInterval(() => { step = (step % 3) + 1; show(step); }, 3800);
+    } else {
+      show(3);
+    }
+  }
+
+  // 7. The tour: six chapters of eight seconds over the screenshots. Play runs it,
+  //    a chapter jumps to it. Without JavaScript the first picture shows.
+  const tour = $('tour');
+  if (tour) {
+    const frames = [...tour.querySelectorAll('.tour-frames img')];
+    const marks = [...tour.querySelectorAll('.chapters button')];
+    const play = $('tour-play');
+    const bar = $('tour-bar');
+    const label = play.querySelector('.tour-label');
+    const time = play.querySelector('.mono');
+    const CHAPTER = 8000;
+    const TOTAL = CHAPTER * frames.length;
+    let at = 0;
+    let started = null;
+    let raf = null;
+    const clock = (ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    const draw = () => {
+      const i = Math.min(frames.length - 1, Math.floor(at / CHAPTER));
+      frames.forEach((f, k) => f.classList.toggle('on', k === i));
+      marks.forEach((m, k) => m.classList.toggle('on', k === i));
+      bar.style.width = `${(at / TOTAL) * 100}%`;
+      time.textContent = clock(tour.classList.contains('playing') ? at : TOTAL - at);
+    };
+    const tick = (now) => {
+      at = Math.min(TOTAL, at + (now - started));
+      started = now;
+      draw();
+      if (at >= TOTAL) { stop(); at = 0; draw(); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    function stop() {
+      tour.classList.remove('playing');
+      label.textContent = 'Play';
+      cancelAnimationFrame(raf);
+    }
+    function start() {
+      tour.classList.add('playing');
+      label.textContent = 'Pause';
+      started = performance.now();
+      raf = requestAnimationFrame(tick);
+    }
+    play.hidden = false;
+    play.addEventListener('click', () => (tour.classList.contains('playing') ? stop() : start()));
+    marks.forEach((m, k) => m.addEventListener('click', () => {
+      at = k * CHAPTER;
+      if (!tour.classList.contains('playing') && !reduceMotion) start();
+      draw();
+    }));
+    time.textContent = clock(TOTAL);
+    draw();
+  }
+
+  // 4 and 5: things that happen as they come on screen.
   if (!('IntersectionObserver' in window)) {
     for (const g of all('.chart-group, .reveal')) g.classList.add('seen');
     return;
