@@ -461,6 +461,8 @@ function budgetNow() {
     return {
       searches: li.searchesToday ?? 0, cap: li.limits?.daily ?? null,
       profiles: li.profilesToday ?? 0, profileCap: li.limits?.profiles ?? null,
+      // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
+      pace: li.limits?.pace ?? null,
     };
   } catch {
     return null;
