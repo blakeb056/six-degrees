@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A queue for the scanner.** Press Auto, or scan someone's circle (Bridge Chains, Build their
+  circle, a card's Scan or Resume), while another scan is running and it waits its turn instead
+  of being refused: the button says *Queued · 2nd*, and it starts by itself when the scans
+  before it finish. Each one still goes through every safeguard when its turn comes (your
+  budget, the daily caps, a rest after LinkedIn pushed back, Auto's own caps and its one-time
+  question); one that can't start is marked skipped, with why, and the queue moves on. The
+  notch shows *+2 queued* beside the running scan; open it for who is waiting and for what
+  (Add or Build circle), with × to take one out and Clear. Stop stops the running scan and
+  holds the queue until you press Resume queue. The same request twice is ignored, and at most
+  10 wait at once. The queue is kept in your data folder, so a restart keeps it, waiting for
+  you: nothing starts just because the app opened.
+
 ### Changed
 - **A new Sixgree icon.** A gold S drawn as one tapered curve, with a round gold dot (you) in
   its lower bowl so it also reads as a 6, and a degree ring: six degrees. The app icon (Mac,

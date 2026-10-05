@@ -24,6 +24,8 @@ import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
+import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, QUEUE_CAP } from '../../../lib/scan-queue';
+import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
 
 // The app runs the scraper itself.
 //
@@ -57,7 +59,23 @@ const state = registerScanState({
   found: [],       // how many people each of those pages found: the Scan page's cluster (app/components/ScanRadar.js)
   invitee: null,   // Auto's person: { id, name, profileUrl, userId, bridgeId }, looked up here (connectTarget)
   outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
+  port: null,      // the port this app was last asked on, for the job the queue starts by itself
 });
+
+// What runs next (lib/scan-queue.js): read from the data folder the first time
+// it's needed, so a restart keeps it, waiting for you (lib/scan-queue-store.js).
+// On globalThis like the state above, however the bundler splits this route.
+const QUEUE = Symbol.for('six-degrees.scan-queue');
+function queue() {
+  return (globalThis[QUEUE] ??= loadQueue(dataDir()));
+}
+function queueChanged() {
+  saveQueue(dataDir(), queue());
+}
+// A breath between one job's end and the next one's start.
+const QUEUE_GAP_MS = Number(process.env.SIX_DEGREES_QUEUE_GAP_MS) >= 0 && process.env.SIX_DEGREES_QUEUE_GAP_MS !== undefined
+  ? Number(process.env.SIX_DEGREES_QUEUE_GAP_MS) : 4000;
+let nextTimer = null;
 
 // A page read, as scripts/scrape.py prints it: "  Page 3... " as a circle or a
 // company scan reads each page, and "  350 / 817 collected" for each fifty
@@ -451,6 +469,8 @@ function job() {
     log: state.log.slice(-120),
     recent: state.recent,
     budget: state.running ? budgetNow() : null,
+    // What waits to run after this (lib/scan-queue.js queueView), for the notch and the buttons.
+    queue: queueView(queue()),
   };
 }
 
@@ -692,11 +712,96 @@ export async function POST(request) {
   let body = {};
   try { body = await request.json(); } catch {}
   const action = String(body.action || '');
+  // The scraper writes back through this very app, so point it at the port we
+  // are actually being served on rather than guessing 3000. Kept for the job
+  // the queue starts by itself, when no request is there to ask.
+  const hostHeader = request.headers.get('host') || '127.0.0.1:3000';
+  state.port = hostHeader.includes(':') ? hostHeader.split(':').pop() : '80';
 
+  // Stop stops the running job and holds the queue: nothing else starts
+  // until you say so (Resume queue), or clear it.
   if (action === 'cancel') {
+    if (body.queue !== false && queue().items.some((i) => i.status === 'waiting')) {
+      queue().paused = 'stopped';
+      queueChanged();
+    }
+    clearTimeout(nextTimer);
     stopChild();
     return Response.json({ ok: true, cancelled: true });
   }
+  if (action === 'queue-remove') {
+    const removed = removeItem(queue(), String(body.item ?? ''));
+    if (removed) queueChanged();
+    return Response.json({ ok: true, removed, queue: queueView(queue()) });
+  }
+  if (action === 'queue-clear') {
+    clearQueue(queue());
+    queueChanged();
+    return Response.json({ ok: true, queue: queueView(queue()) });
+  }
+  if (action === 'queue-resume') {
+    queue().paused = null;
+    queueChanged();
+    if (!state.running) await runNext();
+    return Response.json({ ok: true, queue: queueView(queue()) });
+  }
+  return startJob(body);
+}
+
+/**
+ * The next one waiting, started the way a press would start it: through
+ * startJob and every check in it, at this moment. A refusal skips it, with
+ * its reason, and the next is tried. Something else running already leaves it
+ * where it is, for that job's end.
+ */
+async function runNext() {
+  clearTimeout(nextTimer);
+  nextTimer = null;
+  for (let item = nextUp(queue()); item && !state.running; item = nextUp(queue())) {
+    const res = await startJob({ ...item.request }, { queued: item });
+    const answer = await res.json().catch(() => ({}));
+    if (res.ok) return;   // started, and out of the queue (startJob took it out)
+    if (state.running && answer.error === 'Something is already running.') return;
+    // The item could have been removed while its checks ran.
+    if (skipItem(queue(), item.id, answer.error)) queueChanged();
+  }
+}
+
+/**
+ * Keep a press for later: { ok, queued, place } (place 1 runs next), the same
+ * for one already waiting or running (`duplicate`), or 409 once QUEUE_CAP
+ * wait. Only what a press of it would send again is kept: the action, who (by
+ * id), and the Chrome window setting. Never the URL: that is looked up again.
+ */
+function queueUp(body, action, target) {
+  const request = { action, id: target.id, ...(body.showWindow === true ? { showWindow: true } : {}) };
+  if (target.name) request.name = target.name;
+  const said = enqueue(queue(), {
+    id: `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    action, target: { id: target.id, name: target.name ?? null }, request, at: Date.now(),
+  }, { action: state.action, target: state.target });
+  if (said.full) {
+    return Response.json({ error: `The queue is full: ${QUEUE_CAP} are waiting. Try again once one has run.`, queueFull: true }, { status: 409 });
+  }
+  if (said.queued) queueChanged();
+  return Response.json({ ok: true, queued: true, duplicate: Boolean(said.duplicate), running: Boolean(said.running), place: said.place ?? null, queue: queueView(queue()) });
+}
+
+/** Once a job ends: the next one, after a breath, unless the queue waits for you. */
+function scheduleNext() {
+  clearTimeout(nextTimer);
+  if (!nextUp(queue())) return;
+  nextTimer = setTimeout(() => { runNext().catch(() => {}); }, QUEUE_GAP_MS);
+  nextTimer.unref?.();
+}
+
+/**
+ * Start one job, or say why not. `queued` is the queue's item when the queue
+ * starts it; otherwise a press made while something runs is queued here, once
+ * every check has passed, instead of refused.
+ */
+async function startJob(body, { queued = null } = {}) {
+  const action = String(body.action || '');
 
   // The two settings a person changes here. Neither starts anything.
   if (action === 'set-limits') {
@@ -801,7 +906,11 @@ export async function POST(request) {
     if (capped) return Response.json({ error: capped }, { status: 409 });
   }
   if (state.running) {
-    // One thing at a time: Auto waits for a scan like any other job.
+    // One thing at a time. Auto, and a scan of one person's circle, picked by
+    // id, wait their turn in the queue (lib/scan-queue.js); anything else is
+    // refused. Every check above runs again when its turn comes.
+    const kind = queueKind(action);
+    if (kind && !queued && target?.id) return queueUp(body, action, target);
     if (invitee) return Response.json({ error: `${runningNow(state.action)}. Press Auto again once it has finished.`, action: state.action }, { status: 409 });
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
   }
@@ -815,6 +924,7 @@ export async function POST(request) {
   forgetChecks();
   const found = (await machineChecks()).python;
   if (state.running) {
+    if (queueKind(action) && !queued && target?.id) return queueUp(body, action, target);
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
   }
 
@@ -860,10 +970,10 @@ export async function POST(request) {
     ])];
   }
 
-  // The scraper writes back through this very app, so point it at the port we
-  // are actually being served on rather than guessing 3000.
-  const hostHeader = request.headers.get('host') || '127.0.0.1:3000';
-  const port = hostHeader.includes(':') ? hostHeader.split(':').pop() : '80';
+  const port = state.port || '3000';
+
+  // Its turn came: out of the queue, now that it runs.
+  if (queued && removeItem(queue(), queued.id)) queueChanged();
 
   state.running = true;
   state.stopping = false;
@@ -963,6 +1073,8 @@ export async function POST(request) {
         push(`Today’s backup couldn’t be made: ${err.message}`);
       }
     }
+    // The next one waiting, unless this one was stopped (Stop holds the queue).
+    if (!stopped) scheduleNext();
   }
 
   function runStep(i) {

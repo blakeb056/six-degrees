@@ -39,7 +39,7 @@ import { RING } from '../../lib/dot-rings';
 import { ringLayout, previewBand, tierBandLayout, dotRadius } from '../../lib/chain-layout';
 import { formingCount, formingSlots, formingPlan, formingSpacing, PER_PAGE } from '../../lib/forming-circle';
 import { score, compareBridges } from '../../lib/separation';
-import { watchScanner, scannerNow, isCircleScan, startHere, busyReason } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, willQueue, queuedFor } from '../../lib/scraper-client';
 import { paceOf } from '../../lib/scan-pace';
 import useScanner from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
@@ -396,7 +396,10 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
   const maxR = Math.min(cx, cy) - 30;
   const first = firstName(person);
   const mine = scan.running && isCircleScan(scan) && scan.target?.id === person.id;
-  const busy = scan.running && !mine ? busyReason(scan) : null;
+  // While something else runs, a press waits its turn in the queue (lib/scan-queue.js)
+  // and the button says where ("Queued · 2nd").
+  const queued = queuedFor(scan, 'bridge', person);
+  const busy = scan.running && !mine && !queued && !willQueue(scan, 'bridge', person) ? busyReason(scan) : null;
   // The people the scanner has saved from their circle, strongest first, so S sit nearest the core.
   const real = useMemo(() => [...(index.circles.get(person.id) || NONE)].sort(byTierThenScore), [index, person.id]);
   const found = mine ? scan.found.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
@@ -641,10 +644,10 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
 
       {/* The core's button, while there's a circle to build */}
       {offerBuild && (
-        <button type="button" onClick={build} disabled={Boolean(busy)} aria-describedby="build-cost"
+        <button type="button" onClick={build} disabled={Boolean(busy) || Boolean(queued)} aria-describedby="build-cost"
           onMouseEnter={() => setCostShown(true)} onMouseLeave={() => setCostShown(false)}
           onFocus={() => setCostShown(true)} onBlur={() => setCostShown(false)}
-          className={busy || still ? undefined : 'fm-press'}
+          className={busy || queued || still ? undefined : 'fm-press'}
           style={{
             position: 'absolute', left: core.x - 58, top: core.y - 58, width: 116, height: 116, borderRadius: '50%',
             border: `3px solid ${TIER_COLORS[person.tier] || '#888'}`, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.5 : 1,
@@ -660,7 +663,7 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
               ? <img src={localPhoto(person.profile_image_url)} alt="" width={30} height={30} style={{ objectFit: 'cover' }} />
               : person.name?.charAt(0)}
           </span>
-          <span>Build their<br />circle</span>
+          <span>{queued ? <>Queued<br />{queued.label.split(' · ')[1]}</> : <>Build their<br />circle</>}</span>
         </button>
       )}
       {offerBuild && (
@@ -686,6 +689,8 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
         {offerBuild && (
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', lineHeight: 1.5 }}>
             {busy ? `${busy}. One scan at a time: this one can start when it finishes.`
+              : queued ? `${queued.label}: it starts by itself when the scans before it finish.`
+              : scan.running && !mine ? `${busyReason(scan)}. Pressing the button queues ${first}’s circle next.`
               : job ? <span role="status" style={{ color: 'var(--sd-fg-2, #dde)' }}>{endedLine(first, job, state)}</span>
               : `${first}’s circle isn’t scanned yet. Hover the button for what it costs.`}
           </div>

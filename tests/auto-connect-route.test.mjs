@@ -218,17 +218,25 @@ test('a pause after LinkedIn pushed back, Auto’s caps, and no profile views le
   await ended();
 });
 
-test('one thing at a time: Auto waits for a running scan, and says which', async () => {
+test('one thing at a time: Auto pressed during a scan waits its turn in the queue (tests/scan-queue.test.mjs)', async () => {
   const { registerScanState } = await import('../lib/scan-state.js');
   const state = registerScanState({});
-  const was = { running: state.running, action: state.action };
-  Object.assign(state, { running: true, action: 'bridge' });
+  const was = { running: state.running, action: state.action, target: state.target };
+  Object.assign(state, { running: true, action: 'bridge', target: { id: 'p-oriel', name: 'Oriel Vantasse' } });
   try {
     const res = await post({ action: 'connect', id: 'd2-ada@oriel' });
-    assert.equal(res.status, 409);
-    assert.deepEqual(await res.json(), { error: 'A scan is running. Press Auto again once it has finished.', action: 'bridge' });
+    assert.equal(res.status, 200);
+    const d = await res.json();
+    assert.deepEqual([d.queued, d.place], [true, 1]);
+    assert.deepEqual(d.queue.items.map((i) => [i.kind, i.target.name]), [['add', 'Ada Quill']]);
+    // Still refused before it is queued: Auto's own one-time yes, asked on the page.
+    writeSettings(getDb(), { autoConnectAccepted: null });
+    const no = await post({ action: 'connect', id: 'd2-ada@maren' });
+    assert.equal(no.status, 409);
+    assert.equal((await no.json()).needsAutoAcceptance, true);
   } finally {
     Object.assign(state, was);
+    await post({ action: 'queue-clear' });
   }
 });
 

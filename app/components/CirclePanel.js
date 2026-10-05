@@ -9,7 +9,7 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import Avatar from './Avatar';
 import InlineNote, { useFadingNote } from './InlineNote';
-import { startHere, busyReason, scansCircleOf, watchScanner, scannerNow } from '../../lib/scraper-client';
+import { startHere, busyReason, scansCircleOf, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
 import { circleIndex } from '../../lib/circle';
 import { reachIndex, reachState } from '../../lib/reach';
 import { score1 } from '../../lib/separation';
@@ -151,11 +151,15 @@ export default function CirclePanel({ person, connections = [], degree2 = [], sc
               // it used to open the Scan page to confirm it (Blake, 2026-10-04:
               // "we want seamlessness"). Why it didn't start is a line above.
               const now = scan.running && scansCircleOf(scan, p);
+              // Pressed while something else runs: queued (lib/scan-queue.js), and the row says where.
+              const q = queuedFor(scan, 'bridge', p);
+              const queues = willQueue(scan, 'bridge', p);
               return (
                 <Row key={p.id} person={p} tierColors={tierColors} noteColor="#00ff88"
-                  note={now ? 'Scanning…' : asking === p.id ? 'Starting…' : 'Scan →'}
-                  disabled={now || scan.running || Boolean(asking)}
-                  label={now ? `Scanning ${p.name}’s circle` : scan.running ? `${busyReason(scan)}. One scan at a time.` : `Scan ${p.name}’s circle: it starts here, in the background`}
+                  note={now ? 'Scanning…' : q ? q.label : asking === p.id ? 'Starting…' : queues ? 'Queue →' : 'Scan →'}
+                  disabled={now || Boolean(q) || (scan.running && !queues) || Boolean(asking)}
+                  label={now ? `Scanning ${p.name}’s circle` : q ? `${q.label}: it starts when the scans before it finish`
+                    : queues ? `${busyReason(scan)}. Queue ${p.name}’s circle next` : scan.running ? `${busyReason(scan)}. One scan at a time.` : `Scan ${p.name}’s circle: it starts here, in the background`}
                   onPress={async () => {
                     say(null);
                     setAsking(p.id);

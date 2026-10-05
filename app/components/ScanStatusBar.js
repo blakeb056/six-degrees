@@ -13,11 +13,17 @@
 // carries on from that page. Other long jobs can show here too
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
+//
+// The queue (lib/scan-queue.js; Blake, 2026-10-05: "have it shown in the
+// notch"): "+2 queued" beside what runs, and opened, who waits and for what
+// (Add, Build circle), each removable, with Clear. Stop holds the queue until
+// Resume queue; so does a restart.
 
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { watchScanner, scannerNow, stopScrape } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue } from '../../lib/scraper-client';
+import { KIND_LABEL } from '../../lib/scan-queue';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
 import { watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown, isCurrentTab, notchGroups } from '../../lib/island';
 
@@ -40,6 +46,15 @@ const WHAT = {
   messages: 'Reading your messages list',
   'messages-full': 'Reading your whole messages history',
   connect: 'Sending a connection request',
+};
+
+// Why the queue waits for you, in the notch's words.
+const PAUSED = { stopped: 'Queue paused after Stop', restarted: 'Queue kept from last time' };
+
+// The notch's small buttons in the queue's list.
+const SMALL = {
+  padding: '2px 9px', borderRadius: 7, fontSize: 11.5, cursor: 'pointer', font: 'inherit',
+  background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-2, #cfd8d8)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.14)',
 };
 
 // Green while there's plenty left, amber past 60%, red past 90%.
@@ -115,7 +130,10 @@ export default function ScanStatusBar() {
 
   const running = !!job?.running;
   const other = others[others.length - 1] || null;
-  const status = running || other || allDay;
+  const queue = job?.queue;
+  const queued = queue?.items || [];
+  const waiting = queue?.waiting || 0;
+  const status = running || other || allDay || queued.length > 0;
   // Pages with a heading at the top leave room for the notch while it's showing.
   const showing = Boolean(status || tabs);
   useEffect(() => {
@@ -143,9 +161,18 @@ export default function ScanStatusBar() {
   // on every page (Blake, 2026-10-04: no pop-ups, no windows unless needed).
   const needs = running ? job.needsYou : null;
   // What the pill says, smallest first.
-  const dot = needs ? '#FFD700' : running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB') : '#556';
-  const label = needs ? 'LinkedIn needs you' : running ? (WHAT[job.action] || 'Scanning') : other ? other.label : 'Auto scan';
-  const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail : null;
+  // Nothing running but someone queued: the queue waits for you (paused), or
+  // the next one starts in a moment.
+  const queueOnly = !running && !other && queued.length > 0;
+  const nextName = queued.find((i) => i.status === 'waiting')?.target?.name;
+  const dot = needs ? '#FFD700' : running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB')
+    : queueOnly ? (queue.paused || !waiting ? '#FFD700' : '#00ff88') : '#556';
+  const label = needs ? 'LinkedIn needs you' : running ? (WHAT[job.action] || 'Scanning') : other ? other.label
+    : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next') : 'Auto scan';
+  const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail
+    : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null) : null;
+  // "+2 queued" beside what runs.
+  const more = (running || other) && waiting > 0 ? `+${waiting} queued` : null;
 
   // Kept inside the window: centred under the tab buttons, but never off an edge.
   const left = centre != null ? `clamp(170px, ${centre}px, calc(100vw - 170px))` : '50%';
@@ -166,7 +193,7 @@ export default function ScanStatusBar() {
         borderRadius: '0 0 14px 14px', borderStyle: 'solid', borderWidth: '0 1px 1px',
         borderColor: needs ? 'rgba(255,215,0,0.5)' : running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)',
         background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 12,
-        opacity: tabs || running || other || expanded ? 1 : 0.55,
+        opacity: tabs || running || other || expanded || queued.length ? 1 : 0.55,
         boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',
         transition: 'padding 0.18s ease, opacity 0.18s ease',
       }}
@@ -210,8 +237,14 @@ export default function ScanStatusBar() {
             <span role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <b style={{ color: running || other ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #b8c4c4)', fontWeight: 600 }}>{label}</b>
               {short && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{short}</span>}
+              {more && (
+                <span data-queue-count style={{
+                  padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                  background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
+                }}>{more}</span>
+              )}
             </span>
-            {!running && !other && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
+            {!running && !other && !queueOnly && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
           </button>
         )}
       </div>
@@ -237,7 +270,7 @@ export default function ScanStatusBar() {
           <button
             onClick={async () => { setStopping(true); try { await stopScrape(); } catch { setStopping(false); } }}
             disabled={stopping}
-            title="Stops after saving what's been read; Resume on the Scan page carries on from the same page"
+            title={waiting ? "Stops after saving what's been read, and holds the queue until you resume it" : "Stops after saving what's been read; Resume on the Scan page carries on from the same page"}
             style={{
               padding: '3px 10px', borderRadius: 8, fontSize: 12, cursor: stopping ? 'default' : 'pointer',
               background: 'rgba(255,107,107,0.12)', color: 'var(--sd-fg-2, #ff9b9b)', border: '1px solid rgba(255,107,107,0.35)',
@@ -246,6 +279,48 @@ export default function ScanStatusBar() {
         </div>
       )}
       {expanded && !running && other?.detail && <div style={{ margin: '6px 8px 0', color: 'var(--sd-fg-3, #8b9a9a)' }}>{other.detail}</div>}
+      {expanded && queued.length > 0 && (
+        <div data-queue="" style={{ margin: '8px 8px 0', minWidth: 260 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: running || other ? 8 : 0, borderTop: running || other ? '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)' : 'none' }}>
+            <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 11, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+              {waiting ? `Queued · ${waiting}` : 'Queue'}
+            </span>
+            {queue.paused && waiting > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontSize: 11.5 }}>{PAUSED[queue.paused] || 'Queue paused'}</span>}
+            <span style={{ flex: 1 }} />
+            {queue.paused && waiting > 0 && (
+              <button type="button" onClick={() => resumeQueue().catch(() => {})} style={{ ...SMALL, color: 'var(--sd-green, #00ff88)', borderColor: 'rgba(0,255,136,0.35)' }}
+                title={running ? 'The next one starts when this one finishes' : 'Start the next one now'}>Resume queue</button>
+            )}
+            <button type="button" onClick={() => clearQueued().catch(() => {})} style={SMALL} title="Take everyone out of the queue">Clear</button>
+          </div>
+          <ol style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {queued.map((it, i) => (
+              <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ width: 16, textAlign: 'right', color: 'var(--sd-fg-4, #667)', fontVariantNumeric: 'tabular-nums' }}>
+                  {it.status === 'waiting' ? i + 1 : '–'}
+                </span>
+                <span style={{ color: it.status === 'waiting' ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #8b9a9a)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {it.target?.name || 'Someone'}
+                </span>
+                <span style={{
+                  padding: '0 6px', borderRadius: 5, fontSize: 10.5, fontWeight: 700,
+                  background: it.kind === 'add' ? 'rgba(255,165,0,0.16)' : 'rgba(0,255,136,0.12)',
+                  color: it.kind === 'add' ? 'var(--sd-gold, #FFB347)' : 'var(--sd-green, #00ff88)',
+                }}>{KIND_LABEL[it.kind] || it.kind}</span>
+                {it.status === 'skipped' && (
+                  <span title={it.reason || undefined} style={{ color: 'var(--sd-red, #ff8a7a)', fontSize: 11, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    Skipped: {it.reason}
+                  </span>
+                )}
+                <span style={{ flex: 1 }} />
+                <button type="button" aria-label={`Remove ${it.target?.name || 'this one'} from the queue`} title="Remove from the queue"
+                  onClick={() => removeQueued(it.id).catch(() => {})}
+                  style={{ ...SMALL, padding: '0 7px', lineHeight: '18px', fontSize: 13 }}>×</button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

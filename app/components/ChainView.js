@@ -41,7 +41,7 @@ import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { keyFor, score } from '../../lib/separation';
 import { hasRequest } from '../../lib/requests-client';
-import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, resumePoint } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, resumePoint, willQueue, queuedFor, SCANNER_UNKNOWN } from '../../lib/scraper-client';
 import InlineNote, { useFadingNote } from './InlineNote';
 import useRequests from './useRequests';
 import { TIER_COLORS } from '../../lib/themes';
@@ -1229,7 +1229,11 @@ function useStoppedAt(id) {
  * it's being scanned. Greyed out, saying why, while another scan runs.
  */
 function ScanHere({ person, action, label, problem, setProblem }) {
-  const busy = useSyncExternalStore(watchScanner, () => busyReason(scannerNow()), () => null);
+  const scan = useSyncExternalStore(watchScanner, scannerNow, () => SCANNER_UNKNOWN);
+  // While something else runs, a press waits its turn in the queue (lib/scan-queue.js).
+  const queued = queuedFor(scan, action, person);
+  const queues = willQueue(scan, action, person);
+  const busy = queued || queues ? null : busyReason(scan);
   const [checking, setChecking] = useState(false);
   async function go() {
     setProblem(null);
@@ -1238,15 +1242,17 @@ function ScanHere({ person, action, label, problem, setProblem }) {
     setChecking(false);
     setProblem(why);
   }
-  const off = Boolean(busy) || checking;
+  const off = Boolean(busy) || checking || Boolean(queued);
   return (
     <>
       <button type="button" onClick={go} disabled={off} style={{
-        ...primary, border: 'none', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
-      }}>{label}</button>
-      {(busy || problem) && (
+        ...primary, border: 'none', cursor: off ? 'not-allowed' : 'pointer', opacity: off && !queued ? 0.45 : 1,
+      }}>{queued?.label || label}</button>
+      {(busy || problem || queued || queues) && (
         <div role="status" style={{ fontSize: 10.5, color: problem ? '#ff8080' : 'var(--sd-fg-3, #888)', marginTop: 8 }}>
-          {problem || `${busy}. One scan at a time: this one can start when it finishes.`}
+          {problem || (busy ? `${busy}. One scan at a time: this one can start when it finishes.`
+            : queued ? 'It starts by itself when the scans before it finish. Remove it in the notch.'
+            : `${busyReason(scan)}. Pressing this queues it next.`)}
         </div>
       )}
     </>
