@@ -1,4 +1,4 @@
-// Settings → LinkedIn usage: the windows it counts, where the levels change,
+// Scan → LinkedIn usage: the windows it counts, where the levels change,
 // what a pushback file may give up (its time and reason, never LinkedIn's page),
 // a lifted pause that every reader takes as no pause, and Auto scan's rules
 // against the scanner's own. Invented times and files in temporary folders;

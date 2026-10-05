@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Degrees opens on Unscanned; once you have one, it opens on Bridge Chains as before.
 
 ### Changed
+- **The Scan page leads with scanning.** The scanner comes first: what's mapped, what's
+  running with Stop, Your connections (Check for new, Scan it all again), Their circles with
+  the radar, In progress, and the log. Beside it, Setup is one box of green lights: a done
+  step is one line with a tick, a step that needs you is red and open, and each has a chevron;
+  "All set" once they're all green. Below: Scanner settings (budget, how much of each list,
+  finishing stopped lists, retrying hidden ones), Extras as switches with a line each (Auto
+  scan, Show the scanner's Chrome window, the daily messages sync), and LinkedIn usage last.
+  Two columns on a wide window, one on a narrow one. Nothing was removed.
+- **LinkedIn usage moved from Settings to the Scan page** (`/setup#usage`). The notch's budget
+  and the budget box go there; `/settings#usage` forwards, and Settings keeps a line to it.
 - **The Filters and Details buttons at the map's edges are lit glass, and they dock.** Each is a
   frosted round puck with a lit rim and a glow in its colour (the look's accent for Filters, its
   gold for Details), porcelain on Daylight, a flat hairline on Analyst, and drawn in every other

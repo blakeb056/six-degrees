@@ -1,9 +1,9 @@
 'use client';
 
-// Settings → LinkedIn usage: how close this LinkedIn account is to the line,
+// Scan → LinkedIn usage: how close this LinkedIn account is to the line,
 // in one look, the way Claude's usage page shows a plan's limits (neo's
 // handoff, 2026-10-03; Blake's 1.0 list, item 3). Until now the only view of
-// it was the budget box folded away in the Scan page's "Fine-tune the
+// it was the budget box folded away in the Scan page's old "Fine-tune the
 // scanner", and an account was restricted once after 373 searches in 24 hours
 // (TRAPS §16). The notch and that box link here.
 //
@@ -15,7 +15,6 @@
 // day, 250 a month".
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Section, Body, LINE } from '../ui';
 import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, warningParts, estimate,
@@ -311,7 +310,7 @@ export default function UsageSection() {
         <Row label="Speed">
           {pace.label}: about {searchesPerHour(limits.pace)} searches an hour at most while a scan runs.
           {Number.isFinite(u.searchesLastHour) && <> In the last hour: {plural(u.searchesLastHour, 'search', 'searches')}.</>}
-          {' '}<Link href="/setup" style={link}>Change it on the Scan page</Link>
+          {' '}<a href="#scan-top" style={link}>Change it beside the Scan button</a>
         </Row>
         <Row label="Can still map">
           {u.unreadable
@@ -351,8 +350,8 @@ export default function UsageSection() {
         Where these numbers come from: Six Degrees writes down every search, profile view and Auto request it makes
         on your LinkedIn account, on this computer, and counts them here. Searches you make yourself on linkedin.com
         aren&rsquo;t in it, and LinkedIn shows no count of its own. The {RESTRICTED_AT} searches and the 20 to 25
-        profile views are what happened to one real account, not safe limits. Change the budget on the
-        {' '}<Link href="/setup" style={link}>Scan page</Link>, under Fine-tune the scanner. Nothing here is sent anywhere.
+        profile views are what happened to one real account, not safe limits. Change the budget
+        {' '}<a href="#scan-settings" style={link}>under Scanner settings</a>. Nothing here is sent anywhere.
         {' '}Counted {whenText(now)}.
       </div>
     </Section>
