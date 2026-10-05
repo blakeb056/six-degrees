@@ -155,17 +155,19 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
 .top { position: sticky; top: 0; z-index: 20; padding: 10px var(--gutter) 0; }
 .top-bar {
   max-width: calc(var(--wrap) - 2 * var(--gutter) + 48px); margin: 0 auto;
-  display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 16px;
+  display: flex; align-items: center; gap: 16px; padding: 11px 12px 11px 20px;
   background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-radius: 18px; box-shadow: var(--key);
+  border-radius: 22px; box-shadow: var(--key);
 }
 .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--text); text-decoration: none; font-weight: 750; font-size: 18px; white-space: nowrap; }
 .brand:hover { color: var(--text); }
 .brand img { border-radius: 22%; }
+.top .brand { gap: 12px; }
+.top .brand img { width: 40px; height: 40px; }
 /* The wordmark, as the app draws it (app/components/Wordmark.js): Manrope 800 in
    gold (a deeper gold on light pages, as the app's light looks do), the i's dot a
    column of six tier dots. */
-.wordmark { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--wordmark); }
+.wordmark { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; color: var(--wordmark); }
 .wordmark.small { font-size: 20px; }
 .wordmark.tiny { font-size: 1em; }
 .wm-i { position: relative; display: inline-block; line-height: 1; }
@@ -173,11 +175,11 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
    of the word, shrinking and fading (Blake, 2026-10-05). Starts at the i's centre. */
 .wm-dots { position: absolute; left: calc(50% - 0.07em); bottom: 0.715em; overflow: visible; pointer-events: none; }
 .top nav { display: flex; gap: 2px; margin-left: auto; }
-.top nav a { color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 550; white-space: nowrap; padding: 6px 11px; border-radius: 10px; }
+.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 550; white-space: nowrap; padding: 6px 11px; border-radius: 10px; }
 .top nav a:hover { color: var(--text); background: var(--panel-2); }
 .top nav a[aria-current="page"] { color: var(--text); background: var(--panel-2); }
 .top-get {
-  display: inline-flex; align-items: center; padding: 8px 15px; border-radius: 11px; font-size: 14.5px; font-weight: 700;
+  display: inline-flex; align-items: center; padding: 10px 18px; border-radius: 12px; font-size: 15px; font-weight: 700;
   color: #0d0e1a; text-decoration: none; background: linear-gradient(180deg, #ffffff, #f4f4f2);
   box-shadow: 0 1px 0 #ffffff inset, 0 0 0 1px rgba(20, 22, 40, 0.14), 0 2px 0 rgba(20, 22, 40, 0.1), 0 10px 18px -12px rgba(20, 22, 40, 0.35);
 }
@@ -185,7 +187,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
 .gh { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: var(--text); background: linear-gradient(var(--key-top), var(--key-bottom)); box-shadow: var(--key); }
 .gh:hover { color: var(--text); }
 .gh svg { width: 18px; height: 18px; }
-section[id], figure[id], div[id], article[id] { scroll-margin-top: 90px; }
+section[id], figure[id], div[id], article[id] { scroll-margin-top: 100px; }
 
 /* ---------- layout and section heads ---------- */
 main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gutter); }
@@ -768,7 +770,7 @@ main.page { padding-bottom: 40px; }
 .release-toc span { font-family: inherit; color: var(--faint); }
 .release-toc .stage-link { color: var(--s); }
 .releases { max-width: 860px; margin: 0 auto; }
-.release { padding: 36px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 90px; }
+.release { padding: 36px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 100px; }
 .release header h2 { text-align: left; font-family: var(--mono); font-size: 28px; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .release header h2 a { color: var(--text); text-decoration: none; }
 .release header h2 .tag { font-size: 12px; }
@@ -876,7 +878,8 @@ main.page { padding-bottom: 40px; }
   body { font-size: 16px; }
   .top { padding-top: 8px; }
   .top-bar { padding: 7px 8px 6px 12px; gap: 10px; }
-  .wordmark { font-size: 20px; }
+  .wordmark { font-size: 22px; }
+  .top .brand img { width: 32px; height: 32px; }
   .top nav a { font-size: 14px; padding: 4px 8px; }
   .stage-band .long { display: none; }
   .stage-band .short { display: block; }
