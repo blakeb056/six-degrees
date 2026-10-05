@@ -254,7 +254,7 @@ html[data-mode="light"][data-buttons="frosted"] [data-glass-panel]::before {
 
 /* High contrast: whatever the buttons, a clear outline on every control, bold
    words and a thick focus ring; no frost behind them. */
-html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not(.sd-tab) { outline: 1.5px solid rgba(255, 255, 255, 0.7); outline-offset: -1.5px; font-weight: 700; }
+html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not(.sd-tab, .notch-tuck) { outline: 1.5px solid rgba(255, 255, 255, 0.7); outline-offset: -1.5px; font-weight: 700; }
 html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
 html[data-theme="contrast"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-theme="contrast"][data-buttons="frosted"] [data-glass-panel] { background-image: none !important; }

@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you: nothing starts just because the app opened.
 
 ### Changed
+- **Frosted glass is every look's buttons, and the looks are six.** Buttons are frosted glass
+  by default on every look, with clear picked, hover, pressed, disabled and focus states; Soft is
+  the only other choice. Analyst and Synthwave are gone: a saved Analyst becomes Daylight and
+  Synthwave becomes Standard, your own colours (tier colours too) and choices kept. The tabs are
+  calm on every look: no gradients or colour per tab, the one you're on a solid pill, Scan no
+  longer greyed out, a running Auto scan a small dot.
+- **Daylight is macOS glass.** White frosted panels, notch, tab bar and tooltips (blurred and
+  saturated, a hairline and a soft shadow), Apple's label colours for the words, every step
+  WCAG AA on white (primary 16.8:1, secondary 7.5:1), and the map's gold names and tier labels
+  deepened so they read on white.
 - **Separation goes past the 2nd degree.** The Filters grid's 3rd-degree dots (and 4th–6th,
   when there is anyone there) can be picked in Separation now. Each person counts once, at the
   nearest degree a real chain of scanned circles reaches them, with every shortest route drawn
