@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guided setup now draws the icon from the same file the builds use.
 - **The wordmark's dots run level to the right and end in a degree.** The gold dot still sits
   over the i; the tiers follow it in a straight line to the end of the word, each a little
-  smaller (A purple, B blue, C green, D grey), and the row ends in a gold degree ring:
-  Sixgree°. The fade is gentle, so the last dots still show on a dark look. On a light look and
+  smaller (A purple, B blue, C green, D grey), and the row ends in a gold degree ring the same
+  size and height as the i's dot: Sixgree°. The taper and fade are gentle, so every dot still
+  reads at the website header's size and on a dark look. On a light look and
   on the website the word itself is ink, so the colour lives in the dots; on a dark look it stays
   gold. In the app and on the website.
 - **Tier C is green.** The tiers now read like a game's rarity ladder: S gold, A purple,
