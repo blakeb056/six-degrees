@@ -115,6 +115,24 @@ test('a field picked before the first scan is saved with nobody to rescore, and 
   assert.match(scored(1).why, /YouTube \(10\/10: 9 \+ 1 your sector: Marketing & Media\)/);
 });
 
+test('a field picked while the first scan is still sending its people (the guided setup asks it then): everyone ends up scored with it', async () => {
+  // A batch already in, one arriving as the answer is saved, one after: the
+  // scanner writes only through this route, in this one process, and every
+  // rescore (the save's and each batch's) reads the focus saved by then.
+  await send([person(1, 'Director of Partnerships at YouTube')]);
+  assert.equal(scored(1).company, 9);
+  const [, saved] = await Promise.all([
+    send([person(2, 'Head of Content at YouTube')]),
+    answer({ sectorFocus: { sectors: ['media'], strength: 'lean' }, fieldAsked: true }),
+  ]);
+  assert.equal(saved.error, null);
+  await send([person(3, 'Producer at YouTube')]);
+  for (const i of [1, 2, 3]) assert.equal(scored(i).company, 10, `person ${i}`);
+  // And nothing is left stamped with the old focus for the map to redo.
+  const { rescoreIfStale } = await import('../lib/rpc.js');
+  assert.equal(rescoreIfStale().scored, 0);
+});
+
 test('skipping saves only that it was asked, and the first scan is scored as it always was', async () => {
   const skipped = await answer({ fieldAsked: true });
   assert.equal(skipped.error, null);

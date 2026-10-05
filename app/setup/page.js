@@ -1,12 +1,11 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
-import { stopScrape, pickedPerson, beginScrape, SHOW_CHROME_KEY } from '../../lib/scraper-client';
+import { pickedPerson, SHOW_CHROME_KEY } from '../../lib/scraper-client';
 import { setupStep, askForField, appManagementStep } from '../../lib/scanner-setup';
-import { saveSettings } from '../../lib/settings-client';
 import { RISK_POINTS } from '../../lib/scan-risk';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
@@ -18,6 +17,7 @@ import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLim
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
+import useScanStatus from '../components/useScanStatus';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -59,8 +59,9 @@ function SetupInner() {
       window.location.replace('/settings?check=updates');
     }
   }, []);
-  const [s, setS] = useState(null);
-  const [busy, setBusy] = useState(false);
+  // The scanner's status, your settings, and what the buttons do: shared with
+  // the guided setup (app/components/useScanStatus.js).
+  const { s, settings, busy, error, run, stop, acceptRisk, answerAppManagement, appAnswer } = useScanStatus();
   // Ten, not twenty-five. The only measured number this project has is that
   // roughly nineteen bridges in an hour got a real account restricted, so a
   // default above that is a default that can hurt whoever trusts it.
@@ -86,14 +87,9 @@ function SetupInner() {
   // --show-window). Off, the window stays out of sight. lib/scraper-client.js
   // reads it for every scan, wherever it starts.
   const [showChrome, setShowChrome] = useRemembered(SHOW_CHROME_KEY, false);
-  const [error, setError] = useState(null);
   const logRef = useRef(null);
-  // What's saved, for the question about your field: undefined while it
-  // loads, null when it couldn't be read. And the answer given here, if any.
-  const [settings, setSettings] = useState(undefined);
+  // The answer given here to the question about your field, if any.
   const [field, setField] = useState(null);
-  // Step 1's App Management item, answered here ('done' or 'skipped'), if it was.
-  const [appAnswer, setAppAnswer] = useState(null);
   // Someone sent here to have their circle scanned (Insights' Scan circle):
   // /setup?scan=<id>, with what it costs and one button that starts it. Bridge
   // Chains and the Degrees panel start theirs in place now.
@@ -114,112 +110,15 @@ function SetupInner() {
     try { window.history.replaceState(null, '', window.location.pathname); } catch { /* the link stays */ }
   }
 
-  const poll = useCallback(async () => {
-    try {
-      const r = await fetch('/api/scraper');
-      setS(await r.json());
-    } catch {
-      setS((prev) => prev || { ready: false, checks: {}, log: [] });
-    }
-  }, []);
-
-  useEffect(() => {
-    poll();
-    const t = setInterval(poll, 1500);
-    return () => clearInterval(t);
-  }, [poll]);
-
-  useEffect(() => {
-    if (IS_DEMO) return;
-    let off = false;
-    fetch('/api/settings')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!off) setSettings(d?.settings || null); })
-      .catch(() => { if (!off) setSettings(null); });
-    return () => { off = true; };
-  }, []);
-
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [s?.log?.length]);
-
-  async function stop() {
-    setError(null);
-    await stopScrape().catch((e) => setError(e.message));
-    poll();
-  }
 
   // The question is answered: a line takes its place, and the page goes back
   // to the top, since it may have been answered from far down the picker.
   function answered(sectors) {
     setField({ sectors });
     window.scrollTo(0, 0);
-  }
-
-  // Done or Skip on the App Management item: it goes at once, and the answer is
-  // kept so it isn't offered again. If that can't be saved it still goes for
-  // now and comes back next time, which is all it costs (as Skip for now does,
-  // app/components/FieldStep.js).
-  async function answerAppManagement(answer) {
-    setAppAnswer(answer);
-    await saveSettings({ appManagement: answer });
-  }
-
-  // "I understand": when, kept with your settings so it travels with a copy.
-  async function acceptRisk() {
-    setError(null);
-    setBusy(true);
-    try {
-      const r = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: { scanRiskAccepted: new Date().toISOString() } }),
-      });
-      if (!r.ok) setError((await r.json().catch(() => null))?.error || 'Could not save that. Try again.');
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-      poll();
-    }
-  }
-
-  // The two settings this page changes (the budget, lifting a cooldown) start nothing.
-  async function setting(action, extra = {}) {
-    setError(null);
-    setBusy(true);
-    try {
-      const r = await fetch('/api/scraper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...extra }),
-      });
-      const d = await r.json();
-      if (!r.ok) setError(d.error || 'Could not change that.');
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-      poll();
-    }
-  }
-
-  // Everything else starts a job, through beginScrape like every other Scan
-  // button, so the header's Check for new, the notch and every card react at
-  // once: posting straight to the scanner left them up to 5 seconds behind.
-  // It adds "Show the scanner's Chrome window" itself (scanRequest).
-  async function run(action, extra = {}) {
-    if (action === 'set-limits' || action === 'lift-cooldown') return setting(action, extra);
-    setError(null);
-    setBusy(true);
-    try {
-      await beginScrape(action, extra);
-    } catch (e) {
-      setError(e.message || 'Could not start.');
-    } finally {
-      setBusy(false);
-      poll();
-    }
   }
 
   const c = s?.checks || {};

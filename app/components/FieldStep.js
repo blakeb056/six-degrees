@@ -21,6 +21,27 @@ const link = { color: 'var(--sd-blue, #3498DB)' };
 // picks scroll behind the buttons rather than through them.
 const FOOT = '#111121';
 
+/**
+ * Your field, saved as Scores → Your field saves it, and kept as answered so
+ * it's asked once: { sectors } as saved, or { error }. Saved even if the
+ * rescore it set off failed: the map rescores a network scored with another
+ * focus when it next loads (lib/rpc.js rescoreIfStale). The guided setup asks
+ * the same question and saves through here (app/components/onboarding).
+ */
+export async function saveField(sectors) {
+  const d = await saveSettings({ sectorFocus: { sectors, strength: 'lean' }, fieldAsked: true });
+  return d.settings ? { sectors: d.settings.sectorFocus.sectors, settings: d.settings } : { error: d.error };
+}
+
+/**
+ * Skip for now: kept so it isn't asked again. If that can't be saved, skipping
+ * still skips: the question comes back next time, which is all it costs.
+ * Resolves to the settings as saved, or null.
+ */
+export async function skipField() {
+  return (await saveSettings({ fieldAsked: true })).settings;
+}
+
 /** The question. `onDone(sectors)` once it's answered ([] when skipped). */
 export default function FieldStep({ onDone }) {
   const [sectors, setSectors] = useState([]);
@@ -30,10 +51,8 @@ export default function FieldStep({ onDone }) {
   async function pick() {
     setSaving('pick');
     setError(null);
-    const d = await saveSettings({ sectorFocus: { sectors, strength: 'lean' }, fieldAsked: true });
-    // Saved even if the rescore it set off failed: the map rescores a network
-    // scored with another focus when it next loads (lib/rpc.js rescoreIfStale).
-    if (d.settings) { onDone(d.settings.sectorFocus.sectors); return; }
+    const d = await saveField(sectors);
+    if (d.sectors) { onDone(d.sectors); return; }
     setError(d.error);
     setSaving(null);
   }
@@ -41,9 +60,7 @@ export default function FieldStep({ onDone }) {
   async function skip() {
     setSaving('skip');
     setError(null);
-    // Kept so it isn't asked again. If that can't be saved, skipping still
-    // skips: the question comes back next time, which is all it costs.
-    await saveSettings({ fieldAsked: true });
+    await skipField();
     onDone([]);
   }
 
