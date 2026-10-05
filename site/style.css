@@ -230,6 +230,8 @@ a.dl:hover { transform: translateY(-2px); color: var(--text); }
 a.dl.primary:hover { color: #0d0e1a; box-shadow: 0 1px 0 #ffffff inset, 0 0 0 1px rgba(20, 22, 40, 0.18), 0 4px 0 rgba(20, 22, 40, 0.12), 0 22px 36px -18px rgba(20, 22, 40, 0.42); }
 .dl.is-soon, .dl.primary.is-soon { cursor: not-allowed; color: var(--muted); background: var(--panel); border: 1px dashed var(--line-2); box-shadow: none; filter: none; opacity: 0.75; }
 .dl-icon { width: 24px; height: 24px; flex: none; }
+/* The platform marks on the download keys, as clipten.com does (Blake, 2026-10-05). */
+.dl-logo { width: 22px; height: 22px; }
 .dl-text { display: inline-flex; flex-direction: column; align-items: flex-start; }
 .dl .dl-title { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; line-height: 1.25; }
 .dl .dl-sub { font-size: 13px; opacity: 0.75; }
