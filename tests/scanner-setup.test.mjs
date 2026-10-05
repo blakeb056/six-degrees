@@ -91,7 +91,7 @@ test('the app\'s own Python failing is said in a line of its own: what happened,
   const blocked = { source: 'bundled', problem: 'it was stopped (SIGKILL)', retry: false };
   const s = setupStep(status({ python: true, ownPython: blocked, installFrom: { source: 'system', version: '3.13.1' } }));
   assert.equal(s.note, 'The Python that comes with the app didn\'t work (it was stopped (SIGKILL)). macOS may have blocked it. '
-    + 'Six Degrees won\'t try it again until you restart it. '
+    + 'Sixgree won\'t try it again until you restart it. '
     + 'To scan now, use Install below: it gives the scanner a Python of its own in your data folder.');
   assert.equal(s.button.action, 'install');
   assert.match(s.text, /^One-time, about a minute/, 'the step itself reads as for any copy');
@@ -305,9 +305,9 @@ test('on a Mac, step 1 offers App Management: why macOS asks, the pane, and wher
   assert.equal(item.href, APP_MANAGEMENT_URL);
   assert.equal(item.where, 'System Settings → Privacy & Security → App Management');
   assert.equal(item.where, APP_MANAGEMENT_WHERE);
-  assert.match(item.text, /^When the scanner starts Google Chrome, macOS may ask whether Six Degrees can manage apps\./);
+  assert.match(item.text, /^When the scanner starts Google Chrome, macOS may ask whether Sixgree can manage apps\./);
   assert.match(item.text, /Chrome updating itself while the scanner uses it/);
-  assert.match(item.text, /Allow Six Degrees once in App Management and macOS won’t ask again\./);
+  assert.match(item.text, /Allow Sixgree once in App Management and macOS won’t ask again\./);
   assert.match(item.text, /Scanning works either way\.$/);
   for (const words of [item.title, item.text, item.where]) {
     assert.doesNotMatch(words, /[Ss]crap/, 'scanning, never scraping');
@@ -358,11 +358,11 @@ test('not known until both answers are in, so it never shows and then goes', () 
   assert.equal(appManagementStep(status({ mac: null }), undefined), false);
 });
 
-test('started with npx, macOS names the app Six Degrees was started from, not Six Degrees', () => {
+test('started with npx, macOS names the app Sixgree was started from, not Sixgree', () => {
   const item = appManagementStep(onMac({ version: 26, app: false }), fresh);
-  assert.match(item.text, /whether the app you started Six Degrees from \(Terminal, for example\) can manage apps/);
+  assert.match(item.text, /whether the app you started Sixgree from \(Terminal, for example\) can manage apps/);
   assert.match(item.text, /Allow that app once in App Management/);
-  assert.doesNotMatch(item.text, /Allow Six Degrees/);
+  assert.doesNotMatch(item.text, /Allow Sixgree/);
 });
 
 test('macOS\'s version from the Darwin kernel\'s: 25 is macOS 26, 20 to 24 are 11 to 15', () => {

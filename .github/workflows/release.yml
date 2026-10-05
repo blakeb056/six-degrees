@@ -9,6 +9,9 @@ name: Release
 # Trusted Publisher) to accept blakeb056/six-degrees's release.yml, and GitHub
 # vouches for this run with a short-lived token. No npm token is stored anywhere.
 # Renaming this file breaks that link; update it on npmjs.com if you do.
+# Since the rename to Sixgree the package is "sixgree", whose Trusted Publisher
+# must be set up the same way (after a first publish by hand). Until it is, the
+# npm job fails on its own and the rest of the release still counts.
 #
 # install.sh downloads from the Release this creates, so nothing reaches users
 # until a tag is pushed. Cutting one:
@@ -297,7 +300,7 @@ jobs:
           tag="${{ inputs.tag || github.ref_name }}"
           ver="$(node -p "require('./package.json').version")"
           [ "${tag#v}" = "$ver" ] || { echo "::error::Tag $tag does not match package.json version $ver."; exit 1; }
-      # --force: package.json's "os" keeps the npm package (npx six-degrees) off
+      # --force: package.json's "os" keeps the npm package (npx sixgree) off
       # Windows, where it doesn't run; the desktop app is built here regardless.
       - run: npm ci --force
       - name: Build Setup.exe
@@ -306,12 +309,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $setup = (Get-ChildItem dist\Six-Degrees-*-win-x64-Setup.exe).FullName
+          $setup = (Get-ChildItem dist\Sixgree-*-win-x64-Setup.exe).FullName
           $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/LOG=$env:RUNNER_TEMP\setup.log" -Wait -PassThru
           if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 60; throw "Setup failed ($($p.ExitCode))" }
           $app = Join-Path $env:LOCALAPPDATA 'Programs\Six Degrees'
           if (-not (Test-Path "$app\Six Degrees.exe")) { throw 'Setup did not install Six Degrees.exe' }
-          foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Six Degrees.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Six Degrees.lnk'))) {
+          foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Sixgree.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Sixgree.lnk'))) {
             if (-not (Test-Path $lnk)) { throw "No shortcut at $lnk" }
           }
           $env:PYTHONDONTWRITEBYTECODE = '1'
@@ -428,20 +431,32 @@ jobs:
       # Two downloads with names that never change, so the README's buttons can
       # point at releases/latest/download/<name> and always get the newest app.
       # install.sh keeps using the versioned names (…-<version>-arm64.dmg).
+      #
+      # Since the rename to Sixgree every download is published under its new
+      # name AND its old Six-Degrees-… name, the same file twice, both in
+      # SHA256SUMS: 1.0.0's updater asks for exactly Six-Degrees-<version>-<chip>.dmg
+      # (lib/updater.js legacyDmgName), and old links point at the old fixed names.
       - name: Downloads with fixed names, and checksums
         working-directory: out
         run: |
-          for f in *.dmg; do
+          for f in Sixgree-*.dmg; do
+            [ -e "$f" ] || continue
+            cp "$f" "Six-Degrees-${f#Sixgree-}"
             case "$f" in
-              *-arm64.dmg) cp "$f" Six-Degrees-Mac-Apple-Silicon.dmg ;;
-              *-x64.dmg)   cp "$f" Six-Degrees-Mac-Intel.dmg ;;
+              *-arm64.dmg) cp "$f" Sixgree-Mac-Apple-Silicon.dmg; cp "$f" Six-Degrees-Mac-Apple-Silicon.dmg ;;
+              *-x64.dmg)   cp "$f" Sixgree-Mac-Intel.dmg;         cp "$f" Six-Degrees-Mac-Intel.dmg ;;
             esac
           done
           # Windows and Linux under fixed names too (never ending in -arm64.dmg or
           # -x64.dmg, which install.sh and the Mac updater look for).
-          for f in *-win-x64-Setup.exe; do [ -e "$f" ] && cp "$f" Six-Degrees-Windows-Setup.exe; done
-          for f in six-degrees_*_amd64.deb; do [ -e "$f" ] && cp "$f" Six-Degrees-Linux-x64.deb; done
-          for f in Six-Degrees-*-linux-x64.tar.gz; do [ -e "$f" ] && cp "$f" Six-Degrees-Linux-x64.tar.gz; done
+          for f in Sixgree-*-win-x64-Setup.exe; do [ -e "$f" ] && cp "$f" Sixgree-Windows-Setup.exe && cp "$f" Six-Degrees-Windows-Setup.exe; done
+          for f in six-degrees_*_amd64.deb; do [ -e "$f" ] && cp "$f" Sixgree-Linux-x64.deb && cp "$f" Six-Degrees-Linux-x64.deb; done
+          for f in Sixgree-*-linux-x64.tar.gz; do [ -e "$f" ] && cp "$f" Sixgree-Linux-x64.tar.gz && cp "$f" Six-Degrees-Linux-x64.tar.gz; done
+          # Every Mac image must be there under both names, or 1.0.0 can't update.
+          for f in Sixgree-*-arm64.dmg Sixgree-*-x64.dmg; do
+            [ -e "$f" ] || { echo "::error::No $f"; exit 1; }
+            cmp "$f" "Six-Degrees-${f#Sixgree-}" || { echo "::error::No old-name copy of $f"; exit 1; }
+          done
           sha256sum $(ls *.dmg *.exe *.deb *.tar.gz 2>/dev/null) > SHA256SUMS && cat SHA256SUMS
       - name: Publish
         env:
@@ -459,9 +474,9 @@ jobs:
             gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --prerelease --title "$TAG (beta)" --notes "$(cat <<EOF
           **Beta.** Not offered to anyone automatically: the one-line install and the app's Updates panel skip pre-releases.
 
-          **Windows (new, beta):** **Six-Degrees-Windows-Setup.exe**. One click installs it for you (no admin rights) with Start Menu and Desktop shortcuts. It isn't signed yet, so Windows SmartScreen may say it protected your PC: choose *More info → Run anyway*. Scanning needs Google Chrome.
+          **Windows (new, beta):** **Sixgree-Windows-Setup.exe**. One click installs it for you (no admin rights) with Start Menu and Desktop shortcuts. It isn't signed yet, so Windows SmartScreen may say it protected your PC: choose *More info → Run anyway*. Scanning needs Google Chrome.
 
-          **Linux (new, beta):** **Six-Degrees-Linux-x64.deb** (`sudo apt install ./Six-Degrees-Linux-x64.deb`), or the **.tar.gz**: on Ubuntu 24.04 and later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in its folder once, or start it with `--no-sandbox`. Scanning needs Google Chrome.
+          **Linux (new, beta):** **Sixgree-Linux-x64.deb** (`sudo apt install ./Sixgree-Linux-x64.deb`), or the **.tar.gz**: on Ubuntu 24.04 and later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in its folder once, or start it with `--no-sandbox`. Scanning needs Google Chrome.
 
           To try it without touching your normal copy, install it to a separate folder:
 
@@ -483,21 +498,21 @@ jobs:
             if [ "$(cat signing/signing-arm64.txt 2>/dev/null)" = developer-id ] && [ "$(cat signing/signing-x64.txt 2>/dev/null)" = developer-id ]; then mac_signed=1; fi
             {
               cat <<'EOF'
-          **Windows:** **Six-Degrees-Windows-Setup.exe**: one click installs it (no admin rights). Not signed yet, so SmartScreen may ask: *More info → Run anyway*. **Linux:** **Six-Degrees-Linux-x64.deb** (`sudo apt install ./Six-Degrees-Linux-x64.deb`) or the .tar.gz. Scanning needs Google Chrome on both.
+          **Windows:** **Sixgree-Windows-Setup.exe**: one click installs it (no admin rights). Not signed yet, so SmartScreen may ask: *More info → Run anyway*. **Linux:** **Sixgree-Linux-x64.deb** (`sudo apt install ./Sixgree-Linux-x64.deb`) or the .tar.gz. Scanning needs Google Chrome on both.
 
-          **Download for Mac:** **Six-Degrees-Mac-Apple-Silicon.dmg** (any Mac with an Apple M chip) or **Six-Degrees-Mac-Intel.dmg** (older Intel Macs), below. Not sure which? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel. Needs macOS 13.5 (Ventura) or later.
+          **Download for Mac:** **Sixgree-Mac-Apple-Silicon.dmg** (any Mac with an Apple M chip) or **Sixgree-Mac-Intel.dmg** (older Intel Macs), below. Not sure which? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel. Needs macOS 13.5 (Ventura) or later.
 
           EOF
               if [ -n "$mac_signed" ]; then
                 cat <<'EOF'
-          Open the `.dmg` and drag **Six Degrees** to Applications. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. (The first time, macOS asks whether to open an app downloaded from the internet: click *Open*.)
+          Open the `.dmg` and drag **Sixgree** to Applications. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. (The first time, macOS asks whether to open an app downloaded from the internet: click *Open*.)
 
           **Or install from Terminal** (running it again updates):
 
           EOF
               else
                 cat <<'EOF'
-          Open the `.dmg` and drag **Six Degrees** to Applications. This build isn't signed with Apple's certificate, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.
+          Open the `.dmg` and drag **Sixgree** to Applications. This build isn't signed with Apple's certificate, so the first time you open it macOS says it can't check it: close that message (not *Move to Trash*), then go to **System Settings → Privacy & Security → Open Anyway**. Once per download.
 
           **Or install from Terminal** (no Open Anyway step, and running it again updates):
 
@@ -528,6 +543,11 @@ jobs:
     name: npm publish
     needs: [release, npm-package]
     runs-on: ubuntu-latest
+    # The package became "sixgree" with the rename. npm's trusted publishing is
+    # set up per package, so until "sixgree" has been published once by hand and
+    # given this workflow as its Trusted Publisher, this job fails: it shows red,
+    # but the GitHub Release above is already out and the run isn't failed by it.
+    continue-on-error: true
     permissions:
       contents: read
       id-token: write   # lets GitHub vouch for this run to npm (trusted publishing)
@@ -543,14 +563,14 @@ jobs:
       - name: Publish the checked tarball
         run: |
           npm --version   # trusted publishing needs 11.5.1 or later
-          TGZ=$(ls six-degrees-*.tgz)
+          TGZ=$(ls sixgree-*.tgz)
           sha256sum -c "$TGZ.sha256"
-          VERSION=${TGZ#six-degrees-}; VERSION=${VERSION%.tgz}
-          if npm view "six-degrees@$VERSION" version >/dev/null 2>&1; then
-            echo "six-degrees@$VERSION is already on npm; nothing to publish."
+          VERSION=${TGZ#sixgree-}; VERSION=${VERSION%.tgz}
+          if npm view "sixgree@$VERSION" version >/dev/null 2>&1; then
+            echo "sixgree@$VERSION is already on npm; nothing to publish."
             exit 0
           fi
-          # A pre-release goes out under "next", never "latest", so `npx six-degrees`
+          # A pre-release goes out under "next", never "latest", so `npx sixgree`
           # keeps running the last full release.
           case "$VERSION" in
             *-*) npm publish "./$TGZ" --tag next ;;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install Six Degrees on a Mac with one line:
+# Install Sixgree on a Mac with one line:
 #
 #   curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
 #
@@ -58,7 +58,7 @@ fetch_release() {
   release="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api")" \
     || fail "Could not find a release on GitHub. Check your connection, or see https://github.com/$REPO/releases"
 
-  # Asset names are fixed by scripts/build-app.mjs: Six-Degrees-<version>-<arch>.dmg
+  # Asset names are fixed by scripts/build-app.mjs: Sixgree-<version>-<arch>.dmg (and Six-Degrees-… copies)
   dmg_url="$(asset_url "$release" "-$arch\\.dmg")"
   sums_url="$(asset_url "$release" "SHA256SUMS")"
   [ -n "$dmg_url" ] || fail "That release has no download for this Mac ($arch). See https://github.com/$REPO/releases"
@@ -109,9 +109,9 @@ stop_running_copy() {
 }
 
 main() {
-  printf '\n  Six Degrees — installer\n\n'
+  printf '\n  Sixgree — installer\n\n'
 
-  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run: npx six-degrees (needs Node 22.13 or later). Windows isn't supported yet."
+  [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS. On Linux, run: npx sixgree (needs Node 22.13 or later). Windows isn't supported yet."
 
   local arch
   # A Terminal running under Rosetta reports x86_64 even on Apple Silicon, and
@@ -131,7 +131,7 @@ main() {
   major="${macos%%.*}"
   minor="$(printf '%s' "$macos" | cut -d. -f2)"; minor="${minor:-0}"
   if [ "$major" -lt 13 ] 2>/dev/null || { [ "$major" -eq 13 ] && [ "$minor" -lt 5 ]; }; then
-    fail "Six Degrees needs macOS 13.5 (Ventura) or later. This Mac runs $macos."
+    fail "Sixgree needs macOS 13.5 (Ventura) or later. This Mac runs $macos."
   fi
   say "macOS:    $macos"
 
@@ -183,7 +183,7 @@ main() {
 
   if [ -z "${SIX_DEGREES_NO_OPEN:-}" ]; then
     open "$target"
-    printf '\n  ✓ Opening Six Degrees. Next time, open it from Applications or Spotlight.\n'
+    printf '\n  ✓ Opening Sixgree. Next time, open it from Applications or Spotlight.\n'
   else
     printf '\n  ✓ Done.\n'
   fi

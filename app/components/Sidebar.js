@@ -1224,7 +1224,7 @@ function CreateClusterCard({ selected, degree2, resume }) {
         {resume
           ? (hasCluster ? `${clusterCount} connections mapped so far` : 'Their list is only partly read')
           : hasCluster
-          ? `${clusterCount} connections mapped in Six Degrees`
+          ? `${clusterCount} connections mapped in Sixgree`
           : <>Scan {selected.name}&apos;s connections to map their network</>}
       </div>
 

@@ -25,8 +25,9 @@ function release(version, { assets, ...over } = {}) {
   const tag = `v${version}`;
   const url = (name) => `https://github.com/${SLUG}/releases/download/${tag}/${name}`;
   const names = assets ?? [
+    `Sixgree-${version}-arm64.dmg`, `Sixgree-${version}-x64.dmg`,
     `Six-Degrees-${version}-arm64.dmg`, `Six-Degrees-${version}-x64.dmg`,
-    'Six-Degrees-Mac-Apple-Silicon.dmg', 'Six-Degrees-Mac-Intel.dmg', 'SHA256SUMS',
+    'Sixgree-Mac-Apple-Silicon.dmg', 'Sixgree-Mac-Intel.dmg', 'SHA256SUMS',
   ];
   return {
     tag_name: tag,
@@ -74,8 +75,9 @@ test('the bundle id is the one the app is built with', () => {
 
 test('the disk image name and SHA256SUMS are what the build and the release publish', () => {
   const build = repoFile('scripts/build-app.mjs');
-  assert.ok(build.includes("`${APP_NAME.replace(/ /g, '-')}-${pkg.version}-${ARCH}.dmg`"), 'build-app.mjs names it');
-  assert.equal(dmgName('0.2.2', 'arm64'), 'Six Degrees'.replace(/ /g, '-') + '-0.2.2-arm64.dmg');
+  assert.ok(build.includes("`${DISPLAY_NAME}-${pkg.version}-${ARCH}.dmg`"), 'build-app.mjs names it');
+  assert.ok(build.includes("const DISPLAY_NAME = 'Sixgree';"));
+  assert.equal(dmgName('0.2.2', 'arm64'), 'Sixgree-0.2.2-arm64.dmg');
   const releaseYml = repoFile('.github/workflows/release.yml');
   // Every download's line, the disk images' included (Windows and Linux joined them, DESKTOP.md D3).
   assert.match(releaseYml, new RegExp(`sha256sum \\$\\(ls \\*\\.dmg [^)]*\\) > ${SUMS_NAME}`), 'release.yml writes it');
@@ -100,19 +102,19 @@ test('the download is picked by its exact name for this chip, from this reposito
   const { plan: p, refusal } = plan(release('0.2.2'));
   assert.equal(refusal, undefined);
   assert.equal(p.version, '0.2.2');
-  assert.equal(p.dmg.name, 'Six-Degrees-0.2.2-arm64.dmg');
-  assert.equal(p.dmg.url, `https://github.com/${SLUG}/releases/download/v0.2.2/Six-Degrees-0.2.2-arm64.dmg`);
+  assert.equal(p.dmg.name, 'Sixgree-0.2.2-arm64.dmg');
+  assert.equal(p.dmg.url, `https://github.com/${SLUG}/releases/download/v0.2.2/Sixgree-0.2.2-arm64.dmg`);
   assert.equal(p.dmg.size, 190e6);
   assert.equal(p.sums.name, 'SHA256SUMS');
-  assert.equal(plan(release('0.2.2'), { chip: 'x64' }).plan.dmg.name, 'Six-Degrees-0.2.2-x64.dmg');
-  assert.equal(dmgName('1.0.0', 'x64'), 'Six-Degrees-1.0.0-x64.dmg');
+  assert.equal(plan(release('0.2.2'), { chip: 'x64' }).plan.dmg.name, 'Sixgree-0.2.2-x64.dmg');
+  assert.equal(dmgName('1.0.0', 'x64'), 'Sixgree-1.0.0-x64.dmg');
 });
 
 test('the fixed-name copy is never mistaken for the chip build', () => {
   // install.sh takes the first file ending in "-arm64.dmg"; the in-app updater
   // takes only the versioned name, so a release carrying just the fixed-name
   // copies has nothing for it.
-  const r = release('0.2.2', { assets: ['Six-Degrees-Mac-Apple-Silicon.dmg', 'SHA256SUMS'] });
+  const r = release('0.2.2', { assets: ['Sixgree-Mac-Apple-Silicon.dmg', 'SHA256SUMS'] });
   assert.equal(plan(r).refusal.code, 'no-download');
 });
 
@@ -144,10 +146,10 @@ test('a pre-release is never installed, whatever GitHub answers', () => {
 
 test('an asset at an address outside this repository\'s releases is refused', () => {
   const r = release('0.2.2');
-  r.assets[0].browser_download_url = 'https://example.com/Six-Degrees-0.2.2-arm64.dmg';
+  r.assets[0].browser_download_url = 'https://example.com/Sixgree-0.2.2-arm64.dmg';
   assert.equal(plan(r).refusal.code, 'unexpected-address');
   const other = release('0.2.2');
-  other.assets[4].browser_download_url = `https://github.com/someone-else/six-degrees/releases/download/v0.2.2/SHA256SUMS`;
+  other.assets.find((a) => a.name === 'SHA256SUMS').browser_download_url = `https://github.com/someone-else/six-degrees/releases/download/v0.2.2/SHA256SUMS`;
   assert.equal(plan(other).refusal.code, 'unexpected-address');
 });
 
@@ -200,7 +202,7 @@ test('refusals: a disk image, a translocated copy, an unwritable folder, another
   const ok = { exists: true, parentWritable: true, ownerUid: 501, uid: 501 };
   assert.equal(bundleRefusal('/Applications/Six Degrees.app', ok), null);
   assert.equal(bundleRefusal('/Users/me/Applications/Six Degrees.app', ok), null);
-  assert.equal(bundleRefusal('/Volumes/Six Degrees/Six Degrees.app', ok).code, 'disk-image');
+  assert.equal(bundleRefusal('/Volumes/Sixgree/Six Degrees.app', ok).code, 'disk-image');
   assert.equal(
     bundleRefusal('/private/var/folders/x/T/AppTranslocation/1234/d/Six Degrees.app', ok).code, 'translocated');
   assert.equal(bundleRefusal('/Applications/Six Degrees.app', { ...ok, parentWritable: false }).code, 'not-writable');
@@ -209,7 +211,7 @@ test('refusals: a disk image, a translocated copy, an unwritable folder, another
   assert.equal(bundleRefusal(null, ok).code, 'unknown-location');
   assert.equal(bundleRefusal('/Applications/Six Degrees.app', { ...ok, exists: false }).code, 'unknown-location');
   // Every refusal says what to do in words, for the Settings page.
-  assert.match(bundleRefusal('/Volumes/Six Degrees/Six Degrees.app', ok).message, /Applications folder/);
+  assert.match(bundleRefusal('/Volumes/Sixgree/Six Degrees.app', ok).message, /Applications folder/);
 });
 
 test('a data folder inside the app is refused: replacing the app would carry it away', () => {
@@ -243,7 +245,7 @@ test('the Terminal line is described as what install.sh would do for this copy, 
   // copy in /Applications this user can't change): it installs a second copy
   // and leaves this one running, so quit this one first.
   for (const [bundle, code, to] of [
-    ['/Volumes/Six Degrees/Six Degrees.app', 'disk-image', apps],
+    ['/Volumes/Sixgree/Six Degrees.app', 'disk-image', apps],
     ['/private/var/folders/x/T/AppTranslocation/1/d/Six Degrees.app', 'translocated', apps],
     [apps, 'not-writable', mine],
     ['/Users/me/Six-Degrees-Update-Test/Six Degrees.app', null, apps],
@@ -366,10 +368,10 @@ const status = (over) => ({ from: '0.2.1', to: '0.2.2', at: '2026-09-25T11:58:00
 const report = (s, runningVersion = '0.2.2') => lastUpdateReport(s, { runningVersion, now: NOW });
 
 test('after an update that worked: "Updated to 0.2.2", and where the old version is kept', () => {
-  const r = report(status({ outcome: 'installed', previous: '/Users/me/Library/Caches/Six Degrees/Six Degrees 0.2.1.app' }));
+  const r = report(status({ outcome: 'installed', previous: '/Users/me/Library/Caches/Six Degrees/Sixgree 0.2.1.app' }));
   assert.equal(r.tone, 'ok');
   assert.equal(r.text, 'Updated to 0.2.2.');
-  assert.match(r.previous, /Six Degrees 0\.2\.1\.app$/);
+  assert.match(r.previous, /Sixgree 0\.2\.1\.app$/);
 });
 
 test('after an update that was rolled back: why, and that the previous version is back', () => {

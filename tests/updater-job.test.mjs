@@ -52,16 +52,16 @@ function makeApp(dir, { version = NEW, id = TEST_ID, minimum = '13.5', thin = fa
   fs.writeFileSync(path.join(dir, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Six Degrees updater test</string>
+  <key>CFBundleName</key><string>Sixgree updater test</string>
   <key>CFBundleIdentifier</key><string>${id}</string>
-  <key>CFBundleExecutable</key><string>Six Degrees</string>
+  <key>CFBundleExecutable</key><string>Sixgree</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>
   <key>LSMinimumSystemVersion</key><string>${minimum}</string>
 </dict></plist>
 `);
-  const exe = path.join(dir, 'Contents', 'MacOS', 'Six Degrees');
+  const exe = path.join(dir, 'Contents', 'MacOS', 'Sixgree');
   fs.copyFileSync('/usr/bin/true', exe);
   if (thin) {
     // Apple Silicon only, the way an arm64 release is: ditto can thin a copy,
@@ -94,7 +94,7 @@ async function makeDmg(name, options) {
   const src = path.join(fixtures, `${name}-src`);
   makeApp(path.join(src, 'Six Degrees.app'), options);
   const out = path.join(fixtures, `${name}.dmg`);
-  await promisify(execFile)('/usr/bin/hdiutil', ['create', '-quiet', '-volname', 'Six Degrees', '-fs', 'HFS+',
+  await promisify(execFile)('/usr/bin/hdiutil', ['create', '-quiet', '-volname', 'Sixgree', '-fs', 'HFS+',
     '-srcfolder', src, '-format', 'UDZO', '-ov', out]);
   return out;
 }
@@ -124,8 +124,8 @@ const release = (over = {}) => ({
   assets: [
     { name: ARM, file: dmg.good },
     { name: INTEL, file: dmg.good },
-    { name: 'Six-Degrees-Mac-Apple-Silicon.dmg', file: dmg.good },
-    { name: 'Six-Degrees-Mac-Intel.dmg', file: dmg.good },
+    { name: 'Sixgree-Mac-Apple-Silicon.dmg', file: dmg.good },
+    { name: 'Sixgree-Mac-Intel.dmg', file: dmg.good },
   ],
   ...over,
 });
@@ -297,7 +297,7 @@ test('the Intel build for an Intel Mac, and never the Apple Silicon one', { skip
 
 test('a release with only the other chip\'s build: refused, and nothing downloaded', { skip }, async (t) => {
   const w = world(t);
-  server.setRelease(release({ assets: [{ name: INTEL, file: dmg.good }, { name: 'Six-Degrees-Mac-Apple-Silicon.dmg', file: dmg.good }] }));
+  server.setRelease(release({ assets: [{ name: INTEL, file: dmg.good }, { name: 'Sixgree-Mac-Apple-Silicon.dmg', file: dmg.good }] }));
   const { c, calls } = context(w);
   const job = await run(c);
   assert.equal(job.phase, 'failed');
@@ -345,7 +345,7 @@ test('WRONG BUNDLE ID: an image holding some other app is refused', { skip }, as
   const { c, calls } = context(w);
   const job = await run(c);
   assert.equal(job.phase, 'failed');
-  assert.match(job.error, /isn't Six Degrees \(it calls itself com\.example\.not-six-degrees\)/);
+  assert.match(job.error, /isn't Sixgree \(it calls itself com\.example\.not-six-degrees\)/);
   assertUntouched(w, calls, job);
 });
 
@@ -578,7 +578,7 @@ test('ANOTHER USER has the app open: refused before anything is downloaded', { s
   const { c, calls } = context(w, { othersRunning: () => [4242] });
   const job = await run(c);
   assert.equal(job.phase, 'failed');
-  assert.match(job.error, /Another user of this Mac has Six Degrees open/);
+  assert.match(job.error, /Another user of this Mac has Sixgree open/);
   assert.deepEqual(requested(), [`/repos/${SLUG}/releases/latest`]);
   assertUntouched(w, calls, job);
 });
@@ -590,7 +590,7 @@ test('ANOTHER USER opens it while the update downloads: refused before the hand-
   const { c, calls } = context(w, { othersRunning: () => (++asked > 1 ? [4242] : []) });
   const job = await run(c);
   assert.equal(job.phase, 'failed');
-  assert.match(job.error, /Another user of this Mac has Six Degrees open/);
+  assert.match(job.error, /Another user of this Mac has Sixgree open/);
   assert.equal(asked, 2, 'asked before the download and again before the hand-over');
   assertUntouched(w, calls, job);
 });
@@ -640,7 +640,7 @@ test('LEFTOVERS of an update cut off half-way are removed, and only those, only 
     failed: mk(path.join(apps, `.Six Degrees.app.failed-${dead}`)),
     incoming: mk(path.join(apps, '.Six Degrees.app.incoming')),
     box: mk(path.join(cacheDir, '.previous-AbC123')),
-    part: mk(path.join(cacheDir, 'Six Degrees 0.2.1.zip.part'), true),
+    part: mk(path.join(cacheDir, 'Sixgree 0.2.1.zip.part'), true),
     tmpStatus: mk(path.join(cacheDir, 'last-update.json.4242.tmp'), true),
     work: mk(path.join(tmpRoot, 'six-degrees-update-XyZ789')),
   };
@@ -648,7 +648,7 @@ test('LEFTOVERS of an update cut off half-way are removed, and only those, only 
     helperStillRunning: mk(path.join(apps, `.Six Degrees.app.previous-${live}`)),
     anotherApp: mk(path.join(apps, `.Other.app.previous-${dead}`)),
     notOurs: mk(path.join(apps, 'Notes')),
-    keptZip: mk(path.join(cacheDir, 'Six Degrees 0.2.1.zip'), true),
+    keptZip: mk(path.join(cacheDir, 'Sixgree 0.2.1.zip'), true),
     status: mk(statusFile, true),
     otherTmp: mk(path.join(tmpRoot, 'something-else')),
   };

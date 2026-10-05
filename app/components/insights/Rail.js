@@ -106,7 +106,7 @@ function Richest({ heavy }) {
     <Card dashed>
       <CardHead title="Richest?" />
       <p style={{ fontSize: 12.5, color: 'var(--sd-fg-1, #e9edf3)', margin: '6px 0 8px', lineHeight: 1.5 }}>
-        Six Degrees doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is
+        Sixgree doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is
         power: who runs the biggest companies you can reach.
       </p>
       {!heavy ? <Counting /> : (

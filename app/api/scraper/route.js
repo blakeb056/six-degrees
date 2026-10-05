@@ -677,7 +677,7 @@ function setupPlan(action, found, { root, data, say }) {
               }
             },
           });
-          say('Its checksum matches the one Six Degrees has for it.');
+          say('Its checksum matches the one Sixgree has for it.');
         },
       },
       { cmd: 'tar', args: ['-xzf', archive, '-C', work], note: 'Unpacking it' },
@@ -788,7 +788,7 @@ export async function POST(request) {
   // now would land in the copy that is about to be set aside. Setting the
   // scanner up touches no network data.
   if (!['install', 'setup', 'login'].includes(action) && pendingImport(dataDir())) {
-    return Response.json({ error: 'An import is waiting to finish. Restart Six Degrees first (Settings → Your data), then scan.' }, { status: 409 });
+    return Response.json({ error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' }, { status: 409 });
   }
   const cooldown = linkedinState(dataDir()).cooldown;
   if (searches && cooldown) {
@@ -910,7 +910,7 @@ export async function POST(request) {
         connectionId: who.id, profileUrl: who.profileUrl, userId: who.userId, bridgeId: who.bridgeId,
       });
       if (saved) Promise.resolve(awardXP(whose(user), xp)).catch(() => {});
-      push('Marked as sent in Six Degrees.');
+      push('Marked as sent in Sixgree.');
     } catch (err) {
       push(`Sent on LinkedIn, but it couldn’t be marked as sent here: ${err.message}`);
     }

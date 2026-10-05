@@ -603,7 +603,7 @@ test('macOS won\'t let the old app be moved (App Management): nothing changes, a
   assert.equal(versionAt(w.target), '1.0.0');
   const s = readStatus(w);
   assert.equal(s.outcome, 'not-applied');
-  assert.match(s.reason, /didn't let Six Degrees move its old version aside/);
+  assert.match(s.reason, /didn't let Sixgree move its old version aside/);
   assert.deepEqual(await launched(w), ['1.0.0', '--after-update']);
   assert.deepEqual(leftovers(w), [], 'the new version is removed, nothing hidden is left');
 });

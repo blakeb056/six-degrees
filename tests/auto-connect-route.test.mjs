@@ -108,7 +108,7 @@ test('a sent request is marked on every copy of them, through the circle it was 
   const { job: done } = await ended();
   assert.equal(done.recent[0].outcome, 'sent');
   assert.equal(done.recent[0].exitCode, 0);
-  assert.ok(done.log.includes('Marked as sent in Six Degrees.'), done.log.join('\n'));
+  assert.ok(done.log.includes('Marked as sent in Sixgree.'), done.log.join('\n'));
   assert.deepEqual(rows('ada-quill'), [
     { id: 'd2-ada@maren', outreach_status: 'sent', unlock_status: 'pending', unlocked_from_bridge_id: 'p-oriel' },
     { id: 'd2-ada@oriel', outreach_status: 'sent', unlock_status: 'pending', unlocked_from_bridge_id: 'p-oriel' },
@@ -133,7 +133,7 @@ test('already pending on LinkedIn is marked too; anything unclear, or a failed r
     ({ job: done } = await ended());
     assert.equal(done.recent[0].outcome, result);
     assert.ok(rows('ada-quill').every((r) => r.outreach_status === null && r.unlock_status === 'locked'), `${result} marks nothing`);
-    assert.ok(!done.log.includes('Marked as sent in Six Degrees.'));
+    assert.ok(!done.log.includes('Marked as sent in Sixgree.'));
   }
 
   // A line that isn't a result the scanner prints is no result at all.

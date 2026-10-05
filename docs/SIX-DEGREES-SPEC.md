@@ -1,4 +1,4 @@
-# Six Degrees — Specification
+# Sixgree — Specification
 
 The brain describes how things *are*. This says how they **must be**. When they
 disagree, the brain is stale.

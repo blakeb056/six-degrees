@@ -258,7 +258,7 @@ test('a link in the data folder is never followed out of it', () => {
 });
 
 test('the file name carries this computer’s date', () => {
-  assert.equal(exportFileName(new Date(2026, 8, 5, 23, 30)), 'Six Degrees backup 2026-09-05.sixdegrees');
+  assert.equal(exportFileName(new Date(2026, 8, 5, 23, 30)), 'Sixgree backup 2026-09-05.sixdegrees');
 });
 
 // ── what an import refuses ───────────────────────────────────────────────────
@@ -283,10 +283,10 @@ test('a good export passes every check', () => {
 test('a file that is not a database is refused', () => {
   const file = path.join(folder('notdb'), 'x.sixdegrees');
   writeFileSync(file, 'first name,last name\nInvented,Person\n'.repeat(20));
-  assert.throws(() => validateImport(file, checks), refusedWith(/isn't a Six Degrees export/));
+  assert.throws(() => validateImport(file, checks), refusedWith(/isn't a Sixgree export/));
   const tiny = path.join(folder('tiny'), 'x.sixdegrees');
   writeFileSync(tiny, 'SQLite format 3\0');
-  assert.throws(() => validateImport(tiny, checks), refusedWith(/isn't a Six Degrees export/));
+  assert.throws(() => validateImport(tiny, checks), refusedWith(/isn't a Sixgree export/));
 });
 
 test('a plain database (a backup, a copied six-degrees.sqlite) is refused as not an export', () => {
@@ -295,7 +295,7 @@ test('a plain database (a backup, a copied six-degrees.sqlite) is refused as not
   const copy = path.join(folder('plain-copy'), 'x.sixdegrees');
   db.exec(`VACUUM INTO '${copy}'`);
   db.close();
-  assert.throws(() => validateImport(copy, checks), refusedWith(/not a Six Degrees export/));
+  assert.throws(() => validateImport(copy, checks), refusedWith(/not a Sixgree export/));
 });
 
 test('a damaged file is refused by SQLite’s own check', () => {
@@ -359,7 +359,7 @@ test('a file changed since it was exported (rows or files added or taken out) is
   });
   assert.throws(() => validateImport(added, checks), refusedWith(/list of files doesn't match its own export details \(7 files, where they say 6\)/));
   assert.throws(() => validateImport(tampered(good, "UPDATE sd_export_manifest SET value = 'lots' WHERE key = 'counts';"), checks),
-    refusedWith(/export details aren't ones Six Degrees writes/));
+    refusedWith(/export details aren't ones Sixgree writes/));
 });
 
 test('an export from before a table or a column was added still imports, and what it lacks starts empty', () => {
@@ -393,11 +393,11 @@ test('a strange file SQLite itself can’t make sense of is still a plain refusa
 test('an unknown format, or a file from a newer version, is refused with what to do', () => {
   const good = goodExport();
   assert.throws(() => validateImport(tampered(good, "UPDATE sd_export_manifest SET value = '2' WHERE key = 'format';"), checks),
-    refusedWith(/newer Six Degrees than this copy. Update this copy first/));
+    refusedWith(/newer Sixgree than this copy. Update this copy first/));
   assert.throws(() => validateImport(tampered(good, "UPDATE sd_export_manifest SET value = 'zip' WHERE key = 'format';"), checks),
-    refusedWith(/aren't ones Six Degrees writes/));
+    refusedWith(/aren't ones Sixgree writes/));
   assert.throws(() => validateImport(tampered(good, "UPDATE sd_export_manifest SET value = '9.9.9' WHERE key = 'app_version';"), checks),
-    refusedWith(/comes from Six Degrees 9\.9\.9, which is newer than this copy \(0\.2\.1\)\. Update this copy first/));
+    refusedWith(/comes from Sixgree 9\.9\.9, which is newer than this copy \(0\.2\.1\)\. Update this copy first/));
   assert.throws(() => validateImport(tampered(good, "DELETE FROM sd_export_manifest WHERE key = 'app_version';"), checks),
     refusedWith(/doesn't say which version/));
   // Older is fine: the schema step and the rescore bring it up to date.
@@ -824,14 +824,14 @@ test('only a launcher that set a restart code can restart; the rest are told how
   assert.equal(mac.canRestart, true);
   // Shown before anyone has clicked: it must not say a restart is under way.
   assert.match(mac.how, /^Click Restart now/);
-  assert.doesNotMatch(mac.how, /^Six Degrees restarts/);
+  assert.doesNotMatch(mac.how, /^Sixgree restarts/);
   const classic = restartAdvice({ kind: 'mac-app', code: null });
   assert.equal(classic.canRestart, false);
-  assert.match(classic.how, /Quit Six Degrees \(⌘Q\) and open it again/);
+  assert.match(classic.how, /Quit Sixgree \(⌘Q\) and open it again/);
   const npx = restartAdvice({ kind: 'npm', code: null, dataDir: "/Users/x/my data's" });
   assert.match(npx.how, /Ctrl-C/);
-  assert.equal(npx.command, "npx six-degrees --data-dir '/Users/x/my data'\\''s'");
-  assert.equal(restartAdvice({ kind: 'npm', code: null }).command, 'npx six-degrees');
+  assert.equal(npx.command, "npx sixgree --data-dir '/Users/x/my data'\\''s'");
+  assert.equal(restartAdvice({ kind: 'npm', code: null }).command, 'npx sixgree');
   assert.equal(restartAdvice({ kind: 'source', code: null }).command, 'npm run start:packaged');
   assert.equal(restartAdvice({ kind: 'git', code: null }).canRestart, false);
 });
@@ -940,10 +940,10 @@ test('REGRESSION: a copy whose scan limits the app never offers is refused', asy
     recount(db);
   });
   assert.throws(() => validateImport(forged('scan-limits.json', { daily: 0, monthly: 0 }), checks),
-    refusedWith(/“scan-limits\.json” inside this file can't be used \(its daily limit \(0\) is not one Six Degrees offers\)/));
+    refusedWith(/“scan-limits\.json” inside this file can't be used \(its daily limit \(0\) is not one Sixgree offers\)/));
   // Profile views have no "no limit" at all.
   assert.throws(() => validateImport(forged('scan-limits.json', { daily: 50, monthly: 250, profiles: 0 }), checks),
-    refusedWith(/its limit on profile views \(0\) is not one Six Degrees offers/));
+    refusedWith(/its limit on profile views \(0\) is not one Sixgree offers/));
   assert.throws(() => validateImport(forged('linkedin-activity.json', { searches: ['soon'] }), checks),
     refusedWith(/“linkedin-activity\.json” inside this file can't be used/));
   assert.throws(() => validateImport(forged('linkedin-cooldown.json', { reason: 'no end' }), checks),
@@ -1061,7 +1061,7 @@ test('a staged import damaged since it was staged is refused before anything mov
   assert.deepEqual(cancelPendingImport(here), { cancelled: true });
 });
 
-// ── one copy of Six Degrees at a time ────────────────────────────────────────
+// ── one copy of Sixgree at a time ────────────────────────────────────────
 
 /** Another process with this database open, the way a second server has it: read, and kept open. */
 function anotherProcess(file) {
@@ -1085,8 +1085,8 @@ function anotherProcess(file) {
   return { ready, finish, kill: () => child.kill('SIGKILL') };
 }
 
-test('REGRESSION: an import doesn\'t start while another copy of Six Degrees has the network open', async () => {
-  // `npm run dev` or `npx six-degrees` on the same folder while the Mac app
+test('REGRESSION: an import doesn\'t start while another copy of Sixgree has the network open', async () => {
+  // `npm run dev` or `npx sixgree` on the same folder while the Mac app
   // runs: the swap went ahead under the other process, whose writes then
   // landed in neither database (review R3).
   const here = folder('two-servers');
@@ -1096,9 +1096,9 @@ test('REGRESSION: an import doesn\'t start while another copy of Six Degrees has
   try {
     await other.ready;
     assert.throws(() => applyPendingImport({ dir: here, dbFile: dbIn(here) }),
-      /another copy of Six Degrees has this network open .*Quit that copy, then restart this one/);
+      /another copy of Sixgree has this network open .*Quit that copy, then restart this one/);
     const waiting = pendingImport(here);
-    assert.match(waiting.error, /another copy of Six Degrees has this network open/);
+    assert.match(waiting.error, /another copy of Sixgree has this network open/);
     assert.equal(waiting.started, false, 'nothing moved: it can still be cancelled');
     assert.equal(existsSync(path.join(here, 'backups')), false);
     await other.finish();

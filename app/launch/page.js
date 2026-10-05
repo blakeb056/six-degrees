@@ -341,7 +341,7 @@ function ChainSection() {
             Bridge Chains
           </div>
           <h2 style={{ fontSize: 44, fontWeight: 800, lineHeight: 1.15, margin: 0 }}>
-            <span style={{ color: '#fff' }}>Six Degrees.</span>{' '}
+            <span style={{ color: '#fff' }}>Sixgree.</span>{' '}
             <span style={{ background: 'linear-gradient(135deg, #FF6B35, #FFD700)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Infinite Reach.
             </span>

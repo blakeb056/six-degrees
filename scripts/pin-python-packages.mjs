@@ -12,7 +12,7 @@
 //
 // Why hashes. Every copy of the scanner installs from this one file: the Python
 // inside the Mac app when it is built (scripts/build-app.mjs), and the private
-// environment `npx six-degrees` and source copies set up from the Scan page. With
+// environment `npx sixgree` and source copies set up from the Scan page. With
 // a hash on every line pip refuses any file that isn't byte for byte the one
 // pinned here, whoever serves it, and every dependency has to be listed too, so
 // nothing arrives unpinned.
@@ -38,7 +38,7 @@ const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'requiremen
 const PYTHON_MINORS = [10, 11, 12, 13, 14];
 const MACOS_MAX_MAJOR = 13;
 
-/** Can pip install this wheel somewhere Six Degrees runs? */
+/** Can pip install this wheel somewhere Sixgree runs? */
 export function wheelAllowed(filename) {
   const m = String(filename).match(/^[^-]+-[^-]+(?:-\d[^-]*)?-([^-]+)-([^-]+)-([^-]+)\.whl$/);
   if (!m) return false;
@@ -106,7 +106,7 @@ async function hashesFor(name, version) {
   if (!res.ok) throw new Error(`PyPI answered ${res.status} for ${name} ${version}`);
   const data = await res.json();
   const files = (data.urls || []).filter((f) => f.packagetype === 'bdist_wheel' && !f.yanked && wheelAllowed(f.filename));
-  if (!files.length) throw new Error(`${name} ${version} has no wheel for the platforms Six Degrees runs on`);
+  if (!files.length) throw new Error(`${name} ${version} has no wheel for the platforms Sixgree runs on`);
   return [...new Set(files.map((f) => f.digests.sha256))].sort();
 }
 

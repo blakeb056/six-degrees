@@ -1,6 +1,6 @@
 name: Website
 
-# The website at https://sixdegreesapp.com/, built by scripts/build-site.mjs from
+# The website at https://sixgree.com/, built by scripts/build-site.mjs from
 # site/ (see site/README.md) and published with GitHub Pages. The build has no
 # dependencies: it fills the home page's generated parts, renders /download/,
 # /docs/, /roadmap/, /about/, /releases/ and the blog, writes the feeds and the

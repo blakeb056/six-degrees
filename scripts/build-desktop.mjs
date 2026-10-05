@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build the desktop app for Windows or Linux (docs/brain/DESKTOP.md D3).
 //
-//   node scripts/build-desktop.mjs --platform=win32   # on Windows: dist/Six-Degrees-<v>-win-x64-Setup.exe
+//   node scripts/build-desktop.mjs --platform=win32   # on Windows: dist/Sixgree-<v>-win-x64-Setup.exe
 //   node scripts/build-desktop.mjs --platform=linux   # on Linux:   dist/six-degrees_<v>_amd64.deb and a .tar.gz
 //   --fast   reuse the existing Next build (only while working on the packaging itself)
 //
@@ -48,7 +48,11 @@ const WIN = PLATFORM === 'win32';
 const ARCH = 'x64';
 const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VERSION = pkg.version;
+// The executable and install folder keep the name 1.0.0 installed ("Six Degrees.exe",
+// Programs\Six Degrees): Setup.exe replaces that install in place (same AppId).
+// What people see is DISPLAY_NAME (window title, shortcuts, Apps & features).
 const APP_NAME = 'Six Degrees';
+const DISPLAY_NAME = 'Sixgree';
 const OUT = path.join(ROOT, 'dist');
 const STAGE = path.join(OUT, 'stage');
 const CACHE = path.join(os.homedir(), '.cache', 'six-degrees-build');
@@ -183,7 +187,7 @@ const [built] = await packager({
   junk: true,
   extraResource: [SERVER_DIR, NODE_OUT],
   ...(WIN
-    ? { win32metadata: { CompanyName: 'Six Degrees', ProductName: APP_NAME, FileDescription: APP_NAME, OriginalFilename: `${APP_NAME}.exe` } }
+    ? { win32metadata: { CompanyName: DISPLAY_NAME, ProductName: DISPLAY_NAME, FileDescription: DISPLAY_NAME, OriginalFilename: `${APP_NAME}.exe` } }
     : { executableName: 'six-degrees' }),
 });
 const APP_DIR = path.join(OUT, WIN ? 'Six Degrees' : `six-degrees-${VERSION}-linux-x64`);
@@ -276,7 +280,7 @@ if (WIN) {
   const numeric = `${VERSION.replace(/-.*/, '')}.0`;
   run(iscc, ['/Qp', `/DAppVersion=${VERSION}`, `/DNumericVersion=${numeric}`, `/DSourceDir=${APP_DIR}`,
     `/DOutputDir=${OUT}`, `/DIconFile=${ICON}`, path.join(ROOT, 'scripts', 'windows', 'six-degrees.iss')]);
-  const setup = path.join(OUT, `Six-Degrees-${VERSION}-win-x64-Setup.exe`);
+  const setup = path.join(OUT, `${DISPLAY_NAME}-${VERSION}-win-x64-Setup.exe`);
   if (!existsSync(setup)) throw new Error('Inno Setup didn\'t write Setup.exe.');
   console.log(`  ${path.relative(ROOT, setup)} (${Math.round(statSync(setup).size / 1e6)} MB)`);
 } else {
@@ -285,7 +289,7 @@ if (WIN) {
   // private (700, it's made as a temporary folder), and installed as root from
   // the .deb that left /opt/six-degrees unreadable to the user who runs it.
   run('chmod', ['-R', 'u+rwX,go+rX,go-w', APP_DIR]);
-  run('tar', ['-C', OUT, '-czf', path.join(OUT, `Six-Degrees-${VERSION}-linux-x64.tar.gz`), path.basename(APP_DIR)]);
+  run('tar', ['-C', OUT, '-czf', path.join(OUT, `${DISPLAY_NAME}-${VERSION}-linux-x64.tar.gz`), path.basename(APP_DIR)]);
   const deb = path.join(STAGE, 'deb');
   rmSync(deb, { recursive: true, force: true });
   mkdirSync(path.join(deb, 'opt'), { recursive: true });
@@ -298,8 +302,8 @@ if (WIN) {
   symlinkSync('../../opt/six-degrees/six-degrees', path.join(deb, 'usr', 'bin', 'six-degrees'));
   mkdirSync(path.join(deb, 'usr', 'share', 'applications'), { recursive: true });
   writeFileSync(path.join(deb, 'usr', 'share', 'applications', 'six-degrees.desktop'), [
-    '[Desktop Entry]', 'Type=Application', 'Name=Six Degrees', 'Comment=See your LinkedIn network as a galaxy, on your own computer',
-    'Exec=/opt/six-degrees/six-degrees %U', 'Icon=six-degrees', 'Terminal=false', 'Categories=Office;Network;', 'StartupWMClass=Six Degrees', '',
+    '[Desktop Entry]', 'Type=Application', 'Name=Sixgree', 'Comment=See your LinkedIn network as a galaxy, on your own computer',
+    'Exec=/opt/six-degrees/six-degrees %U', 'Icon=six-degrees', 'Terminal=false', 'Categories=Office;Network;', 'StartupWMClass=Sixgree', '',
   ].join('\n'));
   mkdirSync(path.join(deb, 'usr', 'share', 'icons', 'hicolor', '512x512', 'apps'), { recursive: true });
   cpSync(ICON, path.join(deb, 'usr', 'share', 'icons', 'hicolor', '512x512', 'apps', 'six-degrees.png'));
@@ -309,12 +313,12 @@ if (WIN) {
   const kb = Number(execFileSync('du', ['-sk', path.join(deb, 'opt')]).toString().split(/\s+/)[0]);
   writeFileSync(path.join(deb, 'DEBIAN', 'control'), [
     'Package: six-degrees', `Version: ${debVersion}`, 'Architecture: amd64', 'Section: utils', 'Priority: optional',
-    'Maintainer: Six Degrees <noreply@sixdegreesapp.com>', 'Homepage: https://sixdegreesapp.com',
+    'Maintainer: Sixgree <noreply@sixgree.com>', 'Homepage: https://sixgree.com',
     `Installed-Size: ${kb}`,
     'Depends: libgtk-3-0t64 | libgtk-3-0, libnss3, libxss1, libxtst6, libasound2t64 | libasound2, libgbm1, libdrm2, xdg-utils',
     'Recommends: google-chrome-stable',
     'Description: See your LinkedIn network as a galaxy, on your own computer',
-    ' Six Degrees maps the people you know and the people they know, ranks who can',
+    ' Sixgree maps the people you know and the people they know, ranks who can',
     ' introduce you to whom, and keeps all of it on this computer. Scanning drives',
     ' your own Google Chrome, which it needs for that part only.', '',
   ].join('\n'));

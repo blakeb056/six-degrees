@@ -1,19 +1,19 @@
 ---
-title: Who can introduce you? How Six Degrees ranks your way in
-description: How Six Degrees ranks everyone two steps away, counts every way in, and finds the people only one of your connections can reach, with the formulas, and the invented sample network as the example.
+title: Who can introduce you? How Sixgree ranks your way in
+description: How Sixgree ranks everyone two steps away, counts every way in, and finds the people only one of your connections can reach, with the formulas, and the invented sample network as the example.
 date: 2026-09-29
 updated: 2026-10-04
 tags: [degrees, network science]
 image: /img/app/separation.jpg
 ---
 
-The question Six Degrees is built to answer is simple: **who can introduce me?** Not "who do I know", which a list of connections already tells you, but who your connections know, and which of them is the way to each person.
+The question Sixgree is built to answer is simple: **who can introduce me?** Not "who do I know", which a list of connections already tells you, but who your connections know, and which of them is the way to each person.
 
 This post walks through how the app works that out: how it ranks the people two steps away, how it counts the ways in to each of them, and how it finds the people only one of your connections can reach. Every example comes from the sample network that ships with the app: 150 invented connections and the 598 invented people they know.
 
 ## Two steps away
 
-Your 1st degree is the people you know. Your 2nd degree is the people *they* know and you don't. Six Degrees gets the 2nd degree from circle scans: when it reads one of your connection's own connections, each person on that list becomes someone you can reach through them.
+Your 1st degree is the people you know. Your 2nd degree is the people *they* know and you don't. Sixgree gets the 2nd degree from circle scans: when it reads one of your connection's own connections, each person on that list becomes someone you can reach through them.
 
 A person can turn up in more than one circle. In the sample, the 14 scanned circles hold 723 rows, but only 598 different people, because some people are known by two or three of your connections. That difference is the whole point of the next section.
 
@@ -41,7 +41,7 @@ Beside each person's tier sits their **rarity**: how many mutual connections lea
 
 Now turn it around. Instead of asking "how do I reach this person?", ask "what would I lose if I lost touch with this connection?"
 
-For each of your connections with a scanned circle, Six Degrees counts:
+For each of your connections with a scanned circle, Sixgree counts:
 
 - **total**: everyone in their circle who isn't already your connection;
 - **only**: the people in their circle *no other connection of yours reaches*;
@@ -67,6 +67,6 @@ With fewer than five circles scanned, it says the numbers are an early estimate.
 
 ## What the numbers are not
 
-A score in Six Degrees estimates **network position**, not what anyone is worth as a person. The model is open, in [lib/scoring.js](https://github.com/blakeb056/six-degrees/blob/main/lib/scoring.js), and the brokerage counts are in [lib/brokerage.js](https://github.com/blakeb056/six-degrees/blob/main/lib/brokerage.js), with tests beside them. If a number looks wrong to you, the working is there to check.
+A score in Sixgree estimates **network position**, not what anyone is worth as a person. The model is open, in [lib/scoring.js](https://github.com/blakeb056/six-degrees/blob/main/lib/scoring.js), and the brokerage counts are in [lib/brokerage.js](https://github.com/blakeb056/six-degrees/blob/main/lib/brokerage.js), with tests beside them. If a number looks wrong to you, the working is there to check.
 
 ![Separation: everyone two steps away in an invented network, ranked, with who can introduce you](/img/app/separation.jpg "Separation, on an invented network.")

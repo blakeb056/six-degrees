@@ -1,6 +1,6 @@
-# Search presence: how sixdegreesapp.com is found
+# Search presence: how sixgree.com is found
 
-Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs` ([site/README.md](../site/README.md)) and published by `.github/workflows/pages.yml` to GitHub Pages under the custom domain **sixdegreesapp.com** (DNS at Cloudflare; HTTPS enforced; the old `blakeb056.github.io/six-degrees/` address redirects). The cross-site map and checklist lives in Blake Brain: "Search Presence — blakeburford.com and sixdegreesapp.com".
+Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs` ([site/README.md](../site/README.md)) and published by `.github/workflows/pages.yml` to GitHub Pages under the custom domain **sixgree.com** (DNS at Cloudflare; HTTPS enforced; the old `blakeb056.github.io/six-degrees/` address redirects). The cross-site map and checklist lives in Blake Brain: "Search Presence — blakeburford.com and sixgree.com".
 
 ## What is in place
 
@@ -18,8 +18,8 @@ Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs`
 | robots.txt | `site/robots.txt` | Allows everyone; names the AI bots explicitly; points at the sitemap. |
 | sitemap.xml | `site/sitemap.xml` | The home page and its screenshots, as image entries. **Bump `lastmod` with each release.** The build adds every other page, dated from its `updated:` or the release it describes. |
 | llms.txt | `site/llms.txt` | Plain-text facts for AI assistants. Update the version line with each release. |
-| IndexNow key | `site/04c6ce58b0a82a84e22ac315ff56dc03.txt` | Lets Bing/Yandex/Naver (and ChatGPT search, which uses Bing) be pinged the moment the page changes: `curl "https://api.indexnow.org/indexnow?url=https://sixdegreesapp.com/&key=04c6ce58b0a82a84e22ac315ff56dc03"`. |
-| Repo + npm | `README.md`, `package.json` `homepage`, repo About link | All point at https://sixdegreesapp.com/. |
+| IndexNow key | `site/04c6ce58b0a82a84e22ac315ff56dc03.txt` | Lets Bing/Yandex/Naver (and ChatGPT search, which uses Bing) be pinged the moment the page changes: `curl "https://api.indexnow.org/indexnow?url=https://sixgree.com/&key=04c6ce58b0a82a84e22ac315ff56dc03"`. |
+| Repo + npm | `README.md`, `package.json` `homepage`, repo About link | All point at https://sixgree.com/. |
 
 ## Release checklist (search side)
 
@@ -31,11 +31,11 @@ Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs`
    `node scripts/check-site-version.mjs` checks 1 and 2 (all but the "New in" copy) against
    `package.json` and the release's date in `CHANGELOG.md`. `release.yml` runs it before
    building, and a full release whose site doesn't match stops there.
-3. After the Pages deploy: ping IndexNow (command above) and, in Google Search Console, URL inspection → Request indexing for https://sixdegreesapp.com/.
+3. After the Pages deploy: ping IndexNow (command above) and, in Google Search Console, URL inspection → Request indexing for https://sixgree.com/.
 
 ## How to verify
 
-- `curl -s https://sixdegreesapp.com/robots.txt`, `.../sitemap.xml`, `.../llms.txt`, `.../04c6ce58b0a82a84e22ac315ff56dc03.txt`.
+- `curl -s https://sixgree.com/robots.txt`, `.../sitemap.xml`, `.../llms.txt`, `.../04c6ce58b0a82a84e22ac315ff56dc03.txt`.
 - https://validator.schema.org/ and https://search.google.com/test/rich-results with the page URL: zero errors.
-- Google Search Console (domain property sixdegreesapp.com): sitemap "Success"; the URL is on Google. Bing Webmaster Tools: sitemap submitted.
+- Google Search Console (domain property sixgree.com): sitemap "Success"; the URL is on Google. Bing Webmaster Tools: sitemap submitted.
 - Share the URL in iMessage or LinkedIn: the preview shows `og-image.jpg`.

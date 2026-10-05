@@ -362,7 +362,7 @@ test('Developer ID, for real: an Electron-shaped app signed inside out verifies 
 `);
     };
     const dylib = fs.existsSync('/usr/lib/libgmalloc.dylib') ? '/usr/lib/libgmalloc.dylib' : '/usr/bin/true';
-    plist('Contents/Info.plist', 'Six Degrees', 'com.example.six-degrees-sign-test');
+    plist('Contents/Info.plist', 'Sixgree', 'com.example.six-degrees-sign-test');
     put('Contents/MacOS/Six Degrees', '/usr/bin/true');
     plist('Contents/Frameworks/Test Helper.app/Contents/Info.plist', 'Test Helper', 'com.example.six-degrees-sign-test.helper');
     put('Contents/Frameworks/Test Helper.app/Contents/MacOS/Test Helper', '/usr/bin/true');

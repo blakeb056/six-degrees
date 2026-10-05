@@ -1,5 +1,5 @@
 #!/bin/bash
-# Put a new version of Six Degrees in place of the one that just quit, and open it.
+# Put a new version of Sixgree in place of the one that just quit, and open it.
 #
 # The app's server starts this (lib/updater-job.js) after it has downloaded the
 # new version, checked it against the release's SHA256SUMS and checked that its
@@ -429,7 +429,7 @@ main() {
   if [ -e "$aside" ] || [ -L "$aside" ] || ! err="$(mv "$target" "$aside" 2>&1)"; then
     trap - TERM INT HUP
     remove_staged
-    write_status not-applied "macOS didn't let Six Degrees move its old version aside (${err:-the name it chose was taken})"
+    write_status not-applied "macOS didn't let Sixgree move its old version aside (${err:-the name it chose was taken})"
     open_app "$target"
     exit 1
   fi

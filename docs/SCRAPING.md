@@ -43,11 +43,11 @@ opens from Applications like any other. Everything after that is buttons.
 **In the Mac app there is nothing to install:** it carries its own Python with the
 scanner's packages inside it, so the first step is already ticked.
 
-Otherwise (`npx six-degrees`, or from source) that page installs the scanner's Python
+Otherwise (`npx sixgree`, or from source) that page installs the scanner's Python
 packages into a **private virtual environment** inside your data directory
 (`~/.six-degrees/venv`), from the Python 3.10–3.14 on your computer. If there isn't one,
 **Set up the scanner** first downloads a private copy of Python into `~/.six-degrees/python`
-(from GitHub, checked against a checksum built into Six Degrees before it's unpacked). It
+(from GitHub, checked against a checksum built into Sixgree before it's unpacked). It
 never touches the Python your system or Homebrew installed, and it goes away when you
 delete that folder. Every package file is checked against a checksum too
 (`scripts/requirements.txt`). Your own pip settings for which index, proxy or certificates

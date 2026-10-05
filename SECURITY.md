@@ -83,7 +83,7 @@ This app is designed to run **on your own machine, against your own network**.
   no user site-packages count), so nothing of the user's can stand in for its
   packages, and no scan writes bytecode into the app, on this Python or any
   other.
-- **Set up the scanner** (the Scan page, for `npx six-degrees` and source copies
+- **Set up the scanner** (the Scan page, for `npx sixgree` and source copies
   on a computer with no Python 3.10–3.14 it can use) downloads only when that
   button is pressed, and only from two places:
   - **GitHub's release download** for python-build-standalone (`github.com`,
@@ -171,7 +171,7 @@ or before Auto's one-time question has been answered (`app/api/scraper/route.js`
   256 MB, and must match the size the page declared. Every other route keeps
   Next's 10 MB limit.
 - **It is applied at the next start**, never under the open database, and never
-  while another process has it open (a second copy of Six Degrees on the same
+  while another process has it open (a second copy of Sixgree on the same
   folder). What was there is kept first in `backups/before-import-<time>.sqlite`
   (and its photos and files beside it), synced to the disk and checked (SQLite's
   quick check, and every table's row count against the original) before the
