@@ -1,5 +1,5 @@
 // The name as a logo: "Sixgree" in Manrope 800, solid in the look's tier-S
-// gold, with the i's dot replaced by a column of six dots, one per degree.
+// gold, with the i's dot leading a level line of six dots, one per degree.
 // Blake, 2026-10-04: "have the 6 tiers dots be for the i dot and have the
 // closest dot be yellow s tier and the other ones to the top get smaller",
 // then "from the purple and up fade it out". So the dot nearest the stem is
@@ -21,30 +21,27 @@
 const BASELINE = 880;
 const STEM_TOP = 540;
 const LIFT = 55;   // stem to first dot
-const GAP = 18;    // between dots
 
-// Bottom to top: diameter, colour, opacity. Gold, then the tiers in order,
-// fading out from the purple up; the sixth has no tier of its own and takes
-// D's colour, faintest of all. Only the gold dot is solid; the rest fade
-// out quickly above it (Blake, 2026-10-04: "use the fade logo").
+// The flat line (Blake, 2026-10-05, his brother's pick): the gold dot sits where
+// the i's dot goes, and the tiers follow it level to the right, evenly spaced to
+// the end of the word, each a little smaller: A purple, B blue, C green, D grey.
+// The row ends in a gold degree ring, so it reads "Sixgree°". The fade is gentle
+// so the last dots still show on a dark look. Left to right: diameter scale,
+// colour, opacity; `ring` draws an outline instead of a dot.
 export const DOTS = [
-  [140, 'var(--sd-tier-s, #ffd700)', 1],
-  [115, 'var(--sd-tier-a, #9b59b6)', 0.6],
-  [94, 'var(--sd-tier-b, #3498db)', 0.42],
-  [77, 'var(--sd-tier-c, #95a5a6)', 0.28],
-  [63, 'var(--sd-tier-d, #bdc3c7)', 0.17],
-  [52, 'var(--sd-tier-d, #bdc3c7)', 0.09],
+  [1, 'var(--sd-tier-s, #ffd700)', 1],
+  [0.86, 'var(--sd-tier-a, #9b59b6)', 0.92],
+  [0.76, 'var(--sd-tier-b, #3498db)', 0.84],
+  [0.68, 'var(--sd-tier-c, #4caf63)', 0.76],
+  [0.6, 'var(--sd-tier-d, #bdc3c7)', 0.68],
+  [0.84, 'var(--sd-tier-s, #ffd700)', 1, 'ring'],
 ];
-const W = DOTS[0][0];
-const H = DOTS.reduce((h, [d]) => h + d, 0) + GAP * (DOTS.length - 1);
-const CIRCLES = (() => {
-  let y = H;
-  return DOTS.map(([d, fill, opacity]) => {
-    const c = { cy: y - d / 2, r: d / 2, fill, opacity };
-    y -= d + GAP;
-    return c;
-  });
-})();
+const D0 = 140;     // the gold dot's diameter
+const SPAN = 2760;  // from the i's centre to the last dot's centre (Manrope 800, -0.02em tracking)
+const W = SPAN + D0;
+const H = D0;
+const RING_W = D0 * 0.16;
+const CIRCLES = DOTS.map(([k, fill, opacity, kind], i) => ({ cx: D0 / 2 + (SPAN * i) / (DOTS.length - 1), cy: H / 2, r: kind === 'ring' ? (D0 * k - RING_W) / 2 : (D0 * k) / 2, fill, opacity, ring: kind === 'ring' }));
 
 const em = (n) => `${n / 1000}em`;
 
@@ -61,9 +58,11 @@ export default function Wordmark({ size, style, className = '' }) {
       <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block', lineHeight: 1 }}>
         ı
         <svg viewBox={`0 0 ${W} ${H}`} width={em(W)} height={em(H)} focusable="false"
-          style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: em(1000 - BASELINE + STEM_TOP + LIFT), overflow: 'visible', pointerEvents: 'none' }}>
+          style={{ position: 'absolute', left: `calc(50% - ${em(D0 / 2)})`, bottom: em(1000 - BASELINE + STEM_TOP + LIFT), overflow: 'visible', pointerEvents: 'none' }}>
           {CIRCLES.map((c, i) => (
-            <circle key={i} cx={W / 2} cy={c.cy} r={c.r} style={{ fill: c.fill }} fillOpacity={c.opacity} />
+            c.ring
+              ? <circle key={i} cx={c.cx} cy={c.cy} r={c.r} style={{ fill: 'none', stroke: c.fill }} strokeWidth={RING_W} />
+              : <circle key={i} cx={c.cx} cy={c.cy} r={c.r} style={{ fill: c.fill }} fillOpacity={c.opacity} />
           ))}
         </svg>
       </span>
