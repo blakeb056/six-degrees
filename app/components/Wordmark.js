@@ -23,22 +23,25 @@ const STEM_TOP = 540;
 const LIFT = 55;   // stem to first dot
 
 // The flat line (Blake, 2026-10-05, his brother's pick): the gold dot sits where
-// the i's dot goes, and five more run level to the right, evenly spaced to the end
-// of the word, each smaller and fainter: gold, then the tiers A, B, C, D and a
-// sixth in D's colour. Left to right: diameter scale, colour, opacity.
+// the i's dot goes, and the tiers follow it level to the right, evenly spaced to
+// the end of the word, each a little smaller: A purple, B blue, C green, D grey.
+// The row ends in a gold degree ring, so it reads "Sixgree°". The fade is gentle
+// so the last dots still show on a dark look. Left to right: diameter scale,
+// colour, opacity; `ring` draws an outline instead of a dot.
 export const DOTS = [
   [1, 'var(--sd-tier-s, #ffd700)', 1],
-  [0.86, 'var(--sd-tier-a, #9b59b6)', 0.85],
-  [0.74, 'var(--sd-tier-b, #3498db)', 0.68],
-  [0.62, 'var(--sd-tier-c, #95a5a6)', 0.52],
-  [0.5, 'var(--sd-tier-d, #bdc3c7)', 0.36],
-  [0.4, 'var(--sd-tier-d, #bdc3c7)', 0.22],
+  [0.86, 'var(--sd-tier-a, #9b59b6)', 0.92],
+  [0.76, 'var(--sd-tier-b, #3498db)', 0.84],
+  [0.68, 'var(--sd-tier-c, #4caf63)', 0.76],
+  [0.6, 'var(--sd-tier-d, #bdc3c7)', 0.68],
+  [0.84, 'var(--sd-tier-s, #ffd700)', 1, 'ring'],
 ];
 const D0 = 140;     // the gold dot's diameter
 const SPAN = 2760;  // from the i's centre to the last dot's centre (Manrope 800, -0.02em tracking)
 const W = SPAN + D0;
 const H = D0;
-const CIRCLES = DOTS.map(([k, fill, opacity], i) => ({ cx: D0 / 2 + (SPAN * i) / (DOTS.length - 1), cy: H / 2, r: (D0 * k) / 2, fill, opacity }));
+const RING_W = D0 * 0.16;
+const CIRCLES = DOTS.map(([k, fill, opacity, kind], i) => ({ cx: D0 / 2 + (SPAN * i) / (DOTS.length - 1), cy: H / 2, r: kind === 'ring' ? (D0 * k - RING_W) / 2 : (D0 * k) / 2, fill, opacity, ring: kind === 'ring' }));
 
 const em = (n) => `${n / 1000}em`;
 
@@ -57,7 +60,9 @@ export default function Wordmark({ size, style, className = '' }) {
         <svg viewBox={`0 0 ${W} ${H}`} width={em(W)} height={em(H)} focusable="false"
           style={{ position: 'absolute', left: `calc(50% - ${em(D0 / 2)})`, bottom: em(1000 - BASELINE + STEM_TOP + LIFT), overflow: 'visible', pointerEvents: 'none' }}>
           {CIRCLES.map((c, i) => (
-            <circle key={i} cx={c.cx} cy={c.cy} r={c.r} style={{ fill: c.fill }} fillOpacity={c.opacity} />
+            c.ring
+              ? <circle key={i} cx={c.cx} cy={c.cy} r={c.r} style={{ fill: 'none', stroke: c.fill }} strokeWidth={RING_W} />
+              : <circle key={i} cx={c.cx} cy={c.cy} r={c.r} style={{ fill: c.fill }} fillOpacity={c.opacity} />
           ))}
         </svg>
       </span>
