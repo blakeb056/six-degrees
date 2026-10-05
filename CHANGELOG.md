@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you: nothing starts just because the app opened.
 
 ### Changed
+- **Separation goes past the 2nd degree.** The Filters grid's 3rd-degree dots (and 4th–6th,
+  when there is anyone there) can be picked in Separation now. Each person counts once, at the
+  nearest degree a real chain of scanned circles reaches them, with every shortest route drawn
+  as you → your connection → the people between → them; on the map, the people between are
+  stops along the line. Company scans' finds have no route on file (nobody links you to them),
+  so they are listed under the ranking as "3rd degree · not ranked", with a note saying why
+  and which company scan found them, instead of being hidden. Today's scanner reads only your
+  own connections' circles, so a ranked 3rd degree needs circle rows from elsewhere; people met
+  through a chain in Bridge Chains are 2nd degree to you (you're connected to the person whose
+  circle they're in) and stay ranked there. (`lib/separation.js separationPeople`, `separationCounts`.)
 - **A new Sixgree icon.** A gold S drawn as one tapered curve, with a round gold dot (you) in
   its lower bowl so it also reads as a 6, and a degree ring: six degrees. The app icon (Mac,
   Windows and Linux) carries faint tier rings and a glow behind the dot; the favicon and the

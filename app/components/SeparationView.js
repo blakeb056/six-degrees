@@ -76,16 +76,24 @@ function pickRoute(p, q) {
   return p.routes[0] || null;
 }
 
-function everyRoute(p) {
-  return p.routes.map((r) => (r.bridge ? `${r.bridge.name} (${r.bridge.tier})` : CANT_NAME)).join('\n');
+/** A route in words: your connection, then anyone between them and the person (past the 2nd degree). */
+function routeText(r) {
+  const first = r.bridge ? `${r.bridge.name} (${r.bridge.tier})` : CANT_NAME;
+  return [first, ...(r.via || []).map((v) => v.name || 'someone')].join(' → ');
 }
+
+function everyRoute(p) {
+  return p.routes.map(routeText).join('\n');
+}
+
+const DEGREE_WORD = { 2: '2nd', 3: '3rd', 4: '4th', 5: '5th', 6: '6th' };
 
 function subline(person) {
   if (person.role && person.company) return `${person.role} @ ${person.company}`;
   return person.headline || person.role || person.company || '';
 }
 
-export default function SeparationView({ connections = [], degree2 = [], fullDegree1 = connections, fullDegree2 = degree2, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
+export default function SeparationView({ connections = [], degree2 = [], degree3 = [], fullDegree1 = connections, fullDegree2 = degree2, showsAt = null, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
   const isMobile = useIsMobile();
   // Room at the top for the notch, only while it's on screen (a scan, or another tab's views).
   const notch = useSyncExternalStore(watchNotchShown, notchShownNow, noNotch);
@@ -131,13 +139,22 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const searchRef = useRef(null);
 
   // ── Data: one merge per population, then order, then what's showing ──────
-  const model = useMemo(() => separationPeople(degree2, connections), [degree2, connections]);
+  // Every row past the 1st degree, so a chain is never cut by a hidden tier; the
+  // grid (showsAt) picks who is ranked, at the degree each person is at.
+  // Company scans' finds come back unranked: no one on file links you to them.
+  const sepRows = useMemo(() => [...(showsAt ? fullDegree2 : degree2), ...degree3], [showsAt, fullDegree2, degree2, degree3]);
+  const model = useMemo(() => separationPeople(sepRows, connections, { include: showsAt }), [sepRows, connections, showsAt]);
   // How rare the way in to each person is, counted across every circle you've
   // scanned (not only the ones a bridge-tier filter leaves): never a score.
+  // Past the 2nd degree it is the routes: LinkedIn shares no mutuals there.
   const waysAll = useMemo(() => routeIndex(fullDegree2), [fullDegree2]);
   const rarityBy = useMemo(() => {
     const m = new Map();
-    for (const p of model.people) m.set(p.key, rarityOf(p.person, waysAll.get(p.key)?.size || p.waysIn));
+    for (const p of model.people) {
+      m.set(p.key, p.degree > 2
+        ? rarityOf({ ...p.person, mutual_count: null }, p.waysIn)
+        : rarityOf(p.person, waysAll.get(p.key)?.size || p.waysIn));
+    }
     return m;
   }, [model, waysAll]);
   const ordered = useMemo(() => {
@@ -158,7 +175,7 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
     const by = new Map();
     const sectors = new Map();
     const companies = new Map();
-    for (const p of model.people) {
+    for (const p of [...model.people, ...model.unranked]) {
       const company = companyOf(p.person) || null;
       const sector = industryOf(company, p.person.headline).key;
       by.set(p.key, { company, sector });
@@ -184,6 +201,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
     if (!q && tier === 'all' && !rarities.size && !path) return ordered;
     return ordered.filter((p) => matches(p, q));
   }, [ordered, q, tier, rarities, path, matches]);
+  // Under the ranking: who company scans found that no chain reaches. They have
+  // no mutual connections on file, so a rarity filter leaves them out.
+  const unrankedShown = useMemo(() => (rarities.size ? [] : model.unranked.filter((p) => (tier === 'all' || p.tier === tier)
+    && onPath(p) && (!q || p.haystack.includes(q)))), [model, rarities, tier, onPath, q]);
 
   // Who you've already asked, or already know. The map is "who to ask next",
   // so it moves on past them: send requests to its ten and the next ten come
@@ -266,7 +287,10 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
   const titleH = isMobile ? 0 : TITLE_ROW;
   const HEAD = mapBlockH + titleH + LABEL_ROW;
-  const total = HEAD + visible.length * ROW_H + BOTTOM_PAD;
+  // The unranked section: its note, then its rows, after the last ranked one.
+  const UNRANKED_TOP = HEAD + visible.length * ROW_H;
+  const unrankedHead = unrankedShown.length ? (isMobile ? UNRANKED_NOTE_MOBILE : UNRANKED_NOTE_H) : 0;
+  const total = UNRANKED_TOP + unrankedHead + unrankedShown.length * ROW_H + BOTTOM_PAD;
 
   // ── Windowing ────────────────────────────────────────────────────────────
   // Derived from the last published scroll position on every render, so a
@@ -274,6 +298,9 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
   // No requestAnimationFrame (TRAPS §17): the scroll event owns it.
   const start = Math.max(0, Math.floor((scrollY - HEAD) / ROW_H) - OVERSCAN);
   const end = Math.min(visible.length, start + Math.ceil(box.h / ROW_H) + 2 * OVERSCAN);
+  const uTop = UNRANKED_TOP + unrankedHead;
+  const uStart = Math.max(0, Math.floor((scrollY - uTop) / ROW_H) - OVERSCAN);
+  const uEnd = Math.min(unrankedShown.length, Math.max(0, Math.ceil((scrollY + box.h - uTop) / ROW_H)) + OVERSCAN);
   const onScroll = useCallback((e) => {
     const next = Math.floor(e.currentTarget.scrollTop / SCROLL_STEP) * SCROLL_STEP;
     setScrollY((prev) => (prev === next ? prev : next));
@@ -612,7 +639,41 @@ export default function SeparationView({ connections = [], degree2 = [], fullDeg
             />
           ))}
 
-          {visible.length === 0 && (
+          {unrankedShown.length > 0 && (
+            <div style={{
+              position: 'absolute', top: UNRANKED_TOP, left: 0, right: 0, height: unrankedHead, boxSizing: 'border-box',
+              padding: isMobile ? '14px 8px 8px' : '18px 15px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 4,
+              borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)',
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: isMobile ? 13 : 15, fontWeight: 800 }}>3rd degree · not ranked</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--sd-fg-1, #fff)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', borderRadius: 10, padding: '2px 8px' }}>
+                  {fmt(unrankedShown.length)}
+                </span>
+              </span>
+              <span style={{ fontSize: isMobile ? 10.5 : 11.5, lineHeight: 1.45, color: 'var(--sd-fg-3, #99a)' }}>
+                Found by company scans. No circle you&rsquo;ve scanned leads to them, so there&rsquo;s no one on file to
+                introduce you and no route to rank. Scored the same way; they join the ranking once a scanned circle has them.
+              </span>
+            </div>
+          )}
+          {unrankedShown.slice(uStart, uEnd).map((p, i) => (
+            <Row
+              key={p.key}
+              p={p}
+              top={uTop + (uStart + i) * ROW_H}
+              height={ROW_H}
+              isMobile={isMobile}
+              selected={p.key === selectedKey}
+              tierColors={tierColors}
+              onPick={onPick}
+              q={q}
+              status={statusOf(p)}
+              rarity={null}
+            />
+          ))}
+
+          {visible.length === 0 && unrankedShown.length === 0 && (
             <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', color: 'var(--sd-fg-3, #888)', fontSize: 13, padding: '0 16px' }}>
               {q
                 ? <>No one matches ‘{query.trim()}’. Search covers names, headlines, companies and who knows them.</>
@@ -768,7 +829,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
           const { p } = pp;
           const c = tierColors[p.tier] || '#888';
           const sel = pp.key === selectedKey;
-          const via = p.routes.map((r) => (r.bridge ? r.bridge.name : CANT_NAME)).join(', ');
+          const via = p.routes.map((r) => `${r.bridge ? r.bridge.name : CANT_NAME}${viaTail(r)}`).join(', ');
           const tag = waysTag(p, mutualsBy?.get(p.key));
           const lx = pp.r + 14;
           const room = Math.max(8, Math.floor((width - pp.x - lx) / 6));
@@ -793,6 +854,22 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                     strokeOpacity={pp.big ? (l.primary ? 0.95 : 0.6) : l.primary ? 0.8 : 0.35}
                     strokeDasharray={l.primary ? undefined : pp.big ? '5 4' : '3 3'}
                   />
+                );
+              })}
+              {/* Past the 2nd degree: each person between your connection and them, a stop on the line */}
+              {(linksBy.get(pp.key) || []).filter((l) => l.stops?.length).map((l) => {
+                const stroke = l.unresolved ? '#777' : l.primary ? ORANGE : pp.big ? '#FFD700' : tierColors[l.tier] || '#888';
+                return (
+                  <g key={`v-${l.bridgeId ?? 'u'}`} className="in" pointerEvents="none">
+                    {l.stops.map((s, i) => (
+                      <g key={i} className="mv" style={at(s.x, s.y)}>
+                        <circle r={pp.big ? 4.5 : 3.5} fill="var(--sd-bg)" stroke={stroke} strokeWidth={1.5} />
+                        {(pp.big || l.primary) && (
+                          <text y={-7} textAnchor="middle" fontSize={9.5} fontWeight={600} fill="var(--sd-fg-2, #ccd)" style={HALO}>{shortName(s.name)}</text>
+                        )}
+                      </g>
+                    ))}
+                  </g>
                 );
               })}
               {/* As cards, each line plugs into both boxes: a small dot at each end */}
@@ -987,8 +1064,28 @@ function BigCard({ p, c, tag, width, fs }) {
 // ── Rows ───────────────────────────────────────────────────────────────────
 
 const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+// The unranked section's title and note (a phone's note takes more lines).
+const UNRANKED_NOTE_H = 84;
+const UNRANKED_NOTE_MOBILE = 108;
+
+/** Who's between your connection and them, past the 2nd degree: " → Ana → Ben". */
+const viaTail = (route) => (route?.via || []).map((v) => ` → ${v.name || 'someone'}`).join('');
+
+/** No route on file: who found them, instead of a way in. */
+function NoRoute({ p, compact }) {
+  const where = p.foundBy?.length ? `a company scan of ${p.foundBy.slice(0, 2).join(', ')}${p.foundBy.length > 2 ? ` +${p.foundBy.length - 2}` : ''}` : 'a company scan';
+  return (
+    <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }} title={`No one on file links you to them: found by ${where}.`}>
+      <span style={{ ...ellipsis, fontSize: compact ? 11 : 13, fontWeight: compact ? 500 : 700, color: 'var(--sd-fg-4, #889)', fontStyle: 'italic' }}>
+        no route on file
+      </span>
+      {!compact && <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: 'var(--sd-fg-4, #777)' }}>found by {where}</span>}
+    </span>
+  );
+}
 
 function Via({ p, route, tierColors, compact }) {
+  if (p.unranked) return <NoRoute p={p} compact={compact} />;
   if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} />;
   if (!route?.bridge) {
     return <span style={{ ...ellipsis, color: 'var(--sd-fg-4, #777)', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
@@ -999,7 +1096,7 @@ function Via({ p, route, tierColors, compact }) {
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, fontSize: compact ? 11 : 12 }}>
       <span style={{ color: 'var(--sd-fg-4, #666)', flexShrink: 0 }}>via</span>
       {!compact && <Avatar person={b} size={16} tierColors={tierColors} />}
-      <span style={{ ...ellipsis, color: tierColors[b.tier] || '#aaa', fontWeight: 600, minWidth: 0 }}>{compact ? shortName(b.name) : b.name}</span>
+      <span style={{ ...ellipsis, color: tierColors[b.tier] || '#aaa', fontWeight: 600, minWidth: 0 }}>{compact ? shortName(b.name) : b.name}{route.via?.length ? <span style={{ color: 'var(--sd-fg-3, #99a)', fontWeight: 500 }}>{viaTail(route)}</span> : null}</span>
       {extra > 0 && (
         <span title={`Every way in:\n${everyRoute(p)}`} style={{
           flexShrink: 0, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 800,
@@ -1020,9 +1117,10 @@ function WayIn({ p, route, tierColors }) {
       <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <span style={{ ...ellipsis, fontSize: 13, fontWeight: 700, color: b ? tierColors[b.tier] || 'var(--sd-fg-1, #ddd)' : 'var(--sd-fg-4, #777)', fontStyle: b ? 'normal' : 'italic' }}>
           {b ? b.name : CANT_NAME}
+          {route?.via?.length ? <span style={{ color: 'var(--sd-fg-2, #bbc)', fontWeight: 600 }}>{viaTail(route)}</span> : null}
         </span>
         <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? 'var(--sd-fg-3, #99a)' : RARE, fontWeight: extra > 0 ? 500 : 700 }}>
-          {extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}
+          {p.degree > 2 ? `${p.degree - 1} introductions · ` : ''}{extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}
         </span>
       </span>
     </span>
@@ -1035,6 +1133,7 @@ function RarityBar({ p, rarity }) {
   if (!info) return <span />;
   const fill = Math.max(0.06, 1 - easeOf(rarity.count));
   const mapped = rarity.from === 'linkedin' && rarity.count > p.waysIn ? `, ${fmt(p.waysIn)} mapped` : '';
+  const what = p.degree > 2 ? `route${rarity.count === 1 ? '' : 's'}` : `mutual${rarity.count === 1 ? '' : 's'}`;
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}
       title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (LinkedIn’s count)'}. ${RARITY_NOTE}`}>
@@ -1042,9 +1141,18 @@ function RarityBar({ p, rarity }) {
         <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, borderRadius: 3, background: info.color }} />
       </span>
       <span style={{ ...ellipsis, fontSize: 10.5, fontWeight: 700, color: info.color }}>
-        {info.label} · {fmt(rarity.count)} mutual{rarity.count === 1 ? '' : 's'}{mapped}
+        {info.label} · {fmt(rarity.count)} {what}{mapped}
       </span>
     </span>
+  );
+}
+
+/** "3rd", for someone ranked along a chain of scanned circles. */
+function DegreeTag({ degree }) {
+  return (
+    <span title={`${DEGREE_WORD[degree]} degree: ${degree - 1} introductions away, along circles you've scanned`} style={{
+      flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-fg-2, #ccd)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.25)', borderRadius: 4, padding: '0 4px',
+    }}>{DEGREE_WORD[degree]}</span>
   );
 }
 
@@ -1156,20 +1264,20 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
   const { person } = p;
   const c = tierColors[p.tier] || '#888';
   const route = pickRoute(p, q);
-  const podium = p.rank <= 3;
+  const podium = !p.unranked && p.rank <= 3;
   const base = selected ? 'rgba(255,107,53,0.08)' : podium ? `${c}08` : 'transparent';
   const member = person.name === 'LinkedIn Member';
-  const rank = `#${p.rank}${p.tied ? '=' : ''}`;
+  const rank = p.unranked ? DEGREE_WORD[p.degree] : `#${p.rank}${p.tied ? '=' : ''}`;
   const extra = p.waysIn - 1;
-  const viaText = route?.bridge
-    ? `via ${route.bridge.name}${extra > 0 ? ` and ${extra} other${extra > 1 ? 's' : ''}` : ''}`
-    : `via ${CANT_NAME}${extra > 0 ? ` and ${extra} other${extra > 1 ? 's' : ''}` : ''}`;
+  const viaText = p.unranked
+    ? 'no route on file, found by a company scan'
+    : `via ${route?.bridge ? route.bridge.name : CANT_NAME}${viaTail(route)}${extra > 0 ? ` and ${extra} other${extra > 1 ? 's' : ''}` : ''}`;
 
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Rank ${p.rank}${p.tied ? ', tied' : ''}, ${person.name}, ${p.tier} tier, ${p.score.toFixed(1)}, ${p.waysIn} way${p.waysIn === 1 ? '' : 's'} in, ${viaText}`}
+      aria-label={`${p.unranked ? `${DEGREE_WORD[p.degree]} degree, not ranked` : `Rank ${p.rank}${p.tied ? ', tied' : ''}`}, ${person.name}, ${p.tier} tier, ${p.score.toFixed(1)}${p.degree > 2 && !p.unranked ? `, ${DEGREE_WORD[p.degree]} degree` : ''}, ${p.waysIn} way${p.waysIn === 1 ? '' : 's'} in, ${viaText}`}
       aria-pressed={selected}
       onClick={() => onPick(p)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(p); } }}
@@ -1205,6 +1313,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)' }}>{person.name}</span>
               <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}55`, borderRadius: 4, padding: '0 4px' }}>{p.tier}</span>
+              {p.degree > 2 && !p.unranked && <DegreeTag degree={p.degree} />}
               {/* The rarity has its own column here */}
               <Tags status={status} rarity={null} />
               {member && <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>out of network</span>}
@@ -1212,7 +1321,9 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
             <div style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2 }}>{subline(person)}</div>
           </div>
           <Via p={p} route={route} tierColors={tierColors} />
-          <RarityBar p={p} rarity={rarity} />
+          {p.unranked
+            ? <span title="No mutual connections on file: no scanned circle has them" style={{ fontSize: 10.5, color: 'var(--sd-fg-5, #556)' }}>no mutuals on file</span>
+            : <RarityBar p={p} rarity={rarity} />}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, height: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 3 }}>
               <div style={{ height: '100%', borderRadius: 3, background: c, width: `${Math.max(0, Math.min(1, p.score / 10)) * 100}%` }} />

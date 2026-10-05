@@ -21,7 +21,11 @@ const DEGREE_NAMES = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
 const DEGREE_IS = {
   network: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
   degrees: { 1: 'your bridges', 2: 'people in their circles' },
-  separation: { 2: 'the people Separation ranks' },
+  separation: {
+    2: 'the people Separation ranks',
+    3: 'ranked when a chain of scanned circles leads to them; company scans\u2019 finds are listed under the ranking, since nobody on file links you to them',
+    4: 'ranked along a chain of scanned circles', 5: 'ranked along a chain of scanned circles', 6: 'ranked along a chain of scanned circles',
+  },
   paths:{ 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
 };
 
@@ -37,11 +41,11 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   const what = (d) => DEGREE_IS[mode]?.[d];
   // Separation: your connections are the ways in, and all of them stay, whatever their tier.
   const waysIn = mode === 'separation';
-  // Degrees and Separation draw no one past the 2nd degree: the 3rd, the people
-  // company scans find, is on Network Circle. Its dot says so instead of "no one
-  // yet", which read as locked (Blake, 2026-10-03: "the 3rd one is locked even
-  // though … we have 3rd degrees unlocked by now").
-  const elsewhere = (d) => d === 3 && (mode === 'degrees' || mode === 'separation');
+  // Degrees draws no one past the 2nd degree: the 3rd, the people company scans
+  // find, is on Network Circle. Its dot says so instead of "no one yet", which
+  // read as locked (Blake, 2026-10-03: "the 3rd one is locked even though … we
+  // have 3rd degrees unlocked by now"). Separation has them (Blake, 2026-10-05).
+  const elsewhere = (d) => d === 3 && mode === 'degrees';
   const emptyTitle = (d, t) => (waysIn && d === 1
     ? 'Every connection stays a way in here, whatever their tier: the tiers choose who is ranked'
     : elsewhere(d)
