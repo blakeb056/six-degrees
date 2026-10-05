@@ -408,6 +408,8 @@ function FieldQuestion({ picks, setPicks, narrow, setNarrow, disabled }) {
       <div className="fe">Optional</div>
       <div className="ft">What field are you in?</div>
       <div className="fd">Pick up to three. People at companies in your field rank higher. You can change it anytime in Settings.</div>
+      {/* The choices scroll inside the card, so the title and the question stay in sight in a small window. */}
+      <div className="ob-picklist">
       {narrow ? (
         <SectorPicker sectors={picks} onChange={setPicks} disabled={disabled} />
       ) : (
@@ -423,6 +425,7 @@ function FieldQuestion({ picks, setPicks, narrow, setNarrow, disabled }) {
           })}
         </div>
       )}
+      </div>
       <div style={{ marginTop: 12, fontSize: 13 }}>
         <button type="button" className="ob-link" onClick={() => setNarrow(!narrow)}>{narrow ? 'Back to the twelve broad fields' : 'Something narrower? Search every sector'}</button>
       </div>

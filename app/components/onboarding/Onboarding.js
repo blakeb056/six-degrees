@@ -23,7 +23,9 @@ import { Welcome, GetReady, Connect, Pace, MapPeople, Final } from './steps';
 const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: MapPeople };
 const OUT_MS = 190;
 
-export default function Onboarding({ onFinish }) {
+// `again`: back after a first scan that ended before Open the map (lib/onboarding.js
+// opensSetup): straight to "Your galaxy is ready", the field question or not.
+export default function Onboarding({ onFinish, again = false }) {
   const scan = useScanStatus();
   const { s, settings } = scan;
   // What this browser remembers (lib/onboarding.js SETUP_KEY). Only ever shown
@@ -76,7 +78,7 @@ export default function Onboarding({ onFinish }) {
   // question, if it's asked, is answered.
   const scanDone = firstScan(s).state === 'done';
   const fieldOpen = askForField(s, settings, { duringFirstScan: true }) === true;
-  const final = view === 'map' && scanDone && !fieldOpen;
+  const final = scanDone && (again || (view === 'map' && !fieldOpen));
   const Screen = view && SCREENS[view];
   const at = view || 'welcome';
 

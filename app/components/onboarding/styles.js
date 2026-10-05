@@ -219,6 +219,10 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-field .ft { font-size: 20px; font-weight: 800; margin: 5px 0 3px; }
 .ob-field .fd { font-size: 13.5px; color: var(--ob-fg3); line-height: 1.5; margin-bottom: 12px; }
 .ob-picks { display: flex; flex-wrap: wrap; gap: 7px; }
+/* The field question in a short window: the page holds still and its choices scroll (Blake, #175). */
+.ob-scroll:has(> .ob-field) { overflow: hidden; }
+.ob-field { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
+.ob-picklist { min-height: 72px; overflow-y: auto; flex: 0 1 auto; overscroll-behavior: contain; padding: 2px; margin: -2px; }
 .ob-pick { height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--ob-line2); background: rgba(var(--ob-ink), 0.03); font-size: 13px; font-weight: 600; color: var(--ob-fg2); display: inline-flex; align-items: center; gap: 6px; }
 .ob-pick.sel { background: var(--ob-fg1); color: var(--sd-bg, #0a0a1a); border-color: var(--ob-fg1); }
 .ob-pick svg { width: 12px; height: 12px; }
@@ -410,6 +414,8 @@ html[data-mode="light"] .ob-mac { background: #fff; border-color: rgba(0,0,0,.08
   .ob-card { display: block; width: auto; margin: 0 12px 12px; border-radius: 22px; }
   .ob-ill { display: none; }
   .ob-scroll { overflow: visible; padding: 24px 18px 8px; }
+  .ob-scroll:has(> .ob-field) { overflow: visible; }
+  .ob-picklist { overflow: visible; }
   .ob-foot { position: sticky; bottom: 0; padding: 12px 18px 16px; background: var(--ob-solid); border-top: 1px solid var(--ob-line); border-radius: 0 0 22px 22px; flex-wrap: wrap; }
   .ob-foot .ob-hint { display: none; }
   .ob h1 { font-size: 30px; }

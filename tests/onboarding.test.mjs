@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  STEPS, SETUP_KEY, onboardingStep, readyChecks, connectState, firstScan, readSetupMemory, rememberSetup, canOpen, here,
+  STEPS, SETUP_KEY, onboardingStep, opensSetup, readyChecks, connectState, firstScan, readSetupMemory, rememberSetup, canOpen, here,
 } from '../lib/onboarding.js';
 
 const NOTHING = { first: 0, second: 0, third: 0 };
@@ -103,20 +103,20 @@ test('the first scan: reading, saving, done with the people saved', () => {
   assert.deepEqual(firstScan(status({}, { network: { ...NOTHING, first: 748 } })), { state: 'done', done: 748, total: 748, failure: null });
 });
 
-test('this browser remembers only that you started and saw the pace step', () => {
+test('this browser remembers only that you started, saw the pace step, and opened the map', () => {
   const store = new Map();
   const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
-  assert.deepEqual(readSetupMemory(storage), { started: false, paced: false });
+  assert.deepEqual(readSetupMemory(storage), { started: false, paced: false, finished: false });
   rememberSetup({ started: true }, storage);
-  assert.deepEqual(readSetupMemory(storage), { started: true, paced: false });
+  assert.deepEqual(readSetupMemory(storage), { started: true, paced: false, finished: false });
   rememberSetup({ paced: true }, storage);
-  assert.deepEqual(JSON.parse(store.get(SETUP_KEY)), { started: true, paced: true });
+  assert.deepEqual(JSON.parse(store.get(SETUP_KEY)), { started: true, paced: true, finished: false });
   // Garbage, or no storage at all (a private window): nothing remembered, nothing thrown.
   store.set(SETUP_KEY, '{nope');
-  assert.deepEqual(readSetupMemory(storage), { started: false, paced: false });
-  assert.deepEqual(readSetupMemory(null), { started: false, paced: false });
+  assert.deepEqual(readSetupMemory(storage), { started: false, paced: false, finished: false });
+  assert.deepEqual(readSetupMemory(null), { started: false, paced: false, finished: false });
   const broken = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('denied'); } };
-  assert.deepEqual(rememberSetup({ started: true }, broken), { started: true, paced: false });
+  assert.deepEqual(rememberSetup({ started: true }, broken), { started: true, paced: false, finished: false });
 });
 
 test('back is always open; forward only as far as the checks allow', () => {
@@ -131,4 +131,17 @@ test('"this Mac" on a Mac, "this computer" elsewhere', () => {
   // Before the server answers, the browser's own word.
   assert.equal(here(null, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'), 'this Mac');
   assert.equal(here(null, 'Mozilla/5.0 (X11; Linux x86_64)'), 'this computer');
+});
+
+test('the setup opens with no network; with one, only once for a first scan that ended before Open the map', () => {
+  assert.equal(opensSetup({ firstDegree: 0 }), true);
+  assert.equal(opensSetup({ firstDegree: 0, demo: true }), false);
+  assert.equal(opensSetup({ firstDegree: 0, csv: true }), false);
+  // A network and no setup seen in this browser: the map, as ever.
+  assert.equal(opensSetup({ firstDegree: 300 }), false);
+  assert.equal(opensSetup({ firstDegree: 300, memory: { started: false } }), false);
+  // Left before Open the map: the setup (its last card), until it's marked finished.
+  assert.equal(opensSetup({ firstDegree: 748, memory: { started: true, paced: true } }), true);
+  assert.equal(opensSetup({ firstDegree: 748, memory: { started: true, paced: true, finished: true } }), false);
+  assert.equal(opensSetup({ firstDegree: 748, csv: true, memory: { started: true } }), false);
 });
