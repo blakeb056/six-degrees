@@ -184,9 +184,9 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
   box-shadow: 0 1px 0 #ffffff inset, 0 0 0 1px rgba(20, 22, 40, 0.14), 0 2px 0 rgba(20, 22, 40, 0.1), 0 10px 18px -12px rgba(20, 22, 40, 0.35);
 }
 .top-get:hover { color: #0d0e1a; transform: translateY(-1px); }
-.gh { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: var(--text); background: linear-gradient(var(--key-top), var(--key-bottom)); box-shadow: var(--key); }
+.gh { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--text); background: linear-gradient(var(--key-top), var(--key-bottom)); box-shadow: var(--key); }
 .gh:hover { color: var(--text); }
-.gh svg { width: 18px; height: 18px; }
+.gh svg { width: 20px; height: 20px; }
 section[id], figure[id], div[id], article[id] { scroll-margin-top: 100px; }
 
 /* ---------- layout and section heads ---------- */
