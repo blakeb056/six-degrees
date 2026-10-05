@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It stays tucked across reloads and restarts, the pill keeps the notch's dot (green while a
   scan runs, gold when LinkedIn needs you), and LinkedIn needing you brings the notch back
   down by itself, once.
+- **Physics on or off, in Network Circle's Filters.** Off, the map holds still and uses almost no
+  power: no settling, orbit, easing or pulsing ring, and nothing is redrawn until you do something.
+  Every option still works; a layout, slider, filter or Find jumps straight to where it settles.
+  Remembered in this browser, and off to start with Reduce Motion on.
 - **A queue for the scanner.** Press Auto, or scan someone's circle (Bridge Chains, Build their
   circle, a card's Scan or Resume), while another scan is running and it waits its turn instead
   of being refused: the button says *Queued · 2nd*, and it starts by itself when the scans

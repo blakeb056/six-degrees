@@ -120,6 +120,16 @@ export default function GalaxyLab() {
       <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--sd-fg-1, #dde)' }}>Physics</div>
       <div style={{ ...small, marginTop: 3 }}>The forces that lay the Galaxy out. Everything here moves it in place.</div>
 
+          {/* Blake, 2026-10-05: "if the physics are off then the dots dont move ...
+              as its intense on a computer but they can still see/use all the options". */}
+          <div style={heading}>Motion</div>
+          <Choice value={lab.physics} options={[[true, 'Physics on'], [false, 'Physics off']]} onPick={(v) => setLab({ physics: v })} />
+          <div style={{ ...small, marginTop: -4, marginBottom: 4 }}>
+            {lab.physics
+              ? 'On: the map moves as it settles, and a dragged dot pulls its circle with it.'
+              : 'Off: the map holds still and uses almost no power. Everything here still works; a change jumps straight to where it settles.'}
+          </div>
+
           <div style={heading}>Names</div>
           <Choice value={lab.labels} options={[[true, 'On'], [false, 'Off']]} onPick={(v) => setLab({ labels: v })} />
 
@@ -151,8 +161,8 @@ export default function GalaxyLab() {
             {preset === 'clusters'
               ? 'As Obsidian draws notes: each connection with a scanned circle is a hub, its circle round it, and everyone sized by their lines. Someone in several circles sits between those hubs, linked to each.'
               : preset === 'orbit'
-                ? 'Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them. Drag a bridge and its circle follows.'
-                : 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.'}
+                ? `Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them.${lab.physics ? ' Drag a bridge and its circle follows.' : ''}`
+                : lab.physics ? 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.' : 'Try Rings at 0 and Pull up. With Physics off a dragged dot moves on its own.'}
           </div>
 
           <button onClick={fit} title="Zoom so everyone on the map is on screen" style={{
@@ -163,8 +173,10 @@ export default function GalaxyLab() {
           <div style={heading}>Forces</div>
           {FORCES.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
           <Slider spec={ORBIT_SLIDER} value={lab.orbit} />
-          {still && lab.orbit > 0 && (
-            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>Reduce Motion is on in your computer&rsquo;s settings, so the map holds still.</div>
+          {lab.orbit > 0 && (!lab.physics || still) && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+              {lab.physics ? 'Reduce Motion is on in your computer’s settings' : 'Physics is off'}, so the map holds still.
+            </div>
           )}
 
           <div style={heading}>Display</div>

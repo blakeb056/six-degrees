@@ -180,3 +180,18 @@ test('Network Circle\'s notch and the Physics panel pick a layout the same way, 
   lab.pickLayout('nonsense');                         // not a layout: nothing moves
   assert.equal(lab.layoutNow(), 'rings');
 });
+
+test('Physics starts on, and is a switch of its own: not part of a saved layout', async () => {
+  const { LAYOUT_KEYS } = await import('../lib/galaxy-layouts.js');
+  assert.equal(LAB_DEFAULTS.physics, true);
+  assert.equal(LAYOUT_KEYS.includes('physics'), false);
+});
+
+test('Reset to today\'s layout keeps Physics as you left it, as it keeps Names', async () => {
+  const { setLab } = await import('../lib/galaxy-lab.js');
+  setLab({ physics: false, push: 80 });
+  setLab(null);
+  assert.equal(labNow().physics, false);
+  assert.equal(labNow().push, LAB_DEFAULTS.push);
+  setLab({ physics: true });
+});

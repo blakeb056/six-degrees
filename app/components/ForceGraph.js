@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
-import { reframe } from '../../lib/galaxy';
+import { reframe, settle, seedAngles } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
 import { ringSegments, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
@@ -71,7 +71,9 @@ const RING_CSS = `
 @media (prefers-reduced-motion: no-preference) { .lab-pop .gn, .lab-pop .gl { animation: lab-pop 0.5s ease-out; } }
 @media (prefers-reduced-motion: reduce) {
   .galaxy-ring-pulse { animation: none; opacity: 0.8; }
-}`;
+}
+.galaxy-ring.still .galaxy-ring-pulse { animation: none; opacity: 0.8; }
+svg.still text { transition: none; }`;
 
 export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2 }) {
   // The ring round a connection's dot (design C): how much of their circle is
@@ -286,9 +288,10 @@ function createTooltip() {
 
 // A hovered dot eases up to 1.5 times its size and back, rather than jumping.
 // The transition is named, so it never cuts off another one on the same dot.
-function easeRadius(el, r) {
+// With Physics off it jumps, as with Reduce Motion.
+function easeRadius(el, r, instant = false) {
   const dot = d3.select(el);
-  if (reducedMotion()) dot.interrupt('hover').attr('r', r);
+  if (instant || reducedMotion()) dot.interrupt('hover').attr('r', r);
   else dot.transition('hover').duration(150).ease(d3.easeCubicOut).attr('r', r);
 }
 
@@ -396,6 +399,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // The physics lab's settings (lib/galaxy-lab.js); today's layout when it's
   // off, and always on a phone, whose layout has no physics.
   let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels } : lab;
+  // Physics off: nothing on the map moves by itself. The layout is worked out
+  // without drawing it and drawn once where it settles (lib/galaxy.js settle);
+  // no orbit, no easing, no pulsing ring, and it redraws only when something
+  // changes. Every option still works: a change jumps to where it settles.
+  const isStill = () => !L.physics;
   const reach = reachCounts(nodes, parentOf);
 
   const nodeRadius = (d) => {
@@ -451,7 +459,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Names fade out zoomed out, as Obsidian's text does, all but the hubs'.
   let labelsG = null;
   const FAR = 0.85;
-  const zoomBehavior = d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => {
+  const zoomBehavior = d3.zoom().scaleExtent([0.1, 4]).duration(isStill() ? 0 : 250).on('zoom', (e) => {
     g.attr('transform', e.transform);
     viewRef.current = { transform: heading ?? e.transform, size: box };
     labelsG?.classed('far', e.transform.k < FAR);
@@ -460,7 +468,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   svg.call(zoomBehavior);
 
   const moveView = (to, duration) => {
-    if (reducedMotion()) {
+    if (reducedMotion() || isStill()) {
       heading = null;
       svg.interrupt().call(zoomBehavior.transform, to);
       return;
@@ -567,6 +575,18 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Thicker lines show more of themselves too, so a cluster's links read at a distance.
   // On a light page lines need more of themselves to read.
   const lineOpacity = () => (MAP_LOOK.light ? Math.min(0.7, 0.22 + 0.08 * L.lines) : Math.min(0.45, 0.1 + 0.05 * L.lines));
+  // Physics off: everyone starts on their own ring, in a slice of the circle
+  // beside the connection they hang off (lib/galaxy.js seedAngles). With it
+  // on, d3 places them, as it always has, and the map is seen settling.
+  if (!isMobileGraph && isStill()) {
+    const angles = seedAngles(nodes.filter(n => n.id !== CENTER_ID).map(n => n.id), parentOf);
+    for (const n of nodes) {
+      if (n.id === CENTER_ID) continue;
+      const a = angles.get(n.id) ?? 0, r = radiusOf(n);
+      n.x = r * Math.cos(a);
+      n.y = r * Math.sin(a);
+    }
+  }
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(Math.min(1, linkBase * L.pull)))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge))
@@ -575,8 +595,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .force('gravityY', isMobileGraph ? null : d3.forceY(0).strength(gravity))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
     .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : radiusOf(d), 0, 0).strength(radialBase * L.rings));
+  // Physics off: its own timer never ticks; settleNow, below, runs it instead.
+  if (isStill()) simulation.stop();
   guidesG?.attr('opacity', Math.min(1, L.rings));
-  simulation.on('end.guides', () => {
+  const placeGuides = () => {
     for (const [tier, { ring, label }] of guideRings) {
       const out = nodes.filter((n) => n.tier === tier && n.id !== CENTER_ID).map((n) => Math.hypot(n.x || 0, n.y || 0)).sort((x, y) => x - y);
       if (!out.length) { ring.attr('opacity', 0); label.attr('opacity', 0); continue; }
@@ -584,7 +606,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       ring.attr('r', r).attr('opacity', 1);
       label.attr('y', -r - 4).attr('opacity', 1);
     }
-  });
+  };
+  simulation.on('end.guides', placeGuides);
 
   // Heat (Colour by → Heat): a soft glow behind the hotter dots, screen-blended
   // so the glows add up where powerful people cluster, like a thermal camera.
@@ -750,7 +773,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // between: the dimming lifts a moment after the pointer leaves, unless it lands on another.
   let unlight = null;
   node.on('mouseover', function (event, d) {
-    easeRadius(this, nodeRadius(d) * 1.5);
+    easeRadius(this, nodeRadius(d) * 1.5, isStill());
     clearTimeout(unlight);
     if (L.on && L.branch && d.id !== CENTER_ID) lightBranch(d);
     if (d.profile_image_url && d.id !== CENTER_ID) {
@@ -779,14 +802,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mouseout', function (event, d) {
-    easeRadius(this, nodeRadius(d));
+    easeRadius(this, nodeRadius(d), isStill());
     clearTimeout(unlight);
     unlight = setTimeout(() => g.classed('lab-focus', false), 120);
     tooltip.style('opacity', 0);
     photoTooltip.style('opacity', 0);
   });
 
-  setupDrag(node, simulation, CENTER_ID);
+  setupDrag(node, simulation, CENTER_ID, isStill, () => paint());
 
   // Names for you, your S-tier connections and catalysts; further out (the
   // Degree filter) only on hover, or hundreds of S-tier names pile up. The lab
@@ -855,6 +878,28 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     const k = Math.max(0.1, Math.min(2, Math.min(box.width / (x1 - x0 + 80), box.height / (y1 - y0 + 80))));
     moveView(d3.zoomIdentity.translate(box.width / 2 - ((x0 + x1) / 2) * k, box.height / 2 - ((y0 + y1) / 2) * k).scale(k), 750);
   };
+  // Physics off: run the forces to rest without drawing, then draw once, so a
+  // change jumps to where it settles. A new scene gets up to 3 s of work and
+  // shows where everyone started (on their rings, above) until then; a change
+  // to one on screen starts from a finished layout, so well under a second
+  // does, and it feels like the click did it.
+  let stopSettling = null;
+  const settleNow = ({ first = false } = {}) => {
+    stopSettling?.();
+    let finished = false;
+    stopSettling = settle(simulation, {
+      total: first ? 3000 : 500,
+      done: () => {
+        finished = true;
+        stopSettling = null;
+        paint();
+        placeGuides();
+        if (fitArmed) { fitArmed = false; fitView(); }
+      },
+    });
+    // Not done at once: a new scene is drawn where it starts meanwhile.
+    if (!finished && first) paint();
+  };
   let fitCheck = null;
   const setFit = (fit) => {
     if (fit === lastFit) return;
@@ -897,7 +942,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (performance.now() - tickedAt > 50) paint();
   };
   const setOrbit = () => {
-    const on = !isMobileGraph && L.orbit > 0 && !reducedMotion();
+    const on = !isMobileGraph && L.orbit > 0 && !reducedMotion() && !isStill();
     if (on && !orbitTimer) { lastT = 0; frame = 0; orbitTimer = d3.timer(turn); }
     if (!on && orbitTimer) { orbitTimer.stop(); orbitTimer = null; }
   };
@@ -910,6 +955,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
     const prev = L;
     L = next;
+    if (prev.physics !== L.physics) setPhysics();
     const sized = prev.dotSize !== L.dotSize || prev.sizeBy !== L.sizeBy;
     if (sized) {
       node.attr('r', nodeRadius);
@@ -921,7 +967,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines).attr('stroke-opacity', lineOpacity());
     if (sized || prev.names !== L.names || prev.labels !== L.labels) { drawLabels(); showBorn(); }
     if (!L.on || !L.branch) g.classed('lab-focus', false);
-    g.classed('lab-pop', L.on && nodes.length < 5000);
+    g.classed('lab-pop', L.on && nodes.length < 5000 && !isStill());
     if (prev.orbit !== L.orbit) setOrbit();
     const forces = FORCE_KEYS.some(k => prev[k] !== L[k]);
     if (!forces && !sized) return;
@@ -931,9 +977,30 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     simulation.force('gravityY').strength(gravity);
     simulation.force('radial').strength(radialBase * L.rings);
     guidesG?.attr('opacity', Math.min(1, L.rings));
-    simulation.alpha(Math.max(simulation.alpha(), 0.5)).restart();
+    simulation.alpha(Math.max(simulation.alpha(), 0.5));
+    if (isStill()) settleNow();
+    else simulation.restart();
   };
-  g.classed('lab-pop', L.on && nodes.length < 5000);
+  g.classed('lab-pop', L.on && nodes.length < 5000 && !isStill());
+
+  // Physics switched: off stops the forces where they are and jumps to where
+  // they would have settled, and stops the orbit; on lets them run again.
+  const setPhysics = () => {
+    zoomBehavior.duration(isStill() ? 0 : 250);
+    ring.classList.toggle('still', isStill());
+    svg.classed('still', isStill());
+    setOrbit();
+    if (isStill()) {
+      simulation.stop().alphaTarget(0);   // and let go of a dot mid-drag
+      if (simulation.alpha() >= simulation.alphaMin()) settleNow();
+    } else {
+      stopSettling?.();
+      stopSettling = null;
+      if (simulation.alpha() >= simulation.alphaMin()) simulation.restart();
+    }
+  };
+  ring.classList.toggle('still', isStill());
+  svg.classed('still', isStill());
 
   // The replay: whoever wasn't there yet at the clock's time is hidden. Only the
   // dots that change are touched, so a frame costs little at 30,000 people.
@@ -1026,16 +1093,31 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   };
 
   setOrbit();
-  const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); };
+  if (isStill()) settleNow({ first: true });
+  const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); stopSettling?.(); };
   return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, dispose, range };
 }
 
-function setupDrag(node, simulation, fixedId) {
+// With Physics off (isStill), a dragged dot moves on its own, nothing pulled
+// with it, and stays where it's dropped; the map is drawn for each move only.
+function setupDrag(node, simulation, fixedId, isStill, paint) {
   node.call(d3.drag()
-    .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-    .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+    .on('start', (event, d) => {
+      if (isStill()) return;
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x; d.fy = d.y;
+    })
+    .on('drag', (event, d) => {
+      if (isStill()) {
+        d.x = event.x; d.y = event.y;
+        if (d.fx != null) { d.fx = d.x; d.fy = d.y; }   // you, held where you're put
+        paint();
+        return;
+      }
+      d.fx = event.x; d.fy = event.y;
+    })
     .on('end', (event, d) => {
-      if (!event.active) simulation.alphaTarget(0);
+      if (!isStill() && !event.active) simulation.alphaTarget(0);
       if (d.id !== fixedId) { d.fx = null; d.fy = null; }
     }));
 }
