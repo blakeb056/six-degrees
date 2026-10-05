@@ -25,14 +25,15 @@ const GAP = 18;    // between dots
 
 // Bottom to top: diameter, colour, opacity. Gold, then the tiers in order,
 // fading out from the purple up; the sixth has no tier of its own and takes
-// D's colour, faintest of all.
+// D's colour, faintest of all. Only the gold dot is solid; the rest fade
+// out quickly above it (Blake, 2026-10-04: "use the fade logo").
 export const DOTS = [
   [140, 'var(--sd-tier-s, #ffd700)', 1],
-  [115, 'var(--sd-tier-a, #9b59b6)', 0.9],
-  [94, 'var(--sd-tier-b, #3498db)', 0.72],
-  [77, 'var(--sd-tier-c, #95a5a6)', 0.55],
-  [63, 'var(--sd-tier-d, #bdc3c7)', 0.38],
-  [52, 'var(--sd-tier-d, #bdc3c7)', 0.22],
+  [115, 'var(--sd-tier-a, #9b59b6)', 0.6],
+  [94, 'var(--sd-tier-b, #3498db)', 0.42],
+  [77, 'var(--sd-tier-c, #95a5a6)', 0.28],
+  [63, 'var(--sd-tier-d, #bdc3c7)', 0.17],
+  [52, 'var(--sd-tier-d, #bdc3c7)', 0.09],
 ];
 const W = DOTS[0][0];
 const H = DOTS.reduce((h, [d]) => h + d, 0) + GAP * (DOTS.length - 1);
