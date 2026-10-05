@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A new Sixgree icon.** A gold S drawn as one tapered curve, with a round gold dot (you) in
+  its lower bowl so it also reads as a 6, and a degree ring: six degrees. The app icon (Mac,
+  Windows and Linux) carries faint tier rings and a glow behind the dot; the favicon and the
+  website's small icon are the same mark without them, since they vanish at tab sizes. The
+  guided setup now draws the icon from the same file the builds use.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added
