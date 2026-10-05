@@ -136,30 +136,12 @@ test('the room it plans for: the spacing changes only when the count passes a pl
   assert.equal(formingSpacing(40, room), 26, 'as roomy as it gets');
 });
 
-test('Bridge Chains’ place: the unscanned until there is a bridge, and the circle being built there keeps it until it ends', async () => {
-  const { bridgeChainsSlot } = await import('../lib/reach.js');
-  const none = new Set();
-  const one = new Set(['nils']);
-  // No bridge: the unscanned, to build the first. A CSV or the sample can't scan: the page says why.
-  assert.deepEqual(bridgeChainsSlot({ bridgeIds: none }), { show: 'unscanned', held: null, open: null });
-  assert.equal(bridgeChainsSlot({ bridgeIds: none, canScan: false }).show, 'empty');
-  assert.equal(bridgeChainsSlot({ bridgeIds: one, canScan: false }).show, 'chain');
-  // One or more bridges and nothing built from here: back to normal.
-  assert.deepEqual(bridgeChainsSlot({ bridgeIds: one }), { show: 'chain', held: null, open: null });
-  // Nils's circle is built from it; its first save makes him a bridge mid-scan, and it stays put.
-  let s = bridgeChainsSlot({ bridgeIds: none, scanning: 'nils' });
-  assert.deepEqual(s, { show: 'unscanned', held: 'nils', open: null });
-  s = bridgeChainsSlot({ bridgeIds: one, scanning: 'nils', held: s.held });
-  assert.deepEqual(s, { show: 'unscanned', held: 'nils', open: null });
-  // It ends: Bridge Chains, with his circle open, once.
-  s = bridgeChainsSlot({ bridgeIds: one, scanning: null, held: s.held });
-  assert.deepEqual(s, { show: 'chain', held: null, open: 'nils' });
-  assert.deepEqual(bridgeChainsSlot({ bridgeIds: one, scanning: null, held: s.held }), { show: 'chain', held: null, open: null });
-  // Ended with nobody saved: still no bridge, still the unscanned; if a bridge comes later from
-  // someone else, it's normal Bridge Chains and nobody's circle is forced open.
-  s = bridgeChainsSlot({ bridgeIds: none, scanning: null, held: 'otto' });
-  assert.equal(s.show, 'unscanned');
-  assert.deepEqual(bridgeChainsSlot({ bridgeIds: one, scanning: null, held: s.held }), { show: 'chain', held: null, open: null });
-  // A scan of someone else, started elsewhere once there are bridges, never swaps the view.
-  assert.equal(bridgeChainsSlot({ bridgeIds: one, scanning: 'ray' }).show, 'chain');
+test('where Degrees opens: Unscanned while no circle is scanned yet, Bridge Chains once there is one', async () => {
+  const { degreesOpensOn } = await import('../lib/reach.js');
+  assert.equal(degreesOpensOn({ bridgeIds: new Set() }), 'unscanned');
+  assert.equal(degreesOpensOn({ bridgeIds: new Set(['nils']) }), 'chain');
+  // The sample and a CSV can't scan: Bridge Chains, which says why it's empty.
+  assert.equal(degreesOpensOn({ bridgeIds: new Set(), canScan: false }), 'chain');
+  // A view asked for is kept.
+  assert.equal(degreesOpensOn({ view: 'rings', bridgeIds: new Set() }), 'rings');
 });
