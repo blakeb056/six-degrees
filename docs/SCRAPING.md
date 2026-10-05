@@ -27,7 +27,7 @@ note. If LinkedIn asks for their email address, or for anything else it can't an
 without a note, it closes that and sends nothing. It counts the request as sent only when
 their profile shows it pending. At most 15 in any 24 hours and 80 in any 7 days (LinkedIn
 doesn't publish its invitation limit; about 100 a week is commonly reported), recorded with
-the searches and profile views and shown in Settings → LinkedIn usage. A pause after
+the searches and profile views and shown in Scan → LinkedIn usage. A pause after
 LinkedIn pushed back holds it too. `python3 scripts/scrape.py --connect <profile URL>` does
 the same from a terminal.
 

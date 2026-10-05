@@ -141,8 +141,8 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
         LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
         once today&rsquo;s are used, a scan stops before the next profile and tries that person next time.
       </div>
-      {/* The whole picture (the last hour, the last 7 days, when the next one frees, the last pushback) is in Settings. */}
-      <Link href="/settings#usage" style={{ display: 'inline-block', marginTop: 8, color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>
+      {/* The whole picture (the last hour, the last 7 days, when the next one frees, the last pushback) is at the foot of the Scan page. */}
+      <Link href="#usage" style={{ display: 'inline-block', marginTop: 8, color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>
         See all your LinkedIn usage &rarr;
       </Link>
     </div>

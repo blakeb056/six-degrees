@@ -4,7 +4,7 @@
 // from LinkedIn", and AUTO_PUSHBACK_REST says the same. A check at the start of
 // a run (ensure_logged_in) kept it; a pushback partway through reading a list
 // set one day, as for a scan you start yourself. Found 2026-10-03 while
-// building Settings → LinkedIn usage, which shows this rule.
+// building Scan → LinkedIn usage, which shows this rule.
 //
 // These run the real scrape_bridge, lifted out of scrape.py without its imports,
 // with the browser and LinkedIn's answer stubbed: nothing opens, and every

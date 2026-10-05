@@ -500,7 +500,7 @@ export async function GET(request) {
   if (q.has('job')) return Response.json(job());
   if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
   if (q.has('reach')) return Response.json(scanNotes());
-  // Settings → LinkedIn usage: the scanner's record of searches, profile views
+  // Scan → LinkedIn usage: the scanner's record of searches, profile views
   // and pauses, counted (lib/linkedin-limits.js linkedinUsage). Reads only; no
   // checks, no Python, nothing written.
   if (q.has('usage')) {

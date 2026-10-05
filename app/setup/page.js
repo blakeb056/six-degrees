@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
@@ -18,6 +18,7 @@ import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
 import useScanStatus from '../components/useScanStatus';
+import UsageSection from '../components/settings/UsageSection';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -40,9 +41,8 @@ const ACTION_LABELS = {
   connect: 'Sending a connection request (Auto)',
 };
 
-// The notch's one tab (lib/island.js). The page is one journey, four steps down
-// a line, with the rest folded away in Fine-tune on purpose, so it has no
-// sections to pick between: the tab is the page, lit, and takes you to its top.
+// The notch's one tab (lib/island.js): the tab is the page, lit, and takes you
+// to its top, where the scanner and its Setup box are.
 const SCAN_TAB = { items: [{ key: 'scan', label: 'Scan' }], current: 'scan', onPick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
 
 export default function SetupPage() {
@@ -114,6 +114,33 @@ function SetupInner() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [s?.log?.length]);
 
+  // Setup's steps opened or closed by their chevron: { [key]: true | false }.
+  const [openSteps, setOpenSteps] = useState({});
+  // The Social tab's once-a-day messages sync, switchable here too once there
+  // are messages to sync (GET /api/social; PATCH as app/social/SocialHub.js does).
+  const [social, setSocial] = useState(null);
+  useEffect(() => {
+    if (IS_DEMO) return undefined;
+    let live = true;
+    fetch('/api/social').then((r) => (r.ok ? r.json() : null)).then((d) => { if (live) setSocial(d?.social || null); }, () => {});
+    return () => { live = false; };
+  }, []);
+  async function syncMessages(on) {
+    setSocial((v) => (v ? { ...v, autoSync: on } : v));
+    const d = await fetch('/api/social', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoSync: on }) })
+      .then((r) => r.json()).catch(() => null);
+    if (d && typeof d.autoSync === 'boolean') setSocial((v) => (v ? { ...v, autoSync: d.autoSync } : v));
+  }
+  // /setup#usage (the notch's budget, Settings' old address): the section only
+  // exists once the status is in, so go to it then, once.
+  const toUsage = useRef(true);
+  useEffect(() => {
+    if (!s || !toUsage.current) return;
+    toUsage.current = false;
+    // A moment later, once the cards above have their height.
+    if (window.location.hash === '#usage') setTimeout(() => document.getElementById('usage')?.scrollIntoView(), 600);
+  }, [s]);
+
   // The question is answered: a line takes its place, and the page goes back
   // to the top, since it may have been answered from far down the picker.
   function answered(sectors) {
@@ -143,10 +170,6 @@ function SetupInner() {
   // you know, then the people found through them, then company scans.
   const net = s?.network || { first: 0, second: 0, third: 0 };
   const mapped = net.first;
-  // The step you're on: the first not done. Any other opens from the rail.
-  const current = !s || !step1.done ? 1 : !c.signedIn ? 2 : mapped === 0 ? 3 : 4;
-  // Each step: done, the one you're on (now), or still to come (next).
-  const stateOf = (n, done) => (done && n !== current ? 'done' : n === current ? 'now' : n < current ? 'done' : 'next');
   // Your field, asked once when your connections are in, before who they know
   // (lib/scanner-setup.js askForField); left out while that isn't known (null).
   const askField = IS_DEMO || field ? false : askForField(s, settings);
@@ -167,6 +190,95 @@ function SetupInner() {
       : [...(s.log || [])].reverse().find((l) => !/^Stopped \(exit/.test(l) && !/Warning|warnings\.warn/.test(l)))
     : null;
 
+  // ---- Setup, as green lights (Blake, 2026-10-04: "once all the steps are completed they stay
+  // green and dont have to all be extended out … if they are red theres arrows to expand it").
+  // Each step: done (green), to do (red), optional (amber) or waiting on one above (grey).
+  const signInWaits = !step1.done || !riskOk;
+  const steps = [
+    {
+      key: 'scanner', name: 'Scanner and Chrome',
+      state: notFound || !step1.done ? 'bad' : 'done',
+      summary: notFound ? 'Files missing' : step1.done ? 'Ready' : needsChrome ? 'Needs Google Chrome' : 'Needs setting up',
+      body: <>
+        {notFound && (
+          <Box tone="bad">
+              <b>Can’t find the scanner files.</b><br />
+              <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
+                This copy of Sixgree is missing part of its scanner. Download it again from
+                sixgree.com and put the new copy in place of this one.
+              </span>
+          </Box>
+        )}
+        {/* The Python inside the app didn't work: what happened, and what to do instead. */}
+        {step1.note && <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>}
+        <StepText>{step1.text}</StepText>
+        {(step1.button || step1.chrome) && (
+          <StepActions>
+            {step1.button && <Launch onClick={() => run(step1.button.action)} disabled={busy || running}>{step1.button.label}</Launch>}
+            {/* No Chrome: the way to get it. The step turns green by itself once it's installed. */}
+            {step1.chrome && <Launch href={step1.chrome.href} quiet={Boolean(step1.button)}>{step1.chrome.label}</Launch>}
+          </StepActions>
+        )}
+      </>,
+    },
+    // Blake, 2026-10-04: "a button where the user is basically brought to the app management and
+    // enables it like Flow does". Optional, so it is amber and never holds anything up.
+    appMgmt && {
+      key: 'app-management', name: 'App Management', state: 'optional', summary: 'Optional, once',
+      body: <AppManagementItem item={appMgmt} onAnswer={answerAppManagement} />,
+    },
+    {
+      key: 'risk', name: 'Scanning risks', state: riskOk ? 'done' : 'bad',
+      summary: riskOk ? 'Understood' : 'Read once, then I understand',
+      body: riskOk
+        ? <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--sd-fg-3, #9fb0bb)', fontSize: 12.5, lineHeight: 1.6 }}>
+          {RISK_POINTS.map((p) => <li key={p} style={{ marginBottom: 4 }}>{p}</li>)}
+        </ul>
+        : <RiskCard onAccept={acceptRisk} busy={busy} />,
+    },
+    {
+      key: 'sign-in', name: 'LinkedIn sign-in',
+      state: c.signedIn ? 'done' : signInWaits ? 'wait' : 'bad',
+      summary: c.signedIn ? 'Signed in' : signInWaits ? 'After the steps above' : 'Sign in once',
+      body: <>
+        <StepText>
+          {c.signedIn
+            ? 'Signed in on this Mac. If LinkedIn asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
+            : <>
+              A Chrome window opens. Sign in with your email and password there: the scanner never sees them.
+              {/* TRAPS §12: Google and Apple block their sign-in in automated browsers, so the fix is a password. */}
+              <span style={{ display: 'block', marginTop: 6 }}>
+                Use Google or Apple to sign in? That can&rsquo;t work in this window, so set a LinkedIn password
+                first: on LinkedIn&rsquo;s sign-in page, <b>Forgot password</b> emails you a link to make one.
+              </span>
+            </>}
+        </StepText>
+        {c.dependencies && (
+          <StepActions>
+            {/* Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
+                Never without Chrome: the server would refuse it (lib/scanner-setup.js CHROME_REFUSAL). */}
+            <Launch onClick={() => run('login')} disabled={busy || running || !step1.done || !riskOk || needsChrome} quiet={!!c.signedIn}>
+              {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
+            </Launch>
+          </StepActions>
+        )}
+      </>,
+    },
+  ].filter(Boolean);
+  const left = steps.filter((x) => x.state === 'bad' || x.state === 'wait').length;
+  const allSet = Boolean(s) && left === 0;
+  // A step's own pick (its chevron) wins; otherwise one that needs you is open, the rest closed.
+  const isOpen = (x) => openSteps[x.key] ?? x.state === 'bad';
+  const toggle = (x) => setOpenSteps((o) => ({ ...o, [x.key]: !isOpen(x) }));
+  // Scanning your connections needs every step; until then the buttons say why, inline.
+  const canScanList = canSearch && step1.done && !!c.signedIn;
+  const why = running ? null
+    : !s ? null
+    : !allSet ? `Finish setup first: ${left} ${left === 1 ? 'step' : 'steps'} left in Setup.`
+    : cooling ? 'Scanning is paused for now: the note under Their circles says until when.'
+    : null;
+  const roundOptions = { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish };
+
   return (
     <div style={{
       minHeight: '100vh', background: BG, color: 'var(--sd-fg-1, #fff)',
@@ -174,42 +286,11 @@ function SetupInner() {
     }}>
       {/* The same header as every page, Scan lit (Blake, 2026-10-02: continuity) */}
       <AppHeader active="scan" brand="span" />
+      <style>{PAGE_CSS}</style>
 
-      {/* Room at the top for the notch's Scan tab */}
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '46px 24px 64px' }}>
-
-        {/* What the scanner is, in one breath, and what it never does */}
-        <div style={{
-          padding: '26px 26px 22px', borderRadius: 16, marginBottom: 22, position: 'relative', overflow: 'hidden',
-          background: 'radial-gradient(120% 140% at 0% 0%, rgba(0,255,136,0.10), rgba(52,152,219,0.06) 45%, rgba(var(--sd-ink, 255, 255, 255), 0.02) 75%)',
-          border: '1px solid rgba(0,255,136,0.22)',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.6, color: 'var(--sd-green, #00ff88)' }}>YOUR SCANNER</div>
-          {/* Steps 1 to 3 draw the galaxy in minutes; step 4 is days of small rounds,
-              and saying "four steps" made it sound like one sitting. */}
-          <h1 style={{ fontSize: 27, fontWeight: 800, margin: '6px 0 8px', lineHeight: 1.2 }}>
-            {mapped > 0 ? 'Your network is mapped. Send the scanner further.' : <>
-              Your galaxy in three steps.
-              <span style={{ display: 'block', color: 'var(--sd-fg-2, #aab7c4)', fontSize: 20, fontWeight: 700, marginTop: 4 }}>
-                Who they know fills in over days.
-              </span>
-            </>}
-          </h1>
-          <div style={{ fontSize: 14.5, color: 'var(--sd-fg-2, #aab7c4)', lineHeight: 1.6, maxWidth: 560 }}>
-            {/* Blake, 2026-10-04: "we want seamlessness … not to have any disruption through pop ups
-                or windows". It said "slowly and in the open … you watch it go" until then. */}
-            It works slowly in your own Chrome on this Mac, in the background and out of your way, and
-            keeps everything here. You launch it; it does the reading; its window comes forward only if
-            LinkedIn needs you.
-          </div>
-          <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', marginTop: 16 }}>
-            {['Never posts or messages anyone; sends a request only when you press Auto', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
-              <span key={t} style={{ fontSize: 12.5, color: 'var(--sd-fg-1, #cfe8dc)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 900 }}>✓</span>{t}
-              </span>
-            ))}
-          </div>
-        </div>
+      {/* Room at the top for the notch's Scan tab. Top to bottom (Blake, 2026-10-04): the scanner
+          with Setup beside it as green lights, then its settings, then the extras, then LinkedIn usage. */}
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '46px 24px 64px' }}>
 
         {/* The first look at the scanner can take a while (it looks for Python): say so, never a blank page. */}
         {!s && <p style={{ color: 'var(--sd-fg-4, #778)', fontSize: 13 }}>Checking your setup…</p>}
@@ -224,361 +305,309 @@ function SetupInner() {
             />
           )}
 
-          {mapped > 0 && !running && (
-            <Box>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <b>{mapped.toLocaleString()} connections</b>
-                  {net.second > 0 && <>, plus {net.second.toLocaleString()} people in their circles</>}
-                  {net.third > 0 && <> and {net.third.toLocaleString()} from company scans</>}
-                  .{' '}
-                  <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>Your galaxy is ready.</span>
-                </div>
-                <Link href="/" style={{
-                  padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 700,
-                  color: '#0a0a1a', textDecoration: 'none',
-                  background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
-                }}>See your network →</Link>
-              </div>
-            </Box>
-          )}
-
-          {/* Your field, once, now that there are people to rank with it (it used to
-              stand in front of step 1); then a line saying what it did. */}
+          {/* Your field, once, now that there are people to rank with it; then a line saying what it did. */}
           {askField && <FieldStep onDone={answered} />}
           {field && <FieldAnswer sectors={field.sectors} />}
 
-          {/* Photos an older version kept as links to LinkedIn. The app shows
-              only photos saved here (lib/photos.js), so until then those people
-              show initials. Every scan saves them at its end; this is the way
-              without scanning. */}
-          {s?.photosWaiting > 0 && !running && (
-            <Box>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <b>{s.photosWaiting.toLocaleString()} {s.photosWaiting === 1 ? 'photo isn’t' : 'photos aren’t'} saved on this computer yet.</b>{' '}
-                  <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                    An older version kept them as links to LinkedIn. The app doesn’t load
-                    photos from LinkedIn while you browse, so those people show initials until
-                    the photos are saved here: now, or at the end of your next scan. An expired
-                    link can’t be saved; that person’s photo comes back when they’re next scanned.
-                  </span>
-                  {s && !c.dependencies && (
-                    <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5, marginTop: 6 }}>Set up the scanner first (step 1 below): it saves them.</div>
+          <div id="scan-top" className={`scan-top${allSet ? '' : ' scan-setup-first'}`}>
+            {/* ---- The scanner: what it has mapped, what it's doing, and the buttons ---- */}
+            <section aria-label="Your scanner" className="scan-card scan-main">
+              <Eyebrow>Your scanner</Eyebrow>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 4 }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
+                    {mapped > 0 ? `${mapped.toLocaleString()} connections mapped` : 'Map your network'}
+                  </h1>
+                  <div style={{ fontSize: 14, color: 'var(--sd-fg-2, #aab7c4)', lineHeight: 1.6, marginTop: 4 }}>
+                    {mapped > 0
+                      ? <>
+                        {net.second > 0 ? `Plus ${net.second.toLocaleString()} people in their circles` : 'Next: who they know'}
+                        {net.third > 0 && ` and ${net.third.toLocaleString()} from company scans`}.
+                      </>
+                      // Blake, 2026-10-04: "we want seamlessness … not to have any disruption through pop ups or windows".
+                      : 'Your connections first, in a minute or two; who they know fills in over days. It works in your own Chrome, out of sight, and keeps everything on this Mac.'}
+                  </div>
+                </div>
+                {mapped > 0 && (
+                  <Link href="/" style={{
+                    padding: '9px 18px', borderRadius: 7, fontSize: 13.5, fontWeight: 700,
+                    color: '#0a0a1a', textDecoration: 'none',
+                    background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
+                  }}>See your network →</Link>
+                )}
+              </div>
+
+              {error && <Box tone="bad">{error}</Box>}
+
+              {/* ---- the scanner at work: what it's doing, and Stop ---- */}
+              {running && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12, marginTop: 18,
+                  padding: '14px 16px', borderRadius: 10,
+                  background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.3)',
+                }}>
+                  <Spinner />
+                  <div style={{ flex: 1, fontSize: 13.5 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: 'var(--sd-green, #00ff88)', marginBottom: 2 }}>WORKING NOW</div>
+                    <b>{ACTION_LABELS[s.action] || 'Working'}</b>
+                    {/* The one time its window comes forward (scripts/scrape.py bring_forward). */}
+                    {s.needsYou && (
+                      <div role="status" style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 700, marginTop: 4 }}>
+                        LinkedIn needs you: {s.needsYou}
+                      </div>
+                    )}
+                    {s.progress && <Progress p={s.progress} action={s.action} />}
+                    {/* The circle being read, on the map: Bridge Chains looks again every 20 seconds (app/page.js NetworkRefresh). */}
+                    {s.mapping?.id && (
+                      <div style={{ marginTop: 4 }}>
+                        <Link href={`/?chain=${encodeURIComponent(s.mapping.id)}`} style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 700 }}>
+                          Watch it fill in →
+                        </Link>
+                        <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginLeft: 8, fontSize: 12.5 }}>
+                          {s.mapping.name ? `${s.mapping.name}’s circle, ` : ''}saved every 10 pages.
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5, marginTop: 2 }}>
+                      Stop closes the browser cleanly and keeps everything found so far.
+                    </div>
+                  </div>
+                  <Btn onClick={stop} tone="bad">Stop</Btn>
+                </div>
+              )}
+
+              {/* A run that ended badly, and why: a box, not left for someone to find in the log. */}
+              {failed && (
+                <Box tone="bad">
+                  <b>The last run stopped before it finished.</b>
+                  {failReason && (
+                    <div style={{
+                      marginTop: 6, color: 'var(--sd-fg-2, #e8c4c4)', whiteSpace: 'pre-wrap',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5,
+                    }}>{failReason}</div>
+                  )}
+                  <div style={{ color: 'var(--sd-fg-3, #9aa)', marginTop: 6 }}>The full log is at the foot of this card.</div>
+                </Box>
+              )}
+
+              {/* ---- Your connections: the first scan, then Check for new ---- */}
+              <Part title="Your connections" hint={mapped > 0
+                ? 'Check for new picks up anyone you’ve added since. Scan it all again reads the whole list.'
+                : 'Reads your connections list and saves everyone here. About a minute and a half for 750 people.'}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {mapped > 0 ? <>
+                    <Btn onClick={() => run('refresh')} disabled={!canScanList} primary cluster active={Boolean(running && s.action === 'refresh')}>
+                      <ClusterSpinner size={13} live={Boolean(running && s.action === 'refresh')} />
+                      {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
+                    </Btn>
+                    <Btn onClick={() => run('full')} disabled={!canScanList}>
+                      {running && s.action === 'full' ? 'Scanning…' : 'Scan it all again'}
+                    </Btn>
+                  </> : (
+                    <Launch onClick={() => run('full')} disabled={!canScanList}>
+                      {running && s.action === 'full' ? 'Scanning…' : 'Scan my network'}
+                    </Launch>
                   )}
                 </div>
-                <Btn onClick={() => run('photos')} disabled={busy || !c.dependencies}>Save photos</Btn>
-              </div>
-            </Box>
-          )}
+                {why && <Why>{why}</Why>}
+              </Part>
 
-          {failed && (
-            <Box tone="bad">
-              <b>The last run stopped before it finished.</b>
-              {failReason && (
-                <div style={{
-                  marginTop: 6, color: 'var(--sd-fg-2, #e8c4c4)', whiteSpace: 'pre-wrap',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5,
-                }}>{failReason}</div>
-              )}
-              <div style={{ color: 'var(--sd-fg-3, #9aa)', marginTop: 6 }}>The full log is below.</div>
-            </Box>
-          )}
-
-          {notFound && (
-            <Box tone="bad">
-              <b>Can’t find the scanner files.</b><br />
-              <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                This copy of Sixgree is missing part of its scanner. Download it again from
-                sixgree.com and put the new copy in place of this one.
-              </span>
-            </Box>
-          )}
-
-          {/* The Python inside the app didn't work: what happened, and what to do instead.
-              Red only while there is something to do; once another Python runs the
-              scanner it is just news. */}
-          {s && step1.note && (
-            <Box tone={step1.done ? undefined : 'bad'}>{step1.note}</Box>
-          )}
-
-          {/* ---- the steps (Blake, 2026-10-02: "simple and easy to understand … like they are
-               launching an agent"; then "the label and them to be displayed … the dots vertically
-               displayed with the line following"): every step shown at once, down a line that turns
-               green as each is done, the one you're on lit, one button each. Everything else waits
-               in Fine-tune. ---- */}
-          {s && !riskOk && <RiskCard onAccept={acceptRisk} busy={busy} />}
-
-          <div role="list" aria-label="Scanning, step by step" style={{ margin: '4px 0 8px' }}>
-          <style>{JOURNEY_CSS}</style>
-          <StepRow n={1} label="Get ready" state={stateOf(1, step1.done)}>
-            <Mission title="Get your scanner ready" time="A minute or two, once" done={step1.done} body={s ? step1.text : 'Checking…'}
-              launch={s && step1.button && (
-                <Launch onClick={() => run(step1.button.action)} disabled={busy || running}>{step1.button.label}</Launch>
-              )}
-              // No Chrome: the way to get it. The step turns done by itself once
-              // it's installed, since the page keeps asking.
-              more={s && step1.chrome && (
-                <Launch href={step1.chrome.href} quiet={Boolean(step1.button)}>{step1.chrome.label}</Launch>
-              )} />
-            {/* Blake, 2026-10-04: "shouldnt we have in the onboarding for scan … a button where the
-                user is basically brought to the app management and enables it like Flow does".
-                Optional, so it sits under the step and never holds it up. */}
-            {appMgmt && <AppManagementItem item={appMgmt} onAnswer={answerAppManagement} />}
-          </StepRow>
-          <StepRow n={2} label="Sign in" state={stateOf(2, !!c.signedIn)}>
-            <Mission title="Sign in to LinkedIn, once" time="You do this part" done={!!c.signedIn}
-              body={c.signedIn
-                ? 'Signed in on this Mac. If LinkedIn ever asks for a security check, or a scan says you were signed out, open LinkedIn here and finish it by hand.'
-                : <>
-                  A Chrome window opens. Sign in with your email and password there: the scanner never sees them.
-                  {/* TRAPS §12: Google and Apple block their sign-in in automated browsers, so the fix is a password. */}
-                  <span style={{ display: 'block', marginTop: 6 }}>
-                    Sign in to LinkedIn with Google or Apple? That can&rsquo;t work in this window, so set a LinkedIn
-                    password first: on LinkedIn&rsquo;s sign-in page, <b>Forgot password</b> emails you a link to make one.
-                  </span>
-                </>}
-              launch={c.dependencies && (
-                // Shown after sign-in too: a security check survives the session cookie (TRAPS §35).
-                // Never without Chrome: the server would refuse it (lib/scanner-setup.js CHROME_REFUSAL).
-                <Launch onClick={() => run('login')} disabled={busy || running || current < 2 || !riskOk || needsChrome} quiet={!!c.signedIn}>
-                  {running && s.action === 'login' ? 'Waiting for you…' : c.signedIn ? 'Open LinkedIn again' : 'Open LinkedIn'}
-                </Launch>
-              )} />
-          </StepRow>
-          <StepRow n={3} label="Who you know" state={stateOf(3, mapped > 0)}>
-            <Mission title="Map the people you know" time="About a minute and a half for 750 people" done={mapped > 0}
-              body={mapped > 0
-                ? `${mapped.toLocaleString()} connections saved. Check for new picks up anyone you've added since; Scan it all again reads the whole list.`
-                : 'It reads your connections list and saves everyone here. After the first time, Check for new only looks at who you\'ve added since.'}
-              launch={(
-                <Launch onClick={() => run('full')} disabled={!canSearch || current < 3} quiet={mapped > 0}>
-                  {running && s.action === 'full' ? 'Scanning…' : mapped > 0 ? 'Scan it all again' : 'Scan my network'}
-                </Launch>
-              )}
-              more={mapped > 0 && (
-                <Btn onClick={() => run('refresh')} disabled={!canSearch || current < 3} primary cluster active={Boolean(running && s.action === 'refresh')}>
-                  <ClusterSpinner size={13} live={Boolean(running && s.action === 'refresh')} />
-                  {running && s.action === 'refresh' ? 'Checking…' : 'Check for new'}
-                </Btn>
-              )} />
-          </StepRow>
-          <StepRow n={4} label="Who they know" state={stateOf(4, false)} last>
-            {/* Honest about time (the 1.0 first-run list): a circle shows in minutes, a
-                network in days, because every page is a search and the budget caps a day's. */}
-            <Mission title="Map who they know" time={`First circle in ${firstCircle}`}
-              body={<>
-                It opens your connections one at a time and reads who <i>they</i> know: that fills Degrees, Separation
-                and Outlink. The first circle shows up in {firstCircle}. The rest fills in over days, a round at a time:
-                every page is a LinkedIn search, and {li?.limits?.daily ? <>your budget allows {li.limits.daily} a day</>
-                  : <>a day&rsquo;s searches are best kept few</>}. Every round picks up where the last one stopped.
+              {/* ---- Their circles: Auto-Bridge, the radar with today's budget round it ---- */}
+              <Part title="Their circles" hint={<>
+                Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
+                circle shows in {firstCircle}; the rest fills in over days,{' '}
+                {li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
               </>}>
-              <CooldownBanner
-                cooldown={li?.cooldown}
-                disabled={busy}
-                onLift={() => run('lift-cooldown')}
-              />
-              {/* The radar: Scan in the middle, today's budget round it, the speed beside it */}
-              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
-                <ScanRadar
-                  li={li}
-                  running={Boolean(running)}
-                  scanning={Boolean(running && s?.action?.startsWith('auto-bridge'))}
-                  disabled={!canSearch || (order === 'score' && !tiers.length)}
-                  label={running && s?.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
-                  sublabel={running ? (batch ? `${batch} people` : 'everyone') : `first circle in ${firstCircle}`}
-                  onScan={() => run('auto-bridge', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish, experimental })}
-                  onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
-                />
-                <div style={{ flex: '1 1 230px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'var(--sd-fg-2, #cfd8d8)' }}>
-                    This round
-                    <select value={batch} onChange={(e) => setBatch(Number(e.target.value))} disabled={running} style={selectStyle}>
-                      <option value={5}>5 people</option>
-                      <option value={10}>10 people</option>
-                      <option value={25}>25 people</option>
-                      <option value={0}>everyone (not advised)</option>
-                    </select>
-                  </label>
-                  <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'var(--sd-fg-2, #cfd8d8)' }}>
-                    Start with
-                    <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
-                      <option value="newest">Newest connections</option>
-                      <option value="score">Highest tier</option>
-                    </select>
-                  </label>
-                {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)' }}>Work through</span>
-                  {['S', 'A', 'B', 'C', 'D'].map((t) => {
-                    const on = tiers.includes(t);
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => setTiers((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}
-                        disabled={running}
-                        style={{
-                          width: 30, height: 28, borderRadius: 7, fontSize: 12, fontWeight: 700,
-                          cursor: running ? 'not-allowed' : 'pointer', border: LINE,
-                          background: on ? 'rgba(52,152,219,0.22)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
-                          color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-4, #667)',
-                        }}
-                      >{t}</button>
-                    );
-                  })}
-                  <span style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #667)' }}>
-                    {tiers.length ? '' : 'pick at least one'}
-                  </span>
-                </div>}
-                {order === 'newest' && (
-                  <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
-                    Goes by the date you connected, newest first, across every tier. Run
-                    {' '}<b>Check for new</b> first so your latest connections are in the list.
+                <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-cooldown')} />
+                <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <ScanRadar
+                    li={li}
+                    running={Boolean(running)}
+                    scanning={Boolean(running && s?.action?.startsWith('auto-bridge'))}
+                    disabled={!canSearch || (order === 'score' && !tiers.length)}
+                    label={running && s?.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
+                    sublabel={running ? (batch ? `${batch} people` : 'everyone') : `first circle in ${firstCircle}`}
+                    onScan={() => run('auto-bridge', { ...roundOptions, experimental })}
+                    onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
+                  />
+                  <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <label style={labelRow}>
+                      This round
+                      <select value={batch} onChange={(e) => setBatch(Number(e.target.value))} disabled={running} style={selectStyle}>
+                        <option value={5}>5 people</option>
+                        <option value={10}>10 people</option>
+                        <option value={25}>25 people</option>
+                        <option value={0}>everyone (not advised)</option>
+                      </select>
+                    </label>
+                    <label style={labelRow}>
+                      Start with
+                      <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
+                        <option value="newest">Newest connections</option>
+                        <option value="score">Highest tier</option>
+                      </select>
+                    </label>
+                    {order === 'score' && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)' }}>Work through</span>
+                      {['S', 'A', 'B', 'C', 'D'].map((t) => {
+                        const on = tiers.includes(t);
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setTiers((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}
+                            disabled={running}
+                            style={{
+                              width: 30, height: 28, borderRadius: 7, fontSize: 12, fontWeight: 700,
+                              cursor: running ? 'not-allowed' : 'pointer', border: LINE,
+                              background: on ? 'rgba(52,152,219,0.22)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
+                              color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-4, #667)',
+                            }}
+                          >{t}</button>
+                        );
+                      })}
+                      <span style={{ fontSize: 11.5, color: 'var(--sd-fg-4, #667)' }}>
+                        {tiers.length ? '' : 'pick at least one'}
+                      </span>
+                    </div>}
+                    {order === 'newest' && (
+                      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
+                        Newest first, across every tier. Run <b>Check for new</b> first so your latest connections are in.
+                      </div>
+                    )}
+                    <WhySlow />
                   </div>
-                )}
-                  <WhySlow />
                 </div>
-              </div>
-              {/* The circle being read, on the map: Bridge Chains looks again every 20
-                  seconds while it fills in (app/page.js NetworkRefresh). */}
-              {running && s?.mapping?.id && (
-                <div style={{ marginTop: 14, fontSize: 13.5 }}>
-                  <Link href={`/?chain=${encodeURIComponent(s.mapping.id)}`} style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 700 }}>
-                    Watch it fill in →
-                  </Link>
-                  <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginLeft: 8 }}>
-                    {s.mapping.name ? `${s.mapping.name}’s circle, ` : ''}saved every 10 pages.
-                  </span>
-                </div>
+              </Part>
+
+              {/* ---- In progress: everyone whose read stopped partway, with Resume (Blake, 2026-10-03).
+                   Only there while someone is. ---- */}
+              <PausedList
+                paused={s?.paused || []}
+                disabled={!canSearch}
+                onResume={(p) => run('resume', { id: p.id })}
+                onResumeAll={() => run('resume-all', { maxBridges: batch })}
+              />
+
+              {/* Photos an older version kept as links to LinkedIn. The app shows only photos saved here
+                  (lib/photos.js); every scan saves them at its end, and this is the way without scanning. */}
+              {s?.photosWaiting > 0 && !running && (
+                <Box>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <b>{s.photosWaiting.toLocaleString()} {s.photosWaiting === 1 ? 'photo isn’t' : 'photos aren’t'} saved on this computer yet.</b>{' '}
+                      <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
+                        Until they are, those people show initials. They save now, or at the end of your next scan;
+                        an expired link comes back when that person is next scanned.
+                      </span>
+                      {!c.dependencies && (
+                        <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5, marginTop: 6 }}>Set up the scanner first (in Setup): it saves them.</div>
+                      )}
+                    </div>
+                    <Btn onClick={() => run('photos')} disabled={busy || !c.dependencies}>Save photos</Btn>
+                  </div>
+                </Box>
               )}
-            </Mission>
-          </StepRow>
+
+              {/* The scanner's own words, for when you want them: open by itself when a run stopped badly. */}
+              {(s?.log?.length > 0) && (
+                <details open={failed} style={{ marginTop: 18 }}>
+                  <summary style={{
+                    display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                    margin: '8px 0', fontSize: 12, color: 'var(--sd-fg-3, #788)', textTransform: 'uppercase', letterSpacing: 0.6,
+                  }}>
+                    {running && <Spinner />}
+                    {running ? 'What it’s doing (the log)' : 'The last run’s log'}
+                  </summary>
+                  <pre ref={logRef} style={{
+                    background: 'rgba(var(--sd-shade, 0, 0, 0), 0.45)', border: LINE, borderRadius: 8,
+                    padding: 14, maxHeight: 280, overflow: 'auto', margin: 0,
+                    fontSize: 12.5, lineHeight: 1.7, color: 'var(--sd-fg-2, #b9c6c6)',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  }}>{s.log.join('\n')}</pre>
+                </details>
+              )}
+            </section>
+
+            {/* ---- Setup, beside the scanner: one box of green lights ---- */}
+            <SetupBox steps={steps} allSet={allSet} left={left} isOpen={isOpen} onToggle={toggle} />
           </div>
 
-          {/* ---- the scanner at work: what it's doing, and Stop, right under the step ---- */}
-          {running && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
-              padding: '14px 16px', borderRadius: 8,
-              background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.3)',
-            }}>
-              <Spinner />
-              <div style={{ flex: 1, fontSize: 13.5 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: 'var(--sd-green, #00ff88)', marginBottom: 2 }}>YOUR SCANNER IS WORKING</div>
-                <b>{ACTION_LABELS[s.action] || 'Working'}</b>
-                {/* The one time its window comes forward (scripts/scrape.py bring_forward). */}
-                {s.needsYou && (
-                  <div role="status" style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 700, marginTop: 4 }}>
-                    LinkedIn needs you: {s.needsYou}
-                  </div>
-                )}
-                {s.progress && <Progress p={s.progress} action={s.action} />}
-                <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontSize: 12.5, marginTop: 2 }}>
-                  Stopping closes the browser cleanly and keeps everything found so far.
+          {/* ---- The scanner's settings: each one a line that says what it does ---- */}
+          <section aria-labelledby="scan-settings" className="scan-card" style={{ marginTop: 20 }}>
+            <h2 id="scan-settings" style={h2}>Scanner settings</h2>
+            <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 14 }}>
+              How fast it goes, how much it may search, and how much of each list it reads. Speed is beside the Scan button above.
+            </div>
+            <div className="scan-two">
+              <div>
+                <SettingTitle title="LinkedIn budget" line="Searches and profile views the scanner may use. It stops at the budget and carries on next time." />
+                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <SettingTitle title="How much of each list" line="Every page is one LinkedIn search; LinkedIn shows 100 pages at most." />
+                  <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle} aria-label="Read up to">
+                    <option value={100}>Every page, to the end of their list</option>
+                    <option value={50}>50 pages each</option>
+                    <option value={25}>25 pages each</option>
+                    <option value={10}>10 pages (~100 people) each</option>
+                  </select>
+                </div>
+                <Toggle checked={finish} disabled={running} onChange={setFinish}
+                  title="Finish lists that stopped partway"
+                  line="Each round also carries on with people already mapped, from the page each one stopped at." />
+                <div>
+                  <SettingTitle title="Hidden lists" line="People whose list was hidden last time, in case they’ve opened it. Costs a profile view each." />
+                  <Btn onClick={() => run('auto-bridge-retry', roundOptions)} disabled={!canSearch || (order === 'score' && !tiers.length)}>
+                    Retry hidden ones
+                  </Btn>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
+                  At {paceOf(li?.limits?.pace).label} it rests {paceOf(li?.limits?.pace).pagePause} seconds before each page and{' '}
+                  {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after
+                  every 10, so a long list takes about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
+                  If LinkedIn says a free account&rsquo;s monthly search limit is reached, the scan saves what it read and
+                  carries on from that page next time. Keep batches small.
                 </div>
               </div>
-              <Btn onClick={stop} tone="bad">Stop</Btn>
             </div>
-          )}
+          </section>
 
-          {/* ---- In progress: everyone whose scan stopped partway, with Resume (Blake, 2026-10-03:
-               "some sort of in progress ones in the scanner as well to see all the ones they stopped
-               and would like to resume"). Right after step 4, where someone who just stopped a scan
-               looks; it was folded away in Fine-tune, and nobody found it. Under Stop while a scan
-               runs, so Stop stays right under the step. Only there while someone is. ---- */}
-          <PausedList
-            paused={s?.paused || []}
-            disabled={!canSearch}
-            onResume={(p) => run('resume', { id: p.id })}
-            onResumeAll={() => run('resume-all', { maxBridges: batch })}
-          />
-
-          {/* Everything you might want to change, out of the way until you do */}
-          <details style={{ margin: '18px 0 4px', borderRadius: 10, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.02)' }}>
-            <summary style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13.5, fontWeight: 650, color: 'var(--sd-fg-2, #cfd8d8)' }}>
-              Fine-tune the scanner
-              <span style={{ fontWeight: 500, color: 'var(--sd-fg-4, #778)', marginLeft: 8 }}>daily budget, how much of each list, watching it work</span>
-            </summary>
-            <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
-              <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: 'var(--sd-fg-2, #cfd8d8)' }}>
-                Read up to
-                <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}>
-                  <option value={100}>every page, to the end of their list</option>
-                  <option value={50}>50 pages each</option>
-                  <option value={25}>25 pages each</option>
-                  <option value={10}>10 pages (~100 people) each</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: 'var(--sd-fg-2, #cfd8d8)', cursor: running ? 'not-allowed' : 'pointer' }}>
-                <input type="checkbox" checked={finish} onChange={(e) => setFinish(e.target.checked)} disabled={running} />
-                Also finish people already mapped, from the page each one stopped at
-              </label>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', cursor: running ? 'default' : 'pointer' }}>
-                <input type="checkbox" checked={experimental} disabled={running} style={{ marginTop: 3 }}
-                  onChange={(e) => { setExperimental(e.target.checked); window.dispatchEvent(new Event('six-degrees:experimental')); }} />
-                <span>
-                  <b style={{ color: 'var(--sd-gold, #FFD700)' }}>Experimental:</b> all-day pacing. Up to 8 pages in a sitting,
-                  then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40 searches in a day
-                  or 200 in a week, however high your budget; two days&rsquo; rest after any check from LinkedIn; at
-                  the budget it waits instead of stopping; and it saves every page. It also reads LinkedIn&rsquo;s own data beside
-                  the page text, to fill gaps and measure how the two compare. It keeps running while the app is open.
-                </span>
-              </label>
+          {/* ---- Extras: the switches, each with what it does in a line ---- */}
+          <section aria-labelledby="scan-extras" className="scan-card" style={{ marginTop: 20 }}>
+            <h2 id="scan-extras" style={h2}>Extras</h2>
+            <div className="scan-two" style={{ marginTop: 10 }}>
+              <Toggle checked={experimental} disabled={running} tag="Experimental"
+                onChange={(on) => { setExperimental(on); window.dispatchEvent(new Event('six-degrees:experimental')); }}
+                title="Auto scan, all day"
+                line="Adds Auto scan beside Scan in the header: small sittings with rests, 9:00 to 18:00, while the app is open."
+                more={<>
+                  Up to 8 pages in a sitting, then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40
+                  searches in a day or 200 in a week, however high your budget; two days&rsquo; rest after any check from
+                  LinkedIn; at the budget it waits instead of stopping; and it saves every page. It also reads
+                  LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the two compare.
+                </>} />
               {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
-                  every scan runs in a real Chrome window kept out of sight (hidden on a Mac), which comes
-                  forward only when LinkedIn needs you. This is for anyone who wants to watch instead. It
-                  replaced "Hide the Chrome window while scanning", which ran Chrome headless: hidden is now
-                  how every scan runs, without headless Chrome's risks. */}
-              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', cursor: running ? 'default' : 'pointer' }}>
-                <input type="checkbox" checked={showChrome} disabled={running} style={{ marginTop: 3 }}
-                  onChange={(e) => setShowChrome(e.target.checked)} />
-                <span>
-                  <b style={{ color: 'var(--sd-fg-1, #fff)' }}>Show the scanner&rsquo;s Chrome window.</b> Scans run in a
-                  normal Chrome window in front of you, to watch it work. Left off, the window stays out of sight
-                  and comes forward only when LinkedIn needs you: to sign in, or to finish a check it asks for. The
-                  notch shows what it&rsquo;s doing either way, and Stop works the same. It changes nothing about
-                  pacing or your daily budget.
-                </span>
-              </label>
-              <div style={{ fontSize: 12, color: 'var(--sd-gold, #FFD700)', lineHeight: 1.6 }}>
-                Every page is a LinkedIn search, so at {paceOf(li?.limits?.pace).label} it rests{' '}
-                {paceOf(li?.limits?.pace).pagePause} seconds before each one and{' '}
-                {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after every 10, and a long list can take
-                {' '}about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
-                LinkedIn shows 100 pages of anyone&rsquo;s connections at most. Free accounts
-                have a monthly search limit: if LinkedIn says it has been reached, the scan saves
-                what it read and stops, and carries on from that page next time. Keep batches small.
-              </div>
-              <div>
-                <Btn onClick={() => run('auto-bridge-retry', { maxBridges: batch, tiers: order === 'score' ? tiers : [], order, maxPages: pages, deeper: finish })} disabled={!canSearch || (order === 'score' && !tiers.length)}>
-                  Retry hidden ones
-                </Btn>
-                <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', marginLeft: 10 }}>People whose list was hidden last time, in case they&rsquo;ve opened it.</span>
-              </div>
+                  every scan runs in a real Chrome window kept out of sight, which comes forward only when
+                  LinkedIn needs you. This is for anyone who wants to watch instead. */}
+              <Toggle checked={showChrome} disabled={running} onChange={setShowChrome}
+                title="Show the scanner’s Chrome window"
+                line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
+                more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily budget." />
+              {social && (
+                <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
+                  title="Sync messages once a day"
+                  line="Brings your LinkedIn conversations up to date for the Social tab, once a day, with the scanner." />
+              )}
             </div>
-          </details>
+          </section>
 
-          {error && <Box tone="bad">{error}</Box>}
-
-          {/* The scanner's own words, for when you want them: open by itself when a run stopped badly. */}
-          {(s?.log?.length > 0) && (
-            <details open={failed} style={{ marginTop: 20 }}>
-              <summary style={{
-                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-                margin: '8px 0', fontSize: 12, color: 'var(--sd-fg-3, #788)', textTransform: 'uppercase', letterSpacing: 0.6,
-              }}>
-                {running && <Spinner />}
-                {running ? 'What it’s doing (the log)' : 'The last run’s log'}
-              </summary>
-              <pre ref={logRef} style={{
-                background: 'rgba(var(--sd-shade, 0, 0, 0), 0.45)', border: LINE, borderRadius: 8,
-                padding: 14, maxHeight: 280, overflow: 'auto', margin: 0,
-                fontSize: 12.5, lineHeight: 1.7, color: 'var(--sd-fg-2, #b9c6c6)',
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>{s.log.join('\n')}</pre>
-            </details>
-          )}
+          {/* ---- LinkedIn usage, last (Blake, 2026-10-04: "usage should be more at the bottom and should be
+               in scanner"). It was Settings → LinkedIn usage; /settings#usage now comes here. ---- */}
+          <div className="scan-card" style={{ marginTop: 20, paddingTop: 0, paddingBottom: 0 }}>
+            <UsageSection />
+          </div>
         </>}
 
       </div>
@@ -684,73 +713,153 @@ const selectStyle = {
   background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)', border: LINE,
 };
 
-const JOURNEY_CSS = `
-@keyframes stepPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,.45); } 50% { box-shadow: 0 0 0 7px rgba(0,255,136,0); } }
-.journey-now { animation: stepPulse 2.2s ease-in-out infinite; }
+const labelRow = { display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'var(--sd-fg-2, #cfd8d8)' };
+const h2 = { fontSize: 17, fontWeight: 800, margin: '0 0 4px' };
+
+// The page's grid: the scanner and Setup side by side on a wide window, one
+// column on a narrow one (Setup first there while it still has steps to do),
+// and the settings and extras in two columns where they fit.
+const PAGE_CSS = `
+.scan-top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.scan-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 28px; align-items: start; }
+.scan-card { padding: 22px 24px; border-radius: 16px; border: ${LINE}; background: rgba(var(--sd-ink, 255, 255, 255), 0.035); min-width: 0; }
+.scan-main { background: radial-gradient(120% 90% at 0% 0%, rgba(0,255,136,0.07), rgba(52,152,219,0.04) 45%, rgba(var(--sd-ink, 255, 255, 255), 0.03) 75%); border-color: rgba(0,255,136,0.22); }
+.scan-step-head { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; border-radius: 10px; }
+.scan-step-head:hover { background: rgba(var(--sd-ink, 255, 255, 255), 0.05); }
+.scan-step-head:focus-visible { outline: 2px solid var(--sd-blue, #3498DB); outline-offset: 1px; }
+.scan-chev { transition: transform .15s ease; }
 .launch-go { transition: transform .15s ease, box-shadow .2s ease, filter .2s ease; }
 .launch-go:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,255,136,.35); filter: brightness(1.08); }
 .launch-go:not(:disabled):active { transform: translateY(0) scale(.98); }
-@media (prefers-reduced-motion: reduce) { .journey-now { animation: none; } }
+@media (max-width: 940px) {
+  .scan-top, .scan-two { grid-template-columns: minmax(0, 1fr); }
+  .scan-setup-first .scan-setup { order: -1; }
+}
+@media (max-width: 520px) { .scan-card { padding: 18px 16px; } }
+@media (prefers-reduced-motion: reduce) { .scan-chev, .launch-go { transition: none; } }
 `;
 
+const LIGHT = {
+  done: { color: 'var(--sd-green, #00ff88)', glow: 'rgba(0,255,136,0.45)', word: 'done' },
+  bad: { color: 'var(--sd-red, #ff7676)', glow: 'rgba(255,90,90,0.45)', word: 'needs you' },
+  optional: { color: 'var(--sd-gold, #FFD700)', glow: 'rgba(255,215,0,0.35)', word: 'optional' },
+  wait: { color: 'rgba(var(--sd-ink, 255, 255, 255), 0.28)', glow: 'transparent', word: 'waiting on a step above' },
+};
+
 /**
- * One step down the line: its dot (a tick once done, pulsing while it's the one
- * you're on), the line on to the next step (green once this one is done), its
- * label, and what it does.
+ * Setup as one box of green lights (Blake, 2026-10-04): a step that's done is
+ * one line, a tick and a few words; one that needs you is red and open; each
+ * has a chevron to open or close it. "All set" once every step is green.
  */
-function StepRow({ n, label, state, last = false, children }) {
-  const done = state === 'done';
-  const now = state === 'now';
+function SetupBox({ steps, allSet, left, isOpen, onToggle }) {
   return (
-    <div role="listitem" aria-label={`Step ${n}, ${label}: ${done ? 'done' : now ? 'the one to do now' : 'still to come'}`}
-      style={{ display: 'grid', gridTemplateColumns: '40px 1fr', columnGap: 14 }}>
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-        <span className={now ? 'journey-now' : undefined} aria-hidden="true" style={{
-          position: 'relative', zIndex: 1, width: 38, height: 38, borderRadius: '50%', display: 'grid', placeItems: 'center',
-          fontSize: 15, fontWeight: 800,
-          background: done ? 'rgba(0,255,136,0.16)' : now ? 'linear-gradient(135deg, #00ff88, #1abc9c)' : 'var(--sd-card, #12142a)',
-          color: done ? 'var(--sd-green, #00ff88)' : now ? '#04140c' : 'var(--sd-fg-4, #778)',
-          border: `2px solid ${done ? 'rgba(0,255,136,0.55)' : now ? 'transparent' : 'rgba(var(--sd-ink, 255, 255, 255), 0.14)'}`,
-        }}>{done ? '✓' : n}</span>
-        {!last && (
-          <span aria-hidden="true" style={{
-            position: 'absolute', top: 40, bottom: 0, left: '50%', width: 2, marginLeft: -1, borderRadius: 1,
-            background: done ? 'linear-gradient(rgba(0,255,136,0.75), rgba(0,255,136,0.3))' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)',
-          }} />
-        )}
+    <aside aria-labelledby="scan-setup" className="scan-card scan-setup" style={{
+      padding: '16px 12px 12px',
+      ...(allSet ? { borderColor: 'rgba(0,255,136,0.25)' } : left ? { borderColor: 'rgba(255,90,90,0.35)' } : {}),
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 8px' }}>
+        <h2 id="scan-setup" style={{ ...h2, margin: 0, flex: 1 }}>Setup</h2>
+        <span style={{
+          fontSize: 11.5, fontWeight: 800, padding: '3px 10px', borderRadius: 20,
+          color: allSet ? 'var(--sd-green, #00ff88)' : 'var(--sd-red, #ff7676)',
+          background: allSet ? 'rgba(0,255,136,0.12)' : 'rgba(255,90,90,0.12)',
+        }}>{allSet ? '✓ All set' : `${left} to do`}</span>
       </div>
-      <div style={{ minWidth: 0, paddingBottom: last ? 0 : 16, opacity: state === 'next' ? 0.75 : 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 38, marginBottom: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: done ? 'var(--sd-green, #00ff88)' : now ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #889)' }}>
-            Step {n} · {label}
+      <div role="list">
+        {steps.map((x) => {
+          const open = isOpen(x);
+          const light = LIGHT[x.state];
+          return (
+            <div role="listitem" key={x.key} data-step={x.key} data-state={x.state} style={{
+              borderRadius: 10, marginTop: 2,
+              background: open ? 'rgba(var(--sd-ink, 255, 255, 255), 0.035)' : 'transparent',
+            }}>
+              <button type="button" className="scan-step-head" aria-expanded={open} onClick={() => onToggle(x)}
+                aria-label={`${x.name}: ${light.word}. ${open ? 'Close' : 'Open'} details`}>
+                <span aria-hidden="true" style={{
+                  width: 18, height: 18, borderRadius: '50%', flex: '0 0 auto', display: 'grid', placeItems: 'center',
+                  fontSize: 11, fontWeight: 900, color: x.state === 'done' ? '#04140c' : '#fff',
+                  background: light.color, boxShadow: `0 0 10px ${light.glow}`,
+                }}>{x.state === 'done' ? '✓' : x.state === 'bad' ? '!' : ''}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>{x.name}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: x.state === 'bad' ? 'var(--sd-red, #ff7676)' : 'var(--sd-fg-3, #8b9a9a)' }}>{x.summary}</span>
+                </span>
+                <span aria-hidden="true" className="scan-chev" style={{
+                  fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', transform: open ? 'rotate(90deg)' : 'none',
+                }}>▶</span>
+              </button>
+              {open && <div style={{ padding: '2px 12px 14px 40px' }}>{x.body}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {/* What it never does, under the steps, in a line each. */}
+      <div style={{ borderTop: LINE, margin: '10px 12px 0', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {['Never posts or messages anyone; sends a request only when you press Auto', 'Never sees your password', 'Nothing leaves this Mac', 'Stops the moment you say'].map((t) => (
+          <span key={t} style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', display: 'flex', gap: 6 }}>
+            <span style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 900 }}>✓</span>{t}
           </span>
-          <span style={{
-            fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
-            color: done ? 'var(--sd-green, #00ff88)' : now ? '#04140c' : 'var(--sd-fg-3, #889)',
-            background: done ? 'rgba(0,255,136,0.12)' : now ? '#00ff88' : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)',
-          }}>{done ? 'Done' : now ? 'Now' : 'Next'}</span>
-        </div>
-        {children}
+        ))}
       </div>
+    </aside>
+  );
+}
+
+const Eyebrow = ({ children }) => (
+  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.6, textTransform: 'uppercase', color: 'var(--sd-green, #00ff88)' }}>{children}</div>
+);
+
+/** One part of the scanner card: a title, a line on what it does, then its controls. */
+function Part({ title, hint, children }) {
+  return (
+    <div style={{ marginTop: 22, paddingTop: 18, borderTop: LINE }}>
+      <div style={{ fontSize: 15, fontWeight: 800 }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6, margin: '2px 0 12px', maxWidth: 640 }}>{hint}</div>
+      {children}
     </div>
   );
 }
 
-/** A step's card: what it does, how long, and the one button that does it. Once done, a quieter card. */
-function Mission({ title, time, body, launch, more, done = false, children }) {
+/** Why a button can't be pressed yet, under it: never a pop-up. */
+const Why = ({ children }) => (
+  <div role="note" style={{ fontSize: 12.5, color: 'var(--sd-gold, #FFD700)', marginTop: 8 }}>{children}</div>
+);
+
+const StepText = ({ children }) => (
+  <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6 }}>{children}</div>
+);
+const StepActions = ({ children }) => (
+  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>{children}</div>
+);
+
+const SettingTitle = ({ title, line }) => (
+  <div style={{ marginBottom: 8 }}>
+    <div style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</div>
+    <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5 }}>{line}</div>
+  </div>
+);
+
+/** A switch with its name, what it does in a line, and the rest one tap away. */
+function Toggle({ checked, onChange, disabled, title, line, more, tag }) {
+  const id = useId();
   return (
-    <div style={{
-      padding: done ? '14px 18px' : '18px 20px', borderRadius: 14,
-      background: done ? 'rgba(0,255,136,0.03)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.035)',
-      border: `1px solid ${done ? 'rgba(0,255,136,0.18)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: done ? 16 : 19, fontWeight: 800 }}>{title}</span>
-        {time && !done && <span style={{ fontSize: 12, color: 'var(--sd-fg-2, #8fd9b6)', marginLeft: 'auto' }}>⏱ {time}</span>}
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <input id={id} type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)}
+        style={{ marginTop: 3, width: 16, height: 16, accentColor: '#00c870', cursor: disabled ? 'not-allowed' : 'pointer' }} />
+      <div style={{ minWidth: 0 }}>
+        <label htmlFor={id} style={{ display: 'block', fontSize: 13.5, fontWeight: 700, cursor: disabled ? 'default' : 'pointer' }}>
+          {title}
+          {tag && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--sd-gold, #FFD700)' }}>{tag}</span>}
+        </label>
+        <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5 }}>{line}</div>
+        {more && (
+          <details style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 4 }}>
+            <summary style={{ cursor: 'pointer', color: 'var(--sd-fg-2, #aab7c4)', fontWeight: 600 }}>More</summary>
+            <div style={{ marginTop: 4 }}>{more}</div>
+          </details>
+        )}
       </div>
-      <div style={{ fontSize: done ? 13 : 14, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6, margin: done ? '6px 0 10px' : '8px 0 14px', maxWidth: 600 }}>{body}</div>
-      {children}
-      {(launch || more) && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{launch}{more}</div>}
     </div>
   );
 }

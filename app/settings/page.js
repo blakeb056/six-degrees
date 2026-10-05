@@ -13,7 +13,6 @@ import TierSection from '../components/settings/TierSection';
 import TitleSection from '../components/settings/TitleSection';
 import AppearanceSection from '../components/settings/AppearanceSection';
 import CompanyScores from '../components/CompanyScores';
-import UsageSection from '../components/settings/UsageSection';
 import { Section, Body, Mono, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 import { CSV_USER } from '../../lib/csv';
@@ -33,15 +32,20 @@ import { insightsHref } from '../../lib/insights-address';
 // (Blake, 2026-10-04: "make sure all the uis are compliant"): picking one
 // scrolls to it, and as you scroll the one you're reading is lit. One long page
 // rather than one section at a time, so every /settings#… link still lands
-// (the notch's budget goes to #usage, Profile's sectors to #sector).
+// (Profile's sectors go to #sector). LinkedIn usage moved to the Scan page
+// (Blake, 2026-10-04: "usage … should be in scanner"): /settings#usage, from an
+// old link or bookmark, goes on to /setup#usage.
 
 export default function SettingsPage() {
+  useEffect(() => {
+    if (window.location.hash === '#usage') window.location.replace('/setup#usage');
+  }, []);
   return <OnboardingGate><SettingsInner /></OnboardingGate>;
 }
 
 // The notch's tabs: the page's sections, top to bottom, by their ids.
 const SECTIONS = [
-  ['updates', 'Updates'], ['usage', 'LinkedIn usage'], ['appearance', 'Appearance'],
+  ['updates', 'Updates'], ['appearance', 'Appearance'],
   ['scoring', 'Scores'], ['data', 'Your data'], ['about', 'About'],
 ];
 
@@ -150,8 +154,13 @@ function SettingsInner() {
         {error && <Body style={{ color: 'var(--sd-red, #ff7676)', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
-        {/* How close the LinkedIn account is to the line; the notch and the Scan page's budget link here (#usage). */}
-        <UsageSection />
+        {/* LinkedIn usage is on the Scan page now, last, with the scanner it measures. */}
+        <Section id="usage" title="LinkedIn usage">
+          <Body>
+            It&rsquo;s on the Scan page now, with the scanner:{' '}
+            <Link href="/setup#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>see your LinkedIn usage &rarr;</Link>
+          </Body>
+        </Section>
         <AppearanceSection />
         <Section id="scoring" title="Scores">
           <Body>
