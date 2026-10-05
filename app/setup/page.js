@@ -12,6 +12,7 @@ import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
+import useNotchTabs from '../components/useNotchTabs';
 import { paceOf, durationText, firstCircleSeconds } from '../../lib/scan-pace';
 import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
@@ -39,6 +40,11 @@ const ACTION_LABELS = {
   connect: 'Sending a connection request (Auto)',
 };
 
+// The notch's one tab (lib/island.js). The page is one journey, four steps down
+// a line, with the rest folded away in Fine-tune on purpose, so it has no
+// sections to pick between: the tab is the page, lit, and takes you to its top.
+const SCAN_TAB = { items: [{ key: 'scan', label: 'Scan' }], current: 'scan', onPick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
+
 export default function SetupPage() {
   // Suspense because SetupInner reads the address's ?scan= (useSearchParams),
   // which Next requires to sit inside one for the page to build.
@@ -46,6 +52,7 @@ export default function SetupPage() {
 }
 
 function SetupInner() {
+  useNotchTabs(SCAN_TAB);
   // Updates moved to Settings; an old menu item or bookmark still lands there.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('check') === 'updates') {
@@ -269,7 +276,8 @@ function SetupInner() {
       {/* The same header as every page, Scan lit (Blake, 2026-10-02: continuity) */}
       <AppHeader active="scan" brand="span" />
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px' }}>
+      {/* Room at the top for the notch's Scan tab */}
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '46px 24px 64px' }}>
 
         {/* What the scanner is, in one breath, and what it never does */}
         <div style={{

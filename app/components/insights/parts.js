@@ -27,7 +27,7 @@ export const CARD_BG = 'rgba(var(--sd-ink, 255, 255, 255), 0.035)';
 export function useIsMobile() {
   const [m, setM] = useState(false);
   useEffect(() => {
-    const check = () => setM(window.innerWidth < 768);
+    const check = () => setM(window.matchMedia('(max-width: 767px)').matches);   // the window's width, as AppHeader's
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);

@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, CLUSTERS, ORBIT, LAYOUT_LOOKS, layoutOf, labNow, setLab, watchLab,
+  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
@@ -113,12 +113,6 @@ export default function GalaxyLab() {
   const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
   const preset = layoutOf(lab);
   const fit = () => setClock({ fit: clockNow().fit + 1 });
-  // A layout: its forces and its look, then everyone on screen once it settles.
-  const pickLayout = (v) => {
-    const forces = v === 'rings' ? { ...Object.fromEntries(FORCES.map((f) => [f.key, LAB_DEFAULTS[f.key]])), sizeBy: 'power' } : v === 'orbit' ? ORBIT : CLUSTERS;
-    setLab({ ...forces, ...LAYOUT_LOOKS[v] });
-    fit();
-  };
   const still = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
 
   return (
@@ -148,7 +142,9 @@ export default function GalaxyLab() {
           <div style={heading}>Layout</div>
           <Choice
             value={preset}
-            options={[['rings', 'Rings'], ['orbit', 'Orbit'], ['clusters', 'Clusters']]}
+            // A layout's forces and look, then everyone on screen: lib/galaxy-lab.js
+            // pickLayout, the same as Network Circle's notch picking one.
+            options={LAYOUTS.map((l) => [l.key, l.label])}
             onPick={pickLayout}
           />
           <div style={{ ...small, marginBottom: 6 }}>

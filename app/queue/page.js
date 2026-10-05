@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppHeader from '../components/AppHeader';
 import SocialHub from '../social/SocialHub';
-import { setNotchTabs } from '../../lib/island';
+import useNotchTabs from '../components/useNotchTabs';
 import { loadNetwork } from '../../lib/network';
 import { IS_DEMO } from '../../lib/demo';
 import OutlinkQuest from '../components/OutlinkQuest';
@@ -145,19 +145,16 @@ function QueueInner() {
   }, [serverPending, recs, requests, bridgeById]);
 
   // Circles, To add, Pending and Messages & follow-ups in the notch under the tabs.
-  useEffect(() => {
-    setNotchTabs({
-      items: [
-        { key: 'quest', label: 'Circles' },
-        { key: 'recs', label: `To add (${recs.length})` },
-        { key: 'pending', label: `Pending (${pendingList.length})` },
-        { key: 'messages', label: 'Messages & follow-ups' },
-      ],
-      current: view,
-      onPick: setView,
-    });
-    return () => setNotchTabs(null);
-  }, [view, recs.length, pendingList.length]);
+  useNotchTabs(useMemo(() => ({
+    items: [
+      { key: 'quest', label: 'Circles' },
+      { key: 'recs', label: `To add (${recs.length})` },
+      { key: 'pending', label: `Pending (${pendingList.length})` },
+      { key: 'messages', label: 'Messages & follow-ups' },
+    ],
+    current: view,
+    onPick: setView,
+  }), [view, recs.length, pendingList.length]));
 
   // Demo builds: this page is excluded from the public demo
   if (IS_DEMO) {

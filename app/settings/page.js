@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import OnboardingGate from '../components/OnboardingGate';
+import AppHeader from '../components/AppHeader';
+import useNotchTabs from '../components/useNotchTabs';
+import { useUser } from '../components/UserProvider';
 import UpdatePanel from '../components/UpdatePanel';
 import DataSection from '../components/settings/DataSection';
 import SectorSection from '../components/settings/SectorSection';
@@ -11,8 +14,10 @@ import TitleSection from '../components/settings/TitleSection';
 import AppearanceSection from '../components/settings/AppearanceSection';
 import CompanyScores from '../components/CompanyScores';
 import UsageSection from '../components/settings/UsageSection';
-import { Section, Body, Mono, LINE, FONT } from '../components/ui';
+import { Section, Body, Mono, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
+import { CSV_USER } from '../../lib/csv';
+import { insightsHref } from '../../lib/insights-address';
 
 // Settings: one page for the choices that shape how the app treats your data,
 // and the facts about this copy. Each feature adds its own <Section>; what the
@@ -22,10 +27,35 @@ import { IS_DEMO } from '../../lib/demo';
 // Scores live here again (Blake, 2026-10-02: "moving scores into settings"):
 // your field, how tiers are graded and every company's score. They had a tab
 // of their own (app/scores), which now forwards here; network health went to
-// Profile → Insights.
+// Profile → ✦ Insights → Health.
+//
+// The same header as every page, and the sections in the notch under it
+// (Blake, 2026-10-04: "make sure all the uis are compliant"): picking one
+// scrolls to it, and as you scroll the one you're reading is lit. One long page
+// rather than one section at a time, so every /settings#… link still lands
+// (the notch's budget goes to #usage, Profile's sectors to #sector).
 
 export default function SettingsPage() {
   return <OnboardingGate><SettingsInner /></OnboardingGate>;
+}
+
+// The notch's tabs: the page's sections, top to bottom, by their ids.
+const SECTIONS = [
+  ['updates', 'Updates'], ['usage', 'LinkedIn usage'], ['appearance', 'Appearance'],
+  ['scoring', 'Scores'], ['data', 'Your data'], ['about', 'About'],
+];
+
+/** The section you're reading: the last whose top has passed just under the notch, or the last of all at the foot of the page. */
+function sectionInView() {
+  const line = (document.querySelector('[data-notch]')?.getBoundingClientRect().bottom ?? 0) + 40;
+  const atEnd = window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  if (atEnd) return SECTIONS[SECTIONS.length - 1][0];
+  let current = SECTIONS[0][0];
+  for (const [id] of SECTIONS) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= line) current = id;
+  }
+  return current;
 }
 
 const KIND_LABEL = {
@@ -38,6 +68,7 @@ const KIND_LABEL = {
 };
 
 function SettingsInner() {
+  const { userId } = useUser();
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
   // Saving your field or tiers rescores everyone; the company list reads its scores again when this changes.
@@ -50,6 +81,49 @@ function SettingsInner() {
       .then(setInfo)
       .catch((e) => setError(e.message));
   }, []);
+
+  // Which section is lit in the notch: the one you're reading, measured on
+  // scroll. A pick lights its own at once and holds it while its scroll runs,
+  // so the light doesn't flick through every section on the way.
+  const [section, setSection] = useState(SECTIONS[0][0]);
+  const held = useRef(0);
+  useEffect(() => {
+    let queued = 0;
+    const spy = () => {
+      queued = 0;
+      if (performance.now() < held.current) return;
+      setSection(sectionInView());
+    };
+    const later = () => { if (!queued) queued = requestAnimationFrame(spy); };
+    const ended = () => { held.current = 0; };
+    later();
+    window.addEventListener('scroll', later, { passive: true });
+    window.addEventListener('resize', later);
+    window.addEventListener('scrollend', ended);
+    return () => {
+      cancelAnimationFrame(queued);
+      window.removeEventListener('scroll', later);
+      window.removeEventListener('resize', later);
+      window.removeEventListener('scrollend', ended);
+    };
+  }, []);
+  const pick = useCallback((id) => {
+    const el = document.getElementById(id);
+    setSection(id);
+    if (!el) return;
+    // Its heading just under the notch, which waits at the top of the window once the header has scrolled away.
+    const notch = document.querySelector('[data-notch]')?.offsetHeight ?? 0;
+    const header = document.querySelector('header');
+    const below = header ? header.offsetTop + header.offsetHeight : 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - notch + 8;
+    held.current = performance.now() + 1500;
+    window.scrollTo({ top: top <= below ? 0 : top, behavior: 'smooth' });
+  }, []);
+  useNotchTabs(useMemo(() => (IS_DEMO ? null : {
+    items: SECTIONS.map(([key, label]) => ({ key, label })),
+    current: section,
+    onPick: pick,
+  }), [section, pick]));
 
   if (IS_DEMO) {
     return (
@@ -69,20 +143,10 @@ function SettingsInner() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: FONT }}>
-      <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Link href="/" style={{
-          display: 'flex', alignItems: 'center', gap: 6, color: 'var(--sd-fg-3, #888)', textDecoration: 'none',
-          fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6,
-          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE,
-        }}>← Back to Map</Link>
-        <h1 style={{
-          fontSize: 22, fontWeight: 700, margin: 0,
-          background: 'linear-gradient(135deg, #FFD700, #9B59B6, #3498DB)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>Settings</h1>
-      </header>
+      <AppHeader active="settings" csvMode={userId === CSV_USER.id} />
 
-      <main style={{ maxWidth: 980, margin: '0 auto', padding: '8px 24px 64px' }}>
+      {/* Room at the top for the notch, which hangs under the header with the sections in it */}
+      <main style={{ maxWidth: 980, margin: '0 auto', padding: '40px 24px 64px' }}>
         {error && <Body style={{ color: 'var(--sd-red, #ff7676)', marginTop: 16 }}>{error}</Body>}
 
         <UpdatePanel />
@@ -97,7 +161,7 @@ function SettingsInner() {
             <a href="#titles" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>how titles rank</a> and{' '}
             <a href="#companies" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>any company&rsquo;s score</a>.
             A change here rescores everyone. How your network holds together is in{' '}
-            <Link href="/profile?view=insights" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights</Link>.
+            <Link href={insightsHref('health')} style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>Profile → Insights → Health</Link>.
           </Body>
           <SectorSection onSaved={saved} />
           <TierSection onSaved={saved} />
