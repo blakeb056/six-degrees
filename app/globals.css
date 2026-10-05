@@ -573,4 +573,6 @@ html[data-buttons="bold"] .sd-edge-peek { background: #000000; color: #ffffff; -
    on a light look, where the bright one disappears on white. */
 @font-face { font-family: "Manrope"; font-style: normal; font-weight: 800; font-display: swap; src: url("/fonts/manrope-800.woff2") format("woff2"); }
 .sd-wordmark { font-family: "Manrope", var(--sd-font); font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; color: var(--sd-tier-s, #ffd700); }
-html[data-mode="light"] .sd-wordmark { color: color-mix(in srgb, var(--sd-tier-s, #d99a00) 80%, #000); }
+/* On a light look the word is ink and the gold lives in its dots (Blake, 2026-10-05:
+   "black text on white background and with the color dots"). */
+html[data-mode="light"] .sd-wordmark { color: var(--sd-fg-1, #111827); }
