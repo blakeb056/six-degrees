@@ -30,7 +30,7 @@ export const VIEWS = {
   // Orbit is a layout of the Galaxy now, in its Physics (Blake, 2026-10-02: "add that
   // as a visual option instead so the person can interact with it"): lib/galaxy-lab.js ORBIT.
   // Separation is a tab of its own (Blake, 2026-10-02), not a view inside Degrees.
-  separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Every 2nd degree, ranked · every way in' },
+  separation: { component: SeparationView, modes: ['separation'], label: 'Separation',    icon: '🏆', desc: 'Everyone past your connections, ranked · every way in' },
   chain:    { component: ChainView,  modes: ['degrees'],            label: 'Bridge Chains', icon: '🔗', desc: 'Your bridges, and the chains that lead on from them' },
   // Bridge Chains' overview for the circles not built yet (Blake, 2026-10-04: "basically the same
   // thing we have for bridges but just make it for unscanned clusters"): a press builds one.

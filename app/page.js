@@ -7,6 +7,7 @@ import useScanner from './components/useScanner';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
+import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
 import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
@@ -203,7 +204,7 @@ function HomeInner() {
   const grid = isDegreesMode ? grids.degrees : grids.network;
   // Degrees draws your connections (the bridges among them) and their circles;
   // Network Circle draws whoever the grid shows, at any degree.
-  // Separation ranks the people two steps away, and every connection is a way
+  // Separation ranks the people past your connections, and every connection is a way
   // in to them whatever its tier, so there the tiers pick who's ranked and never
   // which connections lead to them (Blake, 2026-10-03: hiding a tier took the
   // purple A-tier mutuals off the map; "the filter should only apply to the output").
@@ -242,13 +243,17 @@ function HomeInner() {
   }
   // How many people stand behind each dot of the grid. In Degrees, 1st degree
   // counts the bridges, since those are the connections it draws, and in its
-  // Unscanned view the connections not scanned yet; Separation only ranks the 2nd.
+  // Unscanned view the connections not scanned yet. Separation: below.
   const unscannedView = isDegreesMode && !isSeparation && visualMode === 'unscanned';
-  const panelCounts = useMemo(() => gridCounts(isSeparation
-    ? { 2: byDegree[2] }
-    : isDegreesMode
+  // Separation counts each person once, at the nearest degree a chain of
+  // scanned circles reaches them, and company scans' finds at 3rd (lib/separation.js).
+  const sepCounts = useMemo(() => (isSeparation ? separationCounts([...degree2, ...degree3], degree1) : null),
+    [isSeparation, degree1, degree2, degree3]);
+  const panelCounts = useMemo(() => (isSeparation ? sepCounts : gridCounts(isDegreesMode
       ? { 1: unscannedView ? notScannedYet(degree1, reachIndex(degree1, degree2, scanNotes)).todo : degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
-      : byDegree), [isSeparation, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree]);
+      : byDegree)), [isSeparation, sepCounts, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree]);
+  // Who Separation ranks: the grid, by tier and the degree each person is at.
+  const sepShows = useCallback((tier, degree) => shows(grid, tier, degree), [grid]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) { setSidebarCollapsed(false); setOpenNote(null); }
@@ -413,6 +418,9 @@ function HomeInner() {
             // all your scanned circles, and "already connected" needs everyone.
             fullDegree1: degree1,
             fullDegree2: degree2,
+            // Company scans' finds, for Separation's 3rd degree, and who it ranks.
+            degree3,
+            showsAt: sepShows,
             scanNotes,
             canScan,
             chainOpen,
