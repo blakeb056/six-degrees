@@ -386,23 +386,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
                     stroke={seg.kind === 'ready' ? GREEN : DEGREE_COLORS[2]} />
                 ))}
               </g>
-              {/* Node */}
-              <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 13 : 11}
-                fill={localPhoto(b.profile_image_url) ? '#1a1a2e' : TIER_COLORS[b.tier]}
-                stroke={isHov ? 'var(--sd-fg-1, #fff)' : TIER_COLORS[b.tier]}
-                strokeWidth={isHov ? 2.5 : 2} />
-              {/* Photo */}
-              {localPhoto(b.profile_image_url) && (
-                <>
-                  <clipPath id={'bc-' + b.id}><circle cx={b.x} cy={b.y} r={isHov ? 11 : 9} /></clipPath>
-                  <image href={localPhoto(b.profile_image_url)} x={b.x - (isHov ? 11 : 9)} y={b.y - (isHov ? 11 : 9)}
-                    width={isHov ? 22 : 18} height={isHov ? 22 : 18} clipPath={`url(#bc-${b.id})`} />
-                </>
-              )}
-              {!localPhoto(b.profile_image_url) && (
-                <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
-                  fontSize={11} fontWeight={700}>{b.name?.charAt(0)}</text>
-              )}
+              {/* Node, with their photo or initial */}
+              <NodeFace row={b} x={b.x} y={b.y} r={isHov ? 13 : 11} hov={isHov} clipId={'bc-' + b.id} />
               {/* The circle's notifications, top right (Blake, 2026-10-02: "the circle degree
                   outline on the top right with the number of notifications for that cluster"):
                   new notifications about it and the people in it ready to scan. Gold when
@@ -477,6 +462,36 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * A person's dot on an overview: in their tier's colour, with their photo or
+ * initial. Bridge Chains draws each bridge with it, and Degrees' Unscanned view
+ * each connection not scanned yet (UnscannedView.js). `r` is its radius (11 at
+ * full size, 13 hovered); `scale` shrinks everything else with it, for a ring
+ * that has closed up.
+ */
+export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1 }) {
+  const photo = localPhoto(row.profile_image_url);
+  const inset = r - 2 * scale;
+  return (
+    <>
+      <circle className="sd-dot" cx={x} cy={y} r={r}
+        fill={photo ? '#1a1a2e' : TIER_COLORS[row.tier]}
+        stroke={hov ? 'var(--sd-fg-1, #fff)' : TIER_COLORS[row.tier]}
+        strokeWidth={(hov ? 2.5 : 2) * scale} />
+      {photo && (
+        <>
+          <clipPath id={clipId}><circle cx={x} cy={y} r={inset} /></clipPath>
+          <image href={photo} x={x - inset} y={y - inset} width={inset * 2} height={inset * 2} clipPath={`url(#${clipId})`} />
+        </>
+      )}
+      {!photo && (
+        <text x={x} y={y + 4 * scale} textAnchor="middle" fill={row.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
+          fontSize={11 * scale} fontWeight={700}>{row.name?.charAt(0)}</text>
+      )}
+    </>
   );
 }
 
@@ -587,7 +602,7 @@ function CirclePreview({ bridge, members, reach, cx, cy, maxR, still, band, circ
 }
 
 /** The soft breathing halo on someone ready for a circle scan. Still when Reduce Motion is on. */
-function Halo({ x, y, r, still }) {
+export function Halo({ x, y, r, still }) {
   return (
     <circle cx={x} cy={y} r={r} fill={GREEN} fillOpacity={0.16} stroke={GREEN} strokeWidth={0.8} strokeOpacity={0.45} pointerEvents="none">
       {!still && <animate attributeName="fill-opacity" values="0.06;0.24;0.06" dur="2.8s" repeatCount="indefinite" />}
@@ -606,7 +621,7 @@ function Lock({ x, y, s }) {
   );
 }
 
-function ZoomButtons({ onIn, onReset, onOut }) {
+export function ZoomButtons({ onIn, onReset, onOut }) {
   const round = (dim) => ({
     width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
     background: dim ? 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)', color: dim ? 'var(--sd-fg-4, #666)' : 'var(--sd-fg-1, #fff)',
@@ -1049,7 +1064,7 @@ function CircleFocus({ trail, index, reach, dims, requests, scanningId, still, c
 }
 
 // Words over the map without a box: a soft halo in the theme's background (lib/themes.js).
-const HALO_TEXT = '0 0 3px var(--sd-bg), 0 0 6px var(--sd-bg), 0 0 1px var(--sd-bg)';
+export const HALO_TEXT = '0 0 3px var(--sd-bg), 0 0 6px var(--sd-bg), 0 0 1px var(--sd-bg)';
 
 // A link's cluster draws at most this many of their people; the count beside it is the whole circle.
 const LINK_DOTS = 290;
@@ -1091,7 +1106,7 @@ function tipFor(row, f, scanningId, depth, toScan) {
 }
 
 /** A tooltip in screen space, above the point, kept inside the window. */
-function Tip({ x, y, w, lines, accent }) {
+export function Tip({ x, y, w, lines, accent }) {
   const width = Math.max(150, Math.min(240, Math.max(...lines.map((l) => String(l).length)) * 5.6 + 20));
   const height = 12 + lines.length * 12;
   const left = Math.max(6, Math.min(w - width - 6, x - width / 2));
