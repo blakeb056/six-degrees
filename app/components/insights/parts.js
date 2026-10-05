@@ -102,7 +102,7 @@ export function PersonCell({ row, size = 34, chip = true, sub }) {
 
 export const ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 };
 
-/** The page's title, in the tab's own colours (plain ink on Analyst, which takes gradients off). */
+/** The page's title, in the tab's own colours. */
 export const TITLE = {
   margin: 0, fontSize: 34, fontWeight: 850, letterSpacing: -0.6, lineHeight: 1.1,
   background: 'linear-gradient(135deg, var(--sd-gold, #FFD700) 10%, var(--sd-orange, #FF6B35) 60%, var(--sd-purple, #9B59B6))',

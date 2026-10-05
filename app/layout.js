@@ -25,11 +25,11 @@ import ThemeLoader from './components/ThemeLoader';
 import LiquidGlass from './components/LiquidGlass';
 import ThemeDefs from './components/ThemeDefs';
 
-const THEME_FIRST = `try{var t=JSON.parse(localStorage.getItem('six-degrees-theme-vars')||'null');if(t&&t.vars){var r=document.documentElement;for(var k in t.vars){var v=String(t.vars[k]);if(/^--sd-[a-z0-9-]+$/.test(k)&&!/[;{}<>]/.test(v))r.style.setProperty(k,v)}var a=t.attrs||{};['theme','backdrop','mode','buttons','dots'].forEach(function(n){if(/^[a-z]+$/.test(a[n]||''))r.dataset[n]=a[n]});r.style.colorScheme=a.mode==='light'?'light':'dark'}}catch(e){}`;
+const THEME_FIRST = `try{var t=JSON.parse(localStorage.getItem('six-degrees-theme-vars')||'null');if(t&&t.vars){var r=document.documentElement;for(var k in t.vars){var v=String(t.vars[k]);if(/^--sd-[a-z0-9-]+$/.test(k)&&!/[;{}<>]/.test(v))r.style.setProperty(k,v)}var a=t.attrs||{};['theme','backdrop','mode','buttons','dots'].forEach(function(n){if(/^[a-z]+$/.test(a[n]||'')&&(n!=='buttons'||a[n]==='soft'))r.dataset[n]=a[n]});r.style.colorScheme=a.mode==='light'?'light':'dark'}}catch(e){}`;
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-backdrop="none" data-mode="dark" data-buttons="soft" data-dots="solid" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-backdrop="none" data-mode="dark" data-buttons="frosted" data-dots="solid" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         {/* The theme (lib/theme-store.js), on the page before it paints. Only
             --sd- variables, and only values with nothing that could end one. */}

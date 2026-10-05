@@ -11,7 +11,7 @@
 // So it's the same circle in the same place, drawn in the app's own materials
 // (app/globals.css, "Edge buttons"): a frosted puck with a lit rim, an inner
 // shadow and a glow in its colour (the look's accent for Filters, its S-tier
-// gold for Details), porcelain on a light look, a hairline on Analyst. Hovering
+// gold for Details), porcelain on a light look, a hard ring on High contrast. Hovering
 // lifts it and builds a cluster round it, clockwise from twelve, as Check for
 // new's ↻ does (lib/cluster-dots.js); its name peeks out beside it. Opening
 // slides the panel out from behind it: the dots stream along the panel's edge,
