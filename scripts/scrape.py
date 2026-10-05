@@ -70,7 +70,7 @@ MESSAGE_HISTORY_MAX = 1000
 # Scrolls in a row that bring no conversation it hadn't seen: the end of the list.
 MESSAGE_HISTORY_STILL = 3
 # Seconds after each scroll for the list to load. Fixed, on purpose: the
-# scanner is openly slow, never made to look like a person with random waits.
+# scanner is slow on purpose, never made to look like a person with random waits.
 MESSAGE_WAIT = 4
 
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
@@ -364,25 +364,33 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
 
     _note_signed_in(False)
     say = log_fn or (lambda m: None)
+    # The one time the scanner's Chrome comes out from the background: LinkedIn
+    # needs you at it (Blake, 2026-10-04: no windows unless they're needed).
+    # The NEEDS_YOU line is what the app shows meanwhile (lib/scan-progress.js).
+    bring_forward(page)
     if had_session and wall == "checkpoint":
+        print(f"{NEEDS_YOU} finish its security check in the Chrome window in front.", flush=True)
         print()
-        print("  LinkedIn wants a security check. Finish it in the browser window;")
-        print("  this closes by itself once it's done. Then leave scanning for a day.")
+        print("  LinkedIn wants a security check. Finish it in the Chrome window;")
+        print("  this carries on by itself once it's done. Then leave scanning for a day.")
         print()
         say("Waiting for you to finish LinkedIn's security check...")
     else:
+        print(f"{NEEDS_YOU} sign in to LinkedIn in the Chrome window in front.", flush=True)
         _print_sign_in_banner(say)
     ok = _wait_for_sign_in(page, context, timeout_s, say)
     if ok:
         _note_signed_in(True)
+        # Through: the window goes back out of your way, and the scan carries on.
+        back_out_of_the_way(page)
     return ok
 
 
 def _print_sign_in_banner(say):
-    say("Waiting for you to sign into LinkedIn in the browser window...")
+    say("Waiting for you to sign into LinkedIn in the Chrome window...")
     print()
     print("  ==================================================================")
-    print("  Sign into LinkedIn in the browser window that just opened.")
+    print("  Sign into LinkedIn in the Chrome window in front of you.")
     print()
     print("  Use your email and password. \"Continue with Google\" and \"Sign in")
     print("  with Apple\" do not work here — Google blocks its sign-in flow")
@@ -446,13 +454,8 @@ def open_login_window():
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(),
-            headless=False,
-            channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"],
-            timeout=120000,
-        )
+        # The window you sign in at: in front from the start (launch_chrome).
+        browser = launch_chrome(p, sign_in=True)
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.set_default_timeout(120000)
 
@@ -480,6 +483,431 @@ def get_scraper_profile_path():
     profile_dir = base / "chrome-profile"
     profile_dir.mkdir(parents=True, exist_ok=True)
     return str(profile_dir)
+
+
+# --- The scanner's Chrome: no pop-ups, and out of your way --------------------
+#
+# Blake, 2026-10-04: "anything that utilizes chrome playwright within the actual
+# app need to have no pop ups or security warning, double check", then "we are
+# changing the rule that was during testing we are now polishing and dont want
+# to hinder the user with clicking ok for pop ups … we want seamlessness … not
+# to have any disruption through pop ups or windows". The rule it replaces (a
+# window you watch, openly automated) went for what's on screen only: the
+# pacing, the budgets, the caps and the cooldowns are exactly as they were.
+#
+# Every launch goes through launch_chrome(): one place for the flags, Chrome's
+# own quiet settings, and where the window goes.
+
+CHROME_ARGS = (
+    # Keeps navigator.webdriver false, as it always has.
+    "--disable-blink-features=AutomationControlled",
+    # What ChromeDriver passes. Without it Chrome starts with a yellow bar under
+    # the address bar, "You are using an unsupported command-line flag …
+    # Stability and security will suffer", about the flag above and Playwright's
+    # --no-sandbox. Chrome skips that bar (and its other startup bars) for it.
+    "--test-type",
+)
+
+# Far off every screen: Windows and Chrome itself use -32000 for "nowhere".
+# Windows keeps a window there. A Mac moves it back onto the screen, so on a
+# Mac the scanner's Chrome is hidden instead (MacChrome).
+OFF_SCREEN = (-32000, -32000)
+
+# Where the window goes (chrome_window_mode):
+#   "background"  a real Chrome window kept out of sight, that doesn't keep the
+#                 focus or cover the app: the default.
+#   "front"       a normal window in front: signing in (--login), and anyone
+#                 who ticks Fine-tune → "Show the scanner's Chrome window"
+#                 (--show-window) to watch it work.
+#   "headless"    no window at all (--headless, for the command line). Not
+#                 offered in the app any more: headless Chrome is easier for
+#                 LinkedIn to tell apart, and a check it asks for can't be seen.
+# A background window comes forward while LinkedIn needs you (bring_forward:
+# signing in, a security check) and goes back once you're through.
+WINDOW_MODES = ("background", "front", "headless")
+CHROME_WINDOW = {"show": False, "mode": None, "mac": None}
+# The line the app shows while the window is forward for you
+# (lib/scan-progress.js needsYou): keep the two in step.
+NEEDS_YOU = "LinkedIn needs you:"
+
+
+def chrome_window_mode(headless=False, show=False, sign_in=False):
+    """Where this launch's window goes: "front", "headless" or "background"."""
+    if sign_in or show:
+        return "front"
+    if headless:
+        return "headless"
+    return "background"
+
+
+def chrome_launch_options(profile_dir, mode="background", platform=None):
+    """launch_persistent_context's options for a window mode. Pure, so tested.
+
+    On a Mac, Chrome's own sandbox runs (Playwright turns it off unless asked):
+    it starts and works the same with it, and --no-sandbox is one of the flags
+    Chrome warns about. Windows and Linux keep Playwright's default for now:
+    only the Mac has been tried, and --test-type keeps the bar away there too.
+    """
+    platform = platform or sys.platform
+    args = list(CHROME_ARGS)
+    if mode == "background":
+        args.append(f"--window-position={OFF_SCREEN[0]},{OFF_SCREEN[1]}")
+    options = {
+        "user_data_dir": str(profile_dir),
+        "headless": mode == "headless",
+        "channel": "chrome",
+        "args": args,
+        "timeout": 120000,
+    }
+    if platform == "darwin":
+        options["chromium_sandbox"] = True
+    return options
+
+
+# Chrome's settings in the scanner's profile that would otherwise put a bubble
+# or a question on screen. Written before every launch (quiet_chrome_profile).
+QUIET_PREFS = (
+    # "Restore pages? Chrome didn't shut down correctly." Chrome asks after any
+    # exit it didn't finish itself: a stop that has to end it (it's given ten
+    # seconds), a crash, a Mac shut down mid-scan. It reads these two at start.
+    (("profile", "exit_type"), "Normal"),
+    (("profile", "exited_cleanly"), True),
+    # "Save password?" after you sign in.
+    (("credentials_enable_service",), False),
+    (("profile", "password_manager_enabled"), False),
+    # "Translate this page?"
+    (("translate", "enabled"), False),
+    # LinkedIn asks to show notifications: blocked without a question (2 = block).
+    (("profile", "default_content_setting_values", "notifications"), 2),
+)
+
+
+def chrome_quiet_prefs(prefs):
+    """Chrome's Preferences (a dict) with QUIET_PREFS set, everything else as it was. Pure."""
+    out = dict(prefs) if isinstance(prefs, dict) else {}
+    for keys, value in QUIET_PREFS:
+        node = out
+        for key in keys[:-1]:
+            child = node.get(key)
+            child = dict(child) if isinstance(child, dict) else {}
+            node[key] = child
+            node = child
+        node[keys[-1]] = value
+    return out
+
+
+def quiet_chrome_profile(profile_dir):
+    """Write QUIET_PREFS into <profile>/Default/Preferences, before Chrome starts.
+
+    Read, change, write back, so everything else Chrome keeps there (the
+    session's settings, window sizes) stays. A missing file is made (a new
+    profile). One that isn't JSON is left as it is: never break a profile over
+    a bubble. Returns whether the settings are in place; never raises.
+    """
+    path = Path(profile_dir) / "Default" / "Preferences"
+    try:
+        prefs = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        prefs = {}
+    except (OSError, ValueError) as exc:
+        print(f"  (Chrome's settings in the scanner's profile couldn't be read, so they were left as they are: {exc})")
+        return False
+    if not isinstance(prefs, dict):
+        return False
+    quiet = chrome_quiet_prefs(prefs)
+    if quiet == prefs:
+        return True
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _write_json_atomic(path, quiet)
+    except Exception as exc:
+        print(f"  (Chrome's settings in the scanner's profile couldn't be written: {exc})")
+        return False
+    return True
+
+
+class MacChrome:
+    """The scanner's Chrome as macOS sees it (AppKit's NSRunningApplication,
+    through ctypes: nothing to install), so it can be hidden as ⌘H hides an app.
+
+    Tried on a Mac, 2026-10-04, on a scratch profile: Chrome started by
+    Playwright makes itself the active app as its first window opens, about a
+    second in, wherever the window is placed, so it took the keyboard from
+    whatever you were typing in and kept it. A window placed off-screen is put
+    back on screen (and moved off later, 40 px of it stays). Hidden, it covers
+    nothing, the focus goes back where it was, and its pages keep working
+    (Playwright's flags keep a hidden window's page drawing and loading). So
+    from the moment it starts it is hidden whenever it shows or becomes active,
+    for its first seconds: the focus is gone for about a tenth of a second.
+    """
+
+    BUNDLE = "com.google.Chrome"   # channel="chrome": Google Chrome itself
+    WATCH = 20                     # seconds after the launch it's watched for
+    SETTLED = 1.5                  # hidden and not active this long after the launch: done
+
+    def __init__(self, profile_dir):
+        import threading
+        self.profile = str(profile_dir)
+        self.pid = None
+        self.lock = threading.Lock()
+        self.stop = threading.Event()
+        self.launched_at = None
+        self.before = set()
+        self.objc = _appkit()
+        try:
+            if self.objc:
+                self.before = self._chrome_pids()
+        except Exception:
+            self.objc = None
+
+    @property
+    def available(self):
+        return self.objc is not None
+
+    def _send(self, obj, selector, *args, restype=None, argtypes=()):
+        import ctypes
+        objc = self.objc
+        objc.objc_msgSend.restype = restype or ctypes.c_void_p
+        objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, *argtypes]
+        return objc.objc_msgSend(obj, objc.sel_registerName(selector.encode()), *args)
+
+    def _call(self, fn):
+        """fn() under the lock (the watcher is a thread) and its own autorelease pool."""
+        with self.lock:
+            pool = self.objc.objc_autoreleasePoolPush()
+            try:
+                return fn()
+            finally:
+                self.objc.objc_autoreleasePoolPop(pool)
+
+    def _chrome_pids(self):
+        """The process ids of every Google Chrome running."""
+        import ctypes
+
+        def run():
+            name = self._send(self.objc.objc_getClass(b"NSString"), "stringWithUTF8String:", self.BUNDLE.encode(),
+                              argtypes=(ctypes.c_char_p,))
+            apps = self._send(self.objc.objc_getClass(b"NSRunningApplication"),
+                              "runningApplicationsWithBundleIdentifier:", name, argtypes=(ctypes.c_void_p,))
+            return {self._send(self._send(apps, "objectAtIndex:", i, argtypes=(ctypes.c_ulong,)),
+                               "processIdentifier", restype=ctypes.c_int)
+                    for i in range(self._send(apps, "count", restype=ctypes.c_ulong))}
+        return self._call(run)
+
+    def _app(self):
+        """Ours, looked up again each time (never kept past its pool), or None once it has gone."""
+        import ctypes
+        if self.pid is None:
+            return None
+        return self._send(self.objc.objc_getClass(b"NSRunningApplication"),
+                          "runningApplicationWithProcessIdentifier:", self.pid, argtypes=(ctypes.c_int,)) or None
+
+    def _find(self):
+        """Which new Chrome is ours: the one started on this profile."""
+        import subprocess
+        for pid in self._chrome_pids() - self.before:
+            try:
+                args = subprocess.run(["ps", "-p", str(pid), "-o", "args="], capture_output=True, text=True,
+                                      timeout=5).stdout
+            except Exception:
+                continue
+            if f"--user-data-dir={self.profile}" in args:
+                self.pid = pid
+                return True
+            self.before.add(pid)   # someone else's Chrome, started meanwhile
+        return False
+
+    def _state(self):
+        """(active, hidden) for ours, or None once it has gone."""
+        import ctypes
+
+        def run():
+            app = self._app()
+            if app is None:
+                return None
+            return (bool(self._send(app, "isActive", restype=ctypes.c_bool)),
+                    bool(self._send(app, "isHidden", restype=ctypes.c_bool)))
+        return self._call(run)
+
+    def hide(self):
+        import ctypes
+
+        def run():
+            app = self._app()
+            if app is not None:
+                self._send(app, "hide", restype=ctypes.c_bool)
+            return app is not None
+        try:
+            return self._call(run)
+        except Exception:
+            return False
+
+    def show(self):
+        """Unhidden and the active app: LinkedIn needs you at the window."""
+        import ctypes
+        self.stop.set()
+
+        def run():
+            app = self._app()
+            if app is not None:
+                self._send(app, "unhide", restype=ctypes.c_bool)
+                # 2: NSApplicationActivateIgnoringOtherApps
+                self._send(app, "activateWithOptions:", 2, restype=ctypes.c_bool, argtypes=(ctypes.c_ulong,))
+            return app is not None
+        try:
+            return self._call(run)
+        except Exception:
+            return False
+
+    def watch(self):
+        """Hide it from the moment it appears, for its first seconds. Call just before the launch."""
+        import threading
+        import time as clock
+        started = clock.monotonic()
+
+        def run():
+            quiet_since = None
+            while not self.stop.is_set() and clock.monotonic() - started < self.WATCH:
+                try:
+                    if self.pid is None:
+                        self._find()
+                    if self.pid is not None:
+                        state = self._state()
+                        if state is None:
+                            return
+                        active, hidden = state
+                        if active or not hidden:
+                            self.hide()
+                            quiet_since = None
+                        elif self.launched_at is not None:
+                            quiet_since = quiet_since or clock.monotonic()
+                            if clock.monotonic() - quiet_since >= self.SETTLED:
+                                return
+                except Exception:
+                    return
+                clock.sleep(0.05)
+
+        threading.Thread(target=run, name="hide-chrome", daemon=True).start()
+
+    def launched(self):
+        import time as clock
+        self.launched_at = clock.monotonic()
+
+
+def _appkit():
+    """libobjc with AppKit loaded, or None (not a Mac, or it wouldn't load)."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        import ctypes
+        import ctypes.util
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc") or "/usr/lib/libobjc.A.dylib")
+        ctypes.cdll.LoadLibrary(ctypes.util.find_library("AppKit")
+                                or "/System/Library/Frameworks/AppKit.framework/AppKit")
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.objc_autoreleasePoolPush.restype = ctypes.c_void_p
+        objc.objc_autoreleasePoolPop.argtypes = [ctypes.c_void_p]
+        return objc
+    except Exception:
+        return None
+
+
+def launch_chrome(p, headless=False, sign_in=False):
+    """The scanner's Chrome, for every mode: quiet settings first, then the
+    window where chrome_window_mode puts it. `p` is sync_playwright()'s object."""
+    mode = chrome_window_mode(headless=headless, show=CHROME_WINDOW["show"], sign_in=sign_in)
+    profile = get_scraper_profile_path()
+    quiet_chrome_profile(profile)
+    CHROME_WINDOW["mode"] = mode
+    mac = MacChrome(profile) if mode == "background" and sys.platform == "darwin" else None
+    if mac and not mac.available:
+        mac = None
+    CHROME_WINDOW["mac"] = mac
+    if mac:
+        mac.watch()
+    try:
+        context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode))
+    except Exception:
+        if mac:
+            mac.stop.set()
+        raise
+    page = context.pages[0] if context.pages else context.new_page()
+    if mac:
+        mac.launched()
+    elif mode == "background" and sys.platform == "darwin":
+        # AppKit wouldn't load: minimised, its page keeps working all the same.
+        _set_window(page, {"windowState": "minimized"})
+    elif mode == "front":
+        # Chrome remembers where its window was, and the last one may have
+        # been off-screen: put it where it can be seen.
+        _place_on_screen(page)
+    return context
+
+
+def _set_window(page, *bounds):
+    """Browser.setWindowBounds, one after another, for the window this page is in."""
+    try:
+        session = page.context.new_cdp_session(page)
+    except Exception:
+        return False
+    try:
+        window_id = session.send("Browser.getWindowForTarget")["windowId"]
+        for b in bounds:
+            session.send("Browser.setWindowBounds", {"windowId": window_id, "bounds": b})
+        return True
+    except Exception:
+        return False
+    finally:
+        try:
+            session.detach()
+        except Exception:
+            pass
+
+
+def _place_on_screen(page):
+    """The window on the screen, in front, big enough for the page Playwright
+    draws (1280 x 720, plus Chrome's own bars). The page can't say how big the
+    screen is (Playwright stands in its own); a smaller one keeps it on screen."""
+    # A window that isn't "normal" (minimised) can't be moved: normal first.
+    placed = _set_window(page, {"windowState": "normal"}, {"left": 40, "top": 40, "width": 1300, "height": 860})
+    try:
+        page.bring_to_front()
+    except Exception:
+        pass
+    return placed
+
+
+def bring_forward(page):
+    """LinkedIn needs you (signing in, a security check): a background window
+    comes onto the screen, in front. A window already in front stays as it is;
+    headless has none to show."""
+    if CHROME_WINDOW["mode"] != "background":
+        return False
+    mac = CHROME_WINDOW["mac"]
+    if mac:
+        mac.show()
+    _place_on_screen(page)
+    if mac:
+        mac.show()
+    CHROME_WINDOW["mode"] = "forward"
+    return True
+
+
+def back_out_of_the_way(page):
+    """You're through (signed in, the check done): a window that came forward
+    for it goes back out of sight, and the focus back to where you were."""
+    if CHROME_WINDOW["mode"] != "forward":
+        return False
+    CHROME_WINDOW["mode"] = "background"
+    mac = CHROME_WINDOW["mac"]
+    if mac:
+        return mac.hide()
+    if sys.platform == "darwin":
+        return _set_window(page, {"windowState": "minimized"})
+    return _set_window(page, {"windowState": "normal"}, {"left": OFF_SCREEN[0], "top": OFF_SCREEN[1]})
 
 
 def resolve_active_user():
@@ -917,13 +1345,7 @@ def scrape_full(headless=False):
     print("Takes 3-5 minutes for ~500 connections.\n")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(),
-            headless=headless,
-            channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"],
-            timeout=120000,
-        )
+        browser = launch_chrome(p, headless=headless)
 
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.set_default_timeout(120000)
@@ -1148,13 +1570,7 @@ def scrape_connections(headless=False, full_walk=False, log_fn=None):
     reported = None
 
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(),
-            headless=headless,
-            channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"],
-            timeout=120000,
-        )
+        browser = launch_chrome(p, headless=headless)
 
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.set_default_timeout(120000)
@@ -1320,7 +1736,7 @@ DEFAULT_PACE = "fast"
 LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
 
 # Experimental all-day pacing for Auto-Bridge (--experimental; item 44, Graph
-# Study §8). Openly slow, never disguised: fixed waits, no random "human" timing.
+# Study §8). Slow on purpose, on fixed waits: no random "human" timing.
 # A sitting of SESSION_PAGES searches, then a long rest; searches only in the
 # daytime on this computer's clock; and at the daily budget it waits for the
 # budget to free up instead of stopping. Pages are saved one at a time.
@@ -2192,9 +2608,7 @@ def sync_messages(headless=False, full_history=False):
     kept = []
     seen = {}
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(), headless=headless, channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"], timeout=120000)
+        browser = launch_chrome(p, headless=headless)
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.set_default_timeout(120000)
         if not ensure_logged_in(page):
@@ -3336,13 +3750,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     outcome = None
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch_persistent_context(
-                user_data_dir=get_scraper_profile_path(),
-                headless=headless,
-                channel="chrome",
-                args=["--disable-blink-features=AutomationControlled"],
-                timeout=120000,
-            )
+            browser = launch_chrome(p, headless=headless)
             try:
                 page = browser.pages[0] if browser.pages else browser.new_page()
                 page.set_default_timeout(120000)
@@ -3448,13 +3856,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
         return []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=get_scraper_profile_path(),
-            headless=headless,
-            channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"],
-            timeout=120000,
-        )
+        browser = launch_chrome(p, headless=headless)
 
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.set_default_timeout(120000)
@@ -4155,7 +4557,7 @@ def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
 #
 # This is the one thing the scanner ever does on LinkedIn besides reading, and
 # only because a person pressed Auto on one card: one person per run, never a
-# batch, never on a timer. It is openly slow like everything else here: fixed
+# batch, never on a timer. It is slow on purpose like everything else here: fixed
 # waits, a profile view taken like any other (cap and gap), no "human" timing
 # and no mouse movement made up to look like someone (Blake's standing scanner
 # boundary). The app looks the person up by id and refuses first (cooldown,
@@ -4631,13 +5033,7 @@ def connect_person(profile_url, name=None, headless=False):
     result = None
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch_persistent_context(
-                user_data_dir=get_scraper_profile_path(),
-                headless=headless,
-                channel="chrome",
-                args=["--disable-blink-features=AutomationControlled"],
-                timeout=120000,
-            )
+            browser = launch_chrome(p, headless=headless)
             try:
                 page = browser.pages[0] if browser.pages else browser.new_page()
                 page.set_default_timeout(120000)
@@ -4940,8 +5336,13 @@ Examples:
     parser.add_argument("--save-photos", action="store_true",
                         help="Save the profile photos still kept as links to LinkedIn, then exit "
                              "(every scan also does this at its end)")
-    parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
+    parser.add_argument("--headless", action="store_true",
+                        help="No Chrome window at all (more detectable; a check LinkedIn asks for can't be seen)")
+    parser.add_argument("--show-window", action="store_true",
+                        help="Scan in a normal Chrome window in front, to watch it work. Without it the window "
+                             "stays out of sight and comes forward only when LinkedIn needs you")
     args = parser.parse_args()
+    CHROME_WINDOW["show"] = bool(args.show_window)
     if getattr(args, "experimental", False):
         EXPERIMENT["on"] = True
         print("Experimental Auto-Bridge: all-day pacing, and LinkedIn's own data read beside the page text.")

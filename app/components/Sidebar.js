@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { beginScrape, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow } from '../../lib/scraper-client';
+import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow } from '../../lib/scraper-client';
 import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
 import useScanner from './useScanner';
 import useRequests from './useRequests';
+import InlineNote, { useFadingNote } from './InlineNote';
 import TheirCircle from './TheirCircle';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { useUser } from './UserProvider';
@@ -235,14 +236,18 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                   <div style={row}>
                     <span style={label}>Scanned</span>
                     <span style={{ flex: 1 }}>{scanned}</span>
-                    {/* Stopped partway: carry on from that page, the line by their name's own
-                        Resume. The Scan page's Scan one circle reads the list again from page 1,
-                        which spends the searches already spent; that stays for anyone else. */}
-                    {i.bars !== 5 && canScan && (scansHere && resume ? (
+                    {/* Both press the card's own scan box, so they start right here with its
+                        checks, its log and any refusal (Blake, 2026-10-04: no pop-ups, nothing
+                        in the way; they used to open the Scan page to confirm there). Stopped
+                        partway: Resume carries on from that page, never page 1 again (the
+                        searches are spent already). Never scanned: Scan. A list read in part
+                        with nowhere to carry on from offers nothing here: the box below has Rescan. */}
+                    {i.bars !== 5 && canScan && scansHere && (resume ? (
                       <button type="button" style={act} title={`Resume from page ${resume.nextPage}`}
-                        onClick={() => resumeInScanBox(scanningThem)}>Resume →</button>
-                    ) : (resume === null || i.bars == null || !scansHere) && (
-                      <a href={`/setup?scan=${encodeURIComponent(selected.id)}`} style={act}>{i.bars == null ? 'Scan →' : 'Finish →'}</a>
+                        onClick={() => pressInScanBox('resume', scanningThem)}>Resume →</button>
+                    ) : i.bars == null && (
+                      <button type="button" style={act} title={`Scan ${first}’s circle: it starts here, in the background`}
+                        onClick={() => pressInScanBox('scan', scanningThem)}>Scan →</button>
                     ))}
                   </div>
                   {(() => {
@@ -1129,17 +1134,17 @@ function useResume(person) {
 }
 
 /**
- * Resume, from anywhere on the card: bring the scan box into view and press its
- * own Resume, so the same checks run and the scan's log or any problem shows
- * where it's seen. While their scan runs (or Resume is greyed out) it only
- * brings the box into view, which says why.
+ * Resume or Scan, from anywhere on the card: bring the scan box into view and
+ * press its own button (data-resume, data-scan), so the same checks run and the
+ * scan's log or any problem shows where it's seen. While their scan runs (or the
+ * button is greyed out) it only brings the box into view, which says why.
  */
-function resumeInScanBox(scanning = false) {
+function pressInScanBox(which = 'resume', scanning = false) {
   const box = document.getElementById('scan-box');
   if (!box) return;
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   box.animate?.([{ boxShadow: '0 0 0 3px rgba(255,215,0,0.75)' }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)' }], { duration: 1600 });
-  if (!scanning) box.querySelector('button[data-resume]:not([disabled])')?.click();
+  if (!scanning) box.querySelector(`button[data-${which === 'scan' ? 'scan' : 'resume'}]:not([disabled])`)?.click();
 }
 
 /**
@@ -1153,7 +1158,7 @@ function resumeInScanBox(scanning = false) {
 function StoppedPartway({ resume, scanning }) {
   const gold = 'var(--sd-gold, #FFD700)';
   return (
-    <button type="button" onClick={() => resumeInScanBox(scanning)}
+    <button type="button" onClick={() => pressInScanBox('resume', scanning)}
       aria-label={scanning ? 'Scanning their circle now: go to the scan' : `${stoppedLine(resume)}. Resume from page ${resume.nextPage}`}
       style={{
         display: 'flex', alignItems: 'center', gap: 9, width: '100%', boxSizing: 'border-box', margin: '-6px 0 16px',
@@ -1282,7 +1287,7 @@ function CreateClusterCard({ selected, degree2, resume }) {
                 Resume from page {resume.nextPage}
               </button>
             )}
-            <button onClick={() => start('bridge')} disabled={off} style={button(!resume && !hasCluster)}>
+            <button data-scan onClick={() => start('bridge')} disabled={off} style={button(!resume && !hasCluster)}>
               {read ? 'Rescan from the start' : <>Scan {selected.name}&apos;s Network</>}
             </button>
           </div>
@@ -1588,14 +1593,17 @@ function generateInsights(person, user, allConnections, degree2, routes = []) {
 //
 // This lists everyone you reached through a circle whose own circle can be
 // scanned now (lib/reach.js), strongest first, with the circle you found them
-// in and what a scan asks of LinkedIn. Each opens the Scan page with them
-// picked, and nothing starts until it's confirmed there, beside the budget and
-// the cooldown. Hidden lists stay in view, greyed, so nobody seems forgotten.
-// It's also the way to them from a keyboard or a screen reader: the orbs in
-// Bridge Chains aren't.
+// in and what a scan asks of LinkedIn. A press on one starts the scan of their
+// circle right here, as their card's Scan does (startHere); it used to open the
+// Scan page to be confirmed there (Blake, 2026-10-04: "we want seamlessness").
+// A refusal (a cooldown, the budget, one scan at a time) is a line in the box.
+// Hidden lists stay in view, greyed, so nobody seems forgotten. It's also the
+// way to them from a keyboard or a screen reader: the orbs in Bridge Chains aren't.
 function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
   const scan = useScanner();
   const [all, setAll] = useState(false);
+  const [note, say] = useFadingNote(9000);
+  const [asking, setAsking] = useState(null);   // whose start is being checked
   const reach = useMemo(() => reachIndex(connections, degree2, scanNotes), [connections, degree2, scanNotes]);
   const ready = useMemo(() => readyToScan(connections, reach), [connections, reach]);
   const hidden = useMemo(() => connections.filter((c) => reachState(c, reach) === 'hidden'), [connections, reach]);
@@ -1643,12 +1651,23 @@ function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
           {shown.map((p) => {
             const now = circle && scansCircleOf(scan, p);
             const from = origin(p);
+            const off = scan.running || Boolean(asking);
             return (
-              <Link key={p.id} role="listitem" href={`/setup?scan=${encodeURIComponent(p.id)}`}
-                aria-label={`Scan ${p.name}’s circle: opens the Scan page to confirm`}
+              <div key={p.id} role="listitem"><button type="button" disabled={off && !now}
+                aria-label={now ? `Scanning ${p.name}’s circle` : `Scan ${p.name}’s circle`}
+                title={now ? undefined : off ? `${busyReason(scan) || 'Something is starting'}. One scan at a time.` : `Scan ${p.name}’s circle: it starts here, in the background`}
+                onClick={async () => {
+                  if (now) return;
+                  say(null);
+                  setAsking(p.id);
+                  const why = await startHere('bridge', { name: p.name, id: p.id });
+                  setAsking(null);
+                  say(why ? `${first(p.name)}’s scan didn’t start: ${why}` : null);
+                }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
-                  textDecoration: 'none', color: 'var(--sd-fg-1, #fff)',
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, width: '100%',
+                  textAlign: 'left', font: 'inherit', cursor: now ? 'default' : off ? 'not-allowed' : 'pointer',
+                  opacity: off && !now ? 0.55 : 1, color: 'var(--sd-fg-1, #fff)',
                   background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', border: '1px solid rgba(0,255,136,0.18)',
                 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: tierColors[p.tier] || '#888', boxShadow: '0 0 0 2px rgba(0,255,136,0.45)' }} />
@@ -1662,9 +1681,9 @@ function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
                   )}
                 </span>
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--sd-green, #00ff88)', whiteSpace: 'nowrap' }}>
-                  {now ? 'Scanning…' : 'Scan… →'}
+                  {now ? 'Scanning…' : asking === p.id ? 'Starting…' : 'Scan →'}
                 </span>
-              </Link>
+              </button></div>
             );
           })}
           {ready.length > 5 && (
@@ -1680,10 +1699,12 @@ function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
       {ready.length > 0 && (
         <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', lineHeight: 1.5, marginTop: 8 }}>
           Each scan: {cost.profileViews} profile view, then one LinkedIn search for every page of their
-          list, up to {cost.searches} pages (about {cost.minutes} min for a whole list). Nothing starts
-          until you confirm it on the Scan page.
+          list, up to {cost.searches} pages (about {cost.minutes} min for a whole list). It runs in the
+          background; the notch shows how it&apos;s going.
         </div>
       )}
+      <InlineNote note={note} />
+
 
       {hidden.length > 0 && (
         <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--sd-fg-4, #777)', lineHeight: 1.6 }}>

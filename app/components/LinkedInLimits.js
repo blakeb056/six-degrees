@@ -58,17 +58,23 @@ function Bar({ used, cap }) {
 }
 
 export function BudgetBox({ li, onSetLimits, disabled }) {
+  // A raise past the safe limits, waiting for its answer: { change, question }.
+  const [asking, setAsking] = useState(null);
   if (!li) return null;
   const { limits } = li;
   const today = li.unreadable ? '?' : li.searchesToday;
   const views = li.unreadable ? '?' : li.profilesToday;
-  const set = (change) => onSetLimits({ ...limits, ...change });
-  // A budget past what LinkedIn has put up with is asked about first (lib/search-risk.js).
+  const set = (change) => { setAsking(null); onSetLimits({ ...limits, ...change }); };
+  // A budget past what LinkedIn has put up with is asked about first
+  // (lib/search-risk.js), in the box, beside the picker: it was a window.confirm
+  // (Blake, 2026-10-04: "dont want to hinder the user with clicking ok for pop ups").
   const ask = (change) => {
-    const q = limitQuestion(limits, { ...limits, ...change });
-    if (q && !window.confirm(q)) return;
-    set(change);
+    const question = limitQuestion(limits, { ...limits, ...change });
+    if (question) setAsking({ change, question });
+    else set(change);
   };
+  // While a raise is asked about, the pickers show it; "Keep" puts them back.
+  const shown = { ...limits, ...(asking?.change || {}) };
   const note = limitNote(limits);
   return (
     <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>
@@ -88,16 +94,33 @@ export function BudgetBox({ li, onSetLimits, disabled }) {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
         <span>Budget:</span>
-        <select value={limits.daily} disabled={disabled} onChange={(e) => ask({ daily: Number(e.target.value) })} style={sel}>
+        <select value={shown.daily} disabled={disabled} onChange={(e) => ask({ daily: Number(e.target.value) })} style={sel}>
           {DAILY.map((n) => <option key={n} value={n}>{n} a day</option>)}
         </select>
-        <select value={limits.monthly} disabled={disabled} onChange={(e) => ask({ monthly: Number(e.target.value) })} style={sel}>
+        <select value={shown.monthly} disabled={disabled} onChange={(e) => ask({ monthly: Number(e.target.value) })} style={sel}>
           {MONTHLY.map((n) => <option key={n} value={n}>{n ? `${n} a month` : 'no monthly cap (Premium)'}</option>)}
         </select>
-        <select value={limits.profiles} disabled={disabled} onChange={(e) => set({ profiles: Number(e.target.value) })} style={sel}>
+        <select value={shown.profiles} disabled={disabled} onChange={(e) => set({ profiles: Number(e.target.value) })} style={sel}>
           {PROFILES.map((n) => <option key={n} value={n}>{n} profile views a day</option>)}
         </select>
       </div>
+      {asking && (
+        <div role="group" aria-label="Raise the budget past the safe limits?" data-budget-question style={{
+          marginTop: 10, padding: '10px 12px', borderRadius: 8, lineHeight: 1.6,
+          background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.4)', color: 'var(--sd-fg-1, #f3e6b0)',
+        }}>
+          <div style={{ whiteSpace: 'pre-line' }}>{asking.question}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => set(asking.change)} disabled={disabled}
+              style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: 'var(--sd-gold, #FFD700)', borderColor: 'rgba(255,215,0,0.45)' }}>
+              Yes, change it
+            </button>
+            <button onClick={() => setAsking(null)} style={{ ...sel, cursor: 'pointer' }}>
+              Keep {limits.daily} a day, {limits.monthly ? `${limits.monthly} a month` : 'no monthly cap'}
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: 8, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>
         Every page of someone&rsquo;s connections is one search. LinkedIn limits a free account&rsquo;s people
         searches by the month (it doesn&rsquo;t say how many; reports put it around 250–350), resetting on the 1st.

@@ -305,7 +305,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
               const chip = <><Avatar person={p} size={22} tierColors={TIER_COLORS} />{p.name}<span style={{ color: 'var(--sd-fg-4, #6f7a88)' }}>{one(p.power_score)}</span></>;
               const style = { display: 'inline-flex', gap: 7, alignItems: 'center', fontSize: 12.5, padding: '5px 11px 5px 5px', borderRadius: 18, border: `1px solid ${LINE}`, background: CARD_BG, color: 'var(--sd-fg-1, #fff)', textDecoration: 'none' };
               return own
-                ? <Link key={p.id} href={`/setup?scan=${encodeURIComponent(p.id)}`} title={`Scan ${p.name}’s circle: opens the Scan page to confirm`} style={style}>{chip}</Link>
+                ? <Link key={p.id} href={`/setup?scan=${encodeURIComponent(p.id)}`} title={`Scan ${p.name}’s circle: opens the Scan page with them picked`} style={style}>{chip}</Link>
                 : <span key={p.id} style={style}>{chip}</span>;
             })}
           </div>

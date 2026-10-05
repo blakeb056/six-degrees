@@ -75,6 +75,8 @@ ns.update({
     'mark_bridge_hidden': lambda url, name: calls['hidden'].append(url),
     'push_connections': lambda *a, **kw: None,
     'get_scraper_profile_path': lambda: '/nonexistent',
+    # Every launch goes through launch_chrome (tests/chrome-launch.test.mjs): here, the stand-in browser.
+    'launch_chrome': lambda p, headless=False, sign_in=False: p.chromium.launch_persistent_context(),
     'ensure_logged_in': lambda page, **kw: True,
     'stop_requested': lambda: case.get('stop', False),
     '_scrape_one_bridge': lambda *a, **kw: calls['pages'].append(kw.get('start_page')) or (
