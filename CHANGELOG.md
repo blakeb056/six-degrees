@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-05
+
 ### Added
 - **Tuck the notch away.** A faint ⌃ at the notch's right end slides it up out of the way,
   leaving a thin pill under the tabs; click the pill, or press ⌘. (Ctrl+.), to bring it back.
