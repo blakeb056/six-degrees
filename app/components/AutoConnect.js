@@ -22,7 +22,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useScanner from './useScanner';
-import { beginScrape, busyReason } from '../../lib/scraper-client';
+import { beginScrape, busyReason, willQueue, queuedPlace, queuedLabel } from '../../lib/scraper-client';
 import { sawRequested } from '../../lib/requests-client';
 import { AUTO_EXPLAIN, AUTO_CONFIRM, INVITE_CAPS, connectOutcome } from '../../lib/auto-connect';
 
@@ -66,7 +66,11 @@ function useAutoConnect(person, onSent) {
   const shownJob = useRef(null);
 
   const mine = scan.running && scan.action === 'connect' && Boolean(person?.id) && scan.target?.id === person.id;
-  const busy = scan.running && !mine && !sending ? busyReason(scan) : null;
+  // While something else runs, a press waits its turn in the queue (lib/scan-queue.js),
+  // and the button says where: "Queued · 2nd". Greyed out only once the queue is full.
+  const queued = queuedLabel(queuedPlace(scan, 'connect', person));
+  const queues = willQueue(scan, 'connect', person);
+  const busy = scan.running && !mine && !sending && !queues && !queued ? busyReason(scan) : null;
 
   const done = (r) => {
     setResult(r);
@@ -88,7 +92,11 @@ function useAutoConnect(person, onSent) {
     setSending(true);
     setResult(null);
     try {
-      const { startedAt, ended } = await beginScrape('connect', { id: person.id, name: person.name });
+      const begun = await beginScrape('connect', { id: person.id, name: person.name });
+      // Queued: the button shows its place, then "Sending…" once its turn
+      // comes, and how it went from the job's end like any other (last, above).
+      if (begun.queued) return;
+      const { startedAt, ended } = begun;
       ours.current.add(startedAt);
       shownJob.current = startedAt;
       done(connectOutcome(await ended));
@@ -105,7 +113,7 @@ function useAutoConnect(person, onSent) {
   }
 
   async function press() {
-    if (sending || mine || busy) return;
+    if (sending || mine || busy || queued) return;
     setResult(null);
     if (await autoAccepted()) send();
     else setAsking(true);
@@ -123,7 +131,7 @@ function useAutoConnect(person, onSent) {
 
   return {
     press, confirm, cancel: () => setAsking(false), dismiss: () => setResult(null),
-    asking, sending: sending || mine, busy, result,
+    asking, sending: sending || mine, busy, result, queued,
   };
 }
 
@@ -186,8 +194,9 @@ const SIZES = {
 function AutoButton({ auto, size, label = 'Auto' }) {
   const s = SIZES[size] || SIZES.card;
   // Also while "Request sent" shows, before the card turns to its pending state.
-  const off = auto.sending || Boolean(auto.busy) || Boolean(auto.result?.marks);
-  const title = auto.busy ? `${auto.busy}. Auto waits for it to finish.` : AUTO_EXPLAIN;
+  const off = auto.sending || Boolean(auto.busy) || Boolean(auto.queued) || Boolean(auto.result?.marks);
+  const title = auto.busy ? `${auto.busy}. Auto waits for it to finish.`
+    : auto.queued ? `${auto.queued}: it sends once the scans before it finish. Remove it in the notch.` : AUTO_EXPLAIN;
   return (
     <button type="button" data-auto-connect onClick={(e) => { e.stopPropagation(); auto.press(); }} disabled={off} title={title}
       aria-label={auto.sending ? 'Sending the request' : `${label}: ${AUTO_EXPLAIN}`}
@@ -196,7 +205,7 @@ function AutoButton({ auto, size, label = 'Auto' }) {
         background: AUTO_GRADIENT, color: '#000', cursor: off ? 'not-allowed' : 'pointer', opacity: auto.busy ? 0.45 : 1,
         whiteSpace: 'nowrap', flexShrink: 0, boxShadow: off ? 'none' : '0 2px 12px rgba(255,140,50,0.28)',
       }}>
-      {auto.sending ? 'Sending…' : label}
+      {auto.sending ? 'Sending…' : auto.queued || label}
     </button>
   );
 }

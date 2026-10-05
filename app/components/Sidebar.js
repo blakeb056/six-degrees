@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow } from '../../lib/scraper-client';
+import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
 import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
 import useScanner from './useScanner';
 import useRequests from './useRequests';
@@ -1178,7 +1178,10 @@ function CreateClusterCard({ selected, degree2, resume }) {
   const hasCluster = clusterCount > 0;
 
   const mine = scan.running && scansCircleOf(scan, selected);
-  const busy = scan.running && !mine ? busyReason(scan) : null;
+  // While something else runs, a press waits its turn in the queue
+  // (lib/scan-queue.js) and its button says where ("Queued · 2nd").
+  const queued = queuedFor(scan, 'bridge', selected);
+  const busy = scan.running && !mine && !queued && !willQueue(scan, 'bridge', selected) ? busyReason(scan) : null;
   const last = scan.finished.find((j) => scansCircleOf(j, selected));
 
   async function start(action) {
@@ -1202,10 +1205,10 @@ function CreateClusterCard({ selected, degree2, resume }) {
   const accent = resume ? '#FFD700' : hasCluster ? '#00ff88' : '#9B59B6';
   // Gold words vanish on a light look; the theme's own gold reads on either.
   const ink = resume ? 'var(--sd-gold, #FFD700)' : accent;
-  const off = Boolean(busy) || checking;
+  const off = Boolean(busy) || checking || Boolean(queued);
   const button = (primary) => ({
     flex: 1, padding: '11px 8px', borderRadius: 8, fontWeight: 700, fontSize: primary ? 13 : 12,
-    cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.45 : 1,
+    cursor: off ? 'not-allowed' : 'pointer', opacity: off && !queued ? 0.45 : 1,
     ...(primary
       ? { border: 'none', background: 'linear-gradient(135deg, #9B59B6, #3498DB)', color: '#fff' }
       : { border: `1px solid ${accent}55`, background: `${accent}14`, color: ink }),
@@ -1252,11 +1255,11 @@ function CreateClusterCard({ selected, degree2, resume }) {
             {resume && (
               // data-resume: the line by their name presses this one (StoppedPartway).
               <button data-resume onClick={() => start('resume')} disabled={off} style={button(true)}>
-                Resume from page {resume.nextPage}
+                {queued?.action === 'resume' ? queued.label : <>Resume from page {resume.nextPage}</>}
               </button>
             )}
             <button data-scan onClick={() => start('bridge')} disabled={off} style={button(!resume && !hasCluster)}>
-              {read ? 'Rescan from the start' : <>Scan {selected.name}&apos;s Network</>}
+              {queued && queued.action !== 'resume' ? queued.label : read ? 'Rescan from the start' : <>Scan {selected.name}&apos;s Network</>}
             </button>
           </div>
           {resume && (
@@ -1271,9 +1274,11 @@ function CreateClusterCard({ selected, degree2, resume }) {
               rescan reads it all again to find anyone new.
             </div>
           )}
-          {busy && (
+          {(busy || (scan.running && !mine)) && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-2, #bbb)', marginTop: 8, textAlign: 'center' }}>
-              {busy}. One scan at a time: this one can start when it finishes.
+              {busy ? `${busy}. One scan at a time: this one can start when it finishes.`
+                : queued ? 'It starts by itself when the scans before it finish. Remove it in the notch.'
+                : `${busyReason(scan)}. Press one to queue this scan next.`}
             </div>
           )}
           {problem && (
@@ -1619,7 +1624,9 @@ function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
           {shown.map((p) => {
             const now = circle && scansCircleOf(scan, p);
             const from = origin(p);
-            const off = scan.running || Boolean(asking);
+            // Pressed while something else runs: queued, and the row says where.
+            const q = queuedFor(scan, 'bridge', p);
+            const off = (scan.running && !willQueue(scan, 'bridge', p)) || Boolean(asking) || Boolean(q);
             return (
               <div key={p.id} role="listitem"><button type="button" disabled={off && !now}
                 aria-label={now ? `Scanning ${p.name}’s circle` : `Scan ${p.name}’s circle`}
@@ -1649,7 +1656,7 @@ function ReadyToScan({ connections, degree2, scanNotes, tierColors }) {
                   )}
                 </span>
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--sd-green, #00ff88)', whiteSpace: 'nowrap' }}>
-                  {now ? 'Scanning…' : asking === p.id ? 'Starting…' : 'Scan →'}
+                  {now ? 'Scanning…' : q ? q.label : asking === p.id ? 'Starting…' : scan.running ? 'Queue →' : 'Scan →'}
                 </span>
               </button></div>
             );

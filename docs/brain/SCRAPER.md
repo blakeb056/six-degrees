@@ -262,7 +262,7 @@ never the request. It refuses, in this order, with a plain sentence:
 | a cooldown after LinkedIn pushed back | 409 |
 | Auto's caps: 15 in any 24 hours, 80 in any 7 days (`inviteRefusal`, says when one frees) | 409 |
 | no profile view left today | 409 |
-| anything running (*A scan is running. Press Auto again once it has finished.*) | 409 |
+| anything running: **queued instead** (*The queue* below); 409 only once the queue is full | 200 `queued` |
 
 **What the scanner does.** It checks the cooldown, Auto's caps and the profile views again
 before a browser opens (so none of those ever opens anything), takes a profile view like a
@@ -304,6 +304,59 @@ usage. The caps are `INVITE_DAY_CAP` / `INVITE_WEEK_CAP` here and `INVITE_CAPS` 
 (`lib/requests.js markSentRows`: every copy of them, through the circle they were found in,
 XP once) before the job is seen to end, and the job's `recent` entry carries `outcome`.
 The button says how it went in `OUTCOMES`' words.
+
+## The queue: one job at a time, the next one waiting (2026-10-05)
+
+> "if someone auto connects but theres one already being added i want a queue thing to
+> basically let the next person they want to add or bridge be queued in the scanner and have
+> it shown in the notch." (Blake, 2026-10-05)
+
+The scanner still runs **one job at a time**. What changed is the second press. Auto
+(`connect`) and a scan of one person's circle **picked by id** (`bridge`, `rescrape`,
+`resume`: Bridge Chains, Unscanned's *Build their circle*, the card's Scan and Resume, the
+Ready-to-scan lists) pressed while something runs go into a queue instead of a 409. Anything
+else (`full`, `refresh`, `auto-bridge`, `company`, a scan by name only, setup) is refused as
+before. No pop-up: the button says its place, *Queued · 2nd* (`queuedFor`, `queuedLabel` in
+`lib/scraper-client.js`).
+
+| Where | What |
+|---|---|
+| `lib/scan-queue.js` | Pure: `enqueue` (dedupe, cap), `nextUp`, `skipItem`, `removeItem`, `clearQueue`, `queueView`, `placeOf`, `ordinal`. Shared with the browser, so no `fs`. |
+| `lib/scan-queue-store.js` | `scan-queue.json` in the data folder, written durably after every change. Read once, the first time the route needs it. |
+| `app/api/scraper/route.js` | `startJob` is the old POST body; `queueUp`, `runNext`, `scheduleNext`. `GET ?job=1` carries `queue`. |
+| `app/components/ScanStatusBar.js` | The notch: `+2 queued` beside what runs; opened, the list (name, *Add* or *Build circle*, × each), *Clear*, and *Resume queue* while paused. |
+
+**Every check, twice.** A press runs every check in the table above *before* it is queued
+(so Auto's one-time question is still asked on the page, and a cap already reached says so at
+once), and the queue starts each item through the same `startJob` at its own turn, so every
+check runs **again then**: budget, Auto's caps (15 in 24 h, 80 in 7 days), the profile view,
+the cooldown, Auto's one-time yes, the scan's "I understand", Chrome, a pending import, and
+one-at-a-time itself. A refusal marks that item `skipped` with the refusal's sentence (the
+notch shows it) and the queue moves on to the next. What is kept is only what a press would
+send again: action, the person's id and name, the Chrome-window setting. **Never the
+profile URL**: it is looked up again at the start, like every press.
+
+**Rules.**
+
+- **Dedupe.** The same person for the same kind (Add, or their circle: a Scan and a Resume of
+  one circle are the same request) is ignored, whether waiting or running now. A new press for
+  a skipped one replaces it.
+- **Cap.** `QUEUE_CAP` = 10 waiting. The eleventh is a 409 `queueFull`.
+- **Run next.** `finish()` calls `scheduleNext()`: the next item starts after a 4 s breath
+  (`SIX_DEGREES_QUEUE_GAP_MS`, 0 in the tests). The scanner's own gaps and caps still apply
+  inside each job; the queue adds nothing faster.
+- **Stop pauses.** `cancel` (the notch's Stop, the Scan page's Stop) stops the job and sets
+  `paused: 'stopped'`; a stopped job never starts the next. *Resume queue* (`queue-resume`)
+  carries on: at once if nothing runs, else after the running job. *Clear* (`queue-clear`)
+  empties it; × is `queue-remove`.
+- **Restart.** A queue read back from the file with anything waiting is `paused:
+  'restarted'`. Nothing starts because the app opened; *Resume queue* in the notch carries on.
+- **The port.** A job the queue starts has no request to read the port from, so `POST`
+  remembers the last `host` it was asked on (`state.port`) for `APP_URL`.
+
+Tests: `tests/scan-queue.test.mjs` (a stand-in scanner that sleeps and writes down its
+arguments): enqueue, dedupe, cap, run-next on finish, a refusal at its turn skips, Stop pauses,
+the file and the restart.
 
 ## Experimental Auto-Bridge (`--experimental`)
 
