@@ -21,12 +21,11 @@
 // here. That one line makes every "Coming soon" button for that platform a real
 // download (index.html's data-soon="linux" / data-soon="windows" buttons), and
 // hides the "Coming soon" notes beside them (data-when-soon).
-// Windows and Linux are a beta (docs/brain/DESKTOP.md D3), so their files are on
-// that pre-release, not on releases/latest (which skips pre-releases). Once
-// they're promoted to a full release, point these at releases/latest/download/.
+// Windows and Linux are still called a beta (docs/brain/DESKTOP.md D3), but their
+// files ship on the same full release as the Mac's, so these are releases/latest.
 const DOWNLOADS = {
-  linux: 'https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb',
-  windows: 'https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe',
+  linux: 'https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb',
+  windows: 'https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe',
 };
 
 (() => {
@@ -153,8 +152,8 @@ const DOWNLOADS = {
       const line = $('version-line');
       if (!line) return;
       if (os !== 'mac') {
-        // Windows and Linux are a beta on their own pre-release (DOWNLOADS above), not this "latest" version.
-        line.textContent = `Mac ${version} · Windows and Linux in beta · free and open source`;
+        // Windows and Linux ship on this same release, still called a beta (DOWNLOADS above).
+        line.textContent = `Version ${version} · Windows and Linux in beta · free and open source`;
         return;
       }
       const silicon = mb('Sixgree-Mac-Apple-Silicon.dmg');
