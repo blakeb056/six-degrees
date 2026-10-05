@@ -1,5 +1,5 @@
 // The guided setup's look. Every colour is the look's own (lib/themes.js CSS
-// variables, with Standard's values as fallbacks), so Daylight, Glass, Analyst
+// variables, with Standard's values as fallbacks), so Daylight, Glass, Space
 // and the rest draw it their way, and html[data-buttons] shapes its buttons as
 // it shapes every other. One <style> for the whole setup, as ClusterSpinner
 // and the Scan page carry theirs.

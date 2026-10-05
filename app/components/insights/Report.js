@@ -369,7 +369,7 @@ function RarityGrid({ grid, isMobile }) {
               <div key={r.key} title={`${fmt(v)} ${t}-tier, ${r.label.toLowerCase()} (${r.range} mutual)`} style={{
                 height: 44, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
                 background: `rgba(0, 229, 255, ${(0.06 + 0.45 * Math.sqrt(v / max)).toFixed(3)})`, color: 'var(--sd-fg-1, #eaf6f8)',
-                // An outline, not a shadow: Analyst takes every shadow off, and these mark the hidden giants and the warm S.
+                // An outline, not a shadow: these mark the hidden giants and the warm S.
                 outline: hot ? `2px solid ${TIER_COLORS.S}` : warm ? '2px solid #FF7043' : 'none', outlineOffset: -2,
               }}>{fmt(v)}</div>
             );

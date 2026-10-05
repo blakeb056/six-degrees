@@ -18,14 +18,16 @@ export default function AutoScanButton({ isMobile = false }) {
   useEffect(() => watchScanner(() => { setJob(scannerNow()); setStarting(false); }), []);
   if (!on) return null;
   const mine = job?.running && String(job.action || '').startsWith('auto-bridge');
+  // A tab like the others in the row (app/globals.css .sd-tab): what it's doing
+  // is its dot, green while it runs, never tinted words.
   const style = {
-    padding: isMobile ? '8px 12px' : '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: 'none',
+    padding: isMobile ? '8px 12px' : '8px 16px', fontSize: 13, textDecoration: 'none',
     display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
   };
   if (mine) {
     return (
-      <Link href="/setup" title="Auto scan is running: see it on the Scan page" style={{ ...style, background: 'rgba(0,255,136,0.15)', color: 'var(--sd-green, #00ff88)', border: '1px solid rgba(0,255,136,0.45)' }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00ff88' }} />Auto scan
+      <Link href="/setup" className="sd-tab" title="Auto scan is running: see it on the Scan page" style={style}>
+        <span className="notch-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sd-green, #00ff88)' }} />Auto scan
       </Link>
     );
   }
@@ -42,9 +44,10 @@ export default function AutoScanButton({ isMobile = false }) {
         }}
         disabled={busy}
         title={busy ? 'The scanner is busy: one scan at a time' : 'Start the all-day Auto-Bridge (experimental). It runs in the background; the notch shows how it’s going.'}
-        style={{ ...style, cursor: busy ? 'default' : 'pointer', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: busy ? 'var(--sd-fg-5, #555)' : 'var(--sd-fg-3, #8b9a9a)', border: '1px solid rgba(255,215,0,0.25)' }}
+        className="sd-tab"
+        style={style}
       >
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#556' }} />Auto scan
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.3)' }} />Auto scan
       </button>
       <InlineNote note={note} float align="left" />
     </div>

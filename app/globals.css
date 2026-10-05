@@ -158,29 +158,25 @@ html:has([data-field-question]) {
 }
 
 /* ---- How a look draws its buttons (lib/themes.js BUTTONS; html[data-buttons]) ----
-   Buttons carry their own colours inline, so a look adds what they don't set:
-   shadow, frost, glow, outline, and the corner where a look has its own shape.
-   Round buttons (50%) stay round. The tab row's links count as buttons. The
-   map's edge buttons (.sd-edge) draw themselves in each look, at the end, and
-   the tucked notch's pill (.notch-pill) is the notch's own panel, not a button. */
-/* Flat: Obsidian. No depth, a quiet hover. */
-html[data-buttons="flat"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a) { box-shadow: none !important; text-shadow: none !important; }
-html[data-buttons="flat"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(:disabled):hover { filter: brightness(1.12); }
-html[data-buttons="flat"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"], #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 5px !important; }
+   Two ways (Blake, 2026-10-05: "for the buttons lets make frost default and have
+   soft as the only other option"): frosted glass, every look's own, or soft,
+   the buttons' own inline colours with nothing added. Buttons carry their
+   colours inline, so frost adds what they don't set: the glass, its rim, its
+   depth, and what hover, press, focus, picked and disabled look like. Round
+   buttons (50%) stay round. A button drawn with no background of its own (a
+   row, a link, a dot) stays as it is: glass is for what looks like a button.
+   The map's edge buttons (.sd-edge) and the tabs (.sd-tab) draw themselves,
+   below, and the tucked notch's pill (.notch-pill) is the notch's own panel,
+   not a button. */
 
-/* Square: Analyst. Crisp corners, hairline borders, no depth. */
-html[data-buttons="square"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"], #main-tabs, #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 2px !important; }
-html[data-buttons="square"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a) { box-shadow: none !important; letter-spacing: 0.02em; }
-html[data-buttons="square"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(:disabled):hover { outline: 1px solid color-mix(in srgb, var(--sd-accent) 70%, transparent); outline-offset: -1px; }
-
-/* Frosted: Glass, as Apple's Liquid Glass (WWDC25 "Meet Liquid Glass"; HIG →
+/* Frosted, as Apple's Liquid Glass (WWDC25 "Meet Liquid Glass"; HIG →
    Materials). Not a frosted blur: glass that bends light at its edges (the
    lensing comes from app/components/LiquidGlass.js, as --lg-lens), with a
    specular rim lit from the top left, a bright top edge, and a soft shadow
-   under it. Panels full of words use the "regular" glass: a dark tint under
-   the blur so the words read (lib/themes.js --sd-panel). Controls are capsules
-   of clearer glass; the tab bar is one capsule with plain segments in it,
-   never glass on glass. */
+   under it. Panels full of words use the "regular" glass: a tint under the
+   blur so the words read (lib/themes.js --sd-panel). Controls are capsules of
+   clearer glass; the tab bar is one capsule with plain segments in it, never
+   glass on glass. A light look's own glass is further down (Daylight). */
 html[data-buttons="frosted"] [data-glass-panel] {
   position: relative;
   isolation: isolate;
@@ -191,7 +187,7 @@ html[data-buttons="frosted"] [data-glass-panel] {
 }
 html[data-buttons="frosted"] [data-glass-panel="bar"] { border-radius: 999px !important; }
 html[data-buttons="frosted"] .glass-rim, html[data-buttons="frosted"] [data-glass-panel]::before,
-html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go):not(#main-tabs *)::before {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -204,66 +200,102 @@ html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs >
   mask-composite: exclude;
 }
 /* Controls: capsules of clear glass that spring when pressed. */
-html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go):not(#main-tabs *) {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
   position: relative;
   isolation: isolate;
   -webkit-backdrop-filter: blur(4px) saturate(170%);
   backdrop-filter: blur(4px) saturate(170%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 4px 14px rgba(0, 0, 0, 0.24) !important;
 }
-html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go):not(#main-tabs *) { border-radius: 14px !important; }
-html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(#main-tabs *):hover { filter: brightness(1.14); }
-@media (prefers-reduced-motion: no-preference) {
-  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s; }
-  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(#main-tabs *):active { transform: scale(1.04); }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { border-radius: 14px !important; }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(1.14); }
+/* Picked (a toggle that's on, a tab that's chosen): a ring of the accent round the glass */
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-accent) 60%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(0, 0, 0, 0.24) !important;
 }
-/* The tab bar's segments: the picked one is a lit thumb inside the glass. */
-html[data-buttons="frosted"] #main-tabs > :is(a, button) { border-radius: 999px !important; }
-html[data-buttons="frosted"] #main-tabs > :is(a, button)[aria-current="page"],
-html[data-buttons="frosted"] #main-tabs > button[style*="background: rgb(255, 255, 255)"] {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 0 0 0.5px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+/* Disabled: flat, no lift and no rim, so it reads as resting, not pressable */
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--sd-ink, 255, 255, 255), 0.12) !important;
+}
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled::before { opacity: 0.3; }
+/* Keyboard focus: a clear ring in the accent, outside the glass */
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), select, input, a):focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.sd-tab):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s, box-shadow 0.2s; }
+  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):active { transform: scale(1.04); }
 }
 /* Reduce Transparency: solid panels, no lensing. More contrast: a darker tint and a plain rim. */
 @media (prefers-reduced-transparency: reduce) {
   html[data-buttons="frosted"] [data-glass-panel] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(28, 28, 36, 0.97) !important; }
+  html[data-mode="light"] [data-glass-panel] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(250, 250, 252, 0.98) !important; }
 }
 @media (prefers-contrast: more) {
-  html[data-buttons="frosted"] [data-glass-panel] { background-color: rgba(10, 10, 14, 0.85) !important; }
-  html[data-buttons="frosted"] [data-glass-panel]::before { background: rgba(255, 255, 255, 0.6); }
+  html[data-mode="dark"][data-buttons="frosted"] [data-glass-panel] { background-color: rgba(10, 10, 14, 0.85) !important; }
+  html[data-buttons="frosted"] [data-glass-panel]::before { background: rgba(var(--sd-ink, 255, 255, 255), 0.6); }
 }
 
-/* Neon: Synthwave. A glow in the accent, brighter on hover. */
-html[data-buttons="neon"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(:disabled) {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sd-accent) 55%, transparent), 0 0 12px color-mix(in srgb, var(--sd-accent) 26%, transparent) !important;
-  text-shadow: 0 0 8px color-mix(in srgb, var(--sd-accent) 45%, transparent);
+/* Frosted on a light look: the glass is white, so its depth comes from a
+   hairline and a soft shadow, not a white rim (invisible on white) or a dark
+   drop. Hover darkens a touch, as a light Mac app's buttons do. */
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
-html[data-buttons="neon"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(:disabled):hover {
-  box-shadow: 0 0 0 1px var(--sd-accent), 0 0 20px color-mix(in srgb, var(--sd-accent) 50%, transparent) !important;
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(0.97); }
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-accent) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled { box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08) !important; }
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before,
+html[data-mode="light"][data-buttons="frosted"] [data-glass-panel]::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.25) 35%, rgba(255, 255, 255, 0) 60%);
 }
 
-/* Bold: High contrast. A clear outline on every control, and a thick focus ring. */
-html[data-buttons="bold"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"], #main-tabs > a) { outline: 1.5px solid rgba(var(--sd-ink, 255, 255, 255), 0.55); outline-offset: -1.5px; font-weight: 700; }
-html[data-buttons="bold"] :is(button:not(.sd-edge, .notch-pill), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
+/* High contrast: whatever the buttons, a clear outline on every control, bold
+   words and a thick focus ring; no frost behind them. */
+html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not(.sd-tab, .notch-tuck) { outline: 1.5px solid rgba(255, 255, 255, 0.7); outline-offset: -1.5px; font-weight: 700; }
+html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
+html[data-theme="contrast"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-theme="contrast"][data-buttons="frosted"] [data-glass-panel] { background-image: none !important; }
 
-@media (prefers-reduced-motion: no-preference) {
-  html:not([data-buttons="soft"]) :is(button:not(.sd-edge, .notch-pill), #main-tabs > a) { transition: box-shadow 0.15s, filter 0.15s, outline-color 0.15s; }
+/* ---- The tabs: the header's row (app/components/AppTabs.js) and the notch's
+   (app/components/ScanStatusBar.js) ----
+   One calm style for every tab on every look (Blake, 2026-10-05: they looked
+   like "gradient AI" and "the colours make no sense"): the look's secondary
+   words, a touch brighter on hover, and the one you're on a solid pill with
+   the primary words. No gradients and no colour of a tab's own; anything to
+   signal is a small dot. */
+#main-tabs { background: rgba(var(--sd-ink, 255, 255, 255), 0.08); border-radius: 10px; }
+.sd-tab {
+  position: relative; display: flex; align-items: center; gap: 4px; margin: 0; border: 0; border-radius: 7px;
+  background: transparent; color: var(--sd-fg-3, #a3a9b8); font-family: inherit; font-weight: 600; line-height: 1.2;
+  cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent;
 }
-
-/* ---- Analyst: nothing decorative (lib/themes.js) ----
-   An analysis tool's restraint: no gradients, glows or shadows anywhere, the
-   name in plain ink, the picked tab and the main buttons a flat accent, and
-   every number in even columns. Only in this look; the colours inline stay
-   the same in every other. */
-html[data-theme="analyst"] body { font-variant-numeric: tabular-nums; }
-html[data-theme="analyst"] [style*="box-shadow"] { box-shadow: none !important; }
-html[data-theme="analyst"] [style*="text-shadow"] { text-shadow: none !important; }
-html[data-theme="analyst"] header h1, html[data-theme="analyst"] header :is(span, a) > h1, html[data-theme="analyst"] [style*="-webkit-text-fill-color"] {
-  background: none !important; -webkit-text-fill-color: currentColor !important; color: var(--sd-fg-1, #111) !important;
+.sd-tab:hover { color: var(--sd-fg-1, #fff); background: rgba(var(--sd-ink, 255, 255, 255), 0.07); }
+.sd-tab:is([aria-current], [aria-selected="true"]) {
+  color: #1d1d1f; background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.18);
 }
-html[data-theme="analyst"] :is(button, a)[style*="gradient"] { background: var(--sd-accent) !important; color: #fff !important; border-color: transparent !important; }
-html[data-theme="analyst"] div[style*="radial-gradient"], html[data-theme="analyst"] div[style*="linear-gradient(1"] { background-image: none !important; }
-html[data-theme="analyst"] [style*="backdrop-filter"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-html[data-theme="analyst"] :is(.galaxy-ring-pulse, .cluster-hub, .seed) { animation: none !important; }
+.sd-tab:focus-visible { outline: 2px solid var(--sd-accent, #3498db); outline-offset: 2px; }
+.sd-tab:disabled { cursor: default; color: var(--sd-fg-5, #6a7080); background: transparent; }
+@media (prefers-reduced-motion: no-preference) { .sd-tab { transition: background-color 0.15s, color 0.15s, box-shadow 0.15s; } }
+/* The notch's tabs: a quieter thumb, so the row above stays the one that leads */
+.sd-subtab { border-radius: 8px; }
+.sd-subtab[aria-selected="true"] { color: var(--sd-fg-1, #fff); background: rgba(var(--sd-ink, 255, 255, 255), 0.15); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+html[data-buttons="frosted"] .sd-tab { border-radius: 999px; }
+/* A light look: macOS's segmented control. A grey track of frosted glass, the
+   picked segment white with a hairline and a soft shadow, ink words. */
+html[data-mode="light"] #main-tabs { background-color: rgba(236, 236, 241, 0.78) !important; }
+html[data-mode="light"] .sd-tab:hover { background: rgba(0, 0, 0, 0.05); }
+html[data-mode="light"] .sd-tab:is([aria-current], [aria-selected="true"]) {
+  color: var(--sd-fg-1, #1d1d1f); background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.1), 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+/* High contrast: white words, and the picked one black on white */
+html[data-theme="contrast"] .sd-tab { color: #ffffff; }
+html[data-theme="contrast"] .sd-tab:is([aria-current], [aria-selected="true"]) { color: #000000; background: #ffffff; }
+html[data-theme="contrast"] .sd-tab:focus-visible { outline: 3px solid var(--sd-accent); outline-offset: 2px; }
 
 /* ---- A look's dots, on every map (Blake, 2026-10-03: "liquid glass for even
    path dots etc all things of nature … the same for the others") ----
@@ -284,33 +316,51 @@ html[data-dots="plain"] .sd-dot-html { box-shadow: inset 0 0 0 1px rgba(0, 0, 0,
 
 /* ---- Each look's panels, tab bar, notch and the map's tooltips ----
    [data-glass-panel] marks the side panels, the tab bar and the notch; the
-   tooltips are the Galaxy's .graph-tooltip. Glass's are above. */
+   tooltips are the Galaxy's .graph-tooltip. Frosted glass's come first, so a
+   look's own rules below win over them. */
+html[data-mode="dark"][data-buttons="frosted"] .graph-tooltip { background: rgba(18, 18, 30, 0.45) !important; -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8); border: 1px solid rgba(255, 255, 255, 0.18) !important; border-radius: 12px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 30px rgba(0, 0, 0, 0.35); }
 /* Obsidian: graphite panels with fine borders, no depth, square-ish tooltips */
 html[data-theme="obsidian"] [data-glass-panel] { box-shadow: none !important; border-color: #363636 !important; }
 html[data-theme="obsidian"] [data-glass-panel="side"] { border-right: 1px solid #363636 !important; border-left: 1px solid #363636 !important; }
-html[data-theme="obsidian"] #main-tabs { background: #262626 !important; box-shadow: inset 0 0 0 1px #363636; }
+html[data-theme="obsidian"] #main-tabs { background: #262626 !important; box-shadow: inset 0 0 0 1px #363636 !important; }
 html[data-theme="obsidian"] .graph-tooltip { background: #262626 !important; border: 1px solid #3f3f3f !important; border-radius: 4px !important; color: #dcddde !important; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); }
-/* Synthwave: neon edges in the accent */
-html[data-theme="synthwave"] [data-glass-panel] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-accent) 45%, transparent), 0 0 26px color-mix(in srgb, var(--sd-accent) 16%, transparent) !important; }
-html[data-theme="synthwave"] #main-tabs { box-shadow: 0 0 0 1px color-mix(in srgb, var(--sd-accent) 55%, transparent), 0 0 18px color-mix(in srgb, var(--sd-accent) 22%, transparent); }
-html[data-theme="synthwave"] .graph-tooltip { background: rgba(36, 16, 63, 0.94) !important; border: 1px solid var(--sd-accent) !important; box-shadow: 0 0 16px color-mix(in srgb, var(--sd-accent) 35%, transparent); color: #fff5ff !important; }
 /* Space: deep panels with a cool rim of starlight */
 html[data-theme="space"] [data-glass-panel] { box-shadow: inset 0 1px 0 rgba(205, 218, 255, 0.14), inset 0 0 0 1px rgba(150, 170, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.5) !important; }
 html[data-theme="space"] .graph-tooltip { background: rgba(8, 10, 28, 0.94) !important; border: 1px solid rgba(150, 170, 255, 0.28) !important; color: #eef2ff !important; }
 /* High contrast: hard outlines everywhere */
 html[data-theme="contrast"] [data-glass-panel] { box-shadow: inset 0 0 0 1.5px #ffffff !important; }
 html[data-theme="contrast"] .graph-tooltip { background: #000 !important; border: 1.5px solid #fff !important; color: #fff !important; }
-/* Daylight: white panels with soft, layered shadows, as light Mac apps draw them */
-html[data-theme="daylight"] [data-glass-panel] { box-shadow: 0 0 0 1px rgba(18, 22, 40, 0.07), 0 1px 2px rgba(18, 22, 40, 0.06), 0 10px 30px rgba(18, 22, 40, 0.08) !important; }
-html[data-theme="daylight"] #main-tabs { background: #ffffff !important; }
-/* Analyst: grey, flat, hairlines */
-html[data-theme="analyst"] [data-glass-panel] { box-shadow: inset 0 0 0 1px #d0d0d0 !important; }
-html[data-theme="analyst"] #main-tabs { background: #ececec !important; }
-/* Light looks: the map's tooltip is a light card with ink words */
-html[data-mode="light"] .graph-tooltip { background: rgba(255, 255, 255, 0.98) !important; color: #11141c !important; border: 1px solid rgba(18, 22, 40, 0.12) !important; box-shadow: 0 6px 20px rgba(18, 22, 40, 0.14); }
-html[data-theme="analyst"] .graph-tooltip { border-radius: 2px !important; box-shadow: none; }
-/* Glass: the tooltip is a pane of glass too */
-html[data-buttons="frosted"] .graph-tooltip { background: rgba(18, 18, 30, 0.45) !important; -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8); border: 1px solid rgba(255, 255, 255, 0.18) !important; border-radius: 12px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 30px rgba(0, 0, 0, 0.35); }
+
+/* ---- Daylight, and any light look: macOS's frosted glass (Blake, 2026-10-05:
+   "make it more apple like with better frosted glass") ----
+   White glass, 52 to 82% opaque, blurred and saturated 180% (lib/themes.js
+   --sd-panel, --sd-panel-blur), a hairline outside, a faint white highlight
+   inside and a soft, layered shadow. The words on it are Apple's label colours
+   (lib/themes.js lightTokens), drawn crisp in the system font. */
+html[data-mode="light"] body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+html[data-mode="light"] [data-glass-panel] {
+  -webkit-backdrop-filter: var(--sd-panel-blur) var(--lg-lens, ) !important;
+  backdrop-filter: var(--sd-panel-blur) var(--lg-lens, ) !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 140px) !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.05), 0 12px 36px rgba(0, 0, 0, 0.09) !important;
+}
+/* The Galaxy's names: a soft white halo, as Apple Maps draws its labels, so a
+   name crossing lines and dots stays crisp */
+html[data-mode="light"] .sd-names text { paint-order: stroke; stroke: rgba(255, 255, 255, 0.82); stroke-width: 3px; stroke-linejoin: round; }
+/* The notch: the same glass, a shade greyer than the tab bar it hangs from */
+html[data-mode="light"] [data-notch] { background-color: rgba(246, 246, 249, 0.74) !important; }
+/* The map's tooltip: a small pane of the same glass */
+html[data-mode="light"] .graph-tooltip {
+  background: rgba(255, 255, 255, 0.8) !important; color: #1d1d1f !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  border: 0.5px solid rgba(0, 0, 0, 0.1) !important; border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 3px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+/* No backdrop-filter here: the same white, nearly solid, so the words still read */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-mode="light"] :is([data-glass-panel], [data-notch], .graph-tooltip) { background-color: rgba(250, 250, 252, 0.97) !important; }
+}
 
 /* ---- A cluster forming (lib/cluster-dots.js) ----
    Its dots build clockwise from twelve: once on hover (csBuild), round and
@@ -329,8 +379,8 @@ html[data-buttons="frosted"] .graph-tooltip { background: rgba(18, 18, 30, 0.45)
    button each, that docks on its panel's edge as the panel's close control.
    The look's accent for Filters, its S-tier gold for Details, so every look,
    a custom one too, draws them in its own colours. The default is the dark
-   glass puck; light looks, Glass, Obsidian, Analyst, Synthwave and High
-   contrast each change what they need below. */
+   glass puck; light looks, frosted glass and High contrast each change what
+   they need below. */
 .sd-edge {
   --acc: var(--sd-accent, #3498db);
   --ink: var(--acc);
@@ -514,8 +564,8 @@ html[data-mode="light"] .sd-edge-peek {
   box-shadow: 0 0 0 1px rgba(18, 22, 40, 0.08), 0 1px 2px rgba(18, 22, 40, 0.06), 0 8px 20px -6px rgba(18, 22, 40, 0.2);
 }
 
-/* Glass: clearer glass, a brighter rim, a glass label */
-html[data-buttons="frosted"] .sd-edge-puck {
+/* Frosted, on a dark look: clearer glass, a brighter rim, a glass label */
+html[data-mode="dark"][data-buttons="frosted"] .sd-edge-puck {
   background:
     radial-gradient(70% 55% at 50% 110%, color-mix(in srgb, var(--acc) 42%, transparent), transparent 72%),
     radial-gradient(60% 45% at 36% 16%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 70%),
@@ -525,62 +575,39 @@ html[data-buttons="frosted"] .sd-edge-puck {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 50%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -6px 10px -6px rgba(20, 0, 50, 0.45),
     0 10px 24px -8px rgba(0, 0, 0, 0.55), 0 0 16px color-mix(in srgb, var(--acc) 26%, transparent);
 }
-html[data-buttons="frosted"] .sd-edge-puck::before { background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.2) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.5) 100%); opacity: 1; }
+html[data-mode="dark"][data-buttons="frosted"] .sd-edge-puck::before { background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.2) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.5) 100%); opacity: 1; }
 @media (hover: hover) {
-  html[data-buttons="frosted"] .sd-edge:hover .sd-edge-puck {
+  html[data-mode="dark"][data-buttons="frosted"] .sd-edge:hover .sd-edge-puck {
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -6px 10px -6px rgba(20, 0, 50, 0.4),
       0 14px 26px -8px rgba(0, 0, 0, 0.6), 0 0 24px color-mix(in srgb, var(--acc) 45%, transparent);
   }
 }
-html[data-buttons="frosted"] .sd-edge:active .sd-edge-puck { box-shadow: inset 0 0 0 1px var(--acc), inset 0 3px 8px rgba(20, 0, 50, 0.55), 0 4px 10px -4px rgba(0, 0, 0, 0.6), 0 0 12px color-mix(in srgb, var(--acc) 35%, transparent); }
-html[data-buttons="frosted"] .sd-edge-peek {
+html[data-mode="dark"][data-buttons="frosted"] .sd-edge:active .sd-edge-puck { box-shadow: inset 0 0 0 1px var(--acc), inset 0 3px 8px rgba(20, 0, 50, 0.55), 0 4px 10px -4px rgba(0, 0, 0, 0.6), 0 0 12px color-mix(in srgb, var(--acc) 35%, transparent); }
+html[data-mode="dark"][data-buttons="frosted"] .sd-edge-peek {
   background: rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 24px -8px rgba(0, 0, 0, 0.5);
 }
-
-/* Synthwave: the glow is the look */
-html[data-buttons="neon"] .sd-edge-puck { box-shadow: inset 0 0 0 1.5px var(--acc), inset 0 -7px 9px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent), 0 0 18px color-mix(in srgb, var(--acc) 55%, transparent); }
-@media (hover: hover) {
-  html[data-buttons="neon"] .sd-edge:hover .sd-edge-puck { box-shadow: inset 0 0 0 1.5px var(--acc), inset 0 -7px 9px -6px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--acc), 0 0 28px color-mix(in srgb, var(--acc) 70%, transparent); }
+/* Frosted, on a light look: the porcelain puck turns to white glass */
+html[data-mode="light"][data-buttons="frosted"] .sd-edge-puck {
+  background: radial-gradient(70% 55% at 50% 112%, color-mix(in srgb, var(--acc) 16%, transparent), transparent 72%), linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 245, 249, 0.72));
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+}
+html[data-mode="light"][data-buttons="frosted"] .sd-edge-peek {
+  background: rgba(255, 255, 255, 0.8); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 8px 20px -6px rgba(0, 0, 0, 0.18);
 }
 
-/* Obsidian (flat): a graphite disc and a ring, no depth, a quiet hover */
-html[data-buttons="flat"] .sd-edge-puck {
-  background: color-mix(in srgb, var(--acc) 10%, var(--sd-bg2, #262626));
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent);
-}
-html[data-buttons="flat"] .sd-edge-puck::before, html[data-buttons="flat"] .sd-edge-puck::after { display: none; }
-html[data-buttons="flat"] .sd-edge-chev { filter: none; }
+/* High contrast: black, a solid ring, a thick focus ring, whatever the buttons */
+html[data-theme="contrast"][data-mode] .sd-edge-puck { background: #000000; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 2px var(--acc); }
+html[data-theme="contrast"][data-mode] .sd-edge-puck::before, html[data-theme="contrast"][data-mode] .sd-edge-puck::after { display: none; }
+html[data-theme="contrast"][data-mode] .sd-edge-chev { filter: none; }
 @media (hover: hover) {
-  html[data-buttons="flat"] .sd-edge:hover .sd-edge-puck { transform: none; filter: brightness(1.15); box-shadow: inset 0 0 0 1.5px var(--acc); }
+  html[data-theme="contrast"][data-mode] .sd-edge:hover .sd-edge-puck { transform: none; box-shadow: inset 0 0 0 2px var(--acc), 0 0 0 2px #ffffff; }
 }
-html[data-buttons="flat"] .sd-edge:active .sd-edge-puck { transform: scale(0.96); box-shadow: inset 0 0 0 1.5px var(--acc); }
-html[data-buttons="flat"] .sd-edge-line { filter: none; }
-html[data-buttons="flat"] .sd-edge-peek { background: var(--sd-bg2, #262626); -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 5px; box-shadow: inset 0 0 0 1px #3f3f3f; }
-
-/* Analyst (square): flat. White, a hairline, a flat accent; no lift, no glow */
-html[data-buttons="square"] .sd-edge-puck { background: #ffffff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px #bdbdbd; }
-html[data-buttons="square"] .sd-edge-puck::before, html[data-buttons="square"] .sd-edge-puck::after { display: none; }
-html[data-buttons="square"] .sd-edge-chev { filter: none; }
-@media (hover: hover) {
-  html[data-buttons="square"] .sd-edge:hover .sd-edge-puck { transform: none; background: #f2f6fb; box-shadow: inset 0 0 0 1px var(--acc); }
-}
-html[data-buttons="square"] .sd-edge:active .sd-edge-puck { transform: scale(0.96); background: #e3eaf3; box-shadow: inset 0 0 0 1px var(--acc); }
-html[data-buttons="square"] .sd-edge-puck { outline-offset: 2px; }
-html[data-buttons="square"] .sd-edge-line { filter: none; width: 1px; background: linear-gradient(180deg, transparent 0, var(--acc) 30px, var(--acc) 150px, transparent 151px); }
-html[data-buttons="square"] .sd-edge-peek { background: #ffffff; color: var(--sd-fg-1, #11141c); border-radius: 2px; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px #cfcfcf; }
-
-/* High contrast (bold): black, a solid ring, a thick focus ring */
-html[data-buttons="bold"] .sd-edge-puck { background: #000000; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 2px var(--acc); }
-html[data-buttons="bold"] .sd-edge-puck::before, html[data-buttons="bold"] .sd-edge-puck::after { display: none; }
-html[data-buttons="bold"] .sd-edge-chev { filter: none; }
-@media (hover: hover) {
-  html[data-buttons="bold"] .sd-edge:hover .sd-edge-puck { transform: none; box-shadow: inset 0 0 0 2px var(--acc), 0 0 0 2px #ffffff; }
-}
-html[data-buttons="bold"] .sd-edge:focus-visible .sd-edge-puck { outline: 3px solid var(--sd-accent); outline-offset: 2px; }
-html[data-buttons="bold"] .sd-edge-line { filter: none; width: 2px; background: linear-gradient(180deg, transparent 0, var(--acc) 30px, var(--acc) 150px, transparent 151px); }
-html[data-buttons="bold"] .sd-edge-peek { background: #000000; color: #ffffff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1.5px #ffffff; }
+html[data-theme="contrast"][data-mode] .sd-edge:active .sd-edge-puck { box-shadow: inset 0 0 0 2px var(--acc), 0 0 0 2px #ffffff; }
+html[data-theme="contrast"][data-mode] .sd-edge:focus-visible .sd-edge-puck { outline: 3px solid var(--sd-accent); outline-offset: 2px; }
+html[data-theme="contrast"][data-mode] .sd-edge-line { filter: none; width: 2px; background: linear-gradient(180deg, transparent 0, var(--acc) 30px, var(--acc) 150px, transparent 151px); }
+html[data-theme="contrast"][data-mode] .sd-edge-peek { background: #000000; color: #ffffff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1.5px #ffffff; }
 
 /* Reduce Transparency: solid, no frost */
 @media (prefers-reduced-transparency: reduce) {

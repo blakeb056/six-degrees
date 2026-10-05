@@ -11,13 +11,13 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const isDefault = (t) => t.base === 'standard';
 
 test('what the network has saved wins over this browser’s copy (a restore brings its own look)', () => {
-  const r = reconcileSaved({ saved: { base: 'glass' }, cached: { base: 'analyst' }, isDefault, same });
+  const r = reconcileSaved({ saved: { base: 'glass' }, cached: { base: 'obsidian' }, isDefault, same });
   assert.deepEqual(r, { use: { base: 'glass' }, save: false, changed: true });
   assert.equal(reconcileSaved({ saved: { base: 'glass' }, cached: { base: 'glass' }, isDefault, same }).changed, false);
 });
 
 test('a network with nothing saved yet takes this browser’s look once, unless it is only the default', () => {
-  assert.deepEqual(reconcileSaved({ saved: null, cached: { base: 'analyst' }, isDefault, same }), { use: { base: 'analyst' }, save: true, changed: false });
+  assert.deepEqual(reconcileSaved({ saved: null, cached: { base: 'obsidian' }, isDefault, same }), { use: { base: 'obsidian' }, save: true, changed: false });
   assert.equal(reconcileSaved({ saved: undefined, cached: { base: 'standard' }, isDefault, same }).save, false);
 });
 

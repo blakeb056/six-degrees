@@ -93,7 +93,9 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
                 onClick={() => onChange(toggleTier(grid, t, counts))}
                 style={{
                   flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 6px 12px 10px',
-                  border: 'none', background: 'none', cursor: 'pointer', color: off ? 'var(--sd-fg-5, #555)' : color, textAlign: 'left',
+                  border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
+                  // Ink-deepened on a light look, so S's gold reads on white (lib/themes.js --sd-tier-ink)
+                  color: off ? 'var(--sd-fg-5, #555)' : `color-mix(in srgb, ${color} 58%, var(--sd-tier-ink, ${color}))`,
                 }}>
                 <span className="sd-dot-html" style={{ width: 11, height: 11, borderRadius: '50%', background: color, opacity: off ? 0.2 : 1, flexShrink: 0 }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', textDecoration: off ? 'line-through' : 'none' }}>{t}-Tier</span>

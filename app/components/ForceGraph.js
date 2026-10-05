@@ -24,6 +24,11 @@ function esc(value) {
 
 // The id of the node at the centre, you. Not a connection's id (those come from
 // the database), and never shown.
+
+/** A colour 42% of the way to Daylight's ink: a tier's colour that reads as words on white. */
+const inkier = (c) => (/^#[0-9a-f]{6}$/i.test(c || '')
+  ? `#${[1, 3, 5].map((i) => Math.round(parseInt(c.slice(i, i + 2), 16) * 0.58 + 0x1d * 0.42).toString(16).padStart(2, '0')).join('')}`
+  : c);
 const CENTER_ID = '__center__';
 const HEAT_GLOWS = 700;   // glows drawn under Colour by → Heat, hottest first
 
@@ -693,7 +698,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // How the theme draws a dot (lib/themes.js DOTS). Droplet: a drop of glass,
   // lit from the top left and clear at the rim, with a fine edge (Glass).
   // Flat: one plain fill and quiet names, as Obsidian draws its notes. Glow: a
-  // soft light round each (Space, Synthwave; up to 6,000 dots). Solid otherwise.
+  // soft light round each (Space; up to 6,000 dots). Solid otherwise.
   const dotStyle = MAP_LOOK.dots;
   const defs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
   const drops = new Map();
@@ -822,7 +827,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (!L.labels) return false;
     return n.id === CENTER_ID || (n.degree === 1 && (L.names === 'all' || n.tier === 'S' || n.is_catalyst || hubs.has(n.id)));
   };
-  labelsG = g.append('g').classed('far', d3.zoomTransform(svg.node()).k < FAR);
+  labelsG = g.append('g').attr('class', 'sd-names').classed('far', d3.zoomTransform(svg.node()).k < FAR);
   let labels = labelsG.selectAll('text');
   const drawLabels = () => {
     labels = labelsG.selectAll('text').data(nodes.filter(labelled), d => d.id).join('text')
@@ -836,7 +841,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
         if (dotStyle === 'flat') return MAP_LOOK.light ? '#4d5566' : '#b9bec8';   // Obsidian's grey names
         if (dotStyle === 'plain') return MAP_LOOK.text;                          // an analysis tool's black labels
         if (d.is_catalyst) return MAP_LOOK.light ? '#0b7a47' : '#00ff88';
-        return colourOf(d);
+        // On a light look a name in its tier's colour is ink-deepened, so the
+        // S tier's gold still reads on white (4.5:1); the dot keeps the colour.
+        return MAP_LOOK.light ? inkier(colourOf(d)) : colourOf(d);
       })
       .attr('text-anchor', 'middle').attr('dy', d => nodeRadius(d) + 14)
       .attr('x', d => d.x || 0).attr('y', d => d.y || 0)

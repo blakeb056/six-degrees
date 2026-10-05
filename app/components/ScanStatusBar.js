@@ -290,11 +290,8 @@ export default function ScanStatusBar() {
                       <button
                         key={t.key} role="tab" aria-selected={on} title={t.title}
                         onClick={() => tabs.onPick(t.key)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 8, border: 'none',
-                          cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
-                          background: on ? 'rgba(52,152,219,0.22)' : 'transparent', color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #8b9aa8)',
-                        }}
+                        className="sd-tab sd-subtab"
+                        style={{ gap: 6, padding: '5px 11px', whiteSpace: 'nowrap', fontSize: 12 }}
                       >
                         {t.icon && <span aria-hidden="true">{t.icon}</span>}
                         {t.label}
