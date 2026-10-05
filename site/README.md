@@ -26,7 +26,8 @@ ImageMagick's `convert` (Linux); without either it uses the full-size files.
 | `_partials/downloads.html` | The three download cards on `/download/`. |
 | `_pages/<name>.html` | `/download/`, `/docs/`, `/roadmap/`, `/about/`: the inside of `<main>`, with a front-matter comment on top (`title`, `description`, `path`, `type`, `updated`, and `faq: true` to publish the page's `<dt>`/`<dd>` questions as FAQPage data). Pages can use the same `gen:` slots. |
 | `_posts/<slug>.md` | Blog posts, one Markdown file each, published at `/blog/<slug>/`. |
-| `img/app/` | Screenshots of the app running the invented sample network, for the home page and posts. |
+| `img/app/` | Screenshots of the app running the invented sample network, for posts and search results. |
+| `img/home/` | The home page's screenshots, as WebP: each in a light (Daylight) and a dark (Standard) copy, `<name>-light-<width>.webp` and `<name>-dark-<width>.webp`, at 1x and 2x of its slot. A `-m` name is a closer crop for phones. Shot at 1280×800, device scale 2, from `scripts/gen-test-network.mjs`'s invented network. The build leaves this folder as it is. |
 | `style.css`, `app.js` | Every page's styles and script. `index.html` asks for them by version (`?v=…`) and the build uses the same version on every page: bump it when either changes. |
 | `sitemap.xml` | The home page's entry, dated by hand at each release (`scripts/check-site-version.mjs` checks it). The build adds every other page. |
 | `llms.txt`, `robots.txt`, the IndexNow key | Served as they are. |
