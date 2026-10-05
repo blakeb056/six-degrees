@@ -1,5 +1,5 @@
-/* The Sixgree website. Light first, dark when the computer asks for it
-   (prefers-color-scheme). System fonts for text, Manrope 800 (in /fonts, SIL OFL)
+/* The Sixgree website. Light only, like the app's Daylight look (a dark set of
+   colours is kept below, switched off). System fonts for text, Manrope 800 (in /fonts, SIL OFL)
    for the wordmark and the big headlines. No external requests.
    index.html asks for this file by version (style.css?v=…): a browser holding an
    old copy draws the new page with old rules. Bump the version whenever the layout changes. */
@@ -70,7 +70,9 @@
   --alpha: #c99a1c; --beta: #d0558f; --preview: #1f9e98;
   color-scheme: light dark;
 }
-@media (prefers-color-scheme: dark) {
+/* The dark look, kept for a later toggle: the site is light only, like the app's Daylight
+   (Blake, 2026-10-05: "i dont see the white on the website its dark still"). */
+@media not all {
   :root {
     --bg: #0c0b1d;
     --bg-2: #100f25;
