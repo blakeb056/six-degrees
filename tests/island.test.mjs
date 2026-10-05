@@ -2,7 +2,10 @@
 // one view, and a second row of choice is drawn after a thin line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setNotchTabs, notchTabsNow, watchNotchTabs, isCurrentTab, notchGroups } from '../lib/island.js';
+import {
+  setNotchTabs, notchTabsNow, watchNotchTabs, isCurrentTab, notchGroups,
+  readTucked, notchTuckedNow, setNotchTucked, watchNotchTucked, isTuckKey, comesBackDown, NOTCH_TUCKED_KEY,
+} from '../lib/island.js';
 
 const pick = () => {};
 
@@ -60,4 +63,50 @@ test('a second row of choice: Profile · ✦ Insights, then the board, each with
   assert.deepEqual(notchGroups([{ key: 'rings' }, { key: 'clusters' }]).length, 1);
   assert.equal(isCurrentTab({ items: [{ key: 'rings' }], current: null }, 'rings'), false);
   assert.equal(isCurrentTab(null, 'rings'), false);
+});
+
+// Tucked up (Blake, 2026-10-05: "a small minimal arrow in it to put it up").
+const memory = (start = {}) => {
+  const kept = { ...start };
+  return { kept, getItem: (k) => (k in kept ? kept[k] : null), setItem: (k, v) => { kept[k] = String(v); } };
+};
+
+test('tucked is remembered: only a kept "true" is up, and storage that fails reads as down', () => {
+  assert.equal(readTucked(memory({ [NOTCH_TUCKED_KEY]: 'true' })), true);
+  assert.equal(readTucked(memory({ [NOTCH_TUCKED_KEY]: 'false' })), false);
+  assert.equal(readTucked(memory()), false);
+  assert.equal(readTucked(null), false);
+  assert.equal(readTucked({ getItem: () => { throw new Error('blocked'); } }), false);
+});
+
+test('tucking is kept, heard once per change, and survives storage that refuses it', () => {
+  const store = memory();
+  let heard = 0;
+  const stop = watchNotchTucked(() => { heard += 1; });
+  setNotchTucked(true, store);
+  assert.equal(notchTuckedNow(), true);
+  assert.equal(store.kept[NOTCH_TUCKED_KEY], 'true');
+  setNotchTucked(true, store); // already up: nothing to hear
+  setNotchTucked(false, { setItem: () => { throw new Error('full'); } });
+  assert.equal(notchTuckedNow(), false, 'down for this visit even when it cannot be kept');
+  stop();
+  assert.equal(heard, 2);
+});
+
+test('⌘. or Ctrl+. is the shortcut, and nothing else is', () => {
+  assert.equal(isTuckKey({ key: '.', metaKey: true }), true);
+  assert.equal(isTuckKey({ key: '.', ctrlKey: true }), true);
+  assert.equal(isTuckKey({ key: '.' }), false, 'a full stop typed in a box');
+  assert.equal(isTuckKey({ key: '.', metaKey: true, shiftKey: true }), false);
+  assert.equal(isTuckKey({ key: '.', ctrlKey: true, altKey: true }), false);
+  assert.equal(isTuckKey({ key: '/', metaKey: true }), false);
+  assert.equal(isTuckKey(null), false);
+});
+
+test('only LinkedIn starting to need you brings a tucked notch down, once', () => {
+  assert.equal(comesBackDown(null, 'Sign in to LinkedIn in the window that opened.'), true);
+  // Still needing you after you tucked it again: it stays up.
+  assert.equal(comesBackDown('Sign in', 'Sign in'), false);
+  assert.equal(comesBackDown('Sign in', null), false);
+  assert.equal(comesBackDown(null, null), false);
 });
