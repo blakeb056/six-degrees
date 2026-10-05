@@ -160,3 +160,23 @@ test('the branch light-up starts off, even in a setting saved when it was on', a
     assert.equal(again.labNow().branch, true);
   } finally { delete globalThis.localStorage; }
 });
+
+test('Network Circle\'s notch and the Physics panel pick a layout the same way, Rings · Clusters · Orbit', async () => {
+  // A copy of the module of its own, so the sliders it moves are its own.
+  const lab = await import('../lib/galaxy-lab.js?notch-layouts');
+  assert.deepEqual(lab.LAYOUTS.map((l) => l.key), ['rings', 'clusters', 'orbit']);
+  const fit = lab.clockNow().fit;
+  lab.pickLayout('clusters');
+  assert.equal(lab.layoutNow(), 'clusters');
+  assert.equal(lab.labNow().lines, LAYOUT_LOOKS.clusters.lines);
+  assert.equal(lab.clockNow().fit, fit + 1);          // then everyone on screen once it settles
+  lab.pickLayout('orbit');
+  assert.equal(lab.layoutNow(), 'orbit');
+  lab.setLab({ push: 7 });                            // a slider of your own: no layout is lit
+  assert.equal(lab.layoutNow(), null);
+  lab.pickLayout('rings');
+  assert.equal(lab.layoutNow(), 'rings');
+  assert.equal(lab.labNow().sizeBy, 'power');
+  lab.pickLayout('nonsense');                         // not a layout: nothing moves
+  assert.equal(lab.layoutNow(), 'rings');
+});

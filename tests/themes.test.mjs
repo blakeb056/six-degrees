@@ -74,7 +74,7 @@ test('a theme code carries the look and nothing else, and a bad one is refused',
 });
 
 test('light is the background\'s own: a light look turns words and borders dark, a dark one sets none of that', () => {
-  assert.deepEqual(THEMES.filter(isLight).map((t) => t.id), ['daylight', 'paper', 'analyst']);
+  assert.deepEqual(THEMES.filter(isLight).map((t) => t.id), ['daylight', 'analyst']);
   const dark = themeVars({ base: 'standard' });
   for (const k of ['--sd-ink', '--sd-fg-1', '--sd-gold']) assert.equal(dark[k], undefined, `${k} stays the dark default`);
   const light = themeVars({ base: 'daylight' });
@@ -90,4 +90,19 @@ test('buttons and dots are a look\'s own, and only the listed ways', () => {
   assert.deepEqual(cleanTheme({ base: 'standard', custom: { buttons: 'url(x)', dots: 'evil' } }).custom, {});
   assert.equal(resolveTheme({ base: 'glass' }).dots, 'droplet');
   assert.equal(resolveTheme({ base: 'obsidian' }).dots, 'flat');
+});
+
+test('Paper is gone, and a look saved or pasted with it becomes Daylight, the other light one, not Standard', () => {
+  assert.equal(THEMES.some((t) => t.id === 'paper'), false);
+  assert.deepEqual(cleanTheme({ base: 'paper' }), { base: 'daylight', custom: {} });
+  // Your own changes on top of it are kept.
+  assert.deepEqual(cleanTheme({ base: 'paper', custom: { accent: '#B4532A', font: 'serif' } }), { base: 'daylight', custom: { accent: '#b4532a', font: 'serif' } });
+  assert.equal(themeAttrs({ base: 'paper' }).theme, 'daylight');
+  assert.equal(themeAttrs({ base: 'paper' }).mode, 'light');
+  // A theme code shared while Paper was a look still opens.
+  const old = `sd-theme:${Buffer.from(JSON.stringify({ base: 'paper', custom: {} })).toString('base64')}`;
+  assert.deepEqual(decodeTheme(old), { base: 'daylight', custom: {} });
+  // Only a retired look's name maps: anything else unknown is Standard, as before.
+  assert.equal(cleanTheme({ base: 'constructor' }).base, 'standard');
+  assert.equal(cleanTheme({ base: { toString: () => 'paper' } }).base, 'standard');
 });

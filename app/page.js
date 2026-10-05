@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Suspense, useEffect, useState, useRef, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fillsCircles, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner from './components/useScanner';
@@ -11,7 +11,8 @@ import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid'
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
-import { setNotchTabs } from '../lib/island';
+import useNotchTabs from './components/useNotchTabs';
+import { LAYOUTS, layoutNow, pickLayout, watchLab } from '../lib/galaxy-lab';
 import OnboardingGate from './components/OnboardingGate';
 import EmptyState from './components/EmptyState';
 import { useUser } from './components/UserProvider';
@@ -24,6 +25,9 @@ import { TIER_COLORS } from '../lib/themes';   // the theme's dot colours, fille
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
+
+// Network Circle's notch: the Galaxy's layouts (lib/galaxy-lab.js LAYOUTS).
+const GALAXY_LAYOUTS = LAYOUTS.map((l) => ({ key: l.key, label: l.label, title: l.about }));
 
 // A job that changes the network. Setting the scanner up and signing in don't.
 const CHANGES_NETWORK = (job) => Boolean(job) && !['install', 'setup', 'login'].includes(job.action);
@@ -231,17 +235,26 @@ function HomeInner() {
   const view = resolveView(visualMode, mode);
 
   // This tab's views live in the notch under the header (app/components/ScanStatusBar.js);
-  // the Filters panel only filters.
+  // the Filters panel only filters. Every tab has its notch, if only its one
+  // view lit: Separation's is 🏆 Separation. Network Circle's one view is the
+  // Galaxy, so its notch holds the Galaxy's layouts instead, Rings · Clusters ·
+  // Orbit (Blake, 2026-10-04: the notch "doesnt show in the network circle"):
+  // picking one does what the Physics panel's Layout row does, and with the
+  // sliders moved to your own, none is lit.
   const hasNetwork = degree1.length > 0;
-  useEffect(() => {
-    if (!hasNetwork) return undefined;
-    setNotchTabs({
+  const layout = useSyncExternalStore(watchLab, layoutNow, () => 'rings');
+  const notchTabs = useMemo(() => {
+    if (!hasNetwork) return null;
+    if (view.key === 'galaxy') {
+      return { items: GALAXY_LAYOUTS, current: layout, onPick: pickLayout };
+    }
+    return {
       items: viewsForMode(mode).map((v) => ({ key: v.key, label: v.label, icon: v.icon, title: v.desc })),
       current: view.key,
       onPick: setVisualMode,
-    });
-    return () => setNotchTabs(null);
-  }, [mode, view.key, hasNetwork]);
+    };
+  }, [mode, view.key, hasNetwork, layout]);
+  useNotchTabs(notchTabs);
 
   if (loading) {
     return (

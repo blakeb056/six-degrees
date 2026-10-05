@@ -1041,3 +1041,28 @@ profiles with `lsappinfo front` polled every 100 ms.
   (`infobar_utils.cc`), whenever `profile.exit_type` says it crashed, which a stop that has
   to kill Chrome leaves behind. Write it back to "Normal" before every launch
   (`quiet_chrome_profile`).
+
+## 47. The notch: one view meant no notch, a plain effect left a frame of the last page, and a scroll lost it
+
+Found 2026-10-04 from Blake's "the notch doesnt show in the network circle and another section
+unless i scan something and it forces it to pop up", checked in a production build, frame by
+frame (a `requestAnimationFrame` loop recording the header, the notch's tabs and its top).
+
+- **A list of one tab was dropped.** `lib/island.js setNotchTabs` kept only two or more, so a
+  page with one view (Network Circle, Separation) set nothing and the notch only appeared
+  when a scan put its status there. One tab is a notch now, lit; Network Circle's are the
+  Galaxy's layouts. Every page sets something.
+- **A plain `useEffect` paints one frame of the old page's tabs.** A navigation is a
+  transition, so passive effects run after the new page is painted: going to Scan from Paths
+  or Outlink showed their tabs under Scan's header for a frame (dev never shows it; its
+  compile hides everything). `app/components/useNotchTabs.js` sets and clears them in a layout
+  effect, in the same commit as the page swap. Pages set their tabs through it, not
+  `setNotchTabs` directly.
+- **The notch was measured only when something changed.** On a page that scrolls (Settings,
+  Profile, Scan) it stayed where it was, over the page, until any DOM change re-measured it
+  and sent it off the top with the header; scrolling back left it there. It listens to
+  scroll now, and stops at the window's top (`Math.max(0, …)`).
+
+How to check it: build, start, and walk every page to every other with Playwright, counting
+frames where the new page's header is up and the notch shows the old page's tabs, or the
+notch is up with no header. Measured on a production build, never by eye in dev.

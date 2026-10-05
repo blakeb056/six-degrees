@@ -151,7 +151,7 @@ export default function AppearanceSection() {
   return (
     <Section id="appearance" title="Appearance" intro="How the whole app looks: pick one of ours, then make it yours. It changes as you go, and stays in this browser.">
       <div style={label}>Looks</div>
-      <Body style={{ marginTop: -4, marginBottom: 10, fontSize: 12.5 }}>Daylight, Paper and Analyst are light; the rest are dark. Each has its own buttons and its own way of drawing the map&rsquo;s dots.</Body>
+      <Body style={{ marginTop: -4, marginBottom: 10, fontSize: 12.5 }}>Daylight and Analyst are light; the rest are dark. Each has its own buttons and its own way of drawing the map&rsquo;s dots.</Body>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
         {THEMES.map((p) => {
           const on = choice.base === p.id;
