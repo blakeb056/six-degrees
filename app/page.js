@@ -7,6 +7,7 @@ import useScanner from './components/useScanner';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
+import { reachIndex, notScannedYet } from '../lib/reach';
 import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
@@ -218,13 +219,14 @@ function HomeInner() {
     return degree2.filter((c) => shows(grid, c.tier, 2) && shows(grid, d1ById.get(c.source_connection_id)?.tier, 1));
   }, [isDegreesMode, isSeparation, grid, d1ById, degree2]);
   // How many people stand behind each dot of the grid. In Degrees, 1st degree
-  // counts the bridges, since those are the connections it draws; Separation
-  // only ranks the 2nd.
+  // counts the bridges, since those are the connections it draws, and in its
+  // Unscanned view the connections not scanned yet; Separation only ranks the 2nd.
+  const unscannedView = isDegreesMode && !isSeparation && visualMode === 'unscanned';
   const panelCounts = useMemo(() => gridCounts(isSeparation
     ? { 2: byDegree[2] }
     : isDegreesMode
-      ? { 1: degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
-      : byDegree), [isSeparation, isDegreesMode, degree1, bridgeIds, byDegree]);
+      ? { 1: unscannedView ? notScannedYet(degree1, reachIndex(degree1, degree2, scanNotes)).todo : degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
+      : byDegree), [isSeparation, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree]);
   const selectHandler = useCallback((node) => {
     setSelected(node);
     if (node) { setSidebarCollapsed(false); setOpenNote(null); }
@@ -338,7 +340,9 @@ function HomeInner() {
           // the network came from: a CSV import (csvMode) can never have them,
           // while a scanned network just hasn't had step 4 yet. It used to tell
           // everyone the CSV reason, scanner users included.
-          if (isDegreesMode && degree2.length === 0) {
+          // Unscanned is the exception on your own network: it's where the
+          // first circle can be built.
+          if (isDegreesMode && degree2.length === 0 && !(view.key === 'unscanned' && canScan)) {
             return (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
@@ -389,6 +393,8 @@ function HomeInner() {
             canScan,
             chainOpen,
             onChainOpened: chainOpened,
+            // Someone's circle in Bridge Chains (Unscanned, once a circle it built is in).
+            onOpenCircle: openCircle,
             onCircle: setChainIn,
             preset: separationPreset,
           };
@@ -415,7 +421,7 @@ function HomeInner() {
           scanNotes={scanNotes}
           canScan={canScan}
         />
-        {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain'} />}
+        {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain' || view.key === 'unscanned'} />}
 
       </div>
     </div>
@@ -440,8 +446,9 @@ function networkShape(d1, d2) {
 
 // Looks at the network again when a scan has changed it: once when any scan
 // ends, and every 20 seconds while circles are being scanned with Bridge Chains
-// open, since the scanner saves every 10 pages and a circle fills in as it
-// does. A batch (Map 2nd degree) counts too, not only one person's scan: the
+// (or Unscanned, where a circle is built) open, since the scanner saves every
+// 10 pages and a circle fills in as it does. A batch (Map 2nd degree) counts
+// too, not only one person's scan: the
 // Scan page's "Watch it fill in" opens the circle it is reading. Its own
 // component so the scanner's answer, which changes every second or two while
 // a scan runs, re-renders it and not the whole map.

@@ -472,8 +472,9 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
  * full size, 13 hovered); `scale` shrinks everything else with it, for a ring
  * that has closed up.
  */
-export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1 }) {
-  const photo = localPhoto(row.profile_image_url);
+export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1, bare = false }) {
+  // `bare`: too small for a photo or a letter to read, so just the dot.
+  const photo = bare ? null : localPhoto(row.profile_image_url);
   const inset = r - 2 * scale;
   return (
     <>
@@ -487,7 +488,7 @@ export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1 }) {
           <image href={photo} x={x - inset} y={y - inset} width={inset * 2} height={inset * 2} clipPath={`url(#${clipId})`} />
         </>
       )}
-      {!photo && (
+      {!photo && !bare && (
         <text x={x} y={y + 4 * scale} textAnchor="middle" fill={row.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
           fontSize={11 * scale} fontWeight={700}>{row.name?.charAt(0)}</text>
       )}
