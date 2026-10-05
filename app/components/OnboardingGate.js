@@ -24,10 +24,10 @@ export default function OnboardingGate({ children }) {
       ) : (
         <div style={{ maxWidth: 420 }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            Can’t reach Six Degrees’ local server
+            Can’t reach Sixgree’s local server
           </div>
           <div style={{ color: 'var(--sd-fg-3, #888)', fontSize: 14, lineHeight: 1.6 }}>
-            The page loaded, but the app behind it isn’t answering. Quit Six Degrees and
+            The page loaded, but the app behind it isn’t answering. Quit Sixgree and
             open it again.
           </div>
         </div>

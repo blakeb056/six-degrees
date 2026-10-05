@@ -6,7 +6,7 @@
 # tarball. Run it by hand to check a tag without releasing:
 #
 #   gh workflow run npm-package.yml -f tag=v0.2.0
-#   gh run download <run id> -n npm-package      # six-degrees-0.2.0.tgz + .sha256
+#   gh run download <run id> -n npm-package      # sixgree-0.2.0.tgz + .sha256
 #
 # The package's first version (0.2.0) was published by hand from this tarball,
 # because npm's trusted publishing can only be set up for a package that exists.
@@ -55,7 +55,7 @@ jobs:
             exit 1
           fi
       # Only the Mac app carries a Python (docs/brain/DESKTOP.md D2). `npx
-      # six-degrees` uses the computer's own, or downloads one when asked to on
+      # sixgree` uses the computer's own, or downloads one when asked to on
       # the Scan page, so none may ride along in the package.
       - name: No Python inside
         run: |
@@ -68,7 +68,7 @@ jobs:
         run: |
           PREFIX="$RUNNER_TEMP/prefix"
           npm install -g --prefix "$PREFIX" ./*.tgz
-          "$PREFIX/bin/six-degrees" --no-open --port 6399 --data-dir "$RUNNER_TEMP/home" > "$RUNNER_TEMP/server.log" 2>&1 &
+          "$PREFIX/bin/sixgree" --no-open --port 6399 --data-dir "$RUNNER_TEMP/home" > "$RUNNER_TEMP/server.log" 2>&1 &
           for i in $(seq 1 60); do
             if curl -fsS -o /dev/null http://127.0.0.1:6399/; then break; fi
             sleep 1

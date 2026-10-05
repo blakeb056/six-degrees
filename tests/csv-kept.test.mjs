@@ -316,9 +316,9 @@ test('a damaged or strange file is never shown as a network, and the welcome scr
   };
   const cases = {
     'not JSON at all': ['{"format": 1, "connections": [', /isn't readable JSON/],
-    'a list, not an object': ['[1, 2, 3]', /isn't what Six Degrees writes/],
-    'no format': [JSON.stringify({ connections: [row('a')] }), /isn't what Six Degrees writes/],
-    'from a newer version': [JSON.stringify({ format: 2, importedAt: '2026-10-03T12:00:00.000Z', connections: [row('a')] }), /written by a newer Six Degrees/],
+    'a list, not an object': ['[1, 2, 3]', /isn't what Sixgree writes/],
+    'no format': [JSON.stringify({ connections: [row('a')] }), /isn't what Sixgree writes/],
+    'from a newer version': [JSON.stringify({ format: 2, importedAt: '2026-10-03T12:00:00.000Z', connections: [row('a')] }), /written by a newer Sixgree/],
     'no date it was imported': [JSON.stringify({ format: 1, connections: [row('a')] }), /doesn't say when/],
     'nobody in it': [good([]), /nobody in it/],
     'a row cut short': [good([row('a'), ['b', 'Invented b']]), /person 2 isn't laid out/],

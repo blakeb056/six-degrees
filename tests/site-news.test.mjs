@@ -51,7 +51,7 @@ const CHANGELOG = `# Changelog
 The first one worth a note.
 
 ### Changed
-- **\`npx six-degrees\` on Linux.** It runs.
+- **\`npx sixgree\` on Linux.** It runs.
 `;
 
 test('releases come from dated headings only, newest first, with their bullets', () => {
@@ -73,7 +73,7 @@ test('a beta folds into the full release it became; one still in beta is left ou
 test('a post is headed by the first new thing, and names up to three more', () => {
   const [latest, older] = fullReleases(parseChangelog(CHANGELOG));
   assert.deepEqual(highlights(latest), { title: 'A new view (experimental)', more: ['Names on or off', 'Something from the beta'] });
-  assert.equal(highlights(older).title, 'npx six-degrees on Linux');
+  assert.equal(highlights(older).title, 'npx sixgree on Linux');
 });
 
 test('lead-ins lose their full stop and any bracket that isn\'t "experimental"', () => {
@@ -125,13 +125,13 @@ test('the real site builds: every page, both feeds and the sitemap, each page wi
       const title = html.match(/<title>([^<]+)<\/title>/)[1];
       assert.ok(!titles.has(title), `${p} has a title of its own`);
       titles.add(title);
-      assert.match(html, new RegExp(`<link rel="canonical" href="https://sixdegreesapp.com${p.replace(/[/]/g, '\\/')}">`), `${p} canonical`);
+      assert.match(html, new RegExp(`<link rel="canonical" href="https://sixgree.com${p.replace(/[/]/g, '\\/')}">`), `${p} canonical`);
       assert.doesNotMatch(html, /<!-- gen:[a-z0-9-]+ --><!-- \/gen:/, `${p} has no empty slot`);
       for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(block[1]);
     }
     for (const f of ['blog/feed.xml', 'releases/feed.xml', 'sitemap.xml']) assert.ok(existsSync(path.join(out, f)), f);
     const sitemap = readFileSync(path.join(out, 'sitemap.xml'), 'utf8');
-    for (const p of pages) assert.ok(sitemap.includes(`<loc>https://sixdegreesapp.com${p}</loc>`), `${p} is in the sitemap`);
+    for (const p of pages) assert.ok(sitemap.includes(`<loc>https://sixgree.com${p}</loc>`), `${p} is in the sitemap`);
     assert.ok(!existsSync(path.join(out, '_posts')) && !existsSync(path.join(out, 'README.md')), 'sources are not published');
   } finally {
     rmSync(out, { recursive: true, force: true });

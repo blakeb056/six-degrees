@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Degrees opens on Unscanned; once you have one, it opens on Bridge Chains as before.
 
 ### Changed
+- **Six Degrees is now Sixgree** (sixgree.com). The menu bar, Dock, Finder, window, About box,
+  installers, Start Menu and Desktop shortcuts, website and npm package (`npx sixgree`) all
+  say Sixgree now. What stays the same for you: your network and settings (still in
+  `~/.six-degrees`, still `SIX_DEGREES_HOME`), your backups (`.sixdegrees` files open as
+  before), the app's settings folder, the in-app updater (1.0.0 updates itself to Sixgree like
+  any other version), the Windows install it updates in place, and the GitHub repository.
+  `six-degrees` still works as a command name for the npm package.
 - **The Filters and Details buttons at the map's edges are lit glass, and they dock.** Each is a
   frosted round puck with a lit rim and a glow in its colour (the look's accent for Filters, its
   gold for Details), porcelain on Daylight, a flat hairline on Analyst, and drawn in every other
@@ -180,7 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.7.0] - 2026-10-03
 
 ### Added
-- **Download for Mac shows how to open it the first time.** On sixdegreesapp.com, clicking Download
+- **Download for Mac shows how to open it the first time.** On sixgree.com, clicking Download
   for Mac now shows the three steps right under the button: drag it into Applications, close
   macOS's warning, and allow it once in System Settings → Privacy & Security. They used to be only
   on the Download page.
@@ -279,7 +286,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sign in to LinkedIn with Google or Apple?** Step 2 now says what to do: set a LinkedIn password
   first (Forgot password on LinkedIn's sign-in page emails you a link to make one), since Google and
   Apple sign-in can't work in the scanner's window.
-- **A saved Galaxy picture or video credits sixdegreesapp.com** in its corner, instead of the app's
+- **A saved Galaxy picture or video credits sixgree.com** in its corner, instead of the app's
   name, so anyone it's shared with knows where to get it.
 - **Bridge Chains: the inner ring holds the circles with the most going on**: notifications about
   them (new ones count double), people in them ready to scan, and clusters formed from them since.

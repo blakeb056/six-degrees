@@ -283,7 +283,7 @@ function HomeInner() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)' }}>
-        <div style={{ fontSize: 24, fontWeight: 700 }}>Loading Six Degrees…</div>
+        <div style={{ fontSize: 24, fontWeight: 700 }}>Loading Sixgree…</div>
         <div style={{ fontSize: 14, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>Mapping your LinkedIn network</div>
       </div>
     );

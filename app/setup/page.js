@@ -289,8 +289,8 @@ function SetupInner() {
             <Box tone="bad">
               <b>Can’t find the scanner files.</b><br />
               <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                This copy of Six Degrees is missing part of its scanner. Download it again from
-                sixdegreesapp.com and put the new copy in place of this one.
+                This copy of Sixgree is missing part of its scanner. Download it again from
+                sixgree.com and put the new copy in place of this one.
               </span>
             </Box>
           )}

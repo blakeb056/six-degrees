@@ -103,7 +103,7 @@ export function Welcome({ ctx }) {
 
   return (
     <Frame
-      eyebrow="Welcome to Six Degrees"
+      eyebrow="Welcome to Sixgree"
       title={<>Your network,<br />drawn as a galaxy.</>}
       lede={`See who you know, who they know, and the shortest way to anyone. It all stays on ${ctx.here}: there’s no account with us, and nothing is uploaded.`}
       error={error}
@@ -134,7 +134,7 @@ export function GetReady({ ctx }) {
   const appShown = Boolean(mac) && !(mac.version != null && mac.version < 13);
   const item = appManagementStep(s, settings);
   const answer = scan.appAnswer || settings?.appManagement || null;
-  const who = mac?.app ? 'Six Degrees' : 'the app you started Six Degrees from';
+  const who = mac?.app ? 'Sixgree' : 'the app you started Sixgree from';
   const running = s?.running;
   const installing = running && ['install', 'setup'].includes(s.action);
 
@@ -178,7 +178,7 @@ export function GetReady({ ctx }) {
         {opened ? <span className="ob-chip wait"><span className="ob-dotsl"><i /><i /><i /></span>In System Settings</span> : <span />}
         <div className="rx">
           <p>{opened
-            ? <>Turn on <b>{who}</b> in the window that opened, then come back and say so. Six Degrees can’t see this setting, so it takes your word for it.</>
+            ? <>Turn on <b>{who}</b> in the window that opened, then come back and say so. Sixgree can’t see this setting, so it takes your word for it.</>
             : item.text}</p>
           <div className="acts">
             {opened ? (
@@ -203,7 +203,7 @@ export function GetReady({ ctx }) {
       : !r.scanner.done ? 'Set up the scanner first'
         : 'Tick “I understand” to go on';
   const art = appShown
-    ? <MacSettings answer={answer || (opened ? 'opened' : null)} name={mac?.app ? 'Six Degrees' : 'Terminal'} />
+    ? <MacSettings answer={answer || (opened ? 'opened' : null)} name={mac?.app ? 'Sixgree' : 'Terminal'} />
     : <ChecksArt chrome={r.chrome !== false} scanner={r.scanner.done} risk={r.risk} />;
 
   return (
@@ -223,7 +223,7 @@ export function GetReady({ ctx }) {
       <div className={`ob-pair${r.chrome === false ? ' wide' : ''}`}>{chrome}{scanner}</div>
       {r.scanner.missing && (
         <div className="ob-row bad"><span className="ri"><Ico.radar /></span>
-          <span><div className="rt">The scanner’s files are missing</div><div className="rd">This copy of Six Degrees is missing part of its scanner. Download it again from sixdegreesapp.com and put the new copy in place of this one.</div></span><span /></div>
+          <span><div className="rt">The scanner’s files are missing</div><div className="rd">This copy of Sixgree is missing part of its scanner. Download it again from sixgree.com and put the new copy in place of this one.</div></span><span /></div>
       )}
       {!r.scanner.done && !r.scanner.missing && (
         <div className="ob-row attn"><span className="ri"><Ico.radar /></span>
@@ -294,7 +294,7 @@ export function Connect({ ctx }) {
     <Frame
       eyebrow="Step 3 of 5 · Connect"
       title="Connect your LinkedIn"
-      lede={`Six Degrees reads LinkedIn as you, in a Chrome window on ${ctx.here}. Sign in there once, the way you always do.`}
+      lede={`Sixgree reads LinkedIn as you, in a Chrome window on ${ctx.here}. Sign in there once, the way you always do.`}
       error={scan.error}
       art={<ConnectArt state={state} here={ctx.here} />}
       foot={<>

@@ -132,7 +132,7 @@ export function highlights(release, more = 3) {
   const leads = [...new Set(ordered.map((b) => leadOf(b.text)).filter(Boolean))];
   let title = leads.shift();
   if (!title) {
-    const first = ordered[0] ? plainText(ordered[0].text) : `Six Degrees ${release.version}`;
+    const first = ordered[0] ? plainText(ordered[0].text) : `Sixgree ${release.version}`;
     title = first.length > 90 ? `${first.slice(0, 90).replace(/\s+\S*$/, '')}…` : first.replace(/[.:]$/, '');
   }
   return { title, more: leads.slice(0, more) };

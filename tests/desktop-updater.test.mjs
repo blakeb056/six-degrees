@@ -15,7 +15,7 @@ import {
 // SIGTERM into exit code 143, so "stopped from outside" mostly arrives as a
 // code, not a signal. The data import (75) and the updater (76) each have a
 // code of their own, read by one decision.
-test('the updater hands over with 76, and the app quits quietly, with no "Six Degrees stopped" dialog', () => {
+test('the updater hands over with 76, and the app quits quietly, with no "Sixgree stopped" dialog', () => {
   assert.equal(UPDATE_HANDOFF_EXIT_CODE, 76);
   assert.equal(serverExitAction({ code: UPDATE_HANDOFF_EXIT_CODE, signal: null, quitting: false }), 'quit');
   // Whatever the restart guard knows about this server, a hand-over is never held back.
@@ -24,7 +24,7 @@ test('the updater hands over with 76, and the app quits quietly, with no "Six De
 
 test('REGRESSION: a server stopped from outside quits quietly, as a code (Next) or a signal', () => {
   // install.sh, or logging out, sends SIGTERM to the server too. Next catches it
-  // and exits 143 (130 for SIGINT), which used to reach the "Six Degrees
+  // and exits 143 (130 for SIGINT), which used to reach the "Sixgree
   // stopped" dialog whenever the app hadn't started quitting first.
   for (const code of [143, 130]) assert.equal(serverExitAction({ code, signal: null, quitting: false }), 'quit', String(code));
   for (const signal of ['SIGKILL', 'SIGTERM']) assert.equal(serverExitAction({ code: null, signal, quitting: false }), 'quit', signal);
@@ -48,7 +48,7 @@ test('while the app quits anyway, the server ending is expected; any other exit 
 
 test('the app bundle, from Electron\'s own executable path', () => {
   assert.equal(bundlePathFromExe('/Applications/Six Degrees.app/Contents/MacOS/Six Degrees'), '/Applications/Six Degrees.app');
-  assert.equal(bundlePathFromExe('/Users/me/Apps/Six Degrees (beta).app/Contents/MacOS/Six Degrees'), '/Users/me/Apps/Six Degrees (beta).app');
+  assert.equal(bundlePathFromExe('/Users/me/Apps/Sixgree (beta).app/Contents/MacOS/Six Degrees'), '/Users/me/Apps/Sixgree (beta).app');
   assert.equal(bundlePathFromExe('/usr/local/bin/electron'), null, 'run from a checkout: no bundle');
   assert.equal(bundlePathFromExe(undefined), null);
 });
@@ -64,7 +64,7 @@ test('after an update the app opens on Settings, where the outcome is shown', ()
 // needs of it: the folder it reopens the new version with (always absolute,
 // lib/updater.js relaunchArgs) arrives exactly as it was sent.
 test('the data folder the updater reopens the app with arrives as it was sent', () => {
-  const dir = '/Users/someone/Six Degrees data/it\'s here';
+  const dir = '/Users/someone/Sixgree data/it\'s here';
   assert.equal(dataDirArg(['/Applications/Six Degrees.app/Contents/MacOS/Six Degrees', '--after-update', '--data-dir', dir], { cwd: '/', home: '/Users/someone' }), dir);
   // A relative one typed by hand is taken from where the app was started, or
   // from the home folder when that is / (as with `open`), never from inside the app.

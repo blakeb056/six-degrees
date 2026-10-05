@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the website, https://sixdegreesapp.com/, from site/ into a folder.
+// Builds the website, https://sixgree.com/, from site/ into a folder.
 //
 //   node scripts/build-site.mjs              # the whole site, into _site/
 //   node scripts/build-site.mjs <folder>     # into another folder
@@ -28,7 +28,7 @@ import {
 } from './site-news.mjs';
 import { markdown, frontMatter, htmlFrontMatter, escapeHtml, plainText } from './site-markdown.mjs';
 
-export const SITE = 'https://sixdegreesapp.com';
+export const SITE = 'https://sixgree.com';
 export const REPO = 'https://github.com/blakeb056/six-degrees';
 const AUTHOR = { '@type': 'Person', '@id': 'https://blakeburford.com/#person', name: 'Blake Burford', url: 'https://blakeburford.com/' };
 const KINDS = ['added', 'changed', 'fixed', 'removed', 'security', 'deprecated'];
@@ -87,8 +87,8 @@ export function header(html, current) {
   });
 }
 
-const FEEDS = `<link rel="alternate" type="application/atom+xml" title="Six Degrees blog" href="/blog/feed.xml">
-  <link rel="alternate" type="application/atom+xml" title="Six Degrees releases" href="/releases/feed.xml">`;
+const FEEDS = `<link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">`;
 
 const breadcrumbs = (trail) => ({
   '@type': 'BreadcrumbList',
@@ -117,7 +117,7 @@ export function layout(site, { path: pagePath, title, description, graph, main, 
   <link rel="canonical" href="${url}">
   ${FEEDS}
   <meta property="og:type" content="${type}">
-  <meta property="og:site_name" content="Six Degrees">
+  <meta property="og:site_name" content="Sixgree">
   <meta property="og:url" content="${url}">
   <meta property="og:title" content="${t}">
   <meta property="og:description" content="${d}">
@@ -217,7 +217,7 @@ export function renderPage(site, page, values) {
   const body = fill(page.body, values);
   const graph = [
     webPage(page.path, page.title, page.description, page.type || 'WebPage', page.updated ? { dateModified: page.updated } : {}),
-    breadcrumbs([['Six Degrees', '/'], [page.crumb || page.title, page.path]]),
+    breadcrumbs([['Sixgree', '/'], [page.crumb || page.title, page.path]]),
   ];
   if (page.faq === 'true') graph.push({ '@type': 'FAQPage', '@id': `${SITE}${page.path}#faq`, mainEntity: faqFrom(body) });
   return layout(site, { path: page.path, title: page.title, description: page.description, graph, main: body });
@@ -230,17 +230,17 @@ export function renderBlogIndex(site) {
         <p>${escapeHtml(p.description)}</p>
         <a class="more" href="${p.path}">Read it<span class="sr-only">: ${escapeHtml(p.title)}</span> →</a>
       </article>`).join('\n');
-  const title = 'Blog: how Six Degrees works, and why';
-  const description = 'Notes on how Six Degrees ranks who can introduce you, why it runs on your own computer, the Galaxy physics lab, and scanning slowly and safely.';
-  const main = `${pageHead({ kicker: 'Blog', title: 'How it works, and why', lede: 'Notes on the ideas behind Six Degrees, written from the code. Every example uses the invented sample network that ships with the app.' })}
+  const title = 'Blog: how Sixgree works, and why';
+  const description = 'Notes on how Sixgree ranks who can introduce you, why it runs on your own computer, the Galaxy physics lab, and scanning slowly and safely.';
+  const main = `${pageHead({ kicker: 'Blog', title: 'How it works, and why', lede: 'Notes on the ideas behind Sixgree, written from the code. Every example uses the invented sample network that ships with the app.' })}
     <div class="post-list">
 ${list}
     </div>
     <p class="feed-line"><a href="/blog/feed.xml">Follow the blog (Atom feed)</a> · <a href="/releases/">Release notes</a></p>`;
   const graph = [
-    { '@type': 'Blog', '@id': `${SITE}/blog/#blog`, url: `${SITE}/blog/`, name: 'Six Degrees blog', description, publisher: { '@id': AUTHOR['@id'] },
+    { '@type': 'Blog', '@id': `${SITE}/blog/#blog`, url: `${SITE}/blog/`, name: 'Sixgree blog', description, publisher: { '@id': AUTHOR['@id'] },
       blogPost: site.posts.map((p) => ({ '@id': `${SITE}${p.path}#post` })) },
-    breadcrumbs([['Six Degrees', '/'], ['Blog', '/blog/']]),
+    breadcrumbs([['Sixgree', '/'], ['Blog', '/blog/']]),
   ];
   return layout(site, { path: '/blog/', title, description, graph, main });
 }
@@ -261,7 +261,7 @@ export function renderPost(site, post) {
 ${post.html}
       </div>
       <footer class="article-foot">
-        <p class="fine">Every person named in this post is invented: they're from the sample network that ships with Six Degrees.
+        <p class="fine">Every person named in this post is invented: they're from the sample network that ships with Sixgree.
           Something wrong? <a href="${REPO}/issues">Open an issue</a>.</p>
         <nav class="post-nav" aria-label="More posts">
           ${older ? `<a href="${older.path}"><span>Older</span>${escapeHtml(older.title)}</a>` : '<span></span>'}
@@ -272,7 +272,7 @@ ${post.html}
     <section class="more-posts">
       <h2>More from the blog</h2>
       <div class="posts">${postTeaser(others)}</div>
-      <p class="more-links"><a class="button" href="/download/">Download Six Degrees</a> <a href="/blog/">All posts</a></p>
+      <p class="more-links"><a class="button" href="/download/">Download Sixgree</a> <a href="/blog/">All posts</a></p>
     </section>`;
   const graph = [
     {
@@ -282,9 +282,9 @@ ${post.html}
       isPartOf: { '@id': `${SITE}/blog/#blog` }, about: { '@id': `${SITE}/#app` }, keywords: post.tags.join(', '),
       wordCount: plainText(post.body).split(/\s+/).length, inLanguage: 'en',
     },
-    breadcrumbs([['Six Degrees', '/'], ['Blog', '/blog/'], [post.title, post.path]]),
+    breadcrumbs([['Sixgree', '/'], ['Blog', '/blog/'], [post.title, post.path]]),
   ];
-  return layout(site, { path: post.path, title: `${post.title} · Six Degrees`, description: post.description, graph, main, image: post.image, type: 'article' });
+  return layout(site, { path: post.path, title: `${post.title} · Sixgree`, description: post.description, graph, main, image: post.image, type: 'article' });
 }
 
 /**
@@ -363,7 +363,7 @@ export const BEFORE = [
   },
   {
     id: 'alpha-first-build', commits: 58, stage: 'Alpha', date: '2026-06-11', title: 'Alpha 1: the first build',
-    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Six Degrees started.',
+    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Sixgree started.',
     archive: 'https://six-degrees-linkedin.vercel.app/',
     image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation, Map your LinkedIn power network', width: 800, height: 500, caption: 'The first build, June 2026' },
   },
@@ -423,8 +423,8 @@ ${notes}
   // The stages before 0.1 are in the list too, each at its newest milestone.
   const stages = ['Preview', 'Beta', 'Alpha'].map((st) => BEFORE.find((b) => b.stage === st)).filter(Boolean);
   const toc = `${full.map((r) => `<a href="#${anchor(r.version)}">${escapeHtml(r.version)}</a>`).join(' ')} <a href="#before-0-1">Before 0.1:</a> ${stages.map((b) => `<a class="stage-link s-${b.stage.toLowerCase()}" href="#${b.id}">${b.stage}</a>`).join(' ')}`;
-  const title = 'Release notes: every version of Six Degrees';
-  const description = `Everything added, changed and fixed in each of Six Degrees' ${full.length} releases, from ${full.at(-1).version} to ${full[0].version}, newest first.`;
+  const title = 'Release notes: every version of Sixgree';
+  const description = `Everything added, changed and fixed in each of Sixgree's ${full.length} releases, from ${full.at(-1).version} to ${full[0].version}, newest first.`;
   const main = `${pageHead({ kicker: 'Releases', title: 'Release notes', lede: `Every version, newest first, from the <a href="${REPO}/blob/main/CHANGELOG.md">changelog</a>. Downloads for each are on <a href="${REPO}/releases">GitHub Releases</a>.` })}
     <div class="panel chart-group releases-chart">
       <div class="panel-head">
@@ -448,7 +448,7 @@ ${beforeHtml()}
     <p class="feed-line"><a href="/releases/feed.xml">Follow releases (Atom feed)</a> · <a href="${REPO}/releases">All releases on GitHub</a></p>`;
   const graph = [
     webPage('/releases/', title, description, 'CollectionPage', { dateModified: full[0].date }),
-    breadcrumbs([['Six Degrees', '/'], ['Releases', '/releases/']]),
+    breadcrumbs([['Sixgree', '/'], ['Releases', '/releases/']]),
   ];
   return layout(site, { path: '/releases/', title, description, graph, main });
 }
@@ -483,7 +483,7 @@ ${entries.map((e) => `  <entry>
 
 export function blogFeed(site) {
   return atom({
-    id: `${SITE}/blog/`, title: 'Six Degrees blog', subtitle: 'How Six Degrees works, and why.',
+    id: `${SITE}/blog/`, title: 'Sixgree blog', subtitle: 'How Sixgree works, and why.',
     self: `${SITE}/blog/feed.xml`, alternate: `${SITE}/blog/`, updated: site.posts.reduce((m, p) => (p.updated > m ? p.updated : m), '0000'),
     entries: site.posts.map((p) => ({ id: `${SITE}${p.path}`, title: p.title, url: `${SITE}${p.path}`, published: p.date, updated: p.updated, summary: p.description, html: p.html })),
   });
@@ -492,10 +492,10 @@ export function blogFeed(site) {
 export function releaseFeed(site) {
   const full = fullReleases(parseChangelog(site.changelog)).slice(0, 20);
   return atom({
-    id: `${SITE}/releases/`, title: 'Six Degrees releases', subtitle: 'What each version added, changed and fixed.',
+    id: `${SITE}/releases/`, title: 'Sixgree releases', subtitle: 'What each version added, changed and fixed.',
     self: `${SITE}/releases/feed.xml`, alternate: `${SITE}/releases/`, updated: full[0].date,
     entries: full.map((r) => ({
-      id: `${SITE}/releases/#${anchor(r.version)}`, title: `Six Degrees ${r.version}: ${highlights(r).title}`,
+      id: `${SITE}/releases/#${anchor(r.version)}`, title: `Sixgree ${r.version}: ${highlights(r).title}`,
       url: `${SITE}/releases/#${anchor(r.version)}`, published: r.date, updated: r.date,
       summary: KINDS.filter((k) => changeCounts(r)[k]).map((k) => `${changeCounts(r)[k]} ${k}`).join(', '),
       html: markdown(scanWording(r.body.trim()), { ids: false }),

@@ -254,7 +254,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
       {/* ── 09 Richest? ── */}
       <Section id="richest" no={no()} {...sec} big="Richest?" bigStyle={{ fontSize: isMobile ? 40 : 56, letterSpacing: -1.5, color: 'var(--sd-gold, #FFD700)' }}
         head="The app can’t know, and won’t guess."
-        lede="Six Degrees doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is power: who runs the biggest companies you can reach."
+        lede="Sixgree doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is power: who runs the biggest companies you can reach."
         src={heavy?.companies.bigSource}>
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {['Net worth', 'Pay', 'Company revenue', 'Funding raised'].map((x) => (

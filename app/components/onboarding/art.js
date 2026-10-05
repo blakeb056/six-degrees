@@ -3,7 +3,7 @@
 // The pictures on the right of each setup step, and the icons the steps use.
 // Drawn here, from the look's colours (styles.js), so they turn with it: a
 // galaxy that fills in as your connections are read, System Settings with the
-// switch to turn on, Six Degrees and your LinkedIn joined once you're signed
+// switch to turn on, Sixgree and your LinkedIn joined once you're signed
 // in, and the daily budget against what got an account restricted. Nobody's
 // name is drawn: the galaxy is a picture, not your network.
 
@@ -107,13 +107,13 @@ export function Galaxy({ progress = 1, ghost = false, bloom = false }) {
 
 // ── System Settings → Privacy & Security → App Management ───────────────────
 // `answer`: null (not yet), 'opened' (its pane was opened from here), 'done'
-// or 'skipped'. `name` is who macOS asks about: Six Degrees in the Mac app,
+// or 'skipped'. `name` is who macOS asks about: Sixgree in the Mac app,
 // the app it was started from otherwise (lib/scanner-setup.js appManagementStep).
 
 const SIDEBAR = [['#2f8cff', 'Wi‑Fi'], ['#2f8cff', 'Bluetooth'], ['#2f8cff', 'Network'], null, ['#ff453a', 'Notifications'], ['#7d5cf5', 'Focus'], null,
   ['#8e8e93', 'General'], ['#3a3a3c', 'Appearance'], ['#2f8cff', 'Privacy & Security', true], ['#2b2b2e', 'Desktop & Dock'], ['#2f8cff', 'Displays']];
 
-export function MacSettings({ answer, name = 'Six Degrees' }) {
+export function MacSettings({ answer, name = 'Sixgree' }) {
   const on = answer === 'done';
   const skipped = answer === 'skipped';
   return (
@@ -132,7 +132,7 @@ export function MacSettings({ answer, name = 'Six Degrees' }) {
             <div className="mp">Apps in this list can update or delete other apps on this Mac.</div>
             <div className="list">
               <div className="mrow">
-                {name === 'Six Degrees' ? <AppIcon className="appic" /> : <span className="appic" style={{ borderRadius: 7, background: '#2b2b2e' }} />}
+                {name === 'Sixgree' ? <AppIcon className="appic" /> : <span className="appic" style={{ borderRadius: 7, background: '#2b2b2e' }} />}
                 {name}
                 <span className={`mt${on ? ' on' : skipped ? '' : ' pulse'}`} />
               </div>
@@ -173,7 +173,7 @@ export function ChecksArt({ chrome, scanner, risk }) {
   );
 }
 
-// ── Six Degrees ⟷ your LinkedIn ──────────────────────────────────────────────
+// ── Sixgree ⟷ your LinkedIn ──────────────────────────────────────────────
 
 export function ConnectArt({ state, here = 'this computer' }) {
   const connected = state === 'connected';
@@ -181,7 +181,7 @@ export function ConnectArt({ state, here = 'this computer' }) {
   return (
     <div>
       <div className="ob-conn">
-        <div className="ob-cnode"><div className="ob-tile me"><AppIcon /></div><div className="nl">Six Degrees</div><div className="ns">on {here}</div></div>
+        <div className="ob-cnode"><div className="ob-tile me"><AppIcon /></div><div className="nl">Sixgree</div><div className="ns">on {here}</div></div>
         {connected ? (
           <div className="ob-wire ok"><div className="track" /><div className="badge"><Ico.check /></div><div className="wl">Connected</div></div>
         ) : waiting ? (
@@ -205,7 +205,7 @@ export function ConnectArt({ state, here = 'this computer' }) {
       </div>
       <div className="ob-caption">
         {connected ? <><Ico.eye />It comes forward again only to sign in, or for a security check.</>
-          : <><Ico.lock />You type into LinkedIn’s own page. Six Degrees can’t see it.</>}
+          : <><Ico.lock />You type into LinkedIn’s own page. Sixgree can’t see it.</>}
       </div>
     </div>
   );

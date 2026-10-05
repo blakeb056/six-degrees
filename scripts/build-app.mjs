@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Build "Six Degrees.app" and a .dmg you can hand to someone.
+// Build Sixgree ("Six Degrees.app") and a .dmg you can hand to someone.
 //
 // Two shells, one server (docs/brain/DESKTOP.md):
 //   --shell=electron   the desktop app: an Electron window, menu and lifecycle
@@ -71,7 +71,13 @@ if (SIGNING.error) {
 }
 const DEVELOPER_ID = SIGNING.mode === 'developer-id';
 const NOTARIZE = Boolean(DEVELOPER_ID && SIGNING.notary);
+// The bundle's file name stays "Six Degrees.app" after the rename to Sixgree:
+// 1.0.0's updater looks for exactly that inside the disk image (lib/updater.js
+// APP_BUNDLE_NAME), and the executables inside are named after it. What people
+// see (menu bar, Dock, Finder, About, the disk image) is DISPLAY_NAME:
+// CFBundleName/CFBundleDisplayName, localized so Finder shows it too.
 const APP_NAME = 'Six Degrees';
+const DISPLAY_NAME = 'Sixgree';
 const OUT = path.join(ROOT, 'dist');
 const APP = path.join(OUT, `${APP_NAME}.app`);
 const RES = path.join(APP, 'Contents', 'Resources');
@@ -296,8 +302,9 @@ writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" enc
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>${APP_NAME}</string>
-  <key>CFBundleDisplayName</key><string>${APP_NAME}</string>
+  <key>CFBundleName</key><string>${DISPLAY_NAME}</string>
+  <key>CFBundleDisplayName</key><string>${DISPLAY_NAME}</string>
+  <key>LSHasLocalizedDisplayName</key><true/>
   <key>CFBundleIdentifier</key><string>com.blakeburford.sixdegrees</string>
   <key>CFBundleVersion</key><string>${pkg.version}</string>
   <key>CFBundleShortVersionString</key><string>${pkg.version}</string>
@@ -310,6 +317,8 @@ writeFileSync(path.join(APP, 'Contents', 'Info.plist'), `<?xml version="1.0" enc
 </dict>
 </plist>
 `);
+
+localizeDisplayName(RES);
 
 // ---- 4. sign ---------------------------------------------------------------
 if (DEVELOPER_ID) {
@@ -361,7 +370,12 @@ async function buildElectronShell() {
     darwinDarkModeSupport: true,
     // The bundled Node 24 needs macOS 13.5 (Electron itself needs 13), so say
     // so, and macOS explains it instead of the app failing to start.
-    extendInfo: { LSMinimumSystemVersion: MACOS_MIN },
+    extendInfo: {
+      LSMinimumSystemVersion: MACOS_MIN,
+      CFBundleName: DISPLAY_NAME,
+      CFBundleDisplayName: DISPLAY_NAME,
+      LSHasLocalizedDisplayName: true,
+    },
     osxSign: false,        // signed ad hoc below, after everything is in place
   });
   console.log(`  Electron ${electronVersion} (${ARCH})`);
@@ -372,6 +386,7 @@ async function buildElectronShell() {
   // Put straight into the finished app, so its links are made where they stay
   // and nothing copies them again (TRAPS §37).
   await bundlePython(path.join(APP, 'Contents', 'Resources'));
+  localizeDisplayName(path.join(APP, 'Contents', 'Resources'));
 
   if (DEVELOPER_ID) {
     signWithDeveloperId(APP);
@@ -712,7 +727,8 @@ async function makeIcns(svg, out) {
 
 // ---- 5. the disk image -----------------------------------------------------
 step('Building the disk image');
-const dmg = path.join(OUT, `${APP_NAME.replace(/ /g, '-')}-${pkg.version}-${ARCH}.dmg`);
+// Sixgree-<version>-<chip>.dmg. release.yml also publishes it as Six-Degrees-…, the name 1.0.0's updater asks for.
+const dmg = path.join(OUT, `${DISPLAY_NAME}-${pkg.version}-${ARCH}.dmg`);
 const staging = path.join(OUT, 'staging');
 mkdirSync(staging, { recursive: true });
 // ditto, not cpSync: Node's copy rewrites relative symlinks into absolute paths
@@ -741,7 +757,7 @@ if (hasBackground) {
 // left, the Applications folder on the right, drag across. Without this the
 // disk image opens as a plain file list and nobody knows what to do with it.
 const rw = path.join(OUT, 'rw.dmg');
-run('hdiutil', ['create', '-volname', APP_NAME, '-srcfolder', staging,
+run('hdiutil', ['create', '-volname', DISPLAY_NAME, '-srcfolder', staging,
   '-ov', '-format', 'UDRW', rw]);
 
 // hdiutil prints one line per device it creates — the whole disk (/dev/diskN)
@@ -798,7 +814,7 @@ if (lstatSync(dropTarget).isFile()) {
 // a syntax error. One slipped in once, and 0.1.0 shipped with a plain window.
 const styleScript = `
     tell application "Finder"
-      tell disk "${APP_NAME}"
+      tell disk "${DISPLAY_NAME}"
         open
         set current view of container window to icon view
         set toolbar visible of container window to false
@@ -940,4 +956,17 @@ if (DEVELOPER_ID) {
 } else {
   console.log('  Signed ad hoc (no Developer ID here: SIX_DEGREES_SIGN_IDENTITY). A copy downloaded in a browser');
   console.log('  needs one approval in System Settings > Privacy & Security.\n');
+}
+
+// Finder and the Dock show a bundle's file name ("Six Degrees") unless the bundle
+// says its display name is localized; then they show CFBundleDisplayName from
+// InfoPlist.strings. Written into every language folder the app has (and en), so
+// whichever language macOS picks finds it. Before signing: the seal covers it.
+function localizeDisplayName(resources) {
+  const strings = `"CFBundleDisplayName" = "${DISPLAY_NAME}";\n"CFBundleName" = "${DISPLAY_NAME}";\n`;
+  const langs = new Set(['en.lproj', ...readdirSync(resources).filter((n) => n.endsWith('.lproj'))]);
+  for (const lang of langs) {
+    mkdirSync(path.join(resources, lang), { recursive: true });
+    writeFileSync(path.join(resources, lang, 'InfoPlist.strings'), strings);
+  }
 }

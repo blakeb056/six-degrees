@@ -335,7 +335,7 @@ function InstalledUpdates({ local }) {
                   <Body>
                     {local.kind === 'windows-app'
                       ? 'Download its Setup.exe from the release page and run it: it closes this copy, puts the new version in its place and opens it.'
-                      : 'Download its .deb (or .tar.gz) from the release page and install it over this one, after quitting Six Degrees.'}
+                      : 'Download its .deb (or .tar.gz) from the release page and install it over this one, after quitting Sixgree.'}
                     {' '}Your network stays where it is.
                   </Body>
                   <Row>
@@ -411,12 +411,12 @@ function fallbackText({ mac, kind, canInstall, fallback }) {
   if (fallback.mode === 'replace') {
     return `${canInstall ? 'Or paste this into Terminal.' : 'Paste this into Terminal instead.'} It closes this app, puts the new version in its place and opens it. Your network stays where it is.${data}`;
   }
-  return `${canInstall ? 'Or copy' : 'Copy'} this line, quit Six Degrees, then paste it into Terminal. It installs the new version at ${fallback.installsTo}, not where this copy is, and opens it: use that one from then on. Your network stays where it is.${data}`;
+  return `${canInstall ? 'Or copy' : 'Copy'} this line, quit Sixgree, then paste it into Terminal. It installs the new version at ${fallback.installsTo}, not where this copy is, and opens it: use that one from then on. Your network stays where it is.${data}`;
 }
 
 function Progress({ job, restarting, slow, onCancel }) {
   const pct = job.total ? Math.min(100, Math.round((job.received / job.total) * 100)) : null;
-  const text = restarting ? 'Restarting… Six Degrees closes and opens again in a moment.'
+  const text = restarting ? 'Restarting… Sixgree closes and opens again in a moment.'
     : job.phase === 'checking' ? 'Asking GitHub for the newest version…'
       : job.phase === 'downloading'
         ? `Downloading ${job.version}…${pct !== null ? ` ${pct}% (${megabytes(job.received)} of ${megabytes(job.total)} MB)` : ''}`
@@ -432,7 +432,7 @@ function Progress({ job, restarting, slow, onCancel }) {
         </div>
       )}
       {slow && (
-        <Body>This is taking longer than it should. If Six Degrees doesn&rsquo;t open again by itself, open it from your Applications folder.</Body>
+        <Body>This is taking longer than it should. If Sixgree doesn&rsquo;t open again by itself, open it from your Applications folder.</Body>
       )}
       {!restarting && (
         <Row>

@@ -18,6 +18,7 @@ import { STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, fir
 import { askForField } from '../../../lib/scanner-setup';
 import { loadSampleIntoSession } from '../../../lib/demo';
 import { ONBOARDING_CSS } from './styles';
+import Wordmark from '../Wordmark';
 import { Welcome, GetReady, Connect, Pace, MapPeople, Final } from './steps';
 
 const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: MapPeople };
@@ -86,7 +87,7 @@ export default function Onboarding({ onFinish, again = false }) {
     <div className="ob" data-onboarding={final ? 'ready' : view || 'loading'}>
       <style>{ONBOARDING_CSS}</style>
       <header className="ob-top">
-        <div className="ob-mark">Six Degrees</div>
+        <div className="ob-mark"><Wordmark size={20} /></div>
         {!final && (
           <nav className="ob-dots" aria-label="Setup steps">
             {STEPS.map((step) => {

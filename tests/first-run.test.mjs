@@ -203,7 +203,7 @@ test('step 1 is told which Mac this is, for its App Management item, and nothing
       assert.equal(off, null);
       return;
     }
-    // Started with npx (or from a checkout): macOS names whatever started it, not Six Degrees.
+    // Started with npx (or from a checkout): macOS names whatever started it, not Sixgree.
     assert.deepEqual(off, { version: macosVersion('darwin', release()), app: false });
     assert.ok(off.version >= 11, `read from Darwin ${release()}`);
     // The Mac app says so when it starts its server (desktop/main.mjs).

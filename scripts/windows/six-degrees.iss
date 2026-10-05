@@ -1,4 +1,4 @@
-; Six Degrees for Windows: a one-click, per-user Setup.exe (docs/brain/DESKTOP.md D3).
+; Sixgree (formerly Six Degrees) for Windows: a one-click, per-user Setup.exe (docs/brain/DESKTOP.md D3).
 ; Built by scripts/build-desktop.mjs --platform=win32, which passes the /D values:
 ;   AppVersion, NumericVersion (x.y.z.0), SourceDir (the packaged app), OutputDir, IconFile.
 ;
@@ -19,12 +19,12 @@
 [Setup]
 ; Fixed for good: Windows knows the installed app by it, so a newer Setup.exe updates it.
 AppId={{010929DA-B1D1-47A6-B6C8-BE7CC9ACA2C5}
-AppName=Six Degrees
+AppName=Sixgree
 AppVersion={#AppVersion}
-AppVerName=Six Degrees {#AppVersion}
+AppVerName=Sixgree {#AppVersion}
 VersionInfoVersion={#NumericVersion}
-AppPublisher=Six Degrees
-AppPublisherURL=https://sixdegreesapp.com
+AppPublisher=Sixgree
+AppPublisherURL=https://sixgree.com
 AppSupportURL=https://github.com/blakeb056/six-degrees
 DefaultDirName={localappdata}\Programs\Six Degrees
 PrivilegesRequired=lowest
@@ -38,10 +38,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ; Windows 10 1809 or later (Electron's own minimum is Windows 10).
 MinVersion=10.0.17763
 OutputDir={#OutputDir}
-OutputBaseFilename=Six-Degrees-{#AppVersion}-win-x64-Setup
+OutputBaseFilename=Sixgree-{#AppVersion}-win-x64-Setup
 SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\Six Degrees.exe
-UninstallDisplayName=Six Degrees
+UninstallDisplayName=Sixgree
 Compression=lzma2/max
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
@@ -56,13 +56,16 @@ WizardStyle=modern
 ; the app's own folder: never the data folder.
 Type: filesandordirs; Name: "{app}\resources"
 Type: filesandordirs; Name: "{app}\locales"
+; The shortcuts from before the rename to Sixgree, which [Icons] no longer makes.
+Type: files; Name: "{autoprograms}\Six Degrees.lnk"
+Type: files; Name: "{autodesktop}\Six Degrees.lnk"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Six Degrees"; Filename: "{app}\Six Degrees.exe"; AppUserModelID: "com.blakeburford.sixdegrees"
-Name: "{autodesktop}\Six Degrees"; Filename: "{app}\Six Degrees.exe"; AppUserModelID: "com.blakeburford.sixdegrees"
+Name: "{autoprograms}\Sixgree"; Filename: "{app}\Six Degrees.exe"; AppUserModelID: "com.blakeburford.sixdegrees"
+Name: "{autodesktop}\Sixgree"; Filename: "{app}\Six Degrees.exe"; AppUserModelID: "com.blakeburford.sixdegrees"
 
 [Run]
 ; One click: a progress bar, then the app opens (not when installed silently, as CI does).
@@ -72,7 +75,7 @@ Filename: "{app}\Six Degrees.exe"; Flags: nowait skipifsilent
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM ""Six Degrees.exe"""; Flags: runhidden; RunOnceId: "CloseSixDegrees"
 
 [Code]
-// Is Six Degrees running for this user? tasklist's list, searched by find: 0 when it is.
+// Is Sixgree running for this user? tasklist's list, searched by find: 0 when it is.
 function SixDegreesRunning(): Boolean;
 var
   Code: Integer;
@@ -96,5 +99,5 @@ begin
     if not SixDegreesRunning() then Exit;
     Sleep(500);
   end;
-  Result := 'Six Degrees is still open. Close it (File, then Exit), then run Setup again.';
+  Result := 'Sixgree is still open. Close it (File, then Exit), then run Setup again.';
 end;

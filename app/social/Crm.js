@@ -225,7 +225,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
 
   function exportCsv() {
     const list = people.filter((c) => c.kind !== 'sponsored').sort((a, b) => (b.lastContact || 0) - (a.lastContact || 0));
-    const name = `Six Degrees CRM ${localDay()}.csv`;
+    const name = `Sixgree CRM ${localDay()}.csv`;
     save(crmCsv(list), name);
     // The page can't see where the file went: a browser puts it in its
     // downloads folder, the Mac app asks where to save it.
@@ -248,7 +248,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
         <Body style={{ margin: '6px 0 0', fontSize: 12.5 }}>
           Off unless you turn it on. When it&rsquo;s on, the messages themselves, including what other people wrote to
           you, and the notes sent with connection requests, are saved only in the app&rsquo;s data folder on this
-          computer. They&rsquo;re never sent anywhere or put in Six Degrees&rsquo; own backups, and an exported
+          computer. They&rsquo;re never sent anywhere or put in Sixgree&rsquo;s own backups, and an exported
           backup file carries them only with its Social tab box ticked. <i>Forget it</i>, or switching this off,
           deletes them. With it off, the CRM still shows who,
           when and who wrote last. Your own stages, tags, notes and follow-ups are always kept, on this computer only.
@@ -349,7 +349,7 @@ export default function Crm({ net, asOf, keep, onKeep, switching, token, crmToke
         your data knows.
         {Object.keys(crm?.people || {}).length > 0 && (
           <>
-            {' '}Your notes are in the app&rsquo;s data folder, never in Six Degrees&rsquo; own backups; an exported backup file carries them only with its Social tab box ticked.{' '}
+            {' '}Your notes are in the app&rsquo;s data folder, never in Sixgree&rsquo;s own backups; an exported backup file carries them only with its Social tab box ticked.{' '}
             <button onClick={deleteNotes} style={{ background: 'none', border: 'none', color: 'var(--sd-fg-2, #ff9b9b)', cursor: 'pointer', fontSize: 11.5, padding: 0 }}>Delete my CRM notes</button>
           </>
         )}

@@ -7,7 +7,7 @@ tags: [galaxy, visualisation]
 image: /img/app/lab-clusters.jpg
 ---
 
-The Galaxy is the first thing Six Degrees shows you: you in the middle, your connections on rings around you, the ones who can open the most doors closest in. It's drawn by a **force simulation**, the same idea behind graph views in tools like Obsidian: every dot pushes the others away, lines pull connected dots together, and the picture settles where the forces balance.
+The Galaxy is the first thing Sixgree shows you: you in the middle, your connections on rings around you, the ones who can open the most doors closest in. It's drawn by a **force simulation**, the same idea behind graph views in tools like Obsidian: every dot pushes the others away, lines pull connected dots together, and the picture settles where the forces balance.
 
 The **physics lab** hands you the controls. It's experimental, and it lives in the Galaxy's Filters panel, under *Physics*.
 

@@ -8,6 +8,20 @@ import path from 'node:path';
 
 const sleepFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The folder Electron keeps the shell's own state in (the single-instance lock,
+ * the session's storage). Electron names it after the app, so renaming Six
+ * Degrees to Sixgree would have moved it to a new, empty folder and reset it.
+ * main.mjs pins it to the old name, under app.getPath('appData') (~/Library/
+ * Application Support on a Mac, %APPDATA% on Windows, ~/.config on Linux),
+ * before anything reads it. The network itself is in ~/.six-degrees, not here.
+ */
+export const USER_DATA_FOLDER = 'Six Degrees';
+
+export function userDataPath(appData) {
+  return path.join(appData, USER_DATA_FOLDER);
+}
+
 /** Is this URL one of the app's own pages (same scheme, host and port as its server)? */
 export function isAppUrl(url, origin) {
   if (!origin) return false;
@@ -33,7 +47,7 @@ export function isExternalWebUrl(url) {
  * The System Settings panes the app may open, exactly as the Scan page links
  * them (lib/scanner-setup.js APP_MANAGEMENT_URLS; tests/desktop.test.mjs checks
  * the two lists agree). Privacy & Security → App Management: macOS asks there
- * whether Six Degrees may manage apps when Chrome, started by the scanner,
+ * whether Sixgree may manage apps when Chrome, started by the scanner,
  * updates itself. "shouldnt we have in the onboarding for scan … a button where
  * the user is basically brought to the app management and enables it like Flow
  * does" (Blake, 2026-10-04). The first is macOS 15 and later's address (checked
