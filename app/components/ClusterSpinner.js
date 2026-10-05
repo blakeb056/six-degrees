@@ -9,18 +9,15 @@
 // as every other cluster does (lib/themes.js). Still under Reduce Motion.
 //
 // Hover is the button's own: give it the class "cluster-host".
+//
+// The ring's geometry is lib/cluster-dots.js and its keyframes (csBuild,
+// csLoop) are in app/globals.css: the map's edge buttons build the same
+// cluster round themselves (app/components/EdgeToggle.js).
 
 import { TIER_COLORS } from '../../lib/themes';
+import { clusterDots } from '../../lib/cluster-dots';
 
-const N = 10;
 const CSS = `
-@keyframes csBuild { from { opacity: 0; transform: scale(0.2); } 70% { opacity: 1; transform: scale(1.25); } to { opacity: 1; transform: scale(1); } }
-@keyframes csLoop {
-  0% { opacity: 0; transform: scale(0.2); }
-  8% { opacity: 1; transform: scale(1.3); }
-  14%, 72% { opacity: 1; transform: scale(1); }
-  88%, 100% { opacity: 0; transform: scale(0.6); }
-}
 .cs { position: relative; display: inline-block; flex-shrink: 0; }
 .cs .cs-glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; line-height: 1; transition: opacity .15s, transform .2s; }
 .cs svg { position: absolute; inset: 0; overflow: visible; }
@@ -43,21 +40,16 @@ export default function ClusterSpinner({ size = 14, live = false, glyph = '↻' 
   const c = size / 2;
   const r = size * 0.42;
   const dot = Math.max(1, size * 0.085);
-  const colours = [TIER_COLORS.S, TIER_COLORS.A, TIER_COLORS.B];
   return (
     <span className={`cs${live ? ' cs-live' : ''}`} aria-hidden="true" style={{ width: size, height: size }}>
       <style>{CSS}</style>
       <span className="cs-glyph" style={{ fontSize: size }}>{glyph}</span>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle className="cs-hub" cx={c} cy={c} r={dot * 1.35} fill="currentColor" />
-        {Array.from({ length: N }, (_, i) => {
-          // Clockwise from twelve o'clock.
-          const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
-          return (
-            <circle key={i} className="cs-dot sd-dot" style={{ '--i': i }} cx={c + r * Math.cos(a)} cy={c + r * Math.sin(a)} r={dot}
-              fill={colours[i % colours.length]} />
-          );
-        })}
+        {clusterDots(c, c, r).map((d) => (
+          <circle key={d.i} className="cs-dot sd-dot" style={{ '--i': d.i }} cx={d.x} cy={d.y} r={dot}
+            fill={TIER_COLORS[d.tier]} />
+        ))}
       </svg>
     </span>
   );

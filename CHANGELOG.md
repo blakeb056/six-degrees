@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **The Filters and Details buttons at the map's edges are lit glass, and they dock.** Each is a
+  frosted round puck with a lit rim and a glow in its colour (the look's accent for Filters, its
+  gold for Details), porcelain on Daylight, a flat hairline on Analyst, and drawn in every other
+  look's own style. Hovering lifts it, shows its name, and builds a little cluster of gold, purple
+  and blue dots round it, clockwise, the way Check for new's ↻ does. Opening a panel streams the
+  dots along its edge, lights the edge, and docks the button there, chevron turned, as the panel's
+  close control; closing plays it back. So the panels' separate *Close* rows are gone, Esc still
+  closes a panel from inside it, the buttons are 44 pt to tap on a phone, and with Reduce Motion
+  the panel simply fades. Neither button shows a count. Paths' Filters button is the same one.
 - **No pop-ups when you scan: one click starts it, and Chrome stays out of your way.** Check for
   new in the header used to raise up to three boxes before and after it started; now one click
   starts it, the cluster spins on the button and the notch shows it running, and what it does and

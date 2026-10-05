@@ -128,16 +128,17 @@ html:has([data-field-question]) {
 /* ---- How a look draws its buttons (lib/themes.js BUTTONS; html[data-buttons]) ----
    Buttons carry their own colours inline, so a look adds what they don't set:
    shadow, frost, glow, outline, and the corner where a look has its own shape.
-   Round buttons (50%) stay round. The tab row's links count as buttons. */
+   Round buttons (50%) stay round. The tab row's links count as buttons. The
+   map's edge buttons (.sd-edge) draw themselves in each look, at the end. */
 /* Flat: Obsidian. No depth, a quiet hover. */
-html[data-buttons="flat"] :is(button, #main-tabs > a) { box-shadow: none !important; text-shadow: none !important; }
-html[data-buttons="flat"] :is(button, #main-tabs > a):not(:disabled):hover { filter: brightness(1.12); }
-html[data-buttons="flat"] :is(button, select, input[type="search"], input[type="text"], #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 5px !important; }
+html[data-buttons="flat"] :is(button:not(.sd-edge), #main-tabs > a) { box-shadow: none !important; text-shadow: none !important; }
+html[data-buttons="flat"] :is(button:not(.sd-edge), #main-tabs > a):not(:disabled):hover { filter: brightness(1.12); }
+html[data-buttons="flat"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"], #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 5px !important; }
 
 /* Square: Analyst. Crisp corners, hairline borders, no depth. */
-html[data-buttons="square"] :is(button, select, input[type="search"], input[type="text"], #main-tabs, #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 2px !important; }
-html[data-buttons="square"] :is(button, #main-tabs > a) { box-shadow: none !important; letter-spacing: 0.02em; }
-html[data-buttons="square"] :is(button, #main-tabs > a):not(:disabled):hover { outline: 1px solid color-mix(in srgb, var(--sd-accent) 70%, transparent); outline-offset: -1px; }
+html[data-buttons="square"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"], #main-tabs, #main-tabs > a):not([style*="border-radius: 50%"]) { border-radius: 2px !important; }
+html[data-buttons="square"] :is(button:not(.sd-edge), #main-tabs > a) { box-shadow: none !important; letter-spacing: 0.02em; }
+html[data-buttons="square"] :is(button:not(.sd-edge), #main-tabs > a):not(:disabled):hover { outline: 1px solid color-mix(in srgb, var(--sd-accent) 70%, transparent); outline-offset: -1px; }
 
 /* Frosted: Glass, as Apple's Liquid Glass (WWDC25 "Meet Liquid Glass"; HIG →
    Materials). Not a frosted blur: glass that bends light at its edges (the
@@ -157,7 +158,7 @@ html[data-buttons="frosted"] [data-glass-panel] {
 }
 html[data-buttons="frosted"] [data-glass-panel="bar"] { border-radius: 999px !important; }
 html[data-buttons="frosted"] .glass-rim, html[data-buttons="frosted"] [data-glass-panel]::before,
-html[data-buttons="frosted"] :is(button, #main-tabs > a):not(.radar-go):not(#main-tabs *)::before {
+html[data-buttons="frosted"] :is(button:not(.sd-edge), #main-tabs > a):not(.radar-go):not(#main-tabs *)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -170,18 +171,18 @@ html[data-buttons="frosted"] :is(button, #main-tabs > a):not(.radar-go):not(#mai
   mask-composite: exclude;
 }
 /* Controls: capsules of clear glass that spring when pressed. */
-html[data-buttons="frosted"] :is(button):not(.radar-go):not(#main-tabs *) {
+html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go):not(#main-tabs *) {
   position: relative;
   isolation: isolate;
   -webkit-backdrop-filter: blur(4px) saturate(170%);
   backdrop-filter: blur(4px) saturate(170%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 4px 14px rgba(0, 0, 0, 0.24) !important;
 }
-html[data-buttons="frosted"] :is(button, select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go):not(#main-tabs *) { border-radius: 14px !important; }
-html[data-buttons="frosted"] :is(button):not(:disabled):not(#main-tabs *):hover { filter: brightness(1.14); }
+html[data-buttons="frosted"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go):not(#main-tabs *) { border-radius: 14px !important; }
+html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(:disabled):not(#main-tabs *):hover { filter: brightness(1.14); }
 @media (prefers-reduced-motion: no-preference) {
-  html[data-buttons="frosted"] :is(button):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s; }
-  html[data-buttons="frosted"] :is(button):not(:disabled):not(#main-tabs *):active { transform: scale(1.04); }
+  html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s; }
+  html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(:disabled):not(#main-tabs *):active { transform: scale(1.04); }
 }
 /* The tab bar's segments: the picked one is a lit thumb inside the glass. */
 html[data-buttons="frosted"] #main-tabs > :is(a, button) { border-radius: 999px !important; }
@@ -199,20 +200,20 @@ html[data-buttons="frosted"] #main-tabs > button[style*="background: rgb(255, 25
 }
 
 /* Neon: Synthwave. A glow in the accent, brighter on hover. */
-html[data-buttons="neon"] :is(button, #main-tabs > a):not(:disabled) {
+html[data-buttons="neon"] :is(button:not(.sd-edge), #main-tabs > a):not(:disabled) {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--sd-accent) 55%, transparent), 0 0 12px color-mix(in srgb, var(--sd-accent) 26%, transparent) !important;
   text-shadow: 0 0 8px color-mix(in srgb, var(--sd-accent) 45%, transparent);
 }
-html[data-buttons="neon"] :is(button, #main-tabs > a):not(:disabled):hover {
+html[data-buttons="neon"] :is(button:not(.sd-edge), #main-tabs > a):not(:disabled):hover {
   box-shadow: 0 0 0 1px var(--sd-accent), 0 0 20px color-mix(in srgb, var(--sd-accent) 50%, transparent) !important;
 }
 
 /* Bold: High contrast. A clear outline on every control, and a thick focus ring. */
-html[data-buttons="bold"] :is(button, select, input[type="search"], input[type="text"], #main-tabs > a) { outline: 1.5px solid rgba(var(--sd-ink, 255, 255, 255), 0.55); outline-offset: -1.5px; font-weight: 700; }
-html[data-buttons="bold"] :is(button, a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
+html[data-buttons="bold"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"], #main-tabs > a) { outline: 1.5px solid rgba(var(--sd-ink, 255, 255, 255), 0.55); outline-offset: -1.5px; font-weight: 700; }
+html[data-buttons="bold"] :is(button:not(.sd-edge), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
 
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-buttons="soft"]) :is(button, #main-tabs > a) { transition: box-shadow 0.15s, filter 0.15s, outline-color 0.15s; }
+  html:not([data-buttons="soft"]) :is(button:not(.sd-edge), #main-tabs > a) { transition: box-shadow 0.15s, filter 0.15s, outline-color 0.15s; }
 }
 
 /* ---- Analyst: nothing decorative (lib/themes.js) ----
@@ -277,3 +278,292 @@ html[data-mode="light"] .graph-tooltip { background: rgba(255, 255, 255, 0.98) !
 html[data-theme="analyst"] .graph-tooltip { border-radius: 2px !important; box-shadow: none; }
 /* Glass: the tooltip is a pane of glass too */
 html[data-buttons="frosted"] .graph-tooltip { background: rgba(18, 18, 30, 0.45) !important; -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8); border: 1px solid rgba(255, 255, 255, 0.18) !important; border-radius: 12px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 30px rgba(0, 0, 0, 0.35); }
+
+/* ---- A cluster forming (lib/cluster-dots.js) ----
+   Its dots build clockwise from twelve: once on hover (csBuild), round and
+   round while something runs (csLoop). Check for new's ↻
+   (app/components/ClusterSpinner.js) and the edge buttons below both use them. */
+@keyframes csBuild { from { opacity: 0; transform: scale(0.2); } 70% { opacity: 1; transform: scale(1.25); } to { opacity: 1; transform: scale(1); } }
+@keyframes csLoop {
+  0% { opacity: 0; transform: scale(0.2); }
+  8% { opacity: 1; transform: scale(1.3); }
+  14%, 72% { opacity: 1; transform: scale(1); }
+  88%, 100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* ---- The map's edge buttons (app/components/EdgeToggle.js) ----
+   Filters on the left, Details on the right, and Paths' Filters: one round
+   button each, that docks on its panel's edge as the panel's close control.
+   The look's accent for Filters, its S-tier gold for Details, so every look,
+   a custom one too, draws them in its own colours. The default is the dark
+   glass puck; light looks, Glass, Obsidian, Analyst, Synthwave and High
+   contrast each change what they need below. */
+.sd-edge {
+  --acc: var(--sd-accent, #3498db);
+  --ink: var(--acc);
+  --w: var(--sd-edge-w, 320px);
+  --gap: 8px;                              /* docked: the puck's centre, outside the panel's edge */
+  --ease-dock: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: fixed; top: 140px; z-index: 30;
+  width: 36px; height: 36px; margin: 0; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--ink); cursor: pointer; font-family: var(--sd-font);
+  outline: none; -webkit-tap-highlight-color: transparent;
+  transition: transform 300ms var(--ease-dock);
+}
+.sd-edge-left { left: 16px; }
+.sd-edge-right { right: 16px; --acc: var(--sd-tier-s, #ffd700); }
+html[data-mode="light"] .sd-edge { --ink: color-mix(in srgb, var(--acc) 72%, #000); }
+.sd-edge::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; }   /* 44 px to tap */
+/* Open: docked on the panel's edge, above a phone's dimmed page */
+.sd-edge.is-open { z-index: 101; }
+.sd-edge-left.is-open { transform: translateX(calc(var(--w) - 34px + var(--gap))); }
+.sd-edge-right.is-open { transform: translateX(calc(34px - var(--gap) - var(--w))); }
+.sd-edge.is-closing { transition-duration: 260ms; }
+
+/* The puck: frosted glass in its colour, a rim lit from the top left, a
+   shadow inside at the bottom, a glow round it. */
+.sd-edge-puck {
+  position: absolute; inset: 0; display: block; border-radius: 50%;
+  background:
+    radial-gradient(70% 55% at 50% 108%, color-mix(in srgb, var(--acc) 55%, transparent), transparent 72%),
+    radial-gradient(60% 45% at 38% 18%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%),
+    color-mix(in srgb, var(--acc) 12%, color-mix(in srgb, var(--sd-bg, #0a0a1a) 78%, transparent));
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 62%, transparent),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
+    inset 0 -7px 9px -6px rgba(0, 0, 0, 0.6),
+    0 7px 16px -6px rgba(0, 0, 0, 0.7),
+    0 0 14px color-mix(in srgb, var(--acc) 32%, transparent);
+  transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background-color 180ms;
+}
+.sd-edge-puck::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; opacity: 0.85; pointer-events: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.12) 32%, rgba(255, 255, 255, 0) 55%, color-mix(in srgb, var(--acc) 85%, transparent) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.sd-edge-puck::after {
+  content: ""; position: absolute; left: 7px; top: 3.5px; width: 15px; height: 8px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)); transition: opacity 120ms;
+}
+.sd-edge-chev {
+  position: absolute; left: 10px; top: 10px; width: 16px; height: 16px; overflow: visible;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--acc) 65%, transparent)) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
+  transition: transform 300ms var(--ease-dock);
+}
+.sd-edge-chev path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sd-edge.is-open .sd-edge-chev { transform: rotate(180deg); }
+
+/* Hover lifts it; pressing sinks it in */
+@media (hover: hover) {
+  .sd-edge:hover .sd-edge-puck {
+    transform: translateY(-1.5px) scale(1.06);
+    box-shadow:
+      inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 88%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.38),
+      inset 0 -7px 9px -6px rgba(0, 0, 0, 0.55),
+      0 12px 20px -8px rgba(0, 0, 0, 0.75),
+      0 0 22px color-mix(in srgb, var(--acc) 52%, transparent);
+  }
+  .sd-edge-left:not(.is-open):hover .sd-edge-chev { transform: translateX(1.5px); }
+  .sd-edge-right:not(.is-open):hover .sd-edge-chev { transform: translateX(-1.5px); }
+}
+.sd-edge:active .sd-edge-puck {
+  transform: translateY(0.5px) scale(0.93); transition-duration: 90ms;
+  box-shadow:
+    inset 0 0 0 1.5px var(--acc),
+    inset 0 3px 8px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+    0 3px 8px -4px rgba(0, 0, 0, 0.7),
+    0 0 10px color-mix(in srgb, var(--acc) 40%, transparent);
+}
+.sd-edge:active .sd-edge-puck::after { opacity: 0.25; }
+.sd-edge:focus-visible .sd-edge-puck { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* The cluster: built round it on hover (or keyboard focus), streamed along
+   the panel's edge as it opens, gathered back as it closes. */
+.sd-edge-orbit { position: absolute; left: -12px; top: -12px; width: 60px; height: 60px; overflow: visible; pointer-events: none; transition: transform 160ms var(--ease-out); }
+.sd-edge-dot { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.sd-edge:not(.is-open):not(.is-closing):focus-visible .sd-edge-dot { animation: csBuild 320ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(var(--i) * 30ms); }
+@media (hover: hover) {
+  .sd-edge:not(.is-open):not(.is-closing):hover .sd-edge-dot { animation: csBuild 320ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(var(--i) * 30ms); }
+}
+.sd-edge:not(.is-open):active .sd-edge-orbit { transform: scale(0.84); transition-duration: 90ms; }
+.sd-edge.is-open .sd-edge-dot { animation: sdEdgeStream 560ms var(--ease-out) both; animation-delay: calc(var(--i) * 22ms); }
+.sd-edge.is-closing .sd-edge-dot { animation: sdEdgeGather 460ms var(--ease-out) both; animation-delay: calc((9 - var(--i)) * 18ms); }
+@keyframes sdEdgeStream { 0% { opacity: 1; transform: none; } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.55); } }
+@keyframes sdEdgeGather { 0% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.55); } 55% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(0.4); } }
+
+/* The panel's edge, lit, drawn out from the docked puck */
+.sd-edge-line {
+  position: absolute; top: -45px; width: 1.5px; height: 300px; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--acc) 85%, transparent) 63px, color-mix(in srgb, var(--acc) 45%, transparent) 140px, transparent 300px);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--acc) 70%, transparent));
+  transform: scaleY(0); transform-origin: 50% 63px; transition: transform 200ms cubic-bezier(0.5, 0, 0.75, 0.4);
+}
+.sd-edge-left .sd-edge-line { left: calc(18px - var(--gap) - 0.75px); }
+.sd-edge-right .sd-edge-line { left: calc(18px + var(--gap) - 0.75px); }
+.sd-edge.is-open .sd-edge-line { transform: scaleY(1); transition: transform 460ms var(--ease-dock) 120ms; }
+
+/* Its name, beside it on hover (Close, once docked) */
+.sd-edge-peek {
+  position: absolute; top: 5px; height: 26px; display: flex; align-items: center; padding: 0 10px; border-radius: 13px;
+  white-space: nowrap; font-size: 12px; font-weight: 600; line-height: 1; color: var(--sd-fg-1, #fff); pointer-events: none;
+  background: color-mix(in srgb, var(--sd-bg, #0a0a1a) 78%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+  backdrop-filter: blur(12px) saturate(1.6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+  opacity: 0; transition: opacity 140ms var(--ease-out), transform 220ms cubic-bezier(0.3, 1.35, 0.45, 1);
+}
+.sd-edge-left .sd-edge-peek { left: 46px; transform: translateX(-8px) scale(0.94); transform-origin: left center; }
+.sd-edge-right .sd-edge-peek { right: 46px; transform: translateX(8px) scale(0.94); transform-origin: right center; }
+.sd-edge:focus-visible .sd-edge-peek { opacity: 1; transform: none; }
+@media (hover: hover) {
+  .sd-edge:hover .sd-edge-peek { opacity: 1; transform: none; transition-delay: 120ms; }
+}
+@media (hover: none) { .sd-edge-peek { display: none; } }
+
+/* The panel slides out from behind the puck, and back */
+.sd-edge-panel { --gap: 8px; --ease-dock: cubic-bezier(0.32, 0.72, 0, 1); }
+.sd-edge-panel-left { animation: sdPanelInLeft 300ms var(--ease-dock) backwards, sdFadeIn 120ms linear backwards; }
+.sd-edge-panel-right { animation: sdPanelInRight 300ms var(--ease-dock) backwards, sdFadeIn 120ms linear backwards; }
+.sd-edge-panel-left.is-closing { animation: sdPanelOutLeft 260ms var(--ease-dock) forwards, sdFadeOut 110ms linear 150ms forwards; }
+.sd-edge-panel-right.is-closing { animation: sdPanelOutRight 260ms var(--ease-dock) forwards, sdFadeOut 110ms linear 150ms forwards; }
+.sd-edge-scrim { animation: sdFadeIn 240ms linear backwards; }
+.sd-edge-scrim.is-closing { animation: sdFadeOut 260ms linear forwards; }
+@keyframes sdPanelInLeft { from { transform: translateX(calc(34px - var(--gap) - 100%)); } }
+@keyframes sdPanelInRight { from { transform: translateX(calc(100% - 34px + var(--gap))); } }
+@keyframes sdPanelOutLeft { to { transform: translateX(calc(34px - var(--gap) - 100%)); } }
+@keyframes sdPanelOutRight { to { transform: translateX(calc(100% - 34px + var(--gap))); } }
+@keyframes sdFadeIn { from { opacity: 0; } }
+@keyframes sdFadeOut { to { opacity: 0; } }
+
+/* A phone: the docked puck sits clear of the panel, over the dimmed map,
+   where the thumb is; no line, and no name (there's no hover). */
+@media (max-width: 767.98px) {
+  .sd-edge { --w: var(--sd-edge-w-phone, var(--sd-edge-w, 300px)); --gap: 22px; }
+  .sd-edge-panel { --gap: 22px; }
+  .sd-edge-line { display: none; }
+}
+
+/* Light looks: porcelain, soft layered shadows, a halo instead of a glow */
+html[data-mode="light"] .sd-edge-puck {
+  background: radial-gradient(70% 55% at 50% 112%, color-mix(in srgb, var(--acc) 16%, transparent), transparent 72%), linear-gradient(180deg, #ffffff 0%, #f1f3f8 100%);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--acc) 45%, transparent),
+    inset 0 1px 0 #ffffff,
+    inset 0 -6px 8px -6px rgba(18, 22, 40, 0.16),
+    0 1px 2px rgba(18, 22, 40, 0.1),
+    0 6px 14px -4px rgba(18, 22, 40, 0.18),
+    0 0 0 3px color-mix(in srgb, var(--acc) 9%, transparent);
+}
+html[data-mode="light"] .sd-edge-puck::before { background: linear-gradient(145deg, #ffffff, rgba(255, 255, 255, 0) 50%, color-mix(in srgb, var(--acc) 35%, transparent)); }
+html[data-mode="light"] .sd-edge-puck::after { opacity: 0; }
+html[data-mode="light"] .sd-edge-chev { filter: none; }
+@media (hover: hover) {
+  html[data-mode="light"] .sd-edge:hover .sd-edge-puck {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 70%, transparent), inset 0 1px 0 #ffffff, inset 0 -6px 8px -6px rgba(18, 22, 40, 0.14),
+      0 2px 3px rgba(18, 22, 40, 0.1), 0 10px 20px -6px rgba(18, 22, 40, 0.24), 0 0 0 5px color-mix(in srgb, var(--acc) 13%, transparent);
+  }
+}
+html[data-mode="light"] .sd-edge:active .sd-edge-puck {
+  background: linear-gradient(180deg, #eef1f7, #f6f7fb);
+  box-shadow: inset 0 0 0 1px var(--acc), inset 0 2px 5px rgba(18, 22, 40, 0.2), 0 1px 2px rgba(18, 22, 40, 0.1), 0 0 0 3px color-mix(in srgb, var(--acc) 12%, transparent);
+}
+html[data-mode="light"] .sd-edge-line { filter: none; }
+html[data-mode="light"] .sd-edge-peek {
+  background: rgba(255, 255, 255, 0.97); color: var(--sd-fg-1, #11141c); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 0 0 1px rgba(18, 22, 40, 0.08), 0 1px 2px rgba(18, 22, 40, 0.06), 0 8px 20px -6px rgba(18, 22, 40, 0.2);
+}
+
+/* Glass: clearer glass, a brighter rim, a glass label */
+html[data-buttons="frosted"] .sd-edge-puck {
+  background:
+    radial-gradient(70% 55% at 50% 110%, color-mix(in srgb, var(--acc) 42%, transparent), transparent 72%),
+    radial-gradient(60% 45% at 36% 16%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 70%),
+    rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(6px) saturate(1.9) brightness(1.08);
+  backdrop-filter: blur(6px) saturate(1.9) brightness(1.08);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 50%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -6px 10px -6px rgba(20, 0, 50, 0.45),
+    0 10px 24px -8px rgba(0, 0, 0, 0.55), 0 0 16px color-mix(in srgb, var(--acc) 26%, transparent);
+}
+html[data-buttons="frosted"] .sd-edge-puck::before { background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.2) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.5) 100%); opacity: 1; }
+@media (hover: hover) {
+  html[data-buttons="frosted"] .sd-edge:hover .sd-edge-puck {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -6px 10px -6px rgba(20, 0, 50, 0.4),
+      0 14px 26px -8px rgba(0, 0, 0, 0.6), 0 0 24px color-mix(in srgb, var(--acc) 45%, transparent);
+  }
+}
+html[data-buttons="frosted"] .sd-edge:active .sd-edge-puck { box-shadow: inset 0 0 0 1px var(--acc), inset 0 3px 8px rgba(20, 0, 50, 0.55), 0 4px 10px -4px rgba(0, 0, 0, 0.6), 0 0 12px color-mix(in srgb, var(--acc) 35%, transparent); }
+html[data-buttons="frosted"] .sd-edge-peek {
+  background: rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Synthwave: the glow is the look */
+html[data-buttons="neon"] .sd-edge-puck { box-shadow: inset 0 0 0 1.5px var(--acc), inset 0 -7px 9px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent), 0 0 18px color-mix(in srgb, var(--acc) 55%, transparent); }
+@media (hover: hover) {
+  html[data-buttons="neon"] .sd-edge:hover .sd-edge-puck { box-shadow: inset 0 0 0 1.5px var(--acc), inset 0 -7px 9px -6px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--acc), 0 0 28px color-mix(in srgb, var(--acc) 70%, transparent); }
+}
+
+/* Obsidian (flat): a graphite disc and a ring, no depth, a quiet hover */
+html[data-buttons="flat"] .sd-edge-puck {
+  background: color-mix(in srgb, var(--acc) 10%, var(--sd-bg2, #262626));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent);
+}
+html[data-buttons="flat"] .sd-edge-puck::before, html[data-buttons="flat"] .sd-edge-puck::after { display: none; }
+html[data-buttons="flat"] .sd-edge-chev { filter: none; }
+@media (hover: hover) {
+  html[data-buttons="flat"] .sd-edge:hover .sd-edge-puck { transform: none; filter: brightness(1.15); box-shadow: inset 0 0 0 1.5px var(--acc); }
+}
+html[data-buttons="flat"] .sd-edge:active .sd-edge-puck { transform: scale(0.96); box-shadow: inset 0 0 0 1.5px var(--acc); }
+html[data-buttons="flat"] .sd-edge-line { filter: none; }
+html[data-buttons="flat"] .sd-edge-peek { background: var(--sd-bg2, #262626); -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 5px; box-shadow: inset 0 0 0 1px #3f3f3f; }
+
+/* Analyst (square): flat. White, a hairline, a flat accent; no lift, no glow */
+html[data-buttons="square"] .sd-edge-puck { background: #ffffff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px #bdbdbd; }
+html[data-buttons="square"] .sd-edge-puck::before, html[data-buttons="square"] .sd-edge-puck::after { display: none; }
+html[data-buttons="square"] .sd-edge-chev { filter: none; }
+@media (hover: hover) {
+  html[data-buttons="square"] .sd-edge:hover .sd-edge-puck { transform: none; background: #f2f6fb; box-shadow: inset 0 0 0 1px var(--acc); }
+}
+html[data-buttons="square"] .sd-edge:active .sd-edge-puck { transform: scale(0.96); background: #e3eaf3; box-shadow: inset 0 0 0 1px var(--acc); }
+html[data-buttons="square"] .sd-edge-puck { outline-offset: 2px; }
+html[data-buttons="square"] .sd-edge-line { filter: none; width: 1px; background: linear-gradient(180deg, transparent 0, var(--acc) 30px, var(--acc) 150px, transparent 151px); }
+html[data-buttons="square"] .sd-edge-peek { background: #ffffff; color: var(--sd-fg-1, #11141c); border-radius: 2px; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px #cfcfcf; }
+
+/* High contrast (bold): black, a solid ring, a thick focus ring */
+html[data-buttons="bold"] .sd-edge-puck { background: #000000; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 2px var(--acc); }
+html[data-buttons="bold"] .sd-edge-puck::before, html[data-buttons="bold"] .sd-edge-puck::after { display: none; }
+html[data-buttons="bold"] .sd-edge-chev { filter: none; }
+@media (hover: hover) {
+  html[data-buttons="bold"] .sd-edge:hover .sd-edge-puck { transform: none; box-shadow: inset 0 0 0 2px var(--acc), 0 0 0 2px #ffffff; }
+}
+html[data-buttons="bold"] .sd-edge:focus-visible .sd-edge-puck { outline: 3px solid var(--sd-accent); outline-offset: 2px; }
+html[data-buttons="bold"] .sd-edge-line { filter: none; width: 2px; background: linear-gradient(180deg, transparent 0, var(--acc) 30px, var(--acc) 150px, transparent 151px); }
+html[data-buttons="bold"] .sd-edge-peek { background: #000000; color: #ffffff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1.5px #ffffff; }
+
+/* Reduce Transparency: solid, no frost */
+@media (prefers-reduced-transparency: reduce) {
+  .sd-edge-puck, .sd-edge-peek { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  html:not([data-mode="light"]) .sd-edge-puck { background-color: color-mix(in srgb, var(--acc) 14%, var(--sd-bg, #0a0a1a)); }
+  html:not([data-mode="light"]) .sd-edge-peek { background: var(--sd-bg, #0a0a1a); }
+}
+
+/* Reduce Motion: nothing travels or builds. The puck is simply docked, the
+   ring of dots is just there on hover, and the panel fades. */
+@media (prefers-reduced-motion: reduce) {
+  .sd-edge, .sd-edge-chev, .sd-edge-line, .sd-edge-orbit { transition: none !important; }
+  .sd-edge-puck { transition: box-shadow 150ms, background-color 150ms; transform: none !important; }
+  .sd-edge-peek { transition: opacity 150ms; transform: none !important; }
+  .sd-edge .sd-edge-dot { animation: none !important; }
+  .sd-edge:not(.is-open):is(:hover, :focus-visible) .sd-edge-dot { opacity: 1; }
+  .sd-edge-panel-left, .sd-edge-panel-right { animation: sdFadeIn 160ms linear backwards !important; }
+  .sd-edge-panel-left.is-closing, .sd-edge-panel-right.is-closing, .sd-edge-scrim.is-closing { animation: sdFadeOut 120ms linear forwards !important; }
+}

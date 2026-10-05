@@ -54,7 +54,7 @@ function Row({ person, tierColors, note, noteColor, onSelect, onPress, label, di
     : <button type="button" onClick={() => onSelect?.(person)} style={rowStyle}>{body}</button>;
 }
 
-export default function CirclePanel({ person, connections = [], degree2 = [], scanNotes, tierColors, onSelect, onToggle, canScan = true }) {
+export default function CirclePanel({ person, connections = [], degree2 = [], scanNotes, tierColors, onSelect, canScan = true }) {
   // Only what the Scan rows need from the scanner (what runs, and whose), so a
   // running scan's log doesn't redraw the whole list every second.
   const running = useSyncExternalStore(watchScanner, () => {
@@ -91,13 +91,7 @@ export default function CirclePanel({ person, connections = [], degree2 = [], sc
 
   return (
     <div>
-      <button onClick={onToggle} style={{
-        display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-        color: 'var(--sd-fg-3, #888)', fontSize: 12, cursor: 'pointer', padding: '0 0 10px', fontWeight: 600,
-      }}>
-        <span style={{ fontSize: 16 }}>&larr;</span> Close
-      </button>
-
+      {/* No Close row: the Details button docked on the panel's edge closes it (EdgeToggle). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <Avatar person={person} size={38} tierColors={tierColors} />
         <div style={{ minWidth: 0 }}>
