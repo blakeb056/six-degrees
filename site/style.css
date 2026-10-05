@@ -169,7 +169,9 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
 .wordmark.small { font-size: 20px; }
 .wordmark.tiny { font-size: 1em; }
 .wm-i { position: relative; display: inline-block; line-height: 1; }
-.wm-dots { position: absolute; left: 50%; bottom: 0.715em; transform: translateX(-50%); overflow: visible; pointer-events: none; }
+/* The flat-line wordmark: the gold i dot, then five dots in a level row to the end
+   of the word, shrinking and fading (Blake, 2026-10-05). Starts at the i's centre. */
+.wm-dots { position: absolute; left: calc(50% - 0.07em); bottom: 0.715em; overflow: visible; pointer-events: none; }
 .top nav { display: flex; gap: 2px; margin-left: auto; }
 .top nav a { color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 550; white-space: nowrap; padding: 6px 11px; border-radius: 10px; }
 .top nav a:hover { color: var(--text); background: var(--panel-2); }

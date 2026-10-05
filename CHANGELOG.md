@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Windows and Linux) carries faint tier rings and a glow behind the dot; the favicon and the
   website's small icon are the same mark without them, since they vanish at tab sizes. The
   guided setup now draws the icon from the same file the builds use.
+- **The wordmark's dots run level to the right.** The gold dot still sits over the i; the other
+  five now follow it in a straight line to the end of the word, each smaller and fainter, in the
+  tier colours (it was a column rising above the i). In the app and on the website.
 
 ## [1.1.0] - 2026-10-04
 
