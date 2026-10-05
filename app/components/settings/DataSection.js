@@ -44,7 +44,7 @@ function backupLabel(b) {
 
 /** What is in it, when that isn't the whole network with its photos. */
 function backupHolds(b) {
-  if (!b.restorable) return 'not a backup Six Degrees can restore';
+  if (!b.restorable) return 'not a backup Sixgree can restore';
   if (b.format === 'sixdegrees') return 'network, photos and files';
   if (b.withFiles) return 'network, with its photos and files beside it';
   if (b.kind === 'before-update') return 'network only (made before backups had photos)';
@@ -99,7 +99,7 @@ function LastBackup({ status }) {
           </Status>
         )
       ) : !failedSince && (
-        <Status>No backup yet. One is made each day Six Degrees is open with a network in it.</Status>
+        <Status>No backup yet. One is made each day Sixgree is open with a network in it.</Status>
       )}
     </>
   );
@@ -116,15 +116,15 @@ function Pending({ pending, info, busy, restarting, onRestart, onCancel }) {
       <div>
         {what}
         {' '}({people(pending.people)}{pending.photos ? `, ${plural(pending.photos, 'photo')}` : ''}
-        {pending.fromVersion ? `, from Six Degrees ${pending.fromVersion}` : ''})
+        {pending.fromVersion ? `, from Sixgree ${pending.fromVersion}` : ''})
         {pending.replacedPeople > 0
-          ? ` replaces the ${people(pending.replacedPeople)} here the next time Six Degrees starts. A copy of what’s here now is kept in backups first, so it can be undone.`
-          : ' becomes the network here the next time Six Degrees starts.'}
+          ? ` replaces the ${people(pending.replacedPeople)} here the next time Sixgree starts. A copy of what’s here now is kept in backups first, so it can be undone.`
+          : ' becomes the network here the next time Sixgree starts.'}
         {' '}Your LinkedIn search budget and any pause on scanning are kept.
       </div>
       {pending.error && (
         <div style={{ color: 'var(--sd-red, #ff7676)', marginTop: 6 }}>
-          The last try stopped: {pending.error.replace(/\.$/, '')}. It tries again the next time Six Degrees starts.
+          The last try stopped: {pending.error.replace(/\.$/, '')}. It tries again the next time Sixgree starts.
         </div>
       )}
       {restarting ? (
@@ -280,7 +280,7 @@ export default function DataSection() {
       });
       if (!res.ok) await answer(res, 'The backup file could not be made.');
       const blob = await res.blob();
-      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Six Degrees backup.sixdegrees';
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Sixgree backup.sixdegrees';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -360,7 +360,7 @@ export default function DataSection() {
     setBusy('restart');
     setImportNote(null);
     try {
-      await answer(await fetch('/api/data/restart', { method: 'POST' }), 'Six Degrees could not restart.');
+      await answer(await fetch('/api/data/restart', { method: 'POST' }), 'Sixgree could not restart.');
       setRestarting(true);
       // The Mac app brings this window back by itself once its server is up.
       // In case it doesn't, keep asking, and reload once the server answers.
@@ -377,7 +377,7 @@ export default function DataSection() {
         await wait(1000);
       }
       setRestarting(false);
-      setImportNote({ tone: 'bad', text: 'Six Degrees didn’t come back. Quit it and open it again: it finishes as it starts.' });
+      setImportNote({ tone: 'bad', text: 'Sixgree didn’t come back. Quit it and open it again: it finishes as it starts.' });
     } catch (e) {
       setImportNote({ tone: 'bad', text: e.message });
     } finally {
@@ -412,7 +412,7 @@ export default function DataSection() {
     <Section
       id="data"
       title="Your data"
-      intro="Everything Six Degrees knows about your network is in one folder on this computer."
+      intro="Everything Sixgree knows about your network is in one folder on this computer."
     >
       <Body><Mono>{info.dataDir}</Mono></Body>
       <div style={row}>
@@ -444,7 +444,7 @@ export default function DataSection() {
       {pending?.restoredFrom && pendingBox}
       <Body style={small}>
         Each backup is your whole network with its photos, your settings and the scanner’s notes, checked as it’s
-        made. Six Degrees makes one each day it’s open and before a new version first opens your data. It keeps the
+        made. Sixgree makes one each day it’s open and before a new version first opens your data. It keeps the
         last {keep.daily ?? 7} daily backups, {keep['before-update'] ?? 3} from before new versions, and
         {' '}{keep['before-import'] ?? 3} from before an import or a restore (those for at least {status.floorDays ?? 30} days).
         Backups you make with Back up now stay until you delete them. The Social tab’s messages and notes are never
@@ -476,7 +476,7 @@ export default function DataSection() {
                       {replaces
                         ? `Replace the ${people(info.people)} here with the network in this backup?`
                         : 'Restore the network in this backup?'}
-                      {' '}It’s checked first, and finishes when Six Degrees restarts. What’s here now is kept in backups
+                      {' '}It’s checked first, and finishes when Sixgree restarts. What’s here now is kept in backups
                       first, so this can be undone. Your LinkedIn search budget and any pause on scanning are kept.
                       {b.format === 'database' && !b.withFiles && ' This backup holds the network only, so the photos and the scanner’s notes here now stay with it.'}
                       <div style={row}>
@@ -513,7 +513,7 @@ export default function DataSection() {
 
       <h3 style={subhead}>Move your network to another computer</h3>
       <Body>
-        Export a backup file here, then on the new computer install Six Degrees, open Settings → Your data and
+        Export a backup file here, then on the new computer install Sixgree, open Settings → Your data and
         restore from it. Sign in to LinkedIn again there before you scan: your sign-in never goes into a backup.
       </Body>
       <label style={check}>

@@ -1,5 +1,5 @@
 {
-  "name": "six-degrees",
+  "name": "sixgree",
   "version": "1.0.0",
   "description": "Map your professional network as a galaxy — leverage tiers, bridges into new circles, and the shortest path to anyone. Runs locally on your own data.",
   "license": "MIT",
@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/blakeb056/six-degrees/issues"
   },
-  "homepage": "https://sixdegreesapp.com/",
+  "homepage": "https://sixgree.com/",
   "keywords": [
     "linkedin",
     "network",
@@ -31,6 +31,7 @@
   ],
   "private": false,
   "bin": {
+    "sixgree": "bin/six-degrees.mjs",
     "six-degrees": "bin/six-degrees.mjs"
   },
   "files": [

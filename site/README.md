@@ -1,6 +1,6 @@
 # The website
 
-The source of https://sixdegreesapp.com/. `scripts/build-site.mjs` builds it into a
+The source of https://sixgree.com/. `scripts/build-site.mjs` builds it into a
 folder, and `.github/workflows/pages.yml` runs that build and publishes the folder
 on every push to `main` that touches the site, the changelog, the tests or the
 sample network. There are no dependencies: plain HTML, one stylesheet, one script,

@@ -178,13 +178,13 @@ test('a budget file from another computer is held to the rules the app writes by
   assert.equal(budgetFileProblem('scan-limits.json', { daily: 25, monthly: 100, note: 'extra keys are ignored' }), null);
   assert.equal(budgetFileProblem('scan-limits.json', {}), null, 'missing values read as the defaults');
   // REGRESSION (review R2): daily 0 is "no limit at all" to the scanner, and the menu never offers it.
-  assert.match(budgetFileProblem('scan-limits.json', { daily: 0, monthly: 0 }), /daily limit \(0\) is not one Six Degrees offers/);
+  assert.match(budgetFileProblem('scan-limits.json', { daily: 0, monthly: 0 }), /daily limit \(0\) is not one Sixgree offers/);
   assert.match(budgetFileProblem('scan-limits.json', { daily: 50, monthly: 300 }), /monthly limit \(300\)/);
   assert.match(budgetFileProblem('scan-limits.json', { daily: '50' }), /daily limit/);
   assert.match(budgetFileProblem('scan-limits.json', [50, 250]), /not a JSON object/);
   for (const profiles of PROFILE_CHOICES) assert.equal(budgetFileProblem('scan-limits.json', { profiles }), null, `${profiles}`);
   for (const profiles of [0, 1000, 30, '25', null]) {
-    assert.match(budgetFileProblem('scan-limits.json', { daily: 50, profiles }), /its limit on profile views \(.*\) is not one Six Degrees offers/, String(profiles));
+    assert.match(budgetFileProblem('scan-limits.json', { daily: 50, profiles }), /its limit on profile views \(.*\) is not one Sixgree offers/, String(profiles));
   }
 
   assert.equal(budgetFileProblem('linkedin-activity.json', { searches: [1758800000.123456, 1758800000], profiles: [] }), null);

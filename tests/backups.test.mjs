@@ -99,7 +99,7 @@ test("a copy that fails the importer's check is never kept under a backup's name
   assert.deepEqual(readdirSync(backupsIn(dir)), [], 'no backup, no .partial');
 });
 
-test('only the kinds Six Degrees makes', () => {
+test('only the kinds Sixgree makes', () => {
   const { dir, db } = network('k');
   assert.throws(() => makeBackup('before-import', opts(dir, db)), /no kind of backup/);
   assert.throws(() => makeBackup('../x', opts(dir, db)), /no kind of backup/);
@@ -221,7 +221,7 @@ test('a backup made with Back up now, or put in the folder by hand, is never del
   const dir = folderOf([
     ...Array.from({ length: 12 }, (_, i) => `manual-0.7.0-${at(i + 1)}.sixdegrees`),
     'pre-relink-2026-09-24.sqlite',
-    'Six Degrees backup 2026-09-25.sixdegrees',
+    'Sixgree backup 2026-09-25.sixdegrees',
     'my notes/',
   ]);
   assert.deepEqual(rotateBackups(backupsIn(dir), { now: new Date(Date.UTC(2027, 0, 1)) }), []);

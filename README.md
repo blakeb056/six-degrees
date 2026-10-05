@@ -1,8 +1,10 @@
 <p align="center">
-  <a href="https://sixdegreesapp.com/"><img src="desktop/icon/icon.svg" width="112" height="112" alt="Six Degrees website"></a>
+  <a href="https://sixgree.com/"><img src="desktop/icon/icon.svg" width="112" height="112" alt="Sixgree website"></a>
 </p>
 
-<h1 align="center">Six Degrees</h1>
+<h1 align="center">Sixgree</h1>
+
+<p align="center"><em>Sixgree: six degrees of your LinkedIn.</em> (Formerly Six Degrees.)</p>
 
 <p align="center">
   <strong>See your LinkedIn network as a galaxy.</strong><br>
@@ -18,29 +20,29 @@
   <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/v/release/blakeb056/six-degrees?label=release&color=ffd700" alt="Latest release"></a>
   <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/release-date/blakeb056/six-degrees?label=released&color=3ee08f" alt="Release date"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/blakeb056/six-degrees?color=9b59b6" alt="MIT licence"></a>
-  <a href="https://www.npmjs.com/package/six-degrees"><img src="https://img.shields.io/npm/v/six-degrees?label=npm&color=3498db" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/sixgree"><img src="https://img.shields.io/npm/v/six-degrees?label=npm&color=3498db" alt="npm version"></a>
   <a href="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml"><img src="https://github.com/blakeb056/six-degrees/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
 <p align="center">
-  <a href="https://sixdegreesapp.com/"><strong>Website</strong></a> ·
+  <a href="https://sixgree.com/"><strong>Website</strong></a> ·
   <a href="#download">Download</a> ·
   <a href="#features">Features</a> ·
   <a href="#latest-news">News</a> ·
-  <a href="#why-six-degrees">Why Six Degrees</a> ·
+  <a href="#why-six-degrees">Why Sixgree</a> ·
   <a href="#docs">Docs</a> ·
-  <a href="https://sixdegreesapp.com/blog/">Blog</a> ·
-  <a href="https://sixdegreesapp.com/roadmap/">Roadmap</a> ·
+  <a href="https://sixgree.com/blog/">Blog</a> ·
+  <a href="https://sixgree.com/roadmap/">Roadmap</a> ·
   <a href="#contributing">Contributing</a>
 </p>
 
 <p align="center">
-  <a href="https://sixdegreesapp.com/"><img src="site/img/og-image.jpg" alt="Six Degrees on a Mac: a sample network drawn as rings around you, the most powerful people closest" width="100%"></a>
+  <a href="https://sixgree.com/"><img src="site/img/og-image.jpg" alt="Sixgree on a Mac: a sample network drawn as rings around you, the most powerful people closest" width="100%"></a>
 </p>
 
 <p align="center"><sub>Every person shown in this README is invented — see <a href="scripts/gen-synthetic.mjs"><code>gen-synthetic.mjs</code></a>.</sub></p>
 
-Your network has a shape, and you can't see it. Six Degrees draws it: everyone you
+Your network has a shape, and you can't see it. Sixgree draws it: everyone you
 know placed on rings by how much they can open up for you, the handful of people
 whose own circles reach the furthest, and the shortest chain from you to a stranger
 worth meeting.
@@ -51,18 +53,18 @@ no server.
 ## Download
 
 <p align="center">
-  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Six Degrees for a Mac with Apple Silicon (M1 or newer)"></a>
-  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Six Degrees for a Mac with an Intel chip"></a><br>
-  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Six Degrees for Windows 10 or 11 (beta): one-click Setup.exe"></a>
-  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Six Degrees for Linux (beta): .deb for Ubuntu and Debian"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Sixgree for a Mac with Apple Silicon (M1 or newer)"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Sixgree for a Mac with an Intel chip"></a><br>
+  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Sixgree for Windows 10 or 11 (beta): one-click Setup.exe"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Sixgree for Linux (beta): .deb for Ubuntu and Debian"></a>
 </p>
 
 | Platform | Download | Needs |
 |---|---|---|
-| **macOS**, Apple Silicon (M1 or newer) | [Six-Degrees-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
-| **macOS**, Intel | [Six-Degrees-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Six-Degrees-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
+| **macOS**, Apple Silicon (M1 or newer) | [Sixgree-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
+| **macOS**, Intel | [Sixgree-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
 | **Windows** (beta) | [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe) | Windows 10 or 11, 64-bit |
-| **Linux** (beta) | [Six-Degrees-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz), or from the Terminal: `npx six-degrees` ([how](https://sixdegreesapp.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
+| **Linux** (beta) | [Six-Degrees-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz), or from the Terminal: `npx sixgree` ([how](https://sixgree.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
 
 <sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
 `SHA256SUMS` file ([latest](https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS)); the Terminal install below checks the download against it.
@@ -76,8 +78,8 @@ The links above always fetch the newest release.</sub>
 Chrome is inside, Python included, so there's nothing else to install.
 
 1. Open the file you downloaded (**Six-Degrees-Mac-….dmg**, in your Downloads folder).
-   In the window that opens, drag **Six Degrees** onto the **Applications** folder.
-2. Open **Six Degrees** from Applications. Signed by Blake Burford and notarized by
+   In the window that opens, drag **Sixgree** onto the **Applications** folder.
+2. Open **Sixgree** from Applications. Signed by Blake Burford and notarized by
    Apple: it opens like any Mac app. The first time, macOS asks whether to open an app
    downloaded from the internet: click **Open**.
 
@@ -93,10 +95,10 @@ curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.
 ```
 
 It downloads the right version for your Mac, checks the file is exactly the one
-published here, puts **Six Degrees** in Applications and opens it.
+published here, puts **Sixgree** in Applications and opens it.
 [Read the script](install.sh) first if you like.
 
-**Updating.** Choose *Six Degrees → Check for Updates…* (or open **Settings** with the ⚙
+**Updating.** Choose *Sixgree → Check for Updates…* (or open **Settings** with the ⚙
 button or ⌘,). It opens the Updates section and checks. Nothing checks by
 itself. If there's a newer version, click **Install and restart**: the app downloads it
 from GitHub, checks it against the release's published checksums and checks that its code
@@ -113,13 +115,13 @@ Downloading the new `.dmg` and dragging it to Applications works too.
 Your network isn't stored in the app. It's in a hidden folder in your home folder,
 `.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
 touch it. Each new version also backs up your data, photos and all, into its `backups`
-folder before it first opens it, and Six Degrees makes a backup each day it's open
+folder before it first opens it, and Sixgree makes a backup each day it's open
 (see [Backups](#backups)). To take it to another computer, see
 [Moving to a new computer](#moving-to-a-new-computer).
 
 **Windows (beta):** download [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe)
 and open it. It installs for you alone (no administrator password), adds Start Menu and
-Desktop shortcuts, and opens Six Degrees. It isn't signed with a paid certificate yet, so
+Desktop shortcuts, and opens Sixgree. It isn't signed with a paid certificate yet, so
 SmartScreen may say it protected your PC: **More info → Run anyway**. A newer Setup.exe
 updates it in place; your network stays in `%USERPROFILE%\.six-degrees`, which
 uninstalling never touches. Scanning needs Google Chrome.
@@ -134,20 +136,20 @@ once (or start it with `--no-sandbox`). Scanning needs Google Chrome (not Chromi
 `nodejs` package is too old), then run:
 
 ```bash
-npx six-degrees
+npx sixgree
 ```
 
 It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without a
 desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
 `--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
-`npx six-degrees@latest`; **Settings → Updates** gives the same
+`npx sixgree@latest`; **Settings → Updates** gives the same
 line. Scanning LinkedIn also needs Google Chrome (not Chromium), and Python: your own 3.10
 to 3.14 if you have it (on Ubuntu with `python3-venv`), or, if not, the Scan page's **Set
 up the scanner** button downloads a private copy into your data folder (24–33 MB, from
-GitHub, checked against a checksum built into Six Degrees). It's tested on Ubuntu, and
+GitHub, checked against a checksum built into Sixgree). It's tested on Ubuntu, and
 works on a Mac too if you'd rather not install the app.
 
-`npx six-degrees` doesn't run on Windows; use the Windows app above.
+`npx sixgree` doesn't run on Windows; use the Windows app above.
 
 <details>
 <summary>Run it from source (contributors)</summary>
@@ -246,20 +248,20 @@ lock, and a **Paused** list you can carry on from.
   <a href="https://github.com/blakeb056/six-degrees/releases/latest"><img src="https://img.shields.io/github/release-date/blakeb056/six-degrees?label=released&color=3ee08f" alt="Release date"></a>
 </p>
 
-Six Degrees ships often, and every release says what it added, changed and fixed:
+Sixgree ships often, and every release says what it added, changed and fixed:
 
 - **[Releases](https://github.com/blakeb056/six-degrees/releases)**: each version's
   downloads and notes ([Atom feed](https://github.com/blakeb056/six-degrees/releases.atom)).
 - **[CHANGELOG.md](CHANGELOG.md)**: everything, newest first, including what's
   coming in the next release.
-- **[Release notes on the website](https://sixdegreesapp.com/releases/)**: every version,
+- **[Release notes on the website](https://sixgree.com/releases/)**: every version,
   built from the changelog each time the site is published, with a
-  [feed](https://sixdegreesapp.com/releases/feed.xml).
-- **[The blog](https://sixdegreesapp.com/blog/)**: how it works, and why.
+  [feed](https://sixgree.com/releases/feed.xml).
+- **[The blog](https://sixgree.com/blog/)**: how it works, and why.
 
-## Why Six Degrees
+## Why Sixgree
 
-A connections list tells you who you know. Six Degrees shows what that network can do:
+A connections list tells you who you know. Sixgree shows what that network can do:
 
 - **Who can introduce you, ranked.** Everyone two steps away, each with every way in.
 - **Who only one connection reaches.** Where a single person is your only door.
@@ -271,9 +273,9 @@ In the sample network that ships with the app (150 invented connections), 598 pe
 two steps away, and 503 of them, 84%, are reached through only one connection.
 
 **How it compares**, as fairly as we can put it
-([the full table](https://sixdegreesapp.com/#compare)):
+([the full table](https://sixgree.com/#compare)):
 
-| | Six Degrees | LinkedIn's own search | Spreadsheets and CRMs | Network tools (SocNetV, Gephi) |
+| | Sixgree | LinkedIn's own search | Spreadsheets and CRMs | Network tools (SocNetV, Gephi) |
 |---|---|---|---|---|
 | Your connections, from LinkedIn's export | ✓ | ✓ | ✓ | as nodes, with no ties |
 | Everyone two steps away, with who can introduce you | ✓ (needs a scan, or the sample) | 2nd-degree search, mutual connections on each | — (the export is 1st degree only) | if you bring the ties |
@@ -311,7 +313,7 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 > you press Auto** on a person (one each press, without a note, at most 15 a day and 80 a
 > week). Auto asks once before its first request.
 >
-> Six Degrees is not affiliated with or endorsed by LinkedIn.
+> Sixgree is not affiliated with or endorsed by LinkedIn.
 
 ## First run
 
@@ -323,10 +325,10 @@ The app opens on a welcome screen with three ways in, and asks nothing about you
   in a Chrome window, and then it scans in the background: the scanner's Chrome stays out
   of your way and comes forward only if LinkedIn needs you (to sign in again, or to finish
   a check it asks for). Needs Google Chrome. The Mac app brings its own
-  Python; with `npx six-degrees` the page uses yours, or sets up a private one with a
+  Python; with `npx sixgree` the page uses yours, or sets up a private one with a
   click. It checks and says what's missing. The app marks this *Recommended* because
   it's the only way to Degrees and Outlink. Read the warning above first. On a Mac,
-  macOS may ask whether Six Degrees can manage apps while you scan: that's Chrome
+  macOS may ask whether Sixgree can manage apps while you scan: that's Chrome
   updating itself, and scanning works either way (step 1 has a button to allow it once).
 - **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
   LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
@@ -432,7 +434,7 @@ It estimates **network position**, not what anyone is worth as a person.
     once, when you set the scanner up: **PyPI** (the Python package library) for the
     scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**
     for a copy of Python when you click *Set up the scanner*. Every file is checked
-    against a checksum built into Six Degrees.
+    against a checksum built into Sixgree.
   - **GitHub**, only when you click *Check for updates*, to read the newest version
     number. In the Mac app, also when you then click *Install and restart*, to download
     that version and the file of checksums that proves it's the one published.
@@ -473,7 +475,7 @@ photos, your settings (the look and your saved Galaxy layouts too), and the scan
 progress, skip lists and LinkedIn budget. Each one is checked as it's made, the same way a
 restore would check it, so a backup that's listed would restore. The Social tab's messages
 and notes are never in a backup, so deleting them there (*Forget it*) deletes them
-everywhere, and a restore leaves them as they are. Six Degrees makes one:
+everywhere, and a restore leaves them as they are. Sixgree makes one:
 
 - **each day** it's open with a network in it (when it starts, and after a scan, if the
   newest daily one is a day old; nothing runs on a timer), keeping the last 7;
@@ -496,22 +498,22 @@ with their photos, each backup is about 25 to 35 MB, so the kept ones add up to 
 ### Moving to a new computer
 
 1. On the old computer, open **Settings → Your data** and click **Export backup
-   file…**. You get one file, `Six Degrees backup <date>.sixdegrees`, with your network,
+   file…**. You get one file, `Sixgree backup <date>.sixdegrees`, with your network,
    your settings, the scanner's progress, skip lists and LinkedIn budget, and the profile
    photos of the people in it (untick them to leave them out; they come back as you scan
    again).
 2. Move that file to the new computer yourself (a USB stick, AirDrop). It holds other
    people's names and photos, so don't post it or share it.
-3. On the new computer, install Six Degrees, open **Settings → Your data**, click
+3. On the new computer, install Sixgree, open **Settings → Your data**, click
    **Restore from a file…**, choose the file and click **Restore**. It's checked first, and nothing changes if it isn't a whole
-   and undamaged Six Degrees copy. If that computer already has a network, you're asked to
+   and undamaged Sixgree copy. If that computer already has a network, you're asked to
    confirm that the import replaces it. The two networks are never merged. Your LinkedIn
    search budget is the one thing that is: it belongs to your LinkedIn account, not to a
    computer, so searches made on either computer still count, a pause on scanning set on
    either stays until it ends, and budget limits already set on that computer stay.
-4. The import finishes the next time Six Degrees starts. The Mac app does that with
-   **Restart now**; with `npx six-degrees`, press Ctrl-C and start it again. If another
-   copy of Six Degrees has the same folder open (one started from the Terminal, say), the
+4. The import finishes the next time Sixgree starts. The Mac app does that with
+   **Restart now**; with `npx sixgree`, press Ctrl-C and start it again. If another
+   copy of Sixgree has the same folder open (one started from the Terminal, say), the
    import waits, and Settings says so. What was there before is kept in `backups/`
    (`before-import-…`), for at least 30 days: see [Undo an import](#undo-an-import).
 5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
@@ -527,7 +529,7 @@ about it, and a CSV import kept with it if there was one.
 
 To put it back, open **Settings → Your data**, open **The backups**, find **Before an import
 or a restore** with that time, and click **Restore**. It's checked first, then finishes when
-Six Degrees restarts (**Restart now** in the Mac app; with `npx six-degrees`, press Ctrl-C
+Sixgree restarts (**Restart now** in the Mac app; with `npx sixgree`, press Ctrl-C
 and start it again), and what's there now is kept in the same way, so you can go back
 again. Your LinkedIn search budget stays as it is: it belongs to your LinkedIn account,
 not to a network.
@@ -539,7 +541,7 @@ Don't put the live folder in iCloud Drive or Dropbox to share it between compute
 instead. A sync service that copies the database while it's open can damage it, and it
 would also sync your LinkedIn sign-in.
 
-**To remove everything:** quit the app and drag **Six Degrees** from Applications to the
+**To remove everything:** quit the app and drag **Sixgree** from Applications to the
 Trash. Then in Finder choose **Go → Go to Folder…** (⇧⌘G), paste `~/.six-degrees` and
 move that folder to the Trash. Do the same for
 `~/Library/Application Support/Six Degrees`, the app window's own storage and cache.
@@ -555,21 +557,21 @@ Nothing to configure. Two optional environment variables exist:
 
 | Variable | Purpose |
 |---|---|
-| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx six-degrees` and source runs (npx also takes `--data-dir`; see `npx six-degrees --help`), not when the Mac app is opened from the Dock or Finder. A relative folder is taken from the folder you run the command in. |
+| `SIX_DEGREES_HOME` | Where your data lives. Defaults to `~/.six-degrees`. It's read at launch, so it applies to `npx sixgree` and source runs (npx also takes `--data-dir`; see `npx sixgree --help`), not when the Mac app is opened from the Dock or Finder. A relative folder is taken from the folder you run the command in. |
 | `ADMIN_TOKEN` | Not needed on your own computer. The app listens only on 127.0.0.1 and isn't built to be exposed: don't put it behind a tunnel or bind it to another address ([SECURITY.md](SECURITY.md)). If it's ever bound elsewhere, the eleven routes that delete, replace or hand over your data, run the scanner, open the data folder or update a copy run from source refuse every caller without this token, including the app's own buttons. Everything else, including reading your whole network, stays open. |
 
 ## Docs
 
 | You want | Read |
 |---|---|
-| To install it, step by step | [Install it](#install-it), or [the website's guide](https://sixdegreesapp.com/download/#install) with videos |
+| To install it, step by step | [Install it](#install-it), or [the website's guide](https://sixgree.com/download/#install) with videos |
 | How scanning works, and what it risks | [docs/SCRAPING.md](docs/SCRAPING.md) |
 | How a power score is worked out | [How scoring works](#how-scoring-works), and [docs/brain/SCORING.md](docs/brain/SCORING.md) |
 | Where your data lives, moving computers | [How your data is stored](#how-your-data-is-stored) |
 | The security model, and reporting a problem | [SECURITY.md](SECURITY.md) |
-| What changed in each version | [CHANGELOG.md](CHANGELOG.md), or the [release notes](https://sixdegreesapp.com/releases/) on the website |
-| How it works, and why | [The blog](https://sixdegreesapp.com/blog/): who can introduce you, local-first, the physics lab, scanning slowly |
-| What's next | [The roadmap](https://sixdegreesapp.com/roadmap/) |
+| What changed in each version | [CHANGELOG.md](CHANGELOG.md), or the [release notes](https://sixgree.com/releases/) on the website |
+| How it works, and why | [The blog](https://sixgree.com/blog/): who can introduce you, local-first, the physics lab, scanning slowly |
+| What's next | [The roadmap](https://sixgree.com/roadmap/) |
 | The website itself | [site/README.md](site/README.md): previewing it, adding a post or a page |
 | To change the code | [CONTRIBUTING.md](CONTRIBUTING.md), then [docs/brain/](docs/brain/00-START-HERE.md) |
 

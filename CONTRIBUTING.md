@@ -40,7 +40,7 @@ run `node scripts/pin-python-packages.mjs`.
 
 ## The website
 
-https://sixdegreesapp.com/ is built from `site/` by `scripts/build-site.mjs`. To add a
+https://sixgree.com/ is built from `site/` by `scripts/build-site.mjs`. To add a
 blog post or a page, or to preview the site, see [site/README.md](site/README.md).
 
 ## Releasing
@@ -51,7 +51,7 @@ file on a GitHub Release (which is what `install.sh` downloads), and publishes t
 package through npm's trusted publishing: npm accepts this repository's
 `release.yml`, and GitHub vouches for each run, so there is no npm token to set or
 keep. A tag with a hyphen (`v0.4.0-beta.1`) is a pre-release on GitHub and goes to npm
-under `next`, so neither `install.sh` nor `npx six-degrees` picks it up.
+under `next`, so neither `install.sh` nor `npx sixgree` picks it up.
 
 A full release also bumps the download website's version lines (`docs/SEO.md`, "Release
 checklist"). `node scripts/check-site-version.mjs` says whether they match

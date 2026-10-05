@@ -2,6 +2,17 @@
 
 The router for anyone — human or agent — changing this codebase.
 
+**The product is called Sixgree (sixgree.com); it was Six Degrees until 1.0.0.** Only what
+people see was renamed. These stay "Six Degrees"/"six-degrees" for good, because installs
+depend on them: the bundle id `com.blakeburford.sixdegrees` and Windows AppUserModelID, the
+Inno Setup AppId, the file names `Six Degrees.app` / `Six Degrees.exe` and their install
+folders, Electron's settings folder (pinned in `desktop/main.mjs`), `~/.six-degrees` and every
+`SIX_DEGREES_*` variable, `.sixdegrees` backups, `six-degrees-*` storage keys, the GitHub
+repo `blakeb056/six-degrees`, `release.yml`'s file name, and every Mac DMG being published
+under its old `Six-Degrees-<v>-<chip>.dmg` name too (1.0.0's updater asks for that).
+`tests/sixgree-rename.test.mjs` holds those bridges. Brain notes below still say
+"Six Degrees" in places: same product.
+
 ## The non-negotiables
 
 Six rules, each learned expensively. If a change violates one, the change is wrong.

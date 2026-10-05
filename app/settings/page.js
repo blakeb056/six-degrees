@@ -62,7 +62,7 @@ const KIND_LABEL = {
   'mac-app': 'the Mac app',
   'windows-app': 'the Windows app',
   'linux-app': 'the Linux app',
-  npm: 'the npm package (npx six-degrees)',
+  npm: 'the npm package (npx sixgree)',
   source: 'a copy built from the source code',
   git: 'a git checkout of the source code',
 };

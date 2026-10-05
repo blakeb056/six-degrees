@@ -1,4 +1,4 @@
-// Six Degrees for the Mac: the window, the menu and the app's lifecycle, around
+// Sixgree for the Mac: the window, the menu and the app's lifecycle, around
 // the same local server the app has always run. docs/brain/DESKTOP.md, phase D1.
 //
 // Electron is only the shell. The server is the bundled Node binary running the
@@ -42,6 +42,7 @@ import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
+  userDataPath,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -88,7 +89,12 @@ let quitting = false;
 // A menu choice made before the server answered, or Settings when opened after an update.
 let pendingPath = startPathArg(process.argv);
 
-app.setName('Six Degrees');
+app.setName('Sixgree');
+// Still the "Six Degrees" folder (lib.mjs userDataPath), so a rename resets nothing.
+// Here, before anything reads it: the single-instance lock below is the first.
+const USER_DATA = userDataPath(app.getPath('appData'));
+app.setPath('userData', USER_DATA);
+app.setPath('sessionData', USER_DATA);
 app.enableSandbox();
 // Windows groups the taskbar button and the Start Menu shortcut by this (scripts/windows/six-degrees.iss).
 if (process.platform === 'win32') app.setAppUserModelId('com.blakeburford.sixdegrees');
@@ -98,14 +104,14 @@ if (!app.requestSingleInstanceLock()) {
   app.exit(0);
 } else {
   app.on('second-instance', showWindow);
-  app.whenReady().then(start).catch((err) => fail('Six Degrees could not start', err));
+  app.whenReady().then(start).catch((err) => fail('Sixgree could not start', err));
 }
 
 async function start() {
   lockDownSession();
   Menu.setApplicationMenu(buildMenu());
   app.setAboutPanelOptions({
-    applicationName: 'Six Degrees',
+    applicationName: 'Sixgree',
     applicationVersion: app.getVersion(),
     version: '',
     website: REPO_URL,
@@ -160,7 +166,7 @@ async function startServer(port, { logMode }) {
       restartServer(port);
       return;
     }
-    fail('Six Degrees stopped', new Error(`Its server exited (code ${code}).`));
+    fail('Sixgree stopped', new Error(`Its server exited (code ${code}).`));
   });
 
   await waitForServer(origin, { isAlive: () => child.exitCode === null && child.signalCode === null });
@@ -183,7 +189,7 @@ async function restartServer(port) {
     if (quitting) return; // quit while the port was being found: start nothing
     await startServer(again, { logMode: 'a' });
   } catch (err) {
-    fail('Six Degrees could not restart', err);
+    fail('Sixgree could not restart', err);
   }
 }
 
@@ -199,7 +205,7 @@ function showWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 640,
-    title: 'Six Degrees',
+    title: 'Sixgree',
     backgroundColor: '#0a0a1a', // the app's own background: no white flash
     show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
@@ -293,13 +299,13 @@ function otherMenu() {
     {
       label: 'Help',
       submenu: [
-        { label: 'Six Degrees on GitHub', click: () => shell.openExternal(REPO_URL) },
+        { label: 'Sixgree on GitHub', click: () => shell.openExternal(REPO_URL) },
         { label: 'What Changed', click: () => shell.openExternal(`${REPO_URL}/releases`) },
         { type: 'separator' },
         { label: 'Show the Data Folder', click: () => shell.openPath(DATA_DIR) },
         { label: 'Show the Log', click: () => shell.showItemInFolder(LOG) },
         { type: 'separator' },
-        { role: 'about', label: 'About Six Degrees' },
+        { role: 'about', label: 'About Sixgree' },
       ],
     },
   ];
@@ -308,19 +314,19 @@ function otherMenu() {
 function macMenu() {
   return [
     {
-      label: 'Six Degrees',
+      label: 'Sixgree',
       submenu: [
-        { role: 'about', label: 'About Six Degrees' },
+        { role: 'about', label: 'About Sixgree' },
         { label: 'Check for Updates…', click: () => openInApp('/settings?check=updates') },
         { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => openInApp('/settings') },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
-        { role: 'hide', label: 'Hide Six Degrees' },
+        { role: 'hide', label: 'Hide Sixgree' },
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit', label: 'Quit Six Degrees' },
+        { role: 'quit', label: 'Quit Sixgree' },
       ],
     },
     { role: 'editMenu' },
@@ -342,7 +348,7 @@ function macMenu() {
     {
       role: 'help',
       submenu: [
-        { label: 'Six Degrees on GitHub', click: () => shell.openExternal(REPO_URL) },
+        { label: 'Sixgree on GitHub', click: () => shell.openExternal(REPO_URL) },
         { label: 'What Changed', click: () => shell.openExternal(`${REPO_URL}/releases`) },
         { type: 'separator' },
         { label: 'Show the Data Folder', click: () => shell.openPath(DATA_DIR) },
@@ -353,7 +359,7 @@ function macMenu() {
 }
 
 // ── quitting ─────────────────────────────────────────────────────────────────
-// Like any Mac app, closing the window leaves Six Degrees running (a long scan
+// Like any Mac app, closing the window leaves Sixgree running (a long scan
 // carries on); Quit ends it. The Dock icon brings the window back.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') requestQuit({ ask: false });

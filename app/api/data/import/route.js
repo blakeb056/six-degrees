@@ -75,7 +75,7 @@ export async function DELETE(request) {
   const result = cancelPendingImport(dataDir());
   if (result.reason === 'started') {
     return Response.json(
-      { error: 'This import has already started, so it can only go forward. Restart Six Degrees to finish it.' },
+      { error: 'This import has already started, so it can only go forward. Restart Sixgree to finish it.' },
       { status: 409 },
     );
   }

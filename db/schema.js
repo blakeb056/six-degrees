@@ -9,7 +9,7 @@
 // Every statement is CREATE ... IF NOT EXISTS, so applying it is both
 // first-run setup and a no-op on every later boot.
 
-export const SCHEMA_SQL = `-- Six Degrees — local SQLite schema.
+export const SCHEMA_SQL = `-- Sixgree — local SQLite schema.
 --
 -- Ported from the Postgres schema this project ran on before it went
 -- local-first. Type mapping: uuid -> TEXT (generated in JS), jsonb and

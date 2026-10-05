@@ -44,7 +44,7 @@ def compose_app_window(browser):
       <span style="margin-left:14px;width:12px;height:12px;border-radius:50%;background:#ff5f57"></span>
       <span style="margin-left:8px;width:12px;height:12px;border-radius:50%;background:#febc2e"></span>
       <span style="margin-left:8px;width:12px;height:12px;border-radius:50%;background:#28c840"></span>
-      <span style="position:absolute;left:0;right:0;text-align:center;font:600 13px -apple-system,BlinkMacSystemFont,sans-serif;color:rgba(255,255,255,.72)">Six Degrees</span>
+      <span style="position:absolute;left:0;right:0;text-align:center;font:600 13px -apple-system,BlinkMacSystemFont,sans-serif;color:rgba(255,255,255,.72)">Sixgree</span>
     </div>
     <img src="data:image/png;base64,{shot}" style="display:block;width:1440px;height:900px">
   </div>

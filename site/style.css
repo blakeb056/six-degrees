@@ -1,4 +1,4 @@
-/* The Six Degrees website. System fonts, no external requests, dark sky only.
+/* The Sixgree website. System fonts, no external requests, dark sky only.
    index.html asks for this file by version (style.css?v=…): a browser holding an
    old copy draws the new page with old rules (the videos once came out at their
    full 1920px, off-centre). Bump the version whenever the layout changes. */

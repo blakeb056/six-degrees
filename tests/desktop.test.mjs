@@ -192,7 +192,7 @@ test('75 starts the server again, to finish an import', () => {
   assert.equal(serverExitAction({ code: 75, signal: null, quitting: false, answered: true }), 'restart');
 });
 
-test('REGRESSION: Restart now again soon after a restart is a restart, not "Six Degrees stopped"', () => {
+test('REGRESSION: Restart now again soon after a restart is a restart, not "Sixgree stopped"', () => {
   // An import that stopped (another copy had the network open, say) says why on
   // the page, and the person fixes it and clicks Restart now again at once. The
   // first guard counted any restart within 15 s of the last as a crash.

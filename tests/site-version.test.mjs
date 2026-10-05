@@ -22,13 +22,13 @@ function site({ softwareVersion = '1.2.0', dateModified = '2026-10-02', llms = '
   {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "WebSite", "name": "Six Degrees" },
-      { "@type": "SoftwareApplication", "name": "Six Degrees", "softwareVersion": "${softwareVersion}", "datePublished": "2026-09-24", "dateModified": "${dateModified}" }
+      { "@type": "WebSite", "name": "Sixgree" },
+      { "@type": "SoftwareApplication", "name": "Sixgree", "softwareVersion": "${softwareVersion}", "datePublished": "2026-09-24", "dateModified": "${dateModified}" }
     ]
   }
   </script>
 </head>`,
-    llmsTxt: `# Six Degrees\n\n- Free and open source.\n- Current version: ${llms}. Updates are one click from inside the app.\n`,
+    llmsTxt: `# Sixgree\n\n- Free and open source.\n- Current version: ${llms}. Updates are one click from inside the app.\n`,
     sitemapXml: `<urlset>\n  <url>\n    <loc>https://example.invalid/</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>\n</urlset>\n`,
   };
 }
@@ -68,7 +68,7 @@ test('no release date, or a line the site doesn\'t have, fails rather than passi
   const base = site();
   assert.match(siteVersionProblems({ version: '1.3.0', ...site({ softwareVersion: '1.3.0', llms: '1.3.0' }) })[0],
     /CHANGELOG\.md has no "## \[1\.3\.0\] - YYYY-MM-DD" heading/);
-  const bare = siteVersionProblems({ version: '1.2.0', changelog: base.changelog, indexHtml: '<head></head>', llmsTxt: '# Six Degrees\n', sitemapXml: '<urlset/>' });
+  const bare = siteVersionProblems({ version: '1.2.0', changelog: base.changelog, indexHtml: '<head></head>', llmsTxt: '# Sixgree\n', sitemapXml: '<urlset/>' });
   assert.deepEqual(bare, [
     'site/index.html: no softwareVersion in the JSON-LD (its SoftwareApplication).',
     'site/index.html: no dateModified in the JSON-LD.',

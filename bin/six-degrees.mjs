@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Launcher for the published package: `npx six-degrees`.
+ * Launcher for the published package: `npx sixgree`.
  *
  * Starts the prebuilt server on this machine, opens a browser at it, and stays
  * in the foreground so Ctrl-C stops it. Nothing is installed globally and
@@ -26,7 +26,7 @@ function checkNode() {
     if ((parts[i] || 0) > MIN_NODE[i]) return;
     if ((parts[i] || 0) < MIN_NODE[i]) {
       console.error(
-        `\n  six-degrees needs Node ${MIN_NODE.join('.')} or newer (this is ${process.versions.node}).` +
+        `\n  Sixgree needs Node ${MIN_NODE.join('.')} or newer (this is ${process.versions.node}).` +
         `\n  It uses node:sqlite, which older versions do not provide.\n`
       );
       process.exit(1);
@@ -35,10 +35,10 @@ function checkNode() {
 }
 
 const HELP = `
-  six-degrees — map your professional network as a galaxy, on your own machine
+  sixgree — map your professional network as a galaxy, on your own machine
 
   Usage
-    npx six-degrees [options]
+    npx sixgree [options]     (six-degrees still works as a name for it)
 
   Options
     -p, --port <n>      port to listen on (default 6363)
@@ -127,7 +127,7 @@ async function main() {
   process.env.NEXT_TELEMETRY_DISABLED = '1';
 
   console.log(`
-  six-degrees
+  Sixgree
 
   ▸ Running at   ${url}
   ▸ Data         ${dataDir}

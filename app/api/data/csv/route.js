@@ -44,7 +44,7 @@ export async function POST(request) {
   // with what it replaces.
   if (pendingImport(dir)) {
     return Response.json({
-      error: 'A copy of a network is waiting to finish importing. Restart Six Degrees to finish it first (Settings → Your data says how), then import the CSV.',
+      error: 'A copy of a network is waiting to finish importing. Restart Sixgree to finish it first (Settings → Your data says how), then import the CSV.',
     }, { status: 409 });
   }
   let body;

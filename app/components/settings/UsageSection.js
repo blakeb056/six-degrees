@@ -103,7 +103,7 @@ function Meter({ title, used, of, max, color, ticks = [], band, children }) {
 /**
  * Auto's connection requests (lib/auto-connect.js): the last 24 hours and the
  * last 7 days, each against its cap, one bar under the other. Its own caps,
- * not the search budget: a request is the one thing Six Degrees sends.
+ * not the search budget: a request is the one thing Sixgree sends.
  */
 function InviteMeter({ day, week, freesAt, weekFreesAt, now }) {
   const known = Number.isFinite(day) && Number.isFinite(week);
@@ -238,7 +238,7 @@ export default function UsageSection() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Pill level={level} />
         <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', flex: '1 1 260px', lineHeight: 1.5 }}>
-          What Six Degrees has asked of your LinkedIn account from this computer, and how close that is to the line.
+          What Sixgree has asked of your LinkedIn account from this computer, and how close that is to the line.
         </span>
       </div>
 
@@ -348,7 +348,7 @@ export default function UsageSection() {
       </div>
 
       <div style={{ ...small, marginTop: 14, paddingTop: 12, borderTop: LINE }}>
-        Where these numbers come from: Six Degrees writes down every search, profile view and Auto request it makes
+        Where these numbers come from: Sixgree writes down every search, profile view and Auto request it makes
         on your LinkedIn account, on this computer, and counts them here. Searches you make yourself on linkedin.com
         aren&rsquo;t in it, and LinkedIn shows no count of its own. The {RESTRICTED_AT} searches and the 20 to 25
         profile views are what happened to one real account, not safe limits. Change the budget on the

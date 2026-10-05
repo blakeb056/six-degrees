@@ -64,7 +64,7 @@ const DOWNLOADS = {
   const note = $('not-mac');
   if (note && (os === 'phone' || os === 'other')) {
     if (os === 'phone') {
-      note.textContent = "You're on a phone or tablet. Six Degrees runs on a computer: open this page on your Mac to download it.";
+      note.textContent = "You're on a phone or tablet. Sixgree runs on a computer: open this page on your Mac to download it.";
     }
     note.hidden = false;
   }
@@ -155,8 +155,8 @@ const DOWNLOADS = {
         line.textContent = `Mac ${version} · Windows and Linux in beta · free and open source`;
         return;
       }
-      const silicon = mb('Six-Degrees-Mac-Apple-Silicon.dmg');
-      const intel = mb('Six-Degrees-Mac-Intel.dmg');
+      const silicon = mb('Sixgree-Mac-Apple-Silicon.dmg');
+      const intel = mb('Sixgree-Mac-Intel.dmg');
       // The size of the download this Mac needs, when we know which; else both.
       let size = '';
       if (chip === 'silicon' && silicon) size = ` · ${silicon} MB`;

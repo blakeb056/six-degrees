@@ -84,7 +84,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
         ? { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }
         : { display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 16, marginBottom: ROW_GAP }}>
         <Link href="/" style={{ textDecoration: 'none', justifySelf: 'start' }}>
-          <Brand style={{ ...TITLE, fontSize: isMobile ? 16 : 28 }}>Six Degrees</Brand>
+          <Brand style={{ ...TITLE, fontSize: isMobile ? 16 : 28 }}>Sixgree</Brand>
         </Link>
         {isMobile ? tabs : (
           <div style={{ alignSelf: 'end', position: 'relative', top: ROW_GAP + PAD_Y, zIndex: 2 }}>{tabs}</div>

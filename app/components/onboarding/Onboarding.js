@@ -86,7 +86,7 @@ export default function Onboarding({ onFinish, again = false }) {
     <div className="ob" data-onboarding={final ? 'ready' : view || 'loading'}>
       <style>{ONBOARDING_CSS}</style>
       <header className="ob-top">
-        <div className="ob-mark">Six Degrees</div>
+        <div className="ob-mark">Sixgree</div>
         {!final && (
           <nav className="ob-dots" aria-label="Setup steps">
             {STEPS.map((step) => {
