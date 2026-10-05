@@ -55,16 +55,16 @@ no server.
 <p align="center">
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Sixgree for a Mac with Apple Silicon (M1 or newer)"></a>
   <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Sixgree for a Mac with an Intel chip"></a><br>
-  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Sixgree for Windows 10 or 11 (beta): one-click Setup.exe"></a>
-  <a href="https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Sixgree for Linux (beta): .deb for Ubuntu and Debian"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Sixgree for Windows 10 or 11 (beta): one-click Setup.exe"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Sixgree for Linux (beta): .deb for Ubuntu and Debian"></a>
 </p>
 
 | Platform | Download | Needs |
 |---|---|---|
 | **macOS**, Apple Silicon (M1 or newer) | [Sixgree-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
 | **macOS**, Intel | [Sixgree-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
-| **Windows** (beta) | [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe) | Windows 10 or 11, 64-bit |
-| **Linux** (beta) | [Six-Degrees-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz), or from the Terminal: `npx sixgree` ([how](https://sixgree.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
+| **Windows** (beta) | [Sixgree-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe) | Windows 10 or 11, 64-bit |
+| **Linux** (beta) | [Sixgree-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.tar.gz), or from the Terminal: `npx sixgree` ([how](https://sixgree.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
 
 <sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
 `SHA256SUMS` file ([latest](https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS)); the Terminal install below checks the download against it.
@@ -119,7 +119,7 @@ folder before it first opens it, and Sixgree makes a backup each day it's open
 (see [Backups](#backups)). To take it to another computer, see
 [Moving to a new computer](#moving-to-a-new-computer).
 
-**Windows (beta):** download [Six-Degrees-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Windows-Setup.exe)
+**Windows (beta):** download [Sixgree-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe)
 and open it. It installs for you alone (no administrator password), adds Start Menu and
 Desktop shortcuts, and opens Sixgree. It isn't signed with a paid certificate yet, so
 SmartScreen may say it protected your PC: **More info → Run anyway**. A newer Setup.exe
@@ -127,8 +127,8 @@ updates it in place; your network stays in `%USERPROFILE%\.six-degrees`, which
 uninstalling never touches. Scanning needs Google Chrome.
 
 **Linux app (beta):** `sudo apt install ./Six-Degrees-Linux-x64.deb` with the
-[.deb](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.deb), then open it from your apps. The
-[.tar.gz](https://github.com/blakeb056/six-degrees/releases/download/v0.5.1-beta.1/Six-Degrees-Linux-x64.tar.gz) runs from its folder; on Ubuntu 24.04 and
+[.deb](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb), then open it from your apps. The
+[.tar.gz](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.tar.gz) runs from its folder; on Ubuntu 24.04 and
 later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in it
 once (or start it with `--no-sandbox`). Scanning needs Google Chrome (not Chromium).
 

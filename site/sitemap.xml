@@ -6,10 +6,10 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image><image:loc>https://sixgree.com/img/app/hero.jpg</image:loc><image:title>Sixgree on a Mac</image:title></image:image>
-    <image:image><image:loc>https://sixgree.com/img/app/network-circle.jpg</image:loc><image:title>Network Circle</image:title></image:image>
+    <image:image><image:loc>https://sixgree.com/img/app/bridge-chains.jpg</image:loc><image:title>Bridge Chains</image:title></image:image>
     <image:image><image:loc>https://sixgree.com/img/app/separation.jpg</image:loc><image:title>Separation</image:title></image:image>
     <image:image><image:loc>https://sixgree.com/img/app/power-index.jpg</image:loc><image:title>Insights: the Power Index</image:title></image:image>
-    <image:image><image:loc>https://sixgree.com/img/app/insights.jpg</image:loc><image:title>A connection's card, with Insights</image:title></image:image>
+    <image:image><image:loc>https://sixgree.com/img/app/scan-page.jpg</image:loc><image:title>The Scan page</image:title></image:image>
     <image:image><image:loc>https://sixgree.com/img/app/paths.jpg</image:loc><image:title>Paths</image:title></image:image>
     <image:image><image:loc>https://sixgree.com/img/app/lab-clusters.jpg</image:loc><image:title>The Galaxy physics lab</image:title></image:image>
   </url>
