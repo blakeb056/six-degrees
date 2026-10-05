@@ -113,6 +113,38 @@ html:has([data-field-question]) {
 @media (prefers-reduced-motion: no-preference) { .notch-pulse { animation: notch-pulse 1.6s ease-in-out infinite; } }
 @keyframes notch-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) { .notch-in { animation: notch-in 0.25s ease-out; } }
+/* Tucked up: it fades out (and, with motion, lifts a little) and stops taking
+   clicks; hidden once it's gone, so nothing behind it is covered. Its pill hangs
+   where it was: a thin tab with a 24px reach, the down chevron showing on hover. */
+[data-notch] { transition: padding 0.18s ease, opacity 0.18s ease, visibility 0s; }
+[data-notch][data-tucked] { pointer-events: none; visibility: hidden; transition: opacity 0.18s ease, visibility 0s 0.18s; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-notch] { transition: padding 0.18s ease, opacity 0.18s ease, transform 0.2s ease, visibility 0s; }
+  [data-notch][data-tucked] { --notch-lift: -14px; transition: opacity 0.18s ease, transform 0.2s ease, visibility 0s 0.2s; }
+}
+.notch-tuck {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-start;
+  width: 22px; height: 26px; padding: 0; border: none; border-radius: 6px; background: none; cursor: pointer;
+  color: var(--sd-fg-3, #8b9aa8); opacity: 0.4; transition: opacity 0.15s ease, background 0.15s ease;
+}
+.notch-tuck:hover, .notch-tuck:focus-visible { opacity: 1; background: rgba(var(--sd-ink, 255, 255, 255), 0.07); }
+.notch-pill {
+  position: fixed; z-index: 60; transform: translateX(-50%);
+  display: flex; justify-content: center; align-items: flex-start;
+  width: 56px; height: 24px; padding: 0; border: none; background: none; cursor: pointer;
+}
+.notch-pill-tab {
+  display: flex; align-items: center; justify-content: center; gap: 4px; width: 44px; height: 8px; box-sizing: border-box;
+  border-radius: 0 0 8px 8px; border-style: solid; border-width: 0 1px 1px;
+  background: var(--sd-surface, rgba(8, 10, 22, 0.96)); color: var(--sd-fg-3, #8b9aa8);
+  transition: height 0.15s ease;
+}
+.notch-pill-chev { display: none; }
+.notch-pill:hover .notch-pill-tab, .notch-pill:focus-visible .notch-pill-tab { height: 15px; color: var(--sd-fg-1, #fff); }
+.notch-pill:hover .notch-pill-chev, .notch-pill:focus-visible .notch-pill-chev { display: block; }
+.notch-pill:focus-visible { outline: none; }
+.notch-pill:focus-visible .notch-pill-tab { box-shadow: 0 0 0 2px var(--sd-blue, #3498DB); }
+@media (prefers-reduced-motion: reduce) { .notch-pill-tab { transition: none; } }
 
 /* The Social tab's CRM (app/social/Crm.js): the list and the person side by
    side, stacked on a phone. In Pipeline the board takes the whole width and
@@ -134,7 +166,8 @@ html:has([data-field-question]) {
    buttons (50%) stay round. A button drawn with no background of its own (a
    row, a link, a dot) stays as it is: glass is for what looks like a button.
    The map's edge buttons (.sd-edge) and the tabs (.sd-tab) draw themselves,
-   below. */
+   below, and the tucked notch's pill (.notch-pill) is the notch's own panel,
+   not a button. */
 
 /* Frosted, as Apple's Liquid Glass (WWDC25 "Meet Liquid Glass"; HIG →
    Materials). Not a frosted blur: glass that bends light at its edges (the
@@ -154,7 +187,7 @@ html[data-buttons="frosted"] [data-glass-panel] {
 }
 html[data-buttons="frosted"] [data-glass-panel="bar"] { border-radius: 999px !important; }
 html[data-buttons="frosted"] .glass-rim, html[data-buttons="frosted"] [data-glass-panel]::before,
-html[data-buttons="frosted"] :is(button:not(.sd-edge), #main-tabs > a):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -167,31 +200,31 @@ html[data-buttons="frosted"] :is(button:not(.sd-edge), #main-tabs > a):not(.rada
   mask-composite: exclude;
 }
 /* Controls: capsules of clear glass that spring when pressed. */
-html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
   position: relative;
   isolation: isolate;
   -webkit-backdrop-filter: blur(4px) saturate(170%);
   backdrop-filter: blur(4px) saturate(170%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 4px 14px rgba(0, 0, 0, 0.24) !important;
 }
-html[data-buttons="frosted"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { border-radius: 14px !important; }
-html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(1.14); }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not([style*="border-radius: 50%"]):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { border-radius: 14px !important; }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(1.14); }
 /* Picked (a toggle that's on, a tab that's chosen): a ring of the accent round the glass */
-html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-accent) 60%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(0, 0, 0, 0.24) !important;
 }
 /* Disabled: flat, no lift and no rim, so it reads as resting, not pressable */
-html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled {
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: inset 0 0 0 0.5px rgba(var(--sd-ink, 255, 255, 255), 0.12) !important;
 }
-html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled::before { opacity: 0.3; }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled::before { opacity: 0.3; }
 /* Keyboard focus: a clear ring in the accent, outside the glass */
-html[data-buttons="frosted"] :is(button:not(.sd-edge), select, input, a):focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
+html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), select, input, a):focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
-  html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(.sd-tab):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s, box-shadow 0.2s; }
-  html[data-buttons="frosted"] :is(button:not(.sd-edge)):not(:disabled):not(.sd-tab):not(#main-tabs *):active { transform: scale(1.04); }
+  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.sd-tab):not(#main-tabs *) { transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.2s, box-shadow 0.2s; }
+  html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):active { transform: scale(1.04); }
 }
 /* Reduce Transparency: solid panels, no lensing. More contrast: a darker tint and a plain rim. */
 @media (prefers-reduced-transparency: reduce) {
@@ -206,24 +239,24 @@ html[data-buttons="frosted"] :is(button:not(.sd-edge), select, input, a):focus-v
 /* Frosted on a light look: the glass is white, so its depth comes from a
    hairline and a soft shadow, not a white rim (invisible on white) or a dark
    drop. Hover darkens a touch, as a light Mac app's buttons do. */
-html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) {
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
-html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(0.97); }
-html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(:disabled):not(.sd-tab):not(#main-tabs *):hover { filter: brightness(0.97); }
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):is([aria-pressed="true"], [aria-selected="true"]) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-accent) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
 }
-html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled { box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08) !important; }
-html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge), #main-tabs > a):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before,
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *):disabled { box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08) !important; }
+html[data-mode="light"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before,
 html[data-mode="light"][data-buttons="frosted"] [data-glass-panel]::before {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.25) 35%, rgba(255, 255, 255, 0) 60%);
 }
 
 /* High contrast: whatever the buttons, a clear outline on every control, bold
    words and a thick focus ring; no frost behind them. */
-html[data-theme="contrast"] :is(button:not(.sd-edge), select, input[type="search"], input[type="text"]):not(.sd-tab) { outline: 1.5px solid rgba(255, 255, 255, 0.7); outline-offset: -1.5px; font-weight: 700; }
-html[data-theme="contrast"] :is(button:not(.sd-edge), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
-html[data-theme="contrast"][data-buttons="frosted"] :is(button:not(.sd-edge)):not(.radar-go, .sd-tab, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), select, input[type="search"], input[type="text"]):not(.sd-tab) { outline: 1.5px solid rgba(255, 255, 255, 0.7); outline-offset: -1.5px; font-weight: 700; }
+html[data-theme="contrast"] :is(button:not(.sd-edge, .notch-pill), a, select, input):focus-visible { outline: 3px solid var(--sd-accent) !important; outline-offset: 2px; }
+html[data-theme="contrast"][data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill)):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-theme="contrast"][data-buttons="frosted"] [data-glass-panel] { background-image: none !important; }
 
 /* ---- The tabs: the header's row (app/components/AppTabs.js) and the notch's
