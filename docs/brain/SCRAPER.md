@@ -69,12 +69,27 @@ what reaches the screen changed.
 
 | Mode | When | What |
 |---|---|---|
-| `background` | the default | A real window kept out of sight. On a Mac, `MacChrome` hides it (as ⌘H does) from the moment it appears, through AppKit's `NSRunningApplication` (ctypes, nothing to install); elsewhere it opens at `--window-position=-32000,-32000`. If AppKit won't load on a Mac, it's minimised over CDP. |
-| `front` | `--login`, and `--show-window` (Scan page → Fine-tune → *Show the scanner's Chrome window*, off by default) | A normal window in front, placed on screen. |
+| `background` | the default | A real window kept out of sight. On a Mac, `MacChrome` hides it (as ⌘H does) from the moment it appears and **for as long as it's meant to be out of sight**, through AppKit's `NSRunningApplication` (ctypes, nothing to install); it opens on the main display, centred. Elsewhere it's moved off every display once it's up (`off_screen_bounds`: Chrome moves a launch position onto the nearest display). If AppKit won't load on a Mac, it's minimised over CDP. |
+| `front` | `--login`, and `--show-window` (Scan page → Fine-tune → *Show the scanner's Chrome window*, off by default) | A normal window in front, centred on the main display. |
+
+**Every display, not just the main one** (TRAPS §48). `screen_layout()` asks for the displays
+at each placement (CoreGraphics on a Mac, `EnumDisplayMonitors` on Windows; none on Linux, which
+falls back to -32000 and 40,40): off-screen means off all of them (up and to the left of their
+union, never nearer than -32000), in front means centred on the main one, and the profile's saved
+`browser.window_placement` is rewritten to the main display before every launch, so Chrome can't
+open where the last window was on a second display. A display to the left or above has negative
+coordinates; a Mac's are in points, so Retina and ordinary displays mix without scaling.
+
+**Kept hidden, not just at launch.** Chrome unhides itself whenever it opens a window or a tab
+(a new page, a pop-up), and the Dock or ⌘-Tab bring it out too. The watcher looks every 0.05 s
+for 20 s, then every 0.1 s, until `bring_forward`, and again after `back_out_of_the_way`; a new
+window shows for about 0.1 s. It stops when Chrome's process has gone (a lookup that finds
+nothing isn't enough: it happens to a running Chrome), and at the next launch.
 | `headless` | `--headless`, command line only | No window. Not offered in the app any more: more detectable, and a check LinkedIn asks for can't be seen. |
 
 **Forward only when LinkedIn needs you.** `ensure_logged_in` calls `bring_forward()` just
-before it waits for a sign-in or a security check (unhidden, activated, on screen, in front),
+before it waits for a sign-in or a security check (moved to the main display's centre while
+still hidden, then unhidden, activated, in front),
 prints `LinkedIn needs you: …` (`NEEDS_YOU`; the app's `needsYou()` in
 `lib/scan-progress.js` reads it, and the notch and the Scan page show it in gold), and
 `back_out_of_the_way()` once you're through. A mid-scan pushback with `stop_on_checkpoint`
@@ -100,6 +115,18 @@ still ends the run; it doesn't wait for you.
   focus went back.
 - Not tried: Windows and Linux (off-screen there, no hiding), and a live LinkedIn scan in the
   new window. Watch the first one.
+
+**Measured again, 2026-10-05** (Blake's two-display Mac mini showed the window on the second
+display; TRAPS §48), one display here, a local page:
+
+- The launch position is Chrome's hint, not where it goes: -32000,-32000 opened at the main
+  display's corner, 40000,40000 at its right edge. With two displays the nearest one wins.
+- `context.new_page()` and a page's pop-up unhid the hidden Chrome and made it active, for
+  good under the old watcher (gone 1.5 s after the launch). With the watcher kept on, a new
+  tab 25 s in showed for about 0.1 s and was hidden again; two launches in a row (as Auto
+  does) each stayed hidden; the page drew at 60 fps throughout.
+- The sign-in window and `bring_forward` came up centred on the main display; the saved
+  placement afterwards was there too.
 
 ## Sign-in
 
@@ -384,7 +411,7 @@ The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXP
 > experimental but it needs a slow / med / fast and the colour dots to pick which tiers."
 > (Blake, 1.2.0)
 
-Why it didn't work, and the rule since: TRAPS §48. In short, the waiting used to live inside
+Why it didn't work, and the rule since: TRAPS §49. In short, the waiting used to live inside
 one long scanner run; now **the app runs short sittings and keeps the rests itself.**
 
 | Where | What |

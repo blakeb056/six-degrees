@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so after 18:00 it read one profile and then waited until 09:00 ("Resting overnight"). Only Auto
   scan keeps to its hours now; a round you press runs straight away, inside the usual limits.
 - **The guided setup no longer sits on "fetching photos" after the first scan has ended.** It now goes to *Your galaxy is ready* within a second or two of the end, whether the window was in the background, the scan was stopped or failed while saving photos (a calm line says some may be missing), or another scan starts straight after.
+- **The scanner's Chrome stays out of sight on every display.** With a second display it could
+  come up there mid-scan and stay: Chrome moved its off-screen window onto the nearest display,
+  and on a Mac nothing hid it again once Chrome showed itself (it does whenever it opens a window
+  or tab). It's kept hidden for the whole scan now, off every display on Windows and Linux, and
+  when LinkedIn needs you it comes up centred on your main display.
 
 ## [1.2.0] - 2026-10-05
 

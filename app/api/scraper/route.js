@@ -1094,7 +1094,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // Experimental Auto-Bridge (Scan page switch): all-day pacing and LinkedIn's
       // own data read beside the page text (scripts/scrape.py EXPERIMENT).
       // Only Auto scan's own sittings (autoTick), never a request: a scan you start
-      // yourself never keeps Auto scan's hours or rests (PR #201, TRAPS §48).
+      // yourself never keeps Auto scan's hours or rests (PR #201, TRAPS §49).
       ...(sitting && action === 'auto-bridge' ? ['--experimental', `--sitting=${sitting}`] : []),
       // Resuming always reads to the end: a remembered "10 pages" would
       // otherwise leave everyone paused at page 11 and do nothing.
