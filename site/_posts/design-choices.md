@@ -8,6 +8,16 @@ image: /img/app/hero.jpg
 
 Sixgree maps your LinkedIn network out to six degrees, so every piece of its look tries to say one of two things: *degrees* and *tiers*. This is how each choice was made, including the ones we threw away.
 
+## Timeline
+
+- **First app builds:** a placeholder icon, you as a white dot with your tier circles round you.
+- **29 September 2026:** the first real icon, a gold 6 drawn in one line around a glowing core, ending in a degree ring.
+- **4 October 2026:** Six Degrees becomes Sixgree. A new wordmark in Manrope: a gold dot over the i, the tier dots stacked above it and fading out.
+- **5 October 2026, morning:** a canvas of a dozen icon candidates and as many wordmarks. The family vote: the F1 icon and the flat-line wordmark.
+- **5 October 2026, afternoon:** F1 becomes the app icon (with rings and glow) and the favicon (plain). The wordmark's dots run level to a degree ring; ink on white, gold on dark. Tier C turns green.
+- **5 October 2026, evening (Sixgree 1.2.0):** frosted glass by default, two looks retired, Daylight rebuilt as macOS glass, and plain page tabs. The degree ring grows to match the i's dot so every dot reads small.
+- **6 October 2026:** the website gets a bigger header, grey pill links filled with a tier colour for the page you're on, and black and white versions of the wordmark.
+
 ## The icon: an S that is also a 6
 
 The first icon was a placeholder: you as a white dot in the middle, with your circles round you in the tier colours. It explained the app, but it looked like every network app.
