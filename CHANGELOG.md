@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-06
+
 ### Added
 - **Read full profiles (experience), off by default.** A switch in Scan → Scanner settings,
   with the line it needs: each read opens a person's profile, which is a profile view, the
