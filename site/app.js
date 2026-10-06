@@ -313,6 +313,9 @@ const DOWNLOADS = {
     const seen = new IntersectionObserver((entries) => {
       for (const { target: v, isIntersecting, intersectionRatio } of entries) {
         if (isIntersecting && intersectionRatio >= 0.5) {
+          // The hero film starts from its first line ("Your network is bigger than you
+          // can see.") each time it comes into view, never partway through.
+          if (v.closest('.hero-film#how') && v.paused && !v.dataset.userPaused) v.currentTime = 0;
           if (v.paused && !v.ended && !v.dataset.userPaused) v.play().catch(() => { /* the browser said no: controls still work */ });
         } else if (!v.paused) {
           v.dataset.autoPaused = '1';
