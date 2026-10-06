@@ -3803,6 +3803,29 @@ PROFILE_SHOWN_JS = r"""
 
 # LinkedIn's empty-search message: positive evidence that a list has ended, as
 # opposed to a page that simply didn't load.
+# People LinkedIn hides from you deep in a list (out of your network): each
+# result shows only "LinkedIn Member", with no name and no profile link. A page
+# of them has loaded fine; it just has nobody we can read (Blake, 2026-10-06:
+# page 35 of a circle was all hidden members and was taken for push-back).
+HIDDEN_MEMBERS_JS = r"""
+() => {
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n = 0;
+  while (walker.nextNode()) if (walker.currentNode.nodeValue.trim() === 'LinkedIn Member') n++;
+  return n;
+}
+"""
+
+
+def _hidden_members(page):
+    """How many results on this page LinkedIn shows only as "LinkedIn Member"."""
+    try:
+        return int(page.evaluate(HIDDEN_MEMBERS_JS) or 0)
+    except Exception:
+        return 0
+
+
 NO_RESULTS_JS = r"""
 () => {
   const root = document.querySelector('[role="main"], main') || document.body;
@@ -4281,11 +4304,14 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             results_loaded = True
             break
         except:
+            if _hidden_members(page):
+                break
             print(f"  Still loading... ({10 + (attempt+1)*5}s)")
             time.sleep(5)
+    hidden_page = not results_loaded and _hidden_members(page)
     # Only when that failed, and the page isn't LinkedIn's answer (no results,
     # the monthly limit) or LinkedIn pushing back: retries on the BACKOFF curve.
-    if GENTLE["on"] and not results_loaded and not stop_requested() and not _window_closed(page):
+    if GENTLE["on"] and not results_loaded and not hidden_page and not stop_requested() and not _window_closed(page):
         results_loaded = _retry_results(page, "Their list") == "read"
         if results_loaded:
             print("  Search results loaded!")
@@ -4312,6 +4338,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             says_none = bool(page.evaluate(NO_RESULTS_JS))
         except Exception:
             says_none = False
+        hidden = _hidden_members(page)
+        if hidden:
+            print(f"  LinkedIn hides the {hidden} people on this page (outside your network: "
+                  "\"LinkedIn Member\", no name or link), so the rest of their list can't be read. "
+                  "That's their list done, not push-back.")
+            return [], "success", reach
         if says_none:
             # LinkedIn's own empty state: a real answer, not push-back.
             print("  LinkedIn says there are no results here.")
@@ -4389,6 +4421,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             if why:
                 print()
                 _pushed_back(page, reach, why)
+                break
+            hidden = _hidden_members(page)
+            if hidden:
+                print(f"the {hidden} people here are hidden by LinkedIn (\"LinkedIn Member\"), "
+                      "so the rest of their list can't be read. That's their list done.")
                 break
             ended = False
             try:
