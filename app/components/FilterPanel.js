@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, showAllTiers } from '../../lib/tier-grid';
 import { TIER_COLORS } from '../../lib/themes';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
+import { LAB_DEFAULTS, labNow, setLab, watchLab } from '../../lib/galaxy-lab';
+import { LINE_TIERS, cleanTierLines, toggleLineTier, isPicked, describeTierLines } from '../../lib/tier-lines';
 
 const PANEL_ID = 'sd-filters-panel';
 
@@ -152,6 +154,58 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
   );
 }
 
+/**
+ * Filters → Lines, on Network Circle's Galaxy (Blake, 2026-10-05: "enable tier
+ * lines that basically show the S tier's lines of who it's connected to"): only
+ * the lines that touch a tier you pick, or every line, or none. The dots all
+ * stay; kept with the Galaxy's settings and put back by its Reset
+ * (lib/galaxy-lab.js `tierLines`, lib/tier-lines.js).
+ */
+export function TierLines() {
+  const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
+  const choice = cleanTierLines(lab.tierLines);
+  const pick = (next) => setLab({ tierLines: next });
+  const chip = { flex: 1, minWidth: 0, height: 28, padding: '0 2px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' };
+  const plain = (on) => ({
+    ...chip,
+    border: on ? '1px solid rgba(52,152,219,0.6)' : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)',
+    background: on ? 'rgba(52,152,219,0.18)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+    color: on ? 'var(--sd-fg-1, #cfe6f7)' : 'var(--sd-fg-3, #888)',
+  });
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Lines</div>
+      <div role="group" aria-label="Which lines to draw" style={{ display: 'flex', gap: 4 }}>
+        <button type="button" aria-pressed={choice === 'all'} title="Draw every line" onClick={() => pick('all')} style={plain(choice === 'all')}>All</button>
+        {LINE_TIERS.map((t) => {
+          const on = isPicked(choice, t);
+          const color = TIER_COLORS[t];
+          return (
+            <button key={t} type="button" aria-pressed={on}
+              aria-label={`Lines through ${t}-Tier`}
+              title={on ? `Stop drawing ${t}-Tier's lines` : choice === 'all' || choice === 'none' ? `Draw only ${t}-Tier's lines` : `Draw ${t}-Tier's lines too`}
+              onClick={() => pick(toggleLineTier(choice, t))}
+              style={{
+                ...chip, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                border: on ? `1.5px solid ${color}` : '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)',
+                background: on ? `${color}2e` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+                // Ink-deepened on a light look, as the tier rows above are
+                color: on ? `color-mix(in srgb, ${color} 58%, var(--sd-tier-ink, ${color}))` : 'var(--sd-fg-3, #888)',
+              }}>
+              <span className="sd-dot-html" style={{ width: 7, height: 7, borderRadius: '50%', background: color, opacity: on ? 1 : 0.55, flexShrink: 0 }} />
+              {t}
+            </button>
+          );
+        })}
+        <button type="button" aria-pressed={choice === 'none'} title="Draw no lines, just the dots" onClick={() => pick('none')} style={plain(choice === 'none')}>None</button>
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #667)', lineHeight: 1.4, marginTop: 6 }}>
+        {choice === 'all' ? 'Show only the lines that run through the tiers you pick. The dots all stay.' : describeTierLines(choice)}
+      </div>
+    </div>
+  );
+}
+
 export default function FilterPanel({ collapsed, onToggle, mode, visualMode, grid, gridCounts = {}, onGridChange }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees' || mode === 'separation';
@@ -182,6 +236,9 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
         }}>
           {/* Which tiers, at which degrees: the same grid in Network Circle and in Degrees */}
           <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} />
+
+          {/* Network Circle's Galaxy: which of its lines are drawn, by tier. */}
+          {!isDegreesMode && visualMode === 'galaxy' && <TierLines />}
 
           {/* Network Circle's Galaxy: the physics that lays it out is what this panel is for. */}
           {!isDegreesMode && visualMode === 'galaxy' && (isMobile ? <NamesSwitch /> : <GalaxyLab />)}
