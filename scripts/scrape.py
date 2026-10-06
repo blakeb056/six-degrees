@@ -3776,7 +3776,8 @@ PUSHBACK_JS = r"""
   if (t.includes('ability to view profiles has been temporarily restricted')
       || t.includes('profile viewing temporarily restricted')) return 'profile viewing being restricted';
   if (t.includes('restricted your account') || t.includes('account has been temporarily restricted')) return 'the account being restricted';
-  if (t.includes('approaching the commercial use limit')) return 'the monthly search limit coming up';
+  // "Approaching the commercial use limit" is LinkedIn's heads-up, not a stop: the
+  // scan carries on and the monthly-limit check decides (Blake, 2026-10-06).
   return null;
 }
 """
@@ -4324,6 +4325,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     if why:
         _pushed_back(page, reach, why)
         return [], "pushback", reach
+    # LinkedIn's monthly-limit banner can sit above a page that still has people
+    # on it (Blake, 2026-10-06: it showed on a fresh account too). With people on
+    # the page, read them; only a page with the banner and nobody on it stops.
+    if at_limit and results_loaded:
+        print("  LinkedIn shows its monthly search limit banner, but there are people on the page: reading them.")
+        at_limit = False
     if at_limit:
         print("  LinkedIn's monthly search limit.")
         reach["limited"] = reach["more"] = True
@@ -4399,11 +4406,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print("stopped.")
                 break
             time.sleep(3)
-            if page.evaluate(SEARCH_LIMIT_JS):
-                print("LinkedIn's monthly search limit.")
-                reach["limited"] = reach["more"] = True
-                _keep_pushback_evidence(page, "the monthly search limit")
-                break
+            limit_banner = bool(page.evaluate(SEARCH_LIMIT_JS))
             why = _pushback(page)
             if why:
                 print()
@@ -4417,6 +4420,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 break
             raise
         if not page_results:
+            if limit_banner:
+                print("LinkedIn's monthly search limit, and nobody on the page to read.")
+                reach["limited"] = reach["more"] = True
+                _keep_pushback_evidence(page, "the monthly search limit")
+                break
             why = _pushback(page)
             if why:
                 print()
