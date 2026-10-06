@@ -11,7 +11,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appManagementHref, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
-import { readyChecks, connectState, firstScan, photosNote } from '../../../lib/onboarding';
+import { readyChecks, connectState, firstScan, photosNote, escapeHatch } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
 import { SAFE_LIMITS, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
@@ -145,6 +145,28 @@ export function GetReady({ ctx }) {
     if (granted && settings && answered !== 'done') answerAppManagement('done');
   }, [granted, settings, answered, answerAppManagement]);
 
+  // The escape hatch (lib/onboarding.js escapeHatch): when "I've allowed it"
+  // was pressed, and how many checks have said off since the window came back
+  // from System Settings. Rechecked with every check (every 2 s).
+  const [claimedAt, setClaimedAt] = useState(null);
+  const [returnedAt, setReturnedAt] = useState(null);
+  // The moment the 20 s after "I've allowed it" ran out, set by a timer so render stays pure.
+  const [tick, setTick] = useState(null);
+  const checksNow = ctx.checks;
+  useEffect(() => {
+    if (!opened) return undefined;
+    const back = () => { if (document.visibilityState !== 'hidden') setReturnedAt((at) => at ?? checksNow); };
+    window.addEventListener('focus', back);
+    document.addEventListener('visibilitychange', back);
+    return () => { window.removeEventListener('focus', back); document.removeEventListener('visibilitychange', back); };
+  }, [opened, checksNow]);
+  useEffect(() => {
+    if (claimedAt == null) return undefined;
+    const t = setTimeout(() => setTick(Date.now()), ctx.overrideAfterMs + 50);
+    return () => clearTimeout(t);
+  }, [claimedAt, ctx.overrideAfterMs]);
+  const hatch = escapeHatch(gate, { claimedAt, offSinceReturn: returnedAt == null ? null : checksNow - returnedAt, now: tick ?? claimedAt ?? 0 });
+
   const chrome = r.chrome === false ? (
     <div className="ob-mini no">
       <span className="ri"><Ico.globe /></span>
@@ -180,6 +202,14 @@ export function GetReady({ ctx }) {
         <span className="ri ob-pop"><Ico.check /></span>
         <span><div className="rt">App Management</div><div className="rd">On. macOS won’t stop a scan to ask while Chrome updates.</div></span>
         <span className="ob-chip ok ob-pop"><Ico.check />Allowed</span>
+      </div>
+    );
+  } else if (appShown && gate.state === 'override') {
+    app = (
+      <div className="ob-row ok" id="ob-appm" data-state="override">
+        <span className="ri ob-pop"><Ico.check /></span>
+        <span><div className="rt">App Management</div><div className="rd">You said it’s on. Sixgree can’t tell, so it’s going on your word.</div></span>
+        <span />
       </div>
     );
   } else if (appShown && gate.state === 'unknown' && gate.canContinue) {
@@ -220,7 +250,18 @@ export function GetReady({ ctx }) {
             : why}</p>
           <div className="acts">
             {openSettings(opened ? 'Open it again' : 'Open System Settings', 'ob-appm-open')}
+            {opened && !checking && (
+              <button type="button" className="ob-btn secondary small" id="ob-appm-done" disabled={claimedAt != null}
+                onClick={() => { setClaimedAt(Date.now()); answerAppManagement('done'); }}>
+                <Ico.check />{claimedAt != null ? 'Checking with macOS…' : 'I’ve allowed it'}
+              </button>
+            )}
           </div>
+          {hatch && (
+            <p><button type="button" className="ob-link" id="ob-appm-override" style={{ background: "none", border: 0, padding: 0, font: "inherit", cursor: "pointer" }} onClick={() => ctx.overrideAppManagement()}>
+              It’s on, but Sixgree can’t tell: continue anyway
+            </button></p>
+          )}
         </div>
       </div>
     );

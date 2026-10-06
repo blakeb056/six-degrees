@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import useScanStatus from '../useScanStatus';
 import {
   STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, followedScan, canOpen, here as hereWord,
-  appManagementGate, withSavedStep, startStep,
+  appManagementGate, withSavedStep, startStep, OVERRIDE_AFTER_MS,
 } from '../../../lib/onboarding';
 import { askForField } from '../../../lib/scanner-setup';
 import { saveSettings } from '../../../lib/settings-client';
@@ -39,10 +39,12 @@ const NO_ANSWER = 'Sixgree’s own server didn’t answer the check.';
  * Is App Management on? GET /api/scraper?appManagement (lib/app-management.js),
  * every 2 s while `on`, and at once when the window comes back (from System
  * Settings, say). undefined before the first answer. A check that can't run
- * says so ({ granted: null, why }), and that is logged here once.
+ * says so ({ granted: null, why }), and that is logged here once. `checks`
+ * counts the answers, so the step can tell how many said off since a moment.
  */
 function useAppManagement(on) {
   const [access, setAccess] = useState(undefined);
+  const [checks, setChecks] = useState(0);
   useEffect(() => {
     if (!on) return undefined;
     let off = false;
@@ -63,6 +65,7 @@ function useAppManagement(on) {
       }
       asking = false;
       if (off) return;
+      if (next) setChecks((n) => n + 1);
       setAccess((prev) => {
         const value = next || prev || { needed: true, granted: null, why: NO_ANSWER };
         if (value.needed !== false && value.granted === null && warned !== value.why) {
@@ -84,7 +87,7 @@ function useAppManagement(on) {
       window.removeEventListener('focus', wake);
     };
   }, [on]);
-  return access;
+  return { access, checks };
 }
 
 // `again`: back after a first scan that ended before Open the map (lib/onboarding.js
@@ -103,9 +106,12 @@ export default function Onboarding({ onFinish, again = false }) {
   // open (or the step isn't known yet), and Continue waits for it.
   const mac = s?.checks?.mac;
   const appNeeded = Boolean(mac) && !(mac.version != null && mac.version < 13);
-  const access = useAppManagement(appNeeded && (view === null || view === 'ready'));
+  const { access, checks } = useAppManagement(appNeeded && (view === null || view === 'ready'));
   const claimed = scan.appAnswer ? scan.appAnswer === 'done' : settings?.appManagement === 'done';
-  const gate = appManagementGate(s, access, { claimed });
+  // The way past a check that keeps saying off (lib/onboarding.js escapeHatch), once taken.
+  const [overridden, setOverridden] = useState(false);
+  const override = overridden || settings?.appManagementOverride === true;
+  const gate = appManagementGate(s, access, { claimed, override });
   const derived = onboardingStep(s, withSavedStep(memory, saved), gate);
   // The step on screen: the kept one if the checks still allow it, else the
   // first not done, once the scanner, your settings and macOS have answered;
@@ -149,6 +155,15 @@ export default function Onboarding({ onFinish, again = false }) {
     go,
     access,
     gate,
+    checks,
+    overrideAfterMs: OVERRIDE_AFTER_MS,
+    // "It's on, but Sixgree can't tell: continue anyway": Continue opens, and it's kept.
+    overrideAppManagement: () => {
+      if (override) return undefined;
+      console.warn('App Management: the check kept saying off after the user said it was on; continuing on their word (appManagementOverride).');
+      setOverridden(true);
+      return saveSettings({ appManagementOverride: true });
+    },
     // Before System Settings: keep this step, since turning App Management on
     // makes macOS quit and reopen Sixgree.
     keepStep: () => { kept.current = 'ready'; return saveSettings({ setupStep: 'ready' }); },

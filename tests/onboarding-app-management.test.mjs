@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   onboardingStep, appManagementGate, startStep, withSavedStep, SETUP_STEP_SETTING, readSetupMemory,
+  escapeHatch, OVERRIDE_AFTER_MS, APP_MANAGEMENT_OVERRIDE_SETTING,
 } from '../lib/onboarding.js';
 import { readPreflight, checkAppManagement, PREFLIGHT_SCRIPT, APP_MANAGEMENT_SERVICE } from '../lib/app-management.js';
 
@@ -156,4 +157,46 @@ test('a kept step never skips ahead of the checks, and a step past Welcome means
   assert.deepEqual(withSavedStep({}, 'map'), { started: true, paced: true });
   assert.deepEqual(withSavedStep({}, 'welcome'), { started: false, paced: false });
   assert.deepEqual(withSavedStep({ started: true, paced: false, finished: false }, null), { started: true, paced: false, finished: false });
+});
+
+// ── The escape hatch: a check that wrongly says off can't strand anyone ─────
+
+test('"It\'s on, but Sixgree can\'t tell" shows ~20 s after "I\'ve allowed it" while the check still says off', () => {
+  const off = appManagementGate(ready(), OFF, { claimed: true });
+  assert.equal(OVERRIDE_AFTER_MS, 20_000);
+  assert.equal(escapeHatch(off, {}), false, 'nothing pressed, nothing back from System Settings');
+  assert.equal(escapeHatch(off, { claimedAt: 1_000, now: 1_000 + 19_999 }), false);
+  assert.equal(escapeHatch(off, { claimedAt: 1_000, now: 1_000 + 20_000 }), true);
+});
+
+test('or after two checks say off once the window is back from System Settings', () => {
+  const off = appManagementGate(ready(), OFF);
+  assert.equal(escapeHatch(off, { offSinceReturn: 0 }), false);
+  assert.equal(escapeHatch(off, { offSinceReturn: 1 }), false);
+  assert.equal(escapeHatch(off, { offSinceReturn: 2 }), true);
+});
+
+test('only ever while the check says off', () => {
+  const late = { claimedAt: 0, now: 60_000, offSinceReturn: 5 };
+  assert.equal(escapeHatch(appManagementGate(ready(), ON), late), false);
+  assert.equal(escapeHatch(appManagementGate(ready(), undefined), late), false);
+  assert.equal(escapeHatch(appManagementGate(ready(), CANT), late), false, 'can\'t tell has its own way on');
+  assert.equal(escapeHatch(appManagementGate(ready(null), OFF), late), false, 'no row off a Mac');
+});
+
+test('taken, it opens Continue and is kept, so the restart doesn\'t put the user back behind the check', () => {
+  const s = ready();
+  const gate = appManagementGate(s, OFF, { override: true });
+  assert.deepEqual(gate, { shown: true, state: 'override', why: null, canContinue: true });
+  assert.equal(onboardingStep(s, { started: true }, gate), 'connect');
+  // It never hides a real answer: on is on.
+  assert.equal(appManagementGate(s, ON, { override: true }).state, 'granted');
+  assert.equal(APP_MANAGEMENT_OVERRIDE_SETTING.default, false);
+  assert.throws(() => APP_MANAGEMENT_OVERRIDE_SETTING.parse('yes'));
+
+  getDb().exec("DELETE FROM app_meta WHERE key = 'settings'");
+  writeSettings(getDb(), { appManagementOverride: true, setupStep: 'ready' });
+  const kept = readSettings(getDb());
+  assert.equal(kept.appManagementOverride, true);
+  assert.equal(appManagementGate(s, OFF, { override: kept.appManagementOverride }).canContinue, true);
 });
