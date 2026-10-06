@@ -23,7 +23,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { watchScanner, scannerNow } from '../../lib/scraper-client';
 import {
-  watchAllDay, allDayNow, autoSettingsNow, rememberAutoSettings, startAutoScan, stopAutoScan, updateAutoScan,
+  watchAllDay, allDayNow, setAllDay, autoSettingsNow, rememberAutoSettings, startAutoScan, stopAutoScan, updateAutoScan,
 } from '../../lib/experimental-client';
 import { AUTO_DEFAULTS, AUTO_HOURS, AUTO_PACES, PACE_KEYS, TIER_KEYS, autoStatus, cleanTiers, paceLine, tierList } from '../../lib/auto-scan';
 import { useEdgePanel } from './EdgeToggle';
@@ -155,14 +155,14 @@ export default function AutoScanButton({ isMobile = false }) {
         status={status} live={live} pace={pace} tiers={tiers} daily={daily} busy={busy}
         onPace={(p) => choose({ pace: p, tiers })}
         onTier={(t) => choose({ pace, tiers: tiers.includes(t) ? tiers.filter((x) => x !== t) : cleanTiers([...tiers, t]) })}
-        onStart={start} onStop={stop}
+        onStart={start} onStop={stop} onTurnOff={() => { setOpen(false); setPinned(false); setAllDay(false); }}
       />}
     </div>
   );
 }
 
 /** The panel, anchored under the button and laid over the page (a portal: the header's glass would clip it). */
-function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, pace, tiers, daily, busy, onPace, onTier, onStart, onStop }) {
+function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, pace, tiers, daily, busy, onPace, onTier, onStart, onStop, onTurnOff }) {
   const [pos, setPos] = useState(null);
   useLayoutEffect(() => {
     const place = () => {
@@ -246,6 +246,14 @@ function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, 
         Experimental. {AUTO_HOURS[0]}:00 to {AUTO_HOURS[1]}:00, only while Sixgree is open, and it stops at your daily limit.
         Anything you queue goes first.
       </p>
+      {/* The same switch as Scan → Scanner settings → Auto scan (lib/experimental-client.js setAllDay). */}
+      <div className="sd-auto-off">
+        <button type="button" onClick={onTurnOff} style={{ background: 'transparent' }}
+          title="Takes Auto scan out of the header, and stops it if it's running. Turn it back on in Scan → Scanner settings.">
+          Turn off Auto scan
+        </button>
+        <span>Back on in <Link href="/setup#scan-settings">Scan → Scanner settings</Link></span>
+      </div>
     </div>,
     document.body,
   );

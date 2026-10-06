@@ -427,6 +427,12 @@ is free meanwhile.
 4. Stop on a sitting (the notch's or the panel's) ends Auto scan; it doesn't come back after a
    rest.
 
+**The switch** that shows the button is one setting (`six-degrees-experimental-auto`,
+`lib/experimental-client.js setAllDay`), written in three places that stay in sync: Scan →
+Scanner settings → *Auto scan* (first, never greyed out; Blake on 1.2.0 couldn't find it at
+the foot of Extras, greyed while scanning), the panel's *Turn off Auto scan*, and the guided
+setup's pace step. Off also stops Auto scan.
+
 **Only while the app is open, and never by itself after a restart**: Auto scan's state is in
 the server's memory, so quitting ends it, like the queue's restart rule.
 

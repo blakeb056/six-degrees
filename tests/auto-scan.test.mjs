@@ -272,3 +272,44 @@ test('Start says why it can\'t, at once: no tier picked, or the scan\'s "I under
   assert.equal((await risk.json()).needsRiskAcceptance, true);
   assert.equal((await job()).auto.on, false);
 });
+
+// ---- the switch: one setting, always on the Scan page ----
+// Blake, 1.2.0: "there's no setting in the scanner to turn off the Auto scan
+// button, it was only in the onboarding."
+
+test('the Auto scan switch is first in Scanner settings, never greyed out, and the same setting everywhere', () => {
+  const page = readFileSync(new URL('../app/setup/page.js', import.meta.url), 'utf8');
+  const sw = page.indexOf('data-auto-scan-switch');
+  const settings = page.indexOf('id="scan-settings"');
+  assert.ok(sw > settings, 'in Scanner settings');
+  assert.ok(sw < page.indexOf('className="scan-two"', settings), 'first, above the budget');
+  const toggle = page.slice(sw, page.indexOf('more={', sw));
+  assert.match(toggle, /onChange=\{setAllDay\}/);
+  assert.doesNotMatch(toggle, /disabled=/, 'never greyed out while something runs');
+  assert.match(page, /useSyncExternalStore\(watchAllDay, allDayNow/);
+  // The header's own Turn off, and the guided setup, write the same one.
+  assert.match(readFileSync(new URL('../app/components/AutoScanButton.js', import.meta.url), 'utf8'), /setAllDay\(false\)/);
+  assert.match(readFileSync(new URL('../app/components/onboarding/steps.js', import.meta.url), 'utf8'), /setAllDay\(!auto\)/);
+});
+
+test('turning the switch off stops Auto scan, so it never runs with no button to see it by', async () => {
+  const { setAllDay, allDayNow } = await import('../lib/experimental-client.js');
+  const store = new Map();
+  const sent = [];
+  const saved = { window: globalThis.window, localStorage: globalThis.localStorage, fetch: globalThis.fetch };
+  globalThis.window = { dispatchEvent: () => true };
+  globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, v) };
+  globalThis.fetch = async (_url, init) => { sent.push(JSON.parse(init.body)); return new Response('{"ok":true}', { status: 200 }); };
+  try {
+    setAllDay(true);
+    assert.equal(allDayNow(), true);
+    assert.deepEqual(sent, []);
+    setAllDay(false);
+    assert.equal(allDayNow(), false);
+    await pause(10);
+    assert.deepEqual(sent, [{ action: 'auto-stop' }]);
+    assert.equal(store.get('six-degrees-experimental-auto'), 'false', 'the key the guided setup and the Scan page read');
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+});

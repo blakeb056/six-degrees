@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reached, nothing left. A pace never adds searches: Fast stops at your daily limit sooner,
   never past it. Your pace and tiers are remembered. The button has a Beta mark, and hovering it
   slides out how it's set. Anything you queue runs before Auto scan's next sitting.
+- **Auto scan's switch is first in Scan → Scanner settings, and never greyed out.** It was at the
+  foot of the page under Extras, and greyed out while anything was scanning, so it seemed to exist
+  only in the guided setup. The panel also has *Turn off Auto scan*; both, and the guided setup,
+  are the same setting, and turning it off stops Auto scan if it's running.
 
 ### Fixed
 - **Auto scan works.** It was one long scan that did its own waiting: pressed in the evening it
