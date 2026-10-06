@@ -14,7 +14,11 @@ test('REGRESSION: the Scan page never starts a round with experimental pacing', 
   for (const call of calls) assert.doesNotMatch(call, /experimental/, call);
 });
 
-test('Auto scan is what sends experimental pacing', () => {
-  const client = readFileSync(new URL('../lib/experimental-client.js', import.meta.url), 'utf8');
-  assert.match(client, /experimental: true/);
+// Since the Auto scan fix, no page sends it at all: the server adds
+// --experimental only to Auto scan's own sittings (route.js autoTick), and
+// tests/auto-scan.test.mjs shows a request asking for it doesn't get it.
+test('only Auto scan\'s sittings take experimental pacing, never a request', () => {
+  const route = readFileSync(new URL('../app/api/scraper/route.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(route, /body\.experimental/);
+  assert.match(route, /sitting && action === 'auto-bridge' \? \['--experimental'/);
 });

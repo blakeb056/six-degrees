@@ -424,3 +424,59 @@ out.update(wait=ns['_auto_ceiling_wait'](clock.t) is not None, day=ns['AUTO_DAY_
   if (!r) return;
   assert.deepEqual(r.out, { wait: true, day: 40, week: 200 });
 });
+
+// Auto scan's sittings (scrape.py --sitting; lib/auto-scan.js, the app's side).
+// Blake, 1.2.0: Auto scan "doesn't even work". Pressed in the evening it opened
+// Chrome and a profile, then slept in place until 9:00 the next morning with the
+// browser open; pressed at the budget it ended at once. A sitting now ends
+// instead of waiting, before any browser opens, and the app rests between them.
+
+test('REGRESSION: a scan you start yourself at 20:00 opens at once, with no overnight rest', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 10, 5, 20, 0).timestamp()
+start = clock.t
+ns['auto_bridge_all'](max_bridges=1, order='score')
+out.update(opened=len(page.opened), waited=clock.t - start)`);
+  if (!r) return;
+  assert.equal(r.out.opened, 1, 'their profile opened');
+  assert.ok(r.out.waited < 600, `waited ${r.out.waited}s`);
+  assert.doesNotMatch(r.log, /Resting overnight|Carrying on at/);
+});
+
+test('Auto scan\'s sitting at 20:00 opens nothing and ends at once; the app waits for 9:00', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 10, 5, 20, 0).timestamp()
+start = clock.t
+ns['EXPERIMENT'].update(on=True, pages=0, sitting=8, ended=None)
+ns['auto_bridge_all'](order='score', tiers=['S', 'A'], deeper=True)
+out.update(opened=len(page.opened), launched=len(launched), waited=clock.t - start)`);
+  if (!r) return;
+  assert.deepEqual([r.out.opened, r.out.launched], [0, 0], 'no browser, no profile');
+  assert.ok(r.out.waited < 1, `waited ${r.out.waited}s`);
+  assert.match(r.log, /Sitting over: It's outside Auto scan's hours \(9:00 to 18:00\)\./);
+  assert.doesNotMatch(r.log, /Resting overnight/);
+});
+
+test('a sitting ends after its searches, or at the budget, instead of resting in place', (t) => {
+  const r = run(t, `
+from datetime import datetime
+clock.t = datetime(2026, 10, 5, 12, 0).timestamp()
+ns['EXPERIMENT'].update(on=True, pages=0, sitting=4, ended=None)
+out['fresh'] = ns['_sitting_over']()
+ns['EXPERIMENT']['pages'] = 4
+out['done'] = ns['_sitting_over']()
+start = clock.t
+out['go'] = ns['_drip_before_search']()
+out['waited'] = clock.t - start
+ns['EXPERIMENT'].update(pages=0, ended=None)
+limits(daily=3)
+record(searches=[clock.t - 60 * i for i in range(1, 4)])
+out['budget'] = ns['_sitting_over']()`);
+  if (!r) return;
+  assert.equal(r.out.fresh, null);
+  assert.equal(r.out.done, "This sitting's 4 searches are done");
+  assert.deepEqual([r.out.go, r.out.waited], [false, 0]);
+  assert.match(r.out.budget, /budget|searches/i);
+});

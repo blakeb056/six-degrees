@@ -1744,7 +1744,12 @@ LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at mos
 # Its own ceilings sit under whatever budget is set on the Scan page: the account
 # restricted on 2026-09-28 did 373 searches in 24 hours with the budget raised to
 # 500. Auto scan stays far below that however high the budget is set.
-EXPERIMENT = {"on": False, "pages": 0, "wire": 0}
+EXPERIMENT = {"on": False, "pages": 0, "wire": 0, "sitting": 0, "ended": None}
+# The app's Auto scan runs one sitting per run (--sitting=N, its pace's size): the
+# run ends when the sitting does, or outside DRIP_HOURS, or at the budget, and the
+# app (app/api/scraper/route.js, lib/auto-scan.js) rests and starts the next one.
+# Nothing waits for hours inside a run with Chrome open. Without --sitting (the
+# command line) the run waits in place, as below.
 SESSION_PAGES = 8                 # searches in one sitting
 SESSION_REST = 60 * 60            # the rest after each sitting
 DRIP_HOURS = (9, 18)              # searches only from 09:00 to 18:00, local time
@@ -2766,9 +2771,42 @@ def _seconds_until_search_frees(now=None):
     return (recent[0] + DAY_SECONDS - now + 5) if recent else 5
 
 
+def _in_drip_hours(now=None):
+    """Is it Auto scan's hours (DRIP_HOURS, this computer's clock)?"""
+    hour = datetime.fromtimestamp(now if now is not None else time.time()).hour
+    return DRIP_HOURS[0] <= hour < DRIP_HOURS[1]
+
+
+def _sitting_over(now=None):
+    """With --sitting: why this sitting ends before the next search, or None to go on.
+    Its searches done, outside the hours, or a used budget. Never a wait: the app
+    rests between sittings with no browser open."""
+    if EXPERIMENT.get("ended"):
+        return EXPERIMENT["ended"]
+    if EXPERIMENT["pages"] >= EXPERIMENT["sitting"]:
+        return f"This sitting's {EXPERIMENT['sitting']} searches are done"
+    if not _in_drip_hours(now):
+        return f"It's outside Auto scan's hours ({DRIP_HOURS[0]}:00 to {DRIP_HOURS[1]}:00)"
+    left, kind = searches_left(now)
+    if left <= 0:
+        return budget_message(kind)
+    return None
+
+
 def _drip_before_search():
-    """Experimental pacing, before a search: rest after a sitting, sleep through the
-    night, and wait for a used daily budget to free up. True to go ahead, False if stopped."""
+    """Experimental pacing, before a search. In one of the app's sittings
+    (--sitting), end the sitting when it's over (_sitting_over): False, and
+    EXPERIMENT["ended"] says why. On the command line: rest after a sitting, sleep
+    through the night, and wait for a used daily budget to free up. True to go
+    ahead, False if stopped."""
+    if EXPERIMENT.get("sitting"):
+        why = _sitting_over()
+        if why:
+            if not EXPERIMENT.get("ended"):
+                EXPERIMENT["ended"] = why
+                print(f"  {why}: this sitting ends here, and what was read is saved.", flush=True)
+            return False
+        return True
     while True:
         if EXPERIMENT["pages"] >= SESSION_PAGES:
             EXPERIMENT["pages"] = 0
@@ -4360,6 +4398,14 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         if stop_requested():
             log("Stopped.")
             break
+        # One of Auto scan's sittings ends before the next person, so no browser
+        # opens and no profile is viewed outside its hours or past its ceilings.
+        if EXPERIMENT["on"] and EXPERIMENT.get("sitting"):
+            why = _sitting_over()
+            if why:
+                log(f"Sitting over: {why}.")
+                stopped_early = "the end of the sitting"
+                break
         left, kind = searches_left()
         if left <= 0:
             log(budget_message(kind))
@@ -5301,6 +5347,10 @@ Examples:
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
                              "waits for the daily budget) and reading LinkedIn's own data beside the page text")
+    parser.add_argument("--sitting", type=int, default=0,
+                        help="With --experimental: one sitting of at most this many searches, then exit "
+                             "(the app's Auto scan rests between sittings). It also ends outside "
+                             f"{DRIP_HOURS[0]}:00-{DRIP_HOURS[1]}:00 and at the budget")
     parser.add_argument("--auto-bridge", action="store_true",
                         help="Map every bridge in turn, highest tier first")
     parser.add_argument("--retry-private", action="store_true",
@@ -5345,7 +5395,12 @@ Examples:
     CHROME_WINDOW["show"] = bool(args.show_window)
     if getattr(args, "experimental", False):
         EXPERIMENT["on"] = True
-        print("Experimental Auto-Bridge: all-day pacing, and LinkedIn's own data read beside the page text.")
+        EXPERIMENT["sitting"] = max(0, args.sitting)
+        if EXPERIMENT["sitting"]:
+            print(f"Auto scan: one sitting of up to {EXPERIMENT['sitting']} searches, "
+                  f"{DRIP_HOURS[0]}:00 to {DRIP_HOURS[1]}:00 only, and LinkedIn's own data read beside the page text.")
+        else:
+            print("Experimental Auto-Bridge: all-day pacing, and LinkedIn's own data read beside the page text.")
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
     # The Scan page's speed. Signing in searches nothing, so it isn't said there.
     _pace = apply_pace()

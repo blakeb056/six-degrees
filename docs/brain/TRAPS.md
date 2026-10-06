@@ -1066,3 +1066,28 @@ frame (a `requestAnimationFrame` loop recording the header, the notch's tabs and
 How to check it: build, start, and walk every page to every other with Playwright, counting
 frames where the new page's header is up and the notch shows the old page's tabs, or the
 notch is up with no header. Measured on a production build, never by eye in dev.
+
+## 48. A scanner run that waits inside itself looks dead, and a flag it reads from the page leaks
+
+Found 2026-10-05 from Blake on 1.2.0: Auto scan "doesn't even work", and a Map 2nd degree he
+started himself said *Resting overnight. Carrying on at 08:59* and sat for 700 minutes.
+
+- **The waiting lived in the scanner.** Auto scan was one `--auto-bridge --experimental` run
+  whose pacing (`_drip_before_search`) slept in place: an hour after 8 searches, or until 09:00
+  when outside 9 to 18. It decided that only *after* Chrome had opened and a profile view was
+  spent, so in the evening it opened one profile and then held a hidden browser for the night.
+  At the budget, `auto_bridge_all` returned at once instead, and after `--max-bridges=10` it
+  ended for good. From the app that is "nothing happens". Now the app runs Auto scan as
+  sittings (`--sitting=N`): the run ends when the sitting is over, outside the hours or at the
+  budget, checked before each person so no browser opens, and the rest is a timer in the
+  server (`app/api/scraper/route.js autoTick`, `lib/auto-scan.js autoPlan`). No multi-hour wait
+  inside a process with Chrome open.
+- **The flag came from the request.** The route added `--experimental` whenever the body said
+  `experimental: true`, and the Scan page's own round sent the Auto scan switch's value, so with
+  the switch on, a scan you pressed kept Auto scan's hours (PR #201 stopped the page sending
+  it). Now only the server's own sittings add it; a request asking for it gets an ordinary
+  scan (`tests/auto-scan.test.mjs`, the REGRESSION cases there and in
+  `tests/profile-views.test.mjs`).
+
+The rule: a scan you start yourself runs now, inside the budget and the cooldown. Only Auto
+scan keeps hours, and it keeps them in the app, never by sleeping inside the scanner.

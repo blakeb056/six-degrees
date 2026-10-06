@@ -583,10 +583,12 @@ function SetupInner() {
                 title="Auto scan, all day"
                 line="Adds Auto scan beside Scan in the header: small sittings with rests, 9:00 to 18:00, while the app is open."
                 more={<>
-                  Up to 8 pages in a sitting, then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40
-                  searches in a day or 200 in a week, however high your budget; two days&rsquo; rest after any check from
-                  LinkedIn; at the budget it waits instead of stopping; and it saves every page. It also reads
-                  LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the two compare.
+                  Hover or click Auto scan to pick its pace (Slow, Medium or Fast: how many searches in a sitting and how
+                  long it rests after) and which tiers&rsquo; circles it scans, then Start. It searches only from 9:00 to
+                  18:00, with no browser open while it rests; it stops at your daily limit and after any check from
+                  LinkedIn; anything you queue goes first; and it saves every page. Scans you start yourself never keep
+                  its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
+                  two compare.
                 </>} />
               {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
                   every scan runs in a real Chrome window kept out of sight, which comes forward only when
