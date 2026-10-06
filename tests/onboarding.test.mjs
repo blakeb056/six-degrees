@@ -33,8 +33,8 @@ test('chose to scan: Get ready until Chrome, the scanner and "I understand" are 
   assert.equal(onboardingStep(status({ riskAccepted: true }), started), 'connect');
 });
 
-test('App Management never holds Get ready up: optional, and the app can\'t see it', () => {
-  // The answer lives in settings, which this doesn't even take.
+test('without App Management\'s gate passed in, Get ready is the scanner\'s checks alone', () => {
+  // The gate (macOS's answer) is tested in tests/onboarding-app-management.test.mjs.
   assert.equal(onboardingStep(status({ riskAccepted: true }), { started: true }), 'connect');
 });
 

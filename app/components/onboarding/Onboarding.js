@@ -11,11 +11,19 @@
 // Which step you start on is the first not done (lib/onboarding.js), so
 // someone who left halfway comes back to it. After that, only Continue and
 // Back move you: a status that turns green says so, and waits for you.
+//
+// The step is also kept with your settings (lib/onboarding.js setupStep):
+// turning App Management on makes macOS quit and reopen Sixgree, and the setup
+// comes back on the step it was on, with the permission asked again.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useScanStatus from '../useScanStatus';
-import { STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, followedScan, canOpen, here as hereWord } from '../../../lib/onboarding';
+import {
+  STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, followedScan, canOpen, here as hereWord,
+  appManagementGate, withSavedStep, startStep, OVERRIDE_AFTER_MS,
+} from '../../../lib/onboarding';
 import { askForField } from '../../../lib/scanner-setup';
+import { saveSettings } from '../../../lib/settings-client';
 import { loadSampleIntoSession } from '../../../lib/demo';
 import { ONBOARDING_CSS } from './styles';
 import Wordmark from '../Wordmark';
@@ -23,6 +31,64 @@ import { Welcome, GetReady, Connect, Pace, MapPeople, Final } from './steps';
 
 const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: MapPeople };
 const OUT_MS = 190;
+// How often the Get ready step asks macOS about App Management while it's open.
+const APP_POLL_MS = 2000;
+const NO_ANSWER = 'Sixgree’s own server didn’t answer the check.';
+
+/**
+ * Is App Management on? GET /api/scraper?appManagement (lib/app-management.js),
+ * every 2 s while `on`, and at once when the window comes back (from System
+ * Settings, say). undefined before the first answer. A check that can't run
+ * says so ({ granted: null, why }), and that is logged here once. `checks`
+ * counts the answers, so the step can tell how many said off since a moment.
+ */
+function useAppManagement(on) {
+  const [access, setAccess] = useState(undefined);
+  const [checks, setChecks] = useState(0);
+  useEffect(() => {
+    if (!on) return undefined;
+    let off = false;
+    let timer = null;
+    let asking = false;
+    let warned = null;
+    const ask = async () => {
+      if (asking) return;
+      asking = true;
+      clearTimeout(timer);
+      let next = null;
+      try {
+        const r = await fetch('/api/scraper?appManagement', { cache: 'no-store' });
+        const d = r.ok ? await r.json() : null;
+        next = d && typeof d === 'object' && 'granted' in d ? d : { needed: true, granted: null, why: NO_ANSWER };
+      } catch {
+        next = null; // not reached this once: the last answer stands, or "can't tell" if there is none
+      }
+      asking = false;
+      if (off) return;
+      if (next) setChecks((n) => n + 1);
+      setAccess((prev) => {
+        const value = next || prev || { needed: true, granted: null, why: NO_ANSWER };
+        if (value.needed !== false && value.granted === null && warned !== value.why) {
+          warned = value.why;
+          console.warn(`App Management: can't tell whether it's on, so the setup takes the user's word for it. ${value.why}`);
+        }
+        return prev && prev.needed === value.needed && prev.granted === value.granted && prev.why === value.why ? prev : value;
+      });
+      timer = setTimeout(ask, APP_POLL_MS);
+    };
+    ask();
+    const wake = () => { if (document.visibilityState !== 'hidden') ask(); };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    return () => {
+      off = true;
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('focus', wake);
+    };
+  }, [on]);
+  return { access, checks };
+}
 
 // `again`: back after a first scan that ended before Open the map (lib/onboarding.js
 // opensSetup): straight to "Your galaxy is ready", the field question or not.
@@ -32,11 +98,35 @@ export default function Onboarding({ onFinish, again = false }) {
   // What this browser remembers (lib/onboarding.js SETUP_KEY). Only ever shown
   // after the page has loaded the network, in the browser, so it's read at once.
   const [memory, setMemory] = useState(() => readSetupMemory());
-  const derived = onboardingStep(s, memory);
-  // The step on screen: the first not done, once the scanner has answered;
-  // then wherever Continue and Back take you.
+  // The step kept with your settings: what a restart has to go on, since this
+  // browser's memory may have gone with the old address.
+  const saved = settings?.setupStep ?? null;
   const [view, setView] = useState(null);
-  if (view === null && derived) setView(derived);
+  // App Management, on a Mac from macOS 13: asked of macOS while Get ready is
+  // open (or the step isn't known yet), and Continue waits for it.
+  const mac = s?.checks?.mac;
+  const appNeeded = Boolean(mac) && !(mac.version != null && mac.version < 13);
+  const { access, checks } = useAppManagement(appNeeded && (view === null || view === 'ready'));
+  const claimed = scan.appAnswer ? scan.appAnswer === 'done' : settings?.appManagement === 'done';
+  // The way past a check that keeps saying off (lib/onboarding.js escapeHatch), once taken.
+  const [overridden, setOverridden] = useState(false);
+  const override = overridden || settings?.appManagementOverride === true;
+  const gate = appManagementGate(s, access, { claimed, override });
+  const derived = onboardingStep(s, withSavedStep(memory, saved), gate);
+  // The step on screen: the kept one if the checks still allow it, else the
+  // first not done, once the scanner, your settings and macOS have answered;
+  // then wherever Continue and Back take you.
+  if (view === null && derived && settings !== undefined && gate.state !== 'checking') setView(startStep(derived, saved));
+
+  // Every step change is kept, so a restart opens on it.
+  const kept = useRef(undefined);
+  useEffect(() => {
+    if (!view || !settings) return;
+    if (kept.current === undefined) kept.current = saved;
+    if (kept.current === view) return;
+    kept.current = view;
+    saveSettings({ setupStep: view });
+  }, [view, settings, saved]);
   // The first scan this setup has watched (lib/onboarding.js followedScan), so
   // a scan that starts after it can't keep "Your galaxy is ready" back.
   const [follow, setFollow] = useState(null);
@@ -63,6 +153,20 @@ export default function Onboarding({ onFinish, again = false }) {
     here: hereWord(s),
     follow: following,
     go,
+    access,
+    gate,
+    checks,
+    overrideAfterMs: OVERRIDE_AFTER_MS,
+    // "It's on, but Sixgree can't tell: continue anyway": Continue opens, and it's kept.
+    overrideAppManagement: () => {
+      if (override) return undefined;
+      console.warn('App Management: the check kept saying off after the user said it was on; continuing on their word (appManagementOverride).');
+      setOverridden(true);
+      return saveSettings({ appManagementOverride: true });
+    },
+    // Before System Settings: keep this step, since turning App Management on
+    // makes macOS quit and reopen Sixgree.
+    keepStep: () => { kept.current = 'ready'; return saveSettings({ setupStep: 'ready' }); },
     // Welcome → Scan my LinkedIn.
     start: () => { setMemory(rememberSetup({ started: true })); go('ready'); },
     // Set your pace → Continue: it has no check of its own, so this browser remembers it.
@@ -113,7 +217,7 @@ export default function Onboarding({ onFinish, again = false }) {
         {final || at === 'welcome' ? <span /> : <WayOut openSample={ctx.openSample} />}
       </header>
 
-      {final ? <Final ctx={ctx} onFinish={onFinish} />
+      {final ? <Final ctx={ctx} onFinish={async () => { kept.current = null; await saveSettings({ setupStep: null }); return onFinish(); }} />
         : Screen ? (
           <section key={view} className={`ob-card ob-step-${phase}`} style={{ '--dir': dir }} data-glass-panel aria-label={`Setup: ${STEP_LABELS[view]}`}>
             <Screen ctx={ctx} />

@@ -131,7 +131,13 @@ bash script, `Contents/MacOS/six-degrees`.)
       the app's own pop-ups get a window under the same rules. `routeFor()` is tested.
       Two exact System Settings addresses (App Management, for the Scan page's step 1)
       open System Settings; any other `x-apple.systempreferences:` link is blocked
-      (`lib.mjs SETTINGS_URLS`).
+      (`lib.mjs SETTINGS_URLS`). In the guided setup App Management is **mandatory** from
+      macOS 13 (2026-10-06): `GET /api/scraper?appManagement` reads it from macOS
+      (`lib/app-management.js`, TCC's preflight via `osascript`, which macOS puts down to the
+      app the server was started from), Continue waits for it, and the step is kept in the
+      `setupStep` setting because turning it on makes macOS quit and reopen the app, possibly
+      on another port with empty browser storage. Can't be read → says so, logs why, and takes
+      "I've allowed it".
 - [x] Safe defaults: context isolation on, Node integration off, sandbox on, no webviews,
       and only clipboard-write and full-screen permissions.
 - [x] A native menu: About, Check for Updates… (opens Settings → Updates and runs the check), Settings… (⌘,), Edit,

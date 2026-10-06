@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **App Management is required in the guided setup on macOS 13 and later.** The Get ready step
+  now asks macOS whether Sixgree may manage apps (rechecked every 2 seconds and whenever the
+  window comes back), and Continue stays off until it is really on. "I've allowed it" no longer
+  counts while macOS says it is off. Turning it on makes macOS quit and reopen Sixgree, so the
+  setup keeps its step with your settings and reopens on that same step, ticked. Where macOS
+  can't be asked, the setup says so, logs why, and goes on once you say you've allowed it. If
+  the check keeps saying off about 20 seconds after "I've allowed it" (or twice after coming back
+  from System Settings), "It's on, but Sixgree can't tell: continue anyway" lets you go on, and is
+  kept.
+
 ### Fixed
 - **A page of hidden people pauses that list instead of finishing it.** Over LinkedIn's monthly
   search limit (no Premium), results show as "LinkedIn Member" with no name, the same as people
