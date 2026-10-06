@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Map 2nd degree on the Scan page starts now, whatever the time.** With the experimental
+  "Auto scan, all day" switch on, the round you start yourself took Auto scan's hours and rests,
+  so after 18:00 it read one profile and then waited until 09:00 ("Resting overnight"). Only Auto
+  scan keeps to its hours now; a round you press runs straight away, inside the usual limits.
+
 ## [1.2.0] - 2026-10-05
 
 ### Added

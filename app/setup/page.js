@@ -427,7 +427,7 @@ function SetupInner() {
                     disabled={!canSearch || (order === 'score' && !tiers.length)}
                     label={running && s?.action === 'auto-bridge' ? 'Mapping…' : 'Map 2nd degree'}
                     sublabel={running ? (batch ? `${batch} people` : 'everyone') : `first circle in ${firstCircle}`}
-                    onScan={() => run('auto-bridge', { ...roundOptions, experimental })}
+                    onScan={() => run('auto-bridge', roundOptions)}
                     onPace={busy ? undefined : (pace) => run('set-limits', { ...(li?.limits || {}), pace })}
                   />
                   <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 12 }}>
