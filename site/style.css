@@ -174,10 +174,21 @@ kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
 /* The flat-line wordmark: the gold i dot, then five dots in a level row to the end
    of the word, shrinking and fading (Blake, 2026-10-05). Starts at the i's centre. */
 .wm-dots { position: absolute; left: calc(50% - 0.07em); bottom: 0.715em; overflow: visible; pointer-events: none; }
-.top nav { display: flex; gap: 2px; margin-left: auto; }
-.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 550; white-space: nowrap; padding: 6px 11px; border-radius: 10px; }
-.top nav a:hover { color: var(--text); background: var(--panel-2); }
-.top nav a[aria-current="page"] { color: var(--text); background: var(--panel-2); }
+.top nav { display: flex; gap: 8px; margin-left: auto; }
+/* Each link a quiet grey ring; the page you're on fills with a tier colour, in
+   the order of the wordmark's dots (S gold, A purple, B blue, C green, D grey),
+   its text flipped so it reads on the fill. */
+.top nav a {
+  --tier: #d9a400; --on-tier: #111827;
+  color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 550; white-space: nowrap;
+  padding: 5px 13px; border: 1.5px solid #d3d8e0; border-radius: 999px;
+}
+.top nav a:nth-child(5n + 2) { --tier: #8e44ad; --on-tier: #ffffff; }
+.top nav a:nth-child(5n + 3) { --tier: #2f80ed; --on-tier: #ffffff; }
+.top nav a:nth-child(5n + 4) { --tier: #2e8b46; --on-tier: #ffffff; }
+.top nav a:nth-child(5n + 5) { --tier: #6b7785; --on-tier: #ffffff; }
+.top nav a:hover { color: var(--text); border-color: var(--tier); }
+.top nav a[aria-current="page"] { color: var(--on-tier); background: var(--tier); border-color: var(--tier); }
 .top-get {
   display: inline-flex; align-items: center; padding: 10px 18px; border-radius: 12px; font-size: 15px; font-weight: 700;
   color: #0d0e1a; text-decoration: none; background: linear-gradient(180deg, #ffffff, #f4f4f2);
@@ -836,7 +847,8 @@ main.page { padding-bottom: 40px; }
 
 /* ---------- smaller screens ---------- */
 @media (max-width: 1060px) {
-  .top nav a { padding: 6px 8px; font-size: 14.5px; }
+  .top nav { gap: 5px; }
+  .top nav a { padding: 4px 10px; font-size: 14.5px; }
   .way-grid, .tool-grid { grid-template-columns: repeat(2, 1fr); }
   .stats { grid-template-columns: repeat(3, 1fr); }
   .community .doc-grid { grid-template-columns: repeat(2, 1fr); }
@@ -880,7 +892,7 @@ main.page { padding-bottom: 40px; }
   .top-bar { padding: 7px 8px 6px 12px; gap: 10px; }
   .wordmark { font-size: 22px; }
   .top .brand img { width: 32px; height: 32px; }
-  .top nav a { font-size: 14px; padding: 4px 8px; }
+  .top nav a { font-size: 14px; padding: 3px 10px; }
   .stage-band .long { display: none; }
   .stage-band .short { display: block; }
   .hero { padding-top: 40px; padding-bottom: 56px; }
