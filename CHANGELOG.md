@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-10-06
+
 ### Fixed
 - **A page of hidden people is no longer taken for LinkedIn pushing back.** Deep in a circle,
   LinkedIn shows people outside your network only as "LinkedIn Member", with no name or link.
