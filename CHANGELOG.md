@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-10-06
+
 ### Fixed
 - **Separation's top ten moves on as you ask.** Once Auto sent a request, the person kept their
   place in "Top 10 you haven't asked" until a reload when the request had waited in the scan
