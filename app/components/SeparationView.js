@@ -42,6 +42,10 @@ import { initialsFor } from '../../lib/tiers';
 import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+// The strategy engine (experimental, off by default): a Gatekeepers list and a
+// Leverage badge on each way in, only while Settings → Experimental has it on.
+import useStrategy from './useStrategy';
+import GatekeeperList, { LeverageBadge, GATE } from './GatekeeperList';
 
 const ORANGE = '#FF6B35';
 const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -118,6 +122,15 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const [pathOpen, setPathOpen] = useState(false);
   const [pathText, setPathText] = useState('');
   const [pathUsed, setPathUsed] = useState(false);   // companies are only read once Path is opened
+  // Gatekeepers (the strategy engine): your connections by Leverage in place of the ledger.
+  const strategy = useStrategy();
+  const [gates, setGates] = useState(false);
+  const gatesOn = strategy.on && gates;
+  const leverageOf = useMemo(() => {
+    const people = strategy.people;
+    if (!people) return null;
+    return (row) => (row ? people[keyFor(row)]?.leverage ?? null : null);
+  }, [strategy.people]);
   // Filters a card's Insights asked for ("Show them", "S only"): applied once each.
   const [presetFor, setPresetFor] = useState(null);
   if (preset && preset.id !== presetFor) {
@@ -125,6 +138,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
     setQuery(preset.query || '');
     setTier(preset.tier || 'all');
     setRarities(new Set(preset.rarity ? [preset.rarity] : []));
+    setGates(false);
   }
   const requests = useRequests();
   const [scrollY, setScrollY] = useState(0);
@@ -218,6 +232,11 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const top = useMemo(() => unasked.slice(0, shown), [unasked, shown]);
   const askedShown = useMemo(() => visible.reduce((n, p) => n + (statusOf(p) ? 1 : 0), 0), [visible, statusOf]);
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
+  const selectedGateKey = useMemo(() => {
+    if (!gatesOn || selectedId == null) return null;
+    const c = fullDegree1.find((r) => r.id === selectedId);
+    return c ? keyFor(c) : null;
+  }, [gatesOn, selectedId, fullDegree1]);
   // Down to one: the person picked, if they're in what's showing, else the top of the list.
   const single = shown === 1;
   // Down to one, it aims at whoever you share the most mutual connections with,
@@ -482,6 +501,17 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
                 }}>×</button>
               )}
             </span>
+            {strategy.on && (
+              <button type="button" aria-pressed={gates} onClick={() => { setGates((g) => !g); toTop(); }}
+                title="Experimental: your connections ranked by where they stand in your network (who you reach only through them), not by power"
+                style={{
+                  height: isMobile ? 40 : 30, padding: '0 12px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
+                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: GATE,
+                  border: `1px solid ${gates ? GATE : `${GATE}55`}`, background: gates ? `${GATE}22` : `${GATE}08`,
+                }}>
+                Gatekeepers{gates ? ' ✓' : ''}
+              </button>
+            )}
             {!isMobile && <>
               <span aria-hidden="true" style={{ width: 1, height: 18, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', margin: '0 2px' }} />
               {rarityChips}
@@ -531,6 +561,10 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
         onScroll={onScroll}
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', position: 'relative', padding: `0 ${sidePad}px` }}
       >
+        {gatesOn ? (
+          <GatekeeperList connections={fullDegree1} strategy={strategy} tierColors={tierColors} isMobile={isMobile}
+            onSelect={onSelect} selectedKey={selectedGateKey} tier={tier} q={q} />
+        ) : (
         <div style={{ position: 'relative', maxWidth: 980, margin: '0 auto', height: total }}>
           {mapBlockH > 0 && (
             <div className="sepblock" style={{ height: mapBlockH, boxSizing: 'border-box', paddingTop: 10 }}>
@@ -636,6 +670,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
               q={q}
               status={statusOf(p)}
               rarity={rarityBy.get(p.key)}
+              leverageOf={leverageOf}
             />
           ))}
 
@@ -687,6 +722,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -1084,9 +1120,9 @@ function NoRoute({ p, compact }) {
   );
 }
 
-function Via({ p, route, tierColors, compact }) {
+function Via({ p, route, tierColors, compact, leverageOf = null }) {
   if (p.unranked) return <NoRoute p={p} compact={compact} />;
-  if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} />;
+  if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} leverageOf={leverageOf} />;
   if (!route?.bridge) {
     return <span style={{ ...ellipsis, color: 'var(--sd-fg-4, #777)', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
   }
@@ -1108,7 +1144,7 @@ function Via({ p, route, tierColors, compact }) {
 }
 
 /** The ledger's way in: the connection's face and name, and under it "only way in" or how many more. */
-function WayIn({ p, route, tierColors }) {
+function WayIn({ p, route, tierColors, leverageOf = null }) {
   const b = route?.bridge;
   const extra = p.waysIn - 1;
   return (
@@ -1119,8 +1155,10 @@ function WayIn({ p, route, tierColors }) {
           {b ? b.name : CANT_NAME}
           {route?.via?.length ? <span style={{ color: 'var(--sd-fg-2, #bbc)', fontWeight: 600 }}>{viaTail(route)}</span> : null}
         </span>
-        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? 'var(--sd-fg-3, #99a)' : RARE, fontWeight: extra > 0 ? 500 : 700 }}>
-          {p.degree > 2 ? `${p.degree - 1} introductions · ` : ''}{extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}
+        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? 'var(--sd-fg-3, #99a)' : RARE, fontWeight: extra > 0 ? 500 : 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={ellipsis}>{p.degree > 2 ? `${p.degree - 1} introductions · ` : ''}{extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}</span>
+          {/* The strategy engine (experimental): where this way in stands, when it's on and measured */}
+          {b && leverageOf && <LeverageBadge small value={leverageOf(b)} />}
         </span>
       </span>
     </span>
@@ -1260,7 +1298,7 @@ const SLIDER_CSS = `
 `;
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
-const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity }) {
+const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity, leverageOf = null }) {
   const { person } = p;
   const c = tierColors[p.tier] || '#888';
   const route = pickRoute(p, q);
@@ -1320,7 +1358,7 @@ const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, 
             </div>
             <div style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2 }}>{subline(person)}</div>
           </div>
-          <Via p={p} route={route} tierColors={tierColors} />
+          <Via p={p} route={route} tierColors={tierColors} leverageOf={leverageOf} />
           {p.unranked
             ? <span title="No mutual connections on file: no scanned circle has them" style={{ fontSize: 10.5, color: 'var(--sd-fg-5, #556)' }}>no mutuals on file</span>
             : <RarityBar p={p} rarity={rarity} />}
