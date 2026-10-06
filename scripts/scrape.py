@@ -27,7 +27,9 @@ in one session — LinkedIn detects automation and flags your account.
 
 import argparse
 import json
+import math
 import os
+import random
 import re
 import signal
 import sys
@@ -1308,6 +1310,50 @@ class SearchLimitReached(Exception):
         self.found = found
 
 
+class PageUnreadable(Exception):
+    """A page that never showed what it should have, after every retry (BACKOFF).
+
+    Said, never taken for an empty page (TRAPS §7). Read profiles raises it once
+    READ_FAIL_LIMIT profiles in a row couldn't be read: LinkedIn's page has
+    probably changed, and opening more would only spend profile views.
+    """
+
+    def __init__(self, what="a page", found=0):
+        super().__init__(f"{what} couldn't be read")
+        self.what = what
+        self.found = found
+
+
+# How a run ended, as its exit code (Blake, 2026-10-05). The plain line on stderr
+# stays (_say_why); the code is what the app goes by (lib/scan-exit.js holds the
+# same table, and tests/scan-exit.test.mjs checks the two agree). 2 is left to
+# argparse, which exits 2 on a bad command line. A limit or a cooldown is the
+# design working: the app shows it as a calm stop, never a red error.
+EXIT_CODES = {
+    "ok": 0,               # finished, or stopped by you
+    "error": 1,            # anything unexpected: the traceback is on stderr
+    "usage": 2,            # a bad command line (argparse's own)
+    "pushback": 10,        # LinkedIn pushed back: a sign-in wall, a security check, a restriction, too many requests
+    "limit": 11,           # today's limit (searches a day, or the profile views in it)
+    "cooldown": 12,        # paused after LinkedIn pushed back earlier
+    "signed-out": 13,      # LinkedIn isn't signed in
+    "save-failed": 14,     # the app refused what was read
+    "unread": 15,          # a page couldn't be read after every retry (TRAPS §7)
+    "search-limit": 16,    # LinkedIn's own monthly search limit
+    "try-later": 17,       # the photos couldn't be saved this time (no connection, LinkedIn busy)
+}
+
+
+def exit_kind(exc):
+    """The EXIT_CODES name for an exception that ends a run."""
+    for cls, kind in ((LinkedInPushedBack, "pushback"), (BudgetReached, "limit"), (CoolingDown, "cooldown"),
+                      (NotSignedIn, "signed-out"), (SaveFailed, "save-failed"), (PageUnreadable, "unread"),
+                      (SearchLimitReached, "search-limit"), (globals().get("TryLater"), "try-later")):
+        if cls is not None and isinstance(exc, cls):
+            return kind
+    return "error"
+
+
 def push_connections(connections, degree=1, bridge_id=None, user_id=None, on_saved=None):
     """Push connections via Vercel API route (which has write access).
     No local keys needed — the server handles auth.
@@ -1929,8 +1975,10 @@ SAVE_EVERY_PAGES = 10             # save as a long read goes, so a stop loses li
 # Pace between searches. 0.1.6 read a page every ~6 s — 27 searches in three and
 # a half minutes — and LinkedIn blocked the account's search on the 28th. These
 # are a stopgap until the pacing is set from research (TRAPS §35): a rest before
-# every search, and a longer one after every SAVE_EVERY_PAGES. Fixed, not
-# randomised: the point is fewer searches an hour, not looking like a person.
+# every search, and a longer one after every SAVE_EVERY_PAGES. These are the
+# floors, and they always run as they are: since 2026-10-05 gentle pacing (on by
+# default, PACING below) adds a random extra after them and never shortens one,
+# because the point is still fewer searches an hour.
 PAGE_PAUSE = 20                   # seconds before each next page of results
 CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES pages
 # The Scan page's speed (Blake, 2026-09-30 and 10-03: "slow, medium and fast").
@@ -1940,16 +1988,26 @@ CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES p
 # (LIMITS below) leaves the speed exactly as it is. Read from scan-limits.json
 # ("pace") at the start of every run (apply_pace). lib/scan-pace.js holds the
 # same numbers for the page, and tests/scan-pace.test.mjs checks they agree.
+#
+# Since 2026-10-05 (Blake: "polish the pacing, with extra intervals") gentle
+# pacing adds to each of these, never takes from it: a random, skewed extra
+# after the wait (paced_interval), reading time, a scroll through each page,
+# now and then a short break, and a longer rest every long_rest_every pages
+# (PACING below). short_break and long_rest are those two, by speed.
 SCAN_PACES = {
-    "fast": {"page_pause": 20, "chunk_cooldown": 60, "profile_gap": 60},
-    "medium": {"page_pause": 45, "chunk_cooldown": 180, "profile_gap": 90},
-    "slow": {"page_pause": 90, "chunk_cooldown": 300, "profile_gap": 120},
+    "fast": {"page_pause": 20, "chunk_cooldown": 60, "profile_gap": 60,
+             "short_break": [60, 150], "long_rest": 180},
+    "medium": {"page_pause": 45, "chunk_cooldown": 180, "profile_gap": 90,
+               "short_break": [90, 240], "long_rest": 300},
+    "slow": {"page_pause": 90, "chunk_cooldown": 300, "profile_gap": 120,
+             "short_break": [120, 360], "long_rest": 480},
 }
 DEFAULT_PACE = "fast"
 LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at most
 
 # Experimental all-day pacing for Auto-Bridge (--experimental; item 44, Graph
-# Study §8). Slow on purpose, on fixed waits: no random "human" timing.
+# Study §8). Slow on purpose: its rests are fixed (gentle pacing's random extras
+# go after each page's own wait, as in every scan, and never shorten them).
 # A sitting of SESSION_PAGES searches, then a long rest; searches only in the
 # daytime on this computer's clock; and at the daily limit it waits for the
 # limit to free up instead of stopping. Pages are saved one at a time.
@@ -1969,6 +2027,379 @@ SESSION_REST = 60 * 60            # the rest after each sitting
 DRIP_HOURS = (9, 18)              # searches only from 09:00 to 18:00, local time
 AUTO_PUSHBACK_REST = 2 * 24 * 3600   # after any LinkedIn check, nothing for two days
 WIRE_SAMPLES = 5                  # raw LinkedIn responses kept per run, for research
+
+
+# ---------------------------------------------------------------------------
+# Pacing: the rhythm of a read (Blake, 2026-10-05: "polish the pacing, with
+# extra intervals", "add scroll intervals as well", "random scrolls do").
+#
+# Every wait has a floor, the number it always was, and is never shorter:
+#
+#   paced_interval(floor)  floor + |N(0, spread x floor)|, at most cap x floor.
+#                          Skewed: usually a little over the floor, now and then
+#                          well over. Its mean is floor x (1 + spread x
+#                          sqrt(2/pi)), about 1.1 x.
+#   reading time           read_per_result seconds for each person a results
+#                          page showed, paced the same way, before moving on.
+#   a scroll through       scroll_plan(): a random number of uneven wheel steps
+#                          with random short pauses, sometimes a small scroll
+#                          back up (now and then two), sometimes an idle moment,
+#                          always ending at the foot of the list (settle_list).
+#   a short break          after a page, with break_chance: a few minutes, the
+#                          pace's short_break range.
+#   a longer rest          after every long_rest_every pages: the pace's long_rest.
+#
+# lib/scan-pace.js holds the same numbers and works the Scan page's speeds out
+# of them (tests/scan-pace.test.mjs checks the two agree). Python's own
+# `random`, nothing to install. PACE_RNG is the one generator; the tests pass
+# their own, seeded.
+PACING = {
+    "spread": 0.125,              # sigma of the extra, as a share of the floor
+    "cap": 3,                     # never more than this many times the floor
+    "settle": 3,                  # seconds after a page opens before it's read (the floor)
+    "read_per_result": 0.4,       # reading time, seconds per person shown
+    "profile_read": 8,            # reading time on a profile (Read profiles), the floor
+    "break_chance": 0.01,         # a short break after a page, this often
+    "long_rest_every": 60,        # a longer rest after this many pages
+    "scroll": {
+        "steps": [3, 8],          # wheel steps down a page
+        "delta": [180, 720],      # pixels a step
+        "pause": [0.15, 0.6],     # seconds after each step
+        "back_chance": 0.25,      # a small scroll back up, on this share of pages...
+        "two_back_chance": 0.2,   # ...and of those, two
+        "back_delta": [60, 260],
+        "idle_chance": 0.12,      # an idle moment partway down, on this share of pages
+        "idle_pause": [0.8, 2.0],
+        "wait_scroll_chance": 0.35,   # a small scroll while waiting between pages
+        "wait_delta": [40, 220],
+    },
+    "settle_list": {
+        "rounds": 6,              # scroll-and-look rounds at most...
+        "budget": 8,              # ...and seconds at most, then it's read as it is
+        "poll": [0.4, 0.7],       # seconds between two counts that must agree
+    },
+}
+PACE_RNG = random.Random()
+PACE_STATE = {"pages": 0}         # pages read this run, for the longer rest
+SHORT_BREAK = list(SCAN_PACES["fast"]["short_break"])
+LONG_REST = SCAN_PACES["fast"]["long_rest"]
+# Scan page -> Scanner settings -> "Gentle pacing and scrolling (new)", on by
+# default (scan-limits.json "gentle", read by apply_pace). It only ever ADDS to
+# the read as it was before 2026-10-05 (Blake: "build on top of the old system,
+# never replace it"): the old waits, checks and reader always run, in the same
+# order; gentle pacing adds time after them and a scroll through each page
+# before the old reader. Off, a read is exactly the old one. The retries on the
+# BACKOFF curve wrap only what the old read already took for a failure.
+GENTLE = {"on": True}
+
+
+def gentle_extra(floor, rng=None):
+    """What gentle pacing adds after a wait of `floor`: paced_interval's extra, or 0 when off."""
+    return paced_interval(floor, rng) - float(floor) if GENTLE["on"] and floor > 0 else 0.0
+
+
+def paced_interval(floor, rng=None, spread=None, cap=None):
+    """A wait of at least `floor` seconds: the floor plus a half-normal extra, capped."""
+    floor = max(0.0, float(floor or 0))
+    if floor <= 0:
+        return 0.0
+    spread = PACING["spread"] if spread is None else spread
+    cap = PACING["cap"] if cap is None else cap
+    extra = abs((rng or PACE_RNG).gauss(0.0, spread * floor))
+    return min(floor * cap, floor + extra)
+
+
+def expected_interval(floor, spread=None):
+    """paced_interval's mean (the cap is far enough out not to move it)."""
+    spread = PACING["spread"] if spread is None else spread
+    return float(floor) * (1 + spread * math.sqrt(2 / math.pi))
+
+
+def reading_seconds(shown, rng=None):
+    """Reading time for a results page that showed `shown` people."""
+    return paced_interval(PACING["read_per_result"] * max(0, int(shown or 0)), rng)
+
+
+def scroll_plan(rng=None):
+    """One page's scroll, at random: a list of steps {"kind", "delta", "pause"}.
+
+    "down" steps of uneven size, now and then a "back" step up (or two), maybe
+    an "idle" moment, and always a last "foot": to the bottom of the list, so
+    what loads lazily is there before the page is read (settle_list).
+    """
+    r = rng or PACE_RNG
+    sc = PACING["scroll"]
+    plan = [{"kind": "down", "delta": r.randint(*sc["delta"]), "pause": r.uniform(*sc["pause"])}
+            for _ in range(r.randint(*sc["steps"]))]
+    backs = 0
+    if r.random() < sc["back_chance"]:
+        backs = 2 if r.random() < sc["two_back_chance"] else 1
+    for _ in range(backs):
+        # Never first: a scroll back up comes after some way down.
+        plan.insert(r.randint(1, len(plan)),
+                    {"kind": "back", "delta": -r.randint(*sc["back_delta"]), "pause": r.uniform(*sc["pause"])})
+    if r.random() < sc["idle_chance"]:
+        plan.insert(r.randint(1, len(plan)), {"kind": "idle", "delta": 0, "pause": r.uniform(*sc["idle_pause"])})
+    plan.append({"kind": "foot", "delta": 0, "pause": r.uniform(*sc["pause"])})
+    return plan
+
+
+def plan_seconds(plan):
+    """How long a scroll plan pauses, in all."""
+    return sum(step["pause"] for step in plan)
+
+
+def wait_scrolls(seconds, rng=None):
+    """Now and then a small scroll or two while waiting between pages: [(at_seconds, delta)]."""
+    r = rng or PACE_RNG
+    sc = PACING["scroll"]
+    if seconds < 3 or r.random() >= sc["wait_scroll_chance"]:
+        return []
+    n = 2 if r.random() < 0.3 else 1
+    return sorted((r.uniform(1, seconds - 1), r.choice((-1, 1)) * r.randint(*sc["wait_delta"]))
+                  for _ in range(n))
+
+
+def break_after_page(pages_read, rng=None):
+    """The rest owed after a page on top of the pace before the next: (seconds, kind).
+
+    "long" every long_rest_every pages, "short" with break_chance, else (0, None).
+    """
+    r = rng or PACE_RNG
+    if pages_read > 0 and pages_read % PACING["long_rest_every"] == 0:
+        return paced_interval(LONG_REST, r), "long"
+    if r.random() < PACING["break_chance"]:
+        return r.uniform(*SHORT_BREAK), "short"
+    return 0.0, None
+
+
+def rest(seconds, page=None, line=None, rng=None):
+    """Wait `seconds`, at most a second at a time, so Stop ends it within one.
+
+    `line` is said first, with when it ends ("Short break, back at 14:32."),
+    then a line a minute. With a page, sometimes a small scroll partway
+    through (wait_scrolls). False if stopped.
+    """
+    seconds = max(0.0, float(seconds or 0))
+    if line:
+        back = datetime.fromtimestamp(time.time() + seconds).strftime("%H:%M")
+        print(f"  {line}, back at {back}.", flush=True)
+    moves = wait_scrolls(seconds, rng) if page is not None else []
+    waited, said = 0.0, 0
+    while waited < seconds:
+        if stop_requested():
+            return False
+        chunk = min(1.0, seconds - waited)
+        time.sleep(chunk)
+        waited += chunk
+        while moves and moves[0][0] <= waited:
+            _wheel(page, moves.pop(0)[1])
+        if line and seconds - waited >= 30 and int(waited // 60) > said:
+            said = int(waited // 60)
+            print(f"    {max(1, round((seconds - waited) / 60))} min to go", flush=True)
+    return not stop_requested()
+
+
+def _wheel(page, delta):
+    """One real wheel turn over the middle of the page (TRAPS §6: a wheel, not only scrollTop)."""
+    try:
+        size = page.viewport_size or {}
+        w, h = size.get("width") or 1200, size.get("height") or 800
+        page.mouse.move(w * PACE_RNG.uniform(0.35, 0.65), h * PACE_RNG.uniform(0.4, 0.7))
+        page.mouse.wheel(0, delta)
+        return True
+    except Exception:
+        return False
+
+
+# The list on a page, by structure (TRAPS §5): the profile links in <main>
+# (not in nav, header, footer or aside), the list that holds the last of them
+# (role=list, ul or ol), its height, and how many people it shows. `foot`
+# scrolls the list's own scroll container to its end as well as the window
+# (TRAPS §6: on some pages <main> scrolls, not the window). Never a CSS class.
+LIST_STATE_JS = r"""
+(foot) => {
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const links = [...root.querySelectorAll('a[href*="/in/"]')].filter((a) => !a.closest('nav, header, footer, aside'));
+  const people = new Set(links.map((a) => (a.getAttribute('href') || '').split('?')[0]));
+  const last = links[links.length - 1] || null;
+  const list = last ? (last.closest('[role="list"], ul, ol') || root) : root;
+  let scroller = null;
+  for (let e = list; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+    const oy = getComputedStyle(e).overflowY;
+    if (/(auto|scroll)/.test(oy) && e.scrollHeight > e.clientHeight + 20) { scroller = e; break; }
+  }
+  if (foot) {
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  }
+  return { count: people.size, height: Math.round(list.getBoundingClientRect().height) };
+}
+"""
+# The last person's link, for the visibility wait: the same structural anchor.
+LAST_PERSON = 'main a[href*="/in/"] >> nth=-1'
+
+
+def _list_state(page, foot=False):
+    try:
+        return page.evaluate(LIST_STATE_JS, foot) or {}
+    except Exception:
+        return {}
+
+
+def settle_list(page, rng=None):
+    """Scroll through a page at random, and wait for its list to finish loading.
+
+    Rounds of: a random scroll (scroll_plan) to the foot, a visibility wait on
+    the last person in the list, then two counts a poll apart. Done once the
+    list's count and height stop growing; at most `rounds` rounds or `budget`
+    seconds, after which it's read as it is. Returns {"count", "rounds",
+    "settled", "seen"}: `seen` False when no list appeared at all (the caller
+    retries: read_with_backoff). Stop ends it.
+    """
+    try:
+        return _settle_list(page, rng)
+    except Exception:
+        return {"count": 0, "rounds": 0, "settled": False, "seen": False}
+
+
+def _settle_list(page, rng=None):
+    r = rng or PACE_RNG
+    cfg = PACING["settle_list"]
+    started = time.time()
+    prev = _list_state(page)
+    out = {"count": prev.get("count") or 0, "rounds": 0, "settled": False, "seen": bool(prev.get("count"))}
+    for _ in range(cfg["rounds"]):
+        if stop_requested():
+            break
+        out["rounds"] += 1
+        for step in scroll_plan(r):
+            if stop_requested():
+                break
+            if step["kind"] in ("down", "back"):
+                _wheel(page, step["delta"])
+            elif step["kind"] == "foot":
+                _list_state(page, foot=True)
+                _wheel(page, 600)
+            time.sleep(step["pause"])
+        try:
+            page.locator(LAST_PERSON).wait_for(state="visible", timeout=1500)
+        except Exception:
+            pass
+        first = _list_state(page)
+        time.sleep(r.uniform(*cfg["poll"]))
+        second = _list_state(page)
+        count = second.get("count") or 0
+        out["seen"] = out["seen"] or count > 0
+        grew = (count != (first.get("count") or 0) or count > out["count"]
+                or (second.get("height") or 0) > (prev.get("height") or 0) + 4)
+        out["count"], prev = max(out["count"], count), second
+        if count and not grew:
+            out["settled"] = True
+            break
+        if time.time() - started >= cfg["budget"]:
+            break
+    return out
+
+
+# Retrying a read: one way, for every page (Blake, 2026-10-05). A page that
+# didn't load, or whose list or data hasn't appeared yet, is looked at again
+# after BACKOFF seconds, doubling, with a little jitter on top. The first
+# BACKOFF_IN_PLACE retries look again where it is; the later ones reload, and a
+# reload of a search or a profile counts against the day like any other (a
+# profile's also waits out the minute between views). LinkedIn pushing back (a
+# sign-in wall, a security check, a restriction, too many requests) is never
+# retried: it ends the read as it always has. After the last retry the page is
+# "unread", said plainly, never taken for an empty one (TRAPS §7).
+BACKOFF = (2, 4, 8, 16)
+BACKOFF_IN_PLACE = 2
+BACKOFF_JITTER = 0.5
+THROTTLED = (429, 999)            # LinkedIn's "too many requests", and the status it blocks bots with
+_NAV = {"status": None}
+TOO_MANY_JS = r"""
+() => {
+  const t = (document.body && document.body.innerText || '').toLowerCase();
+  return t.length < 3000 && /too many requests|error 429/.test(t);
+}
+"""
+
+
+def backoff_wait(retry, rng=None):
+    """Seconds before retry `retry` (from 1): BACKOFF exactly, plus up to BACKOFF_JITTER."""
+    base = BACKOFF[min(max(1, retry), len(BACKOFF)) - 1]
+    return base + (rng or PACE_RNG).uniform(0, BACKOFF_JITTER)
+
+
+def _note_nav(response):
+    """Keep the HTTP status of the page just opened, for the too-many-requests check."""
+    try:
+        _NAV["status"] = response.status if response is not None else None
+    except Exception:
+        _NAV["status"] = None
+    return response
+
+
+def _throttled_or_pushback(page):
+    """Why LinkedIn is pushing back on this page (too many requests included), else None."""
+    if _NAV.get("status") in THROTTLED:
+        return f"too many requests (HTTP {_NAV['status']})"
+    why = _pushback(page)
+    if why:
+        return why
+    # LinkedIn's error page for too many requests, by its words: a short page,
+    # so someone's post that says them isn't taken for one.
+    try:
+        if page.evaluate(TOO_MANY_JS):
+            return "too many requests"
+    except Exception:
+        pass
+    return None
+
+
+def read_with_backoff(page, look, what, reload=None, rng=None, say=None):
+    """Look at a page until look(page) has an answer, retrying on the BACKOFF curve.
+
+    look(page) returns None while the page isn't ready, else its answer.
+    reload(page) is a counted reload, for the retries after BACKOFF_IN_PLACE;
+    without one every retry looks in place. Returns (status, answer, retries):
+      ("read", answer, n)    found
+      ("pushback", why, n)   LinkedIn pushed back: never retried
+      ("stopped", None, n)   Stop, or the window closed
+      ("unread", None, n)    nothing after every retry (said in the log)
+    """
+    say = say or (lambda m: print(m, flush=True))
+    retries = 0
+    while True:
+        why = _throttled_or_pushback(page)
+        if why:
+            return "pushback", why, retries
+        if stop_requested() or _window_closed(page):
+            return "stopped", None, retries
+        try:
+            answer = look(page)
+        except Exception:
+            answer = None
+        if answer is not None:
+            return "read", answer, retries
+        why = _throttled_or_pushback(page)
+        if why:
+            return "pushback", why, retries
+        if retries >= len(BACKOFF):
+            say(f"  {what} still hadn't loaded after {len(BACKOFF)} tries, so it couldn't be read. "
+                "Nothing is taken from it.")
+            return "unread", None, retries
+        retries += 1
+        wait = backoff_wait(retries, rng)
+        how = "reloading it" if reload and retries > BACKOFF_IN_PLACE else "trying again"
+        say(f"  {what} slow to load, {how} in {round(wait)} s (attempt {retries} of {len(BACKOFF)}).")
+        if not rest(wait):
+            return "stopped", None, retries
+        if reload and retries > BACKOFF_IN_PLACE:
+            try:
+                if reload(page) is False:
+                    return "stopped", None, retries
+            except Exception:
+                pass
 
 
 # Someone whose connections are hidden can never produce a 2nd-degree row. The
@@ -2258,15 +2689,26 @@ def scan_pace():
     return name if name in SCAN_PACES else DEFAULT_PACE
 
 
-def apply_pace(name=None):
+def gentle_pacing():
+    """Scanner settings' "Gentle pacing and scrolling": on unless scan-limits.json says "gentle": false."""
+    try:
+        return json.loads((_home() / "scan-limits.json").read_text()).get("gentle") is not False
+    except Exception:
+        return True
+
+
+def apply_pace(name=None, gentle=None):
     """Set this run's waits from the chosen speed. Never below Fast's."""
-    global PAGE_PAUSE, CHUNK_COOLDOWN, PROFILE_GAP
+    global PAGE_PAUSE, CHUNK_COOLDOWN, PROFILE_GAP, SHORT_BREAK, LONG_REST
     name = name if name in SCAN_PACES else scan_pace()
     pace = SCAN_PACES[name]
     fast = SCAN_PACES["fast"]
     PAGE_PAUSE = max(fast["page_pause"], pace["page_pause"])
     CHUNK_COOLDOWN = max(fast["chunk_cooldown"], pace["chunk_cooldown"])
     PROFILE_GAP = max(fast["profile_gap"], pace["profile_gap"])
+    SHORT_BREAK = [max(a, b) for a, b in zip(fast["short_break"], pace["short_break"])]
+    LONG_REST = max(fast["long_rest"], pace["long_rest"])
+    GENTLE["on"] = gentle_pacing() if gentle is None else bool(gentle)
     return name
 
 
@@ -3478,6 +3920,109 @@ def _read_results_page(page):
     return []
 
 
+def _counted_reload(kind):
+    """A reload for read_with_backoff's later retries, counted against the day like
+    any other `kind` ("searches" or "profiles"). A profile's waits out the minute
+    between views first (_wait_for_profile_view). With none left today it doesn't
+    reload, and the retry looks in place instead."""
+    def reload(page):
+        if kind == "profiles":
+            why = _wait_for_profile_view(page)
+            if why == "stopped":
+                return False
+            if why == "budget":
+                return None
+        else:
+            left, _ = searches_left()
+            if left <= 0:
+                return None
+            charge_linkedin("searches")
+        _NAV["status"] = None
+        try:
+            _note_nav(page.reload(wait_until="commit"))
+        except Exception:
+            pass
+        return True
+    return reload
+
+
+def _retry_results(page, what):
+    """The old read found no results where it expected some: try again on the BACKOFF
+    curve (read_with_backoff), unless the page is LinkedIn's own answer (no results,
+    the monthly limit) or LinkedIn pushing back, which the old checks after this
+    deal with as they always have. "read" once results show, else what the retries
+    ended on; the caller then does exactly what it did before."""
+    def answered(p):
+        try:
+            return bool(p.evaluate(NO_RESULTS_JS) or p.evaluate(SEARCH_LIMIT_JS))
+        except Exception:
+            return False
+
+    if answered(page) or _throttled_or_pushback(page):
+        return "answered"
+
+    def look(p):
+        if answered(p):
+            return False
+        try:
+            p.wait_for_selector('a[href*="/in/"]', timeout=3000)
+            return True
+        except Exception:
+            return None
+
+    got, answer, _ = read_with_backoff(page, look, what, reload=_counted_reload("searches"))
+    return "read" if got == "read" and answer is True else got
+
+
+def _read_page_gently(page):
+    """The old reader (_read_results_page), with gentle pacing's scroll before it.
+
+    First what the page shows now, as the old reader would read it; then a
+    random scroll to the foot until the list stops growing (settle_list); then
+    the old reader, exactly as before. What it returns is the old reader's
+    people plus anyone the first look saw that it didn't: the scroll can only
+    add. If the scroll fails or finds no list, it's ignored (said once a run)
+    and the old reader's answer stands. If even that is nothing, and the page
+    isn't LinkedIn saying no results, the read is tried again on the BACKOFF
+    curve; if that finds nothing either, the old reader's empty answer stands
+    and the loop goes on exactly as before.
+    """
+    try:
+        first = page.evaluate(BRIDGE_RESULTS_JS) or []
+    except Exception:
+        first = []
+    state = settle_list(page)
+    if not state.get("seen"):
+        PACE_STATE["list_missed"] = PACE_STATE.get("list_missed", 0) + 1
+        if PACE_STATE["list_missed"] == 1:
+            print("\n  New list check didn't find the list, used the standard read.", flush=True)
+    found = _read_results_page(page)
+    if not found and not stop_requested() and _retry_results(page, "The page") == "read":
+        found = _read_results_page(page)
+    have = {c.get("profileUrl") for c in found}
+    return list(found) + [c for c in first if c.get("profileUrl") not in have]
+
+
+def _gentle_after_page(page, waited, page_results):
+    """What gentle pacing adds after the old pause between pages: the pause's paced
+    extra, reading time for the people the page showed (a small scroll now and
+    then while it waits), now and then a short break, and a longer rest every
+    long_rest_every pages (not in Auto scan's sittings, which rest on their own).
+    True to go on, False if stopped. Nothing when gentle pacing is off."""
+    if not GENTLE["on"]:
+        return True
+    extra = gentle_extra(waited) + reading_seconds(len(page_results))
+    if not rest(extra, page=page):
+        return False
+    more, kind = break_after_page(PACE_STATE["pages"])
+    if kind == "long" and EXPERIMENT["on"]:
+        return True
+    if more:
+        return rest(more, line="Short break" if kind == "short"
+                    else f"{PACE_STATE['pages']} pages read: a longer rest")
+    return True
+
+
 def _find_next(page):
     """LinkedIn's Next button when there is another page, else None.
 
@@ -3714,13 +4259,19 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     else:
         print("  Opening their connections...")
     charge_linkedin("searches")
+    _NAV["status"] = None
     try:
-        page.goto(search_url, wait_until="commit")
+        _note_nav(page.goto(search_url, wait_until="commit"))
     except:
         pass
 
     # Step 5: Wait for search results — 10s initial + up to 30s retry
     # Successful runs: results appear within 10-15s
+    # Gentle pacing adds a paced extra before the 10 s (never instead of it).
+    lead_in = gentle_extra(10)
+    if lead_in and not rest(lead_in):
+        reach["more"] = True
+        return [], "stopped", reach
     time.sleep(10)
     results_loaded = False
     for attempt in range(6):
@@ -3732,6 +4283,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         except:
             print(f"  Still loading... ({10 + (attempt+1)*5}s)")
             time.sleep(5)
+    # Only when that failed, and the page isn't LinkedIn's answer (no results,
+    # the monthly limit) or LinkedIn pushing back: retries on the BACKOFF curve.
+    if GENTLE["on"] and not results_loaded and not stop_requested() and not _window_closed(page):
+        results_loaded = _retry_results(page, "Their list") == "read"
+        if results_loaded:
+            print("  Search results loaded!")
 
     try:
         at_limit = bool(page.evaluate(SEARCH_LIMIT_JS))
@@ -3804,6 +4361,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             break
         print(f"  Page {pg}... ", end="", flush=True)
         try:
+            settle = gentle_extra(3)
+            if settle and not rest(settle):
+                reach["more"] = True
+                print("stopped.")
+                break
             time.sleep(3)
             if page.evaluate(SEARCH_LIMIT_JS):
                 print("LinkedIn's monthly search limit.")
@@ -3815,7 +4377,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print()
                 _pushed_back(page, reach, why)
                 break
-            page_results = _read_results_page(page)
+            page_results = _read_page_gently(page) if GENTLE["on"] else _read_results_page(page)
         except Exception:
             if stop_requested() or _window_closed(page):   # the browser went down with the stop
                 reach["more"] = True
@@ -3846,6 +4408,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             print(f"nothing on it after {END_CHECKS} looks — that's the end of their list.")
             break
 
+        PACE_STATE["pages"] += 1
         page_results = [c for c in page_results if slug not in c.get("profileUrl", "")]
         if EXPERIMENT["on"]:
             page_results = _wire_merge(page, profile_url, page_results)
@@ -3884,11 +4447,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             break
 
         # Rest before the next search, and longer after every SAVE_EVERY_PAGES.
-        rest = PAGE_PAUSE
+        pause = PAGE_PAUSE
         if not EXPERIMENT["on"] and (pg - start_page + 1) % SAVE_EVERY_PAGES == 0:
-            rest += CHUNK_COOLDOWN
-            print(f"  {SAVE_EVERY_PAGES} pages read; resting {rest}s before the next search.")
-        if not interruptible_sleep(rest) or _window_closed(page) or (EXPERIMENT["on"] and not _drip_before_search()):
+            pause += CHUNK_COOLDOWN
+            print(f"  {SAVE_EVERY_PAGES} pages read; resting {pause}s before the next search.")
+        if not interruptible_sleep(pause) or _window_closed(page) or not _gentle_after_page(page, pause, page_results) \
+                or (EXPERIMENT["on"] and not _drip_before_search()):
             reach["more"] = True
             print(f"  Stopped before page {pg + 1}; the next run carries on from there.")
             break
@@ -4460,6 +5024,12 @@ def scrape_company(company_name, headless=False, log_fn=None):
     return all_people
 
 
+# How the last batch (auto_bridge_all, read_profiles) ended early, for the exit
+# code: an EXIT_CODES name and the plain line for stderr; None when it ran out
+# of people or was stopped.
+BATCH_END = {"kind": None, "reason": None}
+
+
 def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridges=0, tiers=None,
                     order="newest", max_pages=LINKEDIN_MAX_PAGES, deeper=False, only_unfinished=False):
     """Map everyone whose circle is not mapped yet, in the order chosen.
@@ -4628,6 +5198,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
     BREAKER = 2
     streak = 0
     stopped_early = None   # why the batch ended before its list did
+    BATCH_END.update(kind=None, reason=None)
 
     results = []
     for i, person in enumerate(unbridged):
@@ -4646,6 +5217,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         if left <= 0:
             log(budget_message(kind))
             stopped_early = "the daily limit"
+            BATCH_END.update(kind="limit", reason=budget_message(kind))
             break
 
         name = person["name"]
@@ -4711,16 +5283,19 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "unclear"})
             log("  " + budget_message(exc.kind))
             stopped_early = str(exc)
+            BATCH_END.update(kind="limit", reason=budget_message(exc.kind))
             break
         except CoolingDown as exc:
             log("  " + str(exc))
             stopped_early = "a cooldown"
+            BATCH_END.update(kind="cooldown", reason=str(exc))
             break
         except NotSignedIn:
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log("  LinkedIn isn't signed in, so nothing was read. Stopping the batch: sign in")
             log("  on the Scan page, then run it again.")
             stopped_early = "not signed in"
+            BATCH_END.update(kind="signed-out", reason="LinkedIn isn't signed in, so nothing more was read")
             break
         except LinkedInPushedBack as exc:
             results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "error"})
@@ -4729,6 +5304,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             log("  the next run carries on from the same page.")
             log("  " + _pushback_advice(exc.reason))
             stopped_early = "LinkedIn pushed back"
+            BATCH_END.update(kind="pushback", reason=f"LinkedIn pushed back: {exc.reason}. What was read is saved. "
+                             + _pushback_advice(exc.reason))
             break
         except SearchLimitReached as exc:
             results.append({"name": name, "tier": tier, "found": exc.found, "status": "done" if exc.found else "error"})
@@ -4736,12 +5313,15 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
             log("  Everything read so far is saved. Once the limit resets (the start of next month")
             log("  for a free account) the next run carries on from the same page.")
             stopped_early = "the monthly search limit"
+            BATCH_END.update(kind="search-limit", reason="LinkedIn says this account has reached its monthly search limit. "
+                             "What was read is saved.")
             break
         except SaveFailed as exc:
             results.append({"name": name, "tier": tier, "found": 0, "status": "error"})
             log(f"  The app could not save these connections: {str(exc)[:120]}")
             log("  Stopping the batch: anyone after this would cost LinkedIn views and not be saved either.")
             stopped_early = "a failed save"
+            BATCH_END.update(kind="save-failed", reason=f"The app could not save what was scanned: {str(exc)[:160]}")
             break
         except BaseException as exc:
             # One bad profile must never end the run. BaseException rather than
@@ -4766,6 +5346,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
                 log("  a failure), which is how LinkedIn limiting us looks. Stopping the batch;")
                 log("  nobody was marked hidden for it. Leave it at least a day.")
                 stopped_early = "unclear reads in a row"
+                BATCH_END.update(kind="cooldown", reason="Two people in a row with no clear answer: paused for 6 hours")
                 set_cooldown(seconds=6 * 3600, reason="two people in a row with no clear answer")
                 break
 
@@ -4775,7 +5356,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         if i < len(unbridged) - 1:
             cooldown = BRIDGE_COOLDOWN
             log(f"  Waiting {cooldown}s before the next one...")
-            if not interruptible_sleep(cooldown, on_tick=lambda left: log(f"    {left}s to go"), step=15):
+            if not interruptible_sleep(cooldown, on_tick=lambda left: log(f"    {left}s to go"), step=15) \
+                    or not rest(gentle_extra(cooldown)):
                 log("Stopped.")
                 break
 
@@ -4793,6 +5375,532 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log("Hidden profiles are remembered and will be skipped next time.")
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Read profiles (Blake, 2026-10-05: "optional full profile reads", off by
+# default). Opens your 1st-degree connections' profiles, highest power first,
+# skipping anyone whose experience is on file, and reads their current and past
+# roles (title, company, dates) for scoring (lib/experience.js, lib/scoring.js).
+# Each open is a profile view: it takes one of the day's (the one daily
+# number), keeps at least PROFILE_GAP between any two (gentle pacing adds a
+# little on top), and stops at any sign-in wall or security check like every
+# other scan. Lifting the limits for the session takes off the daily cap,
+# never the gap.
+#
+# What it reads, in order (TRAPS §5: never a CSS class):
+#   1. LinkedIn's own data: the API responses the profile page loads anyway
+#      (/voyager/api/), and the JSON it embeds in <code> blocks, walked for
+#      positions (voyager_positions).
+#   2. The page itself: the section headed "Experience" (by its heading's
+#      words, or the #experience anchor), its list items' lines of text in
+#      reading order (EXPERIENCE_JS), read into roles (roles_from_items).
+# Nothing it found is "unreadable", said in the log and sent as that, never an
+# empty list (TRAPS §7); READ_FAIL_LIMIT in a row end the round (the page has
+# probably changed, and more would only spend views). Never run against
+# LinkedIn while it was built: the fixtures in tests/ are invented.
+PROFILE_READ_BATCHES = (5, 10, 25)
+PROFILE_READ_MAX = 25
+READ_FAIL_LIMIT = 3               # profiles in a row with no experience read: the round stops
+RETRY_UNREADABLE_DAYS = 14        # lib/experience.js RETRY_UNREADABLE_DAYS
+
+EXPERIENCE_JS = r"""
+() => {
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const root = document.querySelector('main, [role="main"]') || document.body;
+  let section = null;
+  let how = null;
+  for (const h of root.querySelectorAll('h2, h3, [role="heading"]')) {
+    // The heading's own words; LinkedIn draws some twice, once for screen readers.
+    if (/^experience( experience)?$/i.test(norm(h.innerText || h.textContent))) {
+      section = h.closest('section') || h.parentElement;
+      how = 'heading';
+      break;
+    }
+  }
+  if (!section) {
+    const anchor = document.getElementById('experience');
+    if (anchor) { section = anchor.closest('section') || anchor.parentElement; how = 'anchor'; }
+  }
+  if (!section) return { found: false, how: null, items: [], showAll: null };
+  // An element's lines of text in reading order, without what belongs to a
+  // role listed inside it, and once each (a copy for screen readers sits next
+  // to the visible one).
+  const linesOf = (el) => {
+    const out = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const p = n.parentElement;
+      if (!p || p.closest('button, script, style, template')) continue;
+      const li = p.closest('li');
+      if (li && li !== el && el.contains(li)) continue;
+      const t = norm(n.textContent);
+      if (t && out[out.length - 1] !== t) out.push(t);
+    }
+    return out;
+  };
+  const items = [];
+  for (const li of section.querySelectorAll('li')) {
+    const up = li.parentElement && li.parentElement.closest('li');
+    if (up && section.contains(up)) continue;          // a role inside a company's list: its own sub
+    const subs = [...li.querySelectorAll('li')]
+      .filter((s) => s.parentElement && s.parentElement.closest('li') === li)
+      .map((s) => linesOf(s).slice(0, 10));
+    const lines = linesOf(li).slice(0, 12);
+    if (lines.length || subs.length) items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length });
+  }
+  const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
+  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null };
+}
+"""
+
+# The JSON LinkedIn embeds in the page (<code> blocks), for voyager_positions.
+EMBEDDED_DATA_JS = r"""
+() => [...document.querySelectorAll('code')]
+  .map((c) => c.textContent || '')
+  .filter((t) => t.length < 3000000 && /^\s*[{\[]/.test(t))
+  .slice(0, 80)
+"""
+
+_MONTH = {m: i for i, m in enumerate(
+    ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), start=1)}
+_DATE_PART = r"(?:(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s+)?(\d{4})"
+DATE_RANGE = re.compile(rf"^{_DATE_PART}\s*(?:[-–—]|to)\s*(?:(present|now|current)|{_DATE_PART})(?:\s*·.*)?$", re.I)
+DURATION_ONLY = re.compile(r"^(?:(?:full-time|part-time|self-employed|freelance|contract|internship)\s*·\s*)?"
+                           r"(?:less than a year|(?:\d+\s+(?:yrs?|years?|mos?|months?)\s*)+)$", re.I)
+EMPLOYMENT = re.compile(r"^(full-time|part-time|self-employed|freelance|contract|contractor|internship|"
+                        r"apprenticeship|seasonal|temporary|permanent)$", re.I)
+
+
+def _ym(month, year):
+    if not year:
+        return None
+    m = _MONTH.get((month or "")[:3].lower())
+    return f"{int(year):04d}-{m:02d}" if m else f"{int(year):04d}"
+
+
+def parse_date_range(line):
+    """ "Jan 2020 - Present · 4 yrs" -> ("2020-01", None, True); None if it isn't a date range."""
+    m = DATE_RANGE.match((line or "").strip())
+    if not m:
+        return None
+    start = _ym(m.group(1), m.group(2))
+    if m.group(3):
+        return start, None, True
+    return start, _ym(m.group(4), m.group(5)), False
+
+
+def _company_in(line):
+    """ "Initrode · Full-time" -> "Initrode"; an employment type alone, a date or a duration -> None."""
+    first = (line or "").split(" · ")[0].strip()
+    if not first or EMPLOYMENT.match(first) or DURATION_ONLY.match(line.strip()) or parse_date_range(line):
+        return None
+    return first[:120]
+
+
+def role_from_lines(lines, company=None):
+    """One role from an item's lines: title first, then its company, then its dates. None if no dates."""
+    lines = [str(x).strip() for x in (lines or []) if str(x).strip()]
+    at = next((i for i, x in enumerate(lines) if parse_date_range(x)), None)
+    if not at:                              # no date line, or the title would be the date
+        return None
+    start, end, current = parse_date_range(lines[at])
+    found = None
+    for x in lines[1:at]:
+        found = _company_in(x)
+        if found:
+            break
+    return {"title": lines[0][:120], "company": company or found, "start": start, "end": end, "current": current}
+
+
+def roles_from_items(items):
+    """The roles in the Experience section's items (EXPERIENCE_JS).
+
+    An item is one role (title, "Company · Full-time", dates, place) or a
+    company with roles listed inside it (company, "Full-time · 6 yrs", then a
+    sub per role: title, dates). Anything with no dates isn't taken for a role.
+    """
+    roles = []
+    for it in items or []:
+        lines = [str(x).strip() for x in (it.get("lines") or []) if str(x).strip()]
+        subs = [role_from_lines(s) for s in (it.get("subs") or [])]
+        subs = [r for r in subs if r]
+        if subs:
+            company = lines[0][:120] if lines and not parse_date_range(lines[0]) else None
+            for r in subs:
+                # In a company's list the line under a title is how they worked, not where.
+                r["company"] = company or r["company"]
+                roles.append(r)
+            continue
+        r = role_from_lines(lines)
+        if r:
+            roles.append(r)
+    return _unique_roles(roles)
+
+
+def _unique_roles(roles):
+    seen, out = set(), []
+    for r in roles:
+        key = (r["title"].lower(), (r.get("company") or "").lower(), r.get("start"))
+        if key not in seen:
+            seen.add(key)
+            out.append(r)
+    return out
+
+
+def _words(v):
+    """LinkedIn's text, however deep it's wrapped ({"text": …}, {"text": {"text": …}})."""
+    for _ in range(4):
+        if isinstance(v, dict):
+            v = v.get("text")
+        else:
+            break
+    return v.strip() if isinstance(v, str) else ""
+
+
+def voyager_positions(payload):
+    """The positions in LinkedIn's own data, wherever they sit in it.
+
+    Two shapes: a position entity (a "title" and a "companyName" or a company,
+    with a dateRange or timePeriod of {year, month}), and a profile component
+    in the Experience section (titleV2, subtitle "Company · Full-time", caption
+    "Jan 2020 - Present · 4 yrs"; a company's group carries the company as its
+    title, the roles inside it). Education and the rest are left out.
+    """
+    roles = []
+
+    def date_of(d):
+        if not isinstance(d, dict):
+            return None
+        y, m = d.get("year"), d.get("month")
+        if not isinstance(y, int):
+            return None
+        return f"{y:04d}-{m:02d}" if isinstance(m, int) and 1 <= m <= 12 else f"{y:04d}"
+
+    def marks_experience(x):
+        for k, v in x.items():
+            if isinstance(v, str) and ("EXPERIENCE" in v or (k in ("title", "header") and v.strip().lower() == "experience")):
+                return True
+            if k in ("title", "header", "titleV2") and _words(v).lower() == "experience":
+                return True
+        return False
+
+    def marks_other(x):
+        for v in x.values():
+            if isinstance(v, str) and any(s in v for s in ("EDUCATION", "CERTIFICATION", "VOLUNTEER", "SKILLS", "PROJECTS")):
+                return True
+        return False
+
+    def walk(x, exp, group):
+        if isinstance(x, list):
+            for v in x:
+                walk(v, exp, group)
+            return
+        if not isinstance(x, dict):
+            return
+        kind = str(x.get("$type") or x.get("_type") or x.get("entityType") or "")
+        if isinstance(x.get("title"), str) and "Education" not in kind and ("Position" in kind or "companyName" in x):
+            company = x.get("companyName")
+            if not isinstance(company, str):
+                c = x.get("company")
+                company = c.get("name") if isinstance(c, dict) and isinstance(c.get("name"), str) else None
+            period = x.get("dateRange") or x.get("timePeriod") or {}
+            start = date_of(period.get("start") or period.get("startDate"))
+            ends = period.get("end") or period.get("endDate")
+            if x["title"].strip() and (company or start):
+                roles.append({"title": x["title"].strip()[:120], "company": (company or "").strip()[:120] or None,
+                              "start": start, "end": date_of(ends), "current": not ends})
+        exp = (exp or marks_experience(x)) and not marks_other(x)
+        title = _words(x.get("titleV2") or x.get("title")) if ("titleV2" in x or "caption" in x) else ""
+        if exp and title:
+            caption, subtitle = _words(x.get("caption")), _words(x.get("subtitle"))
+            dates = parse_date_range(caption) or parse_date_range(subtitle)
+            if dates:
+                company = _company_in(subtitle) if not parse_date_range(subtitle) else None
+                roles.append({"title": title[:120], "company": group or company, "start": dates[0],
+                              "end": dates[1], "current": dates[2]})
+            elif DURATION_ONLY.match(subtitle or caption or "x") and (subtitle or caption):
+                group = title[:120]          # a company, with its roles inside it
+        for v in x.values():
+            if isinstance(v, (dict, list)):
+                walk(v, exp, group)
+
+    walk(payload, False, None)
+    return _unique_roles(roles)
+
+
+def profile_read_targets(rows, now=None, batch=PROFILE_READ_MAX):
+    """Who Read profiles opens, in order (lib/experience.js readProfileQueue, the same order):
+    your connections with a profile and no experience on file, highest power first, then
+    those that couldn't be read more than RETRY_UNREADABLE_DAYS ago. Never one already read."""
+    now = now if now is not None else time.time()
+    fresh, retry = [], []
+    for r in rows or []:
+        if str(r.get("degree")) != "1" or not r.get("profile_url"):
+            continue
+        e = r.get("experience")
+        try:
+            e = json.loads(e) if isinstance(e, str) else e
+        except Exception:
+            e = None
+        if not isinstance(e, dict) or e.get("status") not in ("read", "unreadable"):
+            fresh.append(r)
+            continue
+        if e["status"] == "unreadable":
+            try:
+                at = datetime.fromisoformat(str(e.get("at")).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                at = 0
+            if now - at > RETRY_UNREADABLE_DAYS * DAY_SECONDS:
+                retry.append(r)
+    power = lambda r: -(float(r.get("power_score") or 0))
+    return (sorted(fresh, key=power) + sorted(retry, key=power))[:max(0, batch)]
+
+
+def push_experience(person, result):
+    """One person's experience to the app (/api/ingest, type "experience"). SaveFailed on a refusal."""
+    payload = {"type": "experience", "userId": _active_user_id,
+               "people": [{"profileUrl": person["profile_url"], **result,
+                           "at": datetime.now().astimezone().isoformat(timespec="seconds")}]}
+    resp = requests.post(f"{APP_URL}/api/ingest", headers=app_headers(), json=payload, timeout=60)
+    if resp.status_code != 200:
+        print(f"  Push error: {resp.status_code} {resp.text[:200]}")
+        raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
+    return resp.json()
+
+
+def _profile_data(page, responses):
+    """Positions in LinkedIn's own data for the profile now open: its API responses and embedded JSON."""
+    roles = []
+    for response in responses:
+        try:
+            roles.extend(voyager_positions(response.json()))
+        except Exception:
+            continue
+    try:
+        blocks = page.evaluate(EMBEDDED_DATA_JS) or []
+    except Exception:
+        blocks = []
+    for raw in blocks:
+        try:
+            roles.extend(voyager_positions(json.loads(raw)))
+        except Exception:
+            continue
+    return _unique_roles(roles)
+
+
+def read_experience(page, responses, rng=None):
+    """What their open profile says about their roles: (result, note).
+
+    result is what push_experience sends: {"status": "read", "roles", "source",
+    "shown"} or {"status": "unreadable", "why"}. Looked at on the BACKOFF curve
+    in place (the Experience section loads as the page scrolls), never by
+    reopening the profile. note is the log line.
+    """
+    seen = {"page": None, "data": []}
+
+    def look(p):
+        _scroll_profile(p, rng)
+        try:
+            seen["page"] = p.evaluate(EXPERIENCE_JS) or {}
+        except Exception:
+            seen["page"] = {}
+        seen["data"] = _profile_data(p, responses)
+        if seen["data"] or roles_from_items(seen["page"].get("items")):
+            return True
+        return None
+
+    got, answer, _ = read_with_backoff(page, look, "Their experience")
+    if got in ("pushback", "stopped"):
+        return {"status": got, "why": answer}, None
+    dom = seen["page"] or {}
+    page_roles = roles_from_items(dom.get("items"))
+    data_roles = seen["data"]
+    where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(page_roles)}"
+             if dom.get("found") else "the page had no Experience section")
+    count = f"LinkedIn's own data had {len(data_roles)}; {where}"
+    if dom.get("showAll"):
+        count += f" (LinkedIn says {dom['showAll']} in all; only the profile's first ones are read)"
+    roles = data_roles or page_roles
+    if not roles:
+        why = ("no Experience section on their profile" if not dom.get("found")
+               else "an Experience section with no role in it that could be read")
+        return {"status": "unreadable", "why": why}, f"  Couldn't read their experience: {count}. Marked \"couldn't read\", not empty."
+    current = sum(1 for r in roles if r.get("current"))
+    source = "data" if data_roles else "page"
+    return ({"status": "read", "roles": roles, "source": source, "shown": dom.get("showAll") or len(page_roles)},
+            f"  Experience: {len(roles)} roles ({current} current), from "
+            f"{'LinkedIn' + chr(39) + 's own data' if source == 'data' else 'the page'}. {count[0].upper() + count[1:]}.")
+
+
+def _scroll_profile(page, rng=None):
+    """A random scroll down a profile (scroll_plan), until the page stops growing: its sections load as it scrolls."""
+    r = rng or PACE_RNG
+    last = None
+    for _ in range(3):
+        for step in scroll_plan(r):
+            if stop_requested():
+                return
+            if step["kind"] in ("down", "back"):
+                _wheel(page, step["delta"])
+            elif step["kind"] == "foot":
+                try:
+                    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+                except Exception:
+                    pass
+            time.sleep(step["pause"])
+        try:
+            height = page.evaluate("document.documentElement.scrollHeight")
+        except Exception:
+            return
+        if height == last:
+            return
+        last = height
+
+
+def read_profiles(batch=10, headless=False):
+    """Read profiles: open up to `batch` of your connections' profiles and save their experience.
+
+    Returns {"read", "unreadable", "unclear"} counts. Raises CoolingDown and
+    BudgetReached before a browser opens; NotSignedIn; and, after saving
+    what was read, LinkedInPushedBack, BudgetReached or PageUnreadable when
+    one of those ended the round.
+    """
+    from playwright.sync_api import sync_playwright
+
+    batch = max(1, min(PROFILE_READ_MAX, int(batch or 10)))
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    if profiles_left() <= 0:
+        raise BudgetReached(0, "profiles")
+    params = {"degree": "eq.1", "order": "power_score.desc", "limit": "20000"}
+    if _active_user_id:
+        params["user_id"] = f"eq.{_active_user_id}"
+    targets = profile_read_targets(read_connections(params=params), batch=batch)
+    counts = {"read": 0, "unreadable": 0, "unclear": 0}
+    if not targets:
+        print("Nobody to read: every connection with a profile has their experience on file "
+              f"(one that couldn't be read is tried again after {RETRY_UNREADABLE_DAYS} days).")
+        return counts
+    print(f"Reading {len(targets)} profiles, highest power first: each is a profile view, at least "
+          f"{PROFILE_GAP}s apart.", flush=True)
+
+    ended = None            # ("pushback", why) | ("budget", kind) | ("unread", n)
+    in_a_row = {"unread": 0, "unclear": 0}
+    with sync_playwright() as p:
+        browser = launch_chrome(p, headless=headless)
+        try:
+            page = browser.pages[0] if browser.pages else browser.new_page()
+            page.set_default_timeout(120000)
+            page.set_default_navigation_timeout(120000)
+            if not ensure_logged_in(page, stop_on_checkpoint=True):
+                raise NotSignedIn()
+            responses = []
+
+            def keep(response):
+                if "/voyager/api/" in response.url and len(responses) < 60:
+                    responses.append(response)
+            page.on("response", keep)
+
+            for i, person in enumerate(targets):
+                if stop_requested() or _window_closed(page):
+                    break
+                name = person.get("name") or "them"
+                print(f"[{i + 1}/{len(targets)}] {name} ({person.get('tier') or '?'}-tier)", flush=True)
+                if i and not rest(gentle_extra(PROFILE_GAP)):
+                    break
+                why = _wait_for_profile_view(page)
+                if why == "budget":
+                    ended = ("budget", "profiles")
+                    break
+                if why:
+                    break
+                responses.clear()
+                _NAV["status"] = None
+                print(f"  Opening {name}'s profile...", flush=True)
+                try:
+                    _note_nav(page.goto(person["profile_url"], wait_until="commit"))
+                except Exception as e:
+                    print(f"  Navigation slow: {str(e)[:50]}... continuing anyway")
+                if not rest(PACING["settle"] + gentle_extra(PACING["settle"])):
+                    break
+
+                def shown(pg, who=name):
+                    try:
+                        if pg.evaluate(PROFILE_SHOWN_JS, who):
+                            return True
+                    except Exception:
+                        pass
+                    return False if _profile_unavailable(pg) else None
+
+                got, answer, _ = read_with_backoff(page, shown, "Their profile",
+                                                   reload=_counted_reload("profiles"))
+                if got == "pushback":
+                    ended = ("pushback", answer)
+                    break
+                if got == "stopped":
+                    break
+                if got == "unread":
+                    # It never rendered: nothing about them is known, so nothing is recorded.
+                    counts["unclear"] += 1
+                    in_a_row["unclear"] += 1
+                    print("  Their profile didn't load properly, so nothing is noted for them.")
+                    if in_a_row["unclear"] >= 2:
+                        ended = ("unclear", in_a_row["unclear"])
+                        break
+                    continue
+                in_a_row["unclear"] = 0
+                if answer is False:
+                    result, note = {"status": "unreadable", "why": "LinkedIn says this profile isn't available"}, \
+                        "  LinkedIn says this profile isn't available. Marked \"couldn't read\"."
+                else:
+                    if not rest(paced_interval(PACING["profile_read"])):
+                        break
+                    result, note = read_experience(page, responses)
+                    if result["status"] == "pushback":
+                        ended = ("pushback", result.get("why"))
+                        break
+                    if result["status"] == "stopped":
+                        break
+                print(note, flush=True)
+                push_experience(person, result)
+                if result["status"] == "read":
+                    counts["read"] += 1
+                    in_a_row["unread"] = 0
+                else:
+                    counts["unreadable"] += 1
+                    in_a_row["unread"] = in_a_row["unread"] + 1 if answer is not False else 0
+                    if in_a_row["unread"] >= READ_FAIL_LIMIT:
+                        ended = ("unread", in_a_row["unread"])
+                        break
+            if ended and ended[0] == "pushback":
+                _keep_pushback_evidence(page, ended[1])
+        finally:
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+    print(f"Read profiles: {counts['read']} read, {counts['unreadable']} couldn't be read"
+          + (f", {counts['unclear']} didn't load" if counts["unclear"] else "") + ".", flush=True)
+    if stop_requested():
+        return counts
+    if ended and ended[0] == "pushback":
+        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {ended[1]}")
+        raise LinkedInPushedBack(counts["read"], ended[1])
+    if ended and ended[0] == "unclear":
+        set_cooldown(seconds=6 * 3600, reason="two profiles in a row that didn't load")
+        print("  Two profiles in a row didn't load, which is how LinkedIn limiting us looks. "
+              "Paused for 6 hours; nobody was marked.")
+        raise CoolingDown(read_cooldown() or {"until": time.time() + 6 * 3600, "reason": "two profiles in a row that didn't load"})
+    if ended and ended[0] == "unread":
+        print(f"  {ended[1]} profiles in a row with no experience that could be read: LinkedIn's page has "
+              "probably changed. Stopping so no more profile views are spent.")
+        raise PageUnreadable(f"{ended[1]} profiles in a row", counts["read"])
+    if ended and ended[0] == "budget":
+        raise BudgetReached(counts["read"], "profiles")
+    return counts
 
 
 def rescrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES):
@@ -5613,6 +6721,10 @@ Examples:
                              "The app's Scan buttons use it, since two connections can share a name")
     parser.add_argument("--only-unfinished", action="store_true",
                         help="With --auto-bridge: only people whose read was cut short (Resume all)")
+    parser.add_argument("--read-profiles", type=int, default=0, metavar="N",
+                        help=f"Read profiles: open up to N (at most {PROFILE_READ_MAX}) of your connections' profiles, "
+                             "highest power first, and save their current and past roles. Each is a profile view, "
+                             f"at least the pace's gap apart (Fast: {SCAN_PACES['fast']['profile_gap']}s)")
     parser.add_argument("--connect", type=str,
                         help="Auto: send one connection request, without a note, to the person at this LinkedIn "
                              f"profile URL. Never with a note; at most {INVITE_DAY_CAP} in any 24 hours and "
@@ -5640,12 +6752,16 @@ Examples:
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
     # The Scan page's speed. Signing in searches nothing, so it isn't said there.
     _pace = apply_pace()
-    if args.connect:
-        # Auto reads no pages: only the gap before opening their profile applies.
+    if args.connect or args.read_profiles:
+        # Auto and Read profiles read no results pages: only the gap between profiles applies.
         print(f"Speed: {_pace.capitalize()}. Profiles at least {PROFILE_GAP}s apart.")
     elif not args.login:
         print(f"Speed: {_pace.capitalize()}. {PAGE_PAUSE}s before each page of results, {CHUNK_COOLDOWN}s more after "
               f"every {SAVE_EVERY_PAGES}, and profiles at least {PROFILE_GAP}s apart.")
+        if GENTLE["on"]:
+            print(f"Gentle pacing: a little longer at random after each wait, reading time and a scroll "
+                  f"through each page, now and then a short break, and a {round(LONG_REST / 60)}-minute rest "
+                  f"every {PACING['long_rest_every']} pages.")
 
     # A failed save ends the run with its reason, not a traceback (TRAPS §32).
     def _say_why(exc_type, exc, tb):
@@ -5662,12 +6778,27 @@ Examples:
         elif issubclass(exc_type, LinkedInPushedBack):
             print(f"\n  LinkedIn pushed back: {getattr(exc, 'reason', exc)}. What was read is saved. "
                   f"{_pushback_advice(getattr(exc, 'reason', ''))}\n", file=sys.stderr)
+        elif issubclass(exc_type, PageUnreadable):
+            print(f"\n  {exc}, so nothing was taken from it (it isn't counted as empty). What was read is "
+                  "saved. LinkedIn's page may have changed: say which page in the log when you report it.\n",
+                  file=sys.stderr)
         elif issubclass(exc_type, SearchLimitReached):
             print("\n  LinkedIn says this account has reached its monthly search limit. What was read "
                   "is saved; run again with --deeper once it resets.\n", file=sys.stderr)
         else:
             sys.__excepthook__(exc_type, exc, tb)
     sys.excepthook = _say_why
+
+    def _end_batch():
+        """A batch that ended early exits with why (BATCH_END): the plain line on stderr
+        for anything the app shows as a failure, and the code either way."""
+        kind = BATCH_END.get("kind")
+        if not kind or stop_requested():
+            return
+        sys.stdout.flush()
+        if kind not in ("limit", "cooldown"):
+            print(f"\n  {BATCH_END.get('reason') or kind}\n", file=sys.stderr, flush=True)
+        raise SystemExit(EXIT_CODES[kind])
 
     install_stop_handler()
     _assert_local_target()
@@ -5683,7 +6814,12 @@ Examples:
         raise SystemExit(0 if open_login_window() else 1)
 
     if args.save_photos:
-        save_waiting_photos(say_none=True)
+        try:
+            save_waiting_photos(say_none=True)
+        except (SaveFailed, TryLater) as exc:
+            sys.stdout.flush()
+            _say_why(type(exc), exc, exc.__traceback__)
+            raise SystemExit(EXIT_CODES[exit_kind(exc)])
         raise SystemExit(0)
 
     if not args.server:
@@ -5703,13 +6839,17 @@ Examples:
             print(f"Connect result: {result}", flush=True)
             if result == "pushback":
                 print(f"\n  LinkedIn pushed back, so nothing more is sent. {_pushback_advice('')}\n", file=sys.stderr)
-                raise SystemExit(1)
+                raise SystemExit(EXIT_CODES["pushback"])
             if result == "not-signed-in":
                 print("\n  LinkedIn isn't signed in, so nothing was sent. Sign in with --login (or the Scan page), "
                       "then try again.\n", file=sys.stderr)
-                raise SystemExit(1)
+                raise SystemExit(EXIT_CODES["signed-out"])
             raise SystemExit(0)
-        if args.company:
+        if args.read_profiles:
+            # Read profiles (the Scan page's Scanner settings, off by default): its
+            # own action, one round of N, never added to another scan's views.
+            read_profiles(batch=args.read_profiles, headless=args.headless)
+        elif args.company:
             # The server mode scraped and pushed as one step; the CLI has to do the
             # same or the scan appears to work and saves nothing.
             people = scrape_company(args.company, headless=args.headless)
@@ -5767,6 +6907,13 @@ Examples:
                 save_waiting_photos()
             except (SaveFailed, TryLater) as e:
                 print(f"  The photos kept as links weren't saved this time: {e}")
+        # A batch that ended early says why in its exit code (BATCH_END).
+        _end_batch()
     except (BudgetReached, CoolingDown) as exc:
-        print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)))
-        raise SystemExit(0)
+        print("\n  " + (budget_message(exc.kind) if isinstance(exc, BudgetReached) else str(exc)), flush=True)
+        raise SystemExit(EXIT_CODES[exit_kind(exc)])
+    except (LinkedInPushedBack, NotSignedIn, SaveFailed, PageUnreadable, SearchLimitReached, TryLater) as exc:
+        # The plain line as before, then the code that says which (EXIT_CODES).
+        sys.stdout.flush()
+        _say_why(type(exc), exc, exc.__traceback__)
+        raise SystemExit(EXIT_CODES[exit_kind(exc)])

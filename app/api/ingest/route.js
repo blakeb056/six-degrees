@@ -4,6 +4,7 @@ import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
+import { cleanExperience } from '../../../lib/experience';
 
 function parseHeadline(h) {
   if (!h) return { role: '', company: '' };
@@ -11,9 +12,43 @@ function parseHeadline(h) {
   return m ? { role: m[1].trim(), company: m[2].trim() } : { role: h.split('|')[0].trim(), company: '' };
 }
 
+/**
+ * Read profiles' answer (scripts/scrape.py push_experience): for each person,
+ * the roles read from their profile, or that it couldn't be read. Kept on
+ * their 1st-degree row (lib/experience.js cleanExperience: never an empty list
+ * stored as "no experience", TRAPS §7), then everyone is rescored, since a
+ * role read can change a score and a company's headcount.
+ */
+async function saveExperience({ people, userId }) {
+  if (!Array.isArray(people) || people.length === 0 || people.length > 50) {
+    return Response.json({ error: 'Send 1 to 50 people.' }, { status: 400 });
+  }
+  let saved = 0;
+  let unreadable = 0;
+  let notFound = 0;
+  for (const p of people) {
+    const url = typeof p?.profileUrl === 'string' ? p.profileUrl.trim() : '';
+    if (!url) { notFound += 1; continue; }
+    const stored = cleanExperience(p);
+    let q = supabase.from('linkedin_connections').select('id').eq('profile_url', url).eq('degree', 1);
+    if (userId) q = q.eq('user_id', userId);
+    const { data: rows } = await q;
+    if (!rows?.length) { notFound += 1; continue; }
+    let u = supabase.from('linkedin_connections').update({ experience: JSON.stringify(stored) }).eq('profile_url', url).eq('degree', 1);
+    if (userId) u = u.eq('user_id', userId);
+    const { error } = await u;
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (stored.status === 'read') saved += 1;
+    else unreadable += 1;
+  }
+  try { await supabase.rpc('score_new_connections'); } catch { /* scoring is best-effort, as for every ingest */ }
+  return Response.json({ ok: true, saved, unreadable, notFound });
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
+    if (body?.type === 'experience') return await saveExperience(body);
     const { connections, type, bridgeId, userId, companyName } = body;
 
     if (!connections || !Array.isArray(connections)) {

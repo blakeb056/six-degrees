@@ -77,20 +77,20 @@ test('a damaged record reads as the day used up, never as nothing searched', () 
 
 test('one limit: searches a day, 50 by default, any whole number from 1 to 1000', () => {
   const dir = scratch();
-  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, pace: 'fast' });
+  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, pace: 'fast', gentle: true, profileReads: false });
   assert.deepEqual(DAILY_RANGE, { min: 1, max: 1000 });
   assert.deepEqual(readLimits(dir), DEFAULT_LIMITS);
   writeLimits(dir, { daily: 137 });
-  assert.deepEqual(readLimits(dir), { daily: 137, pace: 'fast' }, 'not just the old menu’s numbers');
+  assert.deepEqual(readLimits(dir), { daily: 137, pace: 'fast', gentle: true, profileReads: false }, 'not just the old menu’s numbers');
   for (const daily of [0, -5, 1001, 12.5, '80', null, undefined, true]) {
     writeLimits(dir, { daily });
     assert.equal(readLimits(dir).daily, 137, `${daily} keeps what is saved`);
   }
   writeLimits(dir, { daily: 1 });
   writeLimits(dir, { pace: 'slow' });
-  assert.deepEqual(readLimits(dir), { daily: 1, pace: 'slow' }, 'saving the speed keeps the number');
+  assert.deepEqual(readLimits(dir), { daily: 1, pace: 'slow', gentle: true, profileReads: false }, 'saving the speed keeps the number');
   writeLimits(dir, { daily: 1000 });
-  assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 1000, pace: 'slow' }, 'only these two are written');
+  assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 1000, pace: 'slow', gentle: true, profileReads: false }, 'only these four are written');
   assert.ok(validDaily(1) && validDaily(1000) && !validDaily(0) && !validDaily(1001));
   rmSync(dir, { recursive: true, force: true });
 });
@@ -98,15 +98,15 @@ test('one limit: searches a day, 50 by default, any whole number from 1 to 1000'
 test('a saved file from before keeps its daily number; the monthly and profile-view caps are dropped silently', () => {
   const dir = scratch();
   write(dir, 'scan-limits.json', { daily: 200, monthly: 250, profiles: 10, pace: 'medium' });
-  assert.deepEqual(readLimits(dir), { daily: 200, pace: 'medium' });
+  assert.deepEqual(readLimits(dir), { daily: 200, pace: 'medium', gentle: true, profileReads: false });
   const st = linkedinState(dir);
   assert.equal(st.leftMonth, undefined, 'no monthly budget');
   assert.equal(st.profilesLeftToday, 200, 'profile views count against the daily number, not the old 10');
   writeLimits(dir, { daily: 150 });
-  assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 150, pace: 'medium' }, 'the first save drops the rest');
+  assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 150, pace: 'medium', gentle: true, profileReads: false }, 'the first save drops the rest');
   // The old "0, no daily limit" is not a number the app saves: the default.
   write(dir, 'scan-limits.json', { daily: 0, monthly: 0, profiles: 0 });
-  assert.deepEqual(readLimits(dir), { daily: 50, pace: 'fast' });
+  assert.deepEqual(readLimits(dir), { daily: 50, pace: 'fast', gentle: true, profileReads: false });
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -147,7 +147,7 @@ test('lifting for this session: no daily limit and no cooldown, until it is put 
   assert.equal(st.cooldown, null, 'the cooldown is off');
   assert.match(st.heldCooldown.reason, /security check/, 'and comes back with the limits');
   assert.equal(st.searchesToday, 8, 'still counted');
-  assert.deepEqual(readLimits(dir), { daily: 5, pace: 'fast' }, 'the saved number is untouched');
+  assert.deepEqual(readLimits(dir), { daily: 5, pace: 'fast', gentle: true, profileReads: false }, 'the saved number is untouched');
   assert.ok(readCooldown(dir, now), 'and so is the pause on file: nothing is written');
 
   putLimitsBack();
@@ -293,7 +293,7 @@ test('REGRESSION: importing onto a computer that has scanned keeps its searches,
   assert.equal(state.profilesToday, 1);
   assert.equal(state.cooldown.until, (sec + 86400) * 1000, 'the pause that ends later');
   assert.equal(state.cooldown.reason, 'A security check');
-  assert.deepEqual(state.limits, { daily: 25, pace: 'fast' }, 'the limit chosen here stays');
+  assert.deepEqual(state.limits, { daily: 25, pace: 'fast', gentle: true, profileReads: false }, 'the limit chosen here stays');
 
   // A pause here that ends later than the copy's stays as it is.
   write(from, 'linkedin-cooldown.json', { until: sec + 60, reason: 'shorter', set_at: sec });

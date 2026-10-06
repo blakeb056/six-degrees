@@ -105,12 +105,23 @@ test("Outlink's new doors follow the same rule, hidden lists left out", () => {
   assert.deepEqual(buildQuest({ added, reach }).newDoors.map((p) => p.id), ['marcus']);
 });
 
-test('what one circle scan costs: a profile view, a search a page, about 0.55 min a page', () => {
-  assert.deepEqual(circleScanCost(), { profileViews: 1, searches: 100, minutes: 55 });
-  assert.deepEqual(circleScanCost(10), { profileViews: 1, searches: 10, minutes: 6 });
-  assert.equal(circleScanCost(25).minutes, 14);
+test('what one circle scan costs: a profile view, a search a page, about 0.55 min a page without gentle pacing', () => {
+  assert.deepEqual(circleScanCost(100, 'fast', false), { profileViews: 1, searches: 100, minutes: 55 });
+  assert.deepEqual(circleScanCost(10, 'fast', false), { profileViews: 1, searches: 10, minutes: 6 });
+  assert.equal(circleScanCost(25, 'fast', false).minutes, 14);
   assert.equal(circleScanCost(5).minutes, 5, 'never less than five minutes');
   assert.equal(circleScanCost(500).searches, 100, 'LinkedIn shows 100 pages at most');
+});
+
+test('with gentle pacing (the default) a circle takes longer, worked out from the scanner\'s own numbers', () => {
+  // About 0.76 min a page at Fast: the old rests, plus what gentle pacing adds (lib/scan-pace.js).
+  assert.deepEqual(circleScanCost(), { profileViews: 1, searches: 100, minutes: 76 });
+  assert.equal(circleScanCost(10).minutes, 7);
+  assert.equal(circleScanCost(25).minutes, 18);
+  for (const pages of [10, 25, 50, 100]) {
+    assert.ok(circleScanCost(pages).minutes >= circleScanCost(pages, 'fast', false).minutes, 'never quicker than without');
+    assert.ok(circleScanCost(pages, 'slow').minutes > circleScanCost(pages, 'medium').minutes);
+  }
 });
 
 test('scan bars: 5 for a list read to the end, pages against LinkedIn\'s count part-way, 2 with no count, none unscanned or hidden', async () => {

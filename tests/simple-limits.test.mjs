@@ -119,7 +119,7 @@ test('the single daily limit refuses a circle scan before anything starts, and t
 
   // One number: raise it, and the same press starts.
   assert.equal((await post({ action: 'set-limits', daily: 60 })).status, 200);
-  assert.deepEqual(JSON.parse(readFileSync(path.join(HOME, 'scan-limits.json'), 'utf8')), { daily: 60, pace: 'fast' });
+  assert.deepEqual(JSON.parse(readFileSync(path.join(HOME, 'scan-limits.json'), 'utf8')), { daily: 60, pace: 'fast', gentle: true, profileReads: false });
   assert.equal((await post({ action: 'bridge', id: 'p-oriel' })).status, 200);
   await until(idle, 'the scan to end');
   assert.deepEqual(runs(), ['--bridge-url=https://www.linkedin.com/in/oriel-vantasse lifted=0']);
@@ -132,7 +132,7 @@ test('a number the app won\'t take keeps the saved one; there is no monthly or p
     assert.equal(d.limits.daily, 50, String(daily));
   }
   const d = await (await post({ action: 'set-limits', daily: 75, monthly: 0, profiles: 10 })).json();
-  assert.deepEqual(d.limits, { daily: 75, pace: 'fast' });
+  assert.deepEqual(d.limits, { daily: 75, pace: 'fast', gentle: true, profileReads: false });
 });
 
 test('lifting bypasses the daily limit and the cooldown, for this session only, and writes nothing', async () => {

@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   mutual_count            INTEGER,            -- LinkedIn's count of mutual connections (2nd degree), when a scan read one
   scanned_company         TEXT,
   score_why               TEXT,
+  experience              TEXT,               -- JSON: roles read from their profile by Read profiles (lib/experience.js)
   user_id                 TEXT,
   image_refreshed_at      TEXT,
   created_at              TEXT DEFAULT (datetime('now')),
