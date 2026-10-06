@@ -243,6 +243,15 @@
         <p class="fine"><a href="/download/#install">The install guide, with a one-line Terminal way</a></p>
       </section>
 
+      <!-- The film: Sixgree in fifteen seconds, playing by itself (silent, looping, at twice
+           its real speed), its edges fading into the page. app.js plays it while it's on
+           screen and leaves it still for reduced motion: then the poster shows. -->
+      <figure class="video hero-film">
+        <video muted loop playsinline preload="auto" poster="/video/hero-poster.jpg?v=1.1.0" width="1600" height="900" aria-label="Video: Sixgree mapping a network, building a circle and finding the way in, on an invented network">
+          <source src="/video/hero.mp4?v=1.1.0" type="video/mp4">
+        </video>
+      </figure>
+
       <!-- 1, 2, 3: the whole idea in three steps, drawn. -->
       <div class="demo" id="how" data-step="3">
         <div class="demo-tabs" role="tablist" aria-label="How it works, in three steps">
@@ -315,9 +324,11 @@
             <a class="more" href="/blog/who-can-introduce-you/">How Separation works <span aria-hidden="true">→</span></a>
           </article>
         </div>
-        <figure class="frame">
-          <div class="win"><div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Network Circle</span></div><picture><img src="/img/home/galaxy-light-1080.webp" srcset="/img/home/galaxy-light-1080.webp 1080w, /img/home/galaxy-light-2160.webp 2160w" sizes="(max-width: 1120px) calc(100vw - 32px), 1072px" alt="Sixgree's Galaxy in the light Daylight look: an invented network of 1,500 connections on rings around You, gold S tier closest, then A, B, C and D" width="1080" height="675" loading="lazy"></picture></div>
-          <figcaption>The Galaxy: every connection on its tier's ring, the most powerful closest to you. An invented network.</figcaption>
+        <figure class="video hero-film features-film">
+          <video muted loop playsinline preload="metadata" poster="/video/features-poster.jpg?v=1.1.0" width="1600" height="900" aria-label="Video: Sixgree mapping a network in tiers, finding the circles not mapped yet, building one, and ranking who you can reach, on an invented network">
+            <source src="/video/features.mp4?v=1.1.0" type="video/mp4">
+          </video>
+          <figcaption>Sixgree in thirty seconds, at twice its speed. Every person in it is invented.</figcaption>
         </figure>
       </div>
     </section>
