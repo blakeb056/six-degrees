@@ -10,7 +10,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { appManagementStep, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
+import { appManagementHref, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
 import { readyChecks, connectState, firstScan, photosNote } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
@@ -125,17 +125,25 @@ export function Welcome({ ctx }) {
 // ── 2. Get your Mac ready ────────────────────────────────────────────────────
 
 export function GetReady({ ctx }) {
-  const { s, settings, scan } = ctx;
+  const { s, settings, scan, gate } = ctx;
   const r = readyChecks(s);
   const [opened, setOpened] = useState(false);
   const mac = s?.checks?.mac;
-  // On a Mac from macOS 13, which brought App Management (lib/scanner-setup.js).
-  const appShown = Boolean(mac) && !(mac.version != null && mac.version < 13);
-  const item = appManagementStep(s, settings);
-  const answer = scan.appAnswer || settings?.appManagement || null;
+  // On a Mac from macOS 13, which brought App Management: mandatory, and read
+  // from macOS itself (lib/onboarding.js appManagementGate). Elsewhere, no row.
+  const appShown = gate.shown;
   const who = mac?.app ? 'Sixgree' : 'the app you started Sixgree from';
+  const asked = mac?.app ? 'Sixgree' : 'the app you started Sixgree from (Terminal, for example)';
+  const href = appManagementHref(mac);
   const running = s?.running;
   const installing = running && ['install', 'setup'].includes(s.action);
+  // Seen on: kept as the answer too, so the Scan page doesn't offer it again.
+  const granted = gate.state === 'granted';
+  const answered = settings?.appManagement;
+  const { answerAppManagement } = scan;
+  useEffect(() => {
+    if (granted && settings && answered !== 'done') answerAppManagement('done');
+  }, [granted, settings, answered, answerAppManagement]);
 
   const chrome = r.chrome === false ? (
     <div className="ob-mini no">
@@ -152,57 +160,82 @@ export function GetReady({ ctx }) {
     <div className="ob-mini no"><span className="ri"><Ico.radar /></span><span><div className="rt">The scanner</div><div className="rd">{installing ? 'Setting up…' : 'Not set up yet'}</div></span></div>
   );
 
+  // Open System Settings: the step is kept first, since turning App Management
+  // on makes macOS quit and reopen Sixgree, and the setup comes back here.
+  // A System Settings address opens in place: the Mac app opens System Settings
+  // itself, a browser asks first (app/setup/page.js Launch).
+  const openSettings = (label, id) => (
+    <a className={`ob-btn ${label === 'Open System Settings' ? 'secondary' : 'ghost'} small`} id={id} href={href}
+      onClick={() => { ctx.keepStep(); setOpened(true); }}>{label}{label === 'Open System Settings' && <Ico.ext />}</a>
+  );
+  const why = `When the scanner starts Google Chrome, Chrome may update itself, and macOS then stops to ask whether ${asked} can manage apps. `
+    + 'A scan can’t answer that, so it would stall halfway. '
+    + `Allow ${who === 'Sixgree' ? 'Sixgree' : 'that app'} once in App Management and macOS won’t ask again.`;
+  const restart = 'macOS may ask to quit and reopen Sixgree when you turn it on. That’s fine: the setup comes back right here.';
+
   let app = null;
-  if (appShown && answer === 'done') {
+  if (appShown && gate.state === 'granted') {
     app = (
-      <div className="ob-row ok">
+      <div className="ob-row ok" id="ob-appm" data-state="granted">
         <span className="ri ob-pop"><Ico.check /></span>
-        <span><div className="rt">App Management</div><div className="rd">macOS won’t stop to ask while Chrome updates.</div></span>
+        <span><div className="rt">App Management</div><div className="rd">On. macOS won’t stop a scan to ask while Chrome updates.</div></span>
         <span className="ob-chip ok ob-pop"><Ico.check />Allowed</span>
       </div>
     );
-  } else if (appShown && answer === 'skipped') {
+  } else if (appShown && gate.state === 'unknown' && gate.canContinue) {
     app = (
-      <div className="ob-row">
-        <span className="ri"><Ico.shield /></span>
-        <span><div className="rt">App Management</div><div className="rd">Skipped. Scanning works either way.</div></span>
-        <button type="button" className="ob-btn ghost small" onClick={() => scan.answerAppManagement(null)}>Set it up</button>
+      <div className="ob-row ok" id="ob-appm" data-state="claimed">
+        <span className="ri ob-pop"><Ico.check /></span>
+        <span><div className="rt">App Management</div><div className="rd">You said it’s on. Sixgree couldn’t check it on {ctx.here}.</div></span>
+        <button type="button" className="ob-btn ghost small" onClick={() => answerAppManagement(null)}>Undo</button>
       </div>
     );
-  } else if (appShown && item) {
+  } else if (appShown && gate.state === 'unknown') {
     app = (
-      <div className="ob-row attn">
+      <div className="ob-row attn" id="ob-appm" data-state="unknown">
         <span className="ri"><Ico.shield /></span>
-        <span><div className="rt">App Management <span className="ob-tag opt">Optional</span></div></span>
-        {opened ? <span className="ob-chip wait"><span className="ob-dotsl"><i /><i /><i /></span>In System Settings</span> : <span />}
+        <span><div className="rt">App Management <span className="ob-tag opt">Required</span></div></span>
+        <span />
+        <div className="rx">
+          <p>{why}</p>
+          <p>Sixgree can’t check this setting on {ctx.here}, so it takes your word for it: turn on <b>{who}</b>, then say so. Why it can’t: {gate.why}</p>
+          <div className="acts">
+            {openSettings(opened ? 'Open it again' : 'Open System Settings', 'ob-appm-open')}
+            <button type="button" className="ob-btn secondary small" id="ob-appm-done" onClick={() => answerAppManagement('done')}><Ico.check />I’ve allowed it</button>
+          </div>
+        </div>
+      </div>
+    );
+  } else if (appShown) {
+    const checking = gate.state === 'checking';
+    app = (
+      <div className="ob-row attn" id="ob-appm" data-state={gate.state}>
+        <span className="ri"><Ico.shield /></span>
+        <span><div className="rt">App Management <span className="ob-tag opt">Required</span></div></span>
+        {checking ? <span className="ob-chip wait"><span className="ob-dotsl"><i /><i /><i /></span>Checking</span>
+          : opened ? <span className="ob-chip wait"><span className="ob-dotsl"><i /><i /><i /></span>Waiting for macOS</span> : <span />}
         <div className="rx">
           <p>{opened
-            ? <>Turn on <b>{who}</b> in the window that opened, then come back and say so. Sixgree can’t see this setting, so it takes your word for it.</>
-            : item.text}</p>
+            ? <>Turn on <b>{who}</b> in the window that opened. This ticks itself the moment macOS has it on. {restart}</>
+            : why}</p>
           <div className="acts">
-            {opened ? (
-              <>
-                <button type="button" className="ob-btn secondary small" id="ob-appm-done" onClick={() => scan.answerAppManagement('done')}><Ico.check />I’ve allowed it</button>
-                <a className="ob-btn ghost small" href={item.href}>Open it again</a>
-              </>
-            ) : (
-              // A System Settings address opens in place: the Mac app opens System
-              // Settings itself, a browser asks first (app/setup/page.js Launch).
-              <a className="ob-btn secondary small" id="ob-appm-open" href={item.href} onClick={() => setOpened(true)}>Open System Settings<Ico.ext /></a>
-            )}
-            <button type="button" className="ob-btn ghost small" onClick={() => scan.answerAppManagement('skipped')}>Skip</button>
+            {openSettings(opened ? 'Open it again' : 'Open System Settings', 'ob-appm-open')}
           </div>
         </div>
       </div>
     );
   }
 
-  const hint = r.done ? null
+  const ready = r.done && gate.canContinue;
+  const hint = ready ? null
     : r.chrome === false ? 'Waiting for Google Chrome'
       : !r.scanner.done ? 'Set up the scanner first'
-        : 'Tick “I understand” to go on';
+        : !r.risk ? 'Tick “I understand” to go on'
+          : gate.state === 'checking' ? 'Checking App Management…'
+            : gate.state === 'unknown' ? 'Say when App Management is on'
+              : 'Turn on App Management to go on';
   const art = appShown
-    ? <MacSettings answer={answer || (opened ? 'opened' : null)} name={mac?.app ? 'Sixgree' : 'Terminal'} />
+    ? <MacSettings answer={gate.canContinue ? 'done' : opened ? 'opened' : null} name={mac?.app ? 'Sixgree' : 'Terminal'} />
     : <ChecksArt chrome={r.chrome !== false} scanner={r.scanner.done} risk={r.risk} />;
 
   return (
@@ -216,7 +249,7 @@ export function GetReady({ ctx }) {
         <Back onClick={() => ctx.go('welcome')} />
         <Spacer />
         {hint && <span className="ob-hint">{hint}</span>}
-        <Primary onClick={() => ctx.go('connect')} disabled={!r.done}>Continue</Primary>
+        <Primary onClick={() => ctx.go('connect')} disabled={!ready}>Continue</Primary>
       </>}
     >
       <div className={`ob-pair${r.chrome === false ? ' wide' : ''}`}>{chrome}{scanner}</div>

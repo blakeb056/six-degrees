@@ -18,6 +18,7 @@ import { readSettings } from '../../../lib/settings';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
+import { checkAppManagement } from '../../../lib/app-management';
 import { installKind } from '../../../lib/release';
 import { AUTO_REFUSAL, connectResultIn, connectMarks, inviteRefusal, personRefusal } from '../../../lib/auto-connect';
 import { markSentRows, awardXP, whose, requestStanding } from '../../../lib/requests';
@@ -712,6 +713,12 @@ export async function GET(request) {
     }
   }
   if (q.has('person')) return Response.json(pickedPerson(q.get('person')));
+  // The guided setup's App Management row (lib/app-management.js): whether
+  // macOS has it on for Sixgree, read for real. Reads only; asked every 2 s
+  // while that step is open, at most once a second.
+  if (q.has('appManagement')) {
+    return Response.json(await checkAppManagement({ version: macosVersion(process.platform, osRelease()) }));
+  }
   return Response.json(await status());
 }
 
