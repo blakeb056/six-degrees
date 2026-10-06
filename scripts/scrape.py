@@ -4347,10 +4347,14 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             says_none = False
         hidden = _hidden_members(page)
         if hidden:
-            print(f"  LinkedIn hides the {hidden} people on this page (outside your network: "
-                  "\"LinkedIn Member\", no name or link), so the rest of their list can't be read. "
-                  "That's their list done, not push-back.")
-            return [], "success", reach
+            # Kept, not finished: out-of-network people deep in a list and an account
+            # over LinkedIn's monthly search limit look the same ("LinkedIn Member",
+            # "View", no name). Marking the list done would drop the rest for good.
+            print(f"  LinkedIn hides the {hidden} people on this page (\"LinkedIn Member\", no name or link): "
+                  "out of your network, or this account's monthly search limit. Their list is kept "
+                  "at this page for later, and the scan moves on. Not push-back.")
+            reach["more"] = True
+            return [], "error", reach
         if says_none:
             # LinkedIn's own empty state: a real answer, not push-back.
             print("  LinkedIn says there are no results here.")
@@ -4432,8 +4436,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 break
             hidden = _hidden_members(page)
             if hidden:
-                print(f"the {hidden} people here are hidden by LinkedIn (\"LinkedIn Member\"), "
-                      "so the rest of their list can't be read. That's their list done.")
+                print(f"the {hidden} people here are hidden by LinkedIn (\"LinkedIn Member\"): out of "
+                      "your network, or the monthly search limit. Kept at this page for later.")
+                reach["more"] = True
                 break
             ended = False
             try:
