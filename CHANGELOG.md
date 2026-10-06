@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A page of hidden people pauses that list instead of finishing it.** Over LinkedIn's monthly
+  search limit (no Premium), results show as "LinkedIn Member" with no name, the same as people
+  out of your network deep in a list. Such a page now keeps the person's list at that page for
+  later and moves on to the next person, so a capped month never marks lists as done.
+
 ## [1.2.5] - 2026-10-06
 
 ### Changed
