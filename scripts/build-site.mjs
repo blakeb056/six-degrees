@@ -57,7 +57,7 @@ export function loadSite(root) {
     const words = plainText(body).split(/\s+/).length;
     return {
       slug, path: `/blog/${slug}/`, ...data, updated: data.updated || data.date, body,
-      html: markdown(body, { headingOffset: 1 }), minutes: Math.max(1, Math.round(words / 220)),
+      html: markdown(body), minutes: Math.max(1, Math.round(words / 220)),
       tags: [].concat(data.tags || []),
     };
   }).sort((a, b) => (a.date === b.date ? a.title.localeCompare(b.title) : b.date.localeCompare(a.date)));
