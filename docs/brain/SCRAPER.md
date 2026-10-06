@@ -217,6 +217,65 @@ circle) makes it too; until 0.4.0 only the batch did.
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.
 
+## Limits: one daily number, and a lift for the session (rule changed 2026-10-05)
+
+> "we need to simplify this and allow more usage as it's constrained too much. Just a
+> simple default limit for the day and a button to lift restrictions for this session."
+> (Blake, 2026-10-05)
+
+**What went.** The monthly search budget (and its 250 default), the separate profile-view
+choice (10/25/50/100), Auto scan's own 40 a day and 200 a week (`AUTO_DAY_CAP`,
+`AUTO_WEEK_CAP`, `_auto_ceiling_wait`), the budget picker's "ask first" past 100, and the
+cooldown banner's own *Lift it early* (the `lift-cooldown` action). A saved
+`scan-limits.json` keeps its `daily` number; its `monthly` and `profiles` are ignored and
+dropped at the next save. An old `daily: 0` ("no limit") reads as 50.
+
+**The one limit.** *Searches a day*, a rolling 24 hours: `scan-limits.json`
+`{"daily": N, "pace": …}`, N a whole number from 1 to 1000 (`DAILY_RANGE`; `DAILY_MAX`
+here), 50 by default (it was already 50). Profile views count against the same N, on their
+own count. Auto scan (*Auto scan: sittings the app runs* below) plans every sitting
+against the same N (`autoPlan`: a sitting is at most what's left, and at none Auto scan
+ends with `limit`, which the notch turns into the lift offer); lifted, `leftToday` is null,
+so only its pace's sitting size, its rests and its hours hold. A number control sets N in
+Scan → LinkedIn usage, Scan → Scanner settings (where it replaced the three budget pickers),
+the notch's line while a scan runs, and the onboarding's *Set your pace* step (the default
+already in it).
+
+**Where it's enforced.** The scanner, before every search and profile view, as before
+(`searches_left`, `profiles_left`, `take_profile_view`). The route also refuses a press
+that reads lists (`bridge`, `rescrape`, `resume`, `resume-all`, `company`, a manual
+Auto-Bridge round) with 409 `limitReached` before anything starts, and remembers it
+(`state.limitHit`; also when a scan ends on the scanner's *Today's limit of N … is used*
+line, `DAILY_LIMIT_USED`). `GET ?job=1` carries `limits: { lifted, reached, searches, daily }`
+(`limitsNow`, which reads files only while lifted or just after a hold), and the notch
+shows *Daily limit reached* with the lift, opened once by itself.
+
+**Lift limits for this session** (`lift-limits`, back with `put-limits-back`). One click,
+no pop-up, with the line *"Until you quit Sixgree, the daily limit and the cooldown are
+off. Scans still keep their human pace and stop if LinkedIn asks you to check in."*
+(`LIFT_LINE`). Held in the server's memory only (`lib/limits-lift.js`, on `globalThis`):
+never a file, so a restart puts the limits back (tested in a fresh process,
+`tests/simple-limits.test.mjs`). While lifted, `linkedinState` gives no `leftToday`, no
+`profilesLeftToday` and no `cooldown` (the pause on file is `heldCooldown`, untouched). The
+scanner is told by `SIX_DEGREES_LIMITS_LIFTED=1` at spawn, and a scan already running by a
+line on its stdin (`limits: lifted` / `limits: on`, read by `_listen_for_limits`); then
+`searches_left`, `profiles_left` and `read_cooldown` stop holding it back, and
+`set_cooldown` still writes a new pause (`_cooldown_on_file`). **LinkedIn pushing back after
+the lift puts the limits back by itself** (`sessionLift`: a pause set after the lift time),
+since carrying on after a check is what turns it into a restriction; the usage section
+says so, and lifting again is one click.
+
+**What always applies, lifted or not** (they protect the account and cost nothing):
+
+- the pace before every page and search (`PAGE_PAUSE`, `CHUNK_COOLDOWN`, the chosen speed),
+  and Auto scan's hours and rests (`DRIP_HOURS`, `SESSION_PAGES`/`SESSION_REST`);
+- at least `PROFILE_GAP` between any two profile opens, timed from the record;
+- stopping when LinkedIn shows a sign-in wall, a security check, a restriction or its own
+  limit, keeping the page (`pushback/`) and writing the pause (TRAPS §35);
+- Auto's caps on connection requests (15 a day, 80 a week);
+- one scan at a time, and the queue with every check at its turn;
+- the one-time *I understand* before the first scan (`lib/scan-risk.js`).
+
 ## Rate limits — a measured one
 
 A real account was temporarily restricted on 2026-09-09 after about an hour of
@@ -224,13 +283,14 @@ continuous auto-bridging — roughly 20–25 profile views at the two-minute coo
 Lifted the same day. See TRAPS §16. Treat that as a ceiling seen once, not a safe
 budget: batch the work, keep the cooldown, and stop at the first warning.
 
-**Profile views have a cap of their own.** It is one cap for everything that opens a
-profile. Today that is a circle scan whose search id isn't known yet: it opens the
+**Profile views count against the daily number.** It is one count for everything that
+opens a profile. Today that is a circle scan whose search id isn't known yet: it opens the
 person's profile once, and that is a profile view. Reading someone's profile on its own
-(planned) will count against the same cap.
+(planned) will count against the same number.
 
-- **The cap:** 50 in any 24 hours by default (`scan-limits.json` `profiles`; the Scan
-  page offers 10, 25, 50 and 100). There is no "no limit": a 0 in the file reads as 50.
+- **The cap:** the daily number (`scan-limits.json` `daily`, 50 by default), counted on its
+  own: N searches and N profile views in any 24 hours. Lifting the limits for the session
+  takes it off; nothing else does.
 - **The gap:** at least 60 seconds between any two opens (`PROFILE_GAP`). It is timed from
   the last view in `linkedin-activity.json`, not from the last run, so scans started back
   to back can't open profiles back to back. The job prints a countdown while it waits,
@@ -390,11 +450,13 @@ the file and the restart.
 The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Slow on purpose:** fixed waits only, never randomised to look like a person.
 
 - `_drip_before_search()` runs before every circle search:
-  - a sitting of `SESSION_PAGES` (10), then `SESSION_REST` (45 min);
-  - searches only inside `DRIP_HOURS` (09–19, local time);
-  - at the daily budget it waits until the oldest search in the last 24 h ages out (`_seconds_until_search_frees`).
+  - a sitting of `SESSION_PAGES` (8), then `SESSION_REST` (an hour);
+  - searches only inside `DRIP_HOURS` (09–18, local time);
+  - at the daily limit (the same searches a day as every scan; its own 40 a day and 200 a
+    week went on 2026-10-05) it waits until the oldest search in the last 24 h ages out
+    (`_seconds_until_search_frees`). Lifted for the session, it doesn't wait for it.
 
-  Every wait prints "… Carrying on at HH:MM" and a line a minute, which the status bar shows. A monthly budget or a cooldown still stops the run.
+  Every wait prints "… Carrying on at HH:MM" and a line a minute, which the status bar shows. A cooldown still stops the run (unless lifted).
 - Each page is saved as it's read, and the 60 s after every 10 pages gives way to the sitting rest.
 - **LinkedIn's own data:** `_wire_tap` keeps `/voyager/api/` search responses, and `_wire_merge` reads them after each page:
   - `voyager_people` takes anything with a title and a `/in/` link; `voyager_total` reads `totalResultCount`;
@@ -418,7 +480,7 @@ one long scanner run; now **the app runs short sittings and keeps the rests itse
 |---|---|
 | `lib/auto-scan.js` | Pure, shared with the page: `AUTO_PACES`, `autoPlan` (go / hours / rest / stop), `paceLine`, `autoStatus`, `cleanTiers`, `tierList`, `clockText`. |
 | `app/api/scraper/route.js` | `auto-start` (pace, tiers), `auto-stop`, `auto-settings`; `autoTick` every 20 s while it's on (`SIX_DEGREES_AUTO_TICK_MS`); `autoSittingEnded` after each sitting; `autoView` in `GET ?job=1` as `auto`. |
-| `scripts/scrape.py` | `--sitting=N` with `--experimental`: `_sitting_over` ends the run (never waits) after N searches, outside `DRIP_HOURS`, or at the budget; checked before each person in `auto_bridge_all`, so no browser opens, and before every search. |
+| `scripts/scrape.py` | `--sitting=N` with `--experimental`: `_sitting_over` ends the run (never waits) after N searches, outside `DRIP_HOURS`, or at the daily limit (not while lifted); checked before each person in `auto_bridge_all`, so no browser opens, and before every search. |
 | `app/components/AutoScanButton.js` | The header button (Beta mark, a pill that slides out on hover or focus) and its panel, a portal anchored under it. `lib/experimental-client.js` keeps the pace and tiers in this browser (`six-degrees-auto-scan`) beside the switch. |
 
 **A sitting** is one ordinary job: `--auto-bridge --tiers=<picked> --order=score --experimental
@@ -434,11 +496,12 @@ profile view). No "Scan done" notification per sitting.
 | Medium | 8 (`SESSION_PAGES`) | 60 min (`SESSION_REST`) | 70 people an hour |
 | Fast | 12 | 30 min | 180 people an hour |
 
-A sitting is never more than what's left of the daily (and monthly) budget, so Fast only gets
-to the limit sooner. It adds no limit of its own.
+A sitting is never more than what's left of searches a day (the one limit since 2026-10-05;
+the monthly budget is gone), so Fast only gets to the limit sooner. It adds no limit of its
+own. Lifted for the session, a sitting is the pace's full size, and the rests and hours stay.
 
-**When it stops, calmly, with why** (`ended` in the view): the daily or monthly budget reached
-(`limit`), a cooldown after LinkedIn pushed back or a failed sitting (`stopped`), Stop, or
+**When it stops, calmly, with why** (`ended` in the view): the daily limit reached
+(`limit`; the notch then offers *Lift limits for this session*), a cooldown after LinkedIn pushed back or a failed sitting (`stopped`), Stop, or
 `Nothing left to bridge.` in the sitting's log (`done`: nothing left in the picked tiers).
 Outside 9:00 to 18:00 it waits (`hours`), and between sittings it rests (`rest`); the scanner
 is free meanwhile.

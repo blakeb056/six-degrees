@@ -3,7 +3,7 @@
 // What the Scan page and the guided setup (app/components/onboarding) both
 // read and do, in one place: the scanner's status (GET /api/scraper, every
 // 1.5 s), your saved settings, and the four things they press: start a job
-// (run), change a scanner setting (the budget, a cooldown), say "I understand"
+// (run), change a scanner setting (searches a day, the session's lift), say "I understand"
 // to the scanning risks, and answer the App Management item. Pulled out of
 // app/setup/page.js when the setup arrived, so the two never disagree about
 // what a click does.
@@ -24,12 +24,15 @@
 //     is never taken for one, and the last status stays until a real one comes.
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { stopScrape, beginScrape, statusWithJob } from '../../lib/scraper-client';
+import { stopScrape, beginScrape, statusWithJob, LIMITS_CHANGED } from '../../lib/scraper-client';
 import { saveSettings } from '../../lib/settings-client';
 import { IS_DEMO } from '../../lib/demo';
 import useScanner from './useScanner';
 
 const POLL_MS = 1500;
+// The scanner's settings: searches a day and the speed, lifting the limits for
+// this session, and putting them back.
+const LIMIT_ACTIONS = ['set-limits', 'lift-limits', 'put-limits-back'];
 // An answer that hasn't come in this long isn't coming: ask again.
 const GIVE_UP_MS = 10000;
 
@@ -164,7 +167,7 @@ export default function useScanStatus() {
     }
   }, [poll]);
 
-  // The two settings the scanner keeps (the budget, lifting a cooldown) start nothing.
+  // The scanner's settings (LIMIT_ACTIONS) start nothing.
   const setting = useCallback(async (action, extra = {}) => {
     setError(null);
     setBusy(true);
@@ -176,6 +179,8 @@ export default function useScanStatus() {
       });
       const d = await r.json();
       if (!r.ok) setError(d.error || 'Could not change that.');
+      // Scan → LinkedIn usage and the notch follow at once.
+      else window.dispatchEvent(new Event(LIMITS_CHANGED));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -189,7 +194,7 @@ export default function useScanStatus() {
   // once: posting straight to the scanner left them up to 5 seconds behind.
   // It adds "Show the scanner's Chrome window" itself (scanRequest).
   const run = useCallback(async (action, extra = {}) => {
-    if (action === 'set-limits' || action === 'lift-cooldown') return setting(action, extra);
+    if (LIMIT_ACTIONS.includes(action)) return setting(action, extra);
     setError(null);
     setBusy(true);
     try {

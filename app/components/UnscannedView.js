@@ -806,7 +806,7 @@ function savedIn(log) {
 
 /** The last thing a scan said that explains how it ended (a used budget, say), not "Finished.". */
 function lastSaid(log) {
-  const skip = /^(Finished\.|Stopped\.|Stopping…|Stopped \(exit|Speed:|Made today|Today’s backup couldn|Mapping the circle behind|Search budget:)/;
+  const skip = /^(Finished\.|Stopped\.|Stopping…|Stopped \(exit|Speed:|Made today|Today’s backup couldn|Mapping the circle behind|Search budget:|Searches: \d|Limits lifted for this session)/;
   for (let i = log.length - 1; i >= 0; i--) {
     const line = String(log[i]).trim();
     if (line && !skip.test(line)) return line;

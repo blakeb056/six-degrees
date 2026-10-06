@@ -1265,14 +1265,14 @@ class LinkedInPushedBack(Exception):
 
 
 class BudgetReached(Exception):
-    """Today's or this month's search budget, or today's profile views, is used.
+    """Today's limit is used: its searches, or its profile views.
 
-    Raised after saving. `kind` is "daily", "monthly" or "profiles"; the
-    profile cap is checked before a profile opens, so for it `found` is 0.
+    Raised after saving. `kind` is "daily" or "profiles"; the profile views
+    are checked before a profile opens, so for them `found` is 0.
     """
 
     def __init__(self, found=0, kind="daily"):
-        super().__init__("today's profile views" if kind == "profiles" else f"the {kind} search budget")
+        super().__init__("today's profile views" if kind == "profiles" else "the daily limit")
         self.found = found
         self.kind = kind
 
@@ -1936,7 +1936,8 @@ CHUNK_COOLDOWN = 60               # extra seconds after every SAVE_EVERY_PAGES p
 # The Scan page's speed (Blake, 2026-09-30 and 10-03: "slow, medium and fast").
 # Fast is exactly the pacing above and nothing is ever faster; Medium and Slow
 # only add waiting. Speed changes how many searches an hour, never how many a
-# day: the daily budget stays the volume cap. Read from scan-limits.json
+# day: searches a day stays the volume cap, and lifting it for a session
+# (LIMITS below) leaves the speed exactly as it is. Read from scan-limits.json
 # ("pace") at the start of every run (apply_pace). lib/scan-pace.js holds the
 # same numbers for the page, and tests/scan-pace.test.mjs checks they agree.
 SCAN_PACES = {
@@ -1950,23 +1951,22 @@ LEGACY_PAGES_READ = 10            # how far every read before 0.1.6 went, at mos
 # Experimental all-day pacing for Auto-Bridge (--experimental; item 44, Graph
 # Study §8). Slow on purpose, on fixed waits: no random "human" timing.
 # A sitting of SESSION_PAGES searches, then a long rest; searches only in the
-# daytime on this computer's clock; and at the daily budget it waits for the
-# budget to free up instead of stopping. Pages are saved one at a time.
+# daytime on this computer's clock; and at the daily limit it waits for the
+# limit to free up instead of stopping. Pages are saved one at a time.
 #
-# Its own ceilings sit under whatever budget is set on the Scan page: the account
-# restricted on 2026-09-28 did 373 searches in 24 hours with the budget raised to
-# 500. Auto scan stays far below that however high the budget is set.
+# Its volume is the same "searches a day" as every other scan (Blake,
+# 2026-10-05: one limit). Its own day and week caps (40 and 200) are gone; the
+# hours and the rests are Auto scan's alone, and they hold when the limits are
+# lifted for the session (searches_left then simply never runs out).
 EXPERIMENT = {"on": False, "pages": 0, "wire": 0, "sitting": 0, "ended": None}
 # The app's Auto scan runs one sitting per run (--sitting=N, its pace's size): the
-# run ends when the sitting does, or outside DRIP_HOURS, or at the budget, and the
-# app (app/api/scraper/route.js, lib/auto-scan.js) rests and starts the next one.
+# run ends when the sitting does, or outside DRIP_HOURS, or at the daily limit, and
+# the app (app/api/scraper/route.js, lib/auto-scan.js) rests and starts the next one.
 # Nothing waits for hours inside a run with Chrome open. Without --sitting (the
 # command line) the run waits in place, as below.
 SESSION_PAGES = 8                 # searches in one sitting
 SESSION_REST = 60 * 60            # the rest after each sitting
 DRIP_HOURS = (9, 18)              # searches only from 09:00 to 18:00, local time
-AUTO_DAY_CAP = 40                 # at most this many searches in any 24 hours
-AUTO_WEEK_CAP = 200               # and this many in any 7 days
 AUTO_PUSHBACK_REST = 2 * 24 * 3600   # after any LinkedIn check, nothing for two days
 WIRE_SAMPLES = 5                  # raw LinkedIn responses kept per run, for research
 
@@ -2041,19 +2041,27 @@ def note_unclear(profile_url, clear=False):
 # ---------------------------------------------------------------------------
 # How much this machine has asked of LinkedIn, and whether it may ask now.
 #
-# LinkedIn's limit on people search for free accounts is monthly: it resets at
-# midnight Pacific on the 1st, with no published number (Help Center a564226;
-# reports put it around 250–350 a month). Every page of someone's connections
-# is one search. 0.1.6 spent a night's worth in minutes and search was blocked
-# (TRAPS §35). So every search and profile view is written down here, and a run
-# stops — saving what it read, carrying on later from the same page — when the
-# day's or the month's budget is used. A cooldown lock is set when LinkedIn
-# pushes back, and nothing searches until it lifts.
+# Every page of someone's connections is one search. 0.1.6 spent a night's
+# worth in minutes and search was blocked (TRAPS §35). So every search and
+# profile view is written down here, and a run stops — saving what it read,
+# carrying on later from the same page — when the day's limit is used. A
+# cooldown lock is set when LinkedIn pushes back, and nothing searches until it
+# lifts.
 #
-# Profile views have a cap of their own, because they are what LinkedIn
-# restricted an account for (TRAPS §16). Every circle scan that opens someone's
-# profile takes one, and any two opens are at least PROFILE_GAP apart, timed
-# from the record, so starting scan after scan can't open profiles back to back.
+# ONE limit (Blake, 2026-10-05: "Just a simple default limit for the day and a
+# button to lift restrictions for this session"): searches a day, over a
+# rolling 24 hours. Profile views count against the same number, on their own
+# count (they are what LinkedIn restricted an account for, TRAPS §16). The
+# monthly budget is gone; LinkedIn's own monthly limit, when it says so, still
+# ends a read (SearchLimitReached).
+#
+# Lifted for this session (the Scan page's "Lift limits for this session"; the
+# app passes SIX_DEGREES_LIMITS_LIFTED and tells a running scan on its stdin):
+# no daily limit and no cooldown. What never lifts: the pace before every page
+# and between profile views (PAGE_PAUSE, CHUNK_COOLDOWN, PROFILE_GAP, timed from
+# the record so scan after scan can't open profiles back to back), stopping
+# when LinkedIn shows a sign-in, a security check or a restriction (and the
+# pause that writes down), and Auto's caps on connection requests.
 #
 # These belong to the LinkedIn account (the one Chrome profile), not to a
 # profile in the app: three app profiles must not triple the budget. The app's
@@ -2061,15 +2069,18 @@ def note_unclear(profile_url, clear=False):
 #
 #   linkedin-activity.json  {"searches": [epoch s, ...], "profiles": [...],
 #                            "invites": [...]}   Auto's connection requests (--connect)
-#   scan-limits.json        {"daily": 50, "monthly": 250, "profiles": 50}
-#                           0 = no cap on searches; profile views always have one
+#   scan-limits.json        {"daily": 50, "pace": "fast"}
+#                           1 to 1000; anything else reads as 50. A file from before
+#                           2026-10-05 may also hold "monthly" and "profiles": ignored
 #   linkedin-cooldown.json  {"until": epoch s, "reason": "...", "set_at": ...}
 #                           lifted on the Scan page: "until" is when, plus
 #                           "lifted_at" and "was_until"; read here as ended
 # ---------------------------------------------------------------------------
 DEFAULT_DAILY_SEARCHES = 50
-DEFAULT_MONTHLY_SEARCHES = 250
-DEFAULT_DAILY_PROFILES = 50
+DAILY_MAX = 1000                  # the most the Scan page's number takes (lib/linkedin-limits.js DAILY_RANGE)
+# Lifted for this session, or not. Read at the start, and changed by the app
+# while a scan runs (_listen_for_limits).
+LIMITS = {"lifted": os.environ.get("SIX_DEGREES_LIMITS_LIFTED") == "1"}
 PROFILE_GAP = 60                  # seconds between any two profile opens, whatever opened them
 DAY_SECONDS = 24 * 3600
 WEEK_SECONDS = 7 * DAY_SECONDS
@@ -2174,7 +2185,7 @@ def _read_activity():
             pass
         print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
         lim = search_limits()
-        fresh = {"searches": [now] * max(1, lim["daily"] or 1), "profiles": [now] * lim["profiles"],
+        fresh = {"searches": [now] * lim["daily"], "profiles": [now] * lim["profiles"],
                  "invites": [now] * INVITE_DAY_CAP}
         try:
             _write_json_atomic(path, fresh)
@@ -2227,7 +2238,8 @@ def profile_wait(now=None):
 
 def _profile_wait(data, now):
     views = [t for t in data["profiles"] if t > now - DAY_SECONDS]
-    if len(views) >= search_limits()["profiles"]:
+    # Lifted: no cap on the day's views. The gap below holds either way.
+    if not limits_lifted() and len(views) >= search_limits()["profiles"]:
         return None
     # A time ahead of this clock (another computer's, imported) is left
     # out of the gap: waiting for it could never end.
@@ -2259,47 +2271,66 @@ def apply_pace(name=None):
 
 
 def search_limits():
+    """Searches a day, and profile views a day: one number (the Scan page's), 1 to DAILY_MAX."""
     try:
         data = json.loads((_home() / "scan-limits.json").read_text())
     except Exception:
         data = {}
-    def num(v, default):
+    daily = data.get("daily") if isinstance(data, dict) else None
+    # Whole numbers only, as the app saves them; 0 (the old "no limit") and
+    # anything else read as the default, as lib/linkedin-limits.js reads them.
+    if not (isinstance(daily, int) and not isinstance(daily, bool) and 1 <= daily <= DAILY_MAX):
+        daily = DEFAULT_DAILY_SEARCHES
+    return {"daily": daily, "profiles": daily}
+
+
+def limits_lifted():
+    """The Scan page lifted the daily limit and the cooldown for this session."""
+    return bool(LIMITS["lifted"])
+
+
+def _listen_for_limits():
+    """The app says "limits: lifted" or "limits: on" on stdin when you change it
+    mid-scan, so a scan under way follows at once. Started only from the app."""
+    import threading
+
+    def listen():
         try:
-            v = int(v)
-            return v if v >= 0 else default
-        except (TypeError, ValueError):
-            return default
-    return {"daily": num(data.get("daily"), DEFAULT_DAILY_SEARCHES),
-            "monthly": num(data.get("monthly"), DEFAULT_MONTHLY_SEARCHES),
-            # 0 is no cap for searches, never for profile views. A number typed
-            # in by hand counts as the largest choice under it: never past 100,
-            # and the Scan page shows the same one.
-            "profiles": max((c for c in (10, 25, 50, 100)
-                             if c <= (num(data.get("profiles"), DEFAULT_DAILY_PROFILES) or DEFAULT_DAILY_PROFILES)),
-                            default=10)}
+            for line in sys.stdin:
+                said = line.strip()
+                if said == "limits: lifted":
+                    LIMITS["lifted"] = True
+                    print("  Limits lifted for this session: no daily limit or cooldown. The pace stays.", flush=True)
+                elif said == "limits: on":
+                    LIMITS["lifted"] = False
+                    print("  Limits are back on.", flush=True)
+        except Exception:
+            pass
+
+    threading.Thread(target=listen, daemon=True).start()
 
 
 def linkedin_usage(now=None):
     now = now if now is not None else time.time()
     data = _read_activity()
-    month0 = month_start_pacific(now)
     return {
         "searches_today": sum(1 for t in data["searches"] if t > now - DAY_SECONDS),
-        "searches_month": sum(1 for t in data["searches"] if t >= month0),
         "profiles_today": sum(1 for t in data["profiles"] if t > now - DAY_SECONDS),
     }
 
 
 def searches_left(now=None):
-    """(how many searches may still be made, "daily" | "monthly" — whichever runs out first)."""
+    """(how many searches may still be made today, "daily"). Lifted, as good as no end."""
+    if limits_lifted():
+        return (10 ** 9, "daily")
     use, lim = linkedin_usage(now), search_limits()
-    left_day = max(0, lim["daily"] - use["searches_today"]) if lim["daily"] else 10 ** 9
-    left_month = max(0, lim["monthly"] - use["searches_month"]) if lim["monthly"] else 10 ** 9
-    return (left_day, "daily") if left_day <= left_month else (left_month, "monthly")
+    return (max(0, lim["daily"] - use["searches_today"]), "daily")
 
 
 def profiles_left(now=None):
-    """How many more profiles may be opened: the cap less the last 24 hours' views."""
+    """How many more profiles may be opened: the daily limit less the last 24 hours' views."""
+    if limits_lifted():
+        return 10 ** 9
     return max(0, search_limits()["profiles"] - linkedin_usage(now)["profiles_today"])
 
 
@@ -2314,7 +2345,12 @@ def _day(ts):
     return f"{t.strftime('%b')} {t.day}"
 
 
+def _lift_hint():
+    return " Or lift limits for this session on the Scan page." if os.environ.get("SIX_DEGREES_FROM_APP") else ""
+
+
 def budget_message(kind):
+    # The app reads "Today's limit of N ... is used" to offer the lift (route.js DAILY_LIMIT_USED).
     lim = search_limits()
     if kind == "profiles":
         # The one that stops counting soonest frees the next view.
@@ -2322,18 +2358,22 @@ def budget_message(kind):
         views = sorted(t for t in _read_activity()["profiles"] if t > now - DAY_SECONDS)
         extra = len(views) - lim["profiles"]
         free = f" The next one frees up at {_when(views[extra] + DAY_SECONDS)}." if extra >= 0 else ""
-        return (f"Today's profile views ({lim['profiles']}) are used — they count the last 24 hours.{free} "
-                f"No profile was opened and nothing was recorded, so the next run starts with the same person.")
-    if kind == "monthly":
-        when = _day(next_month_start_pacific())
-        return (f"This month's search budget ({lim['monthly']}) is used. It starts again on {when} "
-                f"(LinkedIn's month); the next run carries on from the same page.")
-    return (f"Today's search budget ({lim['daily']}) is used — it counts the last 24 hours. "
-            f"The next run carries on from the same page.")
+        return (f"Today's limit of {lim['profiles']} profile views is used — it counts the last 24 hours.{free} "
+                f"No profile was opened and nothing was recorded, so the next run starts with the same person."
+                + _lift_hint())
+    return (f"Today's limit of {lim['daily']} searches is used — it counts the last 24 hours. "
+            f"The next run carries on from the same page." + _lift_hint())
 
 
 def read_cooldown(now=None):
-    """The active cooldown, or None."""
+    """The active cooldown, or None. None while the limits are lifted for this session."""
+    if limits_lifted():
+        return None
+    return _cooldown_on_file(now)
+
+
+def _cooldown_on_file(now=None):
+    """The pause written down, lifted or not: what set_cooldown must never shorten."""
     now = now if now is not None else time.time()
     try:
         data = json.loads((_home() / "linkedin-cooldown.json").read_text())
@@ -2348,7 +2388,7 @@ def set_cooldown(seconds=None, until=None, reason=""):
     """Nothing searches LinkedIn until this lifts. Never shortens an existing one."""
     now = time.time()
     until = until if until is not None else now + seconds
-    current = read_cooldown(now)
+    current = _cooldown_on_file(now)
     if current and float(current["until"]) >= until:
         return
     try:
@@ -2991,7 +3031,7 @@ def _in_drip_hours(now=None):
 
 def _sitting_over(now=None):
     """With --sitting: why this sitting ends before the next search, or None to go on.
-    Its searches done, outside the hours, or a used budget. Never a wait: the app
+    Its searches done, outside the hours, or the daily limit used (not while lifted). Never a wait: the app
     rests between sittings with no browser open."""
     if EXPERIMENT.get("ended"):
         return EXPERIMENT["ended"]
@@ -3009,7 +3049,7 @@ def _drip_before_search():
     """Experimental pacing, before a search. In one of the app's sittings
     (--sitting), end the sitting when it's over (_sitting_over): False, and
     EXPERIMENT["ended"] says why. On the command line: rest after a sitting, sleep
-    through the night, and wait for a used daily budget to free up. True to go
+    through the night, and wait for a used daily limit to free up. True to go
     ahead, False if stopped."""
     if EXPERIMENT.get("sitting"):
         why = _sitting_over()
@@ -3038,26 +3078,7 @@ def _drip_before_search():
             if not _drip_wait("Today's searches are used", _seconds_until_search_frees()):
                 return False
             continue
-        wait = _auto_ceiling_wait()
-        if wait:
-            label, seconds = wait
-            if not _drip_wait(label, seconds):
-                return False
-            continue
         return True
-
-
-def _auto_ceiling_wait(now=None):
-    """Auto scan's own ceilings (AUTO_DAY_CAP in 24 hours, AUTO_WEEK_CAP in 7 days):
-    None to go ahead, or (why, seconds until the oldest counted search drops out)."""
-    now = now if now is not None else time.time()
-    searches = sorted(t for t in _read_activity()["searches"] if now - 7 * DAY_SECONDS < t <= now)
-    day = [t for t in searches if now - DAY_SECONDS < t]
-    if len(day) >= AUTO_DAY_CAP:
-        return (f"Auto scan's {AUTO_DAY_CAP} searches for today are used", day[-AUTO_DAY_CAP] + DAY_SECONDS - now + 5)
-    if len(searches) >= AUTO_WEEK_CAP:
-        return (f"Auto scan's {AUTO_WEEK_CAP} searches for this week are used", searches[-AUTO_WEEK_CAP] + 7 * DAY_SECONDS - now + 5)
-    return None
 
 
 def interruptible_sleep(seconds, on_tick=None, step=5):
@@ -3583,7 +3604,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
       urn      the id LinkedIn searches their connections by
       found    how many people were read in all
       limited  LinkedIn's monthly search limit ended the read
-      budget   "daily", "monthly" or "profiles": that budget ended it (status "budget")
+      budget   "daily" or "profiles": today's limit ended it (status "budget")
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -4461,10 +4482,13 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log(budget_message(kind))
         return []
     use, lim = linkedin_usage(), search_limits()
-    log(f"Search budget: {use['searches_today']} of {lim['daily'] or 'no limit'} used today, "
-        f"{use['searches_month']} of {lim['monthly'] or 'no limit'} this month")
-    log(f"Profile views: {use['profiles_today']} of {lim['profiles']} in the last 24 hours, "
-        f"at least {PROFILE_GAP}s apart")
+    if limits_lifted():
+        log(f"Limits lifted for this session: {use['searches_today']} searches and {use['profiles_today']} "
+            f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
+    else:
+        log(f"Searches: {use['searches_today']} of {lim['daily']} a day used, counting the last 24 hours")
+        log(f"Profile views: {use['profiles_today']} of {lim['profiles']} in the last 24 hours, "
+            f"at least {PROFILE_GAP}s apart")
 
     # Get all degree-1 connections (filtered by active user)
     D1_LIMIT = 20000
@@ -4621,7 +4645,7 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         left, kind = searches_left()
         if left <= 0:
             log(budget_message(kind))
-            stopped_early = f"the {kind} search budget"
+            stopped_early = "the daily limit"
             break
 
         name = person["name"]
@@ -5558,11 +5582,11 @@ Examples:
                              f"or {MESSAGE_HISTORY_MAX:,} conversations), not just its top")
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
-                             "waits for the daily budget) and reading LinkedIn's own data beside the page text")
+                             "waits for the daily limit) and reading LinkedIn's own data beside the page text")
     parser.add_argument("--sitting", type=int, default=0,
                         help="With --experimental: one sitting of at most this many searches, then exit "
                              "(the app's Auto scan rests between sittings). It also ends outside "
-                             f"{DRIP_HOURS[0]}:00-{DRIP_HOURS[1]}:00 and at the budget")
+                             f"{DRIP_HOURS[0]}:00-{DRIP_HOURS[1]}:00 and at the daily limit")
     parser.add_argument("--auto-bridge", action="store_true",
                         help="Map every bridge in turn, highest tier first")
     parser.add_argument("--retry-private", action="store_true",
@@ -5647,6 +5671,9 @@ Examples:
 
     install_stop_handler()
     _assert_local_target()
+    # The Scan page's "Lift limits for this session", changed while this runs.
+    if os.environ.get("SIX_DEGREES_FROM_APP"):
+        _listen_for_limits()
 
     if args.clear_skips:
         clear_bridge_skips()

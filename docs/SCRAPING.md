@@ -88,22 +88,30 @@ is left unmarked, two of those in a row end the batch, and anyone unclear twice 
 back of the queue (`~/.six-degrees/bridge-unclear.json`). After any of these, leave it at least a day. A security
 check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it.
 
-**The budget and the cooldown.** Every search and profile view is written down, and the
-Scan page shows how many searches were made in the last 24 hours and this month (LinkedIn's
-month, from midnight Pacific on the 1st), against a budget you set there: 50 a day and 250
-a month by default. At either limit a read saves, stops, and carries on from the same page
-next time. When LinkedIn pushes back, a cooldown stops anything that searches for a day
-(until the 1st, for the monthly limit); the Scan page shows when it lifts, and lets you lift
-it early once search works for you again.
+**One daily limit, and the cooldown.** Every search and profile view is written down, and
+the Scan page (LinkedIn usage, and the notch while a scan runs) shows how many searches were
+made in the last 24 hours against one number you set there: **searches a day**, 50 by
+default, any whole number from 1 to 1000. Profile views count against the same number, on
+their own count. At the limit a read saves, stops, and carries on from the same page next
+time. When LinkedIn pushes back, a cooldown stops anything that searches for a day (until
+the 1st, when LinkedIn says its own monthly limit is reached); the Scan page shows when it
+ends.
 
-**Profile views have a cap too.** A circle scan opens the person's profile once, and that
-is a profile view. Profile views are what got an account restricted, so they have their
-own cap: 50 in any 24 hours by default, and the Scan page offers 10, 25, 50 or 100. There is
-no "no limit". At least a minute passes between any two profile opens, even across scans
-started one after another; the log counts down while it waits, and Stop ends the wait.
-When the cap is reached, a scan stops before opening the next profile. Nothing about that
-person is recorded, so the next run starts with them. Carrying on with someone whose
-search id is already known doesn't open their profile, so it doesn't count.
+**Lift limits for this session.** One button on the Scan page (and in the notch when the
+limit holds a scan back): until you quit Sixgree, the daily limit and the cooldown are off.
+It is kept in the app's memory only, so a restart puts them back, and LinkedIn pushing back
+again puts them back by itself. **What never lifts:** the pace between pages and searches
+(your speed), the minute between any two profile opens, stopping when LinkedIn shows a
+sign-in, a security check or a restriction, Auto's own caps on connection requests, and one
+scan at a time.
+
+**Profile views.** A circle scan opens the person's profile once, and that is a profile
+view. Profile views are what got an account restricted, so at least a minute passes between
+any two profile opens, even across scans started one after another, lifted or not; the log
+counts down while it waits, and Stop ends the wait. When the day's limit is reached, a scan
+stops before opening the next profile. Nothing about that person is recorded, so the next
+run starts with them. Carrying on with someone whose search id is already known doesn't
+open their profile, so it doesn't count.
 
 **Paused lists.** Everyone whose list was only partly read is listed on the Scan page under
 **In progress**, right after step 4, with the page they carry on from, and their card says so by

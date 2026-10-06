@@ -2,26 +2,31 @@
 
 // Scan → LinkedIn usage: how close this LinkedIn account is to the line,
 // in one look, the way Claude's usage page shows a plan's limits (neo's
-// handoff, 2026-10-03; Blake's 1.0 list, item 3). Until now the only view of
-// it was the budget box folded away in the Scan page's old "Fine-tune the
-// scanner", and an account was restricted once after 373 searches in 24 hours
-// (TRAPS §16). The notch and that box link here.
+// handoff, 2026-10-03; Blake's 1.0 list, item 3). An account was restricted
+// once after 373 searches in 24 hours (TRAPS §16). The notch links here.
+//
+// One limit since 2026-10-05 (Blake: "Just a simple default limit for the day
+// and a button to lift restrictions for this session"): one meter, searches in
+// the last 24 hours against searches a day, with its number and "Lift limits
+// for this session" under it. The month's, the week's and the profile views'
+// meters went with their caps.
 //
 // Every number is counted from the scanner's own record on this computer
 // (GET /api/scraper?usage, lib/linkedin-limits.js linkedinUsage) or is a rule
 // that says where it came from (lib/usage.js). LinkedIn publishes no limits and
 // shows no count of its own, so nothing here claims to be LinkedIn's number.
-// The page only reads; its one button is the Scan page's own "Back to 50 a
-// day, 250 a month".
+// What it changes: searches a day, Back to 50 a day, and the lift.
 
 import { useCallback, useEffect, useState } from 'react';
 import { Section, Body, LINE } from '../ui';
 import {
-  AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, warningParts, estimate,
-  barMax, pacificText, whenText, untilText, agoText, hoursText, INVITE_CAPS, REPORTED_WEEKLY_INVITES,
+  AUTO, PEOPLE_PER_SEARCH, DANGER_AT, LEVELS, usageLevel, warningParts, estimate,
+  barMax, whenText, untilText, agoText, hoursText, INVITE_CAPS, REPORTED_WEEKLY_INVITES,
 } from '../../../lib/usage';
 import { RESTRICTED_AT, RISKY_DAILY, SAFE_LIMITS } from '../../../lib/search-risk';
 import { paceOf, searchesPerHour } from '../../../lib/scan-pace';
+import { LIMITS_CHANGED } from '../../../lib/scraper-client';
+import { DailyLimitInput, LiftLimits, LiftedTag } from '../LinkedInLimits';
 
 // Looked at again while the page is open, as the Scan page's own checks are.
 const REFRESH_MS = 30 * 1000;
@@ -136,7 +141,8 @@ function InviteMeter({ day, week, freesAt, weekFreesAt, now }) {
           : <>{plural(left, 'request')} left for Auto now.</>}
         <div style={small}>
           Each press of Auto sends one request from the scanner&rsquo;s Chrome, without a note, and opens their
-          profile once (a profile view). It stops at {INVITE_CAPS.day} in any 24 hours and {INVITE_CAPS.week} in any 7 days.
+          profile once (a profile view). It stops at {INVITE_CAPS.day} in any 24 hours and {INVITE_CAPS.week} in any 7 days,
+          whether or not the limits are lifted.
           LinkedIn doesn&rsquo;t publish its invitation limit; people commonly report about {REPORTED_WEEKLY_INVITES} a week.
         </div>
       </div>
@@ -156,6 +162,13 @@ function Row({ label, children }) {
 /** "in 2 h 5 min (Sat, Oct 3, 5:20 PM)" */
 const whenAndUntil = (ms, now) => `${untilText(ms, now)} (${whenText(ms)})`;
 
+async function post(body) {
+  const r = await fetch('/api/scraper', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'That couldn’t be saved.');
+}
+
 export default function UsageSection() {
   const [u, setU] = useState(null);
   const [error, setError] = useState(null);
@@ -169,17 +182,18 @@ export default function UsageSection() {
   useEffect(() => {
     load();
     const timer = setInterval(load, REFRESH_MS);
-    return () => clearInterval(timer);
+    // The notch, or the Scan page's own box, changed the limit or lifted it.
+    window.addEventListener(LIMITS_CHANGED, load);
+    return () => { clearInterval(timer); window.removeEventListener(LIMITS_CHANGED, load); };
   }, [load]);
 
-  const backToSafe = async () => {
+  // Every change here: the number, Back to 50, the lift and putting it back.
+  const change = async (body) => {
     setSaving(true);
+    setError(null);
     try {
-      const r = await fetch('/api/scraper', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set-limits', ...SAFE_LIMITS }),
-      });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'The budget could not be saved.');
+      await post(body);
+      window.dispatchEvent(new Event(LIMITS_CHANGED));
       await load();
     } catch (e) {
       setError(e.message);
@@ -199,43 +213,37 @@ export default function UsageSection() {
   // The server's clock, the one the windows were counted on.
   const now = u.now;
   const { limits = {} } = u;
+  const lifted = u.lifted === true;
   const day = u.searchesToday;
   const level = usageLevel({ cooldown: u.cooldown, searchesDay: day, lastPushback: u.lastPushback, searchesSincePushback: u.searchesSincePushback, now });
-  // The level's warning, then the budget's own when it invites trouble whatever has been
+  // The level's warning, then the limit's own note when it invites trouble whatever has been
   // used; the 373 said once between them (lib/usage.js warningParts).
   const warnings = warningParts(level, { searchesDay: day, cooldown: u.cooldown, lastPushback: u.lastPushback, now }, limits);
-  const aboveSafe = limits.daily > SAFE_LIMITS.daily || limits.monthly === 0 || limits.monthly > SAFE_LIMITS.monthly;
-  const left = estimate({ leftDay: u.leftToday, leftMonth: u.leftMonth, paused: Boolean(u.cooldown) });
+  const aboveSafe = limits.daily > SAFE_LIMITS.daily;
+  const left = estimate({ leftDay: u.leftToday, paused: Boolean(u.cooldown) });
   const pace = paceOf(limits.pace);
   const push = u.lastPushback;
+  // The limits came back by themselves: LinkedIn pushed back after the lift (lib/linkedin-limits.js sessionLift).
+  const backAfterPushback = !lifted && u.liftEnded?.why === 'pushback' ? u.liftEnded : null;
 
   // The 24-hour bar's colour is its count's own level, so a pause elsewhere doesn't redden it.
   const dayLevel = usageLevel({ searchesDay: day });
   const dayTicks = [
-    { at: SAFE_LIMITS.daily, label: String(SAFE_LIMITS.daily), title: 'The default budget' },
+    { at: SAFE_LIMITS.daily, label: String(SAFE_LIMITS.daily), title: 'The default limit' },
     { at: RISKY_DAILY, label: String(RISKY_DAILY), title: 'Above this is risky', color: '#FF8C42' },
     { at: RESTRICTED_AT, label: String(RESTRICTED_AT), title: 'A real account was restricted here', color: '#ff6b6b' },
   ];
-  if (limits.daily && !dayTicks.some((t) => t.at === limits.daily)) {
-    dayTicks.push({ at: limits.daily, label: `${limits.daily} yours`, title: 'Your daily budget', color: 'var(--sd-blue, #3498DB)' });
+  if (!lifted && limits.daily && !dayTicks.some((t) => t.at === limits.daily)) {
+    dayTicks.push({ at: limits.daily, label: `${limits.daily} yours`, title: 'Your daily limit', color: 'var(--sd-blue, #3498DB)' });
   }
   const dayMax = barMax(day, dayTicks.map((t) => t.at));
-
-  const month = u.searchesMonth;
-  const monthTicks = limits.monthly ? [{ at: limits.monthly, label: `${limits.monthly} yours`, title: 'Your monthly budget', color: 'var(--sd-blue, #3498DB)' }] : [];
-  const monthMax = barMax(month, [REPORTED_MONTH[1], limits.monthly || 0]);
-  const monthColor = limits.monthly && month >= limits.monthly ? '#ff6b6b' : month >= REPORTED_MONTH[0] ? '#FFD700' : '#3498DB';
-
-  const week = u.searchesWeek;
-  const weekMax = barMax(week, [AUTO.week]);
-
   const views = u.profilesToday;
-  const viewsMax = Math.max(limits.profiles || 1, Number(views) || 0);
 
   return (
     <Section id="usage" title="LinkedIn usage">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Pill level={level} />
+        {lifted && <LiftedTag />}
         <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', flex: '1 1 260px', lineHeight: 1.5 }}>
           What Sixgree has asked of your LinkedIn account from this computer, and how close that is to the line.
         </span>
@@ -249,58 +257,51 @@ export default function UsageSection() {
         }}>
           {warnings.map((text, i) => <div key={i} style={{ marginTop: i ? 6 : 0 }}>{text}</div>)}
           {aboveSafe && (
-            <button onClick={backToSafe} disabled={saving} style={{
+            <button onClick={() => change({ action: 'set-limits', daily: SAFE_LIMITS.daily })} disabled={saving} style={{
               marginTop: 9, padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 650,
               cursor: saving ? 'not-allowed' : 'pointer', background: 'rgba(255,215,0,0.08)',
               color: 'var(--sd-gold, #FFD700)', border: '1px solid rgba(255,215,0,0.4)',
-            }}>{saving ? 'Saving…' : `Back to ${SAFE_LIMITS.daily} a day, ${SAFE_LIMITS.monthly} a month`}</button>
+            }}>{saving ? 'Saving…' : `Back to ${SAFE_LIMITS.daily} a day`}</button>
           )}
         </div>
       )}
+      {backAfterPushback && (
+        <Body style={{ color: 'var(--sd-gold, #FFD700)' }}>
+          The limits came back on by themselves {whenText(backAfterPushback.at)}: LinkedIn pushed back after they were lifted.
+        </Body>
+      )}
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Meter title="Searches in the last 24 hours" used={day} of={limits.daily ? `of ${limits.daily} a day` : 'no daily cap'}
+      <Meter title="Searches in the last 24 hours" used={day} of={lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
         max={dayMax} color={(LEVELS[dayLevel] || LEVELS.unknown).color} ticks={dayTicks}>
-        {u.unreadable ? null : limits.daily
-          ? (u.dayFreesAt
+        {u.unreadable ? null : lifted
+          ? <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree.</>
+          : u.dayFreesAt
             ? <>Your {limits.daily} a day are used. The next one frees {whenAndUntil(u.dayFreesAt, now)}.</>
-            : <>{plural(u.leftToday, 'search', 'searches')} left under your budget{u.cooldown ? ', once the pause ends' : ''}.</>)
-          : <>No daily cap is set, so only the monthly one stops a scan.</>}
+            : <>{plural(u.leftToday, 'search', 'searches')} left today{u.cooldown ? ', once the pause ends' : ''}.</>}
         {u.dayClearAt && <> All clear {whenAndUntil(u.dayClearAt, now)}, when the newest of these turns 24 hours old.</>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px 12px', flexWrap: 'wrap', marginTop: 10 }}>
+          <label htmlFor="usage-daily" style={{ fontSize: 13, fontWeight: 650, color: 'var(--sd-fg-1, #e8e8ee)' }}>Searches a day</label>
+          <DailyLimitInput id="usage-daily" value={limits.daily} onSave={(daily) => change({ action: 'set-limits', daily })} />
+          <span style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)' }}>
+            {SAFE_LIMITS.daily} is the default{limits.daily > RISKY_DAILY ? `; over ${RISKY_DAILY} is risky` : ''}.
+          </span>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <LiftLimits lifted={lifted} disabled={saving}
+            onLift={() => change({ action: 'lift-limits' })} onPutBack={() => change({ action: 'put-limits-back' })} />
+          {lifted && u.heldCooldown && (
+            <div style={{ ...small, color: 'var(--sd-gold, #FFD700)' }}>
+              The pause after LinkedIn pushed back ({u.heldCooldown.reason}, until {whenText(u.heldCooldown.until)}) is off too, and comes back with the limits.
+            </div>
+          )}
+        </div>
         <div style={small}>
-          {SAFE_LIMITS.daily} is the default budget. Over {RISKY_DAILY} is risky: the budget picker asks first.
-          {' '}{RESTRICTED_AT} is where a real account was restricted, on Sep 28, 2026, with searches run back to back.
+          Profile views (each circle scan opens the person&rsquo;s profile once) count against the same number:
+          {' '}{Number.isFinite(views) ? <b>{count(views)}</b> : '?'}{lifted ? '' : ` of ${limits.daily}`} in the last 24 hours, never closer
+          together than {pace.profileGap} seconds at {pace.label}.
+          {' '}{RESTRICTED_AT} searches is where a real account was restricted, on Sep 28, 2026, with searches run back to back;
           {' '}{DANGER_AT} (60% of that) or more shows as too close.
-        </div>
-      </Meter>
-
-      <Meter title="Searches this month" used={month} of={limits.monthly ? `of ${limits.monthly} a month` : 'no monthly cap'}
-        max={monthMax} color={monthColor} ticks={monthTicks}
-        band={{ from: REPORTED_MONTH[0], to: REPORTED_MONTH[1], title: 'The range people report for a free account' }}>
-        LinkedIn&rsquo;s month resets {pacificText(u.monthResets)} ({whenText(u.monthResets)} here).
-        {!limits.monthly ? <> No monthly cap is set (Premium).</>
-          : Number.isFinite(u.leftMonth) && <> {plural(u.leftMonth, 'search', 'searches')} left under your budget.</>}
-        <div style={small}>
-          The shaded {REPORTED_MONTH[0]} to {REPORTED_MONTH[1]} is the range people report for a free account&rsquo;s
-          monthly search limit. LinkedIn doesn&rsquo;t publish one, so it&rsquo;s a guide, not a fact.
-          Every page of someone&rsquo;s connections is one search.
-        </div>
-      </Meter>
-
-      <Meter title="Searches in the last 7 days" used={week} of={`against Auto scan's ${AUTO.week}`}
-        max={weekMax} color={week >= AUTO.week ? '#FFD700' : '#3498DB'}
-        ticks={[{ at: AUTO.week, label: String(AUTO.week), title: 'Auto scan stops here' }]}>
-        Auto scan stops at {AUTO.week} in any 7 days. A scan you start yourself stops only at your daily and monthly budget.
-      </Meter>
-
-      <Meter title="Profile views in the last 24 hours" used={views} of={`of ${limits.profiles} a day`}
-        max={viewsMax} color={views >= limits.profiles ? '#ff6b6b' : '#9B59B6'}>
-        {u.profilesFreeAt
-          ? <>Your {limits.profiles} a day are used. The next one frees {whenAndUntil(u.profilesFreeAt, now)}.</>
-          : Number.isFinite(views) && <>{plural(u.profilesLeftToday, 'view', 'views')} left.</>}
-        <div style={small}>
-          Each circle scan opens the person&rsquo;s profile once. Profile views are what got an account restricted on
-          Sep 9, 2026, after about 20 to 25 in an hour; at {pace.label} the scanner opens at most one every {pace.profileGap} seconds.
         </div>
       </Meter>
 
@@ -308,22 +309,21 @@ export default function UsageSection() {
 
       <div style={{ marginTop: 22 }}>
         <Row label="Speed">
-          {pace.label}: about {searchesPerHour(limits.pace)} searches an hour at most while a scan runs.
+          {pace.label}: about {searchesPerHour(limits.pace)} searches an hour at most while a scan runs, lifted or not.
           {Number.isFinite(u.searchesLastHour) && <> In the last hour: {plural(u.searchesLastHour, 'search', 'searches')}.</>}
           {' '}<a href="#scan-top" style={link}>Change it beside the Scan button</a>
         </Row>
         <Row label="Can still map">
           {u.unreadable
             ? <>Can&rsquo;t tell until the record of searches can be read.</>
-            : !left
-            ? <>No cap is set, so there&rsquo;s no count of what&rsquo;s left.</>
+            : lifted
+            ? <>As many as a scan reaches at its pace: there&rsquo;s no daily limit for this session.</>
             : u.cooldown
             ? <>No one until the pause ends.</>
-            : left.searches === 0
-            ? <>No one for now: your {left.by === 'day' ? 'daily' : 'monthly'} budget is used.</>
+            : !left || left.searches === 0
+            ? <>No one for now: today&rsquo;s {limits.daily} are used.</>
             : <>
-              About {count(left.people)} people: {plural(left.searches, 'search', 'searches')} left under your
-              {' '}{left.by === 'day' ? 'daily' : 'monthly'} budget, at about {PEOPLE_PER_SEARCH} people a search.
+              About {count(left.people)} people today: {plural(left.searches, 'search', 'searches')} left, at about {PEOPLE_PER_SEARCH} people a search.
               <span style={{ color: 'var(--sd-fg-4, #778)' }}> An estimate: a page of results shows up to 10 people, and the last page of a list is usually short.</span>
             </>}
         </Row>
@@ -332,15 +332,16 @@ export default function UsageSection() {
             ? <>None on record on this computer.</>
             : <>
               {push.at ? <>{whenText(push.at)} ({agoText(push.at, now)}): </> : null}{push.reason}.
-              {push.active && <> Scanning is paused until {whenText(push.pausedUntil)}.</>}
+              {push.active && !lifted && <> Scanning is paused until {whenText(push.pausedUntil)}.</>}
+              {push.active && lifted && <> The pause until {whenText(push.pausedUntil)} is off while the limits are lifted.</>}
               {push.liftedAt && <> You lifted the pause {whenText(push.liftedAt)}; it would have run until {whenText(push.pausedUntil)}.</>}
               {!push.active && !push.liftedAt && push.pausedUntil && <> The pause ended {whenText(push.pausedUntil)}.</>}
               {u.searchesSincePushback > 0 && <> {plural(u.searchesSincePushback, 'search', 'searches')} since.</>}
             </>}
         </Row>
         <Row label="Auto scan">
-          However high your budget is set, Auto scan keeps under its own limits: {AUTO.day} searches in any 24 hours,
-          {' '}{AUTO.week} in any 7 days, only from {hoursText(AUTO.hours)} on this computer&rsquo;s clock,
+          Auto scan uses the same searches a day, and waits for it to free up instead of stopping. Its own pacing on top:
+          {' '}only from {hoursText(AUTO.hours)} on this computer&rsquo;s clock,
           {' '}{AUTO.sittingRest === 3600 ? 'an hour’s rest' : `a ${AUTO.sittingRest / 60}-minute rest`} after every {AUTO.sitting} searches,
           {' '}and {AUTO.pushbackRest / 86400} days off after any check from LinkedIn.
         </Row>
@@ -350,8 +351,8 @@ export default function UsageSection() {
         Where these numbers come from: Sixgree writes down every search, profile view and Auto request it makes
         on your LinkedIn account, on this computer, and counts them here. Searches you make yourself on linkedin.com
         aren&rsquo;t in it, and LinkedIn shows no count of its own. The {RESTRICTED_AT} searches and the 20 to 25
-        profile views are what happened to one real account, not safe limits. Change the budget
-        {' '}<a href="#scan-settings" style={link}>under Scanner settings</a>. Nothing here is sent anywhere.
+        profile views are what happened to one real account, not safe limits. Whatever the limit, every scan keeps its
+        pace and stops when LinkedIn asks you to check in. Nothing here is sent anywhere.
         {' '}Counted {whenText(now)}.
       </div>
     </Section>

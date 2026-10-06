@@ -183,11 +183,6 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-seg.sel { border-color: rgba(var(--ob-ink), 0.6); background: rgba(var(--ob-ink), 0.07); box-shadow: 0 0 0 3px rgba(var(--ob-ink), 0.05); }
 .ob-hintline { font-size: 13.5px; color: var(--ob-fg3); line-height: 1.5; padding: 0 2px; }
 .ob-hintline.warn { color: var(--ob-gold); }
-.ob-daily { display: flex; gap: 8px; flex-wrap: wrap; }
-.ob-dchip { height: 40px; padding: 0 16px; border-radius: 11px; border: 1px solid var(--ob-line); background: var(--ob-surface); font-weight: 750; font-size: 14.5px; display: inline-flex; align-items: center; gap: 7px; }
-.ob-dchip small { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ob-fg3); }
-.ob-dchip.sel { border-color: rgba(var(--ob-ink), 0.6); background: rgba(var(--ob-ink), 0.08); }
-.ob-dchip.sel.risky { border-color: color-mix(in srgb, var(--ob-gold) 40%, transparent); background: color-mix(in srgb, var(--ob-gold) 10%, transparent); color: var(--ob-gold); }
 .ob-warn { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13.5px; line-height: 1.5; color: var(--ob-gold); padding: 10px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--ob-gold) 35%, transparent); background: color-mix(in srgb, var(--ob-gold) 6%, transparent); }
 .ob-warn span { flex: 1 1 260px; }
 .ob-auto { display: flex; gap: 14px; align-items: center; padding: 13px 16px; border-radius: 15px; border: 1px solid var(--ob-line); background: var(--ob-surface); margin-top: 6px; width: 100%; text-align: left; }

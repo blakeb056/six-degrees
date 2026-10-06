@@ -275,6 +275,13 @@ a daily budget above 100 or no monthly cap, names this number, and offers a way
 back to 50 a day and 250 a month (`lib/search-risk.js`). Again: a ceiling seen
 once, not a safe limit.
 
+**Since 2026-10-05** (Blake: one daily limit and a lift for the session, SCRAPER.md
+*Limits*) the picker is a number: past 100 it shows this number beside it, with *Back to
+50 a day*, and asks nothing. The lift turns the daily limit and the cooldown off until the
+app restarts. It never touches the pace, the minute between profile views, or the stop at
+LinkedIn's first warning, and a pushback after the lift puts the limits back by itself:
+that stop is the lesson of this entry, and the one thing a lift must never remove.
+
 ## 17. Animation frames do not arrive in a hidden tab — so never commit state in one
 
 Both ported views drove their transitions with `requestAnimationFrame`, which is

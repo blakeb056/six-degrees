@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   foot of the page under Extras, and greyed out while anything was scanning, so it seemed to exist
   only in the guided setup. The panel also has *Turn off Auto scan*; both, and the guided setup,
   are the same setting, and turning it off stops Auto scan if it's running.
+- **One limit, and a button to lift it for the session.** The scanner had a daily and a
+  monthly search budget, its own cap on profile views, and Auto scan's own 40 a day and 200 a
+  week. Now there is one number, **searches a day** (50 by default, any whole number from 1 to
+  1000), set in Scan → LinkedIn usage, in the notch while a scan runs, or in the setup's pace
+  step; profile views count against the same number. A saved daily number is kept; the rest is
+  dropped. **Lift limits for this session** (Scan → LinkedIn usage, and the notch when the limit
+  holds a scan back) is one click, no pop-up: until you quit Sixgree, the daily limit and the
+  cooldown are off. The notch and the Scan page show *Limits lifted* with *Put limits back*, and
+  LinkedIn pushing back again puts them back by itself. Whatever the limit, scans keep their
+  pace, keep profile views a minute apart, stop if LinkedIn asks you to check in, run one at a
+  time, and Auto's caps on connection requests stay. The usage section is one meter now.
 
 ### Fixed
 - **Auto scan works.** It was one long scan that did its own waiting: pressed in the evening it

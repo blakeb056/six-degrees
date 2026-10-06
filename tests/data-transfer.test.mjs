@@ -727,12 +727,13 @@ test('a network moves whole: export on one computer, import on another, export a
   assert.deepEqual(byteForByte(second), byteForByte(first));
   assert.deepEqual(filesOf(second).map((f) => f.path), filesOf(first).map((f) => f.path));
   // The budget files are merged into the new computer's (none there), so they
-  // are written again: the same budget, in the app's own layout.
+  // are written again: the same daily number, in the app's own layout (an
+  // older copy's monthly cap is dropped, as readLimits drops it).
   const fileIn = (file, rel) => {
     const x = new DatabaseSync(file, { readOnly: true });
     try { return JSON.parse(Buffer.from(x.prepare('SELECT bytes FROM sd_export_files WHERE path = ?').get(rel).bytes).toString('utf8')); } finally { x.close(); }
   };
-  assert.deepEqual(fileIn(second, 'scan-limits.json'), { daily: 25, monthly: 100, profiles: 50 });
+  assert.deepEqual(fileIn(second, 'scan-limits.json'), { daily: 25 });
   assert.deepEqual(fileIn(second, 'linkedin-activity.json'), fileIn(first, 'linkedin-activity.json'));
   const counts = (file) => JSON.parse(manifestOf(file).counts);
   assert.deepEqual(counts(second), counts(first));
@@ -923,15 +924,15 @@ test('REGRESSION: importing onto a computer that has scanned keeps its LinkedIn 
   const after = linkedinState(here, now);
   assert.equal(after.searchesToday, 40);
   assert.ok(after.cooldown, 'still paused');
-  assert.deepEqual(after.limits, { daily: 25, monthly: 100, profiles: 50, pace: 'fast' });
+  assert.deepEqual(after.limits, { daily: 25, pace: 'fast' }, 'its daily number; the old monthly cap is ignored');
   assert.deepEqual(namesIn(dbIn(here)), ['v-0', 'v-1'], 'while the network itself was replaced');
   // A copy of the budget as it was is kept with the rest, for an undo.
   assert.equal(JSON.parse(readFileSync(path.join(here, done.keptFiles, 'linkedin-activity.json'), 'utf8')).searches.length, 40);
 });
 
 test('REGRESSION: a copy whose scan limits the app never offers is refused', async () => {
-  // The scanner reads a daily limit of 0 as no limit at all (review R2). The
-  // menu offers 25-500 a day; anything else in a file from elsewhere is refused.
+  // A daily limit the app would never save (review R2): it takes 1 to 1000 a
+  // day; anything else in a file from elsewhere is refused.
   const { sha256 } = await import('../lib/data-export.js');
   const forged = (rel, value) => tampered(goodExport(), null, (db) => {
     const bytes = Buffer.from(JSON.stringify(value));
@@ -941,14 +942,14 @@ test('REGRESSION: a copy whose scan limits the app never offers is refused', asy
   });
   assert.throws(() => validateImport(forged('scan-limits.json', { daily: 0, monthly: 0 }), checks),
     refusedWith(/“scan-limits\.json” inside this file can't be used \(its daily limit \(0\) is not one Sixgree offers\)/));
-  // Profile views have no "no limit" at all.
-  assert.throws(() => validateImport(forged('scan-limits.json', { daily: 50, monthly: 250, profiles: 0 }), checks),
-    refusedWith(/its limit on profile views \(0\) is not one Sixgree offers/));
+  assert.throws(() => validateImport(forged('scan-limits.json', { daily: 5000 }), checks),
+    refusedWith(/its daily limit \(5000\) is not one Sixgree offers/));
   assert.throws(() => validateImport(forged('linkedin-activity.json', { searches: ['soon'] }), checks),
     refusedWith(/“linkedin-activity\.json” inside this file can't be used/));
   assert.throws(() => validateImport(forged('linkedin-cooldown.json', { reason: 'no end' }), checks),
     refusedWith(/“linkedin-cooldown\.json” inside this file can't be used/));
-  assert.equal(validateImport(forged('scan-limits.json', { daily: 500, monthly: 0 }), checks).files, 4, 'the menu\'s own choices pass');
+  assert.equal(validateImport(forged('scan-limits.json', { daily: 500, monthly: 0 }), checks).files, 4, 'a number the app takes passes; an old copy\'s monthly cap is ignored');
+  assert.equal(validateImport(forged('scan-limits.json', { daily: 137 }), checks).files, 4);
 });
 
 // ── nothing replaced before a whole copy of it is on the disk ────────────────

@@ -48,10 +48,16 @@ test('the pace line says what a pace means, and when it reaches the daily limit'
 
 test('Fast never goes past today\'s limit: a sitting is at most what is left, and at none it stops', () => {
   const noon = at(12);
-  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 50, leftMonth: 200 }), { kind: 'go', sitting: 12 });
-  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 5, leftMonth: 200 }), { kind: 'go', sitting: 5 });
-  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', leftToday: 50, leftMonth: 3 }), { kind: 'go', sitting: 3 });
-  const done = autoPlan({ now: noon, pace: 'fast', leftToday: 0, leftMonth: 200, daily: 50 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 50 }), { kind: 'go', sitting: 12 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 5 }), { kind: 'go', sitting: 5 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', leftToday: 3 }), { kind: 'go', sitting: 3 });
+  // One limit (2026-10-05): no month of its own any more.
+  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', leftToday: 50, leftMonth: 0 }), { kind: 'go', sitting: 4 });
+  // Lifted for the session: no daily limit (leftToday null), only the pace's sitting, hours and rests.
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: null }), { kind: 'go', sitting: 12 });
+  assert.equal(autoPlan({ now: at(20), pace: 'fast', leftToday: null }).kind, 'hours');
+  assert.equal(autoPlan({ now: noon, pace: 'fast', leftToday: null, restUntil: noon + HOUR }).kind, 'rest');
+  const done = autoPlan({ now: noon, pace: 'fast', leftToday: 0, daily: 50 });
   assert.equal(done.kind, 'stop');
   assert.equal(done.as, 'limit');
   assert.equal(done.reason, 'Today’s limit of 50 searches is reached, so Auto scan has stopped for today.');
@@ -222,6 +228,25 @@ test('at the daily limit Auto scan stops calmly, saying so', async () => {
   assert.deepEqual(auto.ended.phase, 'limit');
   assert.match(auto.ended.reason, /Today’s limit of 50 searches is reached/);
   assert.equal(runs().length, 0);
+});
+
+test('lifted for the session: past the daily limit Auto scan runs its pace\'s sitting, and still keeps its hours and rests', async () => {
+  const { liftLimits, putLimitsBack } = await import('../lib/limits-lift.js');
+  const now = clock / 1000;
+  writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 60 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
+  liftLimits();
+  try {
+    await post({ action: 'auto-start', pace: 'fast', tiers: ['S'] });
+    await until(() => runs().length === 1, 'a sitting past 60 of 50');
+    assert.match(runs()[0], /--experimental --sitting=12\b/, 'the whole sitting: no daily cap while lifted');
+    await until(async () => (await job()).auto.phase === 'rest', 'the rest after it');
+    assert.equal((await job()).auto.until, clock + 30 * 60 * 1000, 'Fast still rests 30 minutes');
+    clock = at(19);
+    await until(async () => (await job()).auto.phase === 'hours', 'outside the hours');
+    assert.equal(runs().length, 1, 'and nothing runs outside them');
+  } finally {
+    putLimitsBack();
+  }
 });
 
 test('nothing left in the picked tiers: it says so and stops', async () => {

@@ -49,6 +49,7 @@ test('the three points say what it does, what it risks, and that nothing leaves'
   assert.equal(RISK_POINTS.length, 3);
   assert.match(RISK_POINTS[0], /your own LinkedIn account/);
   assert.match(RISK_POINTS[1], /restrict/);
-  assert.match(RISK_POINTS[1], /50 searches a day and 250 a month/);
+  assert.match(RISK_POINTS[1], /50 searches a day/);
+  assert.doesNotMatch(RISK_POINTS[1], /a month/);
   assert.match(RISK_POINTS[2], /Nothing leaves your computer/);
 });
