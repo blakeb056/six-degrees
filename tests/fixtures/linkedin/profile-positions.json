@@ -1,0 +1,42 @@
+{
+  "_note": "Invented. The shape of a LinkedIn profile API response with position entities, written by hand for tests: no real person, company or URN.",
+  "data": { "entityUrn": "urn:li:fsd_profile:INVENTED0001" },
+  "included": [
+    {
+      "$type": "com.linkedin.voyager.dash.identity.profile.Profile",
+      "entityUrn": "urn:li:fsd_profile:INVENTED0001",
+      "firstName": "Ada",
+      "lastName": "Quill",
+      "headline": "Building things at Quillon Labs"
+    },
+    {
+      "$type": "com.linkedin.voyager.dash.identity.profile.Position",
+      "entityUrn": "urn:li:fsd_profilePosition:(INVENTED0001,1)",
+      "title": "Vice President, Engineering",
+      "companyName": "Quillon Labs",
+      "dateRange": { "start": { "year": 2022, "month": 3 } },
+      "locationName": "Orlando, Florida"
+    },
+    {
+      "$type": "com.linkedin.voyager.dash.identity.profile.Position",
+      "entityUrn": "urn:li:fsd_profilePosition:(INVENTED0001,2)",
+      "title": "Director of Platform",
+      "company": { "name": "Brightwater Analytics" },
+      "dateRange": { "start": { "year": 2017, "month": 6 }, "end": { "year": 2022, "month": 2 } }
+    },
+    {
+      "$type": "com.linkedin.voyager.dash.identity.profile.Position",
+      "entityUrn": "urn:li:fsd_profilePosition:(INVENTED0001,3)",
+      "title": "Software Engineer",
+      "companyName": "Hollowfield Systems",
+      "timePeriod": { "startDate": { "year": 2012 }, "endDate": { "year": 2017 } }
+    },
+    {
+      "$type": "com.linkedin.voyager.dash.identity.profile.Education",
+      "entityUrn": "urn:li:fsd_profileEducation:(INVENTED0001,4)",
+      "title": "Not a role: a school",
+      "schoolName": "Invented State University",
+      "dateRange": { "start": { "year": 2008 }, "end": { "year": 2012 } }
+    }
+  ]
+}

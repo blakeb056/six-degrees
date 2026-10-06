@@ -1,0 +1,63 @@
+{
+  "_note": "Invented. The shape of LinkedIn's profile-components data (an Experience section, then an Education one), written by hand for tests: no real person, company or URN.",
+  "data": {
+    "elements": [
+      {
+        "entityUrn": "urn:li:fsd_profileCard:(INVENTED0002,EXPERIENCE,en_US)",
+        "topComponents": [{ "components": { "headerComponent": { "title": { "text": "Experience" } } } }],
+        "subComponents": [
+          {
+            "components": {
+              "entityComponent": {
+                "titleV2": { "text": { "text": "Chief Operating Officer" } },
+                "subtitle": { "text": "Marrowgate Freight · Full-time" },
+                "caption": { "text": "Jan 2021 - Present · 4 yrs 10 mos" },
+                "metadata": { "text": "Tampa, Florida" }
+              }
+            }
+          },
+          {
+            "components": {
+              "entityComponent": {
+                "titleV2": { "text": { "text": "Larkspur Shipping" } },
+                "subtitle": { "text": "Full-time · 8 yrs" },
+                "subComponents": [
+                  {
+                    "components": {
+                      "entityComponent": {
+                        "titleV2": { "text": { "text": "VP Operations" } },
+                        "caption": { "text": "Mar 2017 - Dec 2020 · 3 yrs 10 mos" }
+                      }
+                    }
+                  },
+                  {
+                    "components": {
+                      "entityComponent": {
+                        "titleV2": { "text": { "text": "Operations Manager" } },
+                        "caption": { "text": "2013 - 2017 · 4 yrs" }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "entityUrn": "urn:li:fsd_profileCard:(INVENTED0002,EDUCATION,en_US)",
+        "subComponents": [
+          {
+            "components": {
+              "entityComponent": {
+                "titleV2": { "text": { "text": "Invented Polytechnic" } },
+                "subtitle": { "text": "BS, Logistics" },
+                "caption": { "text": "2009 - 2013" }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

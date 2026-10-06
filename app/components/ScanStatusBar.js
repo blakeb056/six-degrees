@@ -66,6 +66,7 @@ const WHAT = {
   messages: 'Reading your messages list',
   'messages-full': 'Reading your whole messages history',
   connect: 'Sending a connection request',
+  'read-profiles': 'Reading full profiles',
 };
 
 // Why the queue waits for you, in the notch's words.

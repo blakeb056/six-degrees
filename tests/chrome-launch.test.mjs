@@ -214,8 +214,8 @@ test('every Chrome the scanner starts goes through launch_chrome', () => {
   const src = fs.readFileSync(SCRAPER, 'utf8');
   const launches = src.split('\n').filter((l) => l.includes('launch_persistent_context(')).map((l) => l.trim());
   assert.deepEqual(launches, ['context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode, displays=displays))']);
-  // Sign-in, the full and quick walks, messages, a circle, a company, Auto.
-  assert.equal((src.match(/= launch_chrome\(p, /g) || []).length, 7);
+  // Sign-in, the full and quick walks, messages, a circle, a company, Auto, Read profiles.
+  assert.equal((src.match(/= launch_chrome\(p, /g) || []).length, 8);
   assert.match(src, /browser = launch_chrome\(p, sign_in=True\)/);
 });
 

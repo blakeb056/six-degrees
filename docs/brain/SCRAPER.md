@@ -28,6 +28,7 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--save-photos` | Saves the photos older versions kept as links (`GET /api/update-images`), once each: the file's path if it saved, and a definite no (expired, not LinkedIn's, not a picture, someone else's) forgets the link. No connection, a timeout, a 429 or 5xx keeps it (`TryLater`); three in a row, or nothing but those, end the run with the reason and exit 1. No browser, no search. Every scan that finishes does the same at its end (`save_waiting_photos`); the Scan page's *Save photos* runs this. |
 | `--server` | **Legacy.** A standalone HTTP server on port 5555. The app no longer uses it — `/api/scraper` spawns the scraper directly. Kept for anyone driving it from outside. |
 | `--show-window` | A normal Chrome window in front, to watch it work (the Scan page's *Show the scanner's Chrome window*). Without it the window stays out of sight; see *The window* below. |
+| `--read-profiles=N` | **Read profiles**: up to N (at most 25) of your connections' profiles, highest power first, for their roles. See *Read profiles* below. |
 | `--headless` | Command line only: works on every mode once signed in, but headless Chrome is **more** detectable, not less, and a check LinkedIn asks for can't be seen. |
 
 ## The window, and no pop-ups (rule changed 2026-10-04)
@@ -42,7 +43,7 @@ in front of you that you watched work. Blake retired that for what's on screen:
 > hinder the user with clicking ok for pop ups … we want seamlessness … not to have any
 > disruption through pop ups or windows" (Blake, 2026-10-04)
 
-**What did not change:** the pacing (fixed waits, never randomised to look like a person),
+**What did not change:** the pacing (fixed waits; gentle pacing since 2026-10-05 only adds to them, *Pacing* below),
 the budgets, the caps, the profile-view gap and the cooldowns, exactly as they were. Only
 what reaches the screen changed.
 
@@ -267,14 +268,162 @@ says so, and lifting again is one click.
 
 **What always applies, lifted or not** (they protect the account and cost nothing):
 
-- the pace before every page and search (`PAGE_PAUSE`, `CHUNK_COOLDOWN`, the chosen speed),
-  and Auto scan's hours and rests (`DRIP_HOURS`, `SESSION_PAGES`/`SESSION_REST`);
+- the pace before every page and search (`PAGE_PAUSE`, `CHUNK_COOLDOWN`, the chosen speed,
+  and gentle pacing's extras on top), and Auto scan's hours and rests (`DRIP_HOURS`,
+  `SESSION_PAGES`/`SESSION_REST`);
 - at least `PROFILE_GAP` between any two profile opens, timed from the record;
 - stopping when LinkedIn shows a sign-in wall, a security check, a restriction or its own
   limit, keeping the page (`pushback/`) and writing the pause (TRAPS §35);
 - Auto's caps on connection requests (15 a day, 80 a week);
 - one scan at a time, and the queue with every check at its turn;
 - the one-time *I understand* before the first scan (`lib/scan-risk.js`).
+
+## Pacing: gentle, on top of the old waits (2026-10-05)
+
+> "polish the pacing, with extra intervals" · "add scroll intervals as well" · "random scrolls
+> do" · "build on top of the old system, never replace it" (Blake, 2026-10-05)
+
+**The rule: only ever more.** The old read runs exactly as before, every time: the same
+waits (10 s for a list, 3 s on each page, `PAGE_PAUSE` before the next, `CHUNK_COOLDOWN`
+after every 10, `BRIDGE_COOLDOWN` between people, `PROFILE_GAP` between profiles), the same
+checks, the same reader (`_read_results_page`, `BRIDGE_RESULTS_JS`), in the same order.
+Gentle pacing adds layers around it and can't shorten or skip any of it. Scanner settings →
+**Gentle pacing and scrolling (new)**, on by default (`scan-limits.json` `"gentle"`, read by
+`apply_pace` at the start of every run). **Off, a read is the old one exactly**: the same
+sleeps in the same order (`tests/pacing.test.mjs` pins the list).
+
+| Layer | What it adds | Where |
+|---|---|---|
+| A paced extra | after each old wait: `paced_interval(floor) - floor`, the floor plus a half-normal extra (sigma 0.125 × floor), capped at 3 × the floor. Mean about 1.1 × the floor. Python's `random`, `PACE_RNG` | `gentle_extra`, before the 10 s and the 3 s, after the page pause and the cooldown between people |
+| Reading time | 0.4 s for each person a results page showed, paced | `_gentle_after_page` |
+| A random scroll | before the old reader: 3 to 8 wheel steps of 180 to 720 px, 0.15 to 0.6 s after each, a small scroll back up on about a quarter of pages (two on a fifth of those), an idle 0.8 to 2 s on about one in eight, always ending at the foot | `scroll_plan`, `settle_list` |
+| A scroll while waiting | on about a third of page pauses, one or two small wheel turns (40 to 220 px, up or down) | `wait_scrolls`, inside `rest` |
+| A short break | after about one page in a hundred, a few minutes (Fast 1 to 2.5 min, Medium 1.5 to 4, Slow 2 to 6): "Short break, back at 14:32." | `break_after_page` |
+| A longer rest | every 60 pages: Fast 3 min, Medium 5, Slow 8, paced. Not in Auto scan's sittings, which rest on their own | `break_after_page` |
+
+Every new wait goes through `rest()`, a second at a time, so Stop ends it within one; a wait
+of minutes says when it ends and a line a minute. The old waits keep their old steps.
+
+**The scroll can only add.** `_read_page_gently` reads the page first as the old reader
+would (`BRIDGE_RESULTS_JS`), then scrolls (`settle_list`), then runs the old reader as
+always, and keeps the old reader's people plus anyone the first look saw that it didn't.
+`settle_list`, by structure only (TRAPS §5): the profile links in `<main>` (not in nav,
+header, footer or aside), the list holding the last of them (`role=list`, `ul`, `ol`), its
+height, and the list's own scroll container scrolled to its end as well as the window (TRAPS
+§6). Rounds of: the random scroll, a visibility wait on the last profile link
+(`locator(...).wait_for(state="visible")`), two counts 0.4 to 0.7 s apart; done when the count
+and the height stop growing, at most 6 rounds or 8 s. If it errors, times out or finds no
+list, it's ignored, with one line a run (*New list check didn't find the list, used the
+standard read.*), and the old reader's answer stands. Tested both ways: a page that loads 3
+more as it scrolls is read in full (39, where the old read had 30), and a page where every
+new layer fails gives exactly the old result.
+
+**The speeds shown are worked out from the same numbers** (`lib/scan-pace.js` `PACING`,
+checked equal to `scrape.py` `PACING`): `pageSeconds`, `paceSeconds`, `searchesPerHour`,
+`firstCircleSeconds`, `profilesPerHour`, `paceLine`, each with gentle pacing or without.
+
+| Speed | Searches an hour, gentle (old) | A list of 100 pages, gentle (old) | First circle, gentle (old) | Profiles an hour at most |
+|---|---|---|---|---|
+| Fast | about 77 (113) | about 76 min (55) | about 7 min (5) | 54 (60) |
+| Medium | about 40 (52) | about 147 min (115) | about 14 min (12) | 36 (40) |
+| Slow | about 23 (29) | about 256 min (210) | about 25 min (21) | 27 (30) |
+
+About a quarter slower at Fast, a fifth at Slow: reading time and the scroll are the most of it. The Scan
+page's speed line, the Speed buttons, LinkedIn usage's "about N searches an hour", the Scan
+one circle box and the onboarding all read these.
+
+## Retries: 2, 4, 8 and 16 seconds (2026-10-05)
+
+One way, `read_with_backoff(page, look, what, reload)`, and only around what the old read
+already took for a failure: their list not loading after the old 10 s and six looks (it used
+to end as *a search that would not open*), a results page the old reader found empty, Read
+profiles' profile and its Experience section. `look(page)` returns None while the page isn't
+ready. Retries after `BACKOFF` = (2, 4, 8, 16) s exactly, plus up to 0.5 s of jitter
+(`backoff_wait`). The first two look again in place; the last two reload (`_counted_reload`),
+and each reload is a search, or a profile view that also waits out the minute between views,
+counted against the day like any other; with none left it looks in place instead. Logged
+calmly: *Their list slow to load, trying again in 2 s (attempt 1 of 4).* After the fourth it's
+"unread", said so, never taken for zero (TRAPS §7), and the caller does what it did before.
+
+**Never retried:** LinkedIn pushing back (`PUSHBACK_JS`: a security check, a sign-in wall, a
+restriction, the unusual-activity warning), HTTP 429 or 999 on the page opened (`_NAV`), and
+its short "too many requests" page (`TOO_MANY_JS`). Those end the read at once, as always.
+Off (gentle pacing off) there are no retries: the old read exactly.
+
+## Exit codes (2026-10-05)
+
+The scanner says how a run ended in its exit code; the plain line on stderr stays. The app
+goes by the code (`lib/scan-exit.js exitOutcome`, `route.js finish`); for a scanner from before
+the table, the daily limit is still found by its words. Both tables are one
+(`tests/scan-exit.test.mjs`).
+
+| Code | Kind | Raised by | The app |
+|---|---|---|---|
+| 0 | ok | finished, or stopped by you | *Finished.* |
+| 1 | error | anything unexpected (traceback on stderr) | a stop with its reason |
+| 2 | usage | argparse, a bad command line | a stop with its reason |
+| 10 | pushback | `LinkedInPushedBack`, Auto's `pushback`, a batch that ended on it | *Stopped: LinkedIn pushed back.* and the reason |
+| 11 | limit | `BudgetReached` | calm (`exitCode` 0), the notch's lift |
+| 12 | cooldown | `CoolingDown`, the two-unclear breaker | calm (`exitCode` 0) |
+| 13 | signed-out | `NotSignedIn`, Auto's `not-signed-in` | a stop with its reason |
+| 14 | save-failed | `SaveFailed` | a stop with its reason |
+| 15 | unread | `PageUnreadable` (Read profiles: 3 in a row) | a stop with its reason |
+| 16 | search-limit | `SearchLimitReached` | a stop with its reason |
+| 17 | try-later | `TryLater` (Save photos) | a stop with its reason |
+
+`exitCode` in `GET ?job=1` stays what the app always read (0 for a calm end); `exitKind` says
+which. An Auto-Bridge batch that ended early exits with why (`BATCH_END`, after saving its
+photos). Install's pip codes are pip's own: read as plain errors.
+
+## Read profiles: optional, off by default (2026-10-05)
+
+> Blake: "Read full profiles (experience)", off by default, its own action.
+
+Scanner settings → **Read full profiles (experience)** (`scan-limits.json` `"profileReads"`),
+with the line *"Opens each person's profile, which is a profile view: the action LinkedIn is
+strictest about. Counts against your searches a day, at most one a minute."* On, a round of 5,
+10 or 25 (`read-profiles`, `--read-profiles=N`, `read_profiles`). The route refuses it while
+off, and with no profile view left today; one scan at a time, like every action (not queued).
+
+- **Who:** your 1st-degree connections with a profile and no experience on file, highest power
+  first (`profile_read_targets`, the same order as `lib/experience.js readProfileQueue`). The
+  people you can actually ask, whose score most moves Paths, in small bounded rounds. People
+  in circles aren't read: there are many more of them, and profile views over time are what
+  restricted an account (TRAPS §16). A profile that couldn't be read goes to the back after
+  14 days (TRAPS §15), never at the front forever; one read is never read again.
+- **Each one:** the paced extra, then `_wait_for_profile_view` (one of the day's views, at
+  least `PROFILE_GAP` after the last; lifted, no daily cap, the gap stays), open, settle, then
+  `read_with_backoff` until their name shows (`PROFILE_SHOWN_JS`; the later retries reload,
+  each a counted view), reading time, a random scroll down the profile until it stops
+  growing (its sections load as it scrolls), then the read on the curve, in place.
+- **What it reads, never a CSS class:** first LinkedIn's own data, the `/voyager/api/`
+  responses the page loads anyway and the JSON in its `<code>` blocks (`voyager_positions`:
+  position entities with `title`, `companyName` or `company.name`, `dateRange`/`timePeriod`;
+  and profile components with `titleV2`, `subtitle` "Company · Full-time", `caption`
+  "Jan 2020 - Present · 4 yrs", in a card marked EXPERIENCE, a company's group carrying its
+  roles inside); else the page, `EXPERIENCE_JS`: the section whose heading's words are
+  "Experience" (or the `#experience` anchor), its list items' lines of text in reading order,
+  a role nested in a company's item as its own sub (`roles_from_items`). Only LinkedIn's first
+  few roles on the profile; "Show all N experiences" is logged, not opened.
+- **Said in the log, for a report:** *Experience: 4 roles (1 current), from the page.
+  LinkedIn's own data had 0; the page's Experience section, found by its heading, had 4
+  (LinkedIn says 6 in all; only the profile's first ones are read).*
+- **Couldn't read (TRAPS §7):** no role found is sent as `{"status": "unreadable", "why"}`,
+  never an empty list, and `lib/experience.js cleanExperience` turns any "read" with no role
+  into that too. Three in a row end the round (`PageUnreadable`, exit 15): the page has
+  probably changed. A profile that never rendered records nothing; two in a row pause six
+  hours, like Auto-Bridge's breaker. A security check or a sign-in wall ends it at once
+  (exit 10, a day's pause).
+- **Stored:** `linkedin_connections.experience`, JSON text (`ADDED_COLUMNS`, `db/schema.js`),
+  through `POST /api/ingest` `{type: 'experience', people}`, one person a post, then everyone is
+  rescored. `lib/scoring.js rolesWithCompanies` adds the roles read after the headline's: a
+  current one like a headline role, a past one as former (70%); one the headline names isn't
+  counted twice, so a read never lowers a score. Never written from Python.
+- **Unverified:** written and tested against invented fixtures only
+  (`tests/fixtures/linkedin/`, `tests/experience.test.mjs`, and in a real Chrome
+  `tests/scanner-browser.test.mjs` when `SIX_DEGREES_PLAYWRIGHT_PYTHON` names a Python with
+  Playwright). Never run against LinkedIn. Run one round of 5 and report the *Experience:*
+  lines.
 
 ## Rate limits — a measured one
 
@@ -284,9 +433,8 @@ Lifted the same day. See TRAPS §16. Treat that as a ceiling seen once, not a sa
 budget: batch the work, keep the cooldown, and stop at the first warning.
 
 **Profile views count against the daily number.** It is one count for everything that
-opens a profile. Today that is a circle scan whose search id isn't known yet: it opens the
-person's profile once, and that is a profile view. Reading someone's profile on its own
-(planned) will count against the same number.
+opens a profile: a circle scan whose search id isn't known yet (it opens the person's
+profile once), Auto, and each profile Read profiles opens (*Read profiles* above).
 
 - **The cap:** the daily number (`scan-limits.json` `daily`, 50 by default), counted on its
   own: N searches and N profile views in any 24 hours. Lifting the limits for the session
@@ -447,7 +595,7 @@ the file and the restart.
 
 ## Experimental Auto-Bridge (`--experimental`)
 
-The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Slow on purpose:** fixed waits only, never randomised to look like a person.
+The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXPERIMENT` in `scripts/scrape.py`, item 44/45, Graph Study §8). **Slow on purpose:** its rests are fixed; gentle pacing's extras (*Pacing* below) only add to each page's own wait.
 
 - `_drip_before_search()` runs before every circle search:
   - a sitting of `SESSION_PAGES` (8), then `SESSION_REST` (an hour);

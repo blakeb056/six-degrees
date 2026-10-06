@@ -309,7 +309,7 @@ export default function UsageSection() {
 
       <div style={{ marginTop: 22 }}>
         <Row label="Speed">
-          {pace.label}: about {searchesPerHour(limits.pace)} searches an hour at most while a scan runs, lifted or not.
+          {pace.label}: about {searchesPerHour(limits.pace, limits.gentle !== false)} searches an hour at most while a scan runs, lifted or not.
           {Number.isFinite(u.searchesLastHour) && <> In the last hour: {plural(u.searchesLastHour, 'search', 'searches')}.</>}
           {' '}<a href="#scan-top" style={link}>Change it beside the Scan button</a>
         </Row>
