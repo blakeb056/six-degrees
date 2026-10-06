@@ -36,8 +36,10 @@ import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useSta
 import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostMutuals, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
 import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel, easeOf } from '../../lib/rarity';
-import { hasRequest } from '../../lib/requests-client';
+import { hasRequest, refreshRequests } from '../../lib/requests-client';
+import { autoAsks, autoAsksSignature, askStatus, leavesTop, topToAsk } from '../../lib/ask-next';
 import useRequests from './useRequests';
+import useScanner from './useScanner';
 import { initialsFor } from '../../lib/tiers';
 import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
@@ -141,6 +143,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
     setGates(false);
   }
   const requests = useRequests();
+  const scan = useScanner();
   const [scrollY, setScrollY] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 800 });
   // The scroll element lives in state as well as a ref: the ResizeObserver
@@ -222,15 +225,31 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
 
   // Who you've already asked, or already know. The map is "who to ask next",
   // so it moves on past them: send requests to its ten and the next ten come
-  // up. The list still shows everyone, marked.
+  // up. The list still shows everyone, marked. Auto's requests count from the
+  // moment they're sent, as the scanner tells it (lib/ask-next.js): sending
+  // takes them out and the next-best fills in, queued keeps them (marked), a
+  // failed send puts them back.
   const d1Keys = useMemo(() => new Set(fullDegree1.map(keyFor)), [fullDegree1]);
-  const statusOf = useCallback((p) => (d1Keys.has(p.key) ? 'connected' : hasRequest(p.person, requests) ? 'asked' : null),
-    [d1Keys, requests]);
+  // Recomputed when a request starts, waits or ends, not on every page a scan reads.
+  const autoSig = autoAsksSignature(scan);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const autoBy = useMemo(() => autoAsks(scan, (id) => model.rowToKey.get(id) ?? null), [autoSig, model]);
+  const statusOf = useCallback((p) => askStatus({
+    connected: d1Keys.has(p.key),
+    requested: hasRequest(p.person, requests),
+    undone: requests.mine.get(p.key) === false,
+    auto: autoBy.get(p.key) ?? null,
+  }), [d1Keys, requests, autoBy]);
+  // An Auto request ended: read the list again, as the server has marked it,
+  // so it holds once the scanner's last few jobs have moved on.
+  const lastConnectEnd = (scan.recent || []).find((j) => j?.action === 'connect')?.startedAt ?? null;
+  useEffect(() => { if (lastConnectEnd != null) refreshRequests(); }, [lastConnectEnd]);
   // How many the map draws follows the slider: ten, then fewer, then the one you're aiming at.
   const shown = mapCount(atSlow, K);
-  const unasked = useMemo(() => visible.filter((p) => !statusOf(p)).slice(0, K + 1), [visible, K, statusOf]);
+  const unasked = useMemo(() => topToAsk(visible, statusOf, K + 1), [visible, K, statusOf]);
   const top = useMemo(() => unasked.slice(0, shown), [unasked, shown]);
-  const askedShown = useMemo(() => visible.reduce((n, p) => n + (statusOf(p) ? 1 : 0), 0), [visible, statusOf]);
+  const queuedKeys = useMemo(() => new Set(top.filter((p) => statusOf(p) === 'queued').map((p) => p.key)), [top, statusOf]);
+  const askedShown = useMemo(() => visible.reduce((n, p) => n + (leavesTop(statusOf(p)) ? 1 : 0), 0), [visible, statusOf]);
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
   const selectedGateKey = useMemo(() => {
     if (!gatesOn || selectedId == null) return null;
@@ -244,7 +263,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   // someone; "Next" are the runners-up.
   const aimable = useMemo(() => {
     if (!single) return [];
-    return mostMutuals(visible.filter((p) => !statusOf(p)), (p) => rarityBy.get(p.key)?.count || 0, (isMobile ? 3 : 6) + 1);
+    return mostMutuals(visible.filter((p) => !leavesTop(statusOf(p))), (p) => rarityBy.get(p.key)?.count || 0, (isMobile ? 3 : 6) + 1);
   }, [single, visible, statusOf, rarityBy, isMobile]);
   const target = useMemo(() => {
     if (!single) return null;
@@ -598,6 +617,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
                   onPick={onPick}
                   onPickBridge={onPickBridge}
                   mutualsBy={rarityBy}
+                  queuedKeys={queuedKeys}
                   doors={!isMobile && cw >= 640}
                   cards={cards}
                 />
@@ -807,7 +827,7 @@ function waysTag(p, mutuals) {
   return p.waysIn === 1 ? { text: 'only way in', rare: true, more: 0 } : { text: `${fmt(p.waysIn)} ways in`, rare: false, more: 0 };
 }
 
-const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, doors = false, cards = false }) {
+const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tierColors, youLabel, isMobile, onPick, onPickBridge, mutualsBy, queuedKeys = null, doors = false, cards = false }) {
   const { width, height, you, people, bridges, links, spokes, ghosts = [], unscanned = 0, ghostLabel = null, drawn = 1 } = layout;
   const linksBy = useMemo(() => {
     const m = new Map();
@@ -867,6 +887,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
           const sel = pp.key === selectedKey;
           const via = p.routes.map((r) => `${r.bridge ? r.bridge.name : CANT_NAME}${viaTail(r)}`).join(', ');
           const tag = waysTag(p, mutualsBy?.get(p.key));
+          const queued = Boolean(queuedKeys?.has(pp.key));
           const lx = pp.r + 14;
           const room = Math.max(8, Math.floor((width - pp.x - lx) / 6));
           const clip = (t) => (String(t || '').length > room ? `${String(t).slice(0, room - 1)}…` : String(t || ''));
@@ -926,7 +947,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                 {cards && pp.big ? (
                   <BigCard p={p} c={c} tag={tag} width={Math.max(260, Math.min(400, width - pp.x - 4))} fs={fs} />
                 ) : cards ? (
-                  <SmallCard p={p} c={c} tag={tag} width={Math.max(240, Math.min(340, width - pp.x - 4))} sel={sel} />
+                  <SmallCard p={p} c={c} tag={tag} width={Math.max(240, Math.min(340, width - pp.x - 4))} sel={sel} queued={queued} />
                 ) : pp.big ? (
                   <>
                     <circle r={pp.r} fill="var(--sd-bg)" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
@@ -954,6 +975,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                     <text x={14} dy="0.35em" fontSize={fs} fill="var(--sd-fg-1, #ddd)" style={HALO}>
                       {pp.label}
                       <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
+                      {queued && <tspan dx={6} fontSize={fs - 2} fontWeight={800} fill="var(--sd-gold, #FFD700)">Queued</tspan>}
                       {/* How many mutual connections lead to them: one is the rare kind */}
                       {doors && (
                         <tspan dx={8} fontSize={fs - 2} fontWeight={700} fill={tag.rare ? 'var(--sd-cyan, #00E5FF)' : 'var(--sd-fg-4, #778)'}>{tag.text}</tspan>
@@ -1048,13 +1070,15 @@ function Pill({ b, c, big }) {
 }
 
 /** Someone on the map: rank, name, role, score, and how many ways in. */
-function SmallCard({ p, c, tag, width, sel }) {
+function SmallCard({ p, c, tag, width, sel, queued = false }) {
   const tw = chipW(tag.text);
   return (
     <g>
       <rect x={0} y={-20} width={width} height={40} rx={10} fill="var(--sd-card, #151830)" stroke={sel ? 'var(--sd-fg-1, #fff)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={sel ? 1.5 : 1} />
       <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="var(--sd-gold, #FFD700)">#{p.rank}{p.tied ? '=' : ''}</text>
-      <text x={60} y={-3} fontSize={13} fontWeight={700} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor((width - 60 - 70) / 7))}</text>
+      <text x={60} y={-3} fontSize={13} fontWeight={700} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor((width - 60 - (queued ? 120 : 70)) / 7))}</text>
+      {/* Auto's request waits in the scan queue: still here, until it's sent */}
+      {queued && <text data-queued x={width - 52} y={-2} textAnchor="end" fontSize={9.5} fontWeight={800} fill="var(--sd-gold, #FFD700)">Queued</text>}
       <text x={60} y={12} fontSize={10.5} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
       <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} fill={c}>{p.score.toFixed(1)}</text>
       <rect x={width - 12 - tw} y={4} width={tw} height={14} rx={7}
@@ -1203,6 +1227,11 @@ function Tags({ status, rarity }) {
         <span title="You sent a request. It shows everywhere in the app." style={{
           flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-gold, #FFD700)', border: '1px dashed rgba(255,215,0,0.6)', borderRadius: 4, padding: '0 4px',
         }}>Request sent</span>
+      )}
+      {(status === 'sending' || status === 'queued') && (
+        <span title={status === 'sending' ? 'Auto is sending them a request now.' : 'Auto’s request to them waits in the scan queue. Remove it in the notch.'} style={{
+          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-gold, #FFD700)', border: '1px solid rgba(255,215,0,0.45)', borderRadius: 4, padding: '0 4px',
+        }}>{status === 'sending' ? 'Sending…' : 'Queued'}</span>
       )}
       {status === 'connected' && (
         <span title="Already one of your connections" style={{
