@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Strategy engine (experimental, off by default).** Settings → Experimental. It ranks your connections
+  by where they stand in your network, not by title and company: who you reach only through them, how often
+  they sit between two others (betweenness), and how many industries and companies their circle spans,
+  blended into a Leverage score from 0 to 100 that tier plays no part in. Separation gets a Gatekeepers
+  list and a Leverage badge on each way in; a card gets a line such as "Low tier, but the only bridge to 38
+  people at 6 companies". Someone whose circle isn't scanned shows "not enough data", never a low score.
+  Built from what scans already read, the ties between your connections included: no extra LinkedIn
+  traffic. Power, tiers, rings and dot sizes are unchanged. About a second for 15,000 people, worked out
+  once per scan or rescore and kept.
+
 ### Fixed
 - **The opened notch is a rounded rectangle again.** With frosted buttons it took the tab bar's fully
   round ends, so opened (the queue, Details, the daily limit) it became an oval and squeezed its rows.

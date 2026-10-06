@@ -12,6 +12,7 @@ import SectorSection from '../components/settings/SectorSection';
 import TierSection from '../components/settings/TierSection';
 import TitleSection from '../components/settings/TitleSection';
 import AppearanceSection from '../components/settings/AppearanceSection';
+import ExperimentalSection from '../components/settings/ExperimentalSection';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -46,7 +47,7 @@ export default function SettingsPage() {
 // The notch's tabs: the page's sections, top to bottom, by their ids.
 const SECTIONS = [
   ['updates', 'Updates'], ['appearance', 'Appearance'],
-  ['scoring', 'Scores'], ['data', 'Your data'], ['about', 'About'],
+  ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['about', 'About'],
 ];
 
 /** The section you're reading: the last whose top has passed just under the notch, or the last of all at the foot of the page. */
@@ -180,6 +181,7 @@ function SettingsInner() {
           </div>
         </Section>
         <DataSection />
+        <ExperimentalSection />
 
         <Section id="about" title="About this copy">
           {about ? (

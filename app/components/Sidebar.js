@@ -15,6 +15,7 @@ import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
 import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from '../../lib/reach';
 import { exclusiveReach, bridgeOverlap } from '../../lib/brokerage';
+import StrategyNote from './StrategyNote';
 import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
 import NoteDetail from './NoteDetail';
@@ -160,6 +161,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             )}
           </div>
         </div>
+
+        {/* The strategy engine (experimental): nothing unless Settings → Experimental has it on. */}
+        <StrategyNote person={selected} />
 
         {/* Their scan stopped partway: said by their name, where it's seen without scrolling. */}
         {scansHere && resume && <StoppedPartway resume={resume} scanning={scanningThem} />}
