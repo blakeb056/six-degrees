@@ -53,6 +53,12 @@ with sync_playwright() as p:
     got = ns['read_with_backoff'](page, lambda pg: (pg.evaluate(ns['BRIDGE_RESULTS_JS']) or None), 'The page', rng=rng)
     out['never'] = [got[0], got[2]]
 
+    page.goto(url('results-hidden.html'))
+    out['hidden'] = [ns['_hidden_members'](page), page.locator('a[href*="/in/"]').count()]
+    page.goto(url('results-lazy.html'))
+    page.wait_for_selector('a[href*="/in/"]')
+    out['hidden_on_normal'] = ns['_hidden_members'](page)
+
     page.goto(url('profile-experience.html'))
     out['before_scroll'] = page.evaluate(ns['EXPERIENCE_JS'])['found']
     ns['_scroll_profile'](page, rng)
@@ -85,6 +91,11 @@ test('in a real Chrome: a lazy list is read in full, a list that never comes is 
 
   assert.equal(out.never_settle.seen, false, 'no list ever appeared');
   assert.deepEqual(out.never, ['unread', 4], 'tried four more times, then said it couldn\'t be read');
+
+  // REGRESSION (2026-10-06): a page of "LinkedIn Member" results loaded fine but has
+  // no profile links; it was taken for push-back and every run stopped at page 35.
+  assert.deepEqual(out.hidden, [10, 0], 'ten hidden members found, no profile links on the page');
+  assert.equal(out.hidden_on_normal, 0, 'a normal results page has no hidden members');
 
   assert.equal(out.before_scroll, false, 'the Experience section loads only once the page scrolls');
   assert.equal(out.dom.found, true);

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A page of hidden people is no longer taken for LinkedIn pushing back.** Deep in a circle,
+  LinkedIn shows people outside your network only as "LinkedIn Member", with no name or link.
+  The scanner waited for links that never come, retried, then called it push-back and stopped,
+  and every run went back to the same page (page 35 in Blake's case) and stopped again. Now a
+  page of hidden members ends that person's list as read ("the rest is hidden by LinkedIn"),
+  with no wait, no retries, no cooldown.
+
 ## [1.2.3] - 2026-10-06
 
 ### Added
