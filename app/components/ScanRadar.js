@@ -65,9 +65,11 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
   const found = running ? scan.found || [] : [];
   const pace = li?.limits?.pace || 'fast';
   const daily = li?.limits?.daily || 0;
+  // Lifted for this session (lib/limits-lift.js): no limit to count against.
+  const lifted = li?.lifted === true;
   const used = li?.unreadable ? daily : li?.searchesToday || 0;
-  const left = daily ? Math.max(0, daily - used) : null;
-  const share = daily ? Math.min(1, used / daily) : 0;
+  const left = daily && !lifted ? Math.max(0, daily - used) : null;
+  const share = daily && !lifted ? Math.min(1, used / daily) : 0;
   const tone = share >= 0.9 ? '#ff6b6b' : share >= 0.6 ? '#FFD700' : '#00ff88';
   const top = -Math.PI / 2;
   const R = C - 10;
@@ -158,14 +160,15 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
           {!li
             ? <>Today&rsquo;s searches show here once the scanner can read them.</>
             : left == null
-            ? <>No daily cap is set.</>
+            ? <>Limits lifted for this session: {used} searches in the last 24 hours, and no daily limit until you quit Sixgree.</>
             // The budget counts a rolling 24 hours (lib/linkedin-limits.js usage), not since midnight.
             : <><b style={{ color: tone }}>{left}</b> of {daily} searches left, counting the last 24 hours
               {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left))} to use them</>}.</>}
         </div>
         <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.55 }}>
           Fast is how the scanner has always run; Medium and Slow only add waiting, so fewer searches an hour reach
-          LinkedIn. Your daily budget stays the cap at every speed: slower spreads it out, it doesn&rsquo;t shrink it.
+          LinkedIn. Your searches a day stay the cap at every speed: slower spreads them out, it doesn&rsquo;t shrink them.
+          Lifting the limits for a session keeps the speed exactly as it is.
           Slower lowers the odds of a check from LinkedIn; it can&rsquo;t promise there won&rsquo;t be one.
         </div>
       </div>

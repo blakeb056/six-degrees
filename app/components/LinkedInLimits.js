@@ -1,28 +1,149 @@
 'use client';
 
-// The Scan page's view of what LinkedIn allows: the search budget and the cap
-// on profile views, the cooldown lock, and everyone whose list was only partly
-// read, with a way back into each. TRAPS §16, §35. The numbers come from
-// /api/scraper (lib/linkedin-limits.js, lib/paused.js), which reads the same
-// files the scanner writes.
+// The Scan page's view of what LinkedIn allows: the one daily limit (searches a
+// day, and its number control), "Lift limits for this session", the cooldown
+// lock, and everyone whose list was only partly read, with a way back into
+// each. TRAPS §16, §35. The numbers come from /api/scraper
+// (lib/linkedin-limits.js, lib/paused.js), which reads the same files the
+// scanner writes.
+//
+// Blake, 2026-10-05: "we need to simplify this and allow more usage as it's
+// constrained too much. Just a simple default limit for the day and a button
+// to lift restrictions for this session." The budget box's three pickers
+// (a day, a month, profile views) and the cooldown's own "Lift it early" are
+// gone: one number, one button, no pop-up.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { limitQuestion, limitNote, SAFE_LIMITS } from '../../lib/search-risk';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import { inProgressSummary } from '../../lib/in-progress';
+import { LIFT_LINE } from '../../lib/limits-lift';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
-const DAILY = [25, 50, 100, 200, 500];
-const MONTHLY = [100, 250, 500, 1000, 0];
-const PROFILES = [10, 25, 50, 100];
+// lib/linkedin-limits.js DAILY_RANGE; that module reads files, so it can't load here.
+export const DAILY_MIN = 1;
+export const DAILY_MAX = 1000;
+const GOLD = 'var(--sd-gold, #FFD700)';
 
 const when = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
+/** What a typed daily number saves as: a whole number from 1 to 1000, or null for one it can't be. */
+export function dailyFrom(text) {
+  const n = Number(String(text).trim());
+  return Number.isInteger(n) && n >= DAILY_MIN && n <= DAILY_MAX ? n : null;
+}
+
+/**
+ * Searches a day: a number box with a step down and up. Saved once you stop
+ * typing (or press Enter, or leave the box); a number it can't take goes back
+ * to the saved one. `small` for the notch.
+ */
+export function DailyLimitInput({ value, onSave, disabled, small = false, id }) {
+  // What's typed, while the box has the focus; null otherwise.
+  const [draft, setDraft] = useState(null);
+  // A number just saved, and the saved one it replaced: shown until the saved one changes.
+  const [pending, setPending] = useState(null);
+  const text = draft ?? String(pending && pending.from === value ? pending.n : value ?? '');
+  const save = (t = text) => {
+    const n = dailyFrom(t);
+    if (n == null || n === value || (pending?.n === n && pending.from === value)) return;
+    setPending({ n, from: value });
+    onSave(n);
+  };
+  // A pause in typing saves it, as leaving the box does.
+  useEffect(() => {
+    if (draft == null) return undefined;
+    const timer = setTimeout(() => save(draft), 900);
+    return () => clearTimeout(timer);
+  }, [draft]); // eslint-disable-line react-hooks/exhaustive-deps
+  const step = (by) => {
+    const n = Math.max(DAILY_MIN, Math.min(DAILY_MAX, (dailyFrom(text) ?? value ?? 50) + by));
+    if (draft != null) setDraft(String(n));
+    save(String(n));
+  };
+  const h = small ? 22 : 30;
+  const btn = {
+    width: h, height: h, padding: 0, borderRadius: 6, border: LINE, cursor: disabled ? 'not-allowed' : 'pointer',
+    background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-1, #fff)', fontSize: small ? 13 : 15, lineHeight: 1,
+  };
+  return (
+    <span data-daily-limit="" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <button type="button" aria-label="Fewer searches a day" disabled={disabled || value <= DAILY_MIN} onClick={() => step(-10)} style={btn}>−</button>
+      <input
+        id={id} type="number" inputMode="numeric" min={DAILY_MIN} max={DAILY_MAX} step={1} value={text} disabled={disabled}
+        aria-label="Searches a day"
+        onFocus={() => setDraft(text)}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { save(); setDraft(null); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+        style={{
+          width: small ? 52 : 70, height: h, boxSizing: 'border-box', padding: '0 6px', borderRadius: 6, border: LINE, textAlign: 'center',
+          background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)',
+          fontSize: small ? 12 : 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', MozAppearance: 'textfield',
+        }}
+      />
+      <button type="button" aria-label="More searches a day" disabled={disabled || value >= DAILY_MAX} onClick={() => step(10)} style={btn}>+</button>
+    </span>
+  );
+}
+
+/**
+ * "Lift limits for this session": one click, no pop-up, with the line that
+ * says what it does beside it. Lifted, a small "Limits lifted" and "Put limits
+ * back". Held in the server's memory only (lib/limits-lift.js): quitting
+ * Sixgree puts them back.
+ */
+export function LiftLimits({ lifted, onLift, onPutBack, disabled, small = false }) {
+  const size = small ? 11.5 : 12.5;
+  if (lifted) {
+    return (
+      <div data-limits-lifted="" style={{
+        display: 'flex', alignItems: small ? 'flex-start' : 'center', flexDirection: small ? 'column' : 'row', gap: 8, flexWrap: 'wrap', fontSize: size, lineHeight: 1.5,
+      }}>
+        {/* The notch already says "Limits lifted" in its own line. */}
+        {!small && <LiftedTag />}
+        <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', flex: small ? undefined : '1 1 260px' }}>{LIFT_LINE}</span>
+        <button type="button" onClick={onPutBack} disabled={disabled} style={{ ...pill(small), color: 'var(--sd-fg-1, #fff)' }}>Put limits back</button>
+      </div>
+    );
+  }
+  return (
+    <div data-lift-limits="" style={{ display: 'flex', alignItems: small ? 'flex-start' : 'center', flexDirection: small ? 'column' : 'row', gap: small ? 6 : 10, flexWrap: 'wrap', fontSize: size, lineHeight: 1.5 }}>
+      <button type="button" onClick={onLift} disabled={disabled} style={{
+        ...pill(small), color: GOLD, borderColor: 'rgba(255,215,0,0.45)', background: 'rgba(255,215,0,0.08)',
+      }}>Lift limits for this session</button>
+      <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', flex: small ? undefined : '1 1 260px' }}>{LIFT_LINE}</span>
+    </div>
+  );
+}
+
+/** The small gold "Limits lifted" the notch and the Scan page show while they are. */
+export function LiftedTag({ small = false }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, padding: small ? '0 7px' : '2px 9px', borderRadius: 999,
+      fontSize: small ? 10.5 : 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+      color: GOLD, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)',
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: GOLD }} />
+      Limits lifted
+    </span>
+  );
+}
+
+const pill = (small) => ({
+  padding: small ? '2px 9px' : '6px 12px', borderRadius: 7, fontSize: small ? 11.5 : 12.5, fontWeight: 650, cursor: 'pointer',
+  whiteSpace: 'nowrap', fontFamily: 'inherit',
+  background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.16)',
+});
+
+/**
+ * Scanning is paused after LinkedIn pushed back. Lifting the limits for this
+ * session lifts it too (it comes back when Sixgree restarts), from right here.
+ */
 export function CooldownBanner({ cooldown, onLift, disabled }) {
-  const [asking, setAsking] = useState(false);
   if (!cooldown) return null;
   return (
     <div role="status" style={{
@@ -31,120 +152,11 @@ export function CooldownBanner({ cooldown, onLift, disabled }) {
     }}>
       <b style={{ color: '#ff8080' }}>Scanning is paused until {when(cooldown.until)}.</b>{' '}
       {cooldown.reason}. Nothing that searches LinkedIn will run until then, so the account can recover.
-      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        {!asking ? (
-          <button onClick={() => setAsking(true)} disabled={disabled} style={linkBtn}>Lift it early…</button>
-        ) : (
-          <>
-            <span style={{ fontSize: 12.5 }}>Only if people search works normally for you on linkedin.com right now.</span>
-            <button onClick={() => { setAsking(false); onLift(); }} style={{ ...linkBtn, color: '#ff8080' }}>Yes, lift it</button>
-            <button onClick={() => setAsking(false)} style={linkBtn}>Keep it</button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const pct = (used, cap) => (cap ? Math.min(100, Math.round((used / cap) * 100)) : 0);
-
-function Bar({ used, cap }) {
-  const p = pct(used, cap);
-  return (
-    <div style={{ height: 5, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', overflow: 'hidden', marginTop: 4 }}>
-      <div style={{ height: '100%', width: `${p}%`, background: p >= 100 ? '#ff6b6b' : p >= 75 ? '#FFD700' : '#3498DB' }} />
-    </div>
-  );
-}
-
-export function BudgetBox({ li, onSetLimits, disabled }) {
-  // A raise past the safe limits, waiting for its answer: { change, question }.
-  const [asking, setAsking] = useState(null);
-  if (!li) return null;
-  const { limits } = li;
-  const today = li.unreadable ? '?' : li.searchesToday;
-  const views = li.unreadable ? '?' : li.profilesToday;
-  const set = (change) => { setAsking(null); onSetLimits({ ...limits, ...change }); };
-  // A budget past what LinkedIn has put up with is asked about first
-  // (lib/search-risk.js), in the box, beside the picker: it was a window.confirm
-  // (Blake, 2026-10-04: "dont want to hinder the user with clicking ok for pop ups").
-  const ask = (change) => {
-    const question = limitQuestion(limits, { ...limits, ...change });
-    if (question) setAsking({ change, question });
-    else set(change);
-  };
-  // While a raise is asked about, the pickers show it; "Keep" puts them back.
-  const shown = { ...limits, ...(asking?.change || {}) };
-  const note = limitNote(limits);
-  return (
-    <div style={{ padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
-        <div>
-          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{today}</b> of {limits.daily || 'no limit'} searches in the last 24 hours</div>
-          <Bar used={li.searchesToday || 0} cap={limits.daily} />
-        </div>
-        <div>
-          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{li.searchesMonth}</b> of {limits.monthly || 'no limit'} this month · resets {day(li.monthResets)}</div>
-          <Bar used={li.searchesMonth} cap={limits.monthly} />
-        </div>
-        <div>
-          <div><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{views}</b> of {limits.profiles} profile views in the last 24 hours</div>
-          <Bar used={li.unreadable ? limits.profiles : li.profilesToday} cap={limits.profiles} />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-        <span>Budget:</span>
-        <select value={shown.daily} disabled={disabled} onChange={(e) => ask({ daily: Number(e.target.value) })} style={sel}>
-          {DAILY.map((n) => <option key={n} value={n}>{n} a day</option>)}
-        </select>
-        <select value={shown.monthly} disabled={disabled} onChange={(e) => ask({ monthly: Number(e.target.value) })} style={sel}>
-          {MONTHLY.map((n) => <option key={n} value={n}>{n ? `${n} a month` : 'no monthly cap (Premium)'}</option>)}
-        </select>
-        <select value={shown.profiles} disabled={disabled} onChange={(e) => set({ profiles: Number(e.target.value) })} style={sel}>
-          {PROFILES.map((n) => <option key={n} value={n}>{n} profile views a day</option>)}
-        </select>
-      </div>
-      {asking && (
-        <div role="group" aria-label="Raise the budget past the safe limits?" data-budget-question style={{
-          marginTop: 10, padding: '10px 12px', borderRadius: 8, lineHeight: 1.6,
-          background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.4)', color: 'var(--sd-fg-1, #f3e6b0)',
-        }}>
-          <div style={{ whiteSpace: 'pre-line' }}>{asking.question}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => set(asking.change)} disabled={disabled}
-              style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: 'var(--sd-gold, #FFD700)', borderColor: 'rgba(255,215,0,0.45)' }}>
-              Yes, change it
-            </button>
-            <button onClick={() => setAsking(null)} style={{ ...sel, cursor: 'pointer' }}>
-              Keep {limits.daily} a day, {limits.monthly ? `${limits.monthly} a month` : 'no monthly cap'}
-            </button>
-          </div>
+      {onLift && (
+        <div style={{ marginTop: 8 }}>
+          <LiftLimits lifted={false} onLift={onLift} disabled={disabled} />
         </div>
       )}
-      <div style={{ marginTop: 8, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>
-        Every page of someone&rsquo;s connections is one search. LinkedIn limits a free account&rsquo;s people
-        searches by the month (it doesn&rsquo;t say how many; reports put it around 250–350), resetting on the 1st.
-        When a budget is used, a scan saves what it read and stops; the next one carries on from the same page.
-      </div>
-      {note && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: 'var(--sd-gold, #FFD700)', lineHeight: 1.6 }}>
-          <b style={{ flex: 1, minWidth: 200 }}>{note}</b>
-          <button
-            onClick={() => set(SAFE_LIMITS)}
-            disabled={disabled}
-            style={{ ...sel, cursor: disabled ? 'not-allowed' : 'pointer', color: 'var(--sd-gold, #FFD700)', borderColor: 'rgba(255,215,0,0.4)' }}
-          >Back to {SAFE_LIMITS.daily} a day, {SAFE_LIMITS.monthly} a month</button>
-        </div>
-      )}
-      <div style={{ marginTop: 6, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>
-        Each circle scan opens the person&rsquo;s profile once, which is one profile view. Profile views are what
-        LinkedIn restricted an account for, after about 20 in an hour. The scanner opens at most one a minute, and
-        once today&rsquo;s are used, a scan stops before the next profile and tries that person next time.
-      </div>
-      {/* The whole picture (the last hour, the last 7 days, when the next one frees, the last pushback) is at the foot of the Scan page. */}
-      <Link href="#usage" style={{ display: 'inline-block', marginTop: 8, color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>
-        See all your LinkedIn usage &rarr;
-      </Link>
     </div>
   );
 }

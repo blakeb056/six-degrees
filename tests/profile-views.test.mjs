@@ -1,7 +1,9 @@
 // The cap on profile views, and the minute between any two (scrape.py, TRAPS
 // §16). Profile views are what LinkedIn restricted an account for, so a circle
 // scan takes one of the day's before it opens someone's profile, waits out the
-// gap from the last one written down, and with none left opens nothing.
+// gap from the last one written down, and with none left opens nothing. Since
+// 2026-10-05 the cap is the one daily number (searches a day), and lifting the
+// limits for a session takes it off; the minute between views never goes.
 //
 // These run the scanner's own code against a stand-in page, browser and clock,
 // in a scratch SIX_DEGREES_HOME: nothing opens a browser or reaches LinkedIn or
@@ -61,6 +63,7 @@ class Page:
         return True if 'this profile is not available' in js else None
     def is_closed(self):
         return False
+    context = None
     def set_default_timeout(self, _):
         pass
     def set_default_navigation_timeout(self, _):
@@ -103,6 +106,7 @@ def read_connections(endpoint='', params=None):
     return [p for p in PEOPLE if not want or p['profile_url'] == want]
 ns['read_connections'] = read_connections
 ns['read_bridged_ids'] = lambda: set()
+real_ensure_logged_in = ns['ensure_logged_in']
 ns['ensure_logged_in'] = lambda page, **_: True
 
 home = Path(ns['_home']())
@@ -121,11 +125,12 @@ print('RESULT ' + json.dumps(out))
 `;
 
 /** { out, log } from the case, or null when there is no Python here. */
-function run(t, script) {
+function run(t, script, { lifted = false } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-views-'));
   const r = spawnSync(PYTHON, ['-c', HARNESS, SCRAPER, script], {
     encoding: 'utf8',
-    env: { ...process.env, SIX_DEGREES_HOME: home },
+    // As the app starts it while the limits are lifted for this session (route.js childEnv).
+    env: { ...process.env, SIX_DEGREES_HOME: home, SIX_DEGREES_LIMITS_LIFTED: lifted ? '1' : '0' },
   });
   fs.rmSync(home, { recursive: true, force: true });
   if (noPython(t, r)) return null;
@@ -147,16 +152,16 @@ out.update(status=status, budget=reach.get('budget'), opened=page.opened, views=
   assert.equal(r.out.views, 50, 'nothing charged');
   assert.deepEqual(r.out.files, [], 'no progress, skip or unclear note about them');
   assert.equal(r.out.left, 0);
-  assert.match(r.out.message, /^Today's profile views \(50\) are used — they count the last 24 hours\. The next one frees up at .+\. No profile was opened/);
+  assert.match(r.out.message, /^Today's limit of 50 profile views is used — it counts the last 24 hours\. The next one frees up at .+\. No profile was opened/);
 });
 
-test('the cap is the one chosen on the Scan page, and a view more than a day old counts no more', (t) => {
+test('the cap is the Scan page\'s searches a day, and a view more than a day old counts no more', (t) => {
   const r = run(t, `
-limits(daily=50, monthly=250, profiles=10)
+limits(daily=10)
 record(profiles=[NOW - 25 * 3600] * 5 + [NOW - 600 * i for i in range(1, 11)])
 people, status, reach = ns['_scrape_one_bridge'](page, 'Ada Quill', 'c1', A)
 first = [status, len(page.opened)]
-limits(daily=50, monthly=250, profiles=25)
+limits(daily=25)
 people, status, reach = ns['_scrape_one_bridge'](page, 'Ada Quill', 'c1', A)
 out.update(first=first, second=[status, len(page.opened)], left=ns['profiles_left']())`);
   if (!r) return;
@@ -247,7 +252,7 @@ out.update(launched=len(launched), opened=page.opened, views=len(views()), files
 
 test('Auto-Bridge stops at the cap before the next person, and records nothing about them', (t) => {
   const r = run(t, `
-limits(daily=50, monthly=250, profiles=10)
+limits(daily=10)
 record(profiles=[NOW - 3600 * h for h in range(1, 10)])   # 9 of 10: room for one
 results = ns['auto_bridge_all']()
 out.update(results=results, opened=[u for u, _ in page.opened], files=written(),
@@ -258,8 +263,9 @@ out.update(results=results, opened=[u for u, _ in page.opened], files=written(),
   assert.deepEqual(r.out.files, ['bridge-skips.json']);
   assert.deepEqual(r.out.skips, ['https://www.linkedin.com/in/ada-quill-0000/'], 'only Ada, whose profile opened');
   assert.equal(r.out.views, 10);
+  assert.match(r.log, /Searches: 0 of 10 a day used, counting the last 24 hours/);
   assert.match(r.log, /Profile views: 9 of 10 in the last 24 hours, at least 60s apart/);
-  assert.match(r.log, /Today's profile views \(10\) are used/);
+  assert.match(r.log, /Today's limit of 10 profile views is used/);
   assert.match(r.log, /Stopped early \(today's profile views\): 0 bridged \/ 1 hidden \/ 0 failed or unclear/);
 });
 
@@ -294,26 +300,19 @@ out.update(take=ns['take_profile_view'](), views=len(views()))`);
   assert.deepEqual(r.out, { take: 0, views: 2 });
 });
 
-test('a limit of 0 or nonsense reads as the default: profile views are never unlimited', (t) => {
+test('a daily number of 0 or nonsense reads as the default; profile views are never unlimited unless lifted', (t) => {
   const r = run(t, `
 got = []
-for value in (0, -3, 'lots', None, 25):
-    limits(daily=50, monthly=250, profiles=value)
-    got.append(ns['search_limits']()['profiles'])
-out['got'] = got`);
+for value in (0, -3, 'lots', None, 2.5, True, 1001, 25, 1000):
+    limits(daily=value)
+    got.append(ns['search_limits']())
+# A file from before 2026-10-05: its own profile-view cap is ignored.
+limits(daily=200, monthly=250, profiles=10)
+out.update(got=got, old=ns['search_limits']())`);
   if (!r) return;
-  assert.deepEqual(r.out.got, [50, 50, 50, 50, 25]);
-});
-
-test('a limit typed in by hand counts as the largest choice under it, never past 100', (t) => {
-  const r = run(t, `
-got = []
-for value in (1000, 70, 5, 100):
-    limits(daily=50, monthly=250, profiles=value)
-    got.append(ns['search_limits']()['profiles'])
-out['got'] = got`);
-  if (!r) return;
-  assert.deepEqual(r.out.got, [100, 50, 10, 100]);
+  assert.deepEqual(r.out.got.map((l) => l.daily), [50, 50, 50, 50, 50, 50, 50, 25, 1000]);
+  assert.ok(r.out.got.every((l) => l.profiles === l.daily), 'one number for both');
+  assert.deepEqual(r.out.old, { daily: 200, profiles: 200 });
 });
 
 test('re-mapping waits out the minute before deleting, and Stop during it deletes nothing', (t) => {
@@ -382,7 +381,7 @@ test('experimental pacing: at the daily budget it waits for the oldest search to
   const r = run(t, `
 from datetime import datetime
 clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
-limits(daily=50, monthly=0, profiles=50)
+limits(daily=50)
 record(searches=[clock.t - 23 * 3600 + i for i in range(50)])
 ns['EXPERIMENT'].update(on=True, pages=0)
 start = clock.t
@@ -414,13 +413,106 @@ out['counts'] = [ns['mutual_count_text'](s) for s in ('23 mutual connections', '
   assert.deepEqual(r.out.counts, [23, 1, 2, null]);
 });
 
-test('experimental pacing: Auto scan stops at its own 40 a day, however high the budget', (t) => {
+test('experimental pacing: Auto scan uses the same daily limit, with no 40 a day of its own', (t) => {
   const r = run(t, `
 from datetime import datetime
 clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
+limits(daily=100)
+record(searches=[clock.t - 60 * i for i in range(1, 61)])   # 60 today: past the old 40, under 100
 ns['EXPERIMENT'].update(on=True, pages=0)
-ns['_read_activity'] = lambda: {"searches": [clock.t - 60 * i for i in range(1, 41)]}
-out.update(wait=ns['_auto_ceiling_wait'](clock.t) is not None, day=ns['AUTO_DAY_CAP'], week=ns['AUTO_WEEK_CAP'])`);
+start = clock.t
+ok = ns['_drip_before_search']()
+out.update(ok=ok, waited=round(clock.t - start), caps=[k for k in ('AUTO_DAY_CAP', 'AUTO_WEEK_CAP', '_auto_ceiling_wait') if k in ns])`);
   if (!r) return;
-  assert.deepEqual(r.out, { wait: true, day: 40, week: 200 });
+  assert.deepEqual(r.out, { ok: true, waited: 0, caps: [] });
+});
+
+// ── Lifted for this session (Blake, 2026-10-05) ─────────────────────────────
+// The daily limit and the cooldown are off; the pace and the stops are not.
+
+test('lifted: the day\'s limit doesn\'t stop a circle scan, and profiles still open at least a minute apart', (t) => {
+  const r = run(t, `
+limits(daily=10)
+record(profiles=[NOW - 20] + [NOW - 600 * i for i in range(1, 30)], searches=[NOW - 30 * i for i in range(1, 40)])
+people, status, reach = ns['_scrape_one_bridge'](page, 'Ada Quill', 'c1', A)
+out.update(status=status, opened=page.opened, left=[ns['searches_left']()[0] >= 10 ** 9, ns['profiles_left']() >= 10 ** 9],
+           lifted=ns['limits_lifted']())`, { lifted: true });
+  if (!r) return;
+  assert.equal(r.out.lifted, true);
+  assert.deepEqual(r.out.left, [true, true], 'no daily limit on searches or profile views');
+  assert.equal(r.out.status, 'private', 'it opened, 30 views over a limit of 10');
+  assert.equal(r.out.opened.length, 1);
+  assert.ok(r.out.opened[0][1] - (1790000000 - 20) >= 60, 'the minute between profile views holds');
+  assert.match(r.log, /Waiting 41s before opening a profile: at least 60s pass between any two\./);
+});
+
+test('lifted: the speed is exactly the one chosen, and Auto scan keeps its hours and rests', (t) => {
+  const r = run(t, `
+from datetime import datetime
+limits(daily=5, pace='slow')
+name = ns['apply_pace']()
+paced = [name, ns['PAGE_PAUSE'], ns['CHUNK_COOLDOWN'], ns['PROFILE_GAP']]
+clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
+record(searches=[clock.t - 60 * i for i in range(1, 30)])   # far past 5 a day
+ns['EXPERIMENT'].update(on=True, pages=8)
+start = clock.t
+ok = ns['_drip_before_search']()
+rest = round(clock.t - start)
+clock.t = datetime(2026, 9, 21, 21, 0).timestamp()
+start = clock.t
+ns['_drip_before_search']()
+out.update(paced=paced, ok=ok, rest=rest, night=round(clock.t - start))`, { lifted: true });
+  if (!r) return;
+  assert.deepEqual(r.out.paced, ['slow', 90, 300, 120], 'the same waits as with the limits on');
+  assert.equal(r.out.ok, true);
+  assert.equal(r.out.rest, 3600, 'the rest after a sitting, and no wait for the daily limit');
+  assert.equal(r.out.night, 12 * 3600, 'searches only from 09:00');
+});
+
+test('lifted: the cooldown is off, but a security check still ends the read and writes a pause', (t) => {
+  const r = run(t, `
+(home / 'linkedin-cooldown.json').write_text(json.dumps({'until': NOW + 3600, 'reason': 'LinkedIn pushed back', 'set_at': NOW - 60}))
+before = ns['read_cooldown']()
+ns['_has_session_cookie'] = lambda target: True
+ns['_looks_logged_out'] = lambda page: False
+ns['_page_wall'] = lambda pg: 'checkpoint'
+kept = []
+ns['_keep_pushback_evidence'] = lambda page, reason: kept.append(reason)
+try:
+    real_ensure_logged_in(page, stop_on_checkpoint=True)
+    out['raised'] = None
+except ns['LinkedInPushedBack'] as exc:
+    out['raised'] = exc.reason
+on_file = ns['_cooldown_on_file']()
+out.update(before=before, kept=kept, paused_until=on_file and on_file['until'] - NOW, reason=on_file and on_file['reason'],
+           still_off=ns['read_cooldown']())`, { lifted: true });
+  if (!r) return;
+  assert.equal(r.out.before, null, 'lifted: no cooldown holds a scan back');
+  assert.equal(r.out.raised, 'a security check', 'the check still stops it');
+  assert.deepEqual(r.out.kept, ['a security check']);
+  assert.ok(r.out.paused_until >= 24 * 3600 - 5, 'and the pause is written down, for when the limits come back');
+  assert.match(r.out.reason, /security check/);
+  assert.equal(r.out.still_off, null, 'this run stays lifted; the app puts the limits back on a new pushback');
+});
+
+test('a scan under way follows "limits: lifted" and "limits: on" from the app', (t) => {
+  const r = run(t, `
+import io, time as real
+limits(daily=3)
+record(searches=[NOW - 60 * i for i in range(1, 4)])
+first = ns['searches_left'](NOW)[0]
+ns['sys'].stdin = io.StringIO('limits: lifted\\n')
+ns['_listen_for_limits']()
+real.sleep(0.3)
+lifted = [ns['limits_lifted'](), ns['searches_left'](NOW)[0] >= 10 ** 9]
+ns['sys'].stdin = io.StringIO('something else\\nlimits: on\\n')
+ns['_listen_for_limits']()
+real.sleep(0.3)
+out.update(first=first, lifted=lifted, back=[ns['limits_lifted'](), ns['searches_left'](NOW)[0]])`);
+  if (!r) return;
+  assert.equal(r.out.first, 0);
+  assert.deepEqual(r.out.lifted, [true, true]);
+  assert.deepEqual(r.out.back, [false, 0]);
+  assert.match(r.log, /Limits lifted for this session: no daily limit or cooldown\. The pace stays\./);
+  assert.match(r.log, /Limits are back on\./);
 });

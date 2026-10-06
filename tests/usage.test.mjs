@@ -1,7 +1,7 @@
 // Scan → LinkedIn usage: the windows it counts, where the levels change,
 // what a pushback file may give up (its time and reason, never LinkedIn's page),
-// a lifted pause that every reader takes as no pause, and Auto scan's rules
-// against the scanner's own. Invented times and files in temporary folders;
+// a pause lifted by hand (before 2026-10-05) that every reader takes as no
+// pause, the session's lift, and Auto scan's rules against the scanner's own. Invented times and files in temporary folders;
 // nothing here touches a real data folder or LinkedIn.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,13 +13,14 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, searchedAfterPushback, countAfter,
-  estimate, levelWarning, warningParts, barMax, pacificText, untilText, agoText, hoursText,
+  estimate, levelWarning, warningParts, barMax, untilText, agoText, hoursText,
 } from '../lib/usage.js';
 import {
   linkedinUsage, linkedinState, countWithin, freesAt, clearAt, newestPushback, lastPushback,
-  liftCooldown, readCooldown, budgetFileProblem, mergeBudgetFiles, writeLimits, monthStartPacific, nextMonthStartPacific,
+  readCooldown, budgetFileProblem, mergeBudgetFiles, writeLimits,
 } from '../lib/linkedin-limits.js';
-import { RESTRICTED_AT, limitNote, riskyLimits } from '../lib/search-risk.js';
+import { putLimitsBack } from '../lib/limits-lift.js';
+import { RESTRICTED_AT, limitNote, riskyDaily } from '../lib/search-risk.js';
 import { PYTHON, noPython } from './python.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
@@ -30,6 +31,9 @@ const DAY = 24 * H;
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixdeg-usage-'));
 const write = (dir, name, value) => writeFileSync(path.join(dir, name), typeof value === 'string' ? value : JSON.stringify(value));
 const read = (dir, name) => JSON.parse(readFileSync(path.join(dir, name), 'utf8'));
+// What lifting by hand wrote before 2026-10-05 (the Scan page's old "Lift it early"): an
+// old file may still say so, and every reader takes it as a pause that has ended.
+const liftedByHand = (pause, at) => ({ ...pause, until: at, lifted_at: at, was_until: pause.until });
 
 // ── Auto scan's rules are the scanner's ──────────────────────────────────────
 
@@ -37,26 +41,31 @@ test('Auto scan\'s rules on the page are the ones scrape.py keeps', (t) => {
   const lift = `
 import ast, json, sys
 tree = ast.parse(open(sys.argv[1]).read())
-want = {'AUTO_DAY_CAP', 'AUTO_WEEK_CAP', 'DRIP_HOURS', 'SESSION_PAGES', 'SESSION_REST', 'AUTO_PUSHBACK_REST'}
+want = {'DRIP_HOURS', 'SESSION_PAGES', 'SESSION_REST', 'AUTO_PUSHBACK_REST'}
+gone = {'AUTO_DAY_CAP', 'AUTO_WEEK_CAP', '_auto_ceiling_wait'}
+named = {getattr(x, 'id', '') for n in tree.body if isinstance(n, ast.Assign) for x in n.targets}
+named |= {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
 body = [n for n in tree.body if isinstance(n, ast.Assign) and any(getattr(x, 'id', '') in want for x in n.targets)]
 ns = {}
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
-print(json.dumps({k: ns[k] for k in want}))
+print(json.dumps({**{k: ns[k] for k in want}, 'gone': sorted(gone & named)}))
 `;
   const r = spawnSync(PYTHON, ['-c', lift, SCRAPER], { encoding: 'utf8' });
   if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   const py = JSON.parse(r.stdout);
   assert.deepEqual(AUTO, {
-    day: py.AUTO_DAY_CAP,
-    week: py.AUTO_WEEK_CAP,
     hours: py.DRIP_HOURS,
     sitting: py.SESSION_PAGES,
     sittingRest: py.SESSION_REST,
     pushbackRest: py.AUTO_PUSHBACK_REST,
   });
+  // One limit (2026-10-05): Auto scan's own 40 a day and 200 a week are gone, from the page and the scanner.
+  assert.deepEqual(py.gone, []);
+  assert.equal(AUTO.day, undefined);
+  assert.equal(AUTO.week, undefined);
   // And what the handoff named, so a change to the scanner is a change someone meant.
-  assert.deepEqual([AUTO.day, AUTO.week, AUTO.hours, AUTO.pushbackRest], [40, 200, [9, 18], 2 * DAY]);
+  assert.deepEqual([AUTO.hours, AUTO.pushbackRest], [[9, 18], 2 * DAY]);
   assert.equal(hoursText(AUTO.hours), '9 AM to 6 PM');
 });
 
@@ -125,7 +134,7 @@ test('the warning names the 373 once, whatever the level and the budget', () => 
     ['unknown', { searchesDay: null }],
     ['ok', { searchesDay: 10 }],
   ];
-  const budgets = [{ daily: 50, monthly: 250 }, { daily: 100, monthly: 250 }, { daily: 200, monthly: 1000 }, { daily: 500, monthly: 0 }];
+  const budgets = [{ daily: 50 }, { daily: 100 }, { daily: 200 }, { daily: 500 }];
   for (const [level, facts] of states) {
     for (const limits of budgets) {
       const said = warningParts(level, { ...facts, now }, limits).join(' ');
@@ -133,28 +142,26 @@ test('the warning names the 373 once, whatever the level and the budget', () => 
       assert.ok(times <= 1, `${level} at ${facts.searchesDay} with ${JSON.stringify(limits)}: said ${times} times`);
       // A risky budget still gets the rest of its note.
       if (limits.daily > 100) assert.match(said, new RegExp(`${limits.daily} a day can use up`), `${level} ${limits.daily}`);
-      if (riskyLimits(limits)) assert.match(said, new RegExp(`restricted after ${RESTRICTED_AT}`), `${level}: said once, not dropped`);
+      if (riskyDaily(limits.daily)) assert.match(said, new RegExp(`restricted after ${RESTRICTED_AT}`), `${level}: said once, not dropped`);
     }
   }
   // The danger case from the lead's review: the count's warning says it, so the note doesn't again.
-  assert.deepEqual(warningParts('danger', { searchesDay: 248, now }, { daily: 500, monthly: 0 }), [
+  assert.deepEqual(warningParts('danger', { searchesDay: 248, now }, { daily: 500 }), [
     levelWarning('danger', { searchesDay: 248, now }),
-    '500 a day can use up a free account\'s month in a day or two. With no monthly cap, nothing but the daily budget stops a long run.',
+    '500 a day can use up a free account\'s month in a day or two.',
   ]);
-  // The Scan page's budget box says its note whole, as before.
-  assert.match(limitNote({ daily: 500, monthly: 0 }), /^A real account was restricted after 373 searches in 24 hours\. 500 a day/);
+  // On its own the note says it whole.
+  assert.match(limitNote({ daily: 500 }), /^A real account was restricted after 373 searches in 24 hours\. 500 a day/);
 });
 
 // ── estimate, scales, words ──────────────────────────────────────────────────
 
-test('what\'s left is the budget that runs out first, about 9 people a search', () => {
+test('what\'s left is today\'s searches, about 9 people a search', () => {
   assert.equal(PEOPLE_PER_SEARCH, 9);
-  assert.deepEqual(estimate({ leftDay: 20, leftMonth: 100 }), { searches: 20, people: 180, by: 'day' });
-  assert.deepEqual(estimate({ leftDay: 50, leftMonth: 12 }), { searches: 12, people: 108, by: 'month' });
-  assert.deepEqual(estimate({ leftDay: null, leftMonth: 30 }), { searches: 30, people: 270, by: 'month' }, 'no daily cap');
-  assert.deepEqual(estimate({ leftDay: 7, leftMonth: null }), { searches: 7, people: 63, by: 'day' }, 'no monthly cap');
-  assert.equal(estimate({ leftDay: null, leftMonth: null }), null, 'no cap at all: nothing to count down');
-  assert.equal(estimate({ leftDay: 20, leftMonth: 100, paused: true }).searches, 0);
+  assert.deepEqual(estimate({ leftDay: 20 }), { searches: 20, people: 180 });
+  assert.deepEqual(estimate({ leftDay: 0 }), { searches: 0, people: 0 });
+  assert.equal(estimate({ leftDay: null }), null, 'lifted for this session: nothing to count down');
+  assert.equal(estimate({ leftDay: 20, paused: true }).searches, 0);
 });
 
 test('a bar reaches past its last mark and past what was used', () => {
@@ -162,20 +169,6 @@ test('a bar reaches past its last mark and past what was used', () => {
   assert.equal(barMax(500, [50, 100, 373]), 525);
   assert.equal(barMax(null, []), 1);
   assert.deepEqual(REPORTED_MONTH, [250, 350]);
-});
-
-test('LinkedIn\'s month turns over at midnight Pacific, across both daylight saving changes', () => {
-  // 2026: daylight saving ends on Sunday Nov 1, the very day the month resets.
-  const nov = nextMonthStartPacific(Date.UTC(2026, 9, 15));
-  assert.equal(new Date(nov).toISOString(), '2026-11-01T07:00:00.000Z', 'still PDT at midnight');
-  assert.equal(pacificText(nov), 'Nov 1, 12:00 AM Pacific');
-  const dec = nextMonthStartPacific(Date.UTC(2026, 10, 15));
-  assert.equal(new Date(dec).toISOString(), '2026-12-01T08:00:00.000Z', 'PST after');
-  assert.equal(pacificText(dec), 'Dec 1, 12:00 AM Pacific');
-  // Spring: daylight saving starts Mar 14, 2027, inside the month.
-  assert.equal(new Date(monthStartPacific(Date.UTC(2027, 2, 20))).toISOString(), '2027-03-01T08:00:00.000Z');
-  assert.equal(pacificText(nextMonthStartPacific(Date.UTC(2027, 2, 20))), 'Apr 1, 12:00 AM Pacific');
-  assert.equal(new Date(nextMonthStartPacific(Date.UTC(2027, 2, 20))).toISOString(), '2027-04-01T07:00:00.000Z');
 });
 
 test('times say how long until and how long ago, plainly', () => {
@@ -228,36 +221,20 @@ test('the usage report counts the record, and says when things free up', () => {
   const searches = [...Array.from({ length: 30 }, (_, i) => s - (i + 1) * 600), s - 2 * DAY, s - 6 * DAY, s - 9 * DAY];
   const profiles = Array.from({ length: 10 }, (_, i) => s - (i + 1) * 120);
   write(dir, 'linkedin-activity.json', { searches, profiles });
-  writeLimits(dir, { daily: 25, monthly: 250, profiles: 10 });
+  writeLimits(dir, { daily: 10 });
   const u = linkedinUsage(dir, now);
   assert.equal(u.now, now);
-  assert.deepEqual([u.searchesLastHour, u.searchesToday, u.searchesWeek], [5, 30, 32], 'the sixth is exactly an hour old');
-  assert.equal(u.searchesMonth, 31, 'the 2-day-old one is in October; 6 and 9 days ago are September');
+  assert.deepEqual([u.searchesLastHour, u.searchesToday], [5, 30], 'the sixth is exactly an hour old');
+  for (const gone of ['searchesMonth', 'leftMonth', 'monthResets', 'searchesWeek']) assert.equal(u[gone], undefined, `${gone}: no month or week any more`);
   assert.equal(u.leftToday, 0);
-  assert.equal(u.dayFreesAt, freesAt(searches, now, 25));
+  assert.equal(u.dayFreesAt, freesAt(searches, now, 10));
   assert.equal(u.dayClearAt, (s - 600 + DAY) * 1000);
-  assert.equal(u.profilesFreeAt, (s - 10 * 120 + DAY) * 1000, 'the oldest of the ten');
-  assert.equal(u.monthResets, Date.parse('2026-11-01T07:00:00Z'));
+  assert.equal(u.profilesFreeAt, (s - 10 * 120 + DAY) * 1000, 'the same daily number: the oldest of the ten');
   assert.equal(u.lastPushback, null);
   assert.equal(u.searchesSincePushback, 0);
   // The Scan page's own numbers are the same ones.
   const st = linkedinState(dir, now);
-  assert.deepEqual([st.searchesToday, st.searchesMonth, st.profilesToday], [u.searchesToday, u.searchesMonth, u.profilesToday]);
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test('this month\'s count starts at midnight Pacific on Nov 1, the day daylight saving ends', () => {
-  const dir = scratch();
-  const now = Date.UTC(2026, 10, 1, 20);
-  const t = (iso) => Date.parse(iso) / 1000;
-  write(dir, 'linkedin-activity.json', {
-    searches: [t('2026-11-01T06:59:59Z'), t('2026-11-01T07:00:00Z'), t('2026-11-01T09:30:00Z')],   // 11:59:59 PM Oct 31 PDT, then Nov 1
-    profiles: [],
-  });
-  const u = linkedinUsage(dir, now);
-  assert.equal(u.searchesMonth, 2);
-  assert.equal(u.searchesToday, 3, 'the last 24 hours don\'t care about the month');
-  assert.equal(pacificText(u.monthResets), 'Dec 1, 12:00 AM Pacific');
+  assert.deepEqual([st.searchesToday, st.profilesToday], [u.searchesToday, u.profilesToday]);
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -265,7 +242,7 @@ test('a record that can\'t be read gives no counts, never zeros', () => {
   const dir = scratch();
   write(dir, 'linkedin-activity.json', '{"searches": [1, 2');
   const u = linkedinUsage(dir);
-  for (const k of ['searchesToday', 'searchesMonth', 'leftMonth', 'profilesToday', 'searchesLastHour', 'searchesWeek', 'dayFreesAt', 'dayClearAt', 'profilesFreeAt', 'searchesSincePushback']) {
+  for (const k of ['searchesToday', 'profilesToday', 'searchesLastHour', 'dayFreesAt', 'dayClearAt', 'profilesFreeAt', 'searchesSincePushback']) {
     assert.equal(u[k], null, k);
   }
   assert.equal(u.unreadable, true);
@@ -336,8 +313,8 @@ test('the pause and the kept page are one pushback, and the pause says how it en
   });
   assert.equal(lastPushback(dir, at + 2 * DAY * 1000).active, false, 'ended by itself');
 
-  // Lifted by hand: still the last pushback, no longer a pause.
-  liftCooldown(dir, now);
+  // Lifted by hand (before 2026-10-05): still the last pushback, no longer a pause.
+  write(dir, 'linkedin-cooldown.json', liftedByHand(read(dir, 'linkedin-cooldown.json'), now / 1000));
   const lifted = lastPushback(dir, now + 1000);
   assert.deepEqual(lifted, { at, reason: 'LinkedIn pushed back: a security check', pausedUntil: at + DAY * 1000, liftedAt: now, active: false });
 
@@ -371,54 +348,18 @@ test('a pause with no kept page (two unclear in a row) is the last pushback too;
 
 // ── a lifted pause ───────────────────────────────────────────────────────────
 
-test('lifting keeps the record, marked lifted, and nothing reads it as a pause', () => {
-  const dir = scratch();
-  const now = Date.UTC(2026, 9, 3, 12);
-  const s = now / 1000;
-  write(dir, 'linkedin-cooldown.json', { until: s + DAY, reason: 'LinkedIn pushed back: a security check', set_at: s - 60 });
-  assert.ok(readCooldown(dir, now));
-  liftCooldown(dir, now);
-  assert.deepEqual(read(dir, 'linkedin-cooldown.json'), {
-    until: s, reason: 'LinkedIn pushed back: a security check', set_at: s - 60, lifted_at: s, was_until: s + DAY,
-  });
-  assert.equal(readCooldown(dir, now), null);
-  assert.equal(readCooldown(dir, now - 5000), null, 'even read by a clock a moment behind');
-  assert.equal(linkedinState(dir, now).cooldown, null);
-  assert.equal(linkedinUsage(dir, now).cooldown, null);
-  // Lifting again changes nothing.
-  const once = readFileSync(path.join(dir, 'linkedin-cooldown.json'), 'utf8');
-  liftCooldown(dir, now + 1000);
-  assert.equal(readFileSync(path.join(dir, 'linkedin-cooldown.json'), 'utf8'), once);
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test('lifting a pause that has ended, or none, writes nothing; a damaged one is removed as before', () => {
-  const dir = scratch();
-  const now = Date.UTC(2026, 9, 3, 12);
-  liftCooldown(dir, now);
-  assert.equal(existsSync(path.join(dir, 'linkedin-cooldown.json')), false);
-  write(dir, 'linkedin-cooldown.json', { until: now / 1000 - 60, reason: 'LinkedIn pushed back', set_at: now / 1000 - DAY });
-  const ended = readFileSync(path.join(dir, 'linkedin-cooldown.json'), 'utf8');
-  liftCooldown(dir, now);
-  assert.equal(readFileSync(path.join(dir, 'linkedin-cooldown.json'), 'utf8'), ended);
-  write(dir, 'linkedin-cooldown.json', '{"until": ');
-  liftCooldown(dir, now);
-  assert.equal(existsSync(path.join(dir, 'linkedin-cooldown.json')), false);
-  rmSync(dir, { recursive: true, force: true });
-});
-
 test('the scanner reads a lifted pause as none, and can pause again after it', (t) => {
   const dir = scratch();
   const now = Date.now();
-  write(dir, 'linkedin-cooldown.json', { until: now / 1000 + DAY, reason: 'LinkedIn pushed back: a security check', set_at: now / 1000 - 60 });
-  liftCooldown(dir, now);
+  write(dir, 'linkedin-cooldown.json', liftedByHand({ until: now / 1000 + DAY, reason: 'LinkedIn pushed back: a security check', set_at: now / 1000 - 60 }, now / 1000));
   const lift = `
 import ast, json, os, sys, time
 from datetime import datetime
 from pathlib import Path
 tree = ast.parse(open(sys.argv[1]).read())
-want = {'_home', '_write_json_atomic', 'read_cooldown', 'set_cooldown', '_when'}
-body = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in want]
+want = {'_home', '_write_json_atomic', 'read_cooldown', '_cooldown_on_file', 'limits_lifted', 'set_cooldown', '_when'}
+body = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name in want)
+        or (isinstance(n, ast.Assign) and any(getattr(x, 'id', '') == 'LIMITS' for x in n.targets))]
 ns = {'json': json, 'os': os, 'Path': Path, 'time': time, 'datetime': datetime}
 exec(compile(ast.Module(body=body, type_ignores=[]), 'scrape.py', 'exec'), ns)
 before = ns['read_cooldown']()
@@ -449,7 +390,7 @@ test('a lifted pause travels in an import as lifted', () => {
   assert.deepEqual(read(here, 'linkedin-cooldown.json'), lifted);
   assert.equal(readCooldown(here, s * 1000 - 1000), null);
   assert.equal(lastPushback(here, s * 1000).liftedAt, s * 1000);
-  // A pause still on in the copy comes back over one lifted here, as it did when lifting deleted the file.
+  // A pause still on in the copy comes back over one lifted here.
   write(from, 'linkedin-cooldown.json', { until: s + 2 * DAY, reason: 'LinkedIn pushed back', set_at: s + 100 });
   mergeBudgetFiles({ dir: here, from });
   assert.ok(readCooldown(here, s * 1000 + 1000));
@@ -485,7 +426,7 @@ test('GET ?usage reads the scanner\'s files and writes nothing', async () => {
   const res = await GET(new Request('http://127.0.0.1/api/scraper?usage=1'));
   assert.equal(res.status, 200);
   const u = await res.json();
-  assert.deepEqual([u.searchesLastHour, u.searchesToday, u.searchesWeek, u.profilesToday], [2, 2, 3, 1]);
+  assert.deepEqual([u.searchesLastHour, u.searchesToday, u.profilesToday], [2, 2, 1]);
   assert.ok(u.cooldown && u.lastPushback.active);
   assert.equal(u.lastPushback.reason, 'LinkedIn pushed back: a security check');
   assert.equal(usageLevel({ cooldown: u.cooldown, searchesDay: u.searchesToday }), 'paused');
@@ -493,11 +434,21 @@ test('GET ?usage reads the scanner\'s files and writes nothing', async () => {
   for (const secret of ['checkpoint', 'linkedin.com', 'SECRET-PAGE-TEXT', 'Ilsa']) assert.ok(!said.includes(secret), secret);
   assert.deepEqual(listing(), before, 'nothing written');
 
-  // Lifting from the Scan page keeps the pushback on record, with the pause lifted.
-  const lifted = await POST(new Request('http://127.0.0.1/api/scraper', { method: 'POST', body: JSON.stringify({ action: 'lift-cooldown' }) }));
-  assert.equal(lifted.status, 200);
+  // Lifting the limits for this session lifts the pause too, in memory: the file stays as it was.
+  const post = (action) => POST(new Request('http://127.0.0.1/api/scraper', { method: 'POST', body: JSON.stringify({ action }) }));
+  assert.equal((await post('lift-limits')).status, 200);
   const after = await (await GET(new Request('http://127.0.0.1/api/scraper?usage=1'))).json();
+  assert.equal(after.lifted, true);
   assert.equal(after.cooldown, null);
-  assert.ok(after.lastPushback.liftedAt);
-  assert.equal(after.lastPushback.active, false);
+  assert.match(after.heldCooldown.reason, /security check/);
+  assert.equal(after.lastPushback.active, true, 'still the pause on record, which comes back with the limits');
+  assert.deepEqual(listing(), before, 'still nothing written');
+  assert.equal((await post('put-limits-back')).status, 200);
+  const back = await (await GET(new Request('http://127.0.0.1/api/scraper?usage=1'))).json();
+  assert.equal(back.lifted, false);
+  assert.ok(back.cooldown);
+  assert.equal(back.liftEnded.why, 'by-hand');
+  // The old "Lift it early" is gone: the session's lift is the one way.
+  assert.equal((await post('lift-cooldown')).status, 400);
+  putLimitsBack();
 });

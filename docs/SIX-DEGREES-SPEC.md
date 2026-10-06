@@ -46,6 +46,35 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
 6. **Scoring ranks reachability, not people.** The README says so and it stays said. A
    tier is a statement about network position, not human worth.
 
+## Safety: what always applies
+
+Scanning runs the user's own LinkedIn account, so some protections are not settings.
+**Blake, 2026-10-05:** *"we need to simplify this and allow more usage as it's constrained
+too much. Just a simple default limit for the day and a button to lift restrictions for
+this session."* So there is **one limit**, searches a day (50 by default, profile views
+counted against the same number), and **Lift limits for this session**, which turns the
+daily limit and the cooldown off until the app restarts. It lives in the server's memory,
+never in a file, and LinkedIn pushing back again puts the limits back by itself. The
+monthly budget, the separate profile-view cap and Auto scan's own day and week caps are
+gone.
+
+These hold **always, lifted or not**, because they protect the account and cost the user
+nothing:
+
+1. **The pace.** The fixed waits before every page and search (the chosen speed), Auto
+   scan's hours and rests, and at least a minute between any two profile views. Never
+   randomised to look like a person.
+2. **Stopping when LinkedIn asks.** A sign-in wall, a security check, a restriction or
+   LinkedIn's own limit ends the scan, keeps the page as evidence and writes the pause
+   (TRAPS §35). Never help anyone get past one (TRAPS §16).
+3. **One scan at a time**, and the queue, with every check run again at each item's turn.
+4. **The honest risk note before the first scan** (the one-time *I understand*).
+5. **Auto's caps on connection requests** (15 a day, 80 a week): a request is the one
+   thing Sixgree sends.
+
+Lifting is one click with the line that says what it does, never a pop-up; a lift that
+outlived a restart, or one that removed any of the five above, is a breaking change.
+
 ## What "done" means for a change
 
 - `npm test` passes (37 tests, `node --test`, no test framework dependency).
@@ -71,4 +100,5 @@ Written down so the same idea does not arrive every few months looking fresh.
 | Defeating Google's OAuth block | Google blocks its sign-in flow inside automation-controlled browsers deliberately. Working around an anti-automation control is out of scope; the tool tells the user to use email and password instead. |
 | A login gate on the local app | It runs on `127.0.0.1`. A password on a loopback service is theatre that costs real usability. |
 | Auto-updating, or checking for or downloading updates on launch | Invariant 2. A request nobody asked for is a request that can be counted. Checking is a press; in the Mac app, installing is a second press. Neither ever happens by itself, and nothing is downloaded ahead of time. |
+| A monthly budget, per-speed caps, or a lift that survives a restart | Blake, 2026-10-05: one daily limit and a lift for the session. More limits were what made it "constrained too much"; a lift kept on disk would outlive the session it was asked for. |
 | Discarding a user's local changes to force an update | The update refuses on a dirty tree and says which files. The single exception is `package-lock.json`, which npm regenerates and nobody edits on purpose. |

@@ -44,6 +44,8 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
   assert.deepEqual(await ask('?job=1'), {
     running: false, action: null, target: null, startedAt: null, exitCode: null,
     failure: null, progress: null, pages: 0, found: [], log: [], recent: [], budget: null, needsYou: null,
+    // The daily limit for the notch: on, and holding nothing back (route.js limitsNow).
+    limits: { lifted: false, reached: false },
     queue: { paused: null, cap: 10, waiting: 0, items: [] },
   });
 

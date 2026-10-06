@@ -14,6 +14,12 @@
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
 //
+// The daily limit (Blake, 2026-10-05: "Just a simple default limit for the day
+// and a button to lift restrictions for this session"): opened while a scan
+// runs, its line has the number to change; once the limit holds a scan back,
+// the notch says so with "Lift limits for this session" and what that does;
+// while they're lifted, a small gold "Limits lifted" and "Put limits back".
+//
 // The queue (lib/scan-queue.js; Blake, 2026-10-05: "have it shown in the
 // notch"): "+2 queued" beside what runs, and opened, who waits and for what
 // (Add, Build circle), each removable, with Clear. Stop holds the queue until
@@ -29,7 +35,10 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue } from '../../lib/scraper-client';
+import {
+  watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue, liftLimitsForSession, putLimitsBack, setDailyLimit,
+} from '../../lib/scraper-client';
+import { DailyLimitInput, LiftLimits, LiftedTag } from './LinkedInLimits';
 import { KIND_LABEL } from '../../lib/scan-queue';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
 import {
@@ -91,10 +100,16 @@ export default function ScanStatusBar() {
   // The page's own buttons (its views or sub-tabs), when it has any.
   const tabs = useSyncExternalStore(watchNotchTabs, notchTabsNow, noNotchTabs);
   const tucked = useSyncExternalStore(watchNotchTucked, notchTuckedNow, notTucked);
+  // The daily limit holding a scan back opens the notch by itself, once each
+  // time, so the lift is a click away from the press that was refused.
+  const heldRef = useRef(false);
   useEffect(() => watchScanner(() => {
     const now = scannerNow();
     setJob(now);
     if (!now.running) setStopping(false);
+    const held = !now.running && now.limits?.reached === true;
+    if (held && !heldRef.current) setPinned(true);
+    heldRef.current = held;
   }), []);
 
   // Hangs from the header's bottom edge, measured: the header can load late,
@@ -156,7 +171,11 @@ export default function ScanStatusBar() {
   const queue = job?.queue;
   const queued = queue?.items || [];
   const waiting = queue?.waiting || 0;
-  const status = running || other || allDay || queued.length > 0;
+  // The daily limit held a scan back (and nothing else is going on), or it's lifted for this session.
+  const limits = job?.limits || {};
+  const lifted = limits.lifted === true;
+  const limitHeld = !running && limits.reached === true;
+  const status = running || other || allDay || queued.length > 0 || limitHeld || lifted;
   // Pages with a heading at the top leave room for the notch while it's showing.
   const showing = Boolean(status || tabs);
   useEffect(() => {
@@ -221,11 +240,16 @@ export default function ScanStatusBar() {
   const queueOnly = !running && !other && queued.length > 0;
   const nextName = queued.find((i) => i.status === 'waiting')?.target?.name;
   const dot = needs ? '#FFD700' : running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB')
-    : queueOnly ? (queue.paused || !waiting ? '#FFD700' : '#00ff88') : '#556';
+    : queueOnly ? (queue.paused || !waiting ? '#FFD700' : '#00ff88') : limitHeld || lifted ? '#FFD700' : '#556';
   const label = needs ? 'LinkedIn needs you' : running ? (WHAT[job.action] || 'Scanning') : other ? other.label
-    : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next') : 'Auto scan';
+    : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next')
+    : limitHeld ? 'Daily limit reached' : lifted ? 'Limits lifted' : 'Auto scan';
   const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail
-    : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null) : null;
+    : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null)
+    : limitHeld && limits.daily ? `${limits.searches ?? limits.daily} of ${limits.daily} today` : null;
+  // "Limits lifted" beside whatever else it says, when that isn't already what it says.
+  const liftedTag = lifted && label !== 'Limits lifted';
+  const idle = !running && !other && !queueOnly && !limitHeld && !lifted;
   // "+2 queued" beside what runs.
   const more = (running || other) && waiting > 0 ? `+${waiting} queued` : null;
 
@@ -273,7 +297,7 @@ export default function ScanStatusBar() {
           borderRadius: '0 0 14px 14px', borderStyle: 'solid', borderWidth: '0 1px 1px',
           borderColor: needs ? 'rgba(255,215,0,0.5)' : running ? 'rgba(0,255,136,0.25)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)',
           background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontSize: 12,
-          opacity: tucked ? 0 : tabs || running || other || expanded || queued.length ? 1 : 0.55,
+          opacity: tucked ? 0 : tabs || running || other || expanded || queued.length || limitHeld || lifted ? 1 : 0.55,
           boxShadow: running ? '0 6px 20px rgba(0,0,0,0.35)' : 'none',
         }}
       >
@@ -320,8 +344,9 @@ export default function ScanStatusBar() {
                       background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
                     }}>{more}</span>
                   )}
+                  {liftedTag && <LiftedTag small />}
                 </span>
-                {!running && !other && !queueOnly && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
+                {idle && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
               </button>
             )}
           </div>
@@ -342,13 +367,24 @@ export default function ScanStatusBar() {
         {expanded && running && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 8px 0', flexWrap: 'wrap' }}>
             {job.target?.name && <span>{job.target.name}</span>}
-            {/* A rolling 24 hours, as the budget counts them (lib/linkedin-limits.js usage), not
-                since midnight; it opens Scan → LinkedIn usage for the rest. */}
-            {b && (
-              <Link href="/setup#usage" style={{ color: tone(b.searches, b.cap), textDecoration: 'none' }} title="Searches on your LinkedIn account in the last 24 hours, and your daily budget. Open LinkedIn usage">
-                {b.searches}{b.cap ? ` of ${b.cap}` : ''} searches in the last 24 hours
-              </Link>
-            )}
+            {/* A rolling 24 hours, as the limit counts them (lib/linkedin-limits.js usage), not
+                since midnight, with the number to change; the words open Scan → LinkedIn usage. */}
+            {b && (b.lifted ? (
+              <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Link href="/setup#usage" style={{ color: 'var(--sd-fg-2, #cfd8d8)', textDecoration: 'none' }} title="Open LinkedIn usage">
+                  {b.searches} searches in the last 24 hours
+                </Link>
+                <button type="button" onClick={() => putLimitsBack().catch(() => {})} style={SMALL} title="The daily limit and the cooldown come back on now">Put limits back</button>
+              </span>
+            ) : (
+              <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone(b.searches, b.cap) }}>
+                {b.searches} of
+                <DailyLimitInput small value={b.cap} onSave={(n) => setDailyLimit(n).catch(() => {})} />
+                <Link href="/setup#usage" style={{ color: 'inherit', textDecoration: 'none' }} title="Searches on your LinkedIn account in the last 24 hours, and your searches a day. Open LinkedIn usage">
+                  searches in the last 24 hours
+                </Link>
+              </span>
+            ))}
             {last && (
               <span style={{ color: 'var(--sd-fg-4, #667)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>
             )}
@@ -365,6 +401,25 @@ export default function ScanStatusBar() {
           </div>
         )}
         {expanded && !running && other?.detail && <div style={{ margin: '6px 8px 0', color: 'var(--sd-fg-3, #8b9a9a)' }}>{other.detail}</div>}
+        {/* The daily limit held a scan back: what's used, the number, and the lift, in a click. */}
+        {expanded && limitHeld && (
+          <div data-notch-limit="" style={{ margin: '8px 8px 6px', width: 340, maxWidth: 'calc(100vw - 48px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.5 }}>
+              Today&rsquo;s searches are used: {limits.searches ?? limits.daily} in the last 24 hours.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--sd-fg-3, #8b9a9a)' }}>
+              Searches a day
+              <DailyLimitInput small value={limits.daily} onSave={(n) => setDailyLimit(n).catch(() => {})} />
+            </div>
+            <LiftLimits small lifted={false} onLift={() => liftLimitsForSession().catch(() => {})} />
+          </div>
+        )}
+        {/* Lifted, and nothing running: what that means, and the way back. */}
+        {expanded && lifted && !running && !limitHeld && (
+          <div style={{ margin: '8px 8px 6px', width: 340, maxWidth: 'calc(100vw - 48px)' }}>
+            <LiftLimits small lifted onPutBack={() => putLimitsBack().catch(() => {})} />
+          </div>
+        )}
         {expanded && queued.length > 0 && (
           <div data-queue="" style={{ margin: '8px 8px 0', minWidth: 260 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: running || other ? 8 : 0, borderTop: running || other ? '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)' : 'none' }}>

@@ -120,7 +120,7 @@ function Pending({ pending, info, busy, restarting, onRestart, onCancel }) {
         {pending.replacedPeople > 0
           ? ` replaces the ${people(pending.replacedPeople)} here the next time Sixgree starts. A copy of what’s here now is kept in backups first, so it can be undone.`
           : ' becomes the network here the next time Sixgree starts.'}
-        {' '}Your LinkedIn search budget and any pause on scanning are kept.
+        {' '}Your daily search limit, the record of searches and any pause on scanning are kept.
       </div>
       {pending.error && (
         <div style={{ color: 'var(--sd-red, #ff7676)', marginTop: 6 }}>
@@ -477,7 +477,7 @@ export default function DataSection() {
                         ? `Replace the ${people(info.people)} here with the network in this backup?`
                         : 'Restore the network in this backup?'}
                       {' '}It’s checked first, and finishes when Sixgree restarts. What’s here now is kept in backups
-                      first, so this can be undone. Your LinkedIn search budget and any pause on scanning are kept.
+                      first, so this can be undone. Your daily search limit, the record of searches and any pause on scanning are kept.
                       {b.format === 'database' && !b.withFiles && ' This backup holds the network only, so the photos and the scanner’s notes here now stay with it.'}
                       <div style={row}>
                         <Btn primary onClick={() => restoreBackup(b.name)} disabled={!!busy}>
@@ -553,7 +553,7 @@ export default function DataSection() {
         <>
           <Body>
             Pick the backup file you exported on the other computer (a .sixdegrees file). It replaces the network
-            here; the two networks are never merged. Your LinkedIn search budget and any pause on scanning are kept,
+            here; the two networks are never merged. Your daily search limit, the record of searches and any pause on scanning are kept,
             with the other computer’s searches added.
           </Body>
           <input ref={picker} type="file" accept=".sixdegrees" onChange={choose} style={{ display: 'none' }} />
@@ -571,7 +571,7 @@ export default function DataSection() {
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Replace the {people(info.people)} in this copy’s network with the network in this file. A copy of
-                what’s here is kept in backups first. Your search budget and any pause on scanning are kept too.
+                what’s here is kept in backups first. Your daily search limit and any pause on scanning are kept too.
               </span>
             </label>
           )}

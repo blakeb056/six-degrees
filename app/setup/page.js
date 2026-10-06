@@ -13,7 +13,7 @@ import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
 import useNotchTabs from '../components/useNotchTabs';
 import { paceOf, durationText, firstCircleSeconds } from '../../lib/scan-pace';
-import { BudgetBox, CooldownBanner, PausedList } from '../components/LinkedInLimits';
+import { CooldownBanner, PausedList, LiftedTag } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
@@ -416,9 +416,10 @@ function SetupInner() {
               <Part title="Their circles" hint={<>
                 Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
                 circle shows in {firstCircle}; the rest fills in over days,{' '}
-                {li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
+                {li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
               </>}>
-                <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-cooldown')} />
+                {/* Lifting the limits for this session lifts the pause too (lib/limits-lift.js). */}
+                <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-limits')} />
                 <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center' }}>
                   <ScanRadar
                     li={li}
@@ -541,8 +542,14 @@ function SetupInner() {
             </div>
             <div className="scan-two">
               <div>
-                <SettingTitle title="LinkedIn budget" line="Searches and profile views the scanner may use. It stops at the budget and carries on next time." />
-                <BudgetBox li={li} disabled={busy} onSetLimits={(l) => run('set-limits', l)} />
+                {/* One limit (Blake, 2026-10-05): its number and the lift live with the meter, under LinkedIn usage below. */}
+                <SettingTitle title="Searches a day" line="The one limit: a scan stops at it and carries on next time. Profile views count against the same number." />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--sd-fg-2, #b8c4c4)' }}>
+                  {li?.lifted
+                    ? <><LiftedTag /> No daily limit until you quit Sixgree.</>
+                    : <span><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{li?.limits?.daily ?? 50}</b> a day, counting the last 24 hours.</span>}
+                  <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>Change it or lift it &rarr;</a>
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -583,10 +590,10 @@ function SetupInner() {
                 title="Auto scan, all day"
                 line="Adds Auto scan beside Scan in the header: small sittings with rests, 9:00 to 18:00, while the app is open."
                 more={<>
-                  Up to 8 pages in a sitting, then an hour&rsquo;s rest; searches only from 9:00 to 18:00; never more than 40
-                  searches in a day or 200 in a week, however high your budget; two days&rsquo; rest after any check from
-                  LinkedIn; at the budget it waits instead of stopping; and it saves every page. It also reads
-                  LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the two compare.
+                  Up to 8 pages in a sitting, then an hour&rsquo;s rest; searches only from 9:00 to 18:00; your searches a
+                  day like any scan, and at that limit it waits instead of stopping; two days&rsquo; rest after any check
+                  from LinkedIn; and it saves every page. It also reads LinkedIn&rsquo;s own data beside the page text, to
+                  fill gaps and measure how the two compare.
                 </>} />
               {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
                   every scan runs in a real Chrome window kept out of sight, which comes forward only when
@@ -594,7 +601,7 @@ function SetupInner() {
               <Toggle checked={showChrome} disabled={running} onChange={setShowChrome}
                 title="Show the scanner’s Chrome window"
                 line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
-                more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily budget." />
+                more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily limit." />
               {social && (
                 <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
                   title="Sync messages once a day"
@@ -626,7 +633,7 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
   const first = String(person.name || '').trim().split(/\s+/)[0] || 'them';
   const cost = circleScanCost(pages, li?.limits?.pace);
   const theirs = running && s?.target?.id === person.id;
-  const short = li?.leftToday != null && li.leftToday < cost.searches;
+  const short = !li?.lifted && li?.leftToday != null && li.leftToday < cost.searches;
   return (
     <div style={{
       margin: '16px 0', padding: '16px 18px', borderRadius: 10, fontSize: 13.5, lineHeight: 1.6,
@@ -651,7 +658,8 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
           <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             It costs <b>{cost.profileViews} profile view</b> to find their list, then <b>one LinkedIn search for
             every page</b> of it: up to {cost.searches} {cost.searches === 1 ? 'page' : 'pages'}, about {cost.minutes} minutes.
-            {li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
+            {li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit.</>
+              : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
           </div>
           {circle === 'scanned' && (
             <div style={{ color: 'var(--sd-gold, #FFD700)', fontSize: 12.5, marginTop: 6 }}>

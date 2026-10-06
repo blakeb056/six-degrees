@@ -5,7 +5,8 @@ import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
-import { linkedinState, linkedinUsage, writeLimits, liftCooldown } from '../../../lib/linkedin-limits';
+import { linkedinState, linkedinUsage, writeLimits } from '../../../lib/linkedin-limits';
+import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
@@ -60,6 +61,7 @@ const state = registerScanState({
   invitee: null,   // Auto's person: { id, name, profileUrl, userId, bridgeId }, looked up here (connectTarget)
   outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
   port: null,      // the port this app was last asked on, for the job the queue starts by itself
+  limitHit: null,  // when the daily limit last held a scan back (a press refused, or a scan that stopped at it), ms
 });
 
 // What runs next (lib/scan-queue.js): read from the data folder the first time
@@ -86,6 +88,8 @@ const PAGE_READ = /^\s*Page \d+\.\.\.|\d+\s*\/\s*\d+\s+collected/;
 // "10 found (total: 30)" in a circle, "7 found (2 with images)" for a company.
 const PAGE_FOUND = /(\d+) found \((?:total: \d+|\d+ with images)\)/;
 const MAX_PAGES_KEPT = 400;
+// What the scanner says when the daily limit stops a scan (scrape.py budget_message).
+const DAILY_LIMIT_USED = /Today's limit of \d+ (searches|profile views) is used/;
 
 /** Stop the running job without orphaning the browser it opened.
  *
@@ -469,24 +473,71 @@ function job() {
     log: state.log.slice(-120),
     recent: state.recent,
     budget: state.running ? budgetNow() : null,
+    // The daily limit for the notch: lifted for this session, or just reached.
+    limits: limitsNow(),
     // What waits to run after this (lib/scan-queue.js queueView), for the notch and the buttons.
     queue: queueView(queue()),
   };
 }
 
-/** Today's LinkedIn budget, for the status bar every page shows while a scan runs. */
+/** Today's searches against the daily limit, for the notch every page shows while a scan runs. */
 function budgetNow() {
   try {
     const li = linkedinState(dataDir());
     return {
       searches: li.searchesToday ?? 0, cap: li.limits?.daily ?? null,
-      profiles: li.profilesToday ?? 0, profileCap: li.limits?.profiles ?? null,
+      // Profile views count against the same daily number.
+      profiles: li.profilesToday ?? 0, profileCap: li.limits?.daily ?? null,
+      lifted: li.lifted,
       // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
       pace: li.limits?.pace ?? null,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * The daily limit as the notch shows it, idle or not: { lifted, reached,
+ * searches, daily }. `reached` only once the limit has held a scan back
+ * (state.limitHit), and only while it still would. Nothing is read from disk
+ * unless the limits are lifted or one was just held back, so the poll every
+ * page makes stays as cheap as the rest of job().
+ */
+function limitsNow() {
+  if (liftedAt() == null && !state.limitHit) return { lifted: false, reached: false };
+  try {
+    const li = linkedinState(dataDir());
+    const reached = !li.lifted && (li.limitReached || li.profilesLeftToday === 0);
+    if (!reached) state.limitHit = null;
+    return {
+      lifted: li.lifted,
+      reached: Boolean(state.limitHit) && reached,
+      searches: Number.isFinite(li.searchesToday) ? li.searchesToday : null,
+      daily: li.limits.daily,
+    };
+  } catch {
+    return { lifted: liftedAt() != null, reached: false };
+  }
+}
+
+/** The refusal when the daily limit holds a scan back, with when the next search frees up. */
+function limitRefusal() {
+  let freeAt = null;
+  let daily = null;
+  try {
+    const u = linkedinUsage(dataDir());
+    daily = u.limits.daily;
+    freeAt = u.leftToday === 0 ? u.dayFreesAt : u.profilesFreeAt;
+  } catch { /* said without a time */ }
+  return `Today’s limit${daily ? ` of ${daily}` : ''} is used: it counts the last 24 hours.`
+    + `${freeAt ? ` The next search frees up ${new Date(freeAt).toLocaleString()}.` : ''}`
+    + ' Lift limits for this session to carry on now.';
+}
+
+/** Tell the running scanner the limits changed, so a scan under way follows at once (scrape.py _listen_for_limits). */
+function tellScanner(line) {
+  try { state.child?.stdin?.write(`${line}\n`); } catch { /* it has ended */ }
 }
 
 /**
@@ -525,7 +576,8 @@ export async function GET(request) {
   // checks, no Python, nothing written.
   if (q.has('usage')) {
     try {
-      return Response.json(linkedinUsage(dataDir()));
+      // How the last lift ended, so the page can say the limits came back when LinkedIn pushed back.
+      return Response.json({ ...linkedinUsage(dataDir()), liftEnded: liftEnded() });
     } catch {
       return Response.json({ error: 'The record of LinkedIn searches on this computer could not be read.' }, { status: 500 });
     }
@@ -803,14 +855,23 @@ function scheduleNext() {
 async function startJob(body, { queued = null } = {}) {
   const action = String(body.action || '');
 
-  // The two settings a person changes here. Neither starts anything.
+  // The settings a person changes here. None starts anything.
   if (action === 'set-limits') {
-    const limits = writeLimits(dataDir(), { daily: body.daily, monthly: body.monthly, profiles: body.profiles, pace: body.pace });
+    const limits = writeLimits(dataDir(), { daily: body.daily, pace: body.pace });
     return Response.json({ ok: true, limits });
   }
-  if (action === 'lift-cooldown') {
-    liftCooldown(dataDir());
-    return Response.json({ ok: true });
+  // Lift limits for this session (lib/limits-lift.js): in this server's memory
+  // only, so a restart puts them back. A scan under way is told at once.
+  if (action === 'lift-limits') {
+    liftLimits();
+    state.limitHit = null;
+    tellScanner('limits: lifted');
+    return Response.json({ ok: true, lifted: true });
+  }
+  if (action === 'put-limits-back') {
+    putLimitsBack('by-hand');
+    tellScanner('limits: on');
+    return Response.json({ ok: true, lifted: false });
   }
 
   if (!Object.hasOwn(ACTIONS, action)) {
@@ -895,15 +956,29 @@ async function startJob(body, { queued = null } = {}) {
   if (!['install', 'setup', 'login'].includes(action) && pendingImport(dataDir())) {
     return Response.json({ error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' }, { status: 409 });
   }
-  const cooldown = linkedinState(dataDir()).cooldown;
+  // While the limits are lifted for this session there is no cooldown here
+  // (lib/linkedin-limits.js linkedinState) and no daily limit.
+  const li = linkedinState(dataDir());
+  const cooldown = li.cooldown;
   if (searches && cooldown) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()}: ${cooldown.reason}.`, cooldown }, { status: 409 });
+  }
+  // The daily limit, said before a process starts (the scanner checks it
+  // before every search too). Auto scan waits for it to free up instead of
+  // stopping (scrape.py _drip_before_search), so it isn't refused here.
+  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company'].includes(action);
+  if (readsLists && li.limitReached && !(body.experimental === true && action.startsWith('auto-bridge'))) {
+    state.limitHit = Date.now();
+    return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
   }
   // Auto's caps (15 in any 24 hours, 80 in any 7 days) and the profile view it
   // takes, said before a process starts; the scanner checks them again.
   if (invitee) {
-    const capped = inviteRefusal(linkedinState(dataDir()));
-    if (capped) return Response.json({ error: capped }, { status: 409 });
+    const capped = inviteRefusal(li);
+    if (capped) {
+      if (li.profilesLeftToday === 0) state.limitHit = Date.now();
+      return Response.json({ error: capped, ...(li.profilesLeftToday === 0 ? { limitReached: true } : {}) }, { status: 409 });
+    }
   }
   if (state.running) {
     // One thing at a time. Auto, and a scan of one person's circle, picked by
@@ -986,6 +1061,7 @@ async function startJob(body, { queued = null } = {}) {
   state.found = [];
   state.stderrTail = [];
   state.failure = null;
+  state.limitHit = null;
   state.invitee = invitee;
   state.outcome = null;
   forgetChecks();
@@ -1003,6 +1079,9 @@ async function startJob(body, { queued = null } = {}) {
     SIX_DEGREES_ROOT: root,
     // So the scraper's hints name the Scan page's settings, not its flags.
     SIX_DEGREES_FROM_APP: '1',
+    // Lifted for this session, or not: the scanner skips the daily limit and the
+    // cooldown while it is, and keeps its pace and its stops either way.
+    SIX_DEGREES_LIMITS_LIFTED: liftedAt() != null ? '1' : '0',
   };
 
   /**
@@ -1043,6 +1122,8 @@ async function startJob(body, { queued = null } = {}) {
       state.failure = reason.length ? reason : null;
     }
     const stopped = state.stopping;
+    // Stopped at the daily limit (scrape.py budget_message): the notch offers to lift it.
+    if (!stopped && state.log.slice(-15).some((l) => DAILY_LIMIT_USED.test(l))) state.limitHit = Date.now();
     push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
     state.stopping = false;
     state.running = false;
@@ -1116,6 +1197,8 @@ async function startJob(body, { queued = null } = {}) {
       return finish(-1);
     }
     state.child = child;
+    // Lines to it (tellScanner) once it has gone are nobody's business.
+    child.stdin?.on('error', () => {});
 
     child.stdout.on('data', (d) => push(d.toString()));
     child.stderr.on('data', (d) => {

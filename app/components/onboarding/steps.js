@@ -14,7 +14,7 @@ import { appManagementStep, askForField, CHROME_DOWNLOAD } from '../../../lib/sc
 import { readyChecks, connectState, firstScan } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
-import { SAFE_LIMITS, RISKY_DAILY, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
+import { SAFE_LIMITS, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
 import { watchAllDay, allDayNow, setAllDay } from '../../../lib/experimental-client';
 import { keptCsvProblem } from '../../../lib/csv';
 import { INDUSTRIES } from '../../../lib/companies';
@@ -22,13 +22,12 @@ import { sectorByKey } from '../../../lib/sector-directory';
 import { MAX_SECTORS } from '../../../lib/sector-focus';
 import { saveField, skipField } from '../FieldStep';
 import SectorPicker from '../settings/SectorPicker';
+import { DailyLimitInput } from '../LinkedInLimits';
 import ClusterSpinner from '../ClusterSpinner';
 import { Ico, Galaxy, MacSettings, ChecksArt, ConnectArt, PaceArt } from './art';
 
-// The budget picker's choices (app/components/LinkedInLimits.js).
-const DAILY = [25, 50, 100, 200, 500];
 // What the scanner uses when nothing is saved yet (lib/linkedin-limits.js DEFAULT_LIMITS).
-const DEFAULT_LIMITS = { ...SAFE_LIMITS, profiles: 50, pace: DEFAULT_PACE };
+const DEFAULT_LIMITS = { ...SAFE_LIMITS, pace: DEFAULT_PACE };
 
 /** One step's screen: its words on the left, its picture on the right. */
 export function Frame({ eyebrow, title, lede, foot, art, error, children }) {
@@ -348,7 +347,7 @@ export function Pace({ ctx }) {
     <Frame
       eyebrow="Step 4 of 5 · Pace"
       title="Set your pace"
-      lede="Every page the scanner reads is one LinkedIn search. Fewer and slower is safer. You can change both anytime on the Scan page."
+      lede="Every page the scanner reads is one LinkedIn search. Slower is quieter, and one daily limit stops a scan. You can change both anytime on the Scan page."
       error={scan.error}
       art={<PaceArt daily={Number(limits.daily)} pace={pace} />}
       foot={<>
@@ -366,31 +365,29 @@ export function Pace({ ctx }) {
         ))}
       </div>
       <div className="ob-hintline">{PACE_LINE[pace]} Your first circle shows in {durationText(firstCircleSeconds(pace))}. Slower only adds waiting.</div>
-      <div className="ob-label" style={{ marginTop: 10 }}>Searches a day</div>
-      <div className="ob-daily" role="radiogroup" aria-label="Searches a day">
-        {DAILY.map((n) => (
-          <button key={n} type="button" role="radio" aria-checked={Number(limits.daily) === n} id={`ob-daily-${n}`}
-            className={`ob-dchip${Number(limits.daily) === n ? ' sel' : ''}${n > RISKY_DAILY ? ' risky' : ''}`} onClick={() => set({ daily: n })}>
-            {n}{n === SAFE_LIMITS.daily && <small>Default</small>}
-          </button>
-        ))}
+      {/* One limit (Blake, 2026-10-05): a number, the default already in it. */}
+      <label className="ob-label" htmlFor="ob-daily" style={{ marginTop: 10, display: 'block' }}>Searches a day</label>
+      <div className="ob-dailyrow" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <DailyLimitInput id="ob-daily" value={Number(limits.daily)} onSave={(n) => set({ daily: n })} />
+        {Number(limits.daily) === SAFE_LIMITS.daily && <span className="ob-hintline" style={{ margin: 0 }}>The default</span>}
       </div>
       {note ? (
         <div className="ob-warn" role="status">
           <span>{note}</span>
-          <button type="button" className="ob-btn secondary small" onClick={() => set(SAFE_LIMITS)}>Back to {SAFE_LIMITS.daily} a day, {SAFE_LIMITS.monthly} a month</button>
+          <button type="button" className="ob-btn secondary small" onClick={() => set(SAFE_LIMITS)}>Back to {SAFE_LIMITS.daily} a day</button>
         </div>
       ) : (
         <div className="ob-hintline">
-          {Number(limits.daily) === SAFE_LIMITS.daily ? `The safe default, with ${SAFE_LIMITS.monthly} a month on top.`
-            : Number(limits.daily) < SAFE_LIMITS.daily ? 'Extra careful.' : 'The most that’s still on the safe side.'}
-          {' '}At {PACES[pace].label}, a day’s budget is {time} of scanning. A real account was restricted after {RESTRICTED_AT} searches in 24 hours.
+          {Number(limits.daily) === SAFE_LIMITS.daily ? 'The safe default.'
+            : Number(limits.daily) < SAFE_LIMITS.daily ? 'Extra careful.' : 'Still on the safe side.'}
+          {' '}At {PACES[pace].label}, a day’s searches are {time} of scanning. The Scan page can lift the limit for one session.
+          {' '}A real account was restricted after {RESTRICTED_AT} searches in 24 hours.
         </div>
       )}
       <button type="button" className="ob-auto" onClick={() => setAllDay(!auto)} aria-pressed={auto} id="ob-auto">
         <span>
           <div className="at">Auto scan <span className="ob-tag exp">Experimental</span></div>
-          <div className="ad">Puts an Auto scan button in the top bar. Press it and the scanner maps who they know in small rounds while the app is open: 9:00 to 18:00, 40 searches a day at most.</div>
+          <div className="ad">Puts an Auto scan button in the top bar. Press it and the scanner maps who they know in small rounds while the app is open: 9:00 to 18:00, within your searches a day.</div>
         </span>
         <span className={`ob-toggle${auto ? ' on' : ''}`} />
       </button>

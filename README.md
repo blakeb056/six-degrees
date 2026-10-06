@@ -299,10 +299,10 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 >   (2026-09-09); it was lifted the same evening.
 > - Search was blocked after results were read too fast (2026-09-24).
 >
-> The scanner now reads slowly and keeps to a search budget (by default 50 a day and 250
-> a month) and a cap on profile views (50 a day, at least a minute apart). You can change
-> both on the Scan page. It locks itself during a cooldown, and stops at the first sign of
-> push-back. The risk is still yours.
+> The scanner now reads slowly and keeps to one daily limit (by default 50 searches a day,
+> and as many profile views, at least a minute apart). You can change it on the Scan page,
+> or lift it until you quit Sixgree. It locks itself during a cooldown, and stops at the
+> first sign of push-back, lifted or not. The risk is still yours.
 >
 > **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
