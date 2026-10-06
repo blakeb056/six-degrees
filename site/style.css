@@ -315,6 +315,12 @@ a.dl.primary:hover { color: #0d0e1a; box-shadow: 0 1px 0 #ffffff inset, 0 0 0 1p
 /* The hero film: no frame, no controls; its four edges fade into the page. */
 .video.hero-film { max-width: 1120px; margin: 44px auto 0; }
 .video.features-film { margin: 40px auto 0; }
+.film-steps { list-style: none; max-width: 760px; margin: 6px auto 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.film-steps li { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 6px 12px; font-weight: 600; font-size: 15px; color: var(--muted); border-bottom: 2px solid var(--line-2); transition: color .3s, border-color .3s; }
+.film-steps li[aria-current="step"] { color: var(--text); border-bottom-color: var(--gold-ink); }
+.film-steps li[aria-current="step"] .demo-n { background: linear-gradient(#ffe766, #ffd700); color: #1b1400; box-shadow: 0 0 0 1.5px #e0b400, 0 2px 0 #d2a600, 0 0 12px rgba(255, 200, 0, 0.35); }
+@media (max-width: 620px) { .film-steps li { font-size: 13px; flex-direction: column; gap: 6px; } }
+
 .video.features-film figcaption { text-align: center; color: var(--muted); font-size: 14px; margin-top: 6px; }
 .video.hero-film video { display: block; width: 100%; height: auto; background: transparent; border: 0; border-radius: 0; box-shadow: none;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
