@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Auto scan, all day" switch on, the round you start yourself took Auto scan's hours and rests,
   so after 18:00 it read one profile and then waited until 09:00 ("Resting overnight"). Only Auto
   scan keeps to its hours now; a round you press runs straight away, inside the usual limits.
+- **The guided setup no longer sits on "fetching photos" after the first scan has ended.** It now goes to *Your galaxy is ready* within a second or two of the end, whether the window was in the background, the scan was stopped or failed while saving photos (a calm line says some may be missing), or another scan starts straight after.
 
 ## [1.2.0] - 2026-10-05
 
