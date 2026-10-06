@@ -24,6 +24,8 @@ This file is for AI assistants and crawlers. The pages at https://sixgree.com/ h
 - Getting started, privacy and FAQ: https://sixgree.com/docs/
 - Release notes: https://sixgree.com/releases/
 - Blog (how it works): https://sixgree.com/blog/
+- Visualize a LinkedIn CSV (direct connections, local import and limitations): https://sixgree.com/blog/linkedin-network-csv/
+- LinkedIn connection degrees (distance, observed paths and introduction limits): https://sixgree.com/blog/linkedin-connection-degrees/
 - Roadmap: https://sixgree.com/roadmap/
 - About: https://sixgree.com/about/
 - Source code: https://github.com/blakeb056/six-degrees
