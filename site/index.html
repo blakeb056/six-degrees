@@ -131,7 +131,10 @@
       "@id": "https://sixgree.com/#website",
       "url": "https://sixgree.com/",
       "name": "Sixgree",
-      "alternateName": ["Sixgrees", "Six Degrees"],
+      "alternateName": [
+        "Sixgrees",
+        "Six Degrees"
+      ],
       "inLanguage": "en",
       "about": {
         "@id": "https://sixgree.com/#app"
@@ -139,6 +142,68 @@
       "publisher": {
         "@id": "https://blakeburford.com/#person"
       }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://sixgree.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is it really free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. No paid tier, no account and no trial. Sixgree is open source under the MIT licence, and every line is on GitHub."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is Sixgree for?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Anyone on LinkedIn who wants to see their network rather than scroll it: people starting out with a handful of connections, people with thousands who want to see what they add up to, climbers looking for peers at the top, and founders looking for other founders, or a co-founder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does my network leave my computer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. There is no Sixgree server. Your network is one folder on your computer, and the app goes online only when you ask it to: LinkedIn while you scan, GitHub when you check for an update. Why local-first."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will scanning get my LinkedIn account restricted?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It might, and we say so plainly. Scanning uses your own account in a Chrome window you sign into. It reads slowly, keeps to daily and monthly limits, and stops at the first sign of push-back. If you'd rather take no risk, import LinkedIn's own Connections.csv or try the sample. The details."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do the tiers S, A, B, C and D mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each person gets a power score from their title and their company, and the tiers group those scores: S is the top. Power ranks reachability, not people: it estimates how many doors someone can open, never what they're worth. The formula is open."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What's a bridge, and what does six degrees mean here?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A bridge is a connection whose circle you've scanned: everyone they know joins your map, two steps from you. Scan circles further out and the map keeps going, out to six degrees."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does it run on?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "macOS 13.5 or later, on Apple Silicon or Intel, signed and notarized by Apple. Windows 10 or 11 and Linux are in beta. All downloads."
+          }
+        }
+      ]
     }
   ]
 }
@@ -378,7 +443,7 @@
             <li><strong>Stops cleanly.</strong> At the first push-back it stops and says so, and Resume picks up where it left off.</li>
             <li><strong>No pop-ups.</strong> On a Mac it asks for App Management once, then leaves you alone.</li>
           </ul>
-          <p class="stat-line"><span class="mono"><!-- gen:test-count -->1,227<!-- /gen:test-count --></span> automated tests ·
+          <p class="stat-line"><span class="mono"><!-- gen:test-count -->1,236<!-- /gen:test-count --></span> automated tests ·
             <span class="mono"><!-- gen:release-count -->36<!-- /gen:release-count --></span> releases since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></p>
           <p class="fine">Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that automate it.
             <a href="/blog/scanning-slowly/">The honest risk</a>. Rather not? Import LinkedIn's own CSV instead.</p>
@@ -626,6 +691,11 @@
       </div>
       <div class="posts"><!-- gen:blog-teaser -->
         <article class="post">
+          <p class="post-meta"><time datetime="2026-10-06">6 October 2026</time><span>2 min read</span></p>
+          <h3><a href="/blog/export-linkedin-connections/">How to export your LinkedIn connections, on a computer or an iPhone</a></h3>
+          <p class="post-more">Download your LinkedIn connections as a CSV from LinkedIn's own settings, on Mac, Windows or iPhone, what the file contains and what it leaves out, and how to see the people in it as a map with tiers.</p>
+        </article>
+        <article class="post">
           <p class="post-meta"><time datetime="2026-10-05">5 October 2026</time><span>5 min read</span></p>
           <h3><a href="/blog/design-choices/">How Sixgree got its look: every icon, wordmark, name and colour we tried</a></h3>
           <p class="post-more">The full design history of Sixgree, with pictures: from Next.js's default favicon to a gold S that reads as a 6, every wordmark we drew, the name change, the tier palettes in each look, and the design rules behind them.</p>
@@ -634,11 +704,6 @@
           <p class="post-meta"><time datetime="2026-10-05">5 October 2026</time><span>4 min read</span></p>
           <h3><a href="/blog/linkedin-warm-introduction/">How to ask for a warm introduction on LinkedIn, with message templates</a></h3>
           <p class="post-more">Use Sixgree to inspect possible bridges, then ask a mutual LinkedIn connection for an introduction with clear, respectful messages and a forwardable blurb.</p>
-        </article>
-        <article class="post">
-          <p class="post-meta"><time datetime="2026-10-05">5 October 2026</time><span>5 min read</span></p>
-          <h3><a href="/blog/linkedin-network-job-search/">How to audit your LinkedIn network before a job search</a></h3>
-          <p class="post-more">Review your LinkedIn connections with Sixgree, find target-company coverage and possible bridges, and build a focused job-search shortlist without mass outreach.</p>
         </article>
         <!-- /gen:blog-teaser --></div>
     </section>
