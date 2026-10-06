@@ -508,10 +508,21 @@ CHROME_ARGS = (
     "--test-type",
 )
 
-# Far off every screen: Windows and Chrome itself use -32000 for "nowhere".
-# Windows keeps a window there. A Mac moves it back onto the screen, so on a
-# Mac the scanner's Chrome is hidden instead (MacChrome).
+# Far off every screen: Chrome itself uses -32000 for "nowhere". The least
+# off_screen_bounds asks for; further when a display reaches past it.
+#
+# Chrome never opens a window there (TRAPS §48): a position it's given at launch
+# (--window-position, or the placement it saved last time) is moved wholly onto
+# the display NEAREST to it. -32000,-32000 is up and to the left of everything,
+# so with a second display to the left of the main one, or above it, the
+# window opened on the second display. So the window is moved after the launch
+# (Browser.setWindowBounds isn't adjusted), and on a Mac, which puts a window
+# that's shown back onto the nearest display whatever it's asked, it is hidden
+# instead, for as long as it's meant to be out of sight (MacChrome).
 OFF_SCREEN = (-32000, -32000)
+# The window's size whenever it's placed (in front, or forward for you): room
+# for the page Playwright draws (1280 x 720) and Chrome's own bars above it.
+WINDOW_SIZE = (1300, 860)
 
 # Where the window goes (chrome_window_mode):
 #   "background"  a real Chrome window kept out of sight, that doesn't keep the
@@ -540,18 +551,167 @@ def chrome_window_mode(headless=False, show=False, sign_in=False):
     return "background"
 
 
-def chrome_launch_options(profile_dir, mode="background", platform=None):
+def screen_layout(platform=None):
+    """Every display, as [{x, y, width, height, main}] in the coordinates
+    Chrome's window bounds use: the main display's top-left is 0,0, and a
+    display to its left or above it has a negative x or y. Asked afresh each
+    time (a display can come and go mid-scan). [] when it can't be told
+    (Linux, or the call failed): the callers then fall back. Never raises."""
+    platform = platform or sys.platform
+    try:
+        if platform == "darwin":
+            return _mac_displays()
+        if platform == "win32":
+            return _windows_displays()
+    except Exception:
+        pass
+    return []
+
+
+def _mac_displays():
+    """CoreGraphics' active displays, in points (a Retina display and an
+    ordinary one side by side are both in points: no scale to undo)."""
+    import ctypes
+    import ctypes.util
+
+    class Point(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+    class Size(ctypes.Structure):
+        _fields_ = [("width", ctypes.c_double), ("height", ctypes.c_double)]
+
+    class Rect(ctypes.Structure):
+        _fields_ = [("origin", Point), ("size", Size)]
+
+    cg = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreGraphics")
+                                 or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+    cg.CGGetActiveDisplayList.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_uint32)]
+    cg.CGGetActiveDisplayList.restype = ctypes.c_int32
+    cg.CGDisplayBounds.argtypes = [ctypes.c_uint32]
+    cg.CGDisplayBounds.restype = Rect
+    cg.CGMainDisplayID.restype = ctypes.c_uint32
+    ids = (ctypes.c_uint32 * 32)()
+    count = ctypes.c_uint32(0)
+    if cg.CGGetActiveDisplayList(32, ids, ctypes.byref(count)) != 0:
+        return []
+    main = cg.CGMainDisplayID()
+    out = []
+    for display in ids[:count.value]:
+        r = cg.CGDisplayBounds(display)
+        out.append({"x": round(r.origin.x), "y": round(r.origin.y), "width": round(r.size.width),
+                    "height": round(r.size.height), "main": display == main})
+    return out
+
+
+def _windows_displays():
+    """Windows' monitors (EnumDisplayMonitors), the primary marked main."""
+    import ctypes
+    from ctypes import wintypes
+
+    class MonitorInfo(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
+                    ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+
+    user32 = ctypes.windll.user32
+    out = []
+    each_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HANDLE, wintypes.HDC, ctypes.POINTER(wintypes.RECT),
+                                   wintypes.LPARAM)
+
+    def each(monitor, _dc, _rect, _data):
+        info = MonitorInfo()
+        info.cbSize = ctypes.sizeof(MonitorInfo)
+        if user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            r = info.rcMonitor
+            out.append({"x": r.left, "y": r.top, "width": r.right - r.left, "height": r.bottom - r.top,
+                        "main": bool(info.dwFlags & 1)})   # 1: MONITORINFOF_PRIMARY
+        return True
+
+    callback = each_type(each)
+    user32.EnumDisplayMonitors(None, None, callback, 0)
+    return out
+
+
+def display_union(displays):
+    """(left, top, right, bottom) around every display, or None for none. Pure."""
+    displays = [d for d in displays or [] if d.get("width", 0) > 0 and d.get("height", 0) > 0]
+    if not displays:
+        return None
+    return (min(d["x"] for d in displays), min(d["y"] for d in displays),
+            max(d["x"] + d["width"] for d in displays), max(d["y"] + d["height"] for d in displays))
+
+
+def off_screen_bounds(displays, size=WINDOW_SIZE):
+    """{left, top} for a window that is on no display at all: up and to the
+    left of every one of them, by more than the window's own size, and never
+    nearer than OFF_SCREEN. Pure, so tested on layouts no one here has."""
+    left, top = OFF_SCREEN
+    union = display_union(displays)
+    if union:
+        left = min(left, union[0] - size[0] - 100)
+        top = min(top, union[1] - size[1] - 100)
+    return {"left": left, "top": top}
+
+
+def main_display(displays):
+    """The main display (the one with the menu bar on a Mac, the primary on
+    Windows): the one marked main, else the one at 0,0, else the first. Pure."""
+    displays = [d for d in displays or [] if d.get("width", 0) > 0 and d.get("height", 0) > 0]
+    for d in displays:
+        if d.get("main"):
+            return d
+    for d in displays:
+        if d["x"] == 0 and d["y"] == 0:
+            return d
+    return displays[0] if displays else None
+
+
+def on_main_display(displays, size=WINDOW_SIZE):
+    """{left, top, width, height}: the window centred on the main display, made
+    smaller to fit a small one. 40,40 when the displays can't be told (still on
+    the main display: 0,0 is its corner). Pure."""
+    d = main_display(displays)
+    if d is None:
+        return {"left": 40, "top": 40, "width": size[0], "height": size[1]}
+    width = min(size[0], max(d["width"] - 80, 400))
+    height = min(size[1], max(d["height"] - 80, 300))
+    return {"left": d["x"] + (d["width"] - width) // 2, "top": d["y"] + (d["height"] - height) // 2,
+            "width": width, "height": height}
+
+
+def chrome_window_placement(displays, size=WINDOW_SIZE):
+    """Chrome's saved window placement (Preferences browser.window_placement)
+    on the main display, or None when the displays can't be told. Chrome opens
+    a window where the last one was, and the last one may have been on a second
+    display (or one that has gone). Pure."""
+    if main_display(displays) is None:
+        return None
+    b = on_main_display(displays, size)
+    return {"left": b["left"], "top": b["top"], "right": b["left"] + b["width"],
+            "bottom": b["top"] + b["height"], "maximized": False}
+
+
+def chrome_launch_options(profile_dir, mode="background", platform=None, displays=None):
     """launch_persistent_context's options for a window mode. Pure, so tested.
 
     On a Mac, Chrome's own sandbox runs (Playwright turns it off unless asked):
     it starts and works the same with it, and --no-sandbox is one of the flags
     Chrome warns about. Windows and Linux keep Playwright's default for now:
     only the Mac has been tried, and --test-type keeps the bar away there too.
+
+    A background window on a Mac opens on the main display, centred (it is
+    hidden before it's drawn; if anything ever shows it, it shows there, and
+    LinkedIn needing you finds it there). Elsewhere it asks for off every
+    display, which Chrome turns into the nearest one: launch_chrome moves it
+    off after the launch.
     """
     platform = platform or sys.platform
     args = list(CHROME_ARGS)
     if mode == "background":
-        args.append(f"--window-position={OFF_SCREEN[0]},{OFF_SCREEN[1]}")
+        if platform == "darwin":
+            at = on_main_display(displays)
+        else:
+            at = off_screen_bounds(displays)
+        args.append(f"--window-position={at['left']},{at['top']}")
     options = {
         "user_data_dir": str(profile_dir),
         "headless": mode == "headless",
@@ -582,10 +742,15 @@ QUIET_PREFS = (
 )
 
 
-def chrome_quiet_prefs(prefs):
-    """Chrome's Preferences (a dict) with QUIET_PREFS set, everything else as it was. Pure."""
+def chrome_quiet_prefs(prefs, placement=None):
+    """Chrome's Preferences (a dict) with QUIET_PREFS set, and the saved window
+    placement replaced when one is given (chrome_window_placement), everything
+    else as it was. Pure."""
     out = dict(prefs) if isinstance(prefs, dict) else {}
-    for keys, value in QUIET_PREFS:
+    settings = list(QUIET_PREFS)
+    if placement:
+        settings.append((("browser", "window_placement"), dict(placement)))
+    for keys, value in settings:
         node = out
         for key in keys[:-1]:
             child = node.get(key)
@@ -596,8 +761,9 @@ def chrome_quiet_prefs(prefs):
     return out
 
 
-def quiet_chrome_profile(profile_dir):
-    """Write QUIET_PREFS into <profile>/Default/Preferences, before Chrome starts.
+def quiet_chrome_profile(profile_dir, placement=None):
+    """Write QUIET_PREFS (and the window placement, when given) into
+    <profile>/Default/Preferences, before Chrome starts.
 
     Read, change, write back, so everything else Chrome keeps there (the
     session's settings, window sizes) stays. A missing file is made (a new
@@ -614,7 +780,7 @@ def quiet_chrome_profile(profile_dir):
         return False
     if not isinstance(prefs, dict):
         return False
-    quiet = chrome_quiet_prefs(prefs)
+    quiet = chrome_quiet_prefs(prefs, placement)
     if quiet == prefs:
         return True
     try:
@@ -637,13 +803,21 @@ class MacChrome:
     back on screen (and moved off later, 40 px of it stays). Hidden, it covers
     nothing, the focus goes back where it was, and its pages keep working
     (Playwright's flags keep a hidden window's page drawing and loading). So
-    from the moment it starts it is hidden whenever it shows or becomes active,
-    for its first seconds: the focus is gone for about a tenth of a second.
+    from the moment it starts it is hidden whenever it shows or becomes active:
+    the focus is gone for about a tenth of a second.
+
+    And for as long as it's meant to be out of sight, not just its first
+    seconds (TRAPS §48). Chrome shows itself again whenever it opens a window
+    or a tab (a new page, a pop-up), and you can bring it out from the Dock or
+    ⌘-Tab; through 1.2.0 nothing put it back, and the window stayed on screen,
+    wherever Chrome had put it: on a second display, often. Watched until
+    show() (LinkedIn needs you) or Chrome has gone; watch() again after.
     """
 
     BUNDLE = "com.google.Chrome"   # channel="chrome": Google Chrome itself
-    WATCH = 20                     # seconds after the launch it's watched for
-    SETTLED = 1.5                  # hidden and not active this long after the launch: done
+    WATCH = 20                     # seconds after a watch starts it's looked at often...
+    FAST = 0.05                    # ...this often (Chrome takes the focus as its window opens)
+    SLOW = 0.1                     # and then this often, for as long as it's out of sight
 
     def __init__(self, profile_dir):
         import threading
@@ -651,7 +825,7 @@ class MacChrome:
         self.pid = None
         self.lock = threading.Lock()
         self.stop = threading.Event()
-        self.launched_at = None
+        self.thread = None
         self.before = set()
         self.objc = _appkit()
         try:
@@ -742,10 +916,19 @@ class MacChrome:
         except Exception:
             return False
 
+    def forward(self):
+        """Stop keeping it hidden (LinkedIn needs you): the watcher is done
+        before this returns, so it can't hide the window just after it shows."""
+        import threading
+        self.stop.set()
+        thread = self.thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=2)
+
     def show(self):
         """Unhidden and the active app: LinkedIn needs you at the window."""
         import ctypes
-        self.stop.set()
+        self.forward()
 
         def run():
             app = self._app()
@@ -760,38 +943,50 @@ class MacChrome:
             return False
 
     def watch(self):
-        """Hide it from the moment it appears, for its first seconds. Call just before the launch."""
+        """Keep it hidden: from just before the launch (it's hidden from the
+        moment it appears), or again once you're through with LinkedIn, until
+        forward() or Chrome has gone."""
         import threading
         import time as clock
+        if self.thread is not None and self.thread.is_alive() and not self.stop.is_set():
+            return
+        self.stop = stop = threading.Event()
         started = clock.monotonic()
 
         def run():
-            quiet_since = None
-            while not self.stop.is_set() and clock.monotonic() - started < self.WATCH:
+            while not stop.is_set():
                 try:
                     if self.pid is None:
                         self._find()
                     if self.pid is not None:
                         state = self._state()
                         if state is None:
-                            return
-                        active, hidden = state
-                        if active or not hidden:
-                            self.hide()
-                            quiet_since = None
-                        elif self.launched_at is not None:
-                            quiet_since = quiet_since or clock.monotonic()
-                            if clock.monotonic() - quiet_since >= self.SETTLED:
+                            # The lookup by pid now and then finds nothing for
+                            # a Chrome that's running (seen on a Mac, 2026-10-05):
+                            # it's only gone once its process has.
+                            if not _process_alive(self.pid):
                                 return
+                        else:
+                            active, hidden = state
+                            if active or not hidden:
+                                self.hide()
                 except Exception:
-                    return
-                clock.sleep(0.05)
+                    pass             # one look that failed isn't the end of keeping it out of sight
+                stop.wait(self.FAST if clock.monotonic() - started < self.WATCH else self.SLOW)
 
-        threading.Thread(target=run, name="hide-chrome", daemon=True).start()
+        self.thread = threading.Thread(target=run, name="hide-chrome", daemon=True)
+        self.thread.start()
 
-    def launched(self):
-        import time as clock
-        self.launched_at = clock.monotonic()
+
+def _process_alive(pid):
+    """Whether a process with this id is running (signal 0: asks, sends nothing)."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except Exception:
+        return True   # there, but not ours to signal
+    return True
 
 
 def _appkit():
@@ -820,8 +1015,13 @@ def launch_chrome(p, headless=False, sign_in=False):
     window where chrome_window_mode puts it. `p` is sync_playwright()'s object."""
     mode = chrome_window_mode(headless=headless, show=CHROME_WINDOW["show"], sign_in=sign_in)
     profile = get_scraper_profile_path()
-    quiet_chrome_profile(profile)
+    displays = screen_layout() if mode != "headless" else []
+    # Where Chrome remembers its window: the main display, never the second
+    # one (or one that has gone) the last window was on.
+    quiet_chrome_profile(profile, placement=chrome_window_placement(displays))
     CHROME_WINDOW["mode"] = mode
+    if CHROME_WINDOW["mac"]:
+        CHROME_WINDOW["mac"].forward()   # the last launch's watcher, done with (Auto launches once per person)
     mac = MacChrome(profile) if mode == "background" and sys.platform == "darwin" else None
     if mac and not mac.available:
         mac = None
@@ -829,21 +1029,25 @@ def launch_chrome(p, headless=False, sign_in=False):
     if mac:
         mac.watch()
     try:
-        context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode))
+        context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode, displays=displays))
     except Exception:
         if mac:
-            mac.stop.set()
+            mac.forward()
         raise
     page = context.pages[0] if context.pages else context.new_page()
     if mac:
-        mac.launched()
+        pass   # hidden, and kept hidden by its watcher until LinkedIn needs you
     elif mode == "background" and sys.platform == "darwin":
         # AppKit wouldn't load: minimised, its page keeps working all the same.
         _set_window(page, {"windowState": "minimized"})
+    elif mode == "background":
+        # Chrome opened it on the display nearest the position it was asked
+        # for; moved now, it goes where it's put: off every display.
+        _set_window(page, {"windowState": "normal"}, off_screen_bounds(displays))
     elif mode == "front":
         # Chrome remembers where its window was, and the last one may have
-        # been off-screen: put it where it can be seen.
-        _place_on_screen(page)
+        # been off-screen or on another display: put it where it can be seen.
+        _place_on_screen(page, displays)
     return context
 
 
@@ -867,12 +1071,16 @@ def _set_window(page, *bounds):
             pass
 
 
-def _place_on_screen(page):
-    """The window on the screen, in front, big enough for the page Playwright
-    draws (1280 x 720, plus Chrome's own bars). The page can't say how big the
-    screen is (Playwright stands in its own); a smaller one keeps it on screen."""
+def _place_on_screen(page, displays=None):
+    """The window centred on the main display, in front, big enough for the
+    page Playwright draws (1280 x 720, plus Chrome's own bars) or as big as a
+    smaller display allows. The page can't say how big the screen is
+    (Playwright stands in its own), so the displays are asked (screen_layout);
+    when they can't be told, 40,40 is still on the main display."""
+    if displays is None:
+        displays = screen_layout()
     # A window that isn't "normal" (minimised) can't be moved: normal first.
-    placed = _set_window(page, {"windowState": "normal"}, {"left": 40, "top": 40, "width": 1300, "height": 860})
+    placed = _set_window(page, {"windowState": "normal"}, on_main_display(displays))
     try:
         page.bring_to_front()
     except Exception:
@@ -882,13 +1090,15 @@ def _place_on_screen(page):
 
 def bring_forward(page):
     """LinkedIn needs you (signing in, a security check): a background window
-    comes onto the screen, in front. A window already in front stays as it is;
-    headless has none to show."""
+    comes onto the main display, centred, in front. A window already in front
+    stays as it is; headless has none to show."""
     if CHROME_WINDOW["mode"] != "background":
         return False
     mac = CHROME_WINDOW["mac"]
     if mac:
-        mac.show()
+        # Nothing hides it from now on. Still hidden while it's moved, so it
+        # doesn't show first wherever it was.
+        mac.forward()
     _place_on_screen(page)
     if mac:
         mac.show()
@@ -904,10 +1114,12 @@ def back_out_of_the_way(page):
     CHROME_WINDOW["mode"] = "background"
     mac = CHROME_WINDOW["mac"]
     if mac:
-        return mac.hide()
+        hidden = mac.hide()
+        mac.watch()   # and kept hidden again, for the rest of the scan
+        return hidden
     if sys.platform == "darwin":
         return _set_window(page, {"windowState": "minimized"})
-    return _set_window(page, {"windowState": "normal"}, {"left": OFF_SCREEN[0], "top": OFF_SCREEN[1]})
+    return _set_window(page, {"windowState": "normal"}, off_screen_bounds(screen_layout()))
 
 
 def resolve_active_user():
