@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-10-06
+
 ### Changed
 - **App Management is required in the guided setup on macOS 13 and later.** The Get ready step
   now asks macOS whether Sixgree may manage apps (rechecked every 2 seconds and whenever the
