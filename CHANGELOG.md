@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Separation's top ten moves on as you ask.** Once Auto sent a request, the person kept their
+  place in "Top 10 you haven't asked" until a reload when the request had waited in the scan
+  queue, or when you'd opened someone else's card before it finished: the list of requests was
+  read once per page and only the button that sent it ever updated it. Now a request being sent
+  takes the person out at once and the next-best fills their place; one waiting in the queue
+  stays, marked Queued, until its turn sends it; one that fails puts them back; and the list of
+  requests is read again whenever an Auto request ends.
+
 ## [1.2.6] - 2026-10-06
 
 ### Changed
