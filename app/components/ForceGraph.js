@@ -10,6 +10,7 @@ import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, wat
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
+import { lineMask } from '../../lib/tier-lines';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -403,7 +404,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // The physics lab's settings (lib/galaxy-lab.js); today's layout when it's
   // off, and always on a phone, whose layout has no physics.
-  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels } : lab;
+  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels, tierLines: lab.tierLines } : lab;
   // Physics off: nothing on the map moves by itself. The layout is worked out
   // without drawing it and drawn once where it settles (lib/galaxy.js settle);
   // no orbit, no easing, no pulsing ring, and it redraws only when something
@@ -492,6 +493,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // after any rebuild, and hidden while they are filtered out.
   const pulse = ring.firstChild;
   let ringNode = null;
+  // Filters → Lines, set up below once the lines are drawn: the selected
+  // person's own lines are drawn whatever the choice (lib/tier-lines.js).
+  let applyLines = () => {};
+  let keptLines = null;
   const placeRing = () => {
     if (!ringNode) return;
     const t = d3.zoomTransform(svg.node());
@@ -500,6 +505,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const select = (id) => {
     ringNode = id != null && id !== CENTER_ID ? nodeById.get(id) ?? null : null;
     ring.style.display = ringNode ? 'block' : 'none';
+    if ((ringNode?.id ?? null) !== keptLines && L.tierLines !== 'all') applyLines({ tiers: true });
     if (!ringNode) return;
     // The ring the <svg> used to draw: 8 past the dot, 2.5 wide.
     const r = nodeRadius(ringNode) + 8;
@@ -853,8 +859,17 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   const catalystRings = g.selectAll('.catalyst-ring');
 
+  // Only the lines drawn are moved: with Filters → Lines on one tier, or the
+  // replay early on, most of a big network's lines cost nothing a frame.
+  const linkEls = link.nodes();   // links[i] is connections[i], which is nodes[i + 1]
+  const paintLine = (j) => {
+    const el = linkEls[j], d = links[j];
+    el.setAttribute('x1', d.source.x); el.setAttribute('y1', d.source.y);
+    el.setAttribute('x2', d.target.x); el.setAttribute('y2', d.target.y);
+  };
+  let drawnLines = links.map((_, j) => j);
   const paint = () => {
-    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    for (const j of drawnLines) paintLine(j);
     node.attr('cx', d => d.x).attr('cy', d => d.y);
     catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
     dotRings.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -958,6 +973,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const setLab = (next) => {
     if (isMobileGraph) {
       if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); showBorn(); }
+      if (next.tierLines !== L.tierLines) { L = { ...L, tierLines: next.tierLines }; applyLines({ tiers: true }); }
       return;
     }
     const prev = L;
@@ -972,6 +988,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       if (ringNode) select(ringNode.id);
     }
     if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines).attr('stroke-opacity', lineOpacity());
+    // Filters → Lines: only which lines are drawn. The layout isn't touched.
+    if (prev.tierLines !== L.tierLines) applyLines({ tiers: true });
     if (sized || prev.names !== L.names || prev.labels !== L.labels) { drawLabels(); showBorn(); }
     if (!L.on || !L.branch) g.classed('lab-focus', false);
     g.classed('lab-pop', L.on && nodes.length < 5000 && !isStill());
@@ -1014,12 +1032,34 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const born = bornTimes(nodes, parentOf);
   const bornById = new Map(nodes.map((n, i) => [n.id, born[i]]));
   const nodeEls = node.nodes();
-  const linkEls = link.nodes();   // links[i] is connections[i], which is nodes[i + 1]
   const extraEls = new Map();
   dotRings.each(function (d) { extraEls.set(d.id, [this]); });
   catalystRings.each(function (d) { extraEls.set(d.id, [...(extraEls.get(d.id) || []), this]); });
   const shown = new Uint8Array(nodes.length).fill(1);
   const idxOf = new Map(nodes.map((n, i) => [n.id, i]));
+  // A line is drawn while both its ends are there in the replay and Filters →
+  // Lines lets it through (lib/tier-lines.js lineMask), or it is one of the
+  // selected person's own. Worked out as bytes, and only a line that changes
+  // is touched, so a change costs one pass over the lines and no rebuild.
+  const ends = links.map((l) => [idxOf.get(l.source.id), idxOf.get(l.target.id)]);
+  const byTier = new Uint8Array(links.length).fill(1);
+  const lineOn = new Uint8Array(links.length).fill(1);
+  applyLines = ({ tiers = false } = {}) => {
+    if (tiers) {
+      keptLines = ringNode?.id ?? null;
+      lineMask(links, L.tierLines, { keep: keptLines, into: byTier });
+    }
+    const list = [];
+    for (let j = 0; j < links.length; j++) {
+      const on = byTier[j] && shown[ends[j][0]] && shown[ends[j][1]] ? 1 : 0;
+      if (on) list.push(j);
+      if (on === lineOn[j]) continue;
+      lineOn[j] = on;
+      linkEls[j].style.display = on ? '' : 'none';
+      if (on) paintLine(j);
+    }
+    drawnLines = list;
+  };
   const d1 = nodes.filter(n => n.degree === 1);
   const dated = d1.map(n => bornById.get(n.id)).filter(Number.isFinite);
   const range = { min: dated.length ? dated.reduce((m, t) => Math.min(m, t)) : null, max: dated.length ? dated.reduce((m, t) => Math.max(m, t)) : null, of: d1.length };
@@ -1041,14 +1081,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       shown[i] = vis;
       const display = vis ? '' : 'none';
       nodeEls[i].style.display = display;
-      if (linkEls[i - 1]) linkEls[i - 1].style.display = display;
       for (const el of extraEls.get(nodes[i].id) || []) el.style.display = display;
     }
-    // A line to another way in shows while both its ends do.
-    for (let j = connections.length; j < links.length; j++) {
-      const vis = shown[idxOf.get(links[j].source.id)] && shown[idxOf.get(links[j].target.id)];
-      linkEls[j].style.display = vis ? '' : 'none';
-    }
+    // A line shows while both its ends do, and Filters → Lines lets it.
+    applyLines();
     showBorn();
     if (!stamp) return;
     stamp.style.display = at == null ? 'none' : 'block';
@@ -1099,6 +1135,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
   };
 
+  applyLines({ tiers: true });
   setOrbit();
   if (isStill()) settleNow({ first: true });
   const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); stopSettling?.(); };
