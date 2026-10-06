@@ -11,7 +11,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appManagementStep, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
-import { readyChecks, connectState, firstScan } from '../../../lib/onboarding';
+import { readyChecks, connectState, firstScan, photosNote } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
 import { SAFE_LIMITS, RISKY_DAILY, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
@@ -437,7 +437,7 @@ const fieldLabel = (sectors) => sectors.map((k) => sectorByKey(k).label).join(' 
 
 export function MapPeople({ ctx }) {
   const { s, settings, scan } = ctx;
-  const fs = firstScan(s);
+  const fs = firstScan(s, ctx.follow);
   const [picks, setPicks] = useState([]);
   const [narrow, setNarrow] = useState(false);
   const [saving, setSaving] = useState(null);
@@ -573,6 +573,8 @@ export function Final({ ctx, onFinish }) {
   const count = Number(s?.network?.first) || 0;
   const limits = { ...DEFAULT_LIMITS, ...(s?.linkedin?.limits || {}) };
   const sectors = settings?.sectorFocus?.sectors || [];
+  // Photos are optional: not all of them in is said calmly, and never holds this back.
+  const photos = photosNote(s);
   return (
     <section className="ob-final">
       <div className="fg"><Galaxy bloom /></div>
@@ -581,6 +583,7 @@ export function Final({ ctx, onFinish }) {
         <div className="ob-eyebrow">All set</div>
         <h1>Your galaxy<br />is ready.</h1>
         <p className="ob-lede">{count.toLocaleString()} people you know, mapped and kept on {ctx.here}.</p>
+        {photos && <p className="ob-quiet" data-photos-note="" style={{ maxWidth: 440 }}>{photos}</p>}
         <div className="ob-tiles">
           <div><b>{count.toLocaleString()}</b>connections</div>
           <div><b>{PACES[limits.pace]?.label || 'Fast'} · {limits.daily} a day</b>your pace</div>
