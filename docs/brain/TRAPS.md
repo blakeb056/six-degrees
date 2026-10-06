@@ -1029,7 +1029,8 @@ profiles with `lsappinfo front` polled every 100 ms.
   waits for its first page).
 - **macOS moves a window placed off-screen back onto it.** `--window-position=-32000,-32000`
   opened at (0, 30); `Browser.setWindowBounds` to -32000 afterwards left 40 px on screen.
-  Windows keeps a window at -32000; a Mac doesn't.
+  (It was Chrome that moved it at launch, onto the nearest display, and it does that on
+  Windows too: §48.)
 - **Hiding works.** `NSRunningApplication` `hide`, from a thread watching for the new Chrome
   (by its `--user-data-dir` in `ps`) from before the launch, gives the focus back within about
   0.2 s, and the page keeps working hidden. `MacChrome` in `scrape.py` does it, through ctypes,
@@ -1066,3 +1067,42 @@ frame (a `requestAnimationFrame` loop recording the header, the notch's tabs and
 How to check it: build, start, and walk every page to every other with Playwright, counting
 frames where the new page's header is up and the notch shows the old page's tabs, or the
 notch is up with no header. Measured on a production build, never by eye in dev.
+
+## 48. Chrome never opens a window off-screen, and the hidden scanner showed itself again on the second display
+
+Found on 2026-10-05 from Blake's Mac mini (1.2.0, two displays): the scanner's Chrome came
+up on the second display mid-scan, then didn't, then did again. Measured on a one-display
+Mac with scratch profiles and a local page, reading the window's bounds from
+`CGWindowListCopyWindowInfo` and the app's state from `NSRunningApplication`.
+
+- **Chrome moves a position it's given at launch onto the nearest display.** Chrome's own
+  window sizer, not macOS, and on every platform: `--window-position=-32000,-32000` opened
+  at the main display's corner, `40000,40000` at its right edge, `500,100` pushed in until
+  the whole window fit; a saved `browser.window_placement` off every display came back
+  onto one. -32000,-32000 is up and to the left of everything, so **with a second display
+  to the left of the main one, or above it, the nearest display is the second one.** The
+  launch flag is a hint, never "off-screen". `Browser.setWindowBounds` after the launch is
+  not adjusted (a hidden window sat at -32000,-32000 and at 5000,4000), so Windows and Linux
+  move the window off every display (`off_screen_bounds`, from `screen_layout`) once it's up.
+- **A Mac shows a window that comes back where macOS likes**: unhidden from 5000,4000 it was
+  at the main display's right edge, so on a Mac nothing placed keeps it out of sight; hiding
+  does. The background window now opens on the main display, centred, so if anything ever
+  shows it, that's where, and `bring_forward` doesn't jump it across displays.
+- **Chrome unhides itself whenever it opens a window or a tab**: `context.new_page()`, a
+  pop-up from the page, `page.bring_to_front()` — unhidden and active within 0.1 s, and it
+  stays so. The Dock and ⌘-Tab do the same. Through 1.2.0 `MacChrome` watched for only the
+  launch's first seconds (it gave up 1.5 s after the launch returned), so the first of any
+  of these left the window on screen for the rest of the scan, wherever Chrome had put it.
+  It watches for as long as the window is meant to be out of sight now (until `bring_forward`,
+  again after `back_out_of_the_way`); a new window shows for about 0.1 s.
+- **`runningApplicationWithProcessIdentifier:` now and then finds nothing for a Chrome
+  that's running.** The old watcher took that as "Chrome has gone" and stopped. Only a
+  process that's gone (`os.kill(pid, 0)`) counts.
+- **Don't minimise the hidden window on a Mac.** It keeps drawing (60 fps, `visible`), but
+  the minimise makes Chrome the active app while hidden (the keyboard gone), and a hidden
+  app's minimised window still puts a tile in the Dock, titled with the page.
+- **Chrome remembers where its window was** (`browser.window_placement` in Preferences) and
+  opens the next one there: on a second display, or one that has gone. `quiet_chrome_profile`
+  writes the main display's centre there before every launch when the displays can be told.
+- Not tried: two displays (no second one here: the layouts are unit-tested in
+  `tests/chrome-launch.test.mjs`), Windows and Linux.
