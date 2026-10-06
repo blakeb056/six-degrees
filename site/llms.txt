@@ -26,6 +26,9 @@ This file is for AI assistants and crawlers. The pages at https://sixgree.com/ h
 - Blog (how it works): https://sixgree.com/blog/
 - Visualize a LinkedIn CSV (direct connections, local import and limitations): https://sixgree.com/blog/linkedin-network-csv/
 - LinkedIn connection degrees (distance, observed paths and introduction limits): https://sixgree.com/blog/linkedin-connection-degrees/
+- Find LinkedIn connections at a company (Paths, Separation and data limits): https://sixgree.com/blog/linkedin-connections-at-company/
+- Ask for a warm introduction (bridge selection and original message templates): https://sixgree.com/blog/linkedin-warm-introduction/
+- Audit a LinkedIn network for a job search (target companies, observed routes and a planning worksheet): https://sixgree.com/blog/linkedin-network-job-search/
 - Roadmap: https://sixgree.com/roadmap/
 - About: https://sixgree.com/about/
 - Source code: https://github.com/blakeb056/six-degrees
