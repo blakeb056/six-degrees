@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-10-06
+
+### Changed
+- **LinkedIn's monthly-limit banner no longer stops a scan by itself.** When the banner shows
+  but the page still has people on it, the scanner reads them and carries on; it stops for the
+  monthly limit only when the page has the banner and nobody on it. LinkedIn's "approaching
+  the commercial use limit" notice is a heads-up now, not a stop.
+
 ## [1.2.4] - 2026-10-06
 
 ### Fixed
