@@ -42,7 +42,7 @@ const ask = async (query) => (await GET(new Request(`http://127.0.0.1/api/scrape
 
 test('?job=1 says what runs and whose scan it is, and how the last jobs ended', async () => {
   assert.deepEqual(await ask('?job=1'), {
-    running: false, action: null, target: null, startedAt: null, exitCode: null,
+    running: false, action: null, target: null, startedAt: null, exitCode: null, exitKind: null,
     failure: null, progress: null, pages: 0, found: [], log: [], recent: [], budget: null, needsYou: null,
     // The daily limit for the notch: on, and holding nothing back (route.js limitsNow).
     limits: { lifted: false, reached: false },

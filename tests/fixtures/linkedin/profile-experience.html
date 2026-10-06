@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- Invented: a profile page shaped like LinkedIn's, written by hand for tests. No real
+     person or company. The class names are made-up hashes on purpose: the reader must
+     never need them (TRAPS §5). Each visible line has a copy for screen readers beside
+     it, as LinkedIn draws them. The Experience section loads only once the page is
+     scrolled near it, as LinkedIn's sections do. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ada Quill | LinkedIn</title>
+<style>
+  .x9f3a1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .p00a7c { height: 1600px; }
+  body { font-family: sans-serif; }
+</style>
+</head>
+<body>
+<header><nav><a href="/in/me-invented/">Me</a></nav></header>
+<main class="a83kd2">
+  <section class="kq19ze"><h1 class="t7d2aa">Ada Quill</h1><div>Building things at Quillon Labs</div></section>
+  <section class="kq19ze"><div id="about"></div><h2 class="m2kz0q"><span aria-hidden="true">About</span><span class="x9f3a1">About</span></h2>
+    <div class="p00a7c">Invented text about an invented person. Experience matters, she says.</div></section>
+  <div id="later"></div>
+</main>
+<aside><h2>People also viewed</h2><a href="/in/someone-else-invented/">Someone Else</a></aside>
+<script>
+  // The Experience section, added once the page has been scrolled down.
+  const html = `
+  <section class="kq19ze"><div id="experience" class="b1b2b3"></div>
+    <div class="h3h3h3"><h2 class="m2kz0q"><span aria-hidden="true">Experience</span><span class="x9f3a1">Experience</span></h2></div>
+    <ul class="f0f0f0">
+      <li class="z1">
+        <a href="/company/quillon-labs/"><img alt="Quillon Labs logo"></a>
+        <div><span aria-hidden="true">Vice President, Engineering</span><span class="x9f3a1">Vice President, Engineering</span></div>
+        <span><span aria-hidden="true">Quillon Labs · Full-time</span><span class="x9f3a1">Quillon Labs · Full-time</span></span>
+        <span><span aria-hidden="true">Mar 2022 - Present · 3 yrs 8 mos</span><span class="x9f3a1">Mar 2022 to Present · 3 yrs 8 mos</span></span>
+        <span><span aria-hidden="true">Orlando, Florida · Hybrid</span></span>
+        <div><span aria-hidden="true">Leads an invented team that builds invented things.</span></div>
+      </li>
+      <li class="z1">
+        <a href="/company/brightwater-analytics/"><img alt="Brightwater Analytics logo"></a>
+        <div><span aria-hidden="true">Brightwater Analytics</span><span class="x9f3a1">Brightwater Analytics</span></div>
+        <span><span aria-hidden="true">Full-time · 4 yrs 9 mos</span></span>
+        <ul class="g9g9g9">
+          <li class="z2"><div><span aria-hidden="true">Director of Platform</span><span class="x9f3a1">Director of Platform</span></div>
+            <span><span aria-hidden="true">Jan 2020 - Feb 2022 · 2 yrs 2 mos</span></span></li>
+          <li class="z2"><div><span aria-hidden="true">Senior Engineering Manager</span></div>
+            <span><span aria-hidden="true">Full-time</span></span>
+            <span><span aria-hidden="true">Jun 2017 - Dec 2019 · 2 yrs 7 mos</span></span></li>
+        </ul>
+      </li>
+      <li class="z1">
+        <div><span aria-hidden="true">Software Engineer</span></div>
+        <span><span aria-hidden="true">Hollowfield Systems</span></span>
+        <span><span aria-hidden="true">2012 - 2017 · 5 yrs</span></span>
+      </li>
+    </ul>
+    <div><a href="/in/ada-quill-invented/details/experience/"><span>Show all 6 experiences</span></a></div>
+  </section>
+  <section class="kq19ze"><div id="education"></div><h2><span aria-hidden="true">Education</span></h2>
+    <ul><li><div><span aria-hidden="true">Invented State University</span></div><span><span aria-hidden="true">2008 - 2012</span></span></li></ul>
+  </section>`;
+  let added = false;
+  addEventListener('scroll', () => {
+    if (added || scrollY < 300) return;
+    added = true;
+    setTimeout(() => { document.getElementById('later').insertAdjacentHTML('beforebegin', html); }, 250);
+  });
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import { circleScanCost } from '../../lib/reach';
 import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
 import useNotchTabs from '../components/useNotchTabs';
-import { paceOf, durationText, firstCircleSeconds } from '../../lib/scan-pace';
+import { durationText, firstCircleSeconds, paceLine, profilesPerHour, paceOf } from '../../lib/scan-pace';
 import { CooldownBanner, PausedList, LiftedTag, DailyLimitInput } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
@@ -40,6 +40,7 @@ const ACTION_LABELS = {
   resume: 'Carrying on with one paused list',
   'resume-all': 'Carrying on with every paused list',
   connect: 'Sending a connection request (Auto)',
+  'read-profiles': 'Reading full profiles',
 };
 
 // The notch's one tab (lib/island.js): the tab is the page, lit, and takes you
@@ -181,7 +182,11 @@ function SetupInner() {
   const appMgmt = IS_DEMO || appAnswer ? false : appManagementStep(s, settings);
   // Step 4, honestly: the first circle shows in minutes, the rest takes days.
   const pace = li?.limits?.pace;
-  const firstCircle = durationText(firstCircleSeconds(pace));
+  // Scanner settings' two switches (scan-limits.json, lib/linkedin-limits.js): gentle pacing,
+  // on unless turned off, and Read full profiles, off unless turned on.
+  const gentle = li?.limits?.gentle !== false;
+  const profileReads = li?.limits?.profileReads === true;
+  const firstCircle = durationText(firstCircleSeconds(pace, gentle));
   // A run that ended badly, and the line that says why — the last thing it
   // printed before stopping. Shown as a box, not left for someone to find in the log.
   const failed = s && !running && s.exitCode != null && s.exitCode !== 0;
@@ -599,12 +604,46 @@ function SetupInner() {
                   </Btn>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
-                  At {paceOf(li?.limits?.pace).label} it rests {paceOf(li?.limits?.pace).pagePause} seconds before each page and{' '}
-                  {paceOf(li?.limits?.pace).chunkCooldown / 60 === 1 ? 'a minute' : `${paceOf(li?.limits?.pace).chunkCooldown / 60} minutes`} after
-                  every 10, so a long list takes about {circleScanCost(pages, li?.limits?.pace).minutes} minutes a person.
+                  {/* Worked out from the scanner's own numbers (lib/scan-pace.js), with gentle pacing or without. */}
+                  <span data-speed-line="">{paceLine(li?.limits?.pace, gentle).replace(/\.$/, '')}, so a long list takes about{' '}
+                  {circleScanCost(pages, li?.limits?.pace, gentle).minutes} minutes a person.</span>{' '}
                   If LinkedIn says a free account&rsquo;s monthly search limit is reached, the scan saves what it read and
                   carries on from that page next time. Keep batches small.
                 </div>
+              </div>
+            </div>
+            {/* Blake, 2026-10-05: gentle pacing (on), and optional full profile reads (off). Saved
+                with the daily limit (scan-limits.json), so the scanner reads them at the start of
+                each scan. Gentle pacing only ever adds waiting to the read as it was. */}
+            <div className="scan-two" style={{ marginTop: 18, paddingTop: 16, borderTop: LINE }}>
+              <Toggle checked={gentle} disabled={running || busy} onChange={(on) => run('set-limits', { gentle: on })}
+                title="Gentle pacing and scrolling (new)"
+                line={gentle
+                  ? 'On: each wait runs a little longer at random, with reading time and a scroll through each page, and now and then a break.'
+                  : 'Off: the fixed waits and the plain read the scanner always had.'}
+                more={<>
+                  It never shortens a wait or skips a check: the scanner&rsquo;s own waits and reader run exactly as
+                  before, and this adds time after them (never under the old wait), a scroll down each page in
+                  uneven steps before it&rsquo;s read, reading time for the people it showed, a short break about
+                  once in a hundred pages, and a longer rest every 60. A page that&rsquo;s slow to load is tried
+                  again after 2, 4, 8 and 16 seconds. The speeds above say how long it takes either way.
+                </>} />
+              <div data-profile-reads="">
+                <Toggle checked={profileReads} disabled={running || busy} onChange={(on) => run('set-limits', { profileReads: on })}
+                  title="Read full profiles (experience)" tag="Uses profile views"
+                  line="Opens each person’s profile, which is a profile view: the action LinkedIn is strictest about. Counts against your searches a day, at most one a minute."
+                  more={<>
+                    Reads the current and past roles (title, company, dates) on your connections&rsquo; profiles, so
+                    their score counts every role they list, not just their headline. Only your own connections,
+                    highest power first, and only people with no experience on file; nobody is read twice. It&rsquo;s
+                    its own round, never added to a circle scan, and it stops at the first check from LinkedIn like
+                    every scan. Lifting the limits for the session takes off the daily limit, never the minute
+                    between profiles. A profile it can&rsquo;t read is marked as that, never as having no experience.
+                  </>} />
+                {profileReads && (
+                  <ProfileReads li={li} experience={s?.experience} pace={pace} gentle={gentle} running={running} reading={Boolean(running && s?.action === 'read-profiles')}
+                    canStart={canScanList && !busy} onStart={(batch) => run('read-profiles', { batch })} />
+                )}
               </div>
             </div>
           </section>
@@ -643,13 +682,43 @@ function SetupInner() {
   );
 }
 
+// Read profiles, once it's turned on: a round of 5, 10 or 25 of your connections'
+// profiles, highest power first, each a profile view (scrape.py read_profiles).
+// What's read, what couldn't be, and what waits, from the scanner's status.
+function ProfileReads({ li, experience, pace, gentle, running, reading, canStart, onStart }) {
+  const [batch, setBatch] = useState(10);
+  const e = experience || { read: 0, unreadable: 0, waiting: 0 };
+  const left = li?.lifted ? null : li?.profilesLeftToday;
+  const short = left != null && left < batch;
+  return (
+    <div style={{ marginTop: 12, marginLeft: 28, fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <select value={batch} onChange={(ev) => setBatch(Number(ev.target.value))} disabled={Boolean(running)} style={selectStyle}
+          aria-label="How many profiles to read">
+          <option value={5}>5 profiles</option>
+          <option value={10}>10 profiles</option>
+          <option value={25}>25 profiles</option>
+        </select>
+        <Btn onClick={() => onStart(batch)} disabled={!canStart || !e.waiting}>
+          {reading ? 'Reading…' : `Read ${Math.min(batch, e.waiting || batch)} profiles`}
+        </Btn>
+      </div>
+      <div style={{ marginTop: 6 }} data-profile-counts="">
+        {e.read} read, {e.unreadable} couldn&rsquo;t be read, {e.waiting} waiting. At {paceOf(pace).label}, about{' '}
+        {profilesPerHour(pace, gentle)} an hour at most.
+        {short && <> Only {left} profile views are left today, so the round stops there.</>}
+      </div>
+    </div>
+  );
+}
+
 // One person's circle, picked in Insights (Scan circle): what it costs beside
 // what the budget has left, and one button that starts it (backlog 2.4). Their
 // read goes as deep as "Read up to" below says; Bridge Chains shows it filling in.
 function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onStart, onUnpick }) {
   const { person, circle } = pick;
   const first = String(person.name || '').trim().split(/\s+/)[0] || 'them';
-  const cost = circleScanCost(pages, li?.limits?.pace);
+  const cost = circleScanCost(pages, li?.limits?.pace, li?.limits?.gentle !== false);
   const theirs = running && s?.target?.id === person.id;
   const short = !li?.lifted && li?.leftToday != null && li.leftToday < cost.searches;
   return (

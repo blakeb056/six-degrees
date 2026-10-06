@@ -32,6 +32,11 @@ installed rather than run from a checkout. TRAPS §4.
 - `unlock_status`, `unlocked_from_bridge_id`, `unlocked_from_name` — **provenance, and it
   is permanent.** Who introduced this person. Set when a path opens, and kept when they
   later become a direct connection, so the route you actually walked never disappears.
+- `experience` — Read profiles' answer for a 1st-degree person, one JSON text
+  (`lib/experience.js`): `{v, status: 'read', at, source, roles: [{title, company, start, end,
+  current}]}`, or `{v, status: 'unreadable', at, why}`, never an empty list (TRAPS §7). Written
+  only through `/api/ingest` `{type: 'experience'}`; scoring reads its roles
+  (`lib/scoring.js rolesWithCompanies`).
 - `mutual_count` — LinkedIn's own count of the mutual connections you share with a
   2nd-degree person, read off their result card by a circle scan ("Maya Chen and 23 other
   mutual connections": 24). One fact about the two of you, so every copy of the person
@@ -80,7 +85,7 @@ rule the original Postgres schema enforced.
 `CREATE TABLE IF NOT EXISTS` never adds a column to a table that already exists, so a
 new column on an existing table also goes in `ADDED_COLUMNS` in `lib/db-client.js`,
 which runs `ALTER TABLE … ADD COLUMN` once on older databases (first used for `score_why`,
-then `mutual_count`).
+then `mutual_count`, then `experience`).
 New tables need nothing extra.
 
 ## Conventions

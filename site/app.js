@@ -15,6 +15,7 @@
 //      screen (CSS does it, and skips it for reduced motion).
 //   6. The home page's 1-2-3 strip steps through itself; its tabs pick a step.
 //   7. The home page's tour plays its chapters over the screenshots.
+//   8. Under the hero film, the step it's showing lights up as it plays.
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
@@ -276,6 +277,21 @@ const DOWNLOADS = {
     }));
     time.textContent = clock(TOTAL);
     draw();
+  }
+
+  // 8. The hero film's 1-2-3: light the step whose stretch of the film is playing.
+  const filmSteps = all('.film-steps li');
+  const heroFilm = document.querySelector('.hero-film video');
+  if (heroFilm && filmSteps.length) {
+    const mark = () => {
+      const t = heroFilm.currentTime;
+      for (const li of filmSteps) {
+        const on = t >= Number(li.dataset.from) && t < Number(li.dataset.to);
+        if (on) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+      }
+    };
+    heroFilm.addEventListener('timeupdate', mark);
+    mark();
   }
 
   // 4 and 5: things that happen as they come on screen.

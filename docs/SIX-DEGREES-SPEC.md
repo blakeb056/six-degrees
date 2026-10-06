@@ -63,7 +63,10 @@ nothing:
 
 1. **The pace.** The fixed waits before every page and search (the chosen speed), Auto
    scan's hours and rests, and at least a minute between any two profile views. Never
-   randomised to look like a person.
+   shortened. *(Blake, 2026-10-05: gentle pacing, on by default, adds a random,
+   skewed extra after each of those waits, reading time, a scroll through each
+   page and now and then a break: only ever more waiting, never less, and off it
+   is the old fixed waits exactly. Read profiles keeps the minute between views.)*
 2. **Stopping when LinkedIn asks.** A sign-in wall, a security check, a restriction or
    LinkedIn's own limit ends the scan, keeps the page as evidence and writes the pause
    (TRAPS §35). Never help anyone get past one (TRAPS §16).

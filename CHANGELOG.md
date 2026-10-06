@@ -17,6 +17,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   traffic. Power, tiers, rings and dot sizes are unchanged. About a second for 15,000 people, worked out
   once per scan or rescore and kept.
 
+## [1.2.2] - 2026-10-06
+
+### Added
+- **Read full profiles (experience), off by default.** A switch in Scan → Scanner settings,
+  with the line it needs: each read opens a person's profile, which is a profile view, the
+  action LinkedIn is strictest about, counted against your searches a day, at most one a
+  minute. On, a round of 5, 10 or 25 of your own connections, highest power first, reads the
+  current and past roles on their profiles (title, company, dates) so their score counts every
+  role, not just the headline's. Nobody is read twice; a profile it can't read is marked as
+  that, never as having no experience, and three in a row stop the round. It stops at any
+  check from LinkedIn like every scan, and lifting the limits for the session never lifts the
+  minute between profiles. Not yet tried on LinkedIn itself: the first round's log says what
+  it found where.
+
+### Changed
+- **Gentle pacing and scrolling (new), on by default.** The scanner's waits run as they always
+  did, then a little longer at random; each page gets reading time for the people it showed
+  and a scroll down in uneven steps (now and then a small scroll back up, or a pause) before
+  it's read, so a list that loads as you scroll is read in full; about once in a hundred pages
+  there's a short break ("Short break, back at 14:32"), and every 60 pages a longer rest. It
+  never shortens a wait or skips a check, and Stop still stops within a second. The speeds the
+  Scan page shows count all of it: Fast is now about 77 searches an hour (113 without), a whole
+  list about 76 minutes. Turn it off in Scanner settings for the old fixed waits exactly.
+- **A page that's slow to load is tried again.** After 2, 4, 8 and 16 seconds (the last two
+  reload it, each counted like any search or profile view), then it says it couldn't be read.
+  Never when LinkedIn asks you to sign in or check in, or says there are too many requests:
+  those stop the scan at once, as before.
+- **A scan that stops says why more precisely.** "Stopped: LinkedIn pushed back.", "Stopped at
+  today's limit." and the like, from the scanner's exit code, instead of "Stopped (exit 1)."
+
 ### Fixed
 - **The opened notch is a rounded rectangle again.** With frosted buttons it took the tab bar's fully
   round ends, so opened (the queue, Details, the daily limit) it became an oval and squeezed its rows.

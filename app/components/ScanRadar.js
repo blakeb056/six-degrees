@@ -64,6 +64,8 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
   const scan = useSyncExternalStore(watchScanner, scannerNow, () => SCANNER_UNKNOWN);
   const found = running ? scan.found || [] : [];
   const pace = li?.limits?.pace || 'fast';
+  // Scanner settings' gentle pacing (on unless turned off): the numbers count what it adds.
+  const gentle = li?.limits?.gentle !== false;
   const daily = li?.limits?.daily || 0;
   // Lifted for this session (lib/limits-lift.js): no limit to count against.
   const lifted = li?.lifted === true;
@@ -143,15 +145,15 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
             return (
               <button key={name} type="button" role="radio" aria-checked={on} disabled={running || !onPace}
                 onClick={() => onPace?.(name)}
-                title={`${p.pagePause} s before each page, ${p.chunkCooldown / 60} min more after every 10, profiles ${p.profileGap} s apart`}
+                title={`At least ${p.pagePause} s before each page, ${p.chunkCooldown / 60} min more after every 10, profiles ${p.profileGap} s apart${gentle ? ', and gentle pacing adds a little to each' : ''}`}
                 style={{
                   padding: '10px 8px', borderRadius: 10, cursor: running ? 'not-allowed' : 'pointer', textAlign: 'left',
                   border: `1.5px solid ${on ? color : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`, background: on ? `${color}1a` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
                   color: 'var(--sd-fg-1, #ddd)',
                 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: on ? color : 'var(--sd-fg-2, #ccd)' }}>{p.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8a8fa8)', marginTop: 2 }}>~{searchesPerHour(name)} searches an hour</div>
-                <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #6b7090)', marginTop: 1 }}>{p.pagePause} s between pages</div>
+                <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8a8fa8)', marginTop: 2 }}>~{searchesPerHour(name, gentle)} searches an hour</div>
+                <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #6b7090)', marginTop: 1 }}>{p.pagePause} s{gentle ? '+' : ''} between pages</div>
               </button>
             );
           })}
@@ -163,7 +165,7 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
             ? <>Limits lifted for this session: {used} searches in the last 24 hours, and no daily limit until you quit Sixgree.</>
             // The budget counts a rolling 24 hours (lib/linkedin-limits.js usage), not since midnight.
             : <><b style={{ color: tone }}>{left}</b> of {daily} searches left, counting the last 24 hours
-              {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left))} to use them</>}.</>}
+              {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left, gentle))} to use them</>}.</>}
         </div>
         <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.55 }}>
           Fast is how the scanner has always run; Medium and Slow only add waiting, so fewer searches an hour reach

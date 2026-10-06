@@ -77,8 +77,10 @@ short by a page limit, or done before 0.1.6 at 10 pages is finished rather than 
 again. Once the id their connections are searched by is known, their profile isn't
 opened again. Every page is a search on your account, and free accounts have a monthly
 search limit that whole lists use up quickly (LinkedIn publishes no number; reports put it
-around 250–350 searches a month, resetting on the 1st). So it reads slowly: 20 seconds
-before each page and another minute after every 10, about 55 minutes for a whole list.
+around 250–350 searches a month, resetting on the 1st). So it reads slowly: at least 20 seconds
+before each page and another minute after every 10, about 55 minutes for a whole list; with
+gentle pacing (on by default: a little longer at random, reading time, a scroll through each
+page and the odd break) about 76.
 **It stops at the first sign of LinkedIn pushing back**: a page that won't open, a warning
 about unusual activity or restricted viewing, the search limit, a security check, or a
 sign-in wall. It saves what it read, ends the batch, and keeps what the page showed in

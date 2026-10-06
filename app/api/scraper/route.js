@@ -28,6 +28,8 @@ import {
 import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, waitingIn, QUEUE_CAP } from '../../../lib/scan-queue';
 import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
 import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList } from '../../../lib/auto-scan';
+import { exitOutcome } from '../../../lib/scan-exit';
+import { experienceCounts } from '../../../lib/experience';
 
 // The app runs the scraper itself.
 //
@@ -200,8 +202,8 @@ const PAGE_READ = /^\s*Page \d+\.\.\.|\d+\s*\/\s*\d+\s+collected/;
 // "10 found (total: 30)" in a circle, "7 found (2 with images)" for a company.
 const PAGE_FOUND = /(\d+) found \((?:total: \d+|\d+ with images)\)/;
 const MAX_PAGES_KEPT = 400;
-// What the scanner says when the daily limit stops a scan (scrape.py budget_message).
-const DAILY_LIMIT_USED = /Today's limit of \d+ (searches|profile views) is used/;
+// What the scanner says when the daily limit stops a scan (scrape.py budget_message)
+// is read in lib/scan-exit.js now, only for a scanner from before its exit codes.
 
 /** Stop the running job without orphaning the browser it opened.
  *
@@ -493,6 +495,16 @@ async function status() {
   // photos appears while there are any (lib/photos.js).
   let photosWaiting = 0;
   try { photosWaiting = waitingPhotoCount(getDb()); } catch {}
+  // Read profiles (Scanner settings): how many of your connections have their
+  // experience read, couldn't be read, or wait for a round (lib/experience.js).
+  let experience = null;
+  try {
+    if (me) {
+      experience = experienceCounts(getDb().prepare(
+        'SELECT degree, profile_url, power_score, experience FROM linkedin_connections WHERE user_id = ? AND degree = 1',
+      ).all(me.id));
+    }
+  } catch { experience = null; }
 
   const py = m.python;
   return {
@@ -530,6 +542,7 @@ async function status() {
     },
     network,
     photosWaiting,
+    experience,
     ...job(),
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
@@ -575,6 +588,8 @@ function job() {
     target: state.target,
     startedAt: state.startedAt,
     exitCode: state.exitCode,
+    // What the exit code said (lib/scan-exit.js): 'ok', 'limit', 'pushback', …, or 'stopped'.
+    exitKind: state.exitKind ?? null,
     failure: state.running ? null : state.failure,
     progress: state.running ? scanProgress(state.log, state.action) : null,
     // What LinkedIn needs you to do at the scanner's Chrome, now in front, or
@@ -739,7 +754,14 @@ const ACTIONS = {
   // person pressed on a card. By id, looked up here (connectTarget); the URL
   // and name that reach the command line come from the database, never the page.
   connect:       { flag: '--connect', label: 'Sending a connection request to' },
+  // Read profiles (Scanner settings → "Read full profiles (experience)", off by
+  // default): one round of 5, 10 or 25 of your connections' profiles, highest
+  // power first, each a profile view. Its own action, never added to another
+  // scan's views (scrape.py read_profiles).
+  'read-profiles': { flag: '--read-profiles', label: 'Reading full profiles', searches: true },
 };
+/** The rounds Read profiles offers (scrape.py PROFILE_READ_BATCHES). */
+const PROFILE_READ_BATCHES = [5, 10, 25];
 
 /**
  * Auto's person, by id: { person: { id, name, profileUrl, userId, bridgeId } },
@@ -1002,7 +1024,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
 
   // The settings a person changes here. None starts anything.
   if (action === 'set-limits') {
-    const limits = writeLimits(dataDir(), { daily: body.daily, pace: body.pace });
+    const limits = writeLimits(dataDir(), { daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads });
     return Response.json({ ok: true, limits });
   }
   // Lift limits for this session (lib/limits-lift.js): in this server's memory
@@ -1041,6 +1063,21 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // anything starts, rather than by a Playwright error at the end of a log.
   if (touchesLinkedIn(action) && !chromeHere()) {
     return Response.json({ error: CHROME_REFUSAL, needsChrome: true }, { status: 409 });
+  }
+
+  // Read profiles only once it's turned on in Scanner settings, and only with a
+  // profile view left today (each read is one); the scanner checks both again.
+  let profileBatch = 0;
+  if (action === 'read-profiles') {
+    const lim = linkedinState(dataDir());
+    if (!lim.limits?.profileReads) {
+      return Response.json({ error: 'Turn on “Read full profiles (experience)” in Scanner settings first.' }, { status: 409 });
+    }
+    if (lim.profilesLeftToday === 0) {
+      state.limitHit = Date.now();
+      return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
+    }
+    profileBatch = PROFILE_READ_BATCHES.includes(body.batch) ? body.batch : 10;
   }
 
   const spec = ACTIONS[action];
@@ -1170,6 +1207,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // id is --bridge-url, which carries on where their last read stopped
       // unless told to start at page 1.
       ...(invitee ? [`--connect=${invitee.profileUrl}`, ...(invitee.name ? [`--connect-name=${invitee.name}`] : [])]
+        : profileBatch ? [`--read-profiles=${profileBatch}`]
         : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
       ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
@@ -1203,6 +1241,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.action = action;
   state.target = target;
   state.exitCode = null;
+  state.exitKind = null;
   state.startedAt = Date.now();
   state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
   state.pages = 0;
@@ -1257,11 +1296,18 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
 
   function finish(code) {
     markAutoSent();
+    // What the exit code says (lib/scan-exit.js, scrape.py EXIT_CODES): a calm
+    // end (finished, today's limit, a cooldown) is `effective` 0, as the rest of
+    // the app has always read it; a stop with a reason keeps its code. A scanner
+    // from before the table ended its limits with 0, found by the log's words.
+    const out = exitOutcome(code, { log: state.log, scanner: !['install', 'setup'].includes(state.action) });
+    // Ended by a signal (no code), as before: no code to go by.
+    if (code == null) out.effective = code;
     // A failure must say why. stderr is filtered while running because pip and
     // Playwright are noisy there, and that filter once swallowed the only line
     // explaining a failed scan, leaving just "exit 1". On a failure, show the
     // last of it whatever it says.
-    if (code !== 0 && !state.stopping && state.stderrTail.length) {
+    if (out.failure && !state.stopping && state.stderrTail.length) {
       const shown = new Set(state.log);
       const unseen = state.stderrTail.filter((l) => !shown.has(l));
       if (unseen.length) push(unseen.join('\n'));
@@ -1275,21 +1321,22 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     const wasSitting = state.autoSitting;
     state.autoSitting = false;
     // Stopped at the daily limit (scrape.py budget_message): the notch offers to lift it. Auto scan says so in its own words.
-    if (!stopped && !wasSitting && state.log.slice(-15).some((l) => DAILY_LIMIT_USED.test(l))) state.limitHit = Date.now();
-    push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
+    if (!stopped && !wasSitting && out.limit) state.limitHit = Date.now();
+    push(state.stopping ? 'Stopped.' : out.line);
     state.stopping = false;
     state.running = false;
     state.child = null;
     state.abort = null;
-    state.exitCode = code;
+    state.exitCode = out.effective;
+    state.exitKind = stopped ? 'stopped' : out.kind;
     state.recent = [{
-      action: state.action, target: state.target, startedAt: state.startedAt, exitCode: code, failure: state.failure,
+      action: state.action, target: state.target, startedAt: state.startedAt, exitCode: out.effective, exitKind: state.exitKind, failure: state.failure,
       // How Auto's request went, for the button that started it (lib/auto-connect.js connectOutcome).
       ...(state.action === 'connect' ? { outcome: state.outcome } : {}),
     }, ...state.recent].slice(0, 5);
     // A scan that finished leaves a notification ("Scan done: …"); a stop or a failure doesn't.
     // One per Auto scan sitting would be one an hour: none for those.
-    const done = wasSitting ? null : scanDoneNotification({ action: state.action, target: state.target, exitCode: code, stopped, log: state.log.slice(-12), userId: profileId || null });
+    const done = wasSitting ? null : scanDoneNotification({ action: state.action, target: state.target, exitCode: out.effective, stopped, log: state.log.slice(-12), userId: profileId || null });
     if (done) Promise.resolve(notesDb.from('notifications').insert([done])).catch(() => {});
     // A setup's private folder (the download and what was unpacked from it).
     if (cleanup) {
@@ -1308,7 +1355,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       }
     }
     // Auto scan rests after a sitting, or ends with why (autoSittingEnded).
-    if (wasSitting) autoSittingEnded(code, stopped, state.log, state.failure);
+    if (wasSitting) autoSittingEnded(out.effective, stopped, state.log, state.failure);
     // The next one waiting, unless this one was stopped (Stop holds the queue).
     if (!stopped) scheduleNext();
   }

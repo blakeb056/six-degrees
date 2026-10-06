@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Invented: a page of people-search results shaped like LinkedIn's, written by hand for
+     tests. No real person. Seven results are there at once; three more arrive only after
+     the page is scrolled near its foot, with a delay, as a lazily loaded list does. With
+     ?never the list never appears at all. Class names are made-up hashes (TRAPS §5). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search | LinkedIn</title>
+<style>
+  .r7c1 { height: 260px; border-bottom: 1px solid #ddd; }
+  .vh9 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header><nav><a href="/in/me-invented/">Me</a></nav></header>
+<main class="q0q0q0">
+  <div class="srp1">About 10 results</div>
+  <ul role="list" class="l4l4l4" id="list"></ul>
+  <div id="foot" style="height: 400px"></div>
+  <nav aria-label="pagination"><button aria-label="Next" disabled>Next</button></nav>
+</main>
+<script>
+  const never = location.search.includes('never');
+  const list = document.getElementById('list');
+  const card = (i) => `<li class="r7c1"><div class="e3e3">
+      <a href="https://www.linkedin.com/in/invented-person-${i}/?miniProfileUrn=x"><span aria-hidden="true">Invented Person ${i}</span><span class="vh9">View Invented Person ${i}’s profile</span></a>
+      <div>Analyst at Example Co ${i}</div><div>Orlando, Florida</div></div></li>`;
+  if (!never) {
+    for (let i = 1; i <= 7; i += 1) list.insertAdjacentHTML('beforeend', card(i));
+    let more = false;
+    addEventListener('scroll', () => {
+      if (more || innerHeight + scrollY < document.documentElement.scrollHeight - 500) return;
+      more = true;
+      setTimeout(() => { for (let i = 8; i <= 10; i += 1) list.insertAdjacentHTML('beforeend', card(i)); }, 450);
+    });
+  }
+</script>
+</body>
+</html>

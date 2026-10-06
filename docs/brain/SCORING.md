@@ -21,6 +21,16 @@ every Mac app and npm package, headed "CANONICAL SCORER", with the old list's pe
 picks. Git history keeps both. `rpc('score_new_connections')` is only the stored procedure's
 old name; it runs `rescoreAll()`. Do not transcribe the model anywhere else again.
 
+## Roles from a profile (Read profiles, 2026-10-05)
+
+`rolesWithCompanies(row)` reads the headline's roles, then adds the ones Read profiles stored in
+`row.experience` (`lib/experience.js`): each title read by the same rules as a headline part,
+its company cleaned the same way, a current role counting like a headline's and a past one as
+former (70%). A role the headline already names (same title level, same company) isn't added
+twice, so a read can only add roles, never lower a score; "couldn't read" adds nothing.
+`lib/rpc.js scoringRows` selects the column. `lib/scoring.js` still imports nothing: it reads
+the JSON itself (`storedRoles`).
+
 ## The formula
 
 ```
