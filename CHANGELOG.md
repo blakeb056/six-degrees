@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-10-06
+
 ### Added
 - **Strategy engine (experimental, off by default).** Settings → Experimental. It ranks your connections
   by where they stand in your network, not by title and company: who you reach only through them, how often
