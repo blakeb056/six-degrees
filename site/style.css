@@ -225,6 +225,8 @@ h3 { font-size: 19px; margin: 0 0 6px; }
 
 /* ---------- download buttons (home and /download/) ---------- */
 .cta-row { display: flex; justify-content: center; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.cta-soon { margin-top: 12px; }
+.cta-soon .dl { padding-top: 10px; padding-bottom: 10px; }
 .cta-main { display: flex; }
 .dl {
   display: inline-flex; align-items: center; gap: 13px; justify-content: center; min-width: 232px;
