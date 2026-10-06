@@ -310,6 +310,15 @@ a.dl.primary:hover { color: #0d0e1a; box-shadow: 0 1px 0 #ffffff inset, 0 0 0 1p
 .hero .fine { margin: 8px 0 0; }
 
 /* The 1-2-3 strip. */
+/* The hero film: no frame, no controls; its four edges fade into the page. */
+.video.hero-film { max-width: 1120px; margin: 44px auto 0; }
+.video.features-film { margin: 40px auto 0; }
+.video.features-film figcaption { text-align: center; color: var(--muted); font-size: 14px; margin-top: 6px; }
+.video.hero-film video { display: block; width: 100%; height: auto; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-composite: intersect; }
 .demo { max-width: 760px; margin: 56px auto 0; }
 .demo-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
 .demo-tabs button {
