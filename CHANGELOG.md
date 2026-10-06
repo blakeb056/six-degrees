@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-05
+
 ### Added
 - **Tier lines, in Network Circle's Filters.** Lines: All, S, A, B, C, D or None draws only the lines that touch the tiers you pick (with S alone, you to your S-tier connections and each of them out to their circle); the dots all stay, a selected person's own lines always show, and it is remembered and put back by Reset.
 
