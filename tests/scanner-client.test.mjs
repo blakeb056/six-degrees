@@ -270,3 +270,90 @@ test('the map keeps looking while circles fill in: one person\'s scan, or a batc
   }
   assert.equal(fillsCircles(null), false);
 });
+
+// Blake, 2026-10-05: the guided setup sat on "fetching photos" for minutes after
+// the first scan had ended, and saw it only once he went to another page. Its
+// status (GET /api/scraper) now follows the job answer the notch reads, and a
+// window that comes back looks at once instead of waiting for a held-back timer.
+
+const fullStatus = (over) => ({
+  checks: {}, network: { first: 3, second: 0, third: 0 }, photosWaiting: 0,
+  ...idle(), running: true, action: 'full', startedAt: 7000, progress: { kind: 'saving' }, log: ['  Updating 3 profile images'], ...over,
+});
+const answer = (over) => ({ known: true, running: false, pending: false, action: null, startedAt: null, recent: [], ...over });
+
+test('the whole status is brought up to date by the job answer: a job seen to end there has ended', async () => {
+  const { statusWithJob } = await client();
+  const status = fullStatus();
+  // Nothing known yet, or nothing that says the status's job ended: the status as it is.
+  assert.equal(statusWithJob(null, answer()), null);
+  assert.equal(statusWithJob(status, { known: false }), status);
+  assert.equal(statusWithJob(status, answer({ running: true, action: 'full', startedAt: 7000 })), status);
+  // The job answer not running, but with no word of this job: it may simply be older. Left alone.
+  assert.equal(statusWithJob(status, answer()), status);
+  // Ended: how, from the job answer; the people counted stay the status's own.
+  const ended = statusWithJob(status, answer({ recent: [{ action: 'full', startedAt: 7000, exitCode: 0, failure: null }] }));
+  assert.equal(ended.running, false);
+  assert.equal(ended.exitCode, 0);
+  assert.equal(ended.progress, null);
+  assert.deepEqual(ended.network, status.network);
+  // Failed while saving the photos.
+  const failed = statusWithJob(status, answer({ recent: [{ action: 'full', startedAt: 7000, exitCode: 1, failure: ['no photos'] }] }));
+  assert.deepEqual([failed.running, failed.exitCode, failed.failure], [false, 1, ['no photos']]);
+  // Something started since (the queue's next): that is what runs now.
+  const next = statusWithJob(status, answer({
+    running: true, action: 'bridge', target: ada, startedAt: 9000, log: ['Mapping…'],
+    recent: [{ action: 'full', startedAt: 7000, exitCode: 0, failure: null }],
+  }));
+  assert.deepEqual([next.running, next.action, next.startedAt, next.target], [true, 'bridge', 9000, ada]);
+  // A status that already says nothing runs is never changed.
+  const quiet = fullStatus({ running: false, progress: null });
+  assert.equal(statusWithJob(quiet, answer({ running: true, action: 'bridge', startedAt: 9000 })), quiet);
+});
+
+test('the job answer carries how the last jobs ended, the ones this page never watched too', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const server = fakeScanner();
+  server.job = { ...idle(), recent: [{ action: 'full', startedAt: 7000, exitCode: 0, failure: null }, null] };
+  const { watchScanner, scannerNow } = await client();
+  const stop = watchScanner(() => {});
+  await flush();
+  assert.deepEqual(scannerNow().recent, [{ action: 'full', startedAt: 7000, exitCode: 0, failure: null }]);
+  // Never watched here, so not "finished" for a card: that stays as it was.
+  assert.deepEqual(scannerNow().finished, []);
+  stop();
+});
+
+test('a window shown again or focused asks at once, not when its held-back timer comes round', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const server = fakeScanner();
+  globalThis.window = new EventTarget();
+  globalThis.document = Object.assign(new EventTarget(), { visibilityState: 'visible', hidden: false });
+  try {
+    const { watchScanner } = await client();
+    const stop = watchScanner(() => {});
+    await flush();
+    const asked = server.gets;
+    // Hidden: nothing asked when it says so.
+    document.visibilityState = 'hidden';
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    assert.equal(server.gets, asked);
+    // Shown: asked straight away, with no timer moved on.
+    document.visibilityState = 'visible';
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    assert.equal(server.gets, asked + 1);
+    window.dispatchEvent(new Event('focus'));
+    await flush();
+    assert.equal(server.gets, asked + 2);
+    // Nothing on screen watches: nothing is listened for.
+    stop();
+    window.dispatchEvent(new Event('focus'));
+    await flush();
+    assert.equal(server.gets, asked + 2);
+  } finally {
+    delete globalThis.window;
+    delete globalThis.document;
+  }
+});

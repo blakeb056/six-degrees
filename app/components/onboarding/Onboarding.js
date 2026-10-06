@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useScanStatus from '../useScanStatus';
-import { STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, canOpen, here as hereWord } from '../../../lib/onboarding';
+import { STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, followedScan, canOpen, here as hereWord } from '../../../lib/onboarding';
 import { askForField } from '../../../lib/scanner-setup';
 import { loadSampleIntoSession } from '../../../lib/demo';
 import { ONBOARDING_CSS } from './styles';
@@ -37,6 +37,11 @@ export default function Onboarding({ onFinish, again = false }) {
   // then wherever Continue and Back take you.
   const [view, setView] = useState(null);
   if (view === null && derived) setView(derived);
+  // The first scan this setup has watched (lib/onboarding.js followedScan), so
+  // a scan that starts after it can't keep "Your galaxy is ready" back.
+  const [follow, setFollow] = useState(null);
+  const following = followedScan(follow, s);
+  if (following !== follow) setFollow(following);
   const [phase, setPhase] = useState('in');
   const [dir, setDir] = useState(1);
   const timer = useRef(null);
@@ -56,6 +61,7 @@ export default function Onboarding({ onFinish, again = false }) {
     settings,
     scan,
     here: hereWord(s),
+    follow: following,
     go,
     // Welcome → Scan my LinkedIn.
     start: () => { setMemory(rememberSetup({ started: true })); go('ready'); },
@@ -76,8 +82,10 @@ export default function Onboarding({ onFinish, again = false }) {
   };
 
   // Your galaxy is ready: the first scan has saved people, and the field
-  // question, if it's asked, is answered.
-  const scanDone = firstScan(s).state === 'done';
+  // question, if it's asked, is answered. `s` already has the job answer the
+  // notch reads in it, and is asked again the moment a job ends or the window
+  // comes back (useScanStatus), so this follows the end within a second or two.
+  const scanDone = firstScan(s, following).state === 'done';
   const fieldOpen = askForField(s, settings, { duringFirstScan: true }) === true;
   const final = scanDone && (again || (view === 'map' && !fieldOpen));
   const Screen = view && SCREENS[view];

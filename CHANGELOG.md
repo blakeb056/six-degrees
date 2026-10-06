@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Tier lines, in Network Circle's Filters.** Lines: All, S, A, B, C, D or None draws only the lines that touch the tiers you pick (with S alone, you to your S-tier connections and each of them out to their circle); the dots all stay, a selected person's own lines always show, and it is remembered and put back by Reset.
+
 ### Changed
+- **Auto scan (experimental) has a panel: pace, tiers, Start and Stop.** Hover or click Auto scan
+  beside Scan and a small panel drops from it, in the notch's glass: Slow, Medium or Fast (Slow
+  is 4 searches then 90 minutes' rest, about 20 people an hour; Medium 8 then an hour, about 70;
+  Fast 12 then 30 minutes, about 180), the tier dots S to D (S and A to start with), Start or
+  Stop, and what it's doing in words: running, resting until 14:05, outside hours, limit
+  reached, nothing left. A pace never adds searches: Fast stops at your daily limit sooner,
+  never past it. Your pace and tiers are remembered. The button has a Beta mark, and hovering it
+  slides out how it's set. Anything you queue runs before Auto scan's next sitting.
+- **Auto scan's switch is first in Scan → Scanner settings, and never greyed out.** It was at the
+  foot of the page under Extras, and greyed out while anything was scanning, so it seemed to exist
+  only in the guided setup. The panel also has *Turn off Auto scan*; both, and the guided setup,
+  are the same setting, and turning it off stops Auto scan if it's running.
 - **One limit, and a button to lift it for the session.** The scanner had a daily and a
   monthly search budget, its own cap on profile views, and Auto scan's own 40 a day and 200 a
   week. Now there is one number, **searches a day** (50 by default, any whole number from 1 to
@@ -20,10 +35,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time, and Auto's caps on connection requests stay. The usage section is one meter now.
 
 ### Fixed
+- **Auto scan works.** It was one long scan that did its own waiting: pressed in the evening it
+  opened Chrome and a profile, then sat until 9:00 the next morning with the browser open;
+  pressed after a day's scanning it ended at once; and it stopped for good after ten people,
+  newest first, whatever tier. It now runs as short sittings with rests between them, kept by
+  the app with no browser open, from 9:00 to 18:00 while Sixgree is open, through the circles of
+  the tiers you picked, highest power first, and stops calmly when nothing is left in them or
+  your daily limit is reached.
 - **Map 2nd degree on the Scan page starts now, whatever the time.** With the experimental
   "Auto scan, all day" switch on, the round you start yourself took Auto scan's hours and rests,
   so after 18:00 it read one profile and then waited until 09:00 ("Resting overnight"). Only Auto
   scan keeps to its hours now; a round you press runs straight away, inside the usual limits.
+- **The guided setup no longer sits on "fetching photos" after the first scan has ended.** It now goes to *Your galaxy is ready* within a second or two of the end, whether the window was in the background, the scan was stopped or failed while saving photos (a calm line says some may be missing), or another scan starts straight after.
+- **The scanner's Chrome stays out of sight on every display.** With a second display it could
+  come up there mid-scan and stay: Chrome moved its off-screen window onto the nearest display,
+  and on a Mac nothing hid it again once Chrome showed itself (it does whenever it opens a window
+  or tab). It's kept hidden for the whole scan now, off every display on Windows and Linux, and
+  when LinkedIn needs you it comes up centred on your main display.
 
 ## [1.2.0] - 2026-10-05
 

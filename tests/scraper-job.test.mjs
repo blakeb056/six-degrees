@@ -47,6 +47,8 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
     // The daily limit for the notch: on, and holding nothing back (route.js limitsNow).
     limits: { lifted: false, reached: false },
     queue: { paused: null, cap: 10, waiting: 0, items: [] },
+    // Auto scan, off until its Start (lib/auto-scan.js, tests/auto-scan.test.mjs).
+    auto: { on: false, pace: 'medium', tiers: ['S', 'A'], sittings: 0, ended: null, phase: 'off' },
   });
 
   const state = registerScanState({});

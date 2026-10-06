@@ -1,10 +1,11 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef, useId } from 'react';
+import { Suspense, useState, useEffect, useRef, useId, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import OnboardingGate from '../components/OnboardingGate';
 import Link from 'next/link';
 import { pickedPerson, SHOW_CHROME_KEY } from '../../lib/scraper-client';
+import { watchAllDay, allDayNow, setAllDay } from '../../lib/experimental-client';
 import { setupStep, askForField, appManagementStep } from '../../lib/scanner-setup';
 import { RISK_POINTS } from '../../lib/scan-risk';
 import { IS_DEMO } from '../../lib/demo';
@@ -13,7 +14,7 @@ import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
 import useNotchTabs from '../components/useNotchTabs';
 import { paceOf, durationText, firstCircleSeconds } from '../../lib/scan-pace';
-import { CooldownBanner, PausedList, LiftedTag } from '../components/LinkedInLimits';
+import { CooldownBanner, PausedList, LiftedTag, DailyLimitInput } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
@@ -81,8 +82,9 @@ function SetupInner() {
   const [pages, setPages] = useRemembered('six-degrees-bridge-pages-v2', 100);
   // Also finish people mapped before, from the page each one's read stopped at.
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
-  // Experimental Auto-Bridge: all-day pacing and LinkedIn's own data (scripts/scrape.py --experimental).
-  const [experimental, setExperimental] = useRemembered('six-degrees-experimental-auto', false);
+  // Auto scan's switch (experimental): the header's button. The same setting as the
+  // button's own "Turn off" and the guided setup's (lib/experimental-client.js), so all three agree.
+  const experimental = useSyncExternalStore(watchAllDay, allDayNow, () => false);
   // Scanning in a normal Chrome window in front, to watch it (scripts/scrape.py
   // --show-window). Off, the window stays out of sight. lib/scraper-client.js
   // reads it for every scan, wherever it starts.
@@ -540,15 +542,41 @@ function SetupInner() {
             <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 14 }}>
               How fast it goes, how much it may search, and how much of each list it reads. Speed is beside the Scan button above.
             </div>
+            {/* Auto scan's switch, first and always here (Blake, 1.2.0: "there's no setting in the scanner
+                to turn off the Auto scan button, it was only in the onboarding"). Never greyed out: turning
+                it off while Auto scan runs stops it (setAllDay). */}
+            <div data-auto-scan-switch="" style={{ marginBottom: 18, paddingBottom: 16, borderBottom: LINE }}>
+              <Toggle checked={experimental} onChange={setAllDay} tag="Experimental"
+                title="Auto scan"
+                line={experimental
+                  ? 'On: Auto scan sits beside Scan in the header. Hover or click it to pick a pace and tiers, then Start. Turning this off stops it and takes the button away.'
+                  : 'Puts an Auto scan button beside Scan in the header: it scans your connections’ circles in small sittings with rests, 9:00 to 18:00, while Sixgree is open.'}
+                more={<>
+                  Hover or click Auto scan to pick its pace (Slow, Medium or Fast: how many searches in a sitting and how
+                  long it rests after) and which tiers&rsquo; circles it scans, then Start. It searches only from 9:00 to
+                  18:00, with no browser open while it rests; it stops at your daily limit and after any check from
+                  LinkedIn; anything you queue goes first; and it saves every page. Scans you start yourself never keep
+                  its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
+                  two compare.
+                </>} />
+            </div>
             <div className="scan-two">
               <div>
-                {/* One limit (Blake, 2026-10-05): its number and the lift live with the meter, under LinkedIn usage below. */}
-                <SettingTitle title="Searches a day" line="The one limit: a scan stops at it and carries on next time. Profile views count against the same number." />
+                {/* One limit (Blake, 2026-10-05): this number replaces the old searches a day, a month and
+                    profile views a day. The lift and the meter are under LinkedIn usage below. */}
+                <SettingTitle title="Searches a day" line="The one limit, counting the last 24 hours: a scan, and Auto scan, stops at it and carries on next time. Profile views count against the same number." />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--sd-fg-2, #b8c4c4)' }}>
+                  {li?.limits?.daily != null && (
+                    <DailyLimitInput id="settings-daily" value={li.limits.daily} onSave={(daily) => run('set-limits', { daily })} />
+                  )}
                   {li?.lifted
-                    ? <><LiftedTag /> No daily limit until you quit Sixgree.</>
-                    : <span><b style={{ color: 'var(--sd-fg-1, #fff)' }}>{li?.limits?.daily ?? 50}</b> a day, counting the last 24 hours.</span>}
-                  <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>Change it or lift it &rarr;</a>
+                    ? <><LiftedTag /> <span>No daily limit until you quit Sixgree.</span></>
+                    : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
+                  <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 8 }}>
+                  Always, lifted or not: at most one profile view a minute, the pause before every page, and a stop the
+                  moment LinkedIn asks you to check in.
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -585,16 +613,6 @@ function SetupInner() {
           <section aria-labelledby="scan-extras" className="scan-card" style={{ marginTop: 20 }}>
             <h2 id="scan-extras" style={h2}>Extras</h2>
             <div className="scan-two" style={{ marginTop: 10 }}>
-              <Toggle checked={experimental} disabled={running} tag="Experimental"
-                onChange={(on) => { setExperimental(on); window.dispatchEvent(new Event('six-degrees:experimental')); }}
-                title="Auto scan, all day"
-                line="Adds Auto scan beside Scan in the header: small sittings with rests, 9:00 to 18:00, while the app is open."
-                more={<>
-                  Up to 8 pages in a sitting, then an hour&rsquo;s rest; searches only from 9:00 to 18:00; your searches a
-                  day like any scan, and at that limit it waits instead of stopping; two days&rsquo; rest after any check
-                  from LinkedIn; and it saves every page. It also reads LinkedIn&rsquo;s own data beside the page text, to
-                  fill gaps and measure how the two compare.
-                </>} />
               {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
                   every scan runs in a real Chrome window kept out of sight, which comes forward only when
                   LinkedIn needs you. This is for anyone who wants to watch instead. */}

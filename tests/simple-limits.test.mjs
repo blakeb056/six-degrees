@@ -216,14 +216,15 @@ test('a scan under way is told the moment the limits are lifted or put back', as
   assert.match((await job()).log.join('\n'), /Finished\./);
 });
 
-test('Auto scan isn\'t refused at the limit: it waits for it to free up, as before', async () => {
+test('a round you start yourself is held at the limit, asking for Auto scan\'s pacing or not; lifted, it runs', async () => {
   used(50);
-  const res = await post({ action: 'auto-bridge', experimental: true, maxBridges: 5 });
-  assert.equal(res.status, 200);
+  for (const body of [{ action: 'auto-bridge', maxBridges: 5 }, { action: 'auto-bridge', experimental: true, maxBridges: 5 }]) {
+    const res = await post(body);
+    assert.equal(res.status, 409);
+    assert.equal((await res.json()).limitReached, true);
+  }
+  await post({ action: 'lift-limits' });
+  assert.equal((await post({ action: 'auto-bridge', maxBridges: 5 })).status, 200);
   await until(idle, 'the round to end');
-  assert.deepEqual(runs(), ['--auto-bridge lifted=0']);
-  // A round you start yourself is.
-  const manual = await post({ action: 'auto-bridge', maxBridges: 5 });
-  assert.equal(manual.status, 409);
-  assert.equal((await manual.json()).limitReached, true);
+  assert.deepEqual(runs(), ['--auto-bridge lifted=1']);
 });

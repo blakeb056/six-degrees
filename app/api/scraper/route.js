@@ -25,8 +25,9 @@ import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
-import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, QUEUE_CAP } from '../../../lib/scan-queue';
+import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, waitingIn, QUEUE_CAP } from '../../../lib/scan-queue';
 import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
+import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList } from '../../../lib/auto-scan';
 
 // The app runs the scraper itself.
 //
@@ -62,6 +63,7 @@ const state = registerScanState({
   outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
   port: null,      // the port this app was last asked on, for the job the queue starts by itself
   limitHit: null,  // when the daily limit last held a scan back (a press refused, or a scan that stopped at it), ms
+  autoSitting: false,  // the running job is one of Auto scan's sittings (autoTick)
 });
 
 // What runs next (lib/scan-queue.js): read from the data folder the first time
@@ -78,6 +80,116 @@ function queueChanged() {
 const QUEUE_GAP_MS = Number(process.env.SIX_DEGREES_QUEUE_GAP_MS) >= 0 && process.env.SIX_DEGREES_QUEUE_GAP_MS !== undefined
   ? Number(process.env.SIX_DEGREES_QUEUE_GAP_MS) : 4000;
 let nextTimer = null;
+
+// Auto scan (experimental, the header's button; lib/auto-scan.js): short
+// sittings, each one ordinary job here (`--auto-bridge --experimental
+// --sitting=N`), with the rest between them kept in this server, no browser
+// open. Only while the app is open, and never started by a restart: it's off
+// until you press Start. The order with the queue: what you queue goes first,
+// and a sitting starts only when nothing runs and nothing waits.
+const AUTO_KEY = Symbol.for('six-degrees.auto-scan');
+function auto() {
+  return (globalThis[AUTO_KEY] ??= {
+    on: false, pace: 'medium', tiers: ['S', 'A'], showWindow: false,
+    restUntil: null, sitting: null, sittings: 0, plan: null, ended: null, timer: null, ticking: false,
+  });
+}
+// The clock, which the tests set (Symbol.for('six-degrees.auto-clock')).
+const autoNow = () => globalThis[Symbol.for('six-degrees.auto-clock')]?.() ?? Date.now();const AUTO_TICK_MS = Number(process.env.SIX_DEGREES_AUTO_TICK_MS) > 0 ? Number(process.env.SIX_DEGREES_AUTO_TICK_MS) : 20000;
+
+/**
+ * What Auto scan would do now, from the daily limit and the cooldown. While the
+ * limits are lifted for this session linkedinState gives neither (leftToday and
+ * cooldown are null), so only Auto scan's hours and rests hold it back.
+ */
+function autoPlanNow() {
+  const a = auto();
+  const now = autoNow();
+  const li = linkedinState(dataDir(), now);
+  return autoPlan({
+    now, pace: a.pace, restUntil: a.restUntil,
+    leftToday: li.leftToday, daily: li.limits?.daily ?? null, cooldown: li.cooldown,
+  });
+}
+
+/** Auto scan, for the button, its panel and the notch. From memory: the plan is the last tick's. */
+function autoView() {
+  const a = auto();
+  const base = { on: a.on, pace: a.pace, tiers: a.tiers, sittings: a.sittings, ended: a.ended };
+  if (!a.on) return { ...base, phase: 'off' };
+  if (state.running && state.autoSitting) return { ...base, phase: 'running', sitting: a.sitting };
+  const plan = a.plan || { kind: 'go' };
+  if (plan.kind === 'go') {
+    if (state.running) return { ...base, phase: 'waiting', reason: 'Another scan is running. The next sitting starts after it.' };
+    const q = queue();
+    if (waitingIn(q).length) {
+      return { ...base, phase: 'waiting', reason: q.paused ? 'The queue is paused. Resume or clear it in the notch, and Auto scan carries on.' : 'Your queued scans go first.' };
+    }
+    return { ...base, phase: 'starting' };
+  }
+  return { ...base, phase: plan.kind === 'stop' ? 'starting' : plan.kind, until: plan.until ?? null };
+}
+
+/** Auto scan ends: 'done' (nothing left), 'limit', or 'stopped', with why. */
+function autoEnd(phase, reason = null) {
+  const a = auto();
+  clearInterval(a.timer);
+  Object.assign(a, { on: false, timer: null, restUntil: null, plan: null, sitting: null, ended: { phase, reason, at: autoNow() } });
+}
+
+/** Start a sitting if one is due and the scanner is free; otherwise note why not. */
+async function autoTick() {
+  const a = auto();
+  if (!a.on || a.ticking || state.running) return;
+  a.ticking = true;
+  try {
+    const plan = autoPlanNow();
+    a.plan = plan;
+    if (plan.kind === 'stop') {
+      // At the daily limit the notch offers to lift it, as for a press held back.
+      if (plan.as === 'limit') state.limitHit = Date.now();
+      return autoEnd(plan.as, plan.reason);
+    }
+    // Your queue goes first, paused or not: Stop held it for you.
+    if (plan.kind !== 'go' || waitingIn(queue()).length) return;
+    a.sitting = plan.sitting;
+    const res = await startJob({
+      action: 'auto-bridge', order: 'score', tiers: a.tiers, maxPages: 100, deeper: true,
+      ...(a.showWindow ? { showWindow: true } : {}),
+    }, { sitting: plan.sitting });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      if (state.running && d.error === 'Something is already running.') return;
+      autoEnd('stopped', d.error || 'Auto scan could not start.');
+    }
+  } finally {
+    a.ticking = false;
+  }
+}
+
+/** A sitting has ended: rest, or end Auto scan with why. */
+function autoSittingEnded(code, stopped, log, failure) {
+  const a = auto();
+  if (!a.on) return;
+  a.sittings += 1;
+  if (stopped) return autoEnd('stopped', null);
+  if (code !== 0) return autoEnd('stopped', failure?.[failure.length - 1] || `The scanner stopped (exit ${code}).`);
+  if (log.some((l) => /Nothing left to bridge\./.test(l))) {
+    return autoEnd('done', `Everyone in ${tierList(a.tiers)} has been scanned. Pick more tiers to carry on.`);
+  }
+  a.restUntil = autoNow() + AUTO_PACES[a.pace].rest * 1000;
+  a.plan = { kind: 'rest', until: a.restUntil };
+}
+
+/** Why Auto scan can't start at all, said at Start rather than at 9:00: the checks a sitting runs. */
+async function autoRefusal() {
+  if (!scanRisk()) return { error: RISK_REFUSAL, needsRiskAcceptance: true };
+  if (!chromeHere()) return { error: CHROME_REFUSAL, needsChrome: true };
+  if (pendingImport(dataDir())) return { error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' };
+  if (!projectRoot()) return { error: 'Could not find scripts/scrape.py next to the app.' };
+  if (!(await machineChecks()).python.run) return { error: 'The scanner’s packages are not installed yet. Do step 1 first.' };
+  return null;
+}
 
 // A page read, as scripts/scrape.py prints it: "  Page 3... " as a circle or a
 // company scan reads each page, and "  350 / 817 collected" for each fifty
@@ -477,6 +589,8 @@ function job() {
     limits: limitsNow(),
     // What waits to run after this (lib/scan-queue.js queueView), for the notch and the buttons.
     queue: queueView(queue()),
+    // Auto scan, when it's on or has just ended (autoView).
+    auto: autoView(),
   };
 }
 
@@ -778,8 +892,39 @@ export async function POST(request) {
       queueChanged();
     }
     clearTimeout(nextTimer);
+    // Stopping one of Auto scan's sittings stops Auto scan: it doesn't come back after a rest.
+    if (state.running && state.autoSitting) autoEnd('stopped', null);
     stopChild();
     return Response.json({ ok: true, cancelled: true });
+  }
+  // Auto scan: Start (with its pace and tiers), Stop, and a change of either while it's on.
+  if (action === 'auto-start' || action === 'auto-settings') {
+    const tiers = cleanTiers(body.tiers);
+    if (!tiers.length) return Response.json({ error: 'Pick at least one tier for Auto scan to scan.' }, { status: 400 });
+    const a = auto();
+    if (action === 'auto-settings') {
+      if (a.on) Object.assign(a, { pace: cleanPace(body.pace), tiers });
+      return Response.json({ ok: true, auto: autoView() });
+    }
+    if (!a.on) {
+      const why = await autoRefusal();
+      if (why) return Response.json(why, { status: 409 });
+      Object.assign(a, {
+        on: true, pace: cleanPace(body.pace), tiers, showWindow: body.showWindow === true,
+        restUntil: null, sitting: null, sittings: 0, plan: null, ended: null,
+      });
+      clearInterval(a.timer);
+      a.timer = setInterval(() => { autoTick().catch(() => {}); }, AUTO_TICK_MS);
+      a.timer.unref?.();
+    }
+    await autoTick();
+    return Response.json({ ok: true, auto: autoView() });
+  }
+  if (action === 'auto-stop') {
+    const sitting = state.running && state.autoSitting;
+    if (auto().on || sitting) autoEnd('stopped', null);
+    if (sitting) stopChild();
+    return Response.json({ ok: true, auto: autoView() });
   }
   if (action === 'queue-remove') {
     const removed = removeItem(queue(), String(body.item ?? ''));
@@ -852,7 +997,7 @@ function scheduleNext() {
  * starts it; otherwise a press made while something runs is queued here, once
  * every check has passed, instead of refused.
  */
-async function startJob(body, { queued = null } = {}) {
+async function startJob(body, { queued = null, sitting = 0 } = {}) {
   const action = String(body.action || '');
 
   // The settings a person changes here. None starts anything.
@@ -964,10 +1109,11 @@ async function startJob(body, { queued = null } = {}) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()}: ${cooldown.reason}.`, cooldown }, { status: 409 });
   }
   // The daily limit, said before a process starts (the scanner checks it
-  // before every search too). Auto scan waits for it to free up instead of
-  // stopping (scrape.py _drip_before_search), so it isn't refused here.
+  // before every search too). Auto scan's sittings are planned against the same
+  // limit (autoPlan ends Auto scan at it, in its own words), so they aren't
+  // counted as a press held back.
   const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company'].includes(action);
-  if (readsLists && li.limitReached && !(body.experimental === true && action.startsWith('auto-bridge'))) {
+  if (readsLists && li.limitReached && !sitting) {
     state.limitHit = Date.now();
     return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
   }
@@ -1031,7 +1177,9 @@ async function startJob(body, { queued = null } = {}) {
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
       // Experimental Auto-Bridge (Scan page switch): all-day pacing and LinkedIn's
       // own data read beside the page text (scripts/scrape.py EXPERIMENT).
-      ...(body.experimental === true && action.startsWith('auto-bridge') ? ['--experimental'] : []),
+      // Only Auto scan's own sittings (autoTick), never a request: a scan you start
+      // yourself never keeps Auto scan's hours or rests (PR #201, TRAPS §49).
+      ...(sitting && action === 'auto-bridge' ? ['--experimental', `--sitting=${sitting}`] : []),
       // Resuming always reads to the end: a remembered "10 pages" would
       // otherwise leave everyone paused at page 11 and do nothing.
       ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
@@ -1064,6 +1212,8 @@ async function startJob(body, { queued = null } = {}) {
   state.limitHit = null;
   state.invitee = invitee;
   state.outcome = null;
+  state.autoSitting = Boolean(sitting);
+  if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
   forgetChecks();
 
   // Name the profile outright. The scraper would otherwise ask the app which one
@@ -1122,8 +1272,10 @@ async function startJob(body, { queued = null } = {}) {
       state.failure = reason.length ? reason : null;
     }
     const stopped = state.stopping;
-    // Stopped at the daily limit (scrape.py budget_message): the notch offers to lift it.
-    if (!stopped && state.log.slice(-15).some((l) => DAILY_LIMIT_USED.test(l))) state.limitHit = Date.now();
+    const wasSitting = state.autoSitting;
+    state.autoSitting = false;
+    // Stopped at the daily limit (scrape.py budget_message): the notch offers to lift it. Auto scan says so in its own words.
+    if (!stopped && !wasSitting && state.log.slice(-15).some((l) => DAILY_LIMIT_USED.test(l))) state.limitHit = Date.now();
     push(state.stopping ? 'Stopped.' : code === 0 ? 'Finished.' : `Stopped (exit ${code}).`);
     state.stopping = false;
     state.running = false;
@@ -1136,7 +1288,8 @@ async function startJob(body, { queued = null } = {}) {
       ...(state.action === 'connect' ? { outcome: state.outcome } : {}),
     }, ...state.recent].slice(0, 5);
     // A scan that finished leaves a notification ("Scan done: …"); a stop or a failure doesn't.
-    const done = scanDoneNotification({ action: state.action, target: state.target, exitCode: code, stopped, log: state.log.slice(-12), userId: profileId || null });
+    // One per Auto scan sitting would be one an hour: none for those.
+    const done = wasSitting ? null : scanDoneNotification({ action: state.action, target: state.target, exitCode: code, stopped, log: state.log.slice(-12), userId: profileId || null });
     if (done) Promise.resolve(notesDb.from('notifications').insert([done])).catch(() => {});
     // A setup's private folder (the download and what was unpacked from it).
     if (cleanup) {
@@ -1154,6 +1307,8 @@ async function startJob(body, { queued = null } = {}) {
         push(`Today’s backup couldn’t be made: ${err.message}`);
       }
     }
+    // Auto scan rests after a sitting, or ends with why (autoSittingEnded).
+    if (wasSitting) autoSittingEnded(code, stopped, state.log, state.failure);
     // The next one waiting, unless this one was stopped (Stop holds the queue).
     if (!stopped) scheduleNext();
   }

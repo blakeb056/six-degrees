@@ -69,12 +69,27 @@ what reaches the screen changed.
 
 | Mode | When | What |
 |---|---|---|
-| `background` | the default | A real window kept out of sight. On a Mac, `MacChrome` hides it (as ⌘H does) from the moment it appears, through AppKit's `NSRunningApplication` (ctypes, nothing to install); elsewhere it opens at `--window-position=-32000,-32000`. If AppKit won't load on a Mac, it's minimised over CDP. |
-| `front` | `--login`, and `--show-window` (Scan page → Fine-tune → *Show the scanner's Chrome window*, off by default) | A normal window in front, placed on screen. |
+| `background` | the default | A real window kept out of sight. On a Mac, `MacChrome` hides it (as ⌘H does) from the moment it appears and **for as long as it's meant to be out of sight**, through AppKit's `NSRunningApplication` (ctypes, nothing to install); it opens on the main display, centred. Elsewhere it's moved off every display once it's up (`off_screen_bounds`: Chrome moves a launch position onto the nearest display). If AppKit won't load on a Mac, it's minimised over CDP. |
+| `front` | `--login`, and `--show-window` (Scan page → Fine-tune → *Show the scanner's Chrome window*, off by default) | A normal window in front, centred on the main display. |
+
+**Every display, not just the main one** (TRAPS §48). `screen_layout()` asks for the displays
+at each placement (CoreGraphics on a Mac, `EnumDisplayMonitors` on Windows; none on Linux, which
+falls back to -32000 and 40,40): off-screen means off all of them (up and to the left of their
+union, never nearer than -32000), in front means centred on the main one, and the profile's saved
+`browser.window_placement` is rewritten to the main display before every launch, so Chrome can't
+open where the last window was on a second display. A display to the left or above has negative
+coordinates; a Mac's are in points, so Retina and ordinary displays mix without scaling.
+
+**Kept hidden, not just at launch.** Chrome unhides itself whenever it opens a window or a tab
+(a new page, a pop-up), and the Dock or ⌘-Tab bring it out too. The watcher looks every 0.05 s
+for 20 s, then every 0.1 s, until `bring_forward`, and again after `back_out_of_the_way`; a new
+window shows for about 0.1 s. It stops when Chrome's process has gone (a lookup that finds
+nothing isn't enough: it happens to a running Chrome), and at the next launch.
 | `headless` | `--headless`, command line only | No window. Not offered in the app any more: more detectable, and a check LinkedIn asks for can't be seen. |
 
 **Forward only when LinkedIn needs you.** `ensure_logged_in` calls `bring_forward()` just
-before it waits for a sign-in or a security check (unhidden, activated, on screen, in front),
+before it waits for a sign-in or a security check (moved to the main display's centre while
+still hidden, then unhidden, activated, in front),
 prints `LinkedIn needs you: …` (`NEEDS_YOU`; the app's `needsYou()` in
 `lib/scan-progress.js` reads it, and the notch and the Scan page show it in gold), and
 `back_out_of_the_way()` once you're through. A mid-scan pushback with `stop_on_checkpoint`
@@ -100,6 +115,18 @@ still ends the run; it doesn't wait for you.
   focus went back.
 - Not tried: Windows and Linux (off-screen there, no hiding), and a live LinkedIn scan in the
   new window. Watch the first one.
+
+**Measured again, 2026-10-05** (Blake's two-display Mac mini showed the window on the second
+display; TRAPS §48), one display here, a local page:
+
+- The launch position is Chrome's hint, not where it goes: -32000,-32000 opened at the main
+  display's corner, 40000,40000 at its right edge. With two displays the nearest one wins.
+- `context.new_page()` and a page's pop-up unhid the hidden Chrome and made it active, for
+  good under the old watcher (gone 1.5 s after the launch). With the watcher kept on, a new
+  tab 25 s in showed for about 0.1 s and was hidden again; two launches in a row (as Auto
+  does) each stayed hidden; the page drew at 60 fps throughout.
+- The sign-in window and `bring_forward` came up centred on the main display; the saved
+  placement afterwards was there too.
 
 ## Sign-in
 
@@ -206,10 +233,13 @@ dropped at the next save. An old `daily: 0` ("no limit") reads as 50.
 **The one limit.** *Searches a day*, a rolling 24 hours: `scan-limits.json`
 `{"daily": N, "pace": …}`, N a whole number from 1 to 1000 (`DAILY_RANGE`; `DAILY_MAX`
 here), 50 by default (it was already 50). Profile views count against the same N, on their
-own count. Auto scan uses the same N and, as before, waits for it to free up instead of
-stopping, so the route doesn't refuse an `--experimental` round at the limit. A number
-control sets it in Scan → LinkedIn usage, in the notch's line while a scan runs, and in
-the onboarding's *Set your pace* step (the default already in it).
+own count. Auto scan (*Auto scan: sittings the app runs* below) plans every sitting
+against the same N (`autoPlan`: a sitting is at most what's left, and at none Auto scan
+ends with `limit`, which the notch turns into the lift offer); lifted, `leftToday` is null,
+so only its pace's sitting size, its rests and its hours hold. A number control sets N in
+Scan → LinkedIn usage, Scan → Scanner settings (where it replaced the three budget pickers),
+the notch's line while a scan runs, and the onboarding's *Set your pace* step (the default
+already in it).
 
 **Where it's enforced.** The scanner, before every search and profile view, as before
 (`searches_left`, `profiles_left`, `take_profile_view`). The route also refuses a press
@@ -435,3 +465,70 @@ The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXP
   - it keeps up to `WIRE_SAMPLES` raw responses per run in `wire-samples/`.
 
   Bodies are read in the main flow after each page, not inside the event handler.
+
+## Auto scan: sittings the app runs (2026-10-05)
+
+> "it doesn't even work, and when I hover over it there's no animation of it flowing to
+> extend, and it doesn't let them pick the tier they want to scan. We can have it there as
+> experimental but it needs a slow / med / fast and the colour dots to pick which tiers."
+> (Blake, 1.2.0)
+
+Why it didn't work, and the rule since: TRAPS §49. In short, the waiting used to live inside
+one long scanner run; now **the app runs short sittings and keeps the rests itself.**
+
+| Where | What |
+|---|---|
+| `lib/auto-scan.js` | Pure, shared with the page: `AUTO_PACES`, `autoPlan` (go / hours / rest / stop), `paceLine`, `autoStatus`, `cleanTiers`, `tierList`, `clockText`. |
+| `app/api/scraper/route.js` | `auto-start` (pace, tiers), `auto-stop`, `auto-settings`; `autoTick` every 20 s while it's on (`SIX_DEGREES_AUTO_TICK_MS`); `autoSittingEnded` after each sitting; `autoView` in `GET ?job=1` as `auto`. |
+| `scripts/scrape.py` | `--sitting=N` with `--experimental`: `_sitting_over` ends the run (never waits) after N searches, outside `DRIP_HOURS`, or at the daily limit (not while lifted); checked before each person in `auto_bridge_all`, so no browser opens, and before every search. |
+| `app/components/AutoScanButton.js` | The header button (Beta mark, a pill that slides out on hover or focus) and its panel, a portal anchored under it. `lib/experimental-client.js` keeps the pace and tiers in this browser (`six-degrees-auto-scan`) beside the switch. |
+
+**A sitting** is one ordinary job: `--auto-bridge --tiers=<picked> --order=score --experimental
+--sitting=N --max-pages=100 --deeper`. Highest tier and power first within the picked tiers;
+a list read partway carries on from its page next sitting (its search id is kept, so no new
+profile view). No "Scan done" notification per sitting.
+
+**Paces** change only a sitting's size and the rest after it:
+
+| Pace | Searches a sitting | Rest | About (estimate, 9 people a search) |
+|---|---|---|---|
+| Slow | 4 | 90 min | 20 people an hour |
+| Medium | 8 (`SESSION_PAGES`) | 60 min (`SESSION_REST`) | 70 people an hour |
+| Fast | 12 | 30 min | 180 people an hour |
+
+A sitting is never more than what's left of searches a day (the one limit since 2026-10-05;
+the monthly budget is gone), so Fast only gets to the limit sooner. It adds no limit of its
+own. Lifted for the session, a sitting is the pace's full size, and the rests and hours stay.
+
+**When it stops, calmly, with why** (`ended` in the view): the daily limit reached
+(`limit`; the notch then offers *Lift limits for this session*), a cooldown after LinkedIn pushed back or a failed sitting (`stopped`), Stop, or
+`Nothing left to bridge.` in the sitting's log (`done`: nothing left in the picked tiers).
+Outside 9:00 to 18:00 it waits (`hours`), and between sittings it rests (`rest`); the scanner
+is free meanwhile.
+
+**Order with the queue** (*The queue* above): one job at a time, always.
+
+1. What you queue goes first. A sitting starts only when nothing runs and nothing waits in
+   the queue; a paused queue holds Auto scan too, and the panel says so.
+2. A press during a sitting queues as usual (Auto, one person's circle) and runs when the
+   sitting ends; a sitting is at most 12 searches. Other scans are refused as before.
+3. During a rest or outside the hours the scanner is free: anything you start runs at once,
+   and the next sitting waits for it.
+4. Stop on a sitting (the notch's or the panel's) ends Auto scan; it doesn't come back after a
+   rest.
+
+**The switch** that shows the button is one setting (`six-degrees-experimental-auto`,
+`lib/experimental-client.js setAllDay`), written in three places that stay in sync: Scan →
+Scanner settings → *Auto scan* (first, never greyed out; Blake on 1.2.0 couldn't find it at
+the foot of Extras, greyed while scanning), the panel's *Turn off Auto scan*, and the guided
+setup's pace step. Off also stops Auto scan.
+
+**Only while the app is open, and never by itself after a restart**: Auto scan's state is in
+the server's memory, so quitting ends it, like the queue's restart rule.
+
+**A scan you start yourself never keeps Auto scan's hours or rests**: only `autoTick` adds
+`--experimental`; a request asking for it gets an ordinary run.
+
+Tests: `tests/auto-scan.test.mjs` (the rules, then the route with a stand-in scanner and a
+set clock: 20:00 waits for 9:00, the sitting's arguments, Fast inside the limit, nothing left,
+the queue first, Stop), and the sitting cases at the end of `tests/profile-views.test.mjs`.

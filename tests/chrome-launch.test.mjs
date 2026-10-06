@@ -38,6 +38,8 @@ skip = lambda n: (isinstance(n, ast.If)
 ns = {'__name__': 'scrape', '__file__': sys.argv[1]}
 exec(compile(ast.Module(body=[n for n in tree.body if not skip(n)], type_ignores=[]), 'scrape.py', 'exec'), ns)
 ns['time'] = types.SimpleNamespace(sleep=lambda s: None, time=lambda: 1790000000.0)
+# This computer's own displays never decide a result: none, unless a case says.
+ns['screen_layout'] = lambda platform=None: []
 home = Path(ns['_home']())
 
 class Session:
@@ -117,10 +119,13 @@ out['linux'] = opts('/x/chrome-profile', 'front', platform='linux')
 `);
   if (!r) return;
   const { mac, front, headless, win, linux } = r.out;
+  // A Mac's background window opens on the main display (hidden before it's
+  // drawn; TRAPS §48): 40,40 when the displays can't be told.
   assert.deepEqual(mac, {
     user_data_dir: '/x/chrome-profile', headless: false, channel: 'chrome', timeout: 120000, chromium_sandbox: true,
-    args: ['--disable-blink-features=AutomationControlled', '--test-type', '--window-position=-32000,-32000'],
+    args: ['--disable-blink-features=AutomationControlled', '--test-type', '--window-position=40,40'],
   });
+  assert.ok(win.args.includes('--window-position=-32000,-32000'), win.args.join(' '));
   // In front, and headless: nothing placed off-screen.
   assert.deepEqual(front.args, ['--disable-blink-features=AutomationControlled', '--test-type']);
   assert.equal(front.headless, false);
@@ -208,7 +213,7 @@ out['leftovers'] = sorted(p.name for p in prefs.parent.iterdir())
 test('every Chrome the scanner starts goes through launch_chrome', () => {
   const src = fs.readFileSync(SCRAPER, 'utf8');
   const launches = src.split('\n').filter((l) => l.includes('launch_persistent_context(')).map((l) => l.trim());
-  assert.deepEqual(launches, ['context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode))']);
+  assert.deepEqual(launches, ['context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode, displays=displays))']);
   // Sign-in, the full and quick walks, messages, a circle, a company, Auto.
   assert.equal((src.match(/= launch_chrome\(p, /g) || []).length, 7);
   assert.match(src, /browser = launch_chrome\(p, sign_in=True\)/);
@@ -297,4 +302,193 @@ out['back_again'] = ns['back_out_of_the_way'](page)
     ['Browser.setWindowBounds', { windowId: 7, bounds: { left: -32000, top: -32000 } }],
   ]);
   assert.equal(o.back_again, false, 'only once it came forward');
+});
+
+// Display layouts no one here has: a second display to the left (negative x),
+// to the right, above (negative y), below, a Retina beside an ordinary one,
+// and the main display not first in the list. In the coordinates Chrome's
+// window bounds use: the main display's top-left is 0,0, in points on a Mac.
+const LAYOUTS = {
+  one: [{ x: 0, y: 0, width: 1440, height: 900, main: true }],
+  left: [{ x: 0, y: 0, width: 2560, height: 1440, main: true }, { x: -1920, y: 200, width: 1920, height: 1080, main: false }],
+  right: [{ x: 0, y: 0, width: 1512, height: 982, main: true }, { x: 1512, y: -300, width: 2560, height: 1440, main: false }],
+  above: [{ x: 0, y: 0, width: 1728, height: 1117, main: true }, { x: -400, y: -1440, width: 2560, height: 1440, main: false }],
+  below: [{ x: 0, y: 0, width: 1920, height: 1080, main: true }, { x: 0, y: 1080, width: 1920, height: 1080, main: false }],
+  // A 4K display at 1x beside a Retina laptop at 2x: both in points already.
+  retinaAndOrdinary: [{ x: -3840, y: -500, width: 3840, height: 2160, main: false }, { x: 0, y: 0, width: 1512, height: 982, main: true }],
+  // Unmarked (as on a platform that doesn't say): the one at 0,0 is the main one.
+  unmarked: [{ x: 2560, y: 0, width: 1920, height: 1080 }, { x: 0, y: 0, width: 2560, height: 1440 }],
+  // Wider than -32000 reaches.
+  wall: [{ x: 0, y: 0, width: 1920, height: 1080, main: true }, { x: -40000, y: -34000, width: 40000, height: 34000, main: false }],
+  tiny: [{ x: 0, y: 0, width: 1024, height: 640, main: true }],
+};
+
+const overlaps = (a, d) => a.left < d.x + d.width && a.left + a.width > d.x && a.top < d.y + d.height && a.top + a.height > d.y;
+const inside = (a, d) => a.left >= d.x && a.top >= d.y && a.left + a.width <= d.x + d.width && a.top + a.height <= d.y + d.height;
+const py = (value) => `json.loads(${JSON.stringify(JSON.stringify(value))})`;
+
+test('placement: off every display wherever the displays are; in front, centred on the main one', (t) => {
+  const r = run(t, `
+layouts = ${py(LAYOUTS)}
+out['cases'] = {name: {
+    'off': ns['off_screen_bounds'](ds),
+    'main': ns['on_main_display'](ds),
+    'saved': ns['chrome_window_placement'](ds),
+    'mac': ns['chrome_launch_options']('/x/p', 'background', platform='darwin', displays=ds)['args'][-1],
+    'win': ns['chrome_launch_options']('/x/p', 'background', platform='win32', displays=ds)['args'][-1],
+} for name, ds in layouts.items()}
+out['none'] = [ns['off_screen_bounds']([]), ns['on_main_display']([]), ns['chrome_window_placement']([]), ns['main_display'](None)]
+out['size'] = list(ns['WINDOW_SIZE'])
+`);
+  if (!r) return;
+  const [w, h] = r.out.size;
+  for (const [name, c] of Object.entries(r.out.cases)) {
+    const displays = LAYOUTS[name];
+    const main = displays.find((d) => d.main) || displays.find((d) => d.x === 0 && d.y === 0);
+    // Out of sight: the window's whole rectangle is on no display at all.
+    const off = { ...c.off, width: w, height: h };
+    for (const d of displays) assert.ok(!overlaps(off, d), `${name}: the off-screen window overlaps ${JSON.stringify(d)}`);
+    assert.ok(c.off.left <= -32000 && c.off.top <= -32000, name);
+    // In front: wholly on the main display, centred, never on another.
+    assert.ok(inside(c.main, main), `${name}: ${JSON.stringify(c.main)} isn't inside the main display`);
+    const leftGap = c.main.left - main.x;
+    const rightGap = main.x + main.width - (c.main.left + c.main.width);
+    assert.ok(Math.abs(leftGap - rightGap) <= 1, `${name}: not centred`);
+    for (const d of displays.filter((x) => x !== main)) assert.ok(!overlaps(c.main, d), `${name}: on the second display`);
+    // What Chrome remembers is the same place.
+    assert.deepEqual(c.saved, {
+      left: c.main.left, top: c.main.top, right: c.main.left + c.main.width, bottom: c.main.top + c.main.height, maximized: false,
+    });
+    // The launch asks for the main display on a Mac (hidden there), off every display elsewhere.
+    assert.equal(c.mac, `--window-position=${c.main.left},${c.main.top}`);
+    assert.equal(c.win, `--window-position=${c.off.left},${c.off.top}`);
+  }
+  // A second display to the left or above: -32000 is still clear of it.
+  assert.deepEqual(r.out.cases.left.off, { left: -32000, top: -32000 });
+  assert.deepEqual(r.out.cases.above.off, { left: -32000, top: -32000 });
+  // A display reaching past -32000: further still.
+  assert.ok(r.out.cases.wall.off.left < -40000 - w && r.out.cases.wall.off.top < -34000 - h);
+  // Full size where it fits; smaller on a small display.
+  assert.deepEqual([r.out.cases.left.main.width, r.out.cases.left.main.height], [w, h]);
+  assert.ok(r.out.cases.tiny.main.width < w && r.out.cases.tiny.main.height < h);
+  // The main display not first in the list, or not marked: still found.
+  assert.equal(r.out.cases.retinaAndOrdinary.main.left, Math.floor((1512 - w) / 2));
+  assert.equal(r.out.cases.unmarked.main.left, Math.floor((2560 - w) / 2));
+  // Displays that can't be told: -32000, 40,40 (the main display's corner), and nothing saved.
+  assert.deepEqual(r.out.none, [{ left: -32000, top: -32000 }, { left: 40, top: 40, width: w, height: h }, null, null]);
+});
+
+test('the saved window placement is replaced with the main display, the rest of the profile kept', (t) => {
+  const r = run(t, `
+saved = {'left': -1700, 'top': 260, 'right': -400, 'bottom': 1120, 'maximized': True,
+         'work_area_left': -1920, 'work_area_top': 225, 'work_area_right': 0, 'work_area_bottom': 1280}
+before = {'browser': {'window_placement': saved, 'show_home_button': True}, 'profile': {'name': 'Person 1'}}
+placement = ns['chrome_window_placement'](${py(LAYOUTS.left)})
+out['placement'] = placement
+out['after'] = ns['chrome_quiet_prefs'](before, placement)
+prof = home / 'chrome-profile'
+(prof / 'Default').mkdir(parents=True)
+(prof / 'Default' / 'Preferences').write_text(json.dumps(before))
+out['ok'] = ns['quiet_chrome_profile'](prof, placement)
+out['file'] = json.loads((prof / 'Default' / 'Preferences').read_text())
+out['unknown'] = ns['chrome_quiet_prefs'](before, None)['browser']
+`);
+  if (!r) return;
+  const { placement, after, file, unknown } = r.out;
+  assert.deepEqual(after.browser, { window_placement: placement, show_home_button: true });
+  assert.equal(after.browser.window_placement.maximized, false);
+  assert.ok(after.browser.window_placement.left >= 0, 'on the main display, not the one to its left');
+  assert.equal(after.profile.name, 'Person 1');
+  assert.equal(r.out.ok, true);
+  assert.deepEqual(file.browser.window_placement, placement);
+  // Displays that can't be told: what Chrome saved is left as it was.
+  assert.equal(unknown.window_placement.left, -1700);
+});
+
+test('forward is centred on the main display, back is off every display, wherever the second one is', (t) => {
+  const r = run(t, `
+sent = []
+page = Page(Context(signed_in=True, sent=sent))
+W = ns['CHROME_WINDOW']
+W['mac'] = None
+ns['sys'] = types.SimpleNamespace(platform='win32')
+ns['screen_layout'] = lambda platform=None: ${py(LAYOUTS.left)}
+W['mode'] = 'background'
+ns['bring_forward'](page)
+ns['back_out_of_the_way'](page)
+out['sent'] = [s[1]['bounds'] for s in sent if s[0] == 'Browser.setWindowBounds']
+`);
+  if (!r) return;
+  const [normal, forward, normal2, back] = r.out.sent;
+  assert.deepEqual(normal, { windowState: 'normal' });
+  assert.deepEqual(normal2, { windowState: 'normal' });
+  assert.ok(inside(forward, LAYOUTS.left[0]), JSON.stringify(forward));
+  assert.equal(forward.left, (2560 - 1300) / 2);
+  for (const d of LAYOUTS.left) assert.ok(!overlaps({ ...back, width: 1300, height: 860 }, d));
+});
+
+test("a Mac's hidden Chrome is kept hidden for as long as it's out of sight, not just its first seconds", (t) => {
+  const r = run(t, `
+import time as clock
+alive = [True]
+ns['_process_alive'] = lambda pid: alive[0]
+m = ns['MacChrome']('/x/chrome-profile')
+m.FAST = m.SLOW = 0.002
+m.pid = 4242
+# What macOS says, one look at a time: Chrome showing itself again long after
+# the launch (a new window or tab, the Dock, Cmd-Tab), and now and then a
+# lookup that finds nothing for a Chrome that's still running.
+state = {'now': (False, True)}
+hides = []
+m._find = lambda: None
+m._state = lambda: state['now']
+def hide():
+    hides.append(state['now'])
+    state['now'] = (False, True)
+    return True
+m.hide = hide
+def until(cond, limit=3.0):
+    end = clock.monotonic() + limit
+    while clock.monotonic() < end and not cond():
+        clock.sleep(0.002)
+    return cond()
+
+m.watch()
+clock.sleep(0.1)
+state['now'] = (True, False)            # shows itself, and has the focus
+out['hid_shown'] = until(lambda: len(hides) == 1)
+state['now'] = None                     # the lookup found nothing, but it's running
+clock.sleep(0.1)
+out['alive_after_nil'] = m.thread.is_alive()
+state['now'] = (True, True)             # hidden, but has the focus
+out['hid_active'] = until(lambda: len(hides) == 2)
+out['hides'] = [list(h) for h in hides]
+
+m.forward()                             # LinkedIn needs you: left alone
+out['stopped'] = not m.thread.is_alive()
+state['now'] = (True, False)
+clock.sleep(0.1)
+out['hides_while_forward'] = len(hides)
+
+m.watch()                               # you're through: hidden again, and kept hidden
+out['hid_again'] = until(lambda: len(hides) == 3)
+first = m.thread
+m.watch()                               # watching already: not twice
+out['one_watcher'] = m.thread is first
+
+alive[0] = False                        # Chrome has gone: the watcher ends
+state['now'] = None
+out['ended'] = until(lambda: not m.thread.is_alive())
+`);
+  if (!r) return;
+  const o = r.out;
+  assert.equal(o.hid_shown, true, 'hidden again when it shows itself after the launch');
+  assert.equal(o.alive_after_nil, true, 'a lookup that finds nothing is not Chrome gone');
+  assert.equal(o.hid_active, true, 'hidden (the focus given back) when it takes the focus while hidden');
+  assert.deepEqual(o.hides, [[true, false], [true, true]]);
+  assert.equal(o.stopped, true);
+  assert.equal(o.hides_while_forward, 2, 'never hidden while LinkedIn needs you');
+  assert.equal(o.hid_again, true);
+  assert.equal(o.one_watcher, true);
+  assert.equal(o.ended, true);
 });

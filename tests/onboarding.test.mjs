@@ -6,8 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  STEPS, SETUP_KEY, onboardingStep, opensSetup, readyChecks, connectState, firstScan, readSetupMemory, rememberSetup, canOpen, here,
+  STEPS, SETUP_KEY, onboardingStep, opensSetup, readyChecks, connectState, firstScan, followedScan, photosNote, readSetupMemory, rememberSetup, canOpen, here,
 } from '../lib/onboarding.js';
+import { statusWithJob } from '../lib/scraper-client.js';
 
 const NOTHING = { first: 0, second: 0, third: 0 };
 const MAC_APP = { scriptsFound: true, chrome: true, dependencies: true, pythonSource: 'bundled', mac: { version: 26, app: true } };
@@ -101,6 +102,69 @@ test('the first scan: reading, saving, done with the people saved', () => {
   assert.deepEqual(firstScan(status({}, { running: true, action: 'full' })), { state: 'running', done: null, total: null, failure: null });
   assert.equal(firstScan(status({}, { running: true, action: 'full', progress: { kind: 'saving' } })).state, 'saving');
   assert.deepEqual(firstScan(status({}, { network: { ...NOTHING, first: 748 } })), { state: 'done', done: 748, total: 748, failure: null });
+});
+
+// Blake, 2026-10-05, 1.2.0: after the walk the setup moved to "Saving, and
+// fetching photos", and sat there for minutes after the job had ended; the
+// notch's Details showed it finished. The end now comes from the same job
+// answer the notch reads, whatever the slower whole status still says.
+const SAVED = { ...NOTHING, first: 748 };
+const photos = (extra = {}) => status({ signedIn: true, riskAccepted: true }, {
+  running: true, action: 'full', startedAt: 7000, network: SAVED, progress: { kind: 'saving' },
+  log: ['Pushing 748 connections', '  Updating 748 profile images'], ...extra,
+});
+const told = (recent, extra = {}) => ({ known: true, running: false, pending: false, action: null, startedAt: null, recent, ...extra });
+
+test('the photos step ends the moment the job answer has seen the first scan end, however it ended', () => {
+  const s = photos();
+  assert.equal(firstScan(s, 7000).state, 'saving');
+  // Finished, failed while saving the photos, or stopped: everyone is saved, so it's done.
+  for (const exitCode of [0, 1, -15]) {
+    const now = statusWithJob(s, told([{ action: 'full', startedAt: 7000, exitCode, failure: null }]));
+    assert.deepEqual(firstScan(now, 7000), { state: 'done', done: 748, total: 748, failure: null }, `exit ${exitCode}`);
+  }
+  // The job answer is older than the status (it hasn't seen this job yet): still saving.
+  assert.equal(firstScan(statusWithJob(s, told([])), 7000).state, 'saving');
+  // Nothing to fetch: the status had already seen the end.
+  assert.equal(firstScan(photos({ running: false, progress: null }), 7000).state, 'done');
+});
+
+test('a job that starts right after the first scan doesn\'t hold "Your galaxy is ready" back', () => {
+  // The queue's next (a circle): not a read of your connections at all.
+  const queued = statusWithJob(photos(), told([{ action: 'full', startedAt: 7000, exitCode: 0 }], { running: true, action: 'bridge', startedAt: 9000 }));
+  assert.equal(firstScan(queued, 7000).state, 'done');
+  // A Check for new straight after: a read of your connections, but not the one the setup watched.
+  const again = photos({ action: 'refresh', startedAt: 9000, progress: { done: 10, total: 748, kind: 'walk' } });
+  assert.equal(firstScan(again, 7000).state, 'done');
+  // Opened while it runs, with nothing watched yet: it is the first scan.
+  assert.equal(firstScan(photos(), null).state, 'saving');
+});
+
+test('which scan the setup watches: the first it sees run, and a new try while nobody is saved yet', () => {
+  assert.equal(followedScan(null, status()), null);
+  assert.equal(followedScan(null, photos()), 7000);
+  // Kept once people are saved, whatever starts next.
+  assert.equal(followedScan(7000, photos({ action: 'refresh', startedAt: 9000 })), 7000);
+  assert.equal(followedScan(7000, photos({ running: false })), 7000);
+  // A Try again after one that saved nobody: that one is the first scan now.
+  assert.equal(followedScan(7000, photos({ startedAt: 9000, network: NOTHING })), 9000);
+  // Not a read of your connections: nothing to watch.
+  assert.equal(followedScan(null, photos({ action: 'bridge' })), null);
+});
+
+test('photos are optional: a calm line when some didn\'t come through, nothing when they all did', () => {
+  const done = (extra) => photos({ running: false, progress: null, exitCode: 0, log: ['  Updating 748 profile images', 'Finished.'], ...extra });
+  assert.equal(photosNote(done()), null);
+  // Still to save (kept as links): how many, and where to fetch them.
+  assert.match(photosNote(done({ photosWaiting: 12 })), /^12 photos aren’t saved yet\..*Save photos/);
+  assert.match(photosNote(done({ photosWaiting: 1 })), /^1 photo isn’t saved yet\./);
+  // The scan failed or was stopped while saving them: everyone is saved, and says so.
+  assert.match(photosNote(done({ exitCode: 1, log: ['Stopped (exit 1).'] })), /Everyone is saved/);
+  assert.match(photosNote(done({ log: ['  Updating 748 profile images', 'Stopped.', 'Made today’s backup of your network (Settings → Your data).'] })), /Everyone is saved/);
+  // Nobody saved, or still running: not this card's line.
+  assert.equal(photosNote(done({ network: NOTHING, exitCode: 1 })), null);
+  assert.equal(photosNote(photos({ photosWaiting: 12 })), null);
+  assert.equal(photosNote(null), null);
 });
 
 test('this browser remembers only that you started, saw the pace step, and opened the map', () => {
