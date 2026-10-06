@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Tier lines, in Network Circle's Filters.** Lines: All, S, A, B, C, D or None draws only the lines that touch the tiers you pick (with S alone, you to your S-tier connections and each of them out to their circle); the dots all stay, a selected person's own lines always show, and it is remembered and put back by Reset.
 
+### Fixed
+- **Map 2nd degree on the Scan page starts now, whatever the time.** With the experimental
+  "Auto scan, all day" switch on, the round you start yourself took Auto scan's hours and rests,
+  so after 18:00 it read one profile and then waited until 09:00 ("Resting overnight"). Only Auto
+  scan keeps to its hours now; a round you press runs straight away, inside the usual limits.
+
 ## [1.2.0] - 2026-10-05
 
 ### Added
