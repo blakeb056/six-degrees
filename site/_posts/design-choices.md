@@ -18,6 +18,7 @@ Sixgree maps your LinkedIn network out to six degrees, so every piece of its loo
 - **4 October 2026:** Six Degrees becomes **Sixgree**. A wordmark in Manrope ExtraBold with a gold dot over the i and the tier dots stacked above it, fading out.
 - **5 October 2026:** a dozen icon candidates and as many wordmarks on one canvas. The family vote picks **F1** and the **flat line**. Tier C turns green. Sixgree 1.2.0 brings frosted glass, a macOS-style Daylight and plain tabs.
 - **6 October 2026:** the website gets a bigger header, pill links in tier colours, and black and white versions of the logo.
+- **6 October 2026, later:** films in the new look go on the site: a looping film in the hero with its 1-2-3 lighting up as it plays, another in Features, a narrated install video, and a link preview that shows the logo.
 
 ## The name
 
@@ -72,6 +73,18 @@ The tabs had a colour each and a gradient on one of them. None of it meant anyth
 ![The website header: icon, wordmark, grey pill links with the current page filled green](/img/blog/design/site-header.jpg "The site header: the page you're on fills with a tier colour, in the wordmark's order.")
 
 The site is light only, with soft white download keys carrying the Apple and Microsoft marks. The header carries the icon and wordmark large enough to read, and each link is a quiet grey pill; the page you're on fills with a tier colour, in the wordmark's order.
+
+![The home page's hero: the film plays in place, its edges fading into the page, with the three steps underneath](/img/blog/design/site-hero-film.jpg "The hero film: no frame, no player, its edges fading into the page. Invented people.")
+
+The home page opens on a film rather than a screenshot. It plays silently at twice its speed, its four edges fade into the page so it has no frame, and the 1-2-3 underneath lights up the step it's showing. Shared links show the icon and the wordmark, not a screenshot:
+
+![The link preview: the icon, the wordmark and the line See who your network can really reach](/img/og-sixgree.jpg "What a shared sixgree.com link looks like.")
+
+## The films
+
+![Three stills from the films: the guided setup in Daylight, 35,704 people in tier rings on a night sky, and circles with the catalyst at the centre](/img/blog/design/film-stills.jpg "The install video in Daylight, and the night-sky film. Every person invented.")
+
+The films use the same rules as the app: the real app on invented people, the tier colours, and rings for degrees. The light ones sit on white with a soft gold, purple and blue glow, like the site. The night-sky one draws every person as a point of light, and the tier rings open out from you. Each one keeps "It ranks reachability, not people." in frame wherever a score shows.
 
 ## The rules underneath
 
