@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A scan that stops says why more precisely.** "Stopped: LinkedIn pushed back.", "Stopped at
   today's limit." and the like, from the scanner's exit code, instead of "Stopped (exit 1)."
 
+### Fixed
+- **The opened notch is a rounded rectangle again.** With frosted buttons it took the tab bar's fully
+  round ends, so opened (the queue, Details, the daily limit) it became an oval and squeezed its rows.
+
 ## [1.2.1] - 2026-10-05
 
 ### Added

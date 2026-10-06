@@ -186,6 +186,10 @@ html[data-buttons="frosted"] [data-glass-panel] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(255, 255, 255, 0.05), 0 24px 60px rgba(0, 0, 0, 0.42), 0 1px 2px rgba(0, 0, 0, 0.25) !important;
 }
 html[data-buttons="frosted"] [data-glass-panel="bar"] { border-radius: 999px !important; }
+/* The notch is a bar too, but it grows: opened (the queue, Details, the daily limit) a 999px
+   radius drew it as a stadium, its rows squeezed into an ellipse. 18px is a full capsule at
+   its one-row height (about 36px) and a rounded rectangle at any height above that. */
+html[data-buttons="frosted"] [data-notch] { border-radius: 18px !important; }
 html[data-buttons="frosted"] .glass-rim, html[data-buttons="frosted"] [data-glass-panel]::before,
 html[data-buttons="frosted"] :is(button:not(.sd-edge, .notch-pill), #main-tabs > a):not(.radar-go, .sd-tab, .notch-tuck, [style*="background: none"], [style*="background: transparent"]):not(#main-tabs *)::before {
   content: "";
