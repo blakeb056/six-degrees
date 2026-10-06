@@ -32,6 +32,7 @@ import Link from 'next/link';
 import { watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue } from '../../lib/scraper-client';
 import { KIND_LABEL } from '../../lib/scan-queue';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
+import { autoStatus } from '../../lib/auto-scan';
 import {
   watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown, isCurrentTab, notchGroups,
   watchNotchTucked, notchTuckedNow, notTucked, setNotchTucked, isTuckKey, comesBackDown,
@@ -222,10 +223,14 @@ export default function ScanStatusBar() {
   const nextName = queued.find((i) => i.status === 'waiting')?.target?.name;
   const dot = needs ? '#FFD700' : running ? '#00ff88' : other ? (other.tone === 'warn' ? '#FFD700' : '#3498DB')
     : queueOnly ? (queue.paused || !waiting ? '#FFD700' : '#00ff88') : '#556';
-  const label = needs ? 'LinkedIn needs you' : running ? (WHAT[job.action] || 'Scanning') : other ? other.label
+  // Auto scan (lib/auto-scan.js): its sitting is called that, and between sittings it says what it waits for.
+  const auto = job?.auto?.on ? autoStatus(job.auto) : null;
+  const sitting = running && job.auto?.phase === 'running';
+  const label = needs ? 'LinkedIn needs you' : running ? (sitting ? 'Auto scan' : WHAT[job.action] || 'Scanning') : other ? other.label
     : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next') : 'Auto scan';
   const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail
-    : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null) : null;
+    : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null)
+    : auto ? auto.text.toLowerCase() : null;
   // "+2 queued" beside what runs.
   const more = (running || other) && waiting > 0 ? `+${waiting} queued` : null;
 
@@ -321,7 +326,7 @@ export default function ScanStatusBar() {
                     }}>{more}</span>
                   )}
                 </span>
-                {!running && !other && !queueOnly && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>ready · press Auto scan beside Scan to start</span>}
+                {!running && !other && !queueOnly && !auto && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>off · open Auto scan beside Scan to start it</span>}
               </button>
             )}
           </div>

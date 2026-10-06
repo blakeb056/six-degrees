@@ -403,3 +403,69 @@ The Scan page's *Experimental* switch adds `--experimental` to Auto-Bridge (`EXP
   - it keeps up to `WIRE_SAMPLES` raw responses per run in `wire-samples/`.
 
   Bodies are read in the main flow after each page, not inside the event handler.
+
+## Auto scan: sittings the app runs (2026-10-05)
+
+> "it doesn't even work, and when I hover over it there's no animation of it flowing to
+> extend, and it doesn't let them pick the tier they want to scan. We can have it there as
+> experimental but it needs a slow / med / fast and the colour dots to pick which tiers."
+> (Blake, 1.2.0)
+
+Why it didn't work, and the rule since: TRAPS §49. In short, the waiting used to live inside
+one long scanner run; now **the app runs short sittings and keeps the rests itself.**
+
+| Where | What |
+|---|---|
+| `lib/auto-scan.js` | Pure, shared with the page: `AUTO_PACES`, `autoPlan` (go / hours / rest / stop), `paceLine`, `autoStatus`, `cleanTiers`, `tierList`, `clockText`. |
+| `app/api/scraper/route.js` | `auto-start` (pace, tiers), `auto-stop`, `auto-settings`; `autoTick` every 20 s while it's on (`SIX_DEGREES_AUTO_TICK_MS`); `autoSittingEnded` after each sitting; `autoView` in `GET ?job=1` as `auto`. |
+| `scripts/scrape.py` | `--sitting=N` with `--experimental`: `_sitting_over` ends the run (never waits) after N searches, outside `DRIP_HOURS`, or at the budget; checked before each person in `auto_bridge_all`, so no browser opens, and before every search. |
+| `app/components/AutoScanButton.js` | The header button (Beta mark, a pill that slides out on hover or focus) and its panel, a portal anchored under it. `lib/experimental-client.js` keeps the pace and tiers in this browser (`six-degrees-auto-scan`) beside the switch. |
+
+**A sitting** is one ordinary job: `--auto-bridge --tiers=<picked> --order=score --experimental
+--sitting=N --max-pages=100 --deeper`. Highest tier and power first within the picked tiers;
+a list read partway carries on from its page next sitting (its search id is kept, so no new
+profile view). No "Scan done" notification per sitting.
+
+**Paces** change only a sitting's size and the rest after it:
+
+| Pace | Searches a sitting | Rest | About (estimate, 9 people a search) |
+|---|---|---|---|
+| Slow | 4 | 90 min | 20 people an hour |
+| Medium | 8 (`SESSION_PAGES`) | 60 min (`SESSION_REST`) | 70 people an hour |
+| Fast | 12 | 30 min | 180 people an hour |
+
+A sitting is never more than what's left of the daily (and monthly) budget, so Fast only gets
+to the limit sooner. It adds no limit of its own.
+
+**When it stops, calmly, with why** (`ended` in the view): the daily or monthly budget reached
+(`limit`), a cooldown after LinkedIn pushed back or a failed sitting (`stopped`), Stop, or
+`Nothing left to bridge.` in the sitting's log (`done`: nothing left in the picked tiers).
+Outside 9:00 to 18:00 it waits (`hours`), and between sittings it rests (`rest`); the scanner
+is free meanwhile.
+
+**Order with the queue** (*The queue* above): one job at a time, always.
+
+1. What you queue goes first. A sitting starts only when nothing runs and nothing waits in
+   the queue; a paused queue holds Auto scan too, and the panel says so.
+2. A press during a sitting queues as usual (Auto, one person's circle) and runs when the
+   sitting ends; a sitting is at most 12 searches. Other scans are refused as before.
+3. During a rest or outside the hours the scanner is free: anything you start runs at once,
+   and the next sitting waits for it.
+4. Stop on a sitting (the notch's or the panel's) ends Auto scan; it doesn't come back after a
+   rest.
+
+**The switch** that shows the button is one setting (`six-degrees-experimental-auto`,
+`lib/experimental-client.js setAllDay`), written in three places that stay in sync: Scan →
+Scanner settings → *Auto scan* (first, never greyed out; Blake on 1.2.0 couldn't find it at
+the foot of Extras, greyed while scanning), the panel's *Turn off Auto scan*, and the guided
+setup's pace step. Off also stops Auto scan.
+
+**Only while the app is open, and never by itself after a restart**: Auto scan's state is in
+the server's memory, so quitting ends it, like the queue's restart rule.
+
+**A scan you start yourself never keeps Auto scan's hours or rests**: only `autoTick` adds
+`--experimental`; a request asking for it gets an ordinary run.
+
+Tests: `tests/auto-scan.test.mjs` (the rules, then the route with a stand-in scanner and a
+set clock: 20:00 waits for 9:00, the sitting's arguments, Fast inside the limit, nothing left,
+the queue first, Stop), and the sitting cases at the end of `tests/profile-views.test.mjs`.
