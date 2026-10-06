@@ -96,7 +96,7 @@ const breadcrumbs = (trail) => ({
 });
 
 /** A whole page: head, header, main, footer. `graph` is its JSON-LD. */
-export function layout(site, { path: pagePath, title, description, graph, main, image = '/img/og-image.jpg', type = 'website' }) {
+export function layout(site, { path: pagePath, title, description, graph, main, image = '/img/og-sixgree.jpg', type = 'website' }) {
   const url = `${SITE}${pagePath}`;
   const img = image.startsWith('http') ? image : `${SITE}${image}`;
   const ld = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }, null, 2).replace(/</g, '\\u003c');
@@ -278,7 +278,7 @@ ${post.html}
     {
       '@type': 'BlogPosting', '@id': `${SITE}${post.path}#post`, url: `${SITE}${post.path}`, mainEntityOfPage: `${SITE}${post.path}`,
       headline: post.title, description: post.description, datePublished: post.date, dateModified: post.updated,
-      author: AUTHOR, publisher: { '@id': AUTHOR['@id'] }, image: `${SITE}${post.image || '/img/og-image.jpg'}`,
+      author: AUTHOR, publisher: { '@id': AUTHOR['@id'] }, image: `${SITE}${post.image || '/img/og-sixgree.jpg'}`,
       isPartOf: { '@id': `${SITE}/blog/#blog` }, about: { '@id': `${SITE}/#app` }, keywords: post.tags.join(', '),
       wordCount: plainText(post.body).split(/\s+/).length, inLanguage: 'en',
     },
