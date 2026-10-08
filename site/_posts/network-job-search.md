@@ -1,34 +1,34 @@
 ---
-title: How to audit your LinkedIn network before a job search
-description: Review your LinkedIn connections with Sixgree, find target-company coverage and possible bridges, and build a focused job-search shortlist without mass outreach.
+title: How to audit your network before a job search
+description: Review your network connections with Sixgree, find target-company coverage and possible bridges, and build a focused job-search shortlist without mass outreach.
 date: 2026-10-05
-tags: [linkedin, job search, network audit]
+tags: [network, job search, network audit]
 image: /img/app/hero.jpg
 ---
 
-A useful LinkedIn network audit answers three questions: **who do I already know, which target companies appear in my network, and what possible routes need checking?** Use Sixgree to inspect your local network, then turn those answers into a small list of conversations you can justify.
+A useful your network audit answers three questions: **who do I already know, which target companies appear in my network, and what possible routes need checking?** Use Sixgree to inspect your local network, then turn those answers into a small list of conversations you can justify.
 
 The goal is not to maximize a connection count or collect high-scoring people. It is to understand where your existing relationships may help you learn about a role, team or company. A network score is not a job-readiness score.
 
-## 1. Define the search before judging the network
+## 1. Define the search before judging your network
 
 Write down the type of work you're looking for, the constraints that matter and a short list of companies or teams you'd like to understand. Be specific enough that a contact can offer useful context.
 
 “I'm interested in product operations for a small team” gives someone more to work with than “I'm looking for anything.” You can change the brief as you learn; it is a starting point, not a commitment to one employer.
 
-LinkedIn's [job-search guide](https://www.linkedin.com/jobsearchguide/) treats organization and using your network as part of the search. Sixgree adds a local view of the people and recorded routes you already have. It is not a job board, an application tracker or a predictor of hiring outcomes.
+The platform's [job-search guide](https://www.linkedin.com/jobsearchguide/) treats organization and using your network as part of the search. Sixgree adds a local view of the people and recorded routes you already have. It is not a job board, an application tracker or a predictor of hiring outcomes.
 
 ## 2. Choose a data source you are comfortable with
 
-Start with the invented sample if you want to learn the app without accessing LinkedIn. For your own direct connections, [import the official Connections.csv](/blog/linkedin-network-csv/). That gives you the people and company fields in the file, not their connection lists.
+Start with the invented sample if you want to learn the app without accessing your network. For your own direct connections, [import the official Connections.csv](/blog/network-csv/). That gives you the people and company fields in the file, not their connection lists.
 
 If you already have mapped circle data, you can also inspect people beyond your direct network and the routes recorded through your connections. Missing circle data means incomplete coverage, not a failed network.
 
-Scanning is optional. Automating LinkedIn may breach its rules and can lead to account restrictions. You do not need to start a scan to perform a useful direct-network audit. Read [the scanning guide](/blog/scanning-slowly/) before deciding whether you want to gather more data.
+Scanning is optional. automating access to the platform may breach its rules and can lead to account restrictions. You do not need to start a scan to perform a useful direct-network audit. Read [the scanning guide](/blog/scanning-slowly/) before deciding whether you want to gather more data.
 
 ## 3. Review people before scores
 
-Open the network map and inspect the people you recognize. Ask what you actually know about each relationship:
+Open your network map and inspect the people you recognize. Ask what you actually know about each relationship:
 
 - Have we worked or studied together?
 - Have we spoken recently?
@@ -41,9 +41,9 @@ Sixgree's tier and score can help you inspect the app's model of network positio
 
 Open **Paths → Companies** and inspect the companies represented in your data. Pick one from your shortlist and look at the people recorded there. Separate direct connections from people found beyond them.
 
-If a target company is absent, check spelling, subsidiaries and whether the information is simply missing. Don't assume it is unreachable. Your map is an observed network, not a complete directory of LinkedIn or every employer.
+If a target company is absent, check spelling, subsidiaries and whether the information is simply missing. Don't assume it is unreachable. Your map is an observed network, not a complete directory of your network or every employer.
 
-The [company-search guide](/blog/linkedin-connections-at-company/) explains how to combine the local view with LinkedIn's current-company and connection filters. Confirm a person's present role before sending a request based on an old export.
+The [company-search guide](/blog/network-connections-at-company/) explains how to combine the local view with your network's current-company and connection filters. Confirm a person's present role before sending a request based on an old export.
 
 ## 5. Compare possible bridges in Separation
 
@@ -74,7 +74,7 @@ Ask for context before asking someone to advocate for you. Explain the role or t
 
 An illustrative opener: “I'm exploring roles on this team and trying to understand the work. Since you've worked in a similar area, would you be comfortable sharing your perspective? No problem if you're busy.”
 
-If you need an introduction, use the [warm-introduction templates](/blog/linkedin-warm-introduction/). Replace the placeholders and write in your own voice. A mapped route is not consent, and no template guarantees an interview or a reply.
+If you need an introduction, use the [warm-introduction templates](/blog/network-warm-introduction/). Replace the placeholders and write in your own voice. A mapped route is not consent, and no template guarantees an interview or a reply.
 
 ## What a useful audit leaves you with
 
@@ -84,4 +84,4 @@ Keep the audit private. If you share a real-network view, use Names Off and chec
 
 [Download Sixgree](/download/) to explore the sample first, then bring in the data you're comfortable using.
 
-Sixgree is not affiliated with LinkedIn.
+Sixgree is not affiliated with any networking platform.

@@ -21,7 +21,7 @@ In modern professional life, however, you rarely need six steps. For almost any 
 1. **First degree (1st)**: The people you know directly—colleagues, mentors, alumni, and former managers.
 2. **Second degree (2nd)**: The thousands of people *they* know directly.
 
-The tragedy of modern networking platforms like LinkedIn is that while your 1st-degree connections are visible, your 2nd-degree paths are buried under algorithms, pagination limits, and ad feeds. You cannot see the direct bridge connecting you to the person you need to speak with.
+The tragedy of modern networking platforms is that while your 1st-degree connections are visible, your 2nd-degree paths are buried under algorithms, pagination limits, and ad feeds. You cannot see the direct bridge connecting you to the person you need to speak with.
 
 ## Why "Sixgree" and "Sixgrees"?
 

@@ -33,6 +33,16 @@ export const REPO = 'https://github.com/blakeb056/six-degrees';
 const AUTHOR = { '@type': 'Person', '@id': 'https://blakeburford.com/#person', name: 'Blake Burford', url: 'https://blakeburford.com/' };
 const KINDS = ['added', 'changed', 'fixed', 'removed', 'security', 'deprecated'];
 const TEASERS = 3;
+const BLOG_REDIRECTS = {
+  'export-linkedin-connections': 'export-network-connections',
+  'linkedin-connection-degrees': 'network-connection-degrees',
+  'linkedin-connections-at-company': 'network-connections-at-company',
+  'linkedin-network-csv': 'network-csv',
+  'linkedin-network-job-search': 'network-job-search',
+  'linkedin-premium-and-search-limit': 'network-premium-and-search-limit',
+  'linkedin-scanning-rules-and-risk': 'network-scanning-rules-and-risk',
+  'linkedin-warm-introduction': 'network-warm-introduction',
+};
 
 const read = (root, f) => readFileSync(path.join(root, f), 'utf8');
 const shortDate = (iso) => longDate(iso).replace(/ (\w{3})\w* /, ' $1 ');
@@ -569,6 +579,10 @@ export function build(root, out, { images = true } = {}) {
   for (const post of site.posts) {
     write(post.path, renderPost(site, post));
     listed.push({ path: post.path, lastmod: post.updated });
+  }
+  for (const [oldSlug, newSlug] of Object.entries(BLOG_REDIRECTS)) {
+    const target = `/blog/${newSlug}/`;
+    write(`/blog/${oldSlug}/`, `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${target}"><link rel="canonical" href="${SITE}${target}"><title>Article moved</title></head><body><p>This article has moved. <a href="${target}">Continue to the updated article</a>.</p></body></html>\n`);
   }
   writeFile('blog/feed.xml', blogFeed(site));
   writeFile('releases/feed.xml', releaseFeed(site));

@@ -1,22 +1,22 @@
 ---
-title: LinkedIn connection degrees explained: first, second and third
-description: Understand LinkedIn's first-, second- and third-degree connections, how introduction paths work, and what Sixgree can show from the network data you have.
+title: Network connection degrees explained: first, second and third
+description: Understand your network's first-, second- and third-degree connections, how introduction paths work, and what Sixgree can show from your network data you have.
 date: 2026-10-05
-tags: [linkedin, degrees, introductions]
+tags: [network, degrees, introductions]
 image: /img/app/separation.jpg
 ---
 
 **First-degree connections are people you're directly connected to. Second-degree connections are connected to your direct connections. Third-degree connections are connected to your second-degree connections.** The degree describes distance in a connection network, not how well you know someone or whether they'll introduce you.
 
-LinkedIn's [definitions of connection degrees](https://www.linkedin.com/help/linkedin/answer/a545636/your-network-and-degrees-of-connection) are the starting point. Sixgree helps you explore the paths in the network data available on your computer. Those two views serve different purposes: LinkedIn supplies its labels; Sixgree makes the routes it has observed easier to inspect.
+The platform's [definitions of connection degrees](https://www.linkedin.com/help/network/answer/a545636/your-network-and-degrees-of-connection) are the starting point. Sixgree helps you explore the paths in the network data available on your computer. Those views serve different purposes: the platform supplies its labels; Sixgree makes observed routes easier to inspect.
 
 ## First degree: a direct connection
 
-Think of a first-degree connection as one recorded step from you to another person. A connection invitation has been accepted. That says something about the network, but little about the relationship.
+Think of a first-degree connection as one recorded step from you to another person. A connection invitation has been accepted. That says something about your network, but little about the relationship.
 
 A former teammate, a recent conference contact and someone you barely remember may all carry the same first-degree label. Before asking for help, consider your actual relationship and when you last spoke.
 
-Following is different. Following someone's posts does not, by itself, make them a direct connection. LinkedIn explains that distinction in its [follow and connect guide](https://www.linkedin.com/help/linkedin/answer/a6266298).
+Following is different. Following someone's posts does not, by itself, make them a direct connection. The platform explains that distinction in its [follow and connect guide](https://www.linkedin.com/help/network/answer/a6266298).
 
 ## Second degree: one possible bridge
 
@@ -40,7 +40,7 @@ It is harder to act on because another person must understand and support the re
 
 Degrees count steps. They do not count trust.
 
-## A LinkedIn label is not a complete introduction plan
+## a network label is not a complete introduction plan
 
 A profile's degree badge tells you a connection category. It doesn't tell you which route fits your purpose, whether a mutual connection remembers the person, or whether the information is current.
 
@@ -53,15 +53,15 @@ Sixgree helps with the first. You still decide the second.
 
 ## What Sixgree can show depends on what you've brought in
 
-With an official **Connections.csv**, you can explore your direct connections. The file does not contain their connection lists, so it cannot establish second- or third-degree routes. The [CSV visualization guide](/blog/linkedin-network-csv/) walks through that starting point.
+With an official **Connections.csv**, you can explore your direct connections. The file does not contain their connection lists, so it cannot establish second- or third-degree routes. The [CSV visualization guide](/blog/network-csv/) walks through that starting point.
 
 With circle data collected by the optional scanner, Sixgree can show people beyond your direct connections and the connections through whom they were found. **Separation** lets you inspect those people and their ways in. A connection's card can show their exclusive reach: people found only through that connection among the circles you've mapped.
 
-The app also supports exploring longer chains when the recorded links exist. It does not invent a chain to fill an empty degree. A missing route can mean missing data, not that the two people are disconnected on LinkedIn.
+The app also supports exploring longer chains when the recorded links exist. It does not invent a chain to fill an empty degree. A missing route can mean missing data, not that the two people are disconnected on your network.
 
-This is why a route in Sixgree may differ from a LinkedIn badge: the app only knows the graph you've collected. Its shortest observed path is not proof of the shortest path across LinkedIn's whole network.
+This is why a route in Sixgree may differ from a network badge: the app only knows the graph you've collected. Its shortest observed path is not proof of the shortest path across your network's whole network.
 
-Start with the [invented sample](/docs/#get-started) to explore these ideas without accessing your LinkedIn account. Scanning is optional and can put an account at risk; read [how scanning works](/blog/scanning-slowly/) before choosing it.
+Start with the [invented sample](/docs/#get-started) to explore these ideas without accessing account on the platform. Scanning is optional and can put an account at risk; read [how scanning works](/blog/scanning-slowly/) before choosing it.
 
 ## How to turn a possible route into a respectful request
 
@@ -84,4 +84,4 @@ The useful question is smaller: **what routes can I see, and which one would be 
 
 [Download Sixgree](/download/) to explore the sample first. Your own network stays on your computer, with no Sixgree account or cloud upload. For the boundaries, read [the privacy guide](/blog/local-first/).
 
-Sixgree is not affiliated with LinkedIn.
+Sixgree is not affiliated with any networking platform.

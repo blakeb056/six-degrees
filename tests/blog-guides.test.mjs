@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { build, loadSite } from '../scripts/build-site.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const slugs = ['linkedin-network-csv', 'linkedin-connection-degrees', 'linkedin-connections-at-company', 'linkedin-warm-introduction', 'linkedin-network-job-search'];
+const slugs = ['network-csv', 'network-connection-degrees', 'network-connections-at-company', 'network-warm-introduction', 'network-job-search'];
 
 test('October 5 guides render with accurate article metadata and discoverable links', () => {
   const output = mkdtempSync(path.join(tmpdir(), 'sixgree-blog-test-'));
@@ -31,7 +31,7 @@ test('October 5 guides render with accurate article metadata and discoverable li
       assert.equal(article.author.name, 'Blake Burford');
       assert.equal(article.url, url);
       assert.ok(existsSync(path.join(output, new URL(article.image).pathname)));
-      assert.match(html, /not affiliated with LinkedIn/);
+      assert.match(html, /not affiliated with any networking platform/);
       for (const discovery of ['blog/index.html', 'blog/feed.xml', 'sitemap.xml', 'llms.txt']) {
         assert.ok(read(discovery).includes(`/blog/${slug}/`), `${discovery} discovers ${slug}`);
       }
@@ -40,6 +40,20 @@ test('October 5 guides render with accurate article metadata and discoverable li
         const target = path.join(output, address.endsWith('/') ? `${address}index.html` : address);
         assert.ok(existsSync(target), `internal link exists: ${address}`);
       }
+    }
+    for (const [oldSlug, newSlug] of Object.entries({
+      'export-linkedin-connections': 'export-network-connections',
+      'linkedin-connection-degrees': 'network-connection-degrees',
+      'linkedin-connections-at-company': 'network-connections-at-company',
+      'linkedin-network-csv': 'network-csv',
+      'linkedin-network-job-search': 'network-job-search',
+      'linkedin-premium-and-search-limit': 'network-premium-and-search-limit',
+      'linkedin-scanning-rules-and-risk': 'network-scanning-rules-and-risk',
+      'linkedin-warm-introduction': 'network-warm-introduction',
+    })) {
+      const html = read(`blog/${oldSlug}/index.html`);
+      assert.ok(html.includes(`/blog/${newSlug}/`), `old URL redirects to ${newSlug}`);
+      assert.ok(read(`blog/${newSlug}/index.html`), `updated article exists: ${newSlug}`);
     }
     for (const post of loadSite(root).posts.slice(0, 3)) {
       assert.ok(read('index.html').includes(post.path), `homepage discovers latest post: ${post.slug}`);

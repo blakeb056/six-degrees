@@ -1,14 +1,14 @@
 ---
-title: How to find LinkedIn connections at a company with Sixgree
+title: How to find your network connections at a company with Sixgree
 description: Find people you know at a target company, inspect mapped introduction paths in Sixgree, and separate direct connections from incomplete second-degree data.
 date: 2026-10-05
-tags: [linkedin, company search, network mapping]
+tags: [network, company search, network mapping]
 image: /img/app/paths.jpg
 ---
 
-To find LinkedIn connections at a company, start with a people search and filter by **Current company** and **Connections**. In Sixgree, use **Paths → Companies** to explore the people at that company in your local network. If you have mapped their circles, use **Separation** to inspect possible ways in beyond your direct connections.
+To find your network connections at a company, start with a people search and filter by **Current company** and **Connections**. In Sixgree, use **Paths → Companies** to explore the people at that company in your local network. If you have mapped their circles, use **Separation** to inspect possible ways in beyond your direct connections.
 
-These are different views of the question. LinkedIn helps you find profiles on its platform. Sixgree helps you understand the company and introduction routes in the data you've already collected. Neither a company label nor a connection badge guarantees someone can refer you.
+These are different views of the question. The platform helps you find profiles. Sixgree helps you understand the company and introduction routes in the data you've already collected. Neither a company label nor a connection badge guarantees someone can refer you.
 
 ## Start with the company and a specific question
 
@@ -20,13 +20,13 @@ These are different views of the question. LinkedIn helps you find profiles on i
 
 Keep current and former employees separate. Both may have useful context, but a past job is not evidence of a current role or an active referral relationship.
 
-## Find direct connections on LinkedIn
+## Find direct connections on your network
 
-Enter a company or a relevant person's name in LinkedIn's search bar, then choose **People**. Use the available filters to narrow the result to the company and first-degree connections. If a filter is not visible, look in **All filters**.
+Enter a company or a relevant person's name in your network's search bar, then choose **People**. Use the available filters to narrow the result to the company and first-degree connections. If a filter is not visible, look in **All filters**.
 
-LinkedIn's [search guide](https://www.linkedin.com/help/linkedin/answer/a521824) explains search categories. Its [view-connections guide](https://www.linkedin.com/help/lms/answer/a566261) lists company and connection filters. Use those pages if the layout differs from what you see.
+The platform's [search guide](https://www.linkedin.com/help/network/answer/a521824) explains search categories. Its [view-connections guide](https://www.linkedin.com/help/lms/answer/a566261) lists company and connection filters. Use those pages if the layout differs from what you see.
 
-You can also look at second-degree results. That is a starting point for checking mutual connections, not permission to assume every mutual knows the person well. Read [what the connection degrees mean](/blog/linkedin-connection-degrees/) before treating them as an introduction plan.
+You can also look at second-degree results. That is a starting point for checking mutual connections, not permission to assume every mutual knows the person well. Read [what the connection degrees mean](/blog/network-connection-degrees/) before treating them as an introduction plan.
 
 ## Explore the company in Sixgree
 
@@ -59,9 +59,9 @@ For the counts behind that distinction, see [how Sixgree ranks your ways in](/bl
 | Mapped circle data | Additional people and the routes recorded through your connections. |
 | Invented sample network | A way to learn the views, not evidence about your own reach. |
 
-A [CSV import](/blog/linkedin-network-csv/) cannot show who your connections know. An empty company or route result can mean the information is missing, stale or stored under a different company name. It is not proof that you have no route there.
+A [CSV import](/blog/network-csv/) cannot show who your connections know. An empty company or route result can mean the information is missing, stale or stored under a different company name. It is not proof that you have no route there.
 
-Sixgree has an optional company scan, marked experimental in the app. It is not needed to inspect an existing company view, and you should not use it just because a result is empty. Any automated scanning carries LinkedIn account risk; read [the scanning guide](/blog/scanning-slowly/) before deciding.
+Sixgree has an optional company scan, marked experimental in the app. It is not needed to inspect an existing company view, and you should not use it just because a result is empty. Any automated scanning carries account risk; read [the scanning guide](/blog/scanning-slowly/) before deciding.
 
 ## Turn the search into one useful conversation
 
@@ -69,8 +69,8 @@ Write down the person, the company, the possible bridge and what you still need 
 
 For example: “I'm learning about the product team at this company. Do you still work with anyone there who might be open to a short conversation? No problem if not.”
 
-That is a request for context, not a demand for a referral. The [warm-introduction guide](/blog/linkedin-warm-introduction/) gives you templates for the next step.
+That is a request for context, not a demand for a referral. The [warm-introduction guide](/blog/network-warm-introduction/) gives you templates for the next step.
 
 [Download Sixgree](/download/) to try the company and route views on the invented sample before bringing in your own network. Your local network is not uploaded to a Sixgree cloud account.
 
-Sixgree is not affiliated with LinkedIn.
+Sixgree is not affiliated with any networking platform.

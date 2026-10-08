@@ -1,16 +1,16 @@
 ---
 title: The R&D behind our scanner: finding breaking points so you don't have to
-description: How we stress-tested LinkedIn scanning limits, analyzed session boundaries, and engineered hard stops and pacing to protect your account.
+description: How we stress-tested your network scanning limits, analyzed session boundaries, and engineered hard stops and pacing to protect your account.
 date: 2026-10-07
 tags: [scanning, safety, architecture]
 image: /img/app/scan-budget.jpg
 ---
 
-When people first hear about a desktop tool that maps second-degree connections, their first question is almost always about account safety: *“Will this get my LinkedIn account restricted or banned?”*
+When people first hear about a desktop tool that maps second-degree connections, their first question is almost always about account safety: *“Will this get my network account restricted or banned?”*
 
 It is a fair question. Aggressive, irresponsible cloud scrapers and browser extensions have burned accounts for years by hammering servers with hundreds of rapid requests per minute.
 
-From day one, our design priority for Sixgree was not raw speed. It was deep **R&D on LinkedIn's detection boundaries, rate limits, and behavioral breaking points** so we could engineer hard stops, human-mimicking pacing, and multi-layer safeguards.
+From day one, our design priority for Sixgree was not raw speed. It was deep **R&D on your network's detection boundaries, rate limits, and behavioral breaking points** so we could engineer hard stops, human-mimicking pacing, and multi-layer safeguards.
 
 Here is what our research uncovered, where the actual limits lie, and how our scanner is engineered to keep your account safe.
 
@@ -36,7 +36,7 @@ Once we knew the breaking points, we built Sixgree to stay well below them.
 Instead of pushing the limits, Sixgree operates with strict, non-negotiable conservative boundaries:
 
 ### 1. You sign in; the app never touches your password
-The scanner runs inside a real, dedicated Chrome window on your local machine. You sign in directly through LinkedIn’s official login page. Sixgree never sees, stores, or transmits your credentials. All cookies stay within your own local session.
+The scanner runs inside a real, dedicated Chrome window on your local machine. You sign in directly through your network’s official login page. Sixgree never sees, stores, or transmits your credentials. All cookies stay within your own local session.
 
 ### 2. Strict daily and monthly budgets
 Sixgree caps its scan rate with conservative default budgets:
@@ -56,7 +56,7 @@ The scanner is programmed with an immediate fail-safe:
 ## The safest path: optional scanning or zero-risk CSV
 
 Finally, we designed Sixgree so you never *have* to scan if you don't want to:
-- **LinkedIn's official data archive**: You can download your official connection CSV directly from LinkedIn (*Settings & Privacy → Data Privacy → Get a copy of your data*) and import it into Sixgree with **zero automation and zero account risk**.
+- **your network's official data archive**: You can download your official connection CSV directly from your network (*Settings & Privacy → Data Privacy → Get a copy of your data*) and import it into Sixgree with **zero automation and zero account risk**.
 - **Interactive sample network**: Test every visualization, cluster, and path feature with our built-in 150-connection sample network before ever connecting a real account.
 
 We spent months finding the breaking points of web automation so you don't have to risk your account. Sixgree is built to be a reliable, local-first intelligence engine that respects both your privacy and your long-term reputation.

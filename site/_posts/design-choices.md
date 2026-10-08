@@ -7,7 +7,7 @@ tags: [design, branding, sixgree]
 image: /img/blog/design/logo-canvas.jpg
 ---
 
-Sixgree maps your LinkedIn network out to six degrees, so every piece of its look tries to say one of two things: *degrees* and *tiers*. This is the whole history, with the versions we threw away.
+Sixgree maps your network out to six degrees, so every piece of its look tries to say one of two things: *degrees* and *tiers*. This is the whole history, with the versions we threw away.
 
 ## Timeline
 
@@ -22,7 +22,7 @@ Sixgree maps your LinkedIn network out to six degrees, so every piece of its loo
 
 ## The name
 
-*Six Degrees* said exactly what the app does, which is why it was hard to own: it's a phrase, not a name, and the domain was *sixdegreesapp.com*. **Sixgree** keeps both halves, the *six* and the *degree*, in one word nobody else uses. It reads "six-gree", and its tagline does the explaining: *Sixgree: six degrees of your LinkedIn.* sixgree.com is home; sixdegreesapp.com, sixgree.app and the likely typo sixgrees.com all redirect there. The GitHub repo kept its old name on purpose, so every installed copy keeps updating.
+*Six Degrees* said exactly what the app does, which is why it was hard to own: it's a phrase, not a name, and the domain was *sixdegreesapp.com*. **Sixgree** keeps both halves, the *six* and the *degree*, in one word nobody else uses. It reads "six-gree", and its tagline does the explaining: *Sixgree: six degrees of your network.* sixgree.com is home; sixdegreesapp.com, sixgree.app and the likely typo sixgrees.com all redirect there. The GitHub repo kept its old name on purpose, so every installed copy keeps updating.
 
 ## The icon: from a triangle to an S that is also a 6
 

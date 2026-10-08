@@ -15,23 +15,23 @@ This post explains what that means in practice, and where the edges are.
 
 Everything Sixgree knows about your network lives in one hidden folder in your home folder, `.six-degrees`:
 
-- the network itself, in a single SQLite database file;
+- your network itself, in a single SQLite database file;
 - `backups/`, your network with its photos, backed up once a day while the app is open, before each new version first opens it, and before an import or a restore, each one checked as it's made;
 - `avatars/`, the profile photos a scan saved;
 - `chrome-profile/`, the scanner's signed-in Chrome, if you scan;
 - small files for the scanner's budget, cooldown and progress.
 
-**Settings → Your data** shows where the folder is, what each part takes up, and the backups in it. Delete the folder and Sixgree knows nothing. A LinkedIn CSV you import is kept there too, in `csv-network.json`, apart from any network you scan, until you remove it.
+**Settings → Your data** shows where the folder is, what each part takes up, and the backups in it. Delete the folder and Sixgree knows nothing. a network CSV you import is kept there too, in `csv-network.json`, apart from any network you scan, until you remove it.
 
 ## What the app contacts, and when
 
 Nothing goes online by itself. The app contacts:
 
-- **LinkedIn**, only while you scan, or when you press *Auto* to send someone a connection request. Each profile photo is saved on your computer as the scan reads it, and the app shows photos only from there, so browsing your network never contacts LinkedIn.
+- **your network**, only while you scan, or when you press *Auto* to send someone a connection request. Each profile photo is saved on your computer as the scan reads it, and the app shows photos only from there, so browsing your network never contacts your network.
 - **GitHub**, only when you click *Check for updates*, to read the newest version number, and in the Mac app when you then click *Install and restart*, to download it.
 - **PyPI and GitHub**, only without the Mac app (with `npx sixgree` or from source), once, when you click *Set up the scanner*: for the scanner's Python packages and, if your computer has no Python it can use, a private copy of Python. Every file is checked against a checksum built into Sixgree.
 
-One experimental feature runs on a timer, and only if you turn it on: the **daily messages sync** in Outlink → Messages & follow-ups opens LinkedIn once a day, in the daytime, while the app is open. It's off until you tick it.
+One experimental feature runs on a timer, and only if you turn it on: the **daily messages sync** in Outlink → Messages & follow-ups opens your network once a day, in the daytime, while the app is open. It's off until you tick it.
 
 There is no telemetry, no analytics and no crash reporting. The web framework the app is built on has anonymous usage statistics of its own; they're switched off. And the app never checks for updates on its own.
 
@@ -46,7 +46,7 @@ The full threat model is in [SECURITY.md](https://github.com/blakeb056/six-degre
 
 ## Moving it yourself
 
-Because there's no account, there's no sync. To take your network to another computer, **Settings → Your data → Export backup file…** makes one file that you move yourself. It's built from an allow-list: your network, your settings, the scanner's progress and its LinkedIn budget, and photos if you want them. Your LinkedIn sign-in never goes in.
+Because there's no account, there's no sync. To take your network to another computer, **Settings → Your data → Export backup file…** makes one file that you move yourself. It's built from an allow-list: your network, your settings, the scanner's progress and its your network budget, and photos if you want them. your account sign-in never goes in.
 
 The other computer treats the file as untrusted. It checks the database's integrity and its structure, and each file's SHA-256, before anything changes, and applies it the next time the app starts. What was there before goes into `backups/`, and stays for at least 30 days.
 
@@ -58,4 +58,4 @@ When the Mac app updates itself, it checks the download against the release's pu
 
 None of this has to be taken on trust. Sixgree is open source under the MIT licence, and every line described here is on [GitHub](https://github.com/blakeb056/six-degrees), with tests. That's the other half of local-first: a tool that reads your network should be one you can inspect.
 
-![Settings, Your data: the network, profile photos, backups and the LinkedIn sign-in, all in one folder](/img/app/your-data.jpg "Settings → Your data.")
+![Settings, Your data: your network, profile photos, backups and your account sign-in, all in one folder](/img/app/your-data.jpg "Settings → Your data.")

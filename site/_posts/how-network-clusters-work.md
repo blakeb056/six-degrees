@@ -1,6 +1,6 @@
 ---
 title: How network clusters work: community detection and force simulation
-description: How Sixgree discovers clusters in your LinkedIn connections, balances physical force layouts, and reveals your real professional circles without manual tagging.
+description: How Sixgree discovers clusters in your network connections, balances physical force layouts, and reveals your real professional circles without manual tagging.
 date: 2026-10-07
 tags: [clusters, visualisation, algorithm]
 image: /img/app/lab-clusters.jpg
@@ -12,7 +12,7 @@ Sixgree groups your connections into **clusters** visually and mathematically. T
 
 ## What is a network cluster?
 
-A cluster (or community) is a group of people who are connected more densely to one another than to the rest of the network. 
+A cluster (or community) is a group of people who are connected more densely to one another than to the rest of your network.
 
 In a typical career graph, you rarely have one homogeneous network. Instead, you have distinct islands:
 - **Alumni clusters**: classmates, professors, and lab partners from university.

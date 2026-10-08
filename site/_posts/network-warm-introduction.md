@@ -1,12 +1,12 @@
 ---
-title: How to ask for a warm introduction on LinkedIn, with message templates
-description: Use Sixgree to inspect possible bridges, then ask a mutual LinkedIn connection for an introduction with clear, respectful messages and a forwardable blurb.
+title: How to ask for a warm introduction on your network, with message templates
+description: Use Sixgree to inspect possible bridges, then ask a mutual connection for an introduction with clear, respectful messages and a forwardable blurb.
 date: 2026-10-05
-tags: [linkedin, introductions, networking]
+tags: [network, introductions, networking]
 image: /img/app/separation.jpg
 ---
 
-To ask for a warm introduction on LinkedIn, identify a possible mutual connection, check whether they know the person well enough to help, and explain why you want to talk. Give them a short message they can forward, with an easy way to decline.
+To ask for a warm introduction through your network, identify a possible mutual connection, check whether they know the person well enough to help, and explain why you want to talk. Give them a short message they can forward, with an easy way to decline.
 
 Sixgree helps you inspect possible bridges in your mapped network. It does not decide who trusts whom, guarantee a reply or make a connection record into permission to contact someone.
 
@@ -16,9 +16,9 @@ In Sixgree's **Separation** view, find the person or company you're interested i
 
 If the person has several ways in, start with the bridge whose relationship with you makes the request reasonable. Consider whether you've worked together, spoken recently and have enough context to explain your purpose honestly.
 
-An official CSV alone cannot establish these second-degree routes. Use mapped circle data if you already have it, or inspect mutual connections yourself on LinkedIn. See [connection degrees explained](/blog/linkedin-connection-degrees/) and [how the app counts ways in](/blog/who-can-introduce-you/) for the boundaries.
+An official CSV alone cannot establish these second-degree routes. Use mapped circle data if you already have it, or inspect mutual connections yourself on the platform. See [connection degrees explained](/blog/network-connection-degrees/) and [how the app counts ways in](/blog/who-can-introduce-you/) for the boundaries.
 
-LinkedIn's own [introduction advice](https://www.linkedin.com/business/sales/blog/b2b-sales/get-introduced-to-your-sales-prospects-in-4-simple-steps) also recommends understanding the connection before asking. The templates below are original examples, not LinkedIn features or messages sent by Sixgree.
+The platform's [introduction advice](https://www.linkedin.com/business/sales/blog/b2b-sales/get-introduced-to-your-sales-prospects-in-4-simple-steps) also recommends understanding the connection before asking. The templates below are original examples, not platform features or messages sent by Sixgree.
 
 ## Ask about the relationship, not just the introduction
 
@@ -38,7 +38,7 @@ An introduction opens a conversation. A referral may ask someone to endorse your
 
 > Hi [Bridge], I'm exploring [role or team] at [Company]. My relevant background is [one concrete sentence]. I'd like to understand [specific question about the work]. Do you know someone there who might be comfortable talking? I'm asking for a conversation, not an endorsement, and it's fine if the timing isn't right.
 
-Mention a specific job if you have one in mind, but don't imply that your bridge can bypass the hiring process. The [network-audit guide](/blog/linkedin-network-job-search/) helps you prepare a focused shortlist before reaching out.
+Mention a specific job if you have one in mind, but don't imply that your bridge can bypass the hiring process. The [network-audit guide](/blog/network-job-search/) helps you prepare a focused shortlist before reaching out.
 
 ## Give your bridge something easy to forward
 
@@ -74,6 +74,6 @@ Write your note and decide how to send it yourself. This guide is not an automat
 - **Treating exclusive reach as a reply probability.** “Only through” is a property of the mapped network, not a response forecast.
 - **Forwarding private details without permission.** Share only what both people have agreed to share.
 
-[Find connections at a target company](/blog/linkedin-connections-at-company/) if you haven't selected a person yet. Or [download Sixgree](/download/) and try the invented sample to learn how the routes work before mapping your own network.
+[Find connections at a target company](/blog/network-connections-at-company/) if you haven't selected a person yet. Or [download Sixgree](/download/) and try the invented sample to learn how the routes work before mapping your own network.
 
-Sixgree is not affiliated with LinkedIn.
+Sixgree is not affiliated with any networking platform.

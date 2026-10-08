@@ -1,6 +1,6 @@
 <!--
 title: Sixgree docs: getting started, your data, privacy and questions
-description: How to bring your LinkedIn network into Sixgree (sample, CSV export or scan), where your data lives, what the app contacts and when, and answers to common questions.
+description: How to bring your network into Sixgree (sample, CSV export or scan), where your data lives, what the app contacts and when, and answers to common questions.
 crumb: Docs
 path: /docs/
 type: WebPage
@@ -29,42 +29,42 @@ updated: 2026-10-04
         that shows who <em>your connections</em> know.</p>
       <div class="cards" id="network">
         <article>
-          <p class="risk none">No LinkedIn risk</p>
+          <p class="risk none">No account risk</p>
           <h3>Explore a sample</h3>
           <p>150 invented connections and the 598 people they know. Every view except Outlink and Scan, which need your
             own network.</p>
         </article>
         <article>
-          <p class="risk none">No LinkedIn risk</p>
-          <h3>Import LinkedIn's export</h3>
-          <p>LinkedIn's own <code>Connections.csv</code>, read on your computer: Settings &amp; Privacy → Data privacy → Get
+          <p class="risk none">No account risk</p>
+          <h3>Import the connections export</h3>
+          <p>The official <code>Connections.csv</code> export, read on your computer: Settings &amp; Privacy → Data privacy → Get
             a copy of your data → Connections. It shows the people you know, not who they know: Insights ranks them, but
             Degrees, Separation and Outlink need a scan.</p>
         </article>
         <article>
           <p class="risk some">Your account, your risk</p>
-          <h3>Scan your LinkedIn</h3>
+          <h3>Scan your network</h3>
           <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
-            own, you sign into LinkedIn there yourself, and it reads slowly with daily limits, in the background: its
-            window comes forward only if LinkedIn needs you.</p>
+            own, you sign into your account in that window yourself, and it reads slowly with daily limits, in the background: its
+            window comes forward only if the app needs your attention.</p>
         </article>
       </div>
       <figure class="video" id="export">
-        <video controls muted playsinline preload="metadata" poster="/video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing LinkedIn's export">
+        <video controls muted playsinline preload="metadata" poster="/video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing the connections export">
           <source src="/video/export.mp4?v=0.2.1" type="video/mp4">
         </video>
-        <figcaption><strong>Importing LinkedIn's export</strong> (half a minute): ask LinkedIn for your Connections file,
+        <figcaption><strong>Importing the connections export</strong> (half a minute): download your Connections file from the platform,
           then drop it on the app. No sign-in, and no risk to your account.</figcaption>
       </figure>
-      <p class="warning"><strong>Scanning uses your own LinkedIn account, and LinkedIn may restrict accounts that
-        automate it.</strong> Automating LinkedIn may break its User Agreement. The scanner reads slowly, keeps to a
-        budget and stops at the first push-back, but the risk is yours. The sample and the CSV import carry no LinkedIn
-        risk at all. <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
+      <p class="warning"><strong>Scanning uses your own network account, and the platform may restrict accounts that
+        automate it.</strong> Automated access may violate the platform's terms. The scanner reads slowly, keeps to a
+        budget and stops at the first push-back, but the risk is yours. The sample and CSV import do not automate access to
+        your account. <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
       <figure class="video" id="scanning">
         <video controls muted playsinline preload="metadata" poster="/video/scan-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: how scanning works">
           <source src="/video/scan.mp4?v=0.2.1" type="video/mp4">
         </video>
-        <figcaption><strong>How scanning works</strong> (under a minute): sign into LinkedIn in the Chrome window it opens,
+        <figcaption><strong>How scanning works</strong> (under a minute): sign into your account in the Chrome window it opens,
           scan the people you know, then map who they know a few at a time.</figcaption>
       </figure>
     </section>
@@ -81,8 +81,8 @@ updated: 2026-10-04
             one is checked as it's made. Settings → Your data shows the last one and puts any of them back with
             <em>Restore</em>.</li>
           <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Export backup file…</em> makes
-            one file. Move it yourself, and restore it on the other computer. Your LinkedIn sign-in never goes into it.</li>
-          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in LinkedIn
+            one file. Move it yourself, and restore it on the other computer. your account sign-in never goes into it.</li>
+          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in platform account
             session. Never copy, sync or share it; deleting it just means signing in again.</li>
         </ul>
         <p>Every detail, including how to undo an import, is in the
@@ -98,12 +98,12 @@ updated: 2026-10-04
           CSV, until you remove it) in the hidden <code>.six-degrees</code> folder, and the app window's own storage in
           <code>~/Library/Application Support/Six Degrees</code>.</li>
         <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
-        <li><strong>It only goes online when you act:</strong> LinkedIn while you scan or press Auto (profile photos are saved on your
+        <li><strong>It only goes online when you act:</strong> the platform when you scan or press Auto (profile photos are saved on your
           computer as they're read, and shown only from there), and GitHub when you check for updates (and to download
           one, if you click Install). The Mac app carries the scanner's Python inside it, so setting it up downloads
           nothing.</li>
         <li><strong>One thing that runs on a timer, if you turn it on:</strong> the experimental daily
-          messages sync (Outlink → Messages &amp; follow-ups) opens LinkedIn once a day, in the daytime, while the app is open. It's off until you tick it.</li>
+          messages sync (Outlink → Messages &amp; follow-ups) opens your network once a day, in the daytime, while the app is open. It's off until you tick it.</li>
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
           under the MIT licence, and <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>
           describes what the app trusts.</li>
@@ -121,8 +121,8 @@ updated: 2026-10-04
           <dd>Yes. It's free and open source under the MIT licence, with no account, no subscription and no paid tier. Every line of code is on GitHub.</dd>
         </div>
         <div>
-          <dt>Does it upload my LinkedIn data anywhere?</dt>
-          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: LinkedIn while you scan or press Auto, and GitHub when you check for an update.</dd>
+          <dt>Does it upload my network data anywhere?</dt>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: the platform when you scan or press Auto, and GitHub when you check for an update.</dd>
         </div>
         <div>
           <dt>Does it work on Windows?</dt>
@@ -133,8 +133,8 @@ updated: 2026-10-04
           <dd>Yes. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. If macOS says it can't check the app for malware, that's a copy of 0.8.0 or earlier, from before it was signed: download the newest one, or allow that copy once in System Settings → Privacy &amp; Security → Open Anyway.</dd>
         </div>
         <div>
-          <dt>Is scanning LinkedIn against LinkedIn's rules?</dt>
-          <dd>Automating LinkedIn may break its User Agreement, and LinkedIn can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample network and LinkedIn's own CSV export carry no risk to your account.</dd>
+          <dt>Could scanning violate the platform's terms?</dt>
+          <dd>Automated access may violate the platform's terms, and the platform can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample and a CSV import do not automate access to your account.</dd>
         </div>
         <div>
           <dt>Why did macOS ask about App Management while scanning?</dt>
@@ -142,7 +142,7 @@ updated: 2026-10-04
         </div>
         <div>
           <dt>What do I need to get started?</dt>
-          <dd>A Mac (or Windows or Linux, in beta) and, optionally, LinkedIn's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+          <dd>A Mac (or Windows or Linux, in beta) and, optionally, your network's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
         </div>
         <div>
           <dt>What does “six degrees” mean here?</dt>
