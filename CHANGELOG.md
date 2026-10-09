@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conversation*; mutual counts read "the platform's count"; the Import page, the Social tab and
   Insights describe the official export in plain terms. The scanner's own screens (signing in,
   searches spent, limits, cooldowns and the risk warning) still name the site the scanner signs in
-  to, because that is where your account is at stake. The README, the website and these release
-  notes use the same wording, and the website's older article addresses ask search engines to
+  to, because that is where your account is at stake. The README, the website, these release
+  notes and the Linux package's description use the same wording, and the website's older article addresses ask search engines to
   drop them in favour of the new ones.
 
 ### Fixed
