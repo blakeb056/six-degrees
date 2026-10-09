@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-10-09
+
 ### Changed
 - **Sixgree talks about your network, not one platform.** The welcome screen offers *Scan my
   network* and *Import a connections CSV*; profile links read *View profile* and *Open
