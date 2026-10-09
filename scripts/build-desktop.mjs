@@ -302,7 +302,7 @@ if (WIN) {
   symlinkSync('../../opt/six-degrees/six-degrees', path.join(deb, 'usr', 'bin', 'six-degrees'));
   mkdirSync(path.join(deb, 'usr', 'share', 'applications'), { recursive: true });
   writeFileSync(path.join(deb, 'usr', 'share', 'applications', 'six-degrees.desktop'), [
-    '[Desktop Entry]', 'Type=Application', 'Name=Sixgree', 'Comment=See your LinkedIn network as a galaxy, on your own computer',
+    '[Desktop Entry]', 'Type=Application', 'Name=Sixgree', 'Comment=See your network as a galaxy, on your own computer',
     'Exec=/opt/six-degrees/six-degrees %U', 'Icon=six-degrees', 'Terminal=false', 'Categories=Office;Network;', 'StartupWMClass=Sixgree', '',
   ].join('\n'));
   mkdirSync(path.join(deb, 'usr', 'share', 'icons', 'hicolor', '512x512', 'apps'), { recursive: true });
@@ -317,7 +317,7 @@ if (WIN) {
     `Installed-Size: ${kb}`,
     'Depends: libgtk-3-0t64 | libgtk-3-0, libnss3, libxss1, libxtst6, libasound2t64 | libasound2, libgbm1, libdrm2, xdg-utils',
     'Recommends: google-chrome-stable',
-    'Description: See your LinkedIn network as a galaxy, on your own computer',
+    'Description: See your network as a galaxy, on your own computer',
     ' Sixgree maps the people you know and the people they know, ranks who can',
     ' introduce you to whom, and keeps all of it on this computer. Scanning drives',
     ' your own Google Chrome, which it needs for that part only.', '',

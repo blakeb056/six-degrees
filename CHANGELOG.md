@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Sixgree talks about your network, not one platform.** The welcome screen offers *Scan my
+  network* and *Import a connections CSV*; profile links read *View profile* and *Open
+  conversation*; mutual counts read "the platform's count"; the Import page, the Social tab and
+  Insights describe the official export in plain terms. The scanner's own screens (signing in,
+  searches spent, limits, cooldowns and the risk warning) still name the site the scanner signs in
+  to, because that is where your account is at stake. The README, the website, these release
+  notes and the Linux package's description use the same wording, and the website's older article addresses ask search engines to
+  drop them in favour of the new ones.
+
+### Fixed
+- **The README no longer says message text is never kept.** It is kept when you turn on *Keep my
+  messages* in the Social tab, as the app has always said.
+
 ## [1.2.7] - 2026-10-06
 
 ### Fixed
@@ -31,27 +45,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kept.
 
 ### Fixed
-- **A page of hidden people pauses that list instead of finishing it.** Over LinkedIn's monthly
-  search limit (no Premium), results show as "LinkedIn Member" with no name, the same as people
+- **A page of hidden people pauses that list instead of finishing it.** Over the platform's monthly
+  search limit (no Premium), results come back hidden, with no name, the same as people
   out of your network deep in a list. Such a page now keeps the person's list at that page for
   later and moves on to the next person, so a capped month never marks lists as done.
 
 ## [1.2.5] - 2026-10-06
 
 ### Changed
-- **LinkedIn's monthly-limit banner no longer stops a scan by itself.** When the banner shows
+- **The monthly-limit banner no longer stops a scan by itself.** When the banner shows
   but the page still has people on it, the scanner reads them and carries on; it stops for the
-  monthly limit only when the page has the banner and nobody on it. LinkedIn's "approaching
+  monthly limit only when the page has the banner and nobody on it. The platform's "approaching
   the commercial use limit" notice is a heads-up now, not a stop.
 
 ## [1.2.4] - 2026-10-06
 
 ### Fixed
-- **A page of hidden people is no longer taken for LinkedIn pushing back.** Deep in a circle,
-  LinkedIn shows people outside your network only as "LinkedIn Member", with no name or link.
+- **A page of hidden people is no longer taken for the platform pushing back.** Deep in a circle,
+  the platform hides people outside your network: they show with no name or link.
   The scanner waited for links that never come, retried, then called it push-back and stopped,
   and every run went back to the same page (page 35 in Blake's case) and stopped again. Now a
-  page of hidden members ends that person's list as read ("the rest is hidden by LinkedIn"),
+  page of hidden members ends that person's list as read (the rest is hidden),
   with no wait, no retries, no cooldown.
 
 ## [1.2.3] - 2026-10-06
@@ -63,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   blended into a Leverage score from 0 to 100 that tier plays no part in. Separation gets a Gatekeepers
   list and a Leverage badge on each way in; a card gets a line such as "Low tier, but the only bridge to 38
   people at 6 companies". Someone whose circle isn't scanned shows "not enough data", never a low score.
-  Built from what scans already read, the ties between your connections included: no extra LinkedIn
+  Built from what scans already read, the ties between your connections included: no extra
   traffic. Power, tiers, rings and dot sizes are unchanged. About a second for 15,000 people, worked out
   once per scan or rescore and kept.
 
@@ -72,13 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Read full profiles (experience), off by default.** A switch in Scan → Scanner settings,
   with the line it needs: each read opens a person's profile, which is a profile view, the
-  action LinkedIn is strictest about, counted against your searches a day, at most one a
+  action the platform is strictest about, counted against your searches a day, at most one a
   minute. On, a round of 5, 10 or 25 of your own connections, highest power first, reads the
   current and past roles on their profiles (title, company, dates) so their score counts every
   role, not just the headline's. Nobody is read twice; a profile it can't read is marked as
   that, never as having no experience, and three in a row stop the round. It stops at any
-  check from LinkedIn like every scan, and lifting the limits for the session never lifts the
-  minute between profiles. Not yet tried on LinkedIn itself: the first round's log says what
+  check from the platform like every scan, and lifting the limits for the session never lifts the
+  minute between profiles. Not yet tried on a live account: the first round's log says what
   it found where.
 
 ### Changed
@@ -92,9 +106,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   list about 76 minutes. Turn it off in Scanner settings for the old fixed waits exactly.
 - **A page that's slow to load is tried again.** After 2, 4, 8 and 16 seconds (the last two
   reload it, each counted like any search or profile view), then it says it couldn't be read.
-  Never when LinkedIn asks you to sign in or check in, or says there are too many requests:
+  Never when the platform asks you to sign in or check in, or says there are too many requests:
   those stop the scan at once, as before.
-- **A scan that stops says why more precisely.** "Stopped: LinkedIn pushed back.", "Stopped at
+- **A scan that stops says why more precisely.** "Stopped: the platform pushed back.", "Stopped at
   today's limit." and the like, from the scanner's exit code, instead of "Stopped (exit 1)."
 
 ### Fixed
@@ -122,13 +136,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **One limit, and a button to lift it for the session.** The scanner had a daily and a
   monthly search budget, its own cap on profile views, and Auto scan's own 40 a day and 200 a
   week. Now there is one number, **searches a day** (50 by default, any whole number from 1 to
-  1000), set in Scan → LinkedIn usage, in the notch while a scan runs, or in the setup's pace
+  1000), set in Scan → Usage, in the notch while a scan runs, or in the setup's pace
   step; profile views count against the same number. A saved daily number is kept; the rest is
-  dropped. **Lift limits for this session** (Scan → LinkedIn usage, and the notch when the limit
+  dropped. **Lift limits for this session** (Scan → Usage, and the notch when the limit
   holds a scan back) is one click, no pop-up: until you quit Sixgree, the daily limit and the
   cooldown are off. The notch and the Scan page show *Limits lifted* with *Put limits back*, and
-  LinkedIn pushing back again puts them back by itself. Whatever the limit, scans keep their
-  pace, keep profile views a minute apart, stop if LinkedIn asks you to check in, run one at a
+  the platform pushing back again puts them back by itself. Whatever the limit, scans keep their
+  pace, keep profile views a minute apart, stop if the platform asks you to check in, run one at a
   time, and Auto's caps on connection requests stay. The usage section is one meter now.
 
 ### Fixed
@@ -148,7 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   come up there mid-scan and stay: Chrome moved its off-screen window onto the nearest display,
   and on a Mac nothing hid it again once Chrome showed itself (it does whenever it opens a window
   or tab). It's kept hidden for the whole scan now, off every display on Windows and Linux, and
-  when LinkedIn needs you it comes up centred on your main display.
+  when the platform needs you it comes up centred on your main display.
 
 ## [1.2.0] - 2026-10-05
 
@@ -156,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tuck the notch away.** A faint ⌃ at the notch's right end slides it up out of the way,
   leaving a thin pill under the tabs; click the pill, or press ⌘. (Ctrl+.), to bring it back.
   It stays tucked across reloads and restarts, the pill keeps the notch's dot (green while a
-  scan runs, gold when LinkedIn needs you), and LinkedIn needing you brings the notch back
+  scan runs, gold when the platform needs you), and the platform needing you brings the notch back
   down by itself, once.
 - **Physics on or off, in Network Circle's Filters.** Off, the map holds still and uses almost no
   power: no settling, orbit, easing or pulsing ring, and nothing is redrawn until you do something.
@@ -166,7 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   circle, a card's Scan or Resume), while another scan is running and it waits its turn instead
   of being refused: the button says *Queued · 2nd*, and it starts by itself when the scans
   before it finish. Each one still goes through every safeguard when its turn comes (your
-  budget, the daily caps, a rest after LinkedIn pushed back, Auto's own caps and its one-time
+  budget, the daily caps, a rest after the platform pushed back, Auto's own caps and its one-time
   question); one that can't start is marked skipped, with why, and the queue moves on. The
   notch shows *+2 queued* beside the running scan; open it for who is waiting and for what
   (Add or Build circle), with × to take one out and Clear. Stop stops the running scan and
@@ -244,9 +258,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   step is one line with a tick, a step that needs you is red and open, and each has a chevron;
   "All set" once they're all green. Below: Scanner settings (budget, how much of each list,
   finishing stopped lists, retrying hidden ones), Extras as switches with a line each (Auto
-  scan, Show the scanner's Chrome window, the daily messages sync), and LinkedIn usage last.
+  scan, Show the scanner's Chrome window, the daily messages sync), and Usage last.
   Two columns on a wide window, one on a narrow one. Nothing was removed.
-- **LinkedIn usage moved from Settings to the Scan page** (`/setup#usage`). The notch's budget
+- **The Usage section moved from Settings to the Scan page** (`/setup#usage`). The notch's budget
   and the budget box go there; `/settings#usage` forwards, and Settings keeps a line to it.
 - **Six Degrees is now Sixgree** (sixgree.com). The menu bar, Dock, Finder, window, About box,
   installers, Start Menu and Desktop shortcuts, website and npm package (`npx sixgree`) all
@@ -268,7 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of the old welcome screen: *Welcome* (scan, import a CSV, or try the sample), *Get your
   Mac ready* (Chrome and the scanner tick themselves; App Management, on macOS 13 and later, with
   *Open System Settings*, *I've allowed it* and *Skip*, saved as before; and the "I understand"
-  about scanning risks as a checkbox right there), *Connect your LinkedIn* (opens the sign-in
+  about scanning risks as a checkbox right there), *Connect your account* (opens the sign-in
   window and turns to *Connected* by itself), *Set your pace* (speed, searches a day with the same
   gold warning above 100, never a pop-up, and the Auto scan switch), and *Map your people* (the
   first scan's progress, with the optional "What field are you in?" asked while it reads), then
@@ -292,14 +306,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Auto's before its first request), and so does every question before deleting something.
 - **The scanner's Chrome works in the background.** After you've signed in, its window stays out
   of sight (hidden, on a Mac) and doesn't keep the focus or cover the app; it comes forward only
-  when LinkedIn needs you, to sign in again or finish a security check, and the notch says
-  *LinkedIn needs you* in gold until you're through. Chrome no longer shows the yellow
+  when the platform needs you, to sign in again or finish a security check, and the notch says
+  so in gold until you're through. Chrome no longer shows the yellow
   "unsupported command-line flag … Stability and security will suffer" bar, and the scanner's
   profile is set so Chrome never asks to restore pages after a stopped scan, to save a password, to
-  translate, or to show LinkedIn's notifications. On a Mac, Chrome's own sandbox is on. Fine-tune
+  translate, or to show notifications. On a Mac, Chrome's own sandbox is on. Fine-tune
   → *Show the scanner's Chrome window* keeps it in front for anyone who wants to watch. It replaces
   *Hide the Chrome window while scanning*, which ran Chrome with no window at all: more
-  detectable, and blind to LinkedIn's checks. Pacing, budgets, caps and cooldowns are exactly as
+  detectable, and blind to the platform's checks. Pacing, budgets, caps and cooldowns are exactly as
   they were.
 - **Insights is in your Profile, not a tab of its own.** The level button at the top right opens
   your Profile, and ✦ Insights beside Profile in the notch shows its boards after a thin line:
@@ -355,7 +369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Insights: your network ranked by power.** A new tab between Paths and Outlink. The Power
   Index ranks everyone within two steps of you, each person once, with shared ranks for ties and
   a line saying why a big tie shares its score; filter by degree, tier and rarity, search by name,
-  company or who knows them, and from any row open their circle, scan it, or ask (their LinkedIn
+  company or who knows them, and from any row open their circle, scan it, or ask (their
   profile opens and the request is marked sent, as on their card). Beside it: Untapped (S and A
   in your 2nd degree with no request out), Kingmakers (the connections with the most S and A
   behind them), Gatekeepers (who your S and A reach hangs on), Hidden giants (S-tier with one way
@@ -368,13 +382,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the scanner's Chrome opens their profile, presses Connect and sends the request without a note,
   then shows "Request sent" and marks it pending everywhere in the app. Connect still opens their
   profile for you to do it yourself. One press is one person: never a batch, never on a timer, and it
-  waits while a scan runs. It asks once before the first one. When LinkedIn wants their email address
-  first, Auto closes that and sends nothing ("Use Connect to add them yourself"); when LinkedIn offers
+  waits while a scan runs. It asks once before the first one. When the platform wants their email address
+  first, Auto closes that and sends nothing ("Use Connect to add them yourself"); when the platform offers
   a personal note (Premium), it sends without one. It only calls a request sent once their profile
   shows it pending, and says so plainly when it can't tell. It stops at 15 requests in any 24 hours and
-  80 in any 7 days (LinkedIn doesn't publish its limit; about 100 a week is commonly reported), opens
-  their profile once like a scan does, holds during a pause after LinkedIn pushed back, and shows in
-  Settings → LinkedIn usage as Connection requests (Auto).
+  80 in any 7 days (the platform doesn't publish its limit; about 100 a week is commonly reported), opens
+  their profile once like a scan does, holds during a pause after the platform pushed back, and shows in
+  Settings → Usage as Connection requests (Auto).
 
 ### Changed
 - **A scan that stopped partway says so, on the person's card and on the Scan page.** Open someone
@@ -421,12 +435,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which fills in as the scanner saves every 10 pages, during a whole round too, not only a scan of
   one person.
 - **An "I understand" before the first scan**: the Scan page says once, plainly, that scanning runs
-  your own LinkedIn account automatically, that LinkedIn may restrict accounts that do this (the safe
+  your own account automatically, that the platform may restrict accounts that do this (the safe
   limits of 50 searches a day and 250 a month stay on), and that nothing leaves your computer. Nothing
-  opens LinkedIn until you click I understand, whichever button asks, and the CSV import is one click
+  opens the platform until you click I understand, whichever button asks, and the CSV import is one click
   away instead. It's asked once and kept with your settings; anyone who has scanned before isn't asked.
   The welcome screen's Scan card says the risk too, and the README and website say Six Degrees is not
-  affiliated with or endorsed by LinkedIn.
+  affiliated with or endorsed by the platform.
 - **Light looks, and every look its own all the way through** (Settings → Appearance). Daylight and
   Paper are light, designed for it: ink words, white cards and panels, deeper dots that read on
   white. Pick any light background in the editor and the words and borders turn dark with it. Each
@@ -474,20 +488,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the backup it kept, instead of moving files by hand.
 - **Your look and your saved Galaxy layouts travel with your network**: they're kept with your
   settings, so a backup, a restore or a move to another computer brings them along.
-- **Settings → LinkedIn usage: how close your account is to the line, at a glance.** A status pill
+- **Settings → Usage: how close your account is to the line, at a glance.** A status pill
   (well within, above the default, risky, too close, or paused) and four bars: searches in the last
   24 hours, marked at 50 (the default), 100 (risky) and 373 (where a real account was restricted),
-  with when the next one frees and when you're all clear; searches this month, with when LinkedIn's
+  with when the next one frees and when you're all clear; searches this month, with when the platform's
   month resets (midnight Pacific on the 1st) and the 250 to 350 people report for a free account
   shaded as a guide, not a fact; the last 7 days against Auto scan's 200; and profile views. Below
   them: your speed and searches in the last hour, about how many people you can still map, the last
-  time LinkedIn pushed back (its time and reason, even after you lift the pause), Auto scan's own
+  time the platform pushed back (its time and reason, even after you lift the pause), Auto scan's own
   rules, and a plain warning with *Back to 50 a day, 250 a month* when it matters. Every number is
   counted from what Six Degrees wrote down on this computer, and says so. The notch's budget and the
   Scan page's budget box link to it.
 
 ### Changed
-- **A LinkedIn CSV import is kept until you remove it.** Close the window or restart the app and
+- **A CSV import is kept until you remove it.** Close the window or restart the app and
   your imported network is still there; it used to be gone with the window. It's kept on this
   computer, in your data folder (`csv-network.json`), apart from any network you scan, and only
   what the map needs (names, positions, companies, profile links, when you connected; never email
@@ -499,17 +513,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a button to remove it.
 - **Google Chrome is part of getting ready.** Step 1 on the Scan page isn't done until Chrome is on
   your computer, and offers Install Google Chrome, then come back; it ticks by itself once Chrome is
-  there. Open LinkedIn waits for it, nothing that opens LinkedIn starts without it (every button
+  there. Nothing that opens the platform starts without it, signing in included (every button
   gets the same one-sentence reason), and the welcome screen's Scan card says it needs Chrome.
 - **Honest about how long scanning takes.** The Scan page says your galaxy takes three steps and who
   they know fills in over days. Step 4 says the first circle shows up in about 5 minutes (longer at
-  Medium or Slow) and why the rest takes days: every page is a LinkedIn search, and your budget caps
+  Medium or Slow) and why the rest takes days: every page is a search, and your budget caps
   a day's.
 - **Your field is asked after your connections are in**, under "Your galaxy is ready", instead of
   before the first scan, and picking one rescores everyone straight away. Anyone with only their own
   connections mapped who never answered is asked once; skipping counts as an answer.
-- **Sign in to LinkedIn with Google or Apple?** Step 2 now says what to do: set a LinkedIn password
-  first (Forgot password on LinkedIn's sign-in page emails you a link to make one), since Google and
+- **Sign in with Google or Apple?** Step 2 now says what to do: set a password for your account
+  first (Forgot password on the platform's sign-in page emails you a link to make one), since Google and
   Apple sign-in can't work in the scanner's window.
 - **A saved Galaxy picture or video credits sixgree.com** in its corner, instead of the app's
   name, so anyone it's shared with knows where to get it.
@@ -528,14 +542,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   network to another computer, and putting one back.
 
 ### Fixed
-- **Auto scan rests two days after any check from LinkedIn, as the Scan page says.** A pushback
+- **Auto scan rests two days after any check from the platform, as the Scan page says.** A pushback
   partway through reading someone's list used to rest it one day, like a scan you start yourself;
   only a check at the start of a run got the two days.
 - **"Signed in" means signed in.** Step 2 used to tick as soon as the scanner's Chrome window had
   opened once, even if you closed it without signing in. Now it ticks once the scanner has seen you
   signed in. Anyone already signed in before this stays signed in.
 - **Degrees says the right thing before who they know is mapped.** With no 2nd degree yet, it told
-  everyone LinkedIn's CSV can't have circles, scanner users included. Now someone who scanned is
+  everyone a connections CSV can't have circles, scanner users included. Now someone who scanned is
   pointed to step 4 on the Scan page; a CSV import gets the CSV reason, as before.
 - **Words on screen read plainly**: no em dashes anywhere the app shows text (pages, notices,
   notifications, error messages), and a test keeps it that way. The Scan page's old "Checking for
@@ -588,7 +602,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   line turns green as each is done, so it's plain what's finished and what's left; no more tapping
   dots to see a step.
 - **↻ Check for new**, in words, in the map's header (it was a bare ↻): the same name as the Scan
-  page's button, for checking your LinkedIn for new connections in one click.
+  page's button, for checking your account for new connections in one click.
 
 ### Fixed
 - **Separation's tiers choose who's ranked, not who leads to them.** Hiding a tier in Filters also
@@ -665,7 +679,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer flashes the whole Galaxy in between.
 - **Social is part of Outlink.** Outlink has the same header as every page, and its views sit in
   the notch: Circles, To add, Pending, and Messages & follow-ups, which is the whole Social tab (your
-  LinkedIn export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and
+  data export, the live messages sync, the CRM with its inbox, follow-ups, pipeline, sent and
   received). Adding people and keeping track of them are now one place. The Social tab is gone from
   the header, and old links to it land on Messages & follow-ups.
 - **Notifications open.** Click one and it takes over the right panel with the detail: who it is
@@ -686,7 +700,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **All the way to easy, Separation aims at whoever the most of your connections lead to**, with
   every one of those lines drawn, the strongest first among equals; the "Next" names are the
   runners-up by the same measure. It used to aim at the top of the list, which could be someone
-  with many mutual connections by LinkedIn's count but only one the app could draw.
+  with many mutual connections by the platform's count but only one the app could draw.
 - **The Scan page has a radar, and a speed: Slow, Medium or Fast.** Mapping the 2nd degree starts
   from a round Scan button in the middle of a radar: its sweep turns while a scan runs, and the
   ring round it fills with today's searches against your budget. Beside it, three speeds. Fast is
@@ -714,7 +728,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the dots). Each connection shows their initials, tier and what they are to the people on the
   map: the only door to someone, the best way in for some, or only another way in; the ones with
   a solid line are lit. Each person is a card with rank, role, score and how many ways in. With
-  the slider all the way to easy, the one person becomes a large card with LinkedIn's mutual
+  the slider all the way to easy, the one person becomes a large card with the platform's mutual
   count and how many of those are drawn. Everything still glides as the slider moves.
 - **Separation's list is a ledger.** A title bar says how many are shown and that the order
   follows the slider. The way in shows the connection's face with "only way in" or how many more
@@ -736,7 +750,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   As the slider moves, people, connections and lines slide to their new places and newcomers
   fade in (still, with Reduce Motion on). Pick anyone in the list, or one of the "Next" names
   under the map, to aim at them instead. Beside each name it says how many mutual connections
-  lead to them: "only way in", "3 ways in", or, where LinkedIn's own count is higher than the
+  lead to them: "only way in", "3 ways in", or, where the platform's own count is higher than the
   connections the app can draw, "37 mutuals · 6 mapped".
 - **Path, in Separation.** A Path button beside the tier chips narrows everyone to one sector or
   one company. The picker opens under the button with the sectors (inferred, as in Paths), the
@@ -803,7 +817,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.11] - 2026-09-29
 
 ### Added
-- **The Social tab is a personal CRM.** Everyone you've been in touch with on LinkedIn is one contact,
+- **The Social tab is a personal CRM.** Everyone you've been in touch with on the platform is one contact,
   connection or not: a list on the left with views and a search box, the person on the right (stacked
   on a phone). The views:
   - **Inbox:** they wrote last, or there's something unread. Unread first.
@@ -828,7 +842,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Every conversation in your export, not just your connections'.** People who aren't connections
   are listed by the name the export gives them, marked *Not a connection*, with their profile link when
   it has one. Past (archived), current and ones only you wrote in are all there, from every folder;
-  group conversations are listed and marked; Sponsored Messages and InMails are marked, and adverts are
+  group conversations are listed and marked; sponsored and paid messages are marked, and adverts are
   kept out of the Inbox. Unsent drafts are left out and said so.
 - **Read my whole history**, beside *Sync messages now*: the live messages sync keeps scrolling your
   messages list until no new conversations load (at most 60 scrolls, about 1,000 conversations), at the
@@ -862,7 +876,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Conversations, in the Social tab.** Every conversation with one of your connections, from your
   export and the live messages sync: who it's with (name and tier), when it was last active, who
-  wrote last, unread, how many messages, and *Open on LinkedIn* (the thread when the sync found
+  wrote last, unread, how many messages, and a button to open it on the platform (the thread when the sync found
   its link, else their profile). Waiting on you comes first, then S and A tier, then the most
   recent. Group conversations are shown and marked, and aren't counted in warmth. A search box
   finds people by name.
@@ -882,18 +896,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto scan is slower and has its own ceilings.** Sittings of 8 pages, then an hour's rest;
   searches only from 9:00 to 18:00; never more than 40 searches in 24 hours or 200 in 7 days,
   however high the daily budget is set (the account restricted on 28 September did 373 in a
-  day with the budget at 500); and two days with no searches after any check from LinkedIn.
+  day with the budget at 500); and two days with no searches after any check from the platform.
 - **The scan status bar sits under the buttons.** On each page it now sits in its own row
   under the header, pushing the page down instead of covering it. On Network Circle it floats
   just under the header, measured, so a header that wraps to two rows no longer hides it.
 
 ### Fixed
 - **The live messages sync keeps what it finds.** It read your conversations but matched none of
-  them: the pattern for a profile link never matched, and LinkedIn's messaging gives a member
+  them: the pattern for a profile link never matched, and the platform's messaging gives a member
   link your connections list doesn't have. It now matches each person to your connections by
   link, or by a name only one connection has (the name isn't kept), and scrolls the list's own
   panel so more than the first 20 conversations load.
-- **Messaging samples keep no words.** The sync's saved samples of LinkedIn's data (for tuning
+- **Messaging samples keep no words.** The sync's saved samples of the platform's data (for tuning
   the reader) now drop every piece of writing and every name before they're saved.
 
 ## [0.4.8] - 2026-09-29
@@ -905,7 +919,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The website is a proper site now, and the README matches.** The home page tells one story,
   feature by feature, each with a real screenshot of the invented sample network: see your
   network, find your way in, know your network, watch it grow, and scan carefully, then privacy,
-  a fair comparison with LinkedIn's own search, spreadsheets and CRMs, and SocNetV and Gephi,
+  a fair comparison with the platform's own search, spreadsheets and CRMs, and SocNetV and Gephi,
   and a strip of true, checkable numbers. It has one download button, for your computer: the Mac
   download on a Mac, and on Linux and Windows a dimmed *Coming soon* button, never a link, with
   `npx six-degrees` offered on Linux. New pages: **/download/** (every platform, install steps,
@@ -934,8 +948,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Hide the Chrome window while scanning** (Scan page). Scans run with no window popping up;
   the status bar and Stop work as before, and signing in always opens the window. The Scan page
-  says the risks: a hidden Chrome is easier for LinkedIn to tell from a person, and a check
-  LinkedIn asks for (a code, a puzzle, signing in again) can't be seen, so the scan stops instead
+  says the risks: a hidden Chrome is easier for the platform to tell from a person, and a check
+  it asks for (a code, a puzzle, signing in again) can't be seen, so the scan stops instead
   of waiting. Off by default.
 
 ## [0.4.6] - 2026-09-29
@@ -970,9 +984,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.4] - 2026-09-29
 
 ### Added
-- **Social (experimental): a tab for your relationships.** It works from your own LinkedIn data:
-  - **Your export:** the folder LinkedIn emails you from *Settings → Data privacy → Get a copy
-    of your data*, read in the app window with no traffic to LinkedIn.
+- **Social (experimental): a tab for your relationships.** It works from your own account's data:
+  - **Your export:** the folder the platform emails you from *Settings → Data privacy → Get a copy
+    of your data*, read in the app window with no traffic to the platform.
   - **A live messages sync:** reads your messages list once in your own Chrome, by hand or once
     a day in the daytime, using no search budget.
 
@@ -1009,14 +1023,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Experimental Auto-Bridge (a switch on the Scan page).** All-day pacing that stays openly
   slow: up to 10 pages in a sitting, then a 45-minute rest; searches only from 09:00 to 19:00 on
   this computer's clock; at the daily budget it waits for it to free up instead of stopping;
-  and every page is saved as it's read. It also reads the data LinkedIn already sends for each
+  and every page is saved as it's read. It also reads the data the platform already sends for each
   page of results (no extra requests) beside the page text. That fills in headlines, photos and
   mutual counts the page text missed, and gives each list's real length for the scan bars. Each
   page logs how the two compare, and a few raw responses are kept in the data folder
-  (`wire-samples/`) to tune it. People only LinkedIn's data shows are logged, not added. The
+  (`wire-samples/`) to tune it. People only that data shows are logged, not added. The
   timing is never randomised to look like a person. Not yet tried on a live account.
 - **A status bar while a scan runs, on every page.** It shows what's running and for whom, how
-  far it's got, today's LinkedIn searches against your daily budget (green, then amber past 60%,
+  far it's got, today's searches against your daily budget (green, then amber past 60%,
   red past 90%), what the scanner is doing right now (for example the wait before the next
   profile), a link to the Scan page and Stop. Stop saves what was read, and Resume carries on
   from the same page. It sits just under the header's tabs, on every page, the Scan page too.
@@ -1040,7 +1054,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Orbit showed only 2nd degree.
 - **A ring round each connection's dot.** Five thin bars show how much of their circle is
   scanned: all five once their list is read to the end, and part-way the pages read against
-  LinkedIn's own count of the list, which scans now keep (no extra traffic). Lists read before
+  the platform's own count of the list, which scans now keep (no extra traffic). Lists read before
   scans kept a count show two. A small badge counts the people in their circle ready to scan,
   and a catalyst is the green outline on the dot. It's on the Galaxy and on Bridge Chains'
   bridges.
@@ -1066,7 +1080,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you reach two or more ways.
 - **Circle scans keep who among your connections knows whom.** Your own connections turn up in
   other people's lists, and were set aside there and forgotten. Each is now kept as a tie
-  between the two, in a new table, with no extra LinkedIn traffic, since the scan read them
+  between the two, in a new table, with no extra traffic, since the scan read them
   anyway. Nothing shows them yet: they're what clusters and communities will be built from.
   Deleting someone deletes their ties too.
 - **Who only one connection reaches.** In Bridge Chains, each connection with a scanned circle
@@ -1114,13 +1128,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The Filter menu highlights the view that's showing.** After *View Bridge →* from the
   Galaxy, Orbit showed but no view was highlighted.
 - **No *Scan Full Company* on the sample or a CSV import.** Paths offered it there, and it
-  searched LinkedIn for a network that isn't saved. A line says scanning needs your own network.
+  searched the platform for a network that isn't saved. A line says scanning needs your own network.
 
 ## [0.4.0] - 2026-09-28
 
 ### Added
 - **A cap on profile views.** A circle scan opens the person's profile once, and profile
-  views are what LinkedIn restricted an account for. They now have a cap of their own: 50
+  views are what the platform restricted an account for. They now have a cap of their own: 50
   in any 24 hours by default. The Scan page offers 10, 25, 50 or 100, and there is no "no
   limit".
   - **A minute apart:** at least 60 seconds pass between any two profile opens. It's timed
@@ -1176,14 +1190,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   profile page's mapping bar now agree on who can be scanned next, and all leave hidden
   lists out.
 - **Photos stay on your Mac.** The app shows a profile photo only from the copy saved on
-  your computer, so looking at your network never contacts LinkedIn. It used to load a
-  photo from LinkedIn until a scan had saved it, and a rescan could put LinkedIn's link
+  your computer, so looking at your network never contacts the platform. It used to load a
+  photo from there until a scan had saved it, and a rescan could put the platform's link
   back in place of a saved photo. Every page now also tells the browser to load pictures
-  from the app alone, and the scanner fetches photos from LinkedIn's image servers only.
+  from the app alone, and the scanner fetches photos from the platform's image servers only.
 - **Photos an older version kept as links are saved once.** Until then those people show
   initials. The next scan saves them at its end, or *Save photos* on the Scan page does it
   now, without opening a browser. A link more than a few weeks old has expired: that
-  person's photo comes back when they're next scanned. Offline, or with LinkedIn's image
+  person's photo comes back when they're next scanned. Offline, or with the platform's image
   server busy, nothing is forgotten, and *Save photos* stops and says why.
 - **Government and military titles are read.** A senator, a governor, a mayor and a cabinet
   secretary score like a C-suite; their deputies, state legislators, commissioners,
@@ -1202,12 +1216,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the window title and the app in Applications already did.
 - **Contributor docs and `.gitignore`.** CONTRIBUTING says npm releases go out through
   trusted publishing, with no token to set, and that `npm run build:desktop` builds the app
-  releases ship (`build:app` is the old launcher). `.gitignore` keeps a LinkedIn export, a
+  releases ship (`build:app` is the old launcher). `.gitignore` keeps a data export, a
   database, a saved copy of a network and the scanner's signed-in browser profile out of a
   commit, wherever they sit in the tree. A local build keeps them out of the app too, and
   its list of uncommitted files inside the app now names ignored ones as well.
 - **0.4.0-beta.1, promoted: this is now the Mac app and npm package everyone gets.** It adds:
-  - **Their circle, on every card,** with rarity beside the tier and LinkedIn's own mutual count.
+  - **Their circle, on every card,** with rarity beside the tier and the platform's own mutual count.
   - **One scan at a time,** and *Resume* beside *Rescan*.
   - **Tiers on your own network's curve,** with unknown companies at a neutral 5.
   - **631 public organizations** the built-in list leaves off, and **scoring 6.**
@@ -1236,12 +1250,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **↻ asks before it scans.** The round button in the header started *Check for new* the
   moment it was clicked. It now says what it will do (open Chrome on your connections list
   and read it until it reaches people already saved) and what it costs (no search budget,
-  but it is LinkedIn traffic from your account), and waits for OK.
+  but it is traffic from your account), and waits for OK.
 - **No Scan buttons on the sample or a CSV import.** Every card there offered a scan of
   that person's circle, and Degrees offered *Auto-Bridge Next*, but both networks live
   only in the window, so the scan could only fail ("Bridge '…' not found in database").
   In their place a line says scanning needs your own network.
-- **A CSV import's dates are the day LinkedIn says.** Anywhere east of London, each "Connected
+- **A CSV import's dates are the day the export says.** Anywhere east of London, each "Connected
   On" date landed a day early (28 Sep 2026 became 27 Sep). The import now reads it as the
   calendar date it is, the way a scan already did, and a date it can't read is left blank
   rather than guessed.
@@ -1284,22 +1298,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Warm* (31+). It's a distinction, never a score: tiers and power are untouched.
   Rarity and the tier filter together, in the circle and in Separation, so "S" and
   "Only way in" is exactly the rare finds, and "S" and "Warm" the easy wins. Until a
-  scan saves LinkedIn's own count, it's counted from the circles you've scanned, which
+  scan saves the platform's own count, it's counted from the circles you've scanned, which
   can only go up as you scan more, and everywhere it shows says so.
 - **Resume beside Rescan on a profile card.** When someone's list was only partly read (a
-  page limit, a stop, LinkedIn pushing back), their card offers *Resume from page N* next
+  page limit, a stop, the platform pushing back), their card offers *Resume from page N* next
   to *Rescan from the start*: the same carry-on as the Scan page's Paused list, for that
-  one person. LinkedIn lists other people's connections in its own order, with no dates,
+  one person. The platform lists other people's connections in its own order, with no dates,
   so anyone new can be on any page: Rescan reads the whole list again from page 1, and
   Resume picks up where the last read stopped. A list read to the end says so instead.
-- **LinkedIn's own mutual count, from circle scans.** Everyone a circle scan finds now
-  carries LinkedIn's count of the mutual connections you share with them, read from the
+- **The platform's own mutual count, from circle scans.** Everyone a circle scan finds now
+  carries the platform's count of the mutual connections you share with them, read from the
   line under their result card ("Maya Chen and 23 other mutual connections" is 24).
   - **No extra page views:** the line was already on the pages the scanner reads.
   - **One count per person:** every copy of the person, one per bridge that knows them,
     keeps the newest count read. A scan that doesn't see the line leaves the count alone.
   - **Used by rarity** in place of the count from your scans, which could only be a floor.
-  - **Not yet tried against live LinkedIn,** and it reads English wording only. The first
+  - **Not yet tried on a live account,** and it reads English wording only. The first
     real circle scan is the check. Any other wording reads as no count, never a wrong one.
 - **A public company dataset: 631 organizations the built-in list leaves off,** scored 6
   to 8 from public facts on one published scale, each with its source beside it (an exchange
@@ -1363,7 +1377,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   knows. The curve only lifts: nobody drops a tier because their network is strong, and
   nobody under 4 is lifted into S or A. People tied at a line all come in or all stay out.
   Choose *On the fixed scale* for the lines as they were (S ≥ 7.5, A ≥ 5.5, B ≥ 4, C ≥ 2.5).
-  A LinkedIn CSV import opened in the app is always graded on its own curve.
+  A CSV import opened in the app is always graded on its own curve.
 - **A company the app doesn't know is neutral.** It counts as 5, the middle of the scale
   (it was 4, and 3 when no company was found), so the people the built-in list doesn't
   know aren't pushed down a tier for it. A founder at an unknown company scores 7.3 (was
@@ -1484,17 +1498,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Scores tab.
 - **Settings → Your data.** Where your network is kept, with *Copy the path* and *Show in
   Finder*; what it takes up (your network, profile photos, backups); every backup with its
-  date and why it was made; and whether a LinkedIn sign-in is kept here. The folder can't be
+  date and why it was made; and whether a sign-in to your account is kept here. The folder can't be
   moved from the app, and the page says why.
 - **Move your network to another computer.** *Save a copy of my network* makes one
   `.sixdegrees` file: your network, your settings, the scanner's progress, skip lists and
-  LinkedIn budget, and the profile photos of the people in it unless you untick them. Your
-  LinkedIn sign-in is never in it; you sign in again on the new computer. There, *Import*
+  search budget, and the profile photos of the people in it unless you untick them. Your
+  sign-in is never in it; you sign in again on the new computer. There, *Import*
   checks the file first and changes nothing if it isn't whole and undamaged, from this
   version or an older one. It replaces the network there (the two are never merged, and a
   network that has people asks you to confirm how many it replaces) the next time Six
   Degrees starts, after keeping a copy of what was there in `backups/`; the README says how
-  to put it back. The LinkedIn search budget belongs to the account, so that computer keeps
+  to put it back. The search budget belongs to the account, so that computer keeps
   its own: searches made on either computer still count, and a pause on scanning stays. The
   Mac app finishes with *Restart now*; with `npx six-degrees`, stop it and start it again.
   Refused while a scan, or setting up the scanner, runs (it says which), scans wait until
@@ -1636,8 +1650,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Business School"); a dealership, a bottler, a venue or a company spun off keeps its own
   name. So does a credential, a program or gig work on a company's platform, which used to
   read as a job there when written first in a headline: "AWS Certified Solutions Architect"
-  was a role at Amazon (10), and "Uber Driver", "Airbnb Superhost", "Twitch Streamer",
-  "LinkedIn Top Voice" and "Google Alum" were at theirs. The sector directory reads names the
+  was a role at Amazon (10), and "Uber Driver", "Airbnb Superhost", "Twitch Streamer"
+  and "Google Alum" were at theirs. The sector directory reads names the
   same way. Best Buy and Best Western count as companies (they were dropped with "at best"),
   and so do Home Instead and Home Chef (dropped with "at home"). Chase Corporation and
   Merrill Corporation aren't read as the banks once "Corporation" is trimmed, and a name
@@ -1717,10 +1731,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The profile page no longer starts scans.** Its "Set Up Account — Full Scan" and "Auto-Bridge
   All Connections" cards are gone. The second mapped every connection in one go, with none of
   the batch size, budget or warnings of the Scan page, where scanning lives.
-- The window title is **Six Degrees** (it was "6 Degrees of Separation — LinkedIn Network
-  Research"), and the page description no longer claims to be a research project.
+- The window title is **Six Degrees** (it was "6 Degrees of Separation" with a research
+  subtitle), and the page description no longer claims to be a research project.
 - The import page's "close the tab" note is true in the Mac app too.
-- **Big LinkedIn exports import.** An export over about 9,000 connections was refused ("too large to hold in this browser tab"). The tab now keeps only what the export says about each person and scores it again on load, so exports up to LinkedIn's 30,000 maximum fit. Checked in a browser: 10,000 connections import and draw in about 4 seconds, 30,000 in about 25. It still never touches the database.
+- **Big CSV exports import.** An export over about 9,000 connections was refused ("too large to hold in this browser tab"). The tab now keeps only what the export says about each person and scores it again on load, so exports up to the platform's 30,000 maximum fit. Checked in a browser: 10,000 connections import and draw in about 4 seconds, 30,000 in about 25. It still never touches the database.
 - **`npx six-degrees` downloads about 22 MB instead of about 235 MB.** The package already
   carries its built server; Next, React and d3 are now build-time only.
 - On Windows, npm now refuses the package with a clear "not supported" message instead of
@@ -1737,7 +1751,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Releases publish to npm through npm's trusted publishing: GitHub vouches for the release
   workflow, so no npm token is stored anywhere. Each release builds the package on Linux,
   installs it, checks it serves the app, and publishes that exact file.
-- The README: macOS 15's second button is **Open Anyway**; the LinkedIn warning's link no
+- The README: macOS 15's second button is **Open Anyway**; the account-risk warning's link no
   longer shows a file name; the release notes link the changelog.
 - SECURITY.md lists all six gated routes (it said four).
 
@@ -1762,7 +1776,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bundles Node 24, which needs 13.5; on an older Mac the app used to install fine and then
   fail with a generic alert. Both apps now declare the true minimum, so macOS says so too.
 - The README's scoring section, view names (Degrees, not Bridges), feature list, privacy
-  list (PyPI, update checks) and data-folder layout match the app again. The LinkedIn risk
+  list (PyPI, update checks) and data-folder layout match the app again. The account-risk
   warning comes before the first scan, with both incidents.
 - Paths → Map: an industry label near the bottom no longer lands on the legend.
 
@@ -1775,7 +1789,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Quitting cleans up.** A running scan is stopped the way the Stop button stops it, so
     its Chrome window closes, and then the server. If you're looking at the app when you
     quit during a scan, it asks first.
-  - **LinkedIn opens in your own browser**, never inside the app.
+  - **The platform's pages open in your own browser**, never inside the app.
   - Opening it again brings the window forward. Closing the window leaves it running,
     like any Mac app, so a scan carries on; Quit ends it.
   - `--data-dir PATH` runs it against a copy of your data:
@@ -1843,8 +1857,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.9] - 2026-09-24
 
 ### Added
-- **Paths is a company and industry analyzer**, in the spirit of LinkedIn's InMaps
-  (2011–2014), the network map LinkedIn used to give people and then retired.
+- **Paths is a company and industry analyzer**, in the spirit of the network map the platform
+  used to give people (2011–2014) and then retired.
   - **Map:** every company is a bubble, coloured by industry and sized by your people there,
     with the share you already know as a white centre and a gold ring when an S-tier person
     is inside. A line joins two companies when one of your connections at the first knows
@@ -1871,14 +1885,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **A search budget.** Every people search and profile view is written down
-  (`~/.six-degrees/linkedin-activity.json`), and scans stop at a daily budget (the last 24
-  hours, 50 by default) and a monthly one (LinkedIn's month, which starts at midnight
+  in `~/.six-degrees`, and scans stop at a daily budget (the last 24
+  hours, 50 by default) and a monthly one (the platform's month, which starts at midnight
   Pacific on the 1st; 250 by default), both set on the Scan page. A read that reaches either
   saves what it read and stops, never marking a list finished, and carries on from the
-  same page next time. The budget belongs to the LinkedIn account, not to a profile in the
+  same page next time. The budget belongs to your account on the platform, not to a profile in the
   app, and a damaged record counts as the day used up. It applies to company scans too.
-- **A cooldown lock.** When LinkedIn pushes back, nothing that searches runs for a day (until
-  LinkedIn's month turns, for its monthly limit; six hours after two unclear reads in a
+- **A cooldown lock.** When the platform pushes back, nothing that searches runs for a day (until
+  its month turns, for its monthly limit; six hours after two unclear reads in a
   row). The Scan page shows it in red with the time it lifts, the scan buttons wait, and
   **Lift it early** is there for when search works normally again.
 - **A Paused list with Resume.** The Scan page lists everyone whose list was only partly
@@ -1889,19 +1903,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against the scanner).
 
 - **Scan my whole network** and **Check for new** also wait out a cooldown. They aren't
-  searches, so they don't count against the budget, but they still open LinkedIn with
+  searches, so they don't count against the budget, but they still open the platform with
   automation.
 
 ### Fixed
 - Re-mapping someone deleted their circle before checking anything; it now checks the
   cooldown and the budget first.
 - Windows: the scanner uses no Unix-only file lock or date format, and installs `tzdata`
-  so it knows when LinkedIn's month starts.
+  so it knows when the platform's month starts.
 
 ## [0.1.7] - 2026-09-24
 
 A stopgap after 0.1.6 read 27 pages of results in about three and a half minutes and
-LinkedIn blocked the account's search, plus the Separation view. Budgets and an easy resume
+the platform blocked the account's search, plus the Separation view. Budgets and an easy resume
 come next. TRAPS §35.
 
 ### Added
@@ -1918,30 +1932,30 @@ come next. TRAPS §35.
 - **Slower reading.** 20 seconds before each page of results and another minute after
   every 10. A whole list now takes about 55 minutes, not 10.
 - The pause after someone who came back with nothing is the full two minutes. It was 15
-  seconds, so the scan went faster exactly when LinkedIn was pushing back.
+  seconds, so the scan went faster exactly when the platform was pushing back.
 - The **Bridges** tab is now called **Degrees**. The Filters panel's tier chips there read
   "Filter by bridge tier", so they aren't confused with a person's own tier.
 
 ### Fixed
-- **A scan stops at the first sign of LinkedIn pushing back** instead of carrying on to
+- **A scan stops at the first sign of the platform pushing back** instead of carrying on to
   the next person. That covers a page of results that won't open, a search that won't open
-  for someone whose connections are visible, LinkedIn's own warnings ("unusual activity
+  for someone whose connections are visible, the platform's own warnings ("unusual activity
   from your account", profile viewing restricted, the account restricted, the monthly
   search limit coming up or reached), and a security check or sign-in wall appearing while
   you were signed in. What the page showed is kept in `~/.six-degrees/pushback/` so the
   wording can be recognised, and the message says what to do for that case.
-- **Someone is only marked hidden when LinkedIn clearly showed their profile** (their name
+- **Someone is only marked hidden when the platform clearly showed their profile** (their name
   in the page heading or title, as a whole word) with no connections link, or said the
   profile is unavailable. A profile that didn't render is "unclear": nothing is recorded,
   two unclear people in a row stop the batch, and someone unclear twice moves to the back
   of the queue so they can't hold it up. A block used to mark everyone after it as hidden,
-  for good. LinkedIn's own "No results found" is taken as a real answer.
+  for good. The platform's own "No results found" is taken as a real answer.
 - **A security check no longer counts as signed in.** The session cookie survives one,
-  so a scan used to carry on past it. It now stops, and **Open LinkedIn** on the Scan page
+  so a scan used to carry on past it. It now stops, and the Scan page's sign-in button
   (shown even when signed in now) opens a window to finish it by hand. Signing in from
-  scratch still waits through LinkedIn's own two-factor steps.
+  scratch still waits through the platform's own two-factor steps.
 - Closing the browser window during a read stops it, and never marks the list finished.
-- **Carrying on into a blank page no longer marks a list finished.** Only LinkedIn's "No
+- **Carrying on into a blank page no longer marks a list finished.** Only the platform's "No
   results found" does. A search it is limiting can come back blank, and a wrong
   "finished" dropped the rest of that list for good.
 - The Scan page's note on how long a whole list takes read "15 minutesa person".
@@ -1959,7 +1973,7 @@ come next. TRAPS §35.
   (about 100 people) unless you changed a setting, and nothing in the log said so, so a
   list of 50 pages looked finished at 10. The default is now every page. It keeps
   clicking Next until the list ends, and looks for another page three times, scrolling
-  down and waiting longer each time, before deciding a list is over. LinkedIn's own
+  down and waiting longer each time, before deciding a list is over. The platform's own
   search stops at page 100 (about 1,000 people). The log always states the page limit,
   and says so when it stops at one with more to read.
 - The log no longer calls the search of someone's connections a "3rd+ filter". It never
@@ -1972,10 +1986,10 @@ come next. TRAPS §35.
   (on by default; `--deeper` from a terminal), a scan picks up everyone read only partly,
   including everyone mapped before this version at 10 pages, from the next page. Their
   profile isn't opened again once the id their connections are searched by is known.
-- **Long reads save as they go**, every 10 pages. Stopping a scan, a crash, or LinkedIn's
+- **Long reads save as they go**, every 10 pages. Stopping a scan, a crash, or the platform's
   monthly search limit for free accounts now costs at most the last few pages, and the
   next run carries on from the same page.
-- **LinkedIn's monthly search limit is recognised.** The scan saves what it read, stops
+- **The monthly search limit is recognised.** The scan saves what it read, stops
   the batch, and says why, instead of reading empty pages.
 
 ### Fixed
@@ -1998,14 +2012,14 @@ come next. TRAPS §35.
 - Your own connections were saved into other people's circles. They arrive as the
   "mutual connections" links under each result; they are not people you have not met,
   and they inflated every circle. They are now left out (and counted in the log).
-- A failed save printed one line and carried on to the next person, spending LinkedIn
+- A failed save printed one line and carried on to the next person, spending page
   views on people who could not be saved either. It now stops the batch and says why.
 - After a push the log said "N processed", counting everything sent. It now says how
   many were new, and how many were already on file or already your connections.
 - Company scans saved their rows without your profile, so nothing they found could
   appear. (Company scans are still experimental.)
 
-- **LinkedIn's "Connected on" date is captured again.** The 1st-degree reader rewritten on
+- **The "Connected on" date is captured again.** The 1st-degree reader rewritten on
   2026-09-09 stopped saving it, so the app had no idea when you connected with anyone —
   and the scoring bonus for connections made in the last 30 days never applied. It is read
   from each person's card again, and a full scan fills it in for everyone already saved.
@@ -2014,13 +2028,13 @@ come next. TRAPS §35.
 
 ### Added
 - **Start with your newest connections.** The 2nd-degree step now works through the people
-  you connected with most recently, by LinkedIn's "Connected on" date and across every
+  you connected with most recently, by the "Connected on" date and across every
   tier; "highest tier first", with the tier choice, is still there.
 - The progress bar says "Saving to your network and fetching photos" once reading is done,
   instead of sitting at 99% looking stuck.
 - The Scan page remembers the order and depth you last chose.
 - **How deep to read each person:** 10 pages (the default, about 100 people), 25, 50 or
-  100, LinkedIn's limit. Deeper reads take longer and use your account's search allowance.
+  100, the platform's limit. Deeper reads take longer and use your account's search allowance.
 
 ## [0.1.4] - 2026-09-24
 
@@ -2032,7 +2046,7 @@ come next. TRAPS §35.
   real line break before the browser sees it. It is now a raw string, and a new test
   parses every snippet the scraper injects on every pull request. Broken since 2026-09-09.
 - That same page reader, run against a mock results page for the first time, saved
-  LinkedIn's screen-reader line ("View … profile") as everyone's headline. It now takes
+  the page's screen-reader line ("View … profile") as everyone's headline. It now takes
   the first real line after the name.
 - After a scan, "N of them were 2nd-degree contacts you have now connected with" read as
   N people added. It now says what happened: N were already in a bridge's circle and have
@@ -2095,8 +2109,8 @@ publishing is wired up and waits only for a token.
 - A release workflow: pushing a `v*` tag builds the app on Apple Silicon and Intel,
   publishes both `.dmg`s and a `SHA256SUMS` on a GitHub Release, and publishes to npm
   when an `NPM_TOKEN` secret exists.
-- A welcome screen for a first run: **Scan my LinkedIn** (recommended), **Import my
-  LinkedIn CSV**, or **Explore a sample network**.
+- A welcome screen for a first run: **Scan my network** (recommended), **Import my
+  connections CSV**, or **Explore a sample network**.
 - The Scan page ticks off the scan step once you have connections, offers **See your
   network →**, and when a run stops early it shows the reason in a box rather than
   only "Stopped (exit 1)" at the bottom of the log.
@@ -2123,7 +2137,7 @@ publishing is wired up and waits only for a token.
 - `Start 6 Degrees.command` is gone. It started the development server; install the
   app instead.
 - **Company scans are marked experimental.** They ship without ever having been run
-  against live LinkedIn; the Paths page labels the button and asks once before the
+  against a live account; the Paths page labels the button and asks once before the
   first scan.
 
 ### Fixed
@@ -2161,7 +2175,7 @@ publishing is wired up and waits only for a token.
   Nothing is ever checked automatically and nothing about you is sent; it runs the same
   two git commands you would type. If you have your own edits, it refuses and tells you
   which files rather than throwing them away.
-- LinkedIn `Connections.csv` import, parsed entirely in the browser and never persisted.
+- An import for the official connections export (`Connections.csv`), parsed entirely in the browser and never persisted.
 - A synthetic sample network (150 invented 1st-degree, 598 2nd-degree, 14 bridges) that
   seeds deterministically, so every view can be explored before importing anything real.
 - An empty state offering the three ways in, replacing a blank first run.
@@ -2170,7 +2184,7 @@ publishing is wired up and waits only for a token.
 
 ### Added
 - A **Scan** page that runs the scraper for you. It checks what is missing, installs it,
-  opens LinkedIn so you can sign in, and runs the scan — with the live log on screen.
+  opens the platform so you can sign in, and runs the scan — with the live log on screen.
   No second terminal, no server to start, nothing to copy and paste.
 - Scanning a company or auto-bridging can now be run from the command line too
   (`--company "Acme"`, `--auto-bridge`); they used to exist only behind the old server.
@@ -2217,11 +2231,11 @@ publishing is wired up and waits only for a token.
 
 ### Fixed
 - A photo is only ever saved for one person now. If the same picture comes back for
-  somebody else — which is what happens with LinkedIn's placeholder silhouette, and with
+  somebody else — which is what happens with the platform's placeholder silhouette, and with
   anyone the scraper mismatched — it is skipped and they show their initials instead.
 - Second-degree people no longer end up wearing someone else's profile photo. The bridge
-  scraper matched people by the text of their link, and everyone LinkedIn shows as
-  "LinkedIn Member" shares that text — so they all inherited the first one's picture and
+  scraper matched people by the text of their link, and everyone the platform hides (shown
+  with no name) shares that text — so they all inherited the first one's picture and
   profile. `npm run audit:avatars` reports any already saved that way, and `--fix` clears
   them back to initials without re-scraping anything.
 - Connecting with someone you met through a bridge now registers. They used to stay a
@@ -2243,7 +2257,7 @@ publishing is wired up and waits only for a token.
   on every run, so the same few profiles were retried forever and the feature looked
   stuck. `--retry-private` gives them another go; `--clear-skips` forgets all of them.
 - The wait after a hidden profile is now seconds rather than two minutes. The long pause
-  is for runs that actually walked LinkedIn; a hidden profile was a single page view.
+  is for runs that actually read many pages; a hidden profile was a single page view.
 - A hidden or unavailable profile is recognised in seconds instead of costing the full
   page-load budget twice over.
 - Auto-bridge prints a countdown while it waits, so a pause cannot be mistaken for a hang.

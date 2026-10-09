@@ -964,7 +964,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                     </text>
                     {tag.more > 0 && (
                       <text x={lx} y={44} fontSize={fs - 1} fill="#778" style={HALO}>
-                        {clip('The count is LinkedIn’s; the rest are in circles not scanned yet')}
+                        {clip('The count is the platform’s; the rest are in circles not scanned yet')}
                       </text>
                     )}
                   </>
@@ -1110,7 +1110,7 @@ function BigCard({ p, c, tag, width, fs }) {
       <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(var(--sd-ink, 255, 255, 255), 0.06)" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.14)" />
       <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="var(--sd-fg-2, #cfd3e6)">{second}</text>
       <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
-        {tag.more ? `The ${fmt(tag.more)} is LinkedIn’s count. The other ${fmt(tag.more - p.waysIn)}` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
+        {tag.more ? `The ${fmt(tag.more)} is the platform’s count. The other ${fmt(tag.more - p.waysIn)}` : named === 1 ? 'Only one of your connections knows them.' : `${fmt(named)} of your connections know them.`}
       </text>
       {tag.more > 0 && (
         <text x={tx} y={64} fontSize={10.5} fill="#6b7090">
@@ -1198,7 +1198,7 @@ function RarityBar({ p, rarity }) {
   const what = p.degree > 2 ? `route${rarity.count === 1 ? '' : 's'}` : `mutual${rarity.count === 1 ? '' : 's'}`;
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}
-      title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (LinkedIn’s count)'}. ${RARITY_NOTE}`}>
+      title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (the platform’s count)'}. ${RARITY_NOTE}`}>
       <span style={{ height: 6, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', overflow: 'hidden' }}>
         <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, borderRadius: 3, background: info.color }} />
       </span>

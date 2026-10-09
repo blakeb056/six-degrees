@@ -14,7 +14,7 @@ Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs`
 | Generated parts of the home page: the header and footer, the version badge, the numbers, the sample charts, the latest releases and posts | `site/index.html`, between `<!-- gen:NAME -->` and `<!-- /gen:NAME -->` | Filled by `scripts/build-site.mjs` from `CHANGELOG.md`, `tests/*.test.mjs`, `public/demo-data.json` and `site/_posts/`. `pages.yml` runs the build, so the live site never lags the changelog; `node scripts/build-site.mjs --home` refreshes the committed copy. Never edit between the markers by hand. |
 | Feeds | `/blog/feed.xml`, `/releases/feed.xml` (Atom) | Linked from every page's head and footer. |
 | Coming-soon downloads (Linux app, Windows) | `site/app.js`, `DOWNLOADS` at the top | Dimmed buttons, not links, until a file's address goes in there: one line per platform. When one goes live, also update the Windows question on `/docs/`, `operatingSystem` in the JSON-LD, `llms.txt` and the download cards' notes. |
-| FAQ section | `site/_pages/docs.html`, section `#faq` | Eight direct answers (free? uploads? Windows? the macOS warning, LinkedIn's rules, what you need, what "six degrees" means, how a score is worked out). The build turns the page's `<dt>`/`<dd>` pairs into its `FAQPage` data (`faq: true`), so the two can't drift. AI answer engines extract these; keep answers 40–60 words and true. |
+| FAQ section | `site/_pages/docs.html`, section `#faq` | Eight direct answers (free? uploads? Windows? the macOS warning, the platform's terms, what you need, what "six degrees" means, how a score is worked out). The build turns the page's `<dt>`/`<dd>` pairs into its `FAQPage` data (`faq: true`), so the two can't drift. AI answer engines extract these; keep answers 40–60 words and true. |
 | robots.txt | `site/robots.txt` | Allows everyone; names the AI bots explicitly; points at the sitemap. |
 | sitemap.xml | `site/sitemap.xml` | The home page and its screenshots, as image entries. **Bump `lastmod` with each release.** The build adds every other page, dated from its `updated:` or the release it describes. |
 | llms.txt | `site/llms.txt` | Plain-text facts for AI assistants. Update the version line with each release. |
@@ -38,4 +38,4 @@ Last checked: 2026-09-29. The site is `site/`, built by `scripts/build-site.mjs`
 - `curl -s https://sixgree.com/robots.txt`, `.../sitemap.xml`, `.../llms.txt`, `.../04c6ce58b0a82a84e22ac315ff56dc03.txt`.
 - https://validator.schema.org/ and https://search.google.com/test/rich-results with the page URL: zero errors.
 - Google Search Console (domain property sixgree.com): sitemap "Success"; the URL is on Google. Bing Webmaster Tools: sitemap submitted.
-- Share the URL in iMessage or LinkedIn: the preview shows `og-image.jpg`.
+- Share the URL in iMessage or on a social network: the preview shows `og-image.jpg`.

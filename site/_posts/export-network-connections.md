@@ -1,12 +1,12 @@
 ---
 title: How to export your network connections, on a computer or an iPhone
-description: Download your network connections as a CSV from your network's own settings, on Mac, Windows or iPhone, what the file contains and what it leaves out, and how to see the people in it as a map with tiers.
+description: Download your network connections as a CSV from the platform's own settings, on Mac, Windows or iPhone, what the file contains and what it leaves out, and how to see the people in it as a map with tiers.
 date: 2026-10-06
 tags: [network, export, csv, connections]
 image: /img/app/your-data.jpg
 ---
 
-You can export your network connections from your network's own settings, on a computer or a phone, in about ten minutes. You get a file called **Connections.csv** with each connection's name, company, position and the date you connected. It's your network's official export, so it carries no risk to your account.
+You can export your network connections from the platform's own settings, on a computer or a phone, in about ten minutes. You get a file called **Connections.csv** with each connection's name, company, position and the date you connected. It's the platform's official export, so it carries no risk to your account.
 
 ## On a computer (Mac or Windows)
 
@@ -31,6 +31,6 @@ The CSV lists your **first-degree** connections: first and last name, profile li
 
 ## Turning the file into a map
 
-Sixgree reads a Connections.csv on your own computer and shows every person in the Galaxy, ranked in tiers S to D, with nothing uploaded. That covers your first degree straight away. To see who your connections can introduce you to, Sixgree's scanner reads their circles too, slowly and within a daily limit; see [Scanning slowly and safely](/blog/scanning-slowly/) and [your network connection degrees explained](/blog/network-connection-degrees/).
+Sixgree reads a Connections.csv on your own computer and shows every person in the Galaxy, ranked in tiers S to D, with nothing uploaded. That covers your first degree straight away. To see who your connections can introduce you to, Sixgree's scanner reads their circles too, slowly and within a daily limit; see [Scanning slowly and safely](/blog/scanning-slowly/) and [Network connection degrees explained](/blog/network-connection-degrees/).
 
 A version that reads your CSV right here on sixgree.com, in your browser and on your phone, is on the [roadmap](/roadmap/).

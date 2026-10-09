@@ -1,5 +1,5 @@
 ---
-title: How to ask for a warm introduction on your network, with message templates
+title: How to ask for a warm introduction through your network, with message templates
 description: Use Sixgree to inspect possible bridges, then ask a mutual connection for an introduction with clear, respectful messages and a forwardable blurb.
 date: 2026-10-05
 tags: [network, introductions, networking]
@@ -18,7 +18,7 @@ If the person has several ways in, start with the bridge whose relationship with
 
 An official CSV alone cannot establish these second-degree routes. Use mapped circle data if you already have it, or inspect mutual connections yourself on the platform. See [connection degrees explained](/blog/network-connection-degrees/) and [how the app counts ways in](/blog/who-can-introduce-you/) for the boundaries.
 
-The platform's [introduction advice](https://www.linkedin.com/business/sales/blog/b2b-sales/get-introduced-to-your-sales-prospects-in-4-simple-steps) also recommends understanding the connection before asking. The templates below are original examples, not platform features or messages sent by Sixgree.
+Whatever the route, understand the connection before you ask. The templates below are original examples, not platform features or messages sent by Sixgree.
 
 ## Ask about the relationship, not just the introduction
 

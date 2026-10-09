@@ -106,7 +106,7 @@ export default function SocialHub({ embedded = false }) {
         const name = f.name.toLowerCase();
         if (FILES[name] && !found[name]) found[name] = readTable(await f.text(), FILES[name]);
       }
-      if (!Object.keys(found).length) throw new Error('That folder doesn’t have LinkedIn’s export files in it (Connections.csv, messages.csv and so on).');
+      if (!Object.keys(found).length) throw new Error('That folder doesn’t have the data export’s files in it (Connections.csv, messages.csv and so on).');
       const conns = found['connections.csv'] || [];
       const stats = found['messages.csv'] ? messageStats(found['messages.csv']) : { asOf: null, people: new Map() };
       // The words are read out of messages.csv only when Keep my messages is on.
@@ -148,7 +148,7 @@ export default function SocialHub({ embedded = false }) {
       ].filter(Boolean) : [];
       setNote({
         good: true,
-        text: `Read ${Object.keys(found).length} of LinkedIn’s files: ${stats.people.size.toLocaleString()} people you’ve messaged one to one`
+        text: `Read ${Object.keys(found).length} of the export’s files: ${stats.people.size.toLocaleString()} people you’ve messaged one to one`
           + (built ? `, ${built.conversations.length.toLocaleString()} conversations${keep ? ', their messages kept on this computer' : ''}` : '')
           + (invitations ? `, ${invitations.length.toLocaleString()} connection requests` : '')
           + `.${odd.length ? ` (${odd.join('; ')}.)` : ''}`,
@@ -252,17 +252,17 @@ export default function SocialHub({ embedded = false }) {
       )}
       <main style={{ maxWidth: 1180, margin: '0 auto', padding: '8px 16px 64px' }}>
         <Body style={{ marginTop: 16 }}>
-          Everyone you&rsquo;ve been in touch with on LinkedIn, connections or not: who&rsquo;s waiting on you, who
+          Everyone you&rsquo;ve been in touch with, connections or not: who&rsquo;s waiting on you, who
           hasn&rsquo;t answered, what you&rsquo;ve sent and received, and your own notes and follow-ups on each, from
-          your own LinkedIn data. Only dates, who wrote last, counts and names are kept on this computer, and what
+          your own data export. Only dates, who wrote last, counts and names are kept on this computer, and what
           messages say only if you turn on <i>Keep my messages</i> below.
         </Body>
 
-        <h2 style={h2}>Your LinkedIn export</h2>
+        <h2 style={h2}>Your data export</h2>
         <div style={box}>
           <Body style={{ margin: 0 }}>
-            On LinkedIn: <i>Settings → Data privacy → Get a copy of your data</i>, pick the larger archive, and unzip the
-            file it emails you. Then choose that folder here. It&rsquo;s read in this window; nothing goes to LinkedIn.
+            On the platform: <i>Settings → Data privacy → Get a copy of your data</i>, pick the larger archive, and unzip the
+            file it emails you. Then choose that folder here. It&rsquo;s read in this window; nothing is sent anywhere.
           </Body>
           <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             <input type="checkbox" checked={keepEmails} onChange={(e) => setKeepEmails(e.target.checked)} style={{ marginTop: 3 }} />

@@ -10,7 +10,7 @@
 | [`brain/SCHEMA.md`](brain/SCHEMA.md) | Tables, the one unique index that matters, and the JSON-in-TEXT convention. |
 | [`brain/ENDPOINTS.md`](brain/ENDPOINTS.md) | Every route, and which four are gated. |
 | [`brain/SCORING.md`](brain/SCORING.md) | The power score, term by term: one implementation, `lib/scoring.js`. |
-| [`brain/SCRAPER.md`](brain/SCRAPER.md) | How the scraper works and what LinkedIn's page actually looks like. |
+| [`brain/SCRAPER.md`](brain/SCRAPER.md) | How the scanner works and what the pages it reads actually look like. |
 | [`brain/TRAPS.md`](brain/TRAPS.md) | **Read before changing anything.** Every bug that cost real time. |
 | [`brain/BACKLOG.md`](brain/BACKLOG.md) | Planned work, checkbox-tracked, with what is wrong today and why. |
 | [`brain/PHASES.md`](brain/PHASES.md) | What shipped, what is next, what is unverified. |

@@ -113,10 +113,10 @@ export function Welcome({ ctx }) {
         <Primary onClick={go} disabled={loading}>{loading ? 'Loading…' : { scan: 'Continue', csv: 'Import a CSV', sample: 'Open the sample' }[choice]}</Primary>
       </>}
     >
-      {option('scan', Ico.radar, 'Scan my LinkedIn', 'The whole picture, including who your connections know. A few minutes to set up, and it needs Google Chrome.', {
+      {option('scan', Ico.radar, 'Scan my network', 'The whole picture, including who your connections know. A few minutes to set up, and it needs Google Chrome.', {
         tag: 'Recommended', note: 'It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this.',
       })}
-      {option('csv', Ico.csv, 'Import a LinkedIn CSV', 'LinkedIn’s own export, by email in about ten minutes. The people you know, not who they know.', { note: csvProblem })}
+      {option('csv', Ico.csv, 'Import a connections CSV', 'The official export, by email in about ten minutes. The people you know, not who they know.', { note: csvProblem })}
       {option('sample', Ico.spark, 'Try the sample', '150 invented people and the 598 they know, to look around before you decide.')}
     </Frame>
   );

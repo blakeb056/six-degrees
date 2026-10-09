@@ -6,7 +6,7 @@ tags: [network, job search, network audit]
 image: /img/app/hero.jpg
 ---
 
-A useful your network audit answers three questions: **who do I already know, which target companies appear in my network, and what possible routes need checking?** Use Sixgree to inspect your local network, then turn those answers into a small list of conversations you can justify.
+A useful network audit answers three questions: **who do I already know, which target companies appear in my network, and what possible routes need checking?** Use Sixgree to inspect your local network, then turn those answers into a small list of conversations you can justify.
 
 The goal is not to maximize a connection count or collect high-scoring people. It is to understand where your existing relationships may help you learn about a role, team or company. A network score is not a job-readiness score.
 
@@ -16,15 +16,15 @@ Write down the type of work you're looking for, the constraints that matter and 
 
 “I'm interested in product operations for a small team” gives someone more to work with than “I'm looking for anything.” You can change the brief as you learn; it is a starting point, not a commitment to one employer.
 
-The platform's [job-search guide](https://www.linkedin.com/jobsearchguide/) treats organization and using your network as part of the search. Sixgree adds a local view of the people and recorded routes you already have. It is not a job board, an application tracker or a predictor of hiring outcomes.
+Staying organized and using your network are both part of the search. Sixgree adds a local view of the people and recorded routes you already have. It is not a job board, an application tracker or a predictor of hiring outcomes.
 
 ## 2. Choose a data source you are comfortable with
 
-Start with the invented sample if you want to learn the app without accessing your network. For your own direct connections, [import the official Connections.csv](/blog/network-csv/). That gives you the people and company fields in the file, not their connection lists.
+Start with the invented sample if you want to learn the app without accessing the platform. For your own direct connections, [import the official Connections.csv](/blog/network-csv/). That gives you the people and company fields in the file, not their connection lists.
 
 If you already have mapped circle data, you can also inspect people beyond your direct network and the routes recorded through your connections. Missing circle data means incomplete coverage, not a failed network.
 
-Scanning is optional. automating access to the platform may breach its rules and can lead to account restrictions. You do not need to start a scan to perform a useful direct-network audit. Read [the scanning guide](/blog/scanning-slowly/) before deciding whether you want to gather more data.
+Scanning is optional. Automating access to the platform may breach its rules and can lead to account restrictions. You do not need to start a scan to perform a useful direct-network audit. Read [the scanning guide](/blog/scanning-slowly/) before deciding whether you want to gather more data.
 
 ## 3. Review people before scores
 
@@ -41,9 +41,9 @@ Sixgree's tier and score can help you inspect the app's model of network positio
 
 Open **Paths → Companies** and inspect the companies represented in your data. Pick one from your shortlist and look at the people recorded there. Separate direct connections from people found beyond them.
 
-If a target company is absent, check spelling, subsidiaries and whether the information is simply missing. Don't assume it is unreachable. Your map is an observed network, not a complete directory of your network or every employer.
+If a target company is absent, check spelling, subsidiaries and whether the information is simply missing. Don't assume it is unreachable. Your map is an observed network, not a complete directory of the platform or every employer.
 
-The [company-search guide](/blog/network-connections-at-company/) explains how to combine the local view with your network's current-company and connection filters. Confirm a person's present role before sending a request based on an old export.
+The [company-search guide](/blog/network-connections-at-company/) explains how to combine the local view with the platform's current-company and connection filters. Confirm a person's present role before sending a request based on an old export.
 
 ## 5. Compare possible bridges in Separation
 

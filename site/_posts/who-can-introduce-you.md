@@ -35,7 +35,7 @@ The **Separation** tab lists everyone two steps away. It ranks them by their own
 
 Each row says who can introduce you, and how many others could. A slider reorders the list: 50, the default, is by power; slide towards 100 for the most mutual connections first, the list to work from when you want the warmest route rather than the most senior person, or towards 0 for the rarest ways in. It only reorders: scores, tiers and ranks stay as they are.
 
-Beside each person's tier sits their **rarity**: how many mutual connections lead to them. It uses your network's own mutual count when a scan saved one, and the number of ways in otherwise, in five bands: *only way in* (1), *rare* (2 to 3), *uncommon* (4 to 10), *common* (11 to 30) and *warm* (31 or more). Rarity never changes anyone's score; it just tells you how easy they are to reach.
+Beside each person's tier sits their **rarity**: how many mutual connections lead to them. It uses the platform's own mutual count when a scan saved one, and the number of ways in otherwise, in five bands: *only way in* (1), *rare* (2 to 3), *uncommon* (4 to 10), *common* (11 to 30) and *warm* (31 or more). Rarity never changes anyone's score; it just tells you how easy they are to reach.
 
 ## Who only they can reach
 

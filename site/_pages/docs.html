@@ -46,7 +46,7 @@ updated: 2026-10-04
           <h3>Scan your network</h3>
           <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
             own, you sign into your account in that window yourself, and it reads slowly with daily limits, in the background: its
-            window comes forward only if the app needs your attention.</p>
+            window comes forward only if the platform needs you.</p>
         </article>
       </div>
       <figure class="video" id="export">
@@ -56,7 +56,7 @@ updated: 2026-10-04
         <figcaption><strong>Importing the connections export</strong> (half a minute): download your Connections file from the platform,
           then drop it on the app. No sign-in, and no risk to your account.</figcaption>
       </figure>
-      <p class="warning"><strong>Scanning uses your own network account, and the platform may restrict accounts that
+      <p class="warning"><strong>Scanning uses your own account, and the platform may restrict accounts that
         automate it.</strong> Automated access may violate the platform's terms. The scanner reads slowly, keeps to a
         budget and stops at the first push-back, but the risk is yours. The sample and CSV import do not automate access to
         your account. <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
@@ -81,9 +81,9 @@ updated: 2026-10-04
             one is checked as it's made. Settings → Your data shows the last one and puts any of them back with
             <em>Restore</em>.</li>
           <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Export backup file…</em> makes
-            one file. Move it yourself, and restore it on the other computer. your account sign-in never goes into it.</li>
-          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in platform account
-            session. Never copy, sync or share it; deleting it just means signing in again.</li>
+            one file. Move it yourself, and restore it on the other computer. Your sign-in to the platform never goes into it.</li>
+          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in session on
+            the platform. Never copy, sync or share it; deleting it just means signing in again.</li>
         </ul>
         <p>Every detail, including how to undo an import, is in the
           <a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored">README</a>.</p>
@@ -103,7 +103,7 @@ updated: 2026-10-04
           one, if you click Install). The Mac app carries the scanner's Python inside it, so setting it up downloads
           nothing.</li>
         <li><strong>One thing that runs on a timer, if you turn it on:</strong> the experimental daily
-          messages sync (Outlink → Messages &amp; follow-ups) opens your network once a day, in the daytime, while the app is open. It's off until you tick it.</li>
+          messages sync (Outlink → Messages &amp; follow-ups) opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.</li>
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
           under the MIT licence, and <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>
           describes what the app trusts.</li>
@@ -142,7 +142,7 @@ updated: 2026-10-04
         </div>
         <div>
           <dt>What do I need to get started?</dt>
-          <dd>A Mac (or Windows or Linux, in beta) and, optionally, your network's <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+          <dd>A Mac (or Windows or Linux, in beta) and, optionally, the official <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
         </div>
         <div>
           <dt>What does “six degrees” mean here?</dt>

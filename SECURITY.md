@@ -23,7 +23,7 @@ This app is designed to run **on your own machine, against your own network**.
   writes the whole network to a file in `backups/`, `data/restore`
   replaces the network with one of those backups, named as `backups/` lists
   it, never by a path from the request, and `data/csv` keeps, hands over and
-  removes a LinkedIn CSV import kept in the data folder. While the server is bound to
+  removes a CSV import kept in the data folder. While the server is bound to
   127.0.0.1 they need no token — anyone who can reach it can already open the
   database file directly, so a token there adds friction rather than safety. If
   it is bound to any other address, every caller must send `ADMIN_TOKEN` as a
@@ -113,7 +113,7 @@ This app is designed to run **on your own machine, against your own network**.
   never from a link, and every page carries
   `Content-Security-Policy: img-src 'self' data: blob:`, so the browser won't
   load a picture from anywhere else. The scanner fetches photos only from
-  LinkedIn's image servers (`*.licdn.com`, over https): while it scans, and
+  the platform's image servers (`*.licdn.com`, over https): while it scans, and
   once each for links older versions stored, which a crafted import could also
   carry.
 - Do not bind this app to `0.0.0.0` or expose it through a tunnel.
@@ -128,19 +128,20 @@ Everything stays local:
   database. It is never uploaded anywhere.
 - Scanned data and cached avatars are written to your machine and are gitignored.
   The app shows photos only from those files, so looking at your network never
-  contacts LinkedIn.
+  contacts the platform.
 - There is no telemetry, no analytics, and no crash reporting.
 
 If you run the scanner, `chrome-profile/` in the data directory holds a live
-logged-in LinkedIn session. Never copy, sync, or commit it.
+logged-in session for your account on the platform. Never copy, sync, or commit
+it.
 
-The scanner reads LinkedIn. The one thing it ever sends there is a connection request,
-and only when you press **Auto** on a person: one request per press, without a note, at
-most 15 in any 24 hours and 80 in any 7 days. The app looks the person up by the id the
-page sends and passes the scanner their profile URL from the database, never a URL or name
-from the request, and refuses before anything starts during a cooldown, past those caps,
-or before Auto's one-time question has been answered (`app/api/scraper/route.js`,
-`lib/auto-connect.js`).
+The scanner reads pages on the platform. The one thing it ever sends there is a
+connection request, and only when you press **Auto** on a person: one request per
+press, without a note, at most 15 in any 24 hours and 80 in any 7 days. The app
+looks the person up by the id the page sends and passes the scanner their profile
+URL from the database, never a URL or name from the request, and refuses before
+anything starts during a cooldown, past those caps, or before Auto's one-time
+question has been answered (`app/api/scraper/route.js`, `lib/auto-connect.js`).
 
 ### Moving your data (Settings → Your data)
 
@@ -157,7 +158,7 @@ or before Auto's one-time question has been answered (`app/api/scraper/route.js`
   tables and indexes (no views, triggers, virtual tables or extra columns),
   come from this version or an older one, match its own manifest, and carry
   only allow-listed files whose names can't leave the data folder, each
-  matching its SHA-256. The LinkedIn budget files must also follow the rules
+  matching its SHA-256. The scanner's budget files must also follow the rules
   the app writes them by: limits only from the Scan page's own menu (the
   scanner reads a daily limit of 0 as no limit at all). The network is then
   rebuilt into this version's own schema, so only rows travel, never table
@@ -176,7 +177,7 @@ or before Auto's one-time question has been answered (`app/api/scraper/route.js`
   (and its photos and files beside it), synced to the disk and checked (SQLite's
   quick check, and every table's row count against the original) before the
   original is replaced; those copies are never deleted automatically. The
-  LinkedIn budget files are merged with this computer's, not replaced: they
+  scanner's budget files are merged with this computer's, not replaced: they
   belong to the account.
 
 Never commit `public/avatars/` or any exported CSV — they contain real people.

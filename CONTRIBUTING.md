@@ -119,9 +119,9 @@ Bug fixes, accessibility, performance, and documentation are always welcome.
 Before building a large feature, open an issue first — the project has a
 deliberate shape and not every idea fits it.
 
-## A note on scraping
+## A note on scanning
 
-Anything that automates LinkedIn carries Terms-of-Service risk for the person
-running it. Contributions that make scraping more aggressive, add credential
-handling, or work around LinkedIn's protections will be declined. The official
-CSV export is the supported path.
+Anything that automates a networking platform carries Terms-of-Service risk for
+the person running it. Contributions that make scanning more aggressive, add
+credential handling, or work around the platform's protections will be declined.
+The official CSV export is the supported path.

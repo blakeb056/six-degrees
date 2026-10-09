@@ -156,7 +156,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             <p style={{ color: 'var(--sd-fg-3, #aaa)', fontSize: 11, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.headline?.substring(0, 60)}</p>
             {selected.profile_url && (
               <a href={selected.profile_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#0077B5', textDecoration: 'none', fontWeight: 600 }}>
-                View on LinkedIn
+                View profile
               </a>
             )}
           </div>
@@ -499,7 +499,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                 // (AutoConnect.js; Blake, 2026-10-03). Your own network only.
                 <ConnectChoice person={selected} canAuto={canScan} size="card" connect={(second) => (
                   <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
-                    title={second ? 'Opens their LinkedIn profile, to connect yourself' : undefined}
+                    title={second ? 'Opens their profile, to connect yourself' : undefined}
                     style={second ? { ...secondaryLook('card'), flex: 1 } : {
                       display: 'block', padding: '10px 16px',
                       background: 'linear-gradient(135deg, #FFD700, #FF6B35)',
@@ -534,7 +534,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
               display: 'block', textAlign: 'center', padding: 10, marginTop: 16,
               background: '#0077B5', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13,
             }}>
-            View LinkedIn Profile
+            View profile
           </a>
         )}
       </SidebarWrapper>
@@ -1268,13 +1268,13 @@ function CreateClusterCard({ selected, degree2, resume }) {
           </div>
           {resume && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              Read to page {resume.pagesRead} so far. Resume carries on from page {resume.nextPage}. LinkedIn
-              lists their connections in its own order, not by date, so Rescan reads them all again from page 1.
+              Read to page {resume.pagesRead} so far. Resume carries on from page {resume.nextPage}. Their
+              list isn&rsquo;t in date order, so Rescan reads them all again from page 1.
             </div>
           )}
           {hasCluster && resume === null && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              Their whole list has been read. LinkedIn doesn&apos;t date other people&apos;s connections, so a
+              Their whole list has been read. Other people&apos;s connections aren&apos;t dated, so a
               rescan reads it all again to find anyone new.
             </div>
           )}

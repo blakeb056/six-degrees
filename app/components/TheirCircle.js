@@ -102,7 +102,7 @@ export default function TheirCircle({ person, connections = [], degree2 = [], ti
     <div style={{ fontSize: 9.5, color: 'var(--sd-fg-4, #777)', lineHeight: 1.45, marginTop: 6 }}>
       Rarity is how many mutual connections lead to someone. It never changes a score.{' '}
       {fromLinkedIn
-        ? 'LinkedIn’s own count where a scan saved it; otherwise the ways in from your scans.'
+        ? 'The platform’s own count where a scan saved it; otherwise the ways in from your scans.'
         : `Counted from the ${scanned} ${scanned === 1 ? 'circle' : 'circles'} you’ve scanned, so it can only go up as you scan more.`}
     </div>
   );

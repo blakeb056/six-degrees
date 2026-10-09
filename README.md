@@ -4,10 +4,10 @@
 
 <h1 align="center">Sixgree</h1>
 
-<p align="center"><em>Sixgree: six degrees of your LinkedIn.</em> (Formerly Six Degrees.)</p>
+<p align="center"><em>Sixgree: six degrees of your network.</em> (Formerly Six Degrees.)</p>
 
 <p align="center">
-  <strong>See your LinkedIn network as a galaxy.</strong><br>
+  <strong>See your network as a galaxy.</strong><br>
   Who can introduce you, who only one of your connections can reach, and the shortest path to<br>
   someone you haven't met. Free, open source, and it runs on your own computer.
 </p>
@@ -143,7 +143,7 @@ It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without
 desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
 `--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
 `npx sixgree@latest`; **Settings → Updates** gives the same
-line. Scanning LinkedIn also needs Google Chrome (not Chromium), and Python: your own 3.10
+line. Scanning also needs Google Chrome (not Chromium), and Python: your own 3.10
 to 3.14 if you have it (on Ubuntu with `python3-venv`), or, if not, the Scan page's **Set
 up the scanner** button downloads a private copy into your data folder (24–33 MB, from
 GitHub, checked against a checksum built into Sixgree). It's tested on Ubuntu, and
@@ -166,7 +166,7 @@ npm run start:packaged      # opens http://127.0.0.1:6363 in your browser
 
 To update later: stop it (Ctrl-C), then
 `git pull && npm ci && npm run build && npm run start:packaged`.
-Scanning LinkedIn also needs Google Chrome, and Python 3.10 to 3.14 or the Scan page's
+Scanning also needs Google Chrome, and Python 3.10 to 3.14 or the Scan page's
 **Set up the scanner** (see below).
 </details>
 
@@ -183,8 +183,7 @@ differently.
 
 <img src="docs/img/degrees.png" alt="Degrees → Separation: people two steps away, ranked, each with the connection who can introduce you" width="100%">
 
-**Paths.** Your network by company and industry, in the spirit of LinkedIn's old
-InMaps:
+**Paths.** Your network by company and industry:
 - **Map**: your companies as bubbles (the 140 largest), grouped by industry and linked
   where your connections at one know people at another.
 - **Industries**: a card per industry.
@@ -218,11 +217,11 @@ invites sent and people who accepted, never from browsing).
 **Auto** *(needs a scan)*. Next to every Connect (a person's card, Outlink), Auto sends
 that one person a connection request for you, from the scanner's Chrome, without a note.
 One press, one person: never a batch, never on a timer. It asks once before the first one.
-If LinkedIn wants their email address first, Auto closes that and sends nothing (use
-Connect to add them yourself); if it offers a personal note (Premium), Auto sends without
-one. It calls a request sent only once their profile shows it pending. It stops at 15 in
-any 24 hours and 80 in any 7 days, opens their profile once (a profile view), and counts in
-Settings → LinkedIn usage.
+If your networking platform wants their email address first, Auto closes that and sends
+nothing (use Connect to add them yourself); if it offers a personal note (Premium), Auto
+sends without one. It calls a request sent only once their profile shows it pending. It
+stops at 15 in any 24 hours and 80 in any 7 days, opens their profile once (a profile
+view), and counts toward your usage on the Scan page.
 
 **Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
 lock, and a **Paused** list you can carry on from.
@@ -238,8 +237,9 @@ lock, and a **Paused** list you can carry on from.
   push, pull and distance; colour by tier, degree, company or warmth; find anyone; and a
   **replay** of your network growing by the date you connected, saved as a picture or a
   video.
-- **Social** (experimental). From your own LinkedIn data: who's warm, dormant or waiting
-  on a reply, and your career chapters. Message text is never kept.
+- **Social** (experimental). From your own data export: who's warm, dormant or waiting
+  on a reply, and your career chapters. Message text is kept only if you turn on
+  *Keep my messages*.
 
 ## Latest news
 
@@ -275,26 +275,26 @@ two steps away, and 503 of them, 84%, are reached through only one connection.
 **How it compares**, as fairly as we can put it
 ([the full table](https://sixgree.com/#compare)):
 
-| | Sixgree | LinkedIn's own search | Spreadsheets and CRMs | Network tools (SocNetV, Gephi) |
+| | Sixgree | The platform's own search | Spreadsheets and CRMs | Network tools (SocNetV, Gephi) |
 |---|---|---|---|---|
-| Your connections, from LinkedIn's export | ✓ | ✓ | ✓ | as nodes, with no ties |
+| Your connections, from the official export (`Connections.csv`) | ✓ | ✓ | ✓ | as nodes, with no ties |
 | Everyone two steps away, with who can introduce you | ✓ (needs a scan, or the sample) | 2nd-degree search, mutual connections on each | — (the export is 1st degree only) | if you bring the ties |
 | Who only one connection reaches | ✓ | not shown | — | brokerage measures, on your data |
 | A score per person, with the working shown | ✓ | not shown | your own formulas | general centrality |
 | A layout you can tune, and a replay by date | ✓ (experimental) | — | — | ✓ many layouts; Gephi's timeline |
-| Any network, any data, research-grade statistics | — (LinkedIn networks only) | — | any data | ✓ what they're built for |
+| Any network, any data, research-grade statistics | — (your own network only) | — | any data | ✓ what they're built for |
 | Runs on your computer, with no account | ✓ | — (online, with your account) | varies | ✓ |
 | Price | free, MIT | free, with paid plans | free to paid | free, open source |
 | Windows | ✓ (beta) | ✓ | ✓ | ✓ |
 
 Something out of date, or unfair to another tool? [Open an issue](https://github.com/blakeb056/six-degrees/issues).
 
-## Before you scan LinkedIn
+## Before you scan
 
 > [!WARNING]
-> **Scanning drives your own LinkedIn account, and LinkedIn may restrict accounts that
-> do this.** Automating LinkedIn may break its User Agreement. It has happened twice
-> while building this:
+> **Scanning automates your own account, which may break the platform's User Agreement,
+> and the platform may restrict accounts that do this.** It has happened twice while
+> building this:
 > - The account was temporarily restricted after about 20 profile views in one sitting
 >   (2026-09-09); it was lifted the same evening.
 > - Search was blocked after results were read too fast (2026-09-24).
@@ -304,7 +304,7 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 > or lift it until you quit Sixgree. It locks itself during a cooldown, and stops at the
 > first sign of push-back, lifted or not. The risk is still yours.
 >
-> **The CSV import and the sample network carry no LinkedIn risk at all.** Details:
+> **The CSV import and the sample network carry no risk to your account at all.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
 >
 > The app asks for an explicit "I understand" once, before the first scan.
@@ -313,40 +313,40 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 > you press Auto** on a person (one each press, without a note, at most 15 a day and 80 a
 > week). Auto asks once before its first request.
 >
-> Sixgree is not affiliated with or endorsed by LinkedIn.
+> Sixgree is independent software, not affiliated with or endorsed by any networking platform.
 
 ## First run
 
 The app opens on a welcome screen with three ways in, and asks nothing about you:
 
-- **Scan my LinkedIn**: a guided page that ticks each step off as it goes. It first asks
+- **Scan my network**: a guided page that ticks each step off as it goes. It first asks
   one optional question, what field you're in (see *Your sector* below), and *Skip for
-  now* is fine. Then it sets up the scanner in one click, you sign into LinkedIn yourself
-  in a Chrome window, and then it scans in the background: the scanner's Chrome stays out
-  of your way and comes forward only if LinkedIn needs you (to sign in again, or to finish
-  a check it asks for). Needs Google Chrome. The Mac app brings its own
+  now* is fine. Then it sets up the scanner in one click, you sign into your account
+  yourself in a Chrome window, and then it scans in the background: the scanner's Chrome
+  stays out of your way and comes forward only if the platform needs you (to sign in
+  again, or to finish a check it asks for). Needs Google Chrome. The Mac app brings its own
   Python; with `npx sixgree` the page uses yours, or sets up a private one with a
   click. It checks and says what's missing. The app marks this *Recommended* because
   it's the only way to Degrees and Outlink. Read the warning above first. On a Mac,
   macOS may ask whether Sixgree can manage apps while you scan: that's Chrome
   updating itself, and scanning works either way (step 1 has a button to allow it once).
-- **Import my LinkedIn CSV**: LinkedIn's official export, read on your machine. On
-  LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data →
-  Connections**. LinkedIn emails a link in about ten minutes; unzip it and drop
+- **Import a connections CSV**: the official export, read on your machine. On the
+  platform: **Settings & Privacy → Data privacy → Get a copy of your data →
+  Connections**. The platform emails a link in about ten minutes; unzip it and drop
   `Connections.csv` into the app. It's kept on your computer until you remove it.
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
 
 |  | Your scan | Your `Connections.csv` | Sample network |
 |---|---|---|---|
-| Setup | Chrome (Python comes with the Mac app) | ~10 min (LinkedIn emails the file) | none |
+| Setup | Chrome (Python comes with the Mac app) | ~10 min (the file comes by email) | none |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
 | **Degrees** (people you *haven't* met) | ✅ | — | ✅ |
 | **Outlink** (getting introduced) | ✅ | — | — |
 | Profile photos | ✅ | initials | initials |
-| LinkedIn account risk | **yes**, see above | none | none |
+| Risk to your account | **yes**, see above | none | none |
 
-**The CSV is the safe path, and deliberately the shallower one.** LinkedIn's export only
+**The CSV is the safe path, and deliberately the shallower one.** The export only
 contains people you're already connected to, so Degrees and Outlink, the views about
 people you *haven't* met, have nothing to draw. That data exists in no official export;
 the scanner is the only way to it, and it's opt-in for that reason.
@@ -425,11 +425,12 @@ It estimates **network position**, not what anyone is worth as a person.
   data folder as `csv-network.json` (names, positions, companies, profile links and when
   you connected; never email addresses) until you click × beside *Your CSV*.
 - The app contacts only these, and only when you act:
-  - **LinkedIn**, while you scan, and when you press **Auto** (one connection request,
-    sent from the scanner's Chrome). Each profile photo is saved on your computer as the
-    scan reads it, and the app shows photos only from there, so looking at your network
-    never contacts LinkedIn. (Photos an older version kept as links to LinkedIn show
-    initials until the next scan, or *Save photos* on the Scan page, saves them.)
+  - **Your networking platform**, while you scan, and when you press **Auto** (one
+    connection request, sent from the scanner's Chrome). Each profile photo is saved on
+    your computer as the scan reads it, and the app shows photos only from there, so
+    looking at your network never contacts the platform. (Photos an older version kept
+    as web links show initials until the next scan, or *Save photos* on the Scan page,
+    saves them.)
   - Only without the Mac app (which carries the scanner's Python and add-ons inside it),
     once, when you set the scanner up: **PyPI** (the Python package library) for the
     scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**
@@ -443,7 +444,7 @@ It estimates **network position**, not what anyone is worth as a person.
 - A **copy of your network** that you save (Settings → Your data) is a file you keep
   wherever you choose; the app never uploads it. It holds the names, headlines and profile
   links of the people in your network, their photos unless you leave them out, your
-  settings, and the scanner's progress and LinkedIn budget. Your LinkedIn sign-in is never
+  settings, and the scanner's progress and budget. Your sign-in to the platform is never
   in it. Keep it private, and delete it once it's imported.
 - The web framework's own anonymous usage stats are turned off.
 
@@ -460,8 +461,8 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 ├── chrome-profile/         the scanner's Chrome sign-in, if you scan (see below)
 ├── venv/                   the scanner's Python add-ons, if you set it up without the Mac app
 ├── python/                 a private Python for them, if Set up the scanner downloaded one
-├── pushback/               what LinkedIn's page said if it ever pushed back
-├── csv-network.json        a LinkedIn CSV import, kept until you remove it
+├── pushback/               what the platform's page said if it ever pushed back
+├── csv-network.json        a CSV import, kept until you remove it
 └── *.json                  the scanner's budget, cooldown, progress and skip lists
 ```
 
@@ -472,7 +473,7 @@ Finder*), what each part takes up, and the backups in it.
 
 A backup is your whole network in one `.sixdegrees` file: your connections, their profile
 photos, your settings (the look and your saved Galaxy layouts too), and the scanner's
-progress, skip lists and LinkedIn budget. Each one is checked as it's made, the same way a
+progress, skip lists and budget. Each one is checked as it's made, the same way a
 restore would check it, so a backup that's listed would restore. The Social tab's messages
 and notes are never in a backup, so deleting them there (*Forget it*) deletes them
 everywhere, and a restore leaves them as they are. Sixgree makes one:
@@ -499,7 +500,7 @@ with their photos, each backup is about 25 to 35 MB, so the kept ones add up to 
 
 1. On the old computer, open **Settings → Your data** and click **Export backup
    file…**. You get one file, `Sixgree backup <date>.sixdegrees`, with your network,
-   your settings, the scanner's progress, skip lists and LinkedIn budget, and the profile
+   your settings, the scanner's progress, skip lists and budget, and the profile
    photos of the people in it (untick them to leave them out; they come back as you scan
    again).
 2. Move that file to the new computer yourself (a USB stick, AirDrop). It holds other
@@ -507,8 +508,8 @@ with their photos, each backup is about 25 to 35 MB, so the kept ones add up to 
 3. On the new computer, install Sixgree, open **Settings → Your data**, click
    **Restore from a file…**, choose the file and click **Restore**. It's checked first, and nothing changes if it isn't a whole
    and undamaged Sixgree copy. If that computer already has a network, you're asked to
-   confirm that the import replaces it. The two networks are never merged. Your LinkedIn
-   search budget is the one thing that is: it belongs to your LinkedIn account, not to a
+   confirm that the import replaces it. The two networks are never merged. Your search
+   budget is the one thing that is: it belongs to your account on the platform, not to a
    computer, so searches made on either computer still count, a pause on scanning set on
    either stays until it ends, and budget limits already set on that computer stay.
 4. The import finishes the next time Sixgree starts. The Mac app does that with
@@ -516,9 +517,9 @@ with their photos, each backup is about 25 to 35 MB, so the kept ones add up to 
    copy of Sixgree has the same folder open (one started from the Terminal, say), the
    import waits, and Settings says so. What was there before is kept in `backups/`
    (`before-import-…`), for at least 30 days: see [Undo an import](#undo-an-import).
-5. Sign in to LinkedIn again on the new computer before you scan. Your sign-in never goes
-   into a copy. A LinkedIn CSV import kept on the old computer does go into it, and opens
-   on the new one.
+5. Sign in to the platform again on the new computer before you scan. Your sign-in never
+   goes into a copy. A CSV import kept on the old computer does go into it, and opens on
+   the new one.
 
 ### Undo an import
 
@@ -531,7 +532,7 @@ To put it back, open **Settings → Your data**, open **The backups**, find **Be
 or a restore** with that time, and click **Restore**. It's checked first, then finishes when
 Sixgree restarts (**Restart now** in the Mac app; with `npx sixgree`, press Ctrl-C
 and start it again), and what's there now is kept in the same way, so you can go back
-again. Your LinkedIn search budget stays as it is: it belongs to your LinkedIn account,
+again. Your search budget stays as it is: it belongs to your account on the platform,
 not to a network.
 
 The same **Restore** puts back any other backup: yesterday's, or the one from before the
@@ -539,7 +540,7 @@ last update.
 
 Don't put the live folder in iCloud Drive or Dropbox to share it between computers
 instead. A sync service that copies the database while it's open can damage it, and it
-would also sync your LinkedIn sign-in.
+would also sync your sign-in to the platform.
 
 **To remove everything:** quit the app and drag **Sixgree** from Applications to the
 Trash. Then in Finder choose **Go → Go to Folder…** (⇧⌘G), paste `~/.six-degrees` and
@@ -547,8 +548,8 @@ move that folder to the Trash. Do the same for
 `~/Library/Application Support/Six Degrees`, the app window's own storage and cache.
 
 > [!WARNING]
-> `chrome-profile/` holds a **real, signed-in LinkedIn session**. It's the one thing here
-> that grants access to your account. Never copy it, sync it or share it. Deleting it
+> `chrome-profile/` holds a **real, signed-in session** on the platform. It's the one thing
+> here that grants access to your account. Never copy it, sync it or share it. Deleting it
 > just means signing in again.
 
 ## Configuration (for developers)

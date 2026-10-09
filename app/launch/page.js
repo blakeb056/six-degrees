@@ -491,7 +491,7 @@ function FeaturesGrid() {
     {
       title: 'Paths',
       subtitle: 'Company Intelligence',
-      desc: 'Scan any company on LinkedIn and see every person mapped, scored, and organized by seniority.',
+      desc: 'Scan any company and see every person mapped, scored, and organized by seniority.',
       color: '#00ff88',
       icon: '🏢',
       stat: `${SAMPLE_STATS.companies} companies in the sample`,
