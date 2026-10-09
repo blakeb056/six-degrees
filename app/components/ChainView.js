@@ -1160,7 +1160,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
     }
   } else if (state === 'hidden') {
     title = `${first} keeps their connections hidden`;
-    body = 'LinkedIn doesn’t show their list, so there is no circle to scan.';
+    body = 'Their list isn’t shown to you, so there is no circle to scan.';
   } else if (state === 'scanned') {
     title = `${first}’s list has been read`;
     body = 'Everyone on it was already one of your connections, so nobody new is here.';
@@ -1185,7 +1185,7 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
     body = `Once ${first} accepts, ↻ Check for new brings them into your connections. Then their circle can be scanned, and the people they know fill in here: ${next} degree.`;
   } else {
     title = `Nobody from ${first}’s circle yet`;
-    body = `LinkedIn only shows the connections of people you’re connected to. Connect with ${first}; once they accept and their circle is scanned, the people they know fill in here: ${next} degree.`;
+    body = `You can only see the connections of people you’re connected to. Connect with ${first}; once they accept and their circle is scanned, the people they know fill in here: ${next} degree.`;
     action = <button type="button" onClick={() => onSelect?.(person)} style={secondary}>Open {first}’s card</button>;
   }
   return (

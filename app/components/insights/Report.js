@@ -100,7 +100,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
         lede={circles
           ? <>Your {fmt(reach.d1)} connections, and everyone in the {fmt(reach.circles)} circle{reach.circles === 1 ? '' : 's'} you’ve scanned so far. Each circle added about <W>{fmt(cover.perCircle)}</W> people you didn’t already reach.</>
           : source === 'csv'
-            ? 'A CSV import is your connections only: LinkedIn’s export has no circles. A scan of their circles adds the people one step further out.'
+            ? 'A CSV import is your connections only: the export has no circles. A scan of their circles adds the people one step further out.'
             : <>Your {fmt(reach.d1)} connections. Their circles add the people one step further out, once they’re scanned.</>}
         src={`${reach.source}${reach.sharedRows ? ` ${fmt(reach.sharedRows)} times, someone turned up in another circle as well; they count once here.` : ''}`}>
         <div style={{ display: 'flex', gap: 2, height: 22, borderRadius: 6, overflow: 'hidden' }}>
@@ -171,7 +171,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
       {/* ── Gatekeepers ── */}
       <Section id="gatekeepers" no={no()} {...sec} big={pc(gates.onlyShare)} bigStyle={{ color: 'var(--sd-green, #00ff88)' }}
         head="of the S and A people you can reach have one way in."
-        lede={g0 ? <>Your reach hangs on a few people. Three connections carry <W>{pc(gates.top3Share)}</W> of it, and if {g0.row.name} disappeared from LinkedIn tomorrow, <W>{fmt(g0.onlySA)}</W> S and A people would drop off your map.</> : null}
+        lede={g0 ? <>Your reach hangs on a few people. Three connections carry <W>{pc(gates.top3Share)}</W> of it, and if {g0.row.name} disappeared from your network tomorrow, <W>{fmt(g0.onlySA)}</W> S and A people would drop off your map.</> : null}
         src={gates.source}>
           <>
             <div style={{ display: 'flex', gap: 2, height: 34, borderRadius: 8, overflow: 'hidden' }}>
@@ -207,7 +207,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
                   <b style={{ fontSize: 14, ...ELLIPSIS }}>{h.row.name}</b>
                   <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', ...ELLIPSIS }}>{h.row.company || h.row.headline}</span>
                   <span style={{ fontSize: 11.5, color: 'var(--sd-fg-2, #b8c4c4)', ...ELLIPSIS }}>
-                    only via {h.via ? h.via.name : 'a connection the app can’t name'} · {h.from === 'linkedin' ? '1 mutual connection (LinkedIn)' : '1 way in (your scans)'}
+                    only via {h.via ? h.via.name : 'a connection the app can’t name'} · {h.from === 'linkedin' ? '1 mutual connection (platform count)' : '1 way in (your scans)'}
                   </span>
                 </div>
                 <em style={{ fontStyle: 'normal', fontWeight: 800, fontSize: 17, color: TIER_COLORS.S }}>{one(h.score)}</em>
@@ -254,7 +254,7 @@ export default function Report({ data, heavy, open, net, source, isMobile }) {
       {/* ── 09 Richest? ── */}
       <Section id="richest" no={no()} {...sec} big="Richest?" bigStyle={{ fontSize: isMobile ? 40 : 56, letterSpacing: -1.5, color: 'var(--sd-gold, #FFD700)' }}
         head="The app can’t know, and won’t guess."
-        lede="Sixgree doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is power: who runs the biggest companies you can reach."
+        lede="Sixgree doesn’t know anyone’s money. Profiles show titles and companies, not wealth. The closest honest measure is power: who runs the biggest companies you can reach."
         src={heavy?.companies.bigSource}>
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {['Net worth', 'Pay', 'Company revenue', 'Funding raised'].map((x) => (

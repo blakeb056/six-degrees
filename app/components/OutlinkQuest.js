@@ -130,7 +130,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                   const by = (
                     <>
                       {person.profile_url && (
-                        <a href={person.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Open on LinkedIn</a>
+                        <a href={person.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Open profile</a>
                       )}
                       <button onClick={() => send(person, cluster)} style={second ? btnGhost : btnHot}>I sent an invite · +{XP_SEND[person.tier] || 2}</button>
                     </>
@@ -200,13 +200,13 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                 </div>
                 {sent ? (
                   <>
-                    {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
+                    {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Profile</a>}
                     <button onClick={() => onUndo(p)} style={{ ...btnGhost, color: 'var(--sd-green, #00ff88)' }}>Sent ✓ (undo)</button>
                   </>
                 ) : (
                   <ConnectChoice person={p} canAuto={canAuto} size="quest" onSent={(x) => cheer(x, expanded)} connect={(second) => (
                     <>
-                      {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>LinkedIn</a>}
+                      {p.profile_url && <a href={p.profile_url} target="_blank" rel="noopener noreferrer" style={btnGhost}>Profile</a>}
                       <button onClick={() => send(p, expanded)} style={second ? btnGhost : btnHot}>Sent · +{XP_SEND[p.tier] || 2}</button>
                     </>
                   )} />

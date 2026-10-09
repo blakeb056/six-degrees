@@ -43,13 +43,13 @@ Tick *Light up a branch on hover* and hovering a dot lights up its **branch**: e
 - **Heat**: power as a thermal map, the higher someone's score among the people showing, the hotter;
 - **Degree**: your connections, the people they know, and anyone further out;
 - **Company**: the eight most common companies in view, and everyone else in grey;
-- **Warmth**: how recently you've been in touch, from the connections export read in Outlink → Messages & follow-ups (experimental).
+- **Warmth**: how recently you've been in touch, from the platform's data export read in Outlink → Messages & follow-ups (experimental).
 
 **Find** takes a name, a company or a role from two letters. Everyone who matches lights up and the rest dim; Enter flies to the best match and opens their card.
 
 ## The replay
 
-**Replay** plays your network growing. Each connection appears on the day you connected, and their circle arrives with them. There's a time slider, a length of 5 seconds, 15 (the default), 30 or a minute, and *Loop*. If you've read the connections export in Messages & follow-ups, your job starts are marked along the timeline in gold and your posts in blue, and the job you were at shows as the replay passes each date.
+**Replay** plays your network growing. Each connection appears on the day you connected, and their circle arrives with them. There's a time slider, a length of 5 seconds, 15 (the default), 30 or a minute, and *Loop*. If you've read the platform's data export in Messages & follow-ups, your job starts are marked along the timeline in gold and your posts in blue, and the job you were at shows as the replay passes each date.
 
 The replay needs "connected on" dates, which come from a scan or from the official connections export. The invented sample network has none, so there's nothing to replay until you bring your own network in.
 

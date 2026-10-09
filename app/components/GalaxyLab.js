@@ -196,7 +196,7 @@ export default function GalaxyLab() {
           )}
           {lab.colourBy === 'warmth' && clock.social === null && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
-              Warmth comes from the Social tab: import your LinkedIn export there first. Until then it&rsquo;s by tier.
+              Warmth comes from the Social tab: import your data export there first. Until then it&rsquo;s by tier.
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
@@ -266,7 +266,7 @@ export default function GalaxyLab() {
             </>
           ) : (
             <div style={small}>
-              Nothing to replay: the connections on screen have no &ldquo;connected on&rdquo; dates. A LinkedIn CSV or a
+              Nothing to replay: the connections on screen have no &ldquo;connected on&rdquo; dates. A connections CSV or a
               network scan has them; the sample network doesn&rsquo;t.
             </div>
           )}

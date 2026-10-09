@@ -6,7 +6,7 @@ tags: [network, scanning, safety, terms]
 image: /img/app/scan-budget.jpg
 ---
 
-**Automated scanning may violate the platform's terms.** Those terms prohibit using software or scripts to copy data from the service. Sixgree's scanner reads your network in a Chrome window signed into your own account, so using it is a choice you make about your own account, and we'd rather you make it knowing exactly what that means.
+**Yes: automated scanning is against the platform's terms.** Those terms prohibit using software or scripts to copy data from the service. Sixgree's scanner reads your network in a Chrome window signed into your own account, so using it is a choice you make about your own account, and we'd rather you make it knowing exactly what that means.
 
 The good news is that the risk is gradual, visible and recoverable, and you control most of it.
 
@@ -25,7 +25,7 @@ We have no record of an account being permanently banned for using Sixgree. That
 - **Keep the default daily limit** (50 searches a day). It leaves room under limits the platform doesn't publish.
 - **After a warning, stop for a day.** Don't press *Lift limits for this session* and carry on: continuing straight after a warning is what turned a warning into a hold both times. Wait about 24 hours, then come back on Slow or Medium with a small round.
 - **Map in rounds, not marathons.** 5 to 10 circles at a time, spread over days, builds the same map with a fraction of the risk.
-- **Leave full profile reads off** unless you need past roles. Profile views are one of the actions the platform may monitor.
+- **Leave full profile reads off** unless you need past roles. A profile view is the action the platform watches most closely.
 - **No risk at all:** import the official Connections.csv export ([here's how](/blog/export-network-connections/)) or explore the invented sample.
 
 ## What Sixgree does for you
@@ -40,6 +40,6 @@ Since those two holds, the scanner has been rebuilt around them:
 
 ## The short version
 
-Scanning may violate the platform's terms, and that's your call to make. If you do scan: stay on Medium or Slow, keep the default limit, and treat a warning as a day off, not a speed bump. In the cases we've recorded, that was the difference between a map and a hold.
+Scanning is against the platform's terms, and that's your call to make. If you do scan: stay on Medium or Slow, keep the default limit, and treat a warning as a day off, not a speed bump. In the cases we've recorded, that was the difference between a map and a hold.
 
 More on how the scanner paces itself: [Scanning slowly and safely](/blog/scanning-slowly/).

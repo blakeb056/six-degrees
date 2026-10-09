@@ -1,6 +1,6 @@
 ---
 title: Network connection degrees explained: first, second and third
-description: Understand your network's first-, second- and third-degree connections, how introduction paths work, and what Sixgree can show from your network data you have.
+description: Understand first-, second- and third-degree connections, how introduction paths work, and what Sixgree can show from the network data you have.
 date: 2026-10-05
 tags: [network, degrees, introductions]
 image: /img/app/separation.jpg
@@ -8,7 +8,7 @@ image: /img/app/separation.jpg
 
 **First-degree connections are people you're directly connected to. Second-degree connections are connected to your direct connections. Third-degree connections are connected to your second-degree connections.** The degree describes distance in a connection network, not how well you know someone or whether they'll introduce you.
 
-The platform's [definitions of connection degrees](https://www.linkedin.com/help/network/answer/a545636/your-network-and-degrees-of-connection) are the starting point. Sixgree helps you explore the paths in the network data available on your computer. Those views serve different purposes: the platform supplies its labels; Sixgree makes observed routes easier to inspect.
+The platform's own definitions of the degrees, in its help pages, are the starting point. Sixgree helps you explore the paths in the network data available on your computer. Those views serve different purposes: the platform supplies its labels; Sixgree makes observed routes easier to inspect.
 
 ## First degree: a direct connection
 
@@ -16,7 +16,7 @@ Think of a first-degree connection as one recorded step from you to another pers
 
 A former teammate, a recent conference contact and someone you barely remember may all carry the same first-degree label. Before asking for help, consider your actual relationship and when you last spoke.
 
-Following is different. Following someone's posts does not, by itself, make them a direct connection. The platform explains that distinction in its [follow and connect guide](https://www.linkedin.com/help/network/answer/a6266298).
+Following is different. Following someone's posts does not, by itself, make them a direct connection. The platform's own help pages explain that distinction.
 
 ## Second degree: one possible bridge
 
@@ -40,7 +40,7 @@ It is harder to act on because another person must understand and support the re
 
 Degrees count steps. They do not count trust.
 
-## a network label is not a complete introduction plan
+## A degree label is not a complete introduction plan
 
 A profile's degree badge tells you a connection category. It doesn't tell you which route fits your purpose, whether a mutual connection remembers the person, or whether the information is current.
 
@@ -57,11 +57,11 @@ With an official **Connections.csv**, you can explore your direct connections. T
 
 With circle data collected by the optional scanner, Sixgree can show people beyond your direct connections and the connections through whom they were found. **Separation** lets you inspect those people and their ways in. A connection's card can show their exclusive reach: people found only through that connection among the circles you've mapped.
 
-The app also supports exploring longer chains when the recorded links exist. It does not invent a chain to fill an empty degree. A missing route can mean missing data, not that the two people are disconnected on your network.
+The app also supports exploring longer chains when the recorded links exist. It does not invent a chain to fill an empty degree. A missing route can mean missing data, not that the two people are disconnected on the platform.
 
-This is why a route in Sixgree may differ from a network badge: the app only knows the graph you've collected. Its shortest observed path is not proof of the shortest path across your network's whole network.
+This is why a route in Sixgree may differ from the platform's degree badge: the app only knows the graph you've collected. Its shortest observed path is not proof of the shortest path across the platform's whole network.
 
-Start with the [invented sample](/docs/#get-started) to explore these ideas without accessing account on the platform. Scanning is optional and can put an account at risk; read [how scanning works](/blog/scanning-slowly/) before choosing it.
+Start with the [invented sample](/docs/#get-started) to explore these ideas without accessing your account. Scanning is optional and can put an account at risk; read [how scanning works](/blog/scanning-slowly/) before choosing it.
 
 ## How to turn a possible route into a respectful request
 

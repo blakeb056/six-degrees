@@ -72,7 +72,7 @@ export function RarityTag({ rarity, count = true, small = false }) {
   if (!rarity) return null;
   const r = RARITY_BY_KEY[rarity.key];
   const title = rarity.from === 'linkedin'
-    ? `${fmt(rarity.count)} mutual connection${rarity.count === 1 ? '' : 's'}, LinkedIn’s own count`
+    ? `${fmt(rarity.count)} mutual connection${rarity.count === 1 ? '' : 's'}, the platform’s own count`
     : `${fmt(rarity.count)} way${rarity.count === 1 ? '' : 's'} in seen in your scans, which can only go up`;
   return (
     <span title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: small ? 11 : 11.5, color: 'var(--sd-fg-2, #b8c4c4)', whiteSpace: 'nowrap' }}>
@@ -173,7 +173,7 @@ export function NeedsCircles({ source, compact = false }) {
   return (
     <div style={{ fontSize: compact ? 12 : 13, color: 'var(--sd-fg-2, #b8c4c4)', lineHeight: 1.5, padding: compact ? '4px 0 6px' : '6px 0' }}>
       {csv
-        ? 'A CSV import is your connections only: LinkedIn’s export has no circles. Scan your own network to see who stands behind your connections.'
+        ? 'A CSV import is your connections only: the export has no circles. Scan your own network to see who stands behind your connections.'
         : 'Scan a few circles to see who stands behind your connections.'}
       {!csv && source === 'own' && <> <Link href="/setup" style={{ color: 'var(--sd-green, #00ff88)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Open Scan →</Link></>}
     </div>
@@ -212,7 +212,7 @@ export function AskButton({ row, bridgeId, asked, compact, canAuto = false }) {
   const size = compact ? { padding: '4px 9px', fontSize: 11 } : null;
   const ask = (second) => (
     <a href={row.profile_url} target="_blank" rel="noopener noreferrer"
-      title="Opens their LinkedIn profile in a new tab to send the request there, and marks it sent here"
+      title="Opens their profile in a new tab to send the request there, and marks it sent here"
       onClick={() => { markRequested(row, { bridgeId }).catch(() => {}); }}
       style={second
         ? { ...ACT, ...secondaryLook(compact ? 'row' : 'table'), ...size }

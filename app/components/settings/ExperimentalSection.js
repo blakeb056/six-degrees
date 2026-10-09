@@ -40,7 +40,7 @@ export default function ExperimentalSection() {
               who you can reach only through them (take them away and those people are cut off), how often they sit
               on the shortest path between two others (betweenness), and how many industries and companies their
               circle spans. Leverage, 0 to 100, blends the three. Tier plays no part, so someone low-tier who is the
-              only way to a whole company ranks high. Nothing is sent anywhere and no extra LinkedIn page is read.
+              only way to a whole company ranks high. Nothing is sent anywhere and no extra page is read.
             </div>
           </details>
         </div>

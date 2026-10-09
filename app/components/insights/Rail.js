@@ -47,10 +47,10 @@ export default function Rail({ data, heavy, open, source, onView, onHidden }) {
               more={hidden.count ? 'All →' : null} onMore={onHidden} />
             {hidden.count === 0 ? <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', padding: '2px 0 6px' }}>None yet: every S-tier person you can reach has two or more ways in.</div>
               : hidden.list.slice(0, 4).map((h, i) => (
-                <MiniRow key={h.key} first={i === 0} value={one(h.score)} label={h.from === 'linkedin' ? '1 mutual (LinkedIn)' : '1 way in (scans)'}
+                <MiniRow key={h.key} first={i === 0} value={one(h.score)} label={h.from === 'linkedin' ? '1 mutual (platform count)' : '1 way in (scans)'}
                   left={<Who row={h.row} sub={<span style={ELLIPSIS}>{[h.row.company, h.via ? `only via ${shortName(h.via.name)}` : 'only via a connection the app can’t name'].filter(Boolean).join(' · ')}</span>} />} />
               ))}
-            {hidden.count > 0 && <Src>{fmt(hidden.fromLinkedIn)} from LinkedIn’s own mutual count, {fmt(hidden.fromScans)} from the ways in your scans saw, which can only go up.</Src>}
+            {hidden.count > 0 && <Src>{fmt(hidden.fromLinkedIn)} from the platform’s own mutual count, {fmt(hidden.fromScans)} from the ways in your scans saw, which can only go up.</Src>}
           </Card>
         </>
       )}
@@ -106,7 +106,7 @@ function Richest({ heavy }) {
     <Card dashed>
       <CardHead title="Richest?" />
       <p style={{ fontSize: 12.5, color: 'var(--sd-fg-1, #e9edf3)', margin: '6px 0 8px', lineHeight: 1.5 }}>
-        Sixgree doesn’t know anyone’s money. LinkedIn shows titles and companies, not wealth. The closest honest measure is
+        Sixgree doesn’t know anyone’s money. Profiles show titles and companies, not wealth. The closest honest measure is
         power: who runs the biggest companies you can reach.
       </p>
       {!heavy ? <Counting /> : (

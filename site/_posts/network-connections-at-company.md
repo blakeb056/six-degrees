@@ -20,11 +20,11 @@ These are different views of the question. The platform helps you find profiles.
 
 Keep current and former employees separate. Both may have useful context, but a past job is not evidence of a current role or an active referral relationship.
 
-## Find direct connections on your network
+## Find direct connections on the platform
 
-Enter a company or a relevant person's name in your network's search bar, then choose **People**. Use the available filters to narrow the result to the company and first-degree connections. If a filter is not visible, look in **All filters**.
+Enter a company or a relevant person's name in the platform's search bar, then choose **People**. Use the available filters to narrow the result to the company and first-degree connections. If a filter is not visible, look in **All filters**.
 
-The platform's [search guide](https://www.linkedin.com/help/network/answer/a521824) explains search categories. Its [view-connections guide](https://www.linkedin.com/help/lms/answer/a566261) lists company and connection filters. Use those pages if the layout differs from what you see.
+The platform's own help pages explain its search categories and list the company and connection filters. Use them if the layout differs from what you see.
 
 You can also look at second-degree results. That is a starting point for checking mutual connections, not permission to assume every mutual knows the person well. Read [what the connection degrees mean](/blog/network-connection-degrees/) before treating them as an introduction plan.
 

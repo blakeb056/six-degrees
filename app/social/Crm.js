@@ -376,7 +376,7 @@ function Badges({ c }) {
     <>
       {c && !c.connection && <span style={chip('rgba(255,159,67,0.18)', '#ffc58a')}>{c.degree === 2 ? '2nd degree' : 'Not a connection'}</span>}
       {c?.kind === 'sponsored' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>Sponsored</span>}
-      {c?.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>InMail</span>}
+      {c?.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>Paid message</span>}
       {c?.crm?.stage && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)', STAGE_COLOUR[c.crm.stage])}>{stageLabel(c.crm.stage)}</span>}
     </>
   );
@@ -491,8 +491,8 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
         {row?.unlocked_from_name && c.connection && <> You met through <b style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{row.unlocked_from_name}</b>.</>}
       </div>
       <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap', fontSize: 12.5 }}>
-        {profile && <a href={profile} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Profile on LinkedIn ↗</a>}
-        {thread && <a href={thread} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Conversation on LinkedIn ↗</a>}
+        {profile && <a href={profile} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Open profile ↗</a>}
+        {thread && <a href={thread} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Open conversation ↗</a>}
       </div>
 
       <Yours c={c} onChange={onChange} />
@@ -514,7 +514,7 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
             {conv.count != null && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>{plural(conv.count, 'message')}</span>}
             {conv.mine != null && conv.count != null && conv.mine === conv.count && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)')}>Only you wrote</span>}
             {conv.folder && conv.folder !== 'inbox' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.06)')}>{conv.folder}</span>}
-            {conv.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>InMail</span>}
+            {conv.kind === 'inmail' && <span style={chip('rgba(155,89,182,0.25)')}>Paid message</span>}
             {conv.kind === 'sponsored' && <span style={chip('rgba(var(--sd-ink, 255, 255, 255), 0.08)')}>Sponsored</span>}
             {conv.unread > 0 && <span style={chip('#3498DB', '#fff')}>{conv.unread} unread</span>}
           </div>
@@ -659,7 +659,7 @@ function Group({ g, contacts, nameOf, keep, token, onPick }) {
       <div style={{ color: 'var(--sd-fg-3, #8b9a9a)', marginTop: 4, fontSize: 12.5 }}>
         {[g.last ? `Last active ${day(g.last)}` : null, g.count != null ? plural(g.count, 'message') : null].filter(Boolean).join(' · ')}
       </div>
-      {href && <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontSize: 12.5, display: 'inline-block', marginTop: 6 }}>Conversation on LinkedIn ↗</a>}
+      {href && <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontSize: 12.5, display: 'inline-block', marginTop: 6 }}>Open conversation ↗</a>}
       {g.people.length > 0 && (
         <>
           <div style={h4}>Who&rsquo;s in it</div>

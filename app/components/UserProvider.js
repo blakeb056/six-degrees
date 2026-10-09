@@ -84,7 +84,7 @@ export default function UserProvider({ children }) {
       setUserId(CSV_USER.id);
       setUserName(CSV_USER.name);
       setUserProfile({
-        name: CSV_USER.name, headline: 'Imported from your LinkedIn CSV',
+        name: CSV_USER.name, headline: 'Imported from your connections CSV',
         role: '', company: '', industry: '', sectors: [], goals: [], linkedin_url: '',
       });
       setReady(true);

@@ -289,7 +289,7 @@ function HomeInner() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)' }}>
         <div style={{ fontSize: 24, fontWeight: 700 }}>Loading Sixgree…</div>
-        <div style={{ fontSize: 14, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>Mapping your LinkedIn network</div>
+        <div style={{ fontSize: 14, color: 'var(--sd-fg-3, #888)', marginTop: 8 }}>Mapping your network</div>
       </div>
     );
   }
@@ -385,7 +385,7 @@ function HomeInner() {
                   <p style={{ color: 'rgba(var(--sd-ink, 255, 255, 255), 0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px' }}>
                     This view maps who <em>your connections</em>{' '}know: the people you haven&rsquo;t met yet.{' '}
                     {csvMode
-                      ? <>LinkedIn&rsquo;s CSV export only covers your own 1st-degree list, so there are no circles to open here.</>
+                      ? <>A connections CSV only covers your own 1st-degree list, so there are no circles to open here.</>
                       : <>Your own connections are mapped. Step 4 on the Scan page reads their circles, one person at a
                         time: the first shows up here in a few minutes, and the rest fill in over days.</>}
                   </p>

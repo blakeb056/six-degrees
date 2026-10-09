@@ -324,7 +324,7 @@ function QueueInner() {
             padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
             background: '#0077B5', color: '#fff', fontWeight: 700, fontSize: 12,
           }}>
-            Open {selected.size} on LinkedIn
+            Open {selected.size} {selected.size === 1 ? 'profile' : 'profiles'}
           </button>
           <span style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>+{filtered.filter(r => selected.has(r.id)).reduce((s, r) => s + r.xp, 0)} XP potential</span>
           <button onClick={() => setSelected(new Set())} style={{

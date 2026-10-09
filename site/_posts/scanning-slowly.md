@@ -1,36 +1,36 @@
 ---
 title: Scanning slowly and safely: pacing, budgets and the honest risk
-description: How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to account on the platform really is.
+description: How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.
 date: 2026-09-29
 updated: 2026-10-04
 tags: [scanning, safety]
 image: /img/app/scan-budget.jpg
 ---
 
-Sixgree can show you who your connections know, but only if it can read their connection lists. your network's own data export doesn't include them: it lists the people you're connected to, and nobody else. So the app has an optional **scanner** that reads them from your network, in a Chrome window you sign into yourself.
+Sixgree can show you who your connections know, but only if it can read their connection lists. The platform's own data export doesn't include them: it lists the people you're connected to, and nobody else. So the app has an optional **scanner** that reads them from the platform, in a Chrome window you sign into yourself.
 
 This post is about how that scanner behaves, and why. Start with the part that matters most.
 
 ## The risk, in plain words
 
-> automating access to the platform may break its User Agreement, and the platform can restrict accounts that do it. The scanner reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.
+> Automating access to the platform may break its User Agreement, and the platform can restrict accounts that do it. The scanner reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.
 
 Accounts have been restricted for this, and no amount of pacing makes the risk zero. That's why scanning is **optional**, and why the two other ways in carry no risk at all:
 
 - **The sample network**: 150 invented connections and the 598 people they know, built into the app, for trying every view.
-- **the official connections export**: *Settings & Privacy → Data privacy → Get a copy of your data → Connections*. It's read on your computer and shows the people you know, though not who they know.
+- **The official connections export**: *Settings & Privacy → Data privacy → Get a copy of your data → Connections*. It's read on your computer and shows the people you know, though not who they know.
 
 If you do scan, everything below is there to keep it slow, easy to follow and easy to stop.
 
 ## You sign in, not the app
 
-The scanner drives your own installed Google Chrome, with a profile of its own that the app keeps in its data folder. You sign into your network in that window yourself, once. The app never asks for, sees or stores your password. That signed-in profile is the one thing in the data folder that grants access to your account, so the app never puts it into a copy of your network, and the docs ask you never to sync or share it.
+The scanner drives your own installed Google Chrome, with a profile of its own that the app keeps in its data folder. You sign into your account in that window yourself, once. The app never asks for, sees or stores your password. That signed-in profile is the one thing in the data folder that grants access to your account, so the app never puts it into a copy of your network, and the docs ask you never to sync or share it.
 
 ## A budget, not a race
 
-Every page of someone's connections is a network search, and every circle scan opens their profile once. The scanner counts both, against limits you set on the Scan page:
+Every page of someone's connections is a search on the platform, and every circle scan opens their profile once. The scanner counts both, against limits you set on the Scan page:
 
-- **Searches**: 50 a day and 250 a month by default. The month follows your network's own, from midnight Pacific time on the 1st.
+- **Searches**: 50 a day and 250 a month by default. The month follows the platform's own, from midnight Pacific time on the 1st.
 - **Profile views**: 50 a day by default, and **at least 60 seconds between any two**, even across separate scans. There's no "no limit" choice.
 
 When a budget is used, a scan saves what it read and stops. The next one carries on from the same page. Picking more than 100 searches a day, or no monthly cap, makes the page **ask first**, and a note stays under the budget, with a button back to 50 and 250, for as long as it's that high.
@@ -55,7 +55,7 @@ And a scanner that can't read its page says so. It never reports "you have no co
 
 ## Out of your way
 
-The scanner's Chrome works in the background. Once you've signed in, its window stays out of sight (hidden, on a Mac), so it doesn't cover the app or keep your typing, and Chrome doesn't stop it to ask about saving a password, translating, notifications or restoring pages. It comes forward only when the app needs your attention: to sign in again, or to finish a check it asks for, and the notch says so on every page while it waits. If you'd rather watch it work, **Show the scanner's Chrome window** in the Scan page's *Fine-tune* keeps it in front.
+The scanner's Chrome works in the background. Once you've signed in, its window stays out of sight (hidden, on a Mac), so it doesn't cover the app or keep your typing, and Chrome doesn't stop it to ask about saving a password, translating, notifications or restoring pages. It comes forward only when the platform needs you: to sign in again, or to finish a check it asks for, and the notch says so on every page while it waits. If you'd rather watch it work, **Show the scanner's Chrome window** in the Scan page's *Fine-tune* keeps it in front.
 
 ## What it's doing, on every page
 
@@ -71,7 +71,7 @@ One newer option is marked experimental on the Scan page, and off by default:
 
 - **All-day pacing (Auto-Bridge)**, with an **Auto scan** button once it's ticked. Up to 8 pages in a sitting, then **an hour's rest**; searches only between **09:00 and 18:00** on your computer's clock; never more than 40 searches in a day or 200 in a week, however high your budget; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn't yet been tried on a live account, which is why it's labelled the way it is.
 
-There used to be a second, *Hide the Chrome window while scanning*, which ran Chrome with no window at all. Every scan now runs out of sight in a real Chrome window instead, which comes forward when the app needs your attention, so that option is gone.
+There used to be a second, *Hide the Chrome window while scanning*, which ran Chrome with no window at all. Every scan now runs out of sight in a real Chrome window instead, which comes forward when the platform needs you, so that option is gone.
 
 ## Why go to this trouble?
 

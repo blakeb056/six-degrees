@@ -329,7 +329,7 @@ export const BEFORE = [
   },
   {
     id: 'preview-3', commits: 4, stage: 'Preview', date: '2026-08-25', title: 'Preview 3: signing in first',
-    text: 'The scanner waited for you to sign in to LinkedIn yourself before reading anything, a first scan read your whole list, and loading the sample network could be undone.',
+    text: 'The scanner waited for you to sign in yourself before reading anything, a first scan read your whole list, and loading the sample network could be undone.',
   },
   {
     id: 'preview-2', commits: 9, stage: 'Preview', date: '2026-08-24', title: 'Preview 2: one command to run it',
@@ -349,7 +349,7 @@ export const BEFORE = [
   },
   {
     id: 'beta-static', commits: 7, stage: 'Beta', date: '2026-07-12', title: 'Beta 1: the static version',
-    text: 'Your LinkedIn network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data never left your device.',
+    text: 'Your network as a galaxy, with leverage tiers, bridges and introduction paths. Local-first and entirely static: the first version where your data never left your device.',
   },
   {
     id: 'alpha-6', commits: 12, stage: 'Alpha', date: '2026-06-18', title: 'Alpha 6: on your phone, and a launch page',
@@ -373,9 +373,8 @@ export const BEFORE = [
   },
   {
     id: 'alpha-first-build', commits: 58, stage: 'Alpha', date: '2026-06-11', title: 'Alpha 1: the first build',
-    text: '"6 Degrees of Separation": a LinkedIn network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Sixgree started.',
-    archive: 'https://six-degrees-linkedin.vercel.app/',
-    image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation, Map your LinkedIn power network', width: 800, height: 500, caption: 'The first build, June 2026' },
+    text: '"6 Degrees of Separation": a network research tool with a force-directed D3 graph, hosted online, with a setup page and a launcher you could double-click. Where Sixgree started.',
+    image: { src: '/img/first-build-june-2026.jpg', alt: 'The first build\'s welcome screen: 6 Degrees of Separation', width: 800, height: 500, caption: 'The first build, June 2026' },
   },
 ];
 
@@ -387,7 +386,7 @@ export function beforeHtml() {
           <p class="release-links"><a href="${b.archive}">Archive: the original prototype (June 2026), kept as it was</a></p>` : ''}
         </header>
         <div class="prose release-notes"><p>${escapeHtml(b.text)}</p></div>${b.image ? `
-        <figure class="archive-shot"><a href="${b.archive}"><img src="${b.image.src}" alt="${escapeHtml(b.image.alt)}" width="${b.image.width}" height="${b.image.height}" loading="lazy"></a><figcaption>${escapeHtml(b.image.caption)}</figcaption></figure>` : ''}
+        <figure class="archive-shot">${b.archive ? `<a href="${b.archive}">` : ''}<img src="${b.image.src}" alt="${escapeHtml(b.image.alt)}" width="${b.image.width}" height="${b.image.height}" loading="lazy">${b.archive ? '</a>' : ''}<figcaption>${escapeHtml(b.image.caption)}</figcaption></figure>` : ''}
       </article>`).join('\n');
   return `      <section class="before" id="before-0-1" aria-labelledby="before-h">
         <h2 id="before-h">Before 0.1</h2>
@@ -582,7 +581,7 @@ export function build(root, out, { images = true } = {}) {
   }
   for (const [oldSlug, newSlug] of Object.entries(BLOG_REDIRECTS)) {
     const target = `/blog/${newSlug}/`;
-    write(`/blog/${oldSlug}/`, `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${target}"><link rel="canonical" href="${SITE}${target}"><title>Article moved</title></head><body><p>This article has moved. <a href="${target}">Continue to the updated article</a>.</p></body></html>\n`);
+    write(`/blog/${oldSlug}/`, `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${target}"><meta name="robots" content="noindex"><link rel="canonical" href="${SITE}${target}"><title>Article moved</title></head><body><p>This article has moved. <a href="${target}">Continue to the updated article</a>.</p></body></html>\n`);
   }
   writeFile('blog/feed.xml', blogFeed(site));
   writeFile('releases/feed.xml', releaseFeed(site));
