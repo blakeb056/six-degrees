@@ -390,7 +390,8 @@ function HomeInner() {
                         time: the first shows up here in a few minutes, and the rest fill in over days.</>}
                   </p>
                   <p style={{ color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                    {csvMode ? <>The local scanner maps those circles (and captures real photos).{' '}</> : null}
+                    {csvMode ? <>The optional scanner maps those circles and captures real photos. It runs your own
+                      account automatically, and the platform may restrict accounts that do this.{' '}</> : null}
                     <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>
                       {csvMode ? 'Set up scanning' : 'Map who they know'} &rarr;
                     </Link>
