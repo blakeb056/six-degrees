@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Next.js 16.3.8 and sharp 0.35.5, for published security fixes.** Both ship inside the app.
+  Sixgree's server only answers your own computer (`127.0.0.1`), and it uses none of the
+  affected features: images fetched from other sites, cached pages behind a catch-all route or
+  the Pages Router, draft mode with Cache Components, metadata image routes, and sharp reading
+  SVG files. The one advisory for Next's development server reaches only people running
+  `npm run dev` on Sixgree's code. source-map-js, used only while building, moves to 1.2.2.
+
 ## [1.2.8] - 2026-10-09
 
 ### Changed
