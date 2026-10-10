@@ -60,7 +60,7 @@
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock"
       },
-      "downloadUrl": "https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg",
+      "downloadUrl": "https://sixgree.com/download/",
       "installUrl": "https://sixgree.com/download/#install",
       "releaseNotes": "https://github.com/blakeb056/six-degrees/releases",
       "image": "https://sixgree.com/img/og-sixgree.jpg",
@@ -251,47 +251,9 @@
         <a href="/download/">All downloads</a>.
       </p>
 
-      <!-- Two downloads. The first is for this computer: app.js shows one of the three
-           (Mac without JavaScript). The second offers Windows to a Mac, and hides on
-           Windows and Linux, where the first already is theirs. -->
-      <div class="cta-row">
-        <div class="cta-main" data-for="mac">
-          <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg">
-            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-            <span class="dl-text">
-              <span class="dl-title">Download for Mac</span>
-              <span class="dl-sub" id="dl-main-sub">Free · Apple Silicon</span>
-            </span>
-          </a>
-        </div>
-        <div class="cta-main" data-for="linux" hidden>
-          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb">
-            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="dl-text">
-              <span class="dl-title">Download for Linux</span>
-              <span class="dl-sub">Free · beta · .deb for Ubuntu and Debian</span>
-            </span>
-          </a>
-        </div>
-        <div class="cta-main" data-for="windows" hidden>
-          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe">
-            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="1.5" width="10" height="10" fill="#F25022"/><rect x="12.5" y="1.5" width="10" height="10" fill="#7FBA00"/><rect x="1.5" y="12.5" width="10" height="10" fill="#00A4EF"/><rect x="12.5" y="12.5" width="10" height="10" fill="#FFB900"/></svg>
-            <span class="dl-text">
-              <span class="dl-title">Download for Windows</span>
-              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
-            </span>
-          </a>
-        </div>
-        <div class="cta-main" data-for="mac">
-          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe">
-            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="1.5" width="10" height="10" fill="#F25022"/><rect x="12.5" y="1.5" width="10" height="10" fill="#7FBA00"/><rect x="1.5" y="12.5" width="10" height="10" fill="#00A4EF"/><rect x="12.5" y="12.5" width="10" height="10" fill="#FFB900"/></svg>
-            <span class="dl-text">
-              <span class="dl-title">Download for Windows</span>
-              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
-            </span>
-          </a>
-        </div>
-      </div>
+      <!-- Downloads PAUSED on 2026-10-09 while Sixgree is reorganized. The three download buttons
+           are in git history: `git show ed9f7fb:site/index.html`. -->
+      <p class="fine center" id="downloads-paused"><strong>Downloads are paused</strong> while Sixgree is reorganized. Already have it? It keeps working, and your network stays on your computer.</p>
       <!-- On the roadmap, not out yet: dimmed, not links. -->
       <div class="cta-row cta-soon">
         <span class="dl is-soon" aria-disabled="true">
@@ -309,7 +271,6 @@
           </span>
         </span>
       </div>
-      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg">Download for Intel</a> · </span><a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb">Linux (beta)</a> · <a href="/download/">All downloads and install help</a></p>
       <p class="fine" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
 
       <!-- Shown once a Mac download starts (app.js): what to do with the file. -->
@@ -720,8 +681,8 @@
         <a class="dl primary" href="/download/">
           <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="dl-text">
-            <span class="dl-title">Download Sixgree</span>
-            <span class="dl-sub">Free · Mac · Windows and Linux in beta</span>
+            <span class="dl-title">Downloads are paused</span>
+            <span class="dl-sub">Back soon · already installed? It keeps working</span>
           </span>
         </a>
       </div>
