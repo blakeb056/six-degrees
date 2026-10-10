@@ -317,39 +317,44 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 
 ## First run
 
-The app opens on a welcome screen with three ways in, and asks nothing about you:
+The app opens on a welcome screen with three ways in, and asks nothing about you. It
+recommends the CSV import, and has it chosen when it opens:
 
-- **Scan my network**: a guided page that ticks each step off as it goes. It first asks
-  one optional question, what field you're in (see *Your sector* below), and *Skip for
-  now* is fine. Then it sets up the scanner in one click, you sign into your account
-  yourself in a Chrome window, and then it scans in the background: the scanner's Chrome
-  stays out of your way and comes forward only if the platform needs you (to sign in
-  again, or to finish a check it asks for). Needs Google Chrome. The Mac app brings its own
-  Python; with `npx sixgree` the page uses yours, or sets up a private one with a
-  click. It checks and says what's missing. The app marks this *Recommended* because
-  it's the only way to Degrees and Outlink. Read the warning above first. On a Mac,
-  macOS may ask whether Sixgree can manage apps while you scan: that's Chrome
-  updating itself, and scanning works either way (step 1 has a button to allow it once).
-- **Import a connections CSV**: the official export, read on your machine. On the
-  platform: **Settings & Privacy → Data privacy → Get a copy of your data →
-  Connections**. The platform emails a link in about ten minutes; unzip it and drop
-  `Connections.csv` into the app. It's kept on your computer until you remove it.
+- **Import a connections CSV** (*Recommended*): the official export, read on your
+  machine, with no risk to your account. On the platform: **Settings & Privacy → Data
+  privacy → Get a copy of your data → Connections**. The platform emails a link in about
+  ten minutes; unzip it and drop `Connections.csv` into the app. It's kept on your
+  computer until you remove it.
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
+- **Scan my network** (optional): adds who your connections know, the only way to
+  Degrees and Outlink for your own network. It runs your own account automatically, and
+  the platform may restrict accounts that do this: read the warning above first. A
+  guided page ticks each step off as it goes. It first asks one optional question, what
+  field you're in (see *Your sector* below), and *Skip for now* is fine. Then it sets up
+  the scanner in one click, you sign into your account yourself in a Chrome window, and
+  then it scans in the background: the scanner's Chrome stays out of your way and comes
+  forward only if the platform needs you (to sign in again, or to finish a check it asks
+  for). Needs Google Chrome. The Mac app brings its own Python; with `npx sixgree` the
+  page uses yours, or sets up a private one with a click. It checks and says what's
+  missing. On a Mac, macOS may ask whether Sixgree can manage apps while you scan:
+  that's Chrome updating itself, and scanning works either way (step 1 has a button to
+  allow it once).
 
-|  | Your scan | Your `Connections.csv` | Sample network |
+|  | Your `Connections.csv` | Sample network | Your scan (optional) |
 |---|---|---|---|
-| Setup | Chrome (Python comes with the Mac app) | ~10 min (the file comes by email) | none |
+| Setup | ~10 min (the file comes by email) | none | Chrome (Python comes with the Mac app) |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
-| **Degrees** (people you *haven't* met) | ✅ | — | ✅ |
-| **Outlink** (getting introduced) | ✅ | — | — |
-| Profile photos | ✅ | initials | initials |
-| Risk to your account | **yes**, see above | none | none |
+| **Degrees** (people you *haven't* met) | — | ✅ | ✅ |
+| **Outlink** (getting introduced) | — | — | ✅ |
+| Profile photos | initials | initials | ✅ |
+| Risk to your account | none | none | **yes**, see above |
 
-**The CSV is the safe path, and deliberately the shallower one.** The export only
-contains people you're already connected to, so Degrees and Outlink, the views about
-people you *haven't* met, have nothing to draw. That data exists in no official export;
-the scanner is the only way to it, and it's opt-in for that reason.
+**The CSV is the safe path, and the one Sixgree recommends.** It's also deliberately
+the shallower one: the export only contains people you're already connected to, so
+Degrees and Outlink, the views about people you *haven't* met, have nothing to draw.
+That data exists in no official export; the scanner is the only way to it, and it's
+opt-in for that reason.
 
 While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Your CSV
 ×*, and Outlink and Scan are hidden. Neither is ever added to your network. The sample

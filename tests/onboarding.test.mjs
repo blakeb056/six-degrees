@@ -5,6 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   STEPS, SETUP_KEY, onboardingStep, opensSetup, readyChecks, connectState, firstScan, followedScan, photosNote, readSetupMemory, rememberSetup, canOpen, here,
 } from '../lib/onboarding.js';
@@ -22,6 +23,20 @@ test('a new install opens on Welcome, and nothing at all until the scanner has a
   assert.equal(onboardingStep(null), null);
   assert.equal(onboardingStep(status()), 'welcome');
   assert.equal(onboardingStep(status(), { started: false }), 'welcome');
+});
+
+// The welcome screen itself (app/components/onboarding/steps.js), read as text.
+test('Welcome recommends the CSV import and has it chosen; scanning is offered last, with its risk', () => {
+  const src = readFileSync(new URL('../app/components/onboarding/steps.js', import.meta.url), 'utf8');
+  const welcome = src.slice(src.indexOf('export function Welcome'), src.indexOf('export function GetReady'));
+  assert.match(welcome, /useState\('csv'\)/, 'its button as it opens imports a CSV, never starts scanning');
+  const at = (key) => welcome.indexOf(`option('${key}'`);
+  assert.ok(at('csv') > 0 && at('csv') < at('sample') && at('sample') < at('scan'), 'CSV first, then the sample, scanning last');
+  const csv = welcome.slice(at('csv'), at('sample'));
+  const scan = welcome.slice(at('scan'), welcome.indexOf('</Frame>'));
+  assert.match(csv, /tag: 'Recommended'/);
+  assert.doesNotMatch(scan, /tag:/, 'scanning is offered, not recommended');
+  assert.match(scan, /note: '[^']*may restrict accounts that do this\.'/, 'and says what it risks');
 });
 
 test('chose to scan: Get ready until Chrome, the scanner and "I understand" are all there', () => {
