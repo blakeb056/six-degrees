@@ -4,140 +4,17 @@ description: Download Sixgree free for Mac (Apple Silicon and Intel), and in bet
 crumb: Download
 path: /download/
 type: WebPage
-updated: 2026-09-29
+updated: 2026-10-09
 -->
     <header class="page-hero">
       <p class="kicker">Download</p>
       <h1>Get Sixgree</h1>
-      <p class="lede">Free for Mac, and now for Windows and Linux too, in beta: the same app, with everything it needs
-        inside.</p>
+      <p class="lede">Free for Mac, and in beta for Windows and Linux. Downloads are paused for now.</p>
       <p class="fine center" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
     </header>
 
     <section class="download" id="download">
 <!-- gen:downloads --><!-- /gen:downloads -->
-    </section>
-
-    <nav class="on-page" aria-label="On this page">
-      <a href="#install">Install on a Mac</a>
-      <a href="#windows">Windows</a>
-      <a href="#linux">Linux</a>
-      <a href="#requirements">Requirements</a>
-      <a href="#updating">Updating</a>
-      <a href="#troubleshooting">Troubleshooting</a>
-    </nav>
-
-    <section class="install" id="install">
-      <p class="kicker">macOS</p>
-      <h2>Install it in a minute</h2>
-      <figure class="video">
-        <video controls playsinline preload="metadata" poster="/video/install-mac-poster.jpg?v=1.1.0" width="1920" height="1080" aria-label="Video: installing Sixgree on a Mac, narrated, with captions">
-          <source src="/video/install-mac.mp4?v=1.1.0" type="video/mp4">
-        </video>
-        <figcaption><strong>Installing on a Mac, step by step</strong> (about a minute and a quarter, narrated, with
-          captions): the download, dragging it into Applications, opening it, then the guided setup to your first
-          galaxy. Every person in it is invented.</figcaption>
-      </figure>
-      <div class="which">
-        <strong>Which download?</strong> Apple menu → <strong>About This Mac</strong>.
-        "Chip: Apple M…" means <strong>Apple Silicon</strong>. "Processor: …Intel…" means <strong>Intel</strong>.
-      </div>
-
-      <ol class="steps" role="list">
-        <li>
-          <h3>Drag it into Applications</h3>
-          <p>Open the file you downloaded (<strong>Sixgree-Mac-….dmg</strong>, in your Downloads folder).
-            In the window that opens, drag <strong>Sixgree</strong> onto the <strong>Applications</strong> folder.</p>
-        </li>
-        <li>
-          <h3>Open it</h3>
-          <p>Open <strong>Sixgree</strong> from Applications. Signed by Blake Burford and notarized by Apple: it
-            opens like any Mac app. The first time, macOS asks whether to open an app downloaded from the internet:
-            click <strong>Open</strong>.</p>
-        </li>
-      </ol>
-
-      <div class="terminal">
-        <h3>Or install it with Terminal</h3>
-        <p>Press <kbd>⌘</kbd> <kbd>Space</kbd>, type <em>Terminal</em> and press Return. Paste this line and press Return:</p>
-        <div class="cmd">
-          <code id="cmd">curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash</code>
-          <button type="button" class="copy" data-copy="cmd" aria-label="Copy the install command">Copy</button>
-        </div>
-        <p class="fine">It downloads the right version for your Mac, checks the file is exactly the one published,
-          puts Sixgree in Applications and opens it. Running it again updates the app.
-          <a href="https://github.com/blakeb056/six-degrees/blob/main/install.sh">Read the script</a>.</p>
-      </div>
-      <p class="fine center">Every release has a <code>SHA256SUMS</code> file
-        (<a href="https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS">latest</a>). To check a
-        download yourself: <code>shasum -a 256 ~/Downloads/Sixgree-Mac-*.dmg</code>, and compare.</p>
-    </section>
-
-    <section class="windows" id="windows">
-      <p class="kicker">Windows <span class="pill">beta</span></p>
-      <h2>Install on Windows</h2>
-      <p class="intro">The same app as on the Mac, for Windows 10 or 11 (64-bit), with the scanner's Python inside.</p>
-      <ol class="steps" role="list">
-        <li>
-          <h3>Download it and open it</h3>
-          <p>Download <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe"><strong>Sixgree-Windows-Setup.exe</strong></a> and
-            open it. It installs for you alone (no administrator password), adds Sixgree to the Start Menu and the
-            Desktop, and opens it.</p>
-        </li>
-        <li>
-          <h3>If SmartScreen asks, run it anyway</h3>
-          <p>It isn't signed with a paid certificate yet, so Windows may say it protected your PC. Choose
-            <strong>More info → Run anyway</strong>. Once per download.</p>
-        </li>
-        <li>
-          <h3>Updating</h3>
-          <p>Open a newer Setup.exe: it closes Sixgree, puts the new version in its place and opens it.
-            <strong>Settings → Updates</strong> tells you when there is one.</p>
-        </li>
-      </ol>
-      <p class="fine">Your network stays in <code>%USERPROFILE%\.six-degrees</code>; uninstalling (Settings → Apps)
-        never touches it. Scanning drives Google Chrome, which it needs for that part only.
-        This is a beta: if something doesn't work, <a href="https://github.com/blakeb056/six-degrees/issues">say so on GitHub</a>.</p>
-    </section>
-
-    <section class="linux" id="linux">
-      <p class="kicker">Linux <span class="pill">beta</span></p>
-      <h2>Install on Linux</h2>
-      <p class="intro">On Ubuntu or Debian (64-bit), download
-        <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb"><strong>Sixgree-Linux-x64.deb</strong></a> and install it:</p>
-      <div class="terminal">
-        <div class="cmd">
-          <code id="cmd-deb">sudo apt install ./Sixgree-Linux-x64.deb</code>
-          <button type="button" class="copy" data-copy="cmd-deb" aria-label="Copy the install command">Copy</button>
-        </div>
-        <p class="fine">Then open Sixgree from your apps. Elsewhere, the
-          <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.tar.gz">.tar.gz</a> runs from its folder: on Ubuntu 24.04 and later, run
-          <code>sudo chown root:root chrome-sandbox &amp;&amp; sudo chmod 4755 chrome-sandbox</code> in it once (or start it with
-          <code>--no-sandbox</code>). Scanning needs Google Chrome (not Chromium).</p>
-      </div>
-      <p class="intro">Or, without installing anything, run it from the Terminal with <code>npx</code>, which comes with
-        Node.js: it downloads Sixgree from <strong>npm</strong>, the public library of Node.js programs, and runs it in
-        your browser.</p>
-      <figure class="video">
-        <video controls muted playsinline preload="metadata" poster="/video/linux-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: running Sixgree on Linux">
-          <source src="/video/linux.mp4?v=0.2.1" type="video/mp4">
-        </video>
-        <figcaption><strong>Running it on Linux</strong> (half a minute): one command, then the same app in your browser.</figcaption>
-      </figure>
-      <div class="terminal">
-        <h3>One command</h3>
-        <p>Install <strong>Node 22.13 or later</strong> (from nodejs.org or nvm; Ubuntu's own <code>nodejs</code> package is
-          too old), then run:</p>
-        <div class="cmd">
-          <code id="cmd-linux">npx sixgree</code>
-          <button type="button" class="copy" data-copy="cmd-linux" aria-label="Copy the Linux command">Copy</button>
-        </div>
-        <p class="fine">It opens <code>http://127.0.0.1:6363</code> in your browser and keeps your data in
-          <code>~/.six-degrees</code> (<code>--data-dir</code> puts it elsewhere; <code>--no-open</code> on a machine without
-          a desktop). Stop it with Ctrl-C; update it with <code>npx sixgree@latest</code>. Scanning also needs Google
-          Chrome (not Chromium), and Python 3.10 to 3.14 with venv, or the Scan page's <strong>Set up the scanner</strong>,
-          which downloads a private copy with one click. It's tested on Ubuntu, and works on a Mac too.</p>
-      </div>
     </section>
 
     <section class="requirements" id="requirements">
@@ -157,39 +34,18 @@ updated: 2026-09-29
       </div>
     </section>
 
-    <section class="updating" id="updating">
-      <p class="kicker">Updating</p>
-      <h2>Updates in one click</h2>
-      <div class="prose narrow">
-        <p>Choose <em>Sixgree → Check for Updates…</em> (or open <strong>Settings</strong> with ⌘,). Nothing checks by
-          itself. If there's a newer version, click <strong>Install and restart</strong>: the app downloads it from GitHub,
-          checks it against the release's published checksums and its code signature, puts it in place and opens it
-          again. If the new version won't open, your old one is put back.</p>
-        <p>Your network isn't stored in the app, so updates never touch it, and each new version copies your data into
-          a <code>backups</code> folder before it first opens it. On Linux, stop it and run
-          <code>npx sixgree@latest</code>.</p>
-      </div>
-    </section>
-
     <section class="faq" id="troubleshooting">
       <p class="kicker">Troubleshooting</p>
       <h2>If something's not right</h2>
       <dl>
         <div>
           <dt>macOS says it can't check the app for malware</dt>
-          <dd>That's a copy from version 0.8.0 or earlier, before the app was signed. Download the newest one above (signed
-            by Blake Burford and notarized by Apple), or allow that copy once: close the message (not <em>Move to Trash</em>),
+          <dd>That's a copy from version 0.8.0 or earlier, before the app was signed. To keep using it, allow it once: close the message (not <em>Move to Trash</em>),
             then System Settings → Privacy &amp; Security → Open Anyway.</dd>
         </div>
         <div>
           <dt>I'm not sure whether I have Apple Silicon or Intel</dt>
-          <dd>Apple menu → About This Mac. "Chip: Apple M…" is Apple Silicon; "Processor: …Intel…" is Intel. The Terminal
-            line picks the right one for you.</dd>
-        </div>
-        <div>
-          <dt>On Linux, npx says my Node is too old</dt>
-          <dd>Sixgree needs Node 22.13 or later. Ubuntu's own <code>nodejs</code> package is older; install Node from
-            nodejs.org or with nvm instead.</dd>
+          <dd>Apple menu → About This Mac. "Chip: Apple M…" is Apple Silicon; "Processor: …Intel…" is Intel.</dd>
         </div>
         <div>
           <dt>The Scan page says Chrome is missing</dt>
