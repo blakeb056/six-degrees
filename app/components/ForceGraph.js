@@ -6,7 +6,7 @@ import { localPhoto } from '../../lib/photos';
 import { reframe, settle, seedAngles } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
 import { fillArcs, RING } from '../../lib/dot-rings';
-import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
@@ -81,7 +81,7 @@ const RING_CSS = `
 .galaxy-ring.still .galaxy-ring-pulse { animation: none; opacity: 0.8; }
 svg.still text { transition: none; }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2 }) {
+export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, degreeLegend = null, onToggleDegree }) {
   // The ring round a connection's dot (design C): how much of their circle is
   // scanned, and how many in it are ready to scan (lib/reach.js).
   const marks = useMemo(() => {
@@ -261,6 +261,26 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
         padding: '6px 14px', borderRadius: 16, background: 'var(--sd-surface, rgba(10,15,30,0.8))', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
         color: 'var(--sd-fg-1, #e6edf5)', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
       }} />
+      {/* Degrees: the legend is the degree filter, each with how many are in it (app/page.js degreeLegend). */}
+      {degreeLegend && onToggleDegree ? (
+        <div data-degree-legend="" style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
+          {degreeLegend.map(({ degree, count, shown }) => (
+            <button key={degree} type="button" onClick={() => onToggleDegree(degree)} disabled={!count}
+              title={shown ? `Hide the ${DEGREE_WORDS[degree]} degree` : `Show the ${DEGREE_WORDS[degree]} degree`}
+              aria-pressed={shown}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 12,
+                cursor: count ? 'pointer' : 'default', opacity: count ? (shown ? 1 : 0.45) : 0.3,
+                color: 'var(--sd-fg-1, #e6edf5)', background: 'var(--sd-surface, rgba(10,15,30,0.8))',
+                border: `1px solid ${shown ? DEGREE_COLOURS[degree] : 'rgba(var(--sd-ink, 255, 255, 255), 0.15)'}`,
+              }}>
+              <span className="sd-dot-html" style={{ width: 9, height: 9, borderRadius: '50%', background: DEGREE_COLOURS[degree], display: 'inline-block' }} />
+              <b style={{ fontWeight: 650 }}>{DEGREE_WORDS[degree]}</b>
+              <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontVariantNumeric: 'tabular-nums' }}>{count.toLocaleString('en-US')}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
       <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
         {scheme.legend.map(([label, color]) => (
           <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
@@ -269,9 +289,12 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
           </span>
         ))}
       </div>
+      )}
     </div>
   );
 }
+
+const DEGREE_WORDS = { 1: '1st', 2: '2nd', 3: '3rd' };
 
 // Tooltips are fixed to the window, never part of the page's layout.
 //

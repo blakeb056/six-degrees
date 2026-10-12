@@ -161,10 +161,10 @@ test('the branch light-up starts off, even in a setting saved when it was on', a
   } finally { delete globalThis.localStorage; }
 });
 
-test('Network Circle\'s notch and the Physics panel pick a layout the same way, Rings · Clusters · Orbit', async () => {
+test('Network Circle\'s notch and the Physics panel pick a layout the same way, Rings · Clusters · Orbit · Degrees', async () => {
   // A copy of the module of its own, so the sliders it moves are its own.
   const lab = await import('../lib/galaxy-lab.js?notch-layouts');
-  assert.deepEqual(lab.LAYOUTS.map((l) => l.key), ['rings', 'clusters', 'orbit']);
+  assert.deepEqual(lab.LAYOUTS.map((l) => l.key), ['rings', 'clusters', 'orbit', 'degrees']);
   const fit = lab.clockNow().fit;
   lab.pickLayout('clusters');
   assert.equal(lab.layoutNow(), 'clusters');
@@ -179,6 +179,17 @@ test('Network Circle\'s notch and the Physics panel pick a layout the same way, 
   assert.equal(lab.labNow().sizeBy, 'power');
   lab.pickLayout('nonsense');                         // not a layout: nothing moves
   assert.equal(lab.layoutNow(), 'rings');
+  // Degrees (Blake, 2026-10-12): Rings' forces, coloured by degree; leaving it takes its
+  // colours with it, and any other colouring you chose stays.
+  lab.pickLayout('degrees');
+  assert.equal(lab.layoutNow(), 'degrees');
+  assert.equal(lab.labNow().colourBy, 'degree');
+  lab.pickLayout('rings');
+  assert.equal(lab.layoutNow(), 'rings');
+  assert.equal(lab.labNow().colourBy, 'tier');
+  lab.setLab({ colourBy: 'heat' });
+  lab.pickLayout('orbit');
+  assert.equal(lab.labNow().colourBy, 'heat');
 });
 
 test('Physics starts on, and is a switch of its own: not part of a saved layout', async () => {

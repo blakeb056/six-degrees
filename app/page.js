@@ -9,7 +9,7 @@ import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
-import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
+import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts, makeGrid, toggleDegree, GRID_DEGREES, TIERS } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
@@ -272,17 +272,43 @@ function HomeInner() {
   // sliders moved to your own, none is lit.
   const hasNetwork = degree1.length > 0;
   const layout = useSyncExternalStore(watchLab, layoutNow, () => 'rings');
+  // Degrees (Blake, 2026-10-12: "a degree filter where it shows everyone by degree"):
+  // picking it turns every degree on in the filter, and leaving it puts back the
+  // filter you had, so Rings opens as you left it.
+  const gridBeforeDegrees = useRef(null);
+  const pickGalaxyLayout = useCallback((key) => {
+    const was = layoutNow();
+    pickLayout(key);
+    if (key === 'degrees' && was !== 'degrees') {
+      setGrids((g) => {
+        gridBeforeDegrees.current = g.network;
+        return { ...g, network: makeGrid([1, 2, 3]) };
+      });
+    } else if (key !== 'degrees' && was === 'degrees' && gridBeforeDegrees.current) {
+      const back = gridBeforeDegrees.current;
+      gridBeforeDegrees.current = null;
+      setGrids((g) => ({ ...g, network: back }));
+    }
+  }, []);
+  // The legend under the map, in Degrees: each degree with how many are in it,
+  // tapped to show or hide it, for every tier at once (lib/tier-grid.js toggleDegree).
+  const degreeLegend = useMemo(() => {
+    if (mode !== 'network' || layout !== 'degrees') return null;
+    const shown = (d) => TIERS.some((t) => !grids.network.hidden.includes(t) && grids.network.degrees[t].includes(d));
+    return GRID_DEGREES.filter((d) => d <= 3).map((d) => ({ degree: d, count: (byDegree[d] || []).length, shown: shown(d) }));
+  }, [mode, layout, grids.network, byDegree]);
+  const toggleLegendDegree = useCallback((d) => setGrids((g) => ({ ...g, network: toggleDegree(g.network, d) })), []);
   const notchTabs = useMemo(() => {
     if (!hasNetwork || setupOpen) return null; // none over the setup, which a network can be under (setupOpen)
     if (view.key === 'galaxy') {
-      return { items: GALAXY_LAYOUTS, current: layout, onPick: pickLayout };
+      return { items: GALAXY_LAYOUTS, current: layout, onPick: pickGalaxyLayout };
     }
     return {
       items: viewsForMode(mode).map((v) => ({ key: v.key, label: v.label, icon: v.icon, title: v.desc })),
       current: view.key,
       onPick: setVisualMode,
     };
-  }, [mode, view.key, hasNetwork, layout, setupOpen]);
+  }, [mode, view.key, hasNetwork, layout, setupOpen, pickGalaxyLayout]);
   useNotchTabs(notchTabs);
 
   if (loading) {
@@ -430,6 +456,9 @@ function HomeInner() {
             onOpenCircle: openCircle,
             onCircle: setChainIn,
             preset: separationPreset,
+            // Degrees' legend: tap a degree to show or hide it (Network Circle only).
+            degreeLegend,
+            onToggleDegree: toggleLegendDegree,
           };
           return <View {...viewProps} />;
         })()}
