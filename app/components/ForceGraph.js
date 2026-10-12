@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
 import { reframe, settle, seedAngles } from '../../lib/galaxy';
-import { reachIndex, readyByCircle, scanBars } from '../../lib/reach';
-import { ringSegments, RING } from '../../lib/dot-rings';
+import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
+import { fillArcs, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
@@ -90,9 +90,9 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const out = new Map();
     for (const c of connections) {
       if ((c.degree || 1) !== 1) continue;
-      const bars = scanBars(c, reach);
+      const fill = scanFill(c, reach);
       const r = ready.get(c.id) || 0;
-      if (bars != null || r) out.set(c.id, { bars, ready: r });
+      if (fill != null || r) out.set(c.id, { fill, ready: r });
     }
     return out;
   }, [connections, fullDegree1, fullDegree2, scanNotes]);
@@ -656,9 +656,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // Catalyst outer glow rings (rendered behind the nodes)
   // A catalyst is the green outline on their dot (design C, with the scan
-  // bars round it); the dashed glow ring that used to sit here hid the bars,
-  // so it's only drawn for a catalyst with no bars.
-  const catalysts = nodes.filter(n => n.is_catalyst && marks.get(n.id)?.bars == null);
+  // ring round it); the dashed glow ring that used to sit here hid the ring,
+  // so it's only drawn for a catalyst with no scan ring.
+  const catalysts = nodes.filter(n => n.is_catalyst && marks.get(n.id)?.fill == null);
   if (catalysts.length) {
     const defs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
     if (!defs.select('#catalyst-glow-nm').size()) {
@@ -675,22 +675,26 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('class', 'catalyst-ring');
   }
 
-  // Design C round a connection's dot: five thin bars for how much of their
-  // circle is scanned, and a small badge for how many in it are ready to scan.
+  // Design C round a connection's dot: a thin ring for how much of their
+  // circle is scanned (lib/reach.js scanFill: read solid, the rest faint, the
+  // unknown band dashed), and a small badge for how many in it are ready to scan.
   const ringed = nodes.filter((n) => marks.has(n.id));
   const dotRings = g.append('g').attr('class', 'dot-rings').style('pointer-events', 'none')
     .selectAll('g').data(ringed).join('g')
     .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
   function drawDotRing(d) {
-    const { bars, ready } = marks.get(d.id);
+    const { fill, ready } = marks.get(d.id);
     const r = nodeRadius(d) + 3.5;
     const el = d3.select(this);
     el.selectAll('*').remove();
-    if (bars != null) {
-      for (const seg of ringSegments(r)) {
-        el.append('path').attr('d', seg.d).attr('fill', 'none').attr('stroke-linecap', 'round')
-          .attr('stroke-width', 1.6).attr('stroke', seg.i < bars ? RING.filled : RING.empty);
-      }
+    if (fill != null) {
+      const arcs = fillArcs(r, fill);
+      // Styles, not attributes, for the colours that come from the look's variables.
+      if (arcs.rest) el.append('path').attr('d', arcs.rest).attr('fill', 'none').attr('stroke-width', 1.6).style('stroke', RING.rest);
+      if (arcs.unknown) el.append('path').attr('d', arcs.unknown).attr('fill', 'none').attr('stroke-width', 1.6)
+        .attr('stroke-dasharray', RING.dash).style('stroke', RING.unknown);
+      if (arcs.read) el.append('path').attr('d', arcs.read).attr('fill', 'none').attr('stroke-linecap', 'round')
+        .attr('stroke-width', 1.6).style('stroke', RING.filled);
     }
     if (ready > 0) {
       const at = r * 0.72;

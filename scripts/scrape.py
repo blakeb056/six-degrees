@@ -2795,6 +2795,11 @@ def manual_reads():
     return _scan_settings().get("manual") is True
 
 
+def dig_deeper():
+    """Scanner settings → "Dig deeper": a circle scan also reads the person's profile (_dig_into_profile)."""
+    return _scan_settings().get("digDeeper") is True
+
+
 def _chime(name):
     """Play one of manual mode's chimes (lib/chimes.js): read-1 … read-8, next, done.
 
@@ -3019,6 +3024,10 @@ def _change_progress(change):
 # page read (RESULT_COUNT_JS), kept until the read's progress is written: the
 # app's rings round a dot show pages read against it. Approximate, like the line.
 _LIST_TOTALS = {}
+# Their connection count from their profile's top card (read_top_card), kept with
+# where their list got to: { profile_url: {"connections": n, "connectionsPlus": bool} }.
+# The ring round their dot reads it (lib/reach.js) when LinkedIn gives no "About N results".
+_LIST_CARDS = {}
 
 
 def record_bridge_progress(profile_url, name, pages, more, urn=None):
@@ -3040,6 +3049,12 @@ def record_bridge_progress(profile_url, name, pages, more, urn=None):
         total = _LIST_TOTALS.get(profile_url) or old.get("total")
         if total:
             entry["total"] = int(total)
+        card = _LIST_CARDS.get(profile_url) or {}
+        connections = card.get("connections") if card.get("connections") is not None else old.get("connections")
+        if isinstance(connections, int) and connections >= 0:
+            entry["connections"] = connections
+            entry["connectionsPlus"] = bool(card.get("connectionsPlus") if card.get("connections") is not None
+                                            else old.get("connectionsPlus"))
         mine[profile_url] = entry
     _change_progress(change)
 
@@ -3130,11 +3145,13 @@ def mutual_count_text(text):
     if not re.search(r"\bmutual connections?$", line, re.I) or len(line) > 300:
         return None
     num = lambda v: int(str(v).replace(",", ""))
-    names = lambda v: len([p for p in re.split(r"\s*,\s*|\s+and\s+", v) if p])
+    # "and" or "&": LinkedIn writes "A, B & 8 other mutual connections" now
+    # (2026-10); reading only "and", every count came back as 1.
+    names = lambda v: len([p for p in re.split(r"\s*,\s*|\s+(?:and|&)\s+", v) if p])
     m = re.match(r"^([\d,]+) mutual connections?$", line, re.I)
     if m:
         return num(m.group(1))
-    m = re.match(r"^(.*?)\s*\band ([\d,]+) others? mutual connections?$", line, re.I)
+    m = re.match(r"^(.*?)\s*(?:\band|&) ([\d,]+) others? mutual connections?$", line, re.I)
     if m:
         return max(1, names(m.group(1))) + num(m.group(2))
     if re.search(r"\bis a mutual connection$", line, re.I):
@@ -3765,10 +3782,11 @@ BRIDGE_RESULTS_JS = r"""
             const l = String(text || '').replace(/\s+/g, ' ').trim();
             if (!/\bmutual connections?$/i.test(l) || l.length > 300) return null;
             const num = (s) => Number(String(s).replace(/,/g, ''));
-            const names = (s) => s.split(/\s*,\s*|\s+and\s+/).filter(Boolean).length;
+            // "and" or "&" (2026-10: "A, B & 8 other mutual connections").
+            const names = (s) => s.split(/\s*,\s*|\s+(?:and|&)\s+/).filter(Boolean).length;
             let m = l.match(/^([\d,]+) mutual connections?$/i);
             if (m) return num(m[1]);
-            m = l.match(/^(.*?)\s*\band ([\d,]+) others? mutual connections?$/i);
+            m = l.match(/^(.*?)\s*(?:\band|&) ([\d,]+) others? mutual connections?$/i);
             if (m) return Math.max(1, names(m[1])) + num(m[2]);
             if (/\bis a mutual connection$/i.test(l)) return 1;
             m = l.match(/^(.+?)\s+are mutual connections$/i);
@@ -3789,7 +3807,7 @@ BRIDGE_RESULTS_JS = r"""
           };
           // The rest of a mutual line when the names are drawn above it, each on
           // a line of its own ("Maya Chen" / "and 23 other mutual connections").
-          const tailOf = (l) => /^(and [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
+          const tailOf = (l) => /^((?:and|&) [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
           let current = null;
           const give = (n) => {
             if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
@@ -4263,6 +4281,163 @@ def _wait_for_profile_view(page):
 
 
 # ---------------------------------------------------------------------------
+# Dig deeper and the top card (Blake, 2026-10-12: "when scanning the user it will
+# either say they have 500 plus connections or sometimes over 27k … why not use
+# that", follower count "into their score if is there", and for the people whose
+# headline hides where they work, "the profile extraction as a way to retitle
+# them", built on the Read profiles pieces already here).
+#
+# The top card is read on every profile visit a circle scan makes: it's on the
+# page already, so it costs nothing. Its connection count goes with their list's
+# progress (record_bridge_progress, for the ring round their dot). With Scanner
+# settings → "Dig deeper" on, the same visit also reads their experience
+# (read_experience, or by hand in manual mode) and sends it with the card to
+# their row (push_experience): their current and past roles count in their
+# score as Read profiles' do, and their followers as recognition.
+# ---------------------------------------------------------------------------
+MANUAL_DIG_WAIT = 90              # manual mode: how long it waits for you to reach their Experience
+
+# What the profile's top card says about their reach: "500+ connections",
+# "312 connections", "27K followers", "1,234 followers · 500+ connections". Read
+# from the section that holds their name, and the link their search id comes
+# from; followers also from the Activity section's own heading. Never anywhere
+# else on the page: Interests and the side columns show other people's and
+# companies' followers.
+TOP_CARD_JS = r"""
+() => {
+  const count = (s) => {
+    const m = String(s || '').replace(/,/g, '').replace(/\s+/g, '').match(/^(\d+(?:\.\d+)?)([KkMm])?(\+)?$/);
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    if (m[2]) n *= /k/i.test(m[2]) ? 1e3 : 1e6;
+    return Number.isFinite(n) ? { n: Math.round(n), plus: Boolean(m[3]) } : null;
+  };
+  const out = { followers: null, connections: null, connectionsPlus: false };
+  const read = (text, followers, connections) => {
+    for (const raw of String(text || '').split('\n')) {
+      for (const part of raw.replace(/\s+/g, ' ').trim().split(/\s*[·•|]\s*/)) {
+        let m = part.match(/^([\d.,]+\s*[KkMm]?\+?)\s+connections?$/i);
+        if (m && connections && out.connections == null) {
+          const c = count(m[1]);
+          if (c) { out.connections = c.n; out.connectionsPlus = c.plus; }
+        }
+        m = part.match(/^([\d.,]+\s*[KkMm]?)\s+followers?$/i);
+        if (m && followers && out.followers == null) {
+          const c = count(m[1]);
+          if (c) out.followers = c.n;
+        }
+      }
+    }
+  };
+  const h1 = document.querySelector('main h1');
+  const card = h1 && (h1.closest('section') || h1.parentElement);
+  if (card) read(card.innerText, true, true);
+  for (const a of document.querySelectorAll('a[href*="connectionOf"]')) read(a.innerText, false, true);
+  if (out.followers == null) {
+    for (const sec of document.querySelectorAll('main section')) {
+      const head = (sec.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3);
+      if (head[0] === 'Activity') { read(head.join('\n'), true, false); break; }
+    }
+  }
+  return out;
+}
+"""
+
+
+def read_top_card(page):
+    """Their followers and connection count from the open profile's top card, or None when it shows neither."""
+    try:
+        got = page.evaluate(TOP_CARD_JS) or {}
+    except Exception:
+        return None
+    card = {k: got.get(k) for k in ("followers", "connections")}
+    card = {k: v for k, v in card.items() if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10 ** 9}
+    if not card:
+        return None
+    card.setdefault("followers", None)
+    card.setdefault("connections", None)
+    card["connectionsPlus"] = bool(got.get("connectionsPlus")) and card["connections"] is not None
+    return card
+
+
+def _card_words(card):
+    bits = []
+    if card.get("connections") is not None:
+        bits.append(f"{card['connections']:,}{'+' if card.get('connectionsPlus') else ''} connections")
+    if card.get("followers") is not None:
+        bits.append(f"{card['followers']:,} followers")
+    return ", ".join(bits)
+
+
+def _experience_on_file(row):
+    """Their experience is read already (Read profiles or an earlier Dig deeper)."""
+    raw = (row or {}).get("experience")
+    if not raw:
+        return False
+    try:
+        e = json.loads(raw) if isinstance(raw, str) else raw
+        return isinstance(e, dict) and e.get("status") == "read"
+    except Exception:
+        return False
+
+
+def _read_experience_by_hand(page, responses, name):
+    """Manual mode's Dig deeper: nothing on the page moves unless you move it, so
+    it says where to scroll and reads their experience as it shows, from
+    LinkedIn's own data or the page's Experience section. (result, note), or
+    (None, note) when you don't reach it in MANUAL_DIG_WAIT: nothing is noted
+    then, and the next scan of them tries again."""
+    print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience; it's read as it shows, "
+          f"then Sixgree opens their list.", flush=True)
+    start = time.time()
+    while time.time() - start < MANUAL_DIG_WAIT:
+        if stop_requested():
+            return {"status": "stopped", "why": "stopped"}, None
+        try:
+            if page.is_closed():
+                return {"status": "stopped", "why": "the window was closed"}, None
+        except Exception:
+            return {"status": "stopped", "why": "the window was closed"}, None
+        why = _pushback(page)
+        if why:
+            return {"status": "pushback", "why": why}, None
+        try:
+            dom = page.evaluate(EXPERIENCE_JS) or {}
+        except Exception:
+            dom = {}
+        data = _profile_data(page, responses)
+        if data or roles_from_items(dom.get("items")):
+            _chime("read-1")
+            return _experience_result(dom, data)
+        _manual_wait(page, MANUAL_POLL)
+    return None, f"  You didn't reach {name}'s Experience within {MANUAL_DIG_WAIT} seconds, so it's left for next time."
+
+
+def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
+    """On their open profile: the top card always (for the ring), and with Dig
+    deeper their experience too, sent with the card to their row. (how, why):
+    ("pushback", reason), ("stopped", why), or (None, None) to carry on to their list."""
+    card = read_top_card(page)
+    if card:
+        _LIST_CARDS[profile_url] = card
+        print(f"  Their profile: {_card_words(card)}.", flush=True)
+    if not dig:
+        return None, None
+    print(f"  Dig deeper: reading {name}'s profile while it's open.", flush=True)
+    if manual:
+        result, note = _read_experience_by_hand(page, responses, name)
+    else:
+        result, note = read_experience(page, responses)
+    if result and result.get("status") in ("pushback", "stopped"):
+        return result["status"], result.get("why")
+    if note:
+        print(note, flush=True)
+    if result:
+        push_experience({"profile_url": profile_url}, {**result, **({"card": card} if card else {})})
+    return None, None
+
+
+# ---------------------------------------------------------------------------
 # Manual mode (Blake, 2026-10-12: "playwright loads up the window and the user
 # has to manually scroll per page for the python to scan each page … to make
 # the user feel safer"). Scanner settings → "Manual mode for circle scans"
@@ -4546,7 +4721,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
 
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
-                       start_page=1, urn=None, on_save=None, manual=False):
+                       start_page=1, urn=None, on_save=None, manual=False, dig=False):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -4562,6 +4737,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
       budget   "daily" or "profiles": today's limit ended it (status "budget")
 
     manual: once their list is open, you page through it (_read_by_hand).
+    dig:    Dig deeper: read their profile while it's open (_dig_into_profile);
+            with their search id known already, their profile is opened for it
+            once (a profile view).
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -4573,7 +4751,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
              "pushed_back": False}
 
-    if urn:
+    known_urn = urn
+    if urn and not dig:
         # Known from an earlier read, so their profile needn't be opened again —
         # one fewer profile view, which is what LinkedIn counts most.
         print(f"  Going straight to {bridge_name}'s connections (their search id is known).")
@@ -4586,6 +4765,22 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             reach["budget"] = "profiles"
         if why:
             return [], why, reach
+
+        # Dig deeper reads LinkedIn's own data for the profile as it arrives,
+        # so it listens before the page opens (as read_profiles does).
+        responses = []
+
+        def keep(response):
+            if "/voyager/api/" in response.url and len(responses) < 60:
+                responses.append(response)
+
+        if dig:
+            try:
+                page.on("response", keep)
+            except Exception:
+                pass
+        if known_urn:
+            print(f"  Dig deeper: opening {bridge_name}'s profile once to read it (a profile view), then their list.")
 
         # Navigate to profile (wait_until="commit" — don't wait for full load)
         print(f"  Opening {bridge_name}'s profile...")
@@ -4611,10 +4806,20 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print("  Profile is not viewable — skipping.")
                 return [], "private", reach
 
-            urn = _find_connection_urn(page)
-            if urn:
+            found = _find_connection_urn(page)
+            if found:
+                urn = found
                 print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
                 break
+            if known_urn:
+                # Opened only to dig deeper: their search id is known, so a
+                # profile that has shown is enough.
+                try:
+                    if page.evaluate(PROFILE_SHOWN_JS, bridge_name):
+                        print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
+                        break
+                except Exception:
+                    pass
 
             # The connections block lazy-loads; nudge it once part-way through.
             if attempt == BRIDGE_LOAD_ATTEMPTS // 2:
@@ -4646,8 +4851,22 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             print(f"  Could not find URN — connections are private.")
             return [], "private", reach
 
-        print(f"  Found URN: {urn[:30]}...")
+        if not known_urn:
+            print(f"  Found URN: {urn[:30]}...")
         reach["urn"] = urn
+
+        # The top card, and with Dig deeper their experience, while it's open.
+        how, why = _dig_into_profile(page, bridge_name, profile_url, responses, dig, manual=manual)
+        try:
+            page.remove_listener("response", keep)
+        except Exception:
+            pass
+        if how == "pushback":
+            _pushed_back(page, reach, why or "their profile")
+            return [], "pushback", reach
+        if how == "stopped":
+            reach["more"] = True
+            return [], "stopped", reach
 
     # Step 4: search everyone they are connected to. network=["F","S","O"] is
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
@@ -5020,6 +5239,13 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     manual = manual_reads() and not EXPERIMENT.get("sitting") and not headless
     if manual:
         CHROME_WINDOW["show"] = True
+    # Dig deeper: only for someone whose experience isn't read yet. With their
+    # search id known, it would open their profile just for this: not with
+    # today's profile views used (the list itself needs none).
+    dig = dig_deeper() and not _experience_on_file(bridge)
+    if dig and urn and profiles_left() <= 0:
+        dig = False
+        print("  Dig deeper waits: today's profile views are used, and their list needs none.")
 
     print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scanning'} connections of {bridge_name} ===\n")
 
@@ -5051,7 +5277,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
                                              max_pages=max_pages, start_page=start_page, urn=urn,
-                                             on_save=save, manual=manual)
+                                             on_save=save, manual=manual, dig=dig)
             finally:
                 try:
                     browser.close()
@@ -6168,9 +6394,14 @@ def read_experience(page, responses, rng=None):
     got, answer, _ = read_with_backoff(page, look, "Their experience")
     if got in ("pushback", "stopped"):
         return {"status": got, "why": answer}, None
-    dom = seen["page"] or {}
+    return _experience_result(seen["page"] or {}, seen["data"])
+
+
+def _experience_result(dom, data_roles):
+    """What read_experience (or Dig deeper's manual read) found, as (result, note):
+    LinkedIn's own data first, else the page's Experience section; with no role
+    in either, "unreadable", never an empty list (TRAPS §7)."""
     page_roles = roles_from_items(dom.get("items"))
-    data_roles = seen["data"]
     where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(page_roles)}"
              if dom.get("found") else "the page had no Experience section")
     count = f"LinkedIn's own data had {len(data_roles)}; {where}"

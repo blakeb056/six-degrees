@@ -342,9 +342,13 @@ function scanNotes() {
     if (me) {
       const progress = readProgress(dataDir(), me.id);
       read = Object.keys(progress);
-      // How far each list was read, for the rings round a dot (lib/reach.js scanBars).
+      // How far each list was read, and how long it is (the search's count, or the
+      // one on their profile, "500+" as connectionsPlus), for the ring round a dot
+      // (lib/reach.js scanFill).
       for (const [url, e] of Object.entries(progress)) {
-        lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null };
+        const connections = Number.isInteger(e?.connections) && e.connections >= 0 ? e.connections : null;
+        lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null,
+          connections, connectionsPlus: connections != null && e?.connectionsPlus === true };
       }
     }
   } catch {}
@@ -1051,7 +1055,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads,
       // Dev mode and manual mode (lib/linkedin-limits.js). The scanner reads both from the
       // file as it goes, so a scan under way follows; Dev mode off brings the limits back.
-      dev: body.dev, manual: body.manual,
+      dev: body.dev, manual: body.manual, digDeeper: body.digDeeper,
       // Settings → Sound: manual mode's chimes and how loud (lib/chimes.js).
       chimes: body.chimes, chimeVolume: body.chimeVolume,
     });

@@ -316,6 +316,10 @@ its own.
   nothing read sets the global stop. Auto scan refuses to start and stops while it's on
   (`autoRefusal`, `autoPlan` `manual`, `MANUAL_STOPS_AUTO`).
 
+Mutual counts read "A, B & 8 other mutual connections" since 2026-10-12: both readers took
+only "and", so every stored count was 1 (`mutual_count_text` and the page reader's
+`mutualCount`, kept in step by `tests/scraper-mutuals.test.mjs`).
+
 Chimes (`_chime`, `lib/chimes.js`, `lib/chime-files.js`): `_read_by_hand` plays `read-N` for
 the Nth page in a row (to `MANUAL_STREAK_TOP`), `done` when the list ends, and `next` once a
 click (`MANUAL_TAP_GAP`): from a `page.on("request")` listener for a voyager search request
@@ -424,6 +428,35 @@ the table, the daily limit is still found by its words. Both tables are one
 `exitCode` in `GET ?job=1` stays what the app always read (0 for a calm end); `exitKind` says
 which. An Auto-Bridge batch that ended early exits with why (`BATCH_END`, after saving its
 photos). Install's pip codes are pip's own: read as plain errors.
+
+## Dig deeper and the top card (2026-10-12)
+
+Blake: "when people auto scan or manual will have the option to dig deeper", built on Read
+profiles, which it replaces in the app ("repurpose or remove" the old switch). Scanner
+settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limits.json`;
+`scrape.py dig_deeper`).
+
+- **The top card, on every profile visit:** `TOP_CARD_JS` / `read_top_card`. It reads followers
+  and the connection count ("500+ connections" is `{connections: 500, connectionsPlus: true}`)
+  from the section holding their name, the `connectionOf` link, and the Activity heading.
+  - It never reads the rest of the page: Interests shows companies' followers.
+  - The count goes to `_LIST_CARDS` and from there into bridge progress (`connections`,
+    `connectionsPlus`; kept when a later read has none), for the ring round their dot
+    (`lib/reach.js`).
+- **With Dig deeper:** `_dig_into_profile` reads their experience on the same visit.
+  - In auto mode it uses `read_experience`, which scrolls and reads LinkedIn's own data from
+    a response listener registered before the `goto`. In manual mode it uses
+    `_read_experience_by_hand`, which never scrolls: the notch asks you to scroll to
+    Experience, it reads as it shows, waits up to `MANUAL_DIG_WAIT` and notes nothing if you
+    don't reach it.
+  - It sends the result to their row with the card (`push_experience`;
+    `lib/experience.js cleanCard`, the stored experience's `card`). Scoring reads followers
+    as recognition (`lib/scoring.js`).
+  - Only for someone without experience on file (`_experience_on_file`). With their search id
+    known, their profile is opened once just for this (one profile view), and not at all
+    when today's profile views are used.
+- **The old round:** the app no longer offers Read profiles' batch round. `--read-profiles` and
+  its route action remain for the command line. Its queue still reads the highest power first.
 
 ## Read profiles: optional, off by default (2026-10-05)
 

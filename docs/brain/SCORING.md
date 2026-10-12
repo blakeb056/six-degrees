@@ -31,6 +31,11 @@ twice, so a read can only add roles, never lower a score; "couldn't read" adds n
 `lib/rpc.js scoringRows` selects the column. `lib/scoring.js` still imports nothing: it reads
 the JSON itself (`storedRoles`).
 
+The same JSON can carry the profile's top card (`card`, 2026-10-12), on a read or an
+unreadable experience alike. Its follower count counts as an audience the headline states
+(An audience of their own, below); its connection count is the ring round's
+(`lib/reach.js`) and never the score's.
+
 ## The formula
 
 ```
@@ -178,6 +183,33 @@ a guess, so it's kept narrow (`heldAt`):
 Until scoring 6 only "at" counted, so a Coca-Cola president who wrote "| The Coca-Cola
 Company" scored as one at an unknown company: 7.3 (A) instead of 9.5 (S).
 
+Two more places a title's company is written, read since October 2026 (Evidence the parser
+missed, below), each within the same limits:
+
+- **At the end of a part that goes on with the title after a dash** (`heldAtEnd`):
+  "President - Global Brands ,The Coca-Cola Company", "Chief Engineer - Satellite Programs,
+  General Dynamics Mission Systems". Only the part right after the title's, only its last
+  piece after a comma (however the comma is spaced), and only when that piece isn't a list's
+  last item ("& Telemundo", "and NBC") and no piece before it names a listed company. A part
+  like that after a bar is nearly always a list of skills, clients, press or past employers
+  ("Data Engineer | Python, Spark, AWS", "Featured in Forbes, The New York Times"), so
+  it isn't read; nor an affiliation ("President - Council Member, Coca-Cola").
+- **Opening the title's own part** (`heldBefore`): "WWE Creative Writer", "Coca-Cola
+  Senior Brand Manager", "Harvard Professor". Only when the whole text before the title's
+  first word is a listed company, so a name another company's starts with stays its own
+  ("Fox Rothschild Associate" isn't Fox), and not in a part that says "at" or "@". Never a
+  tech or media platform, which people name as the platform they work with ("Google Ads
+  Specialist", "Salesforce Practice Director", "Meta Ads Manager"); never a credential, a gig
+  or a fan (`NOT_ITS_STAFF`), nor work for a company rather than at it (`SERVES_IT`: "DoD
+  Contractor", "NFL Agent", "Nationwide Recruiter"); and never a listed name that is also an
+  everyday word (`EVERYDAY_NAMES`: "Visa Specialist" is an immigration job, "Target Account
+  Executive" sells to target accounts). The price: "Coca-Cola Brand Manager", with a word
+  between the name and the title, isn't read.
+
+The first part of a headline was already read whole as a company through a listed name's
+alias ("Google Ads Specialist" reads as Google, as it did before October 2026); these rules
+add a closed alias's company and the parts after the first, more narrowly.
+
 **An audience of their own** counts like a title (`AUDIENCE`): 100K+ followers,
 subscribers, listeners or readers like a manager's (6.5), 1M+ like a director's (7.5),
 10M+ like a VP's (9), with no company ("Creator | 2.5M+ followers", "1.2M monthly
@@ -185,6 +217,27 @@ listeners", "3M+ on TikTok", "2,500,000 followers"). Views, users and impression
 count (a campaign's or a product's; those are the reach bonus's), nor does a part about
 growing or managing someone else's ("Grew our TikTok to 2M followers", "Managed accounts
 with 10M+ followers"). A 2.5M-follower creator scores 5.8 (A) where they scored 3.3 (C).
+
+**Followers from the profile** count the same way (Blake, 2026-10-12: follower count "into
+their score if is there"; "if they are already high ranking then it just helps them"): a
+follower count a scan read from the profile's top card (`followersOf`, `cardAudience`) is an
+audience role on the same three rungs, and at a million or more the reach bonus's "reach in
+the millions", exactly as the headline saying it would be. A card with 2.5M followers scores
+what "Storyteller | 2.5M+ followers" does (5.8). It can only add:
+
+- **the larger, never both:** an audience the headline already states at the card's rung or
+  higher adds nothing, and the millions bonus counts once whether the headline (followers,
+  views, revenue), the card or both say so;
+- **never lower:** an audience role has no company, so it can outscore a role at a known
+  company by a hair and halve the reach bonus (a company we don't know). `scorePerson` also
+  scores the read without that role, the count's reach kept, and keeps the higher: a manager
+  at Google who says "Angel Investor" goes 7.5 to 8.0 with 12M followers, not down to 7.3;
+- **followers only:** the card's connection count, and mutual connections, never count;
+- **under 100K adds nothing**, nor does a count that isn't a whole number from 0 to a
+  billion (as `lib/experience.js` keeps it).
+
+The bonus is halved at a company we don't know, as a stated audience's is: the count counts
+like the claim, no more.
 
 **A title the rules can't read** ("Studio / Show", "Storyteller", a job they don't list)
 counts 4, an individual contributor's, the most common kind: not knowing someone's title
@@ -254,7 +307,14 @@ company's, a person's or its own organisation's counts only as a claim ("Oscar-w
 "Tony Award", "Emmy nominee", "Pulitzer finalist"), so Oscar Health, Peabody Energy, Clio the
 legal software, Nobel Biocare, Olympic Steel, "Tony" as a first name and the staff of the
 Peabody Awards or the Pulitzer Center get nothing. The price: "3x Emmy", with no award word,
-isn't read either. Until September 2026 it named four awards, from advertising, TV, music and
+isn't read either. A list of awards with one of those names in it makes its claim once, at
+the list's end (`LISTED_HONOURS`, October 2026): "Emmy, Peabody, and Webby Award
+Winner", "Emmy & duPont Award-winning", "Grammy and Latin Grammy winner". Until then only the
+award just before the claim was read, so a list whose last award isn't a top honour earned
+nothing. Up to six more names of one to three words, joined by commas, "and", "&" or "/";
+with no claim at its end ("Emmy, Tony and Oscar", "Oscar Health, Peabody Energy and Clio") a
+list is names, as one name alone is. A follower count from the profile counts toward
+"reach in the millions" (above). Until September 2026 it named four awards, from advertising, TV, music and
 the web (Cannes Lions, the Emmys, the Grammys, the Webbys), so a Pulitzer, an Oscar, a Nobel
 Prize or an Olympic medal earned nothing, and "Emmy" or "Grammy" counted anywhere, a bakery's
 name included. It's halved for someone at a company we don't know or one scored 4 or less,
@@ -360,7 +420,10 @@ model can't read them.
 industry), of the broad industries' words and labels in `lib/companies.js`, and of every rule
 table scoring reads headlines and names with (`RULE_TABLES` in `lib/scoring.js`: the title
 ladder and its rules, the student, club and former rules, what isn't a company or a job
-there, and the reach bonuses), and `rescoreIfStale()` rescores when it no longer matches.
+there, and the reach bonuses), and of the code that reads a headline's roles, companies and
+reach and a profile's follower count (`RULE_TABLES.readers`, October 2026; before it only
+the government and military readers' code was in), and `rescoreIfStale()` rescores when it
+no longer matches.
 The industries' words decide a company's one industry, which decides whether it is a school
 (no estimate) and whether a broad pick in Settings leans it, and their labels are in the
 stored working ("4 + 1 your sector: Healthcare & Biotech"). So editing any of these
@@ -489,7 +552,16 @@ no longer read as Snap. UnitedHealthcare, OptumRx and Sirius XM now read as thei
 - Reading a name: cleaning trims a legal form ("Inc.", "Incorporated", "Corporation",
   "LLC"…; `LEGAL_FORM`), except where the name with it is another company (`WHOLE_NAME`):
   Chase Corporation and Merrill Corporation read as JPMorgan Chase and Bank of America until
-  September 2026, and are their own now. A name stops at a sentence's end or a comma
+  September 2026, and are their own now. A unit of a company written after one of its
+  names is the company (`UNIT_SUFFIX`, October 2026): "FOX Sports Digital" and "Fox News
+  Digital" are Fox, through Digital, Interactive, Online, Streaming, Studio(s) or Media
+  after them. Only after two words or more that the lists already read as the company: one
+  word is often the start of other companies' names, which is why so many aliases end at it,
+  so "Fox Digital" isn't read, and "Snap Fitness Digital" or "Delta Dental Media" stay their
+  own. Regions ("North America", "USA") aren't units here: several are another company's
+  ("Philip Morris USA" is Altria's), so an alias names the ones its company uses. Until then
+  "Director, Fox Sports Digital" read as a director at no company, and "Director at Fox
+  Sports" as a director at Fox. A name stops at a sentence's end or a comma
   (`NAME_END`), not at an initial's or a short form's full stop: "J.P. Morgan" was cut to
   "J.P", which matched nothing, "J. Crew" and "T. Rowe Price" to nothing, "U.S. Bank" to
   "U.S" and "St. Jude Children's Research Hospital" to "St". They read in full now.
@@ -1038,6 +1110,51 @@ unreadable titles and possessives, so re-run the title-to-circle check on a real
 Two of the review's findings aren't changed here: a sector you pick lifts power, not only
 how relevant someone is to you, and a founder's or a CEO's title at a venture nobody knows
 still counts in full, which rates some of them too high.
+
+**Evidence the parser missed (October 2026, still `SCORING_VERSION` 6, and new rule tables
+and readers):** an audit of a real network (Blake, 2026-10-12) found four shapes of headline
+whose company or recognition went unread, each fixed above: a company at the end of a part
+that goes on with the title after a dash (`heldAtEnd`), a company's unit after one of its
+names (`UNIT_SUFFIX`), a listed company opening a title (`heldBefore`), and a list of awards
+ending in its claim (`LISTED_HONOURS`); and asked that a follower count from the profile
+count like a stated audience (`cardAudience`). `tests/scoring-evidence.test.mjs` holds
+invented examples of each, with a control beside each that must not change; every fix's
+test fails on the model before it, and every control passes on both.
+
+Measured on that network, read-only, rescored as `rescoreAll()` does (the owner's company
+scores, the curve, no sector): 4 of its 991 1st-degree scores rose and none fell, 3 tiers
+rose and none fell; in the 2nd degree, 6 of 10,091 rose and 2 tiers. Every change was
+checked by hand and is a right reading. The curve's S cut-off rose from 7.7 to 7.8, since
+two people joined the top 3%, but nobody lost S: everyone from 7.5 is S on the fixed scale,
+and a tier is the better of the two. No profile in it had a top card yet, so followers moved
+no one. The sample network doesn't move (0 of 873 scores, tiers or companies): its companies
+are invented and none of its headlines has these shapes. The company and recognition fixes
+change no title points, so the title-to-circle correlation is unchanged by them; follower
+counts add audience roles, so re-run that check once a network has cards.
+
+The first draft of the dash rule read any comma in a part after a title, and on that
+network it turned lists into employers (a data engineer's skills into Amazon, a board
+member's press mentions into The New York Times, a producer's clients into NBCUniversal),
+which is why it now needs the dash, the last piece, no list joiner and no listed company
+before it. Left as they are, on purpose:
+
+- **A bracketed company after an aspiration** ("Building the future of fan media
+  (Northwind Sports)"). Of the 11 parts on that network shaped "Building … (…)", one bracket
+  named an employer; the others were asides, sector lists ("AI, SaaS, Fintech"), former
+  employers ("ex-…") and a former name ("fka …"), and none named a listed company. Reading
+  them would make employers of "(Remote)", "(NYC)" and "(Acquired)", and the one employer,
+  unknown to the lists, scores the neutral 5 that no company does, so its reading couldn't
+  move the score.
+- **A word between a listed name and the title** ("Coca-Cola Brand Manager"), a lone word
+  before a unit ("Fox Digital") and regions after a name aren't read, for the reasons above.
+  The other way, the price of the dash rule: a list after a dash whose only listed name is
+  its last, with no joiner, still reads as that company ("Producer - ESPN, Fox" is a
+  producer at Fox). None was on that network.
+- **"Award Winner" with no top honour named.** "Award-winning" counts on its own and
+  "award winner" doesn't; the fix reads a list with a top honour in it, not every award.
+- **A former employer written with a hyphen and "and"** ("former-Northwind and Quillon"):
+  not read, but a former role there would count 70% and wouldn't outscore the current title
+  it sat beside.
 
 ## Bridges
 

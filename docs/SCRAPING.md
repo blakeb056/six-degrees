@@ -147,6 +147,20 @@ waits for nobody. Auto scan stays off while manual mode is on, because it scans 
 away; your own connections, company scans and profile reads still run by themselves. The
 window can't sit inside Sixgree's: Chrome is a program of its own.
 
+**Dig deeper.** A switch in Scanner settings, *Dig deeper: read their profile*, in place of the
+old *Read full profiles* round:
+- **What it reads:** while a circle scan has the person's profile open, it also reads their
+  current and past roles. Their score then counts what they actually do, not only their
+  headline.
+- **Followers** count as recognition, and only ever add.
+- **Manual mode:** you scroll to their Experience and it's read as it shows.
+- **Cost:** it reads someone once (anyone whose experience is on file is skipped). A first
+  scan opens their profile anyway, so it costs nothing extra. Carrying on with someone never
+  read opens their profile once, a profile view, and not when today's profile views are used.
+- **Without it:** every profile a scan opens still has its top card read (followers and
+  "500+ connections"). Their connection count fills the ring round their dot, showing how much
+  of their circle is read.
+
 **Profile views.** A circle scan opens the person's profile once, and that is a profile
 view. Profile views are what got an account restricted, so at least a minute passes between
 any two profile opens, even across scans started one after another, lifted or not; the log

@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pushing back still stops the scan and turns Dev mode off. The notch and the usage page say
   *Dev mode* in gold the whole time it's on.
 
+- **Dig deeper.** A switch in Scanner settings, in place of *Read full profiles*. While a
+  circle scan has someone's profile open, it reads their current and past roles too, so their
+  score counts what they actually do, not only their headline, and their followers count as
+  recognition. Manual mode reads it as you scroll. Every profile a scan opens has its follower
+  and connection counts read.
+
 ### Changed
 - **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
   now comes first, marked Recommended and already chosen, so the button a new install opens on
@@ -30,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Import a CSV*, and the Import page and Degrees, which suggested the scanner to people with a
   CSV, now say it's optional and what it risks. The README, the website and its llms.txt lead
   with the CSV import and the sample too, and call scanning optional, with every warning kept.
+
+### Fixed
+- **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",
+  and only "and" was understood, so every count was saved as 1. Both forms are read now.
 
 ### Security
 - **Next.js 16.3.8 and sharp 0.35.5, for published security fixes.** Both ship inside the app.
