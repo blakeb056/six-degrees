@@ -291,6 +291,20 @@ function HomeInner() {
       setGrids((g) => ({ ...g, network: back }));
     }
   }, []);
+  // Opened in Degrees or the fan (the shape is remembered, the filter isn't, so a
+  // reload showed only your connections): every degree, as picking it gives, with
+  // the starting filter to go back to.
+  const openedByDegree = useRef(false);
+  useEffect(() => {
+    if (openedByDegree.current || !showsEveryDegree(layout)) return;
+    openedByDegree.current = true;
+    if (gridBeforeDegrees.current) return;
+    setGrids((g) => {
+      if (g.network !== NETWORK_GRID) return g;
+      gridBeforeDegrees.current = g.network;
+      return { ...g, network: makeGrid([1, 2, 3], { tiersOff: true }) };
+    });
+  }, [layout]);
   // The legend under the map, in Degrees and the fan: each degree with how many
   // are in it, tapped to show or hide it, for every tier at once (lib/tier-grid.js toggleDegree).
   const degreeLegend = useMemo(() => {
