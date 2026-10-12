@@ -2530,6 +2530,56 @@ def _home():
     return base
 
 
+RUN_LOGS_KEPT = 40   # each run's own log in <data>/logs, newest kept, so a run that went wrong can be read afterwards
+
+
+class _Tee:
+    """What the scanner prints, to the app as ever and to this run's log file too."""
+    def __init__(self, stream, log):
+        self._stream, self._log = stream, log
+
+    def write(self, text):
+        n = self._stream.write(text)
+        try:
+            self._log.write(text)
+        except Exception:
+            pass
+        return n
+
+    def flush(self):
+        self._stream.flush()
+        try:
+            self._log.flush()
+        except Exception:
+            pass
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def keep_run_log(argv):
+    """Keep this run's log in <data>/logs/scan-<when>.log, the newest RUN_LOGS_KEPT of them.
+    The app shows only the last run's log, so a run stopped and started again lost the
+    one that went wrong (Blake, 2026-10-12: a profile's jobs not read the first time,
+    read the second, and nothing left to say why). On this computer only."""
+    try:
+        folder = _home() / "logs"
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"scan-{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.log"
+        log = open(path, "a", encoding="utf-8", buffering=1)
+        log.write(f"# {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} scrape.py {' '.join(argv)}\n")
+        sys.stdout = _Tee(sys.stdout, log)
+        sys.stderr = _Tee(sys.stderr, log)
+        for old in sorted(folder.glob("scan-*.log"))[:-RUN_LOGS_KEPT]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        return path
+    except Exception:
+        return None
+
+
 def _write_json_atomic(path, data):
     import tempfile
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
@@ -4022,13 +4072,48 @@ def _pushed_back(page, reach, reason):
 # Which page the pagination bar says is showing, when it says.
 CURRENT_PAGE_JS = r"""
 () => {
-  for (const el of document.querySelectorAll('[aria-current="true"], [aria-current="page"]')) {
-    const t = (el.innerText || el.textContent || '').trim();
-    if (/^\d{1,3}$/.test(t)) return parseInt(t, 10);
+  // The page bar's highlighted number: one marked current, in a box that also holds
+  // Next or Previous, so a count elsewhere (a badge's "1" in the top bar) is never
+  // taken for the page. Failing that, a marked number outside the top bar.
+  const num = (el) => { const t = (el.innerText || el.textContent || '').trim(); return /^\d{1,3}$/.test(t) ? parseInt(t, 10) : null; };
+  const turn = (b) => /^(next|previous)$/i.test((b.innerText || b.getAttribute('aria-label') || '').trim());
+  const marked = [...document.querySelectorAll('[aria-current="true"], [aria-current="page"]')]
+    .filter((el) => num(el) != null && !el.closest('header, #global-nav, [class*="global-nav"]'));
+  for (const el of marked) {
+    for (let p = el.parentElement, i = 0; p && i < 6; p = p.parentElement, i++) {
+      if ([...p.querySelectorAll('button, a')].some(turn)) return num(el);
+    }
   }
-  return null;
+  return marked.length ? num(marked[0]) : null;
 }
 """
+
+# What the page bar is made of, kept when it and the address disagree about the page
+# (Blake, 2026-10-12: a list opened at page 51 read as 52, twice in a day), so which
+# one is right can be settled. Numbers and labels only, no one's name.
+PAGE_BAR_JS = r"""
+() => {
+  const marked = [...document.querySelectorAll('[aria-current]')].slice(0, 12).map((el) => ({
+    tag: el.tagName, current: el.getAttribute('aria-current'), text: (el.innerText || '').trim().slice(0, 30),
+    label: el.getAttribute('aria-label'), inTopBar: !!el.closest('header, #global-nav, [class*="global-nav"]') }));
+  const next = [...document.querySelectorAll('button, a')].find((b) => /^next$/i.test((b.innerText || b.getAttribute('aria-label') || '').trim()));
+  let bar = next;
+  for (let i = 0; bar && i < 4 && !/\b(2|3)\b/.test(bar.innerText || ''); i++) bar = bar.parentElement;
+  return { marked, bar: bar ? bar.outerHTML.replace(/<img[^>]*>/g, '').slice(0, 6000) : null };
+}
+"""
+
+
+def _keep_page_bar_evidence(page, start_page, shown, at):
+    """The page bar and the address, when they disagree about the page a list opened on."""
+    try:
+        bar = page.evaluate(PAGE_BAR_JS) or {}
+        folder = _home() / "debug"
+        folder.mkdir(parents=True, exist_ok=True)
+        _write_json_atomic(folder / f"page-bar-{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.json",
+                           {"opened": start_page, "bar": shown, "address": at, **bar})
+    except Exception:
+        pass
 
 
 def _url_page(url):
@@ -4300,6 +4385,8 @@ MANUAL_DIG_SCROLLED = 800         # px you've scrolled before "the foot of their
 MANUAL_DIG_STUCK = 12             # manual mode: Experience in view this long with nothing it can read: it says so and moves on
 MANUAL_DIG_SETTLE = 6             # manual mode: the whole section in view, nothing new for this long: done with it
 MANUAL_DIG_READ_MAX = 120         # manual mode: reading their Experience as you scroll, at most this long
+MANUAL_DIG_EMPTY = 3              # manual mode: their Experience heading with no jobs under it this long: it says why
+MANUAL_DIG_EMPTY_WAIT = 30        # manual mode: once that's said, at least this long more to scroll back to it
 
 # You're at the foot of their profile: nothing more will load as you scroll.
 # Measured with how far you've scrolled: a profile still loading is short, so it
@@ -4429,10 +4516,12 @@ def _read_experience_by_hand(page, responses, name):
     LinkedIn's own data or the page's Experience section. (result, note), or
     (None, note) when you don't reach it in MANUAL_DIG_WAIT: nothing is noted
     then, and the next scan of them tries again."""
-    print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience; it's read as it shows, "
-          f"then Sixgree opens their list. Not scrolling: it moves on to their list in {MANUAL_DIG_WAIT} seconds.",
+    print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience and stop on it a moment; it's read as "
+          f"it shows, then Sixgree opens their list. Not scrolling: it moves on to their list in {MANUAL_DIG_WAIT} seconds.",
           flush=True)
     start = time.time()
+    deadline = start + MANUAL_DIG_WAIT
+    empty_at = None       # when their Experience heading first showed with no jobs under it yet
     seen_at = None        # when their Experience section first showed with entries in it
     found_at = None       # when roles were first read from it: then it reads on as you scroll
     changed_at = None     # when the count of roles read last changed
@@ -4442,7 +4531,7 @@ def _read_experience_by_hand(page, responses, name):
     foot_height = None    # how tall the page was then: still growing means still loading
     said = set()
     # Until it's found, MANUAL_DIG_WAIT; once found, it reads on as you scroll (MANUAL_DIG_READ_MAX).
-    while found_at is not None or time.time() - start < MANUAL_DIG_WAIT:
+    while found_at is not None or time.time() < deadline:
         if stop_requested():
             return {"status": "stopped", "why": "stopped"}, None
         try:
@@ -4491,7 +4580,22 @@ def _read_experience_by_hand(page, responses, name):
             _manual_wait(page, MANUAL_POLL)
             continue
         entries = len(dom.get("items") or []) or len(dom.get("runs") or [])
-        if dom.get("found") and entries:
+        if dom.get("found") and not entries:
+            # Its heading is there and its jobs aren't: LinkedIn loads them while the
+            # section is on screen, so one scrolled past quickly stays empty (Blake,
+            # 2026-10-12: "i scrolled all the way down but nothing read", then a
+            # second, slower try read it). Said once, with time to go back up to it.
+            rect = dom.get("rect") or {}
+            empty_at = empty_at or now
+            if now - empty_at >= MANUAL_DIG_EMPTY and "empty" not in said:
+                said.add("empty")
+                deadline = max(deadline, now + MANUAL_DIG_EMPTY_WAIT)
+                if rect.get("bottom") is not None and rect["bottom"] < 0:
+                    print(f"{NEEDS_YOU} {name}'s Experience hasn't loaded their jobs: LinkedIn loads them only "
+                          f"while it's on screen. Scroll back up to Experience and stop there a moment.", flush=True)
+                else:
+                    print(f"  (waiting: {name}'s Experience is on screen and its jobs are still loading)", flush=True)
+        elif dom.get("found") and entries:
             seen_at = seen_at or now
             if "seen" not in said:
                 said.add("seen")
@@ -4510,6 +4614,9 @@ def _read_experience_by_hand(page, responses, name):
         at_foot = bool(where.get("foot")) and (where.get("scrolled") or 0) >= MANUAL_DIG_SCROLLED
         if not at_foot or where.get("height") != foot_height:
             foot_at, foot_height = None, where.get("height")
+        if not dom.get("found") and now - start >= MANUAL_SAY and "none" not in said:
+            said.add("none")
+            print(f"  (waiting: no Experience section on {name}'s profile yet; scroll down to it)", flush=True)
         if at_foot and not dom.get("found"):
             foot_at = foot_at or now
             if now - foot_at >= MANUAL_SAY:
@@ -4517,6 +4624,9 @@ def _read_experience_by_hand(page, responses, name):
                     f"  {name}'s profile has no Experience section that loaded, at the foot of the page. "
                     f"Marked \"couldn't read\", not empty.")
         _manual_wait(page, MANUAL_POLL)
+    if empty_at is not None:
+        return None, (f"  {name}'s Experience never loaded their jobs (LinkedIn loads them while it's on screen), "
+                      f"so it's left for next time.")
     return None, f"  You didn't reach {name}'s Experience within {MANUAL_DIG_WAIT} seconds, so it's left for next time."
 
 
@@ -4714,6 +4824,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     last_seen = time.time()
     status, how = "success", None
     last_links = None              # who the last page read showed: a page still showing them isn't the next one
+    last_read = None               # the page read last: the one the window is on until you click on
+    bar_seen = False               # the page bar has shown a page: from then on, only it says which
     said, waiting = set(), {}      # each "why it waits" said once, after MANUAL_SAY seconds of it
     streak = 0                     # pages read in a row: each read chime climbs one step (lib/chimes.js)
     tapped = {"at": None}          # when the last Next tap played
@@ -4754,8 +4866,13 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             print(f"  (waiting: {what})", flush=True)
 
     print(f"  Manual mode: you page through {bridge_name}'s list, and each page is read when you reach its foot.")
-    tell(f"scroll to the bottom of each page of {bridge_name}'s connections in the Chrome window, then click Next. "
-         f"Close the window when you're done with them.")
+    if reach.get("opened_ahead"):
+        tell(f"LinkedIn's page bar shows page {reach['opened_ahead']}, and page {start_page} isn't read yet. "
+             f"Click Previous to page {start_page} and scroll to its bottom, then carry on with Next. "
+             f"Close the window when you're done with {bridge_name}.")
+    else:
+        tell(f"scroll to the bottom of each page of {bridge_name}'s connections in the Chrome window, then click Next. "
+             f"Close the window when you're done with them.")
     while True:
         if stop_requested():
             status, how = "stopped", "stopped"
@@ -4787,7 +4904,16 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             shown = page.evaluate(CURRENT_PAGE_JS)
         except Exception:
             shown = None
-        pg = shown if isinstance(shown, int) and shown > 0 else _url_page(url)
+        if isinstance(shown, int) and shown > 0:
+            pg, bar_seen = shown, True
+        elif bar_seen:
+            # The page bar is being drawn again between pages, and the address can be a
+            # page behind or name no page at all (Blake's log, 2026-10-12: "scroll to the
+            # bottom of page 1" on the way from page 55 to 56, and a search counted for
+            # it): it waits for the bar rather than guess.
+            continue
+        else:
+            pg = _url_page(url)
         if pg not in counted:
             left, kind = searches_left()
             if left <= 0:
@@ -4801,6 +4927,10 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             if done:
                 tap()   # in case the click's request went by unseen; once a click either way
         if pg in done:
+            if pg != last_read and ("again", pg) not in said:
+                said.add(("again", pg))
+                tell(f"page {pg} is already read. Click Next to page {pg + 1}. "
+                     f"Close the window when you're done with {bridge_name}.")
             continue
         why = _pushback(page)
         if why:
@@ -4846,6 +4976,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         found = [c for c in found if slug not in c.get("profileUrl", "")]
         done.add(pg)
         last_links = links
+        last_read = pg
         last_seen = time.time()
         PACE_STATE["pages"] += 1
         chunk.extend(found)
@@ -4876,8 +5007,14 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         if on_save and chunk_pages >= SAVE_EVERY_PAGES:
             on_save(_dedupe(chunk), reach["last"], True, urn)
             chunk, chunk_pages = [], 0
-        tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
-             f"Close the window when you're done with {bridge_name}.")
+        if contiguous < pg - 1:
+            # A page before this one isn't read: until it is, the next scan starts there again.
+            tell(f"page {pg} is read ({len(found)} people). Page {contiguous + 1} isn't read yet, so the next scan "
+                 f"starts there again: click back to it, or carry on with Next to page {pg + 1}. "
+                 f"Close the window when you're done with {bridge_name}.")
+        else:
+            tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
+                 f"Close the window when you're done with {bridge_name}.")
 
     try:
         page.remove_listener("request", on_request)
@@ -5162,11 +5299,21 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         except Exception:
             pass
         at = _url_page(page.url)
+        if (shown is not None and shown != at) or at != start_page:
+            _keep_page_bar_evidence(page, start_page, shown, at)
         if manual and (at != start_page or (shown is not None and shown != start_page)):
-            # You can see the window in manual mode, and may have clicked on already:
-            # _read_by_hand reads whichever page you're on, and never notes a page
-            # as read that wasn't (it only moves "last" through pages read in order).
-            print(f"  The window is on page {shown or at} already; you carry on from there.")
+            # You can see the window in manual mode. _read_by_hand reads whichever page
+            # you're on, and never notes a page as read that wasn't (it only moves
+            # "last" through pages read in order), so the page it opened for has to be
+            # read before the bookmark moves on (Blake, 2026-10-12: opened at page 51,
+            # the page bar said 52, and every page after it was read but 51 never was,
+            # so the next scan started at 51 again).
+            ahead = shown or at
+            if ahead > start_page:
+                reach["opened_ahead"] = ahead     # _read_by_hand's first words: go back to start_page
+                print(f"  LinkedIn's page bar shows page {ahead}, not page {start_page}.")
+            else:
+                print(f"  The window is on page {ahead} already; you carry on from there.")
         elif at != start_page or (shown is not None and shown != start_page):
             print(f"  LinkedIn opened page {shown or at}, not page {start_page}. "
                   "Stopping so no page is noted as read that wasn't.")
@@ -7882,6 +8029,8 @@ Examples:
                         help="Scan in a normal Chrome window in front, to watch it work. Without it the window "
                              "stays out of sight and comes forward only when LinkedIn needs you")
     args = parser.parse_args()
+    if not getattr(args, "server", False):
+        keep_run_log(sys.argv[1:])
     CHROME_WINDOW["show"] = bool(args.show_window)
     if getattr(args, "experimental", False):
         EXPERIMENT["on"] = True

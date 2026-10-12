@@ -449,7 +449,7 @@ out.update(read_by_hand(page, total=30))`);
   }
 });
 
-test('manual mode: clicking on before your turn carries on from that page, never stops the read', (t) => {
+test('manual mode: a window a page ahead says to go back for the page it opened for, and never stops the read', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${MANUAL_PAGE}
@@ -459,11 +459,97 @@ people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', 
 out.update({'people': len(people), 'status': status, 'last': reach['last'], 'more': reach['more']})`);
     if (!r) return;
     assert.doesNotMatch(r.log, /Stopping so no page is noted/);
-    assert.match(r.log, /The window is on page 10 already; you carry on from there/);
+    // The page bar ahead of the page it opened for: it says to go back for that page first
+    // (Blake, 2026-10-12: page 51 was never read, so every scan started there again).
+    assert.match(r.log, /LinkedIn's page bar shows page 10, not page 9\./);
+    assert.match(r.log, /LinkedIn needs you: LinkedIn's page bar shows page 10, and page 9 isn't read yet\. Click Previous to page 9/);
+    assert.match(r.log, /page 10 is read \(10 people\)\. Page 9 isn't read yet, so the next scan starts there again/);
     assert.equal(r.out.status, 'success');
     assert.equal(r.out.people, 10, 'page 10 is read');
     assert.equal(r.out.last, 8, 'page 9 was never read, so it is never noted as read');
     assert.equal(r.out.more, true);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode: going back to the page it opened for fills the gap, and the bookmark moves on', (t) => {
+  // Blake, 2026-10-12: the list opened at page 51, the page bar said 52 and the address
+  // still 51; read on from 52, page 51 stayed the bookmark. Back to 51 first, then on.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+class Ahead(ManualPage):
+    def goto(self, url, **k):
+        out = super().goto(url, **k)
+        self.pg = self.url_pg + 1     # the page bar a page ahead of the address, as on 2026-10-12
+        return out
+page = Ahead(60, [[14, ['go', 51]], [18, 'foot'], [22, 'next'], [28, 'foot'], [34, 'close']], url_follows=False, start=51)
+people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', 'https://www.linkedin.com/in/invented-bridge/',
+                                                start_page=51, urn=URN, manual=True)
+out.update({'people': len(people), 'status': status, 'last': reach['last'], 'read': [x[0] for x in page.read_at]})`);
+    if (!r) return;
+    assert.match(r.log, /Click Previous to page 51 and scroll to its bottom, then carry on with Next/);
+    assert.deepEqual(r.out.read, [51, 52]);
+    assert.equal(r.out.last, 52, 'both read in order: the next scan starts at 53');
+    assert.equal(r.out.people, 20);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode: while the page bar is drawn again between pages, no page is guessed from the address', (t) => {
+  // Blake's log, 2026-10-12: "scroll to the bottom of page 1" on the way from page 55 to 56,
+  // with a search counted for a page 1 nobody opened.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+class Redraw(ManualPage):
+    def _between(self):
+        return self.moved_at is not None and clock.t - self.moved_at < 3
+    def evaluate(self, js, *a):
+        self._act()
+        if js == ns['CURRENT_PAGE_JS'] and self._between(): return None
+        return super().evaluate(js, *a)
+    @property
+    def url(self):
+        u = ManualPage.url.fget(self)
+        return u.split('&page=')[0] if self._between() else u
+page = Redraw(60, [[2, 'foot'], [10, 'next'], [16, 'foot'], [22, 'close']], url_follows=False, start=55)
+out.update(read_by_hand(page, start=55))`);
+    if (!r) return;
+    assert.deepEqual(r.out.read_at.map((x) => x[0]), [55, 56]);
+    assert.equal(r.out.last, 56);
+    assert.doesNotMatch(r.log, /page 1\b/, 'no page 1 guessed from an address naming no page');
+    assert.equal(r.out.searches, 1, 'one search: page 56; none for a page nobody opened');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('each run keeps its own log in the data folder, the newest 40', (t) => {
+  // Blake, 2026-10-12: a run that went wrong, stopped and started again, left nothing to say why.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `
+import pathlib
+folder = pathlib.Path(ns['_home']()) / 'logs'
+folder.mkdir(parents=True, exist_ok=True)
+for i in range(45):
+    (folder / f'scan-2026-01-01_0000{i:02d}.log').write_text('old')
+path = ns['keep_run_log'](['--bridge', 'Invented Bridge'])
+print('  Page 3... 10 found (total: 30)', flush=True)
+import sys
+sys.stdout.flush()
+out['kept'] = len(list(folder.glob('scan-*.log')))
+out['text'] = path.read_text()
+out['oldest_gone'] = not (folder / 'scan-2026-01-01_000000.log').exists()`);
+    if (!r) return;
+    assert.match(r.log, /Page 3\.\.\. 10 found/, 'the app still sees every line');
+    assert.match(r.out.text, /scrape\.py --bridge Invented Bridge/);
+    assert.match(r.out.text, /Page 3\.\.\. 10 found \(total: 30\)/);
+    assert.equal(r.out.kept, 40);
+    assert.equal(r.out.oldest_gone, true);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

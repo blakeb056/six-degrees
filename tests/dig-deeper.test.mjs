@@ -525,6 +525,50 @@ out['timeout'] = ns['_read_experience_by_hand'](w2, [], 'Invented Bridge')`);
   }
 });
 
+test('manual Dig deeper: an Experience heading with no jobs under it says to scroll back up, and waits for it', (t) => {
+  // Blake, 2026-10-12: "i scrolled all the way down but nothing read", read on a second,
+  // slower try. LinkedIn loads a section's jobs while it's on screen: scrolled past
+  // quickly, the heading is there and nothing under it.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${WINDOW}
+class Fling(Window):
+    def evaluate(self, js, *a):
+        if js == ns['EXPERIENCE_JS'] and self.at == PROFILE:
+            # Not reached for 40 seconds, then flung past it, then back up to it at 60.
+            if clock.t - NOW < 40: return {'found': False}
+            if clock.t - NOW < 60:
+                return {'found': True, 'how': 'heading', 'items': [], 'runs': [], 'rect': {'top': -900, 'bottom': -400, 'vh': 720}}
+            return {'found': True, 'how': 'heading', 'items': ITEMS, 'rect': {'top': 100, 'bottom': 500, 'vh': 720}}
+        if js == ns['PAGE_FOOT_JS']: return {'foot': clock.t - NOW >= 40, 'scrolled': 4000, 'height': 6000}
+        return super().evaluate(js, *a)
+class Never(Fling):
+    def evaluate(self, js, *a):
+        if js == ns['EXPERIENCE_JS'] and self.at == PROFILE:
+            return {'found': True, 'how': 'heading', 'items': [], 'runs': [], 'rect': {'top': -900, 'bottom': -400, 'vh': 720}}
+        return super().evaluate(js, *a)
+w = Fling()
+w.goto(PROFILE)
+result, note = ns['_read_experience_by_hand'](w, [], 'Invented Bridge')
+out['result'] = result
+out['waited'] = round(clock.t - NOW)
+w2 = Never()
+w2.goto(PROFILE)
+start = clock.t
+out['never'] = ns['_read_experience_by_hand'](w2, [], 'Invented Bridge')
+out['never_waited'] = round(clock.t - start)`);
+    if (!r) return;
+    assert.match(r.log, /LinkedIn needs you: Invented Bridge's Experience hasn't loaded their jobs: LinkedIn loads them only while it's on screen\. Scroll back up to Experience and stop there a moment\./);
+    assert.equal(r.out.result.status, 'read', 'read once you scrolled back to it, past the first 45 seconds');
+    assert.ok(r.out.waited >= 60);
+    assert.equal(r.out.never[0], null, 'never loaded: nothing noted, so the next scan tries again');
+    assert.match(r.out.never[1], /never loaded their jobs/);
+    assert.ok(r.out.never_waited >= 44 && r.out.never_waited < 50, `the usual wait when it showed early (${r.out.never_waited}s)`);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('their connection count is kept with where their list got to, and a later read without one keeps it', (t) => {
   const home = scratch();
   try {
