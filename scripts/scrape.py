@@ -4374,13 +4374,16 @@ def _card_words(card):
 
 
 def _experience_on_file(row):
-    """Their experience is read already (Read profiles or an earlier Dig deeper)."""
+    """Their experience is read already (Read profiles or an earlier Dig deeper). A read
+    that named no company for any role isn't: until 2026-10-12 the reader missed the
+    companies LinkedIn shows only as logos, so those are read again, once."""
     raw = (row or {}).get("experience")
     if not raw:
         return False
     try:
         e = json.loads(raw) if isinstance(raw, str) else raw
-        return isinstance(e, dict) and e.get("status") == "read"
+        return (isinstance(e, dict) and e.get("status") == "read"
+                and any(isinstance(r, dict) and r.get("company") for r in e.get("roles") or []))
     except Exception:
         return False
 

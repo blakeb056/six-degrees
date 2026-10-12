@@ -98,6 +98,22 @@ out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from
   assert.equal(by['Senior Recruiter'], 'Invented Robotics');
 });
 
+test('a read with no company on any role is read again: the reader missed logo-only companies until 2026-10-12', (t) => {
+  const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
+import json as j
+none = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': None}]})}
+some = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}]})}
+card = {'experience': j.dumps({'status': 'card', 'card': {'followers': 10}})}
+out['none'] = ns['_experience_on_file'](none)
+out['some'] = ns['_experience_on_file'](some)
+out['card'] = ns['_experience_on_file'](card)
+out['empty'] = ns['_experience_on_file']({})`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: scratch() } });
+  if (noPython(t, r)) return;
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout.trimEnd().split('\n').pop().replace(/^RESULT /, ''));
+  assert.deepEqual(out, { none: false, some: true, card: false, empty: false });
+});
+
 // ── the top card reader ─────────────────────────────────────────────────────
 
 function topCardJs() {
