@@ -4295,11 +4295,16 @@ def _wait_for_profile_view(page):
 # their row (push_experience): their current and past roles count in their
 # score as Read profiles' do, and their followers as recognition.
 # ---------------------------------------------------------------------------
-MANUAL_DIG_WAIT = 90              # manual mode: how long it waits for you to reach their Experience
+MANUAL_DIG_WAIT = 45              # manual mode: how long it waits for you to reach their Experience, then on to their list
+MANUAL_DIG_SCROLLED = 800         # px you've scrolled before "the foot of their profile" means anything
 MANUAL_DIG_STUCK = 12             # manual mode: Experience in view this long with nothing it can read: it says so and moves on
 
 # You're at the foot of their profile: nothing more will load as you scroll.
-PAGE_FOOT_JS = "() => (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 300)"
+# Measured with how far you've scrolled: a profile still loading is short, so it
+# reads as "at the foot" before you've moved (Blake, 2026-10-12: it decided there
+# was no Experience while he sat and watched).
+PAGE_FOOT_JS = ("() => ({ foot: (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 300), "
+                "scrolled: window.scrollY, height: document.documentElement.scrollHeight })")
 
 # What the profile's top card says about their reach: "500+ connections",
 # "312 connections", "27K followers", "1,234 followers · 500+ connections". Read
@@ -4374,16 +4379,20 @@ def _card_words(card):
 
 
 def _experience_on_file(row):
-    """Their experience is read already (Read profiles or an earlier Dig deeper). A read
-    that named no company for any role isn't: until 2026-10-12 the reader missed the
-    companies LinkedIn shows only as logos, so those are read again, once."""
+    """Dig deeper has everything for them already, so it never opens their profile for it
+    again (Blake, 2026-10-12: "if the user was successfully dug deeper and got all points
+    of data, from experience to followers, they won't be done again"): their experience
+    read, with a company for at least one role, and their top card. Anything less is read
+    again: a read with no company (until 2026-10-12 the reader missed companies shown
+    only as logos), one with no card, "couldn't read", or the card on its own."""
     raw = (row or {}).get("experience")
     if not raw:
         return False
     try:
         e = json.loads(raw) if isinstance(raw, str) else raw
         return (isinstance(e, dict) and e.get("status") == "read"
-                and any(isinstance(r, dict) and r.get("company") for r in e.get("roles") or []))
+                and any(isinstance(r, dict) and r.get("company") for r in e.get("roles") or [])
+                and isinstance(e.get("card"), dict))
     except Exception:
         return False
 
@@ -4395,10 +4404,12 @@ def _read_experience_by_hand(page, responses, name):
     (None, note) when you don't reach it in MANUAL_DIG_WAIT: nothing is noted
     then, and the next scan of them tries again."""
     print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience; it's read as it shows, "
-          f"then Sixgree opens their list.", flush=True)
+          f"then Sixgree opens their list. Not scrolling: it moves on to their list in {MANUAL_DIG_WAIT} seconds.",
+          flush=True)
     start = time.time()
     seen_at = None        # when their Experience section first showed with entries in it
-    foot_at = None        # when you first reached the foot of their profile
+    foot_at = None        # when you first reached the foot of their profile, having scrolled
+    foot_height = None    # how tall the page was then: still growing means still loading
     said = set()
     while time.time() - start < MANUAL_DIG_WAIT:
         if stop_requested():
@@ -4433,9 +4444,12 @@ def _read_experience_by_hand(page, responses, name):
                     f"in a shape the reader knows. Marked \"couldn't read\", and what it showed is kept on this "
                     f"computer so the reader can be fixed.")
         try:
-            at_foot = bool(page.evaluate(PAGE_FOOT_JS))
+            where = page.evaluate(PAGE_FOOT_JS) or {}
         except Exception:
-            at_foot = False
+            where = {}
+        at_foot = bool(where.get("foot")) and (where.get("scrolled") or 0) >= MANUAL_DIG_SCROLLED
+        if not at_foot or where.get("height") != foot_height:
+            foot_at, foot_height = None, where.get("height")
         if at_foot and not dom.get("found"):
             foot_at = foot_at or now
             if now - foot_at >= MANUAL_SAY:
@@ -4503,7 +4517,8 @@ def _keep_experience_evidence(page, dom, name):
         base.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         items = [{"lines": (it.get("lines") or [])[:8], "subs": [s[:6] for s in (it.get("subs") or [])[:6]],
-                  "logo": it.get("logo"), "companyLinks": it.get("companyLinks")}
+                  "logo": it.get("logo"), "slug": it.get("slug"), "companyLinks": it.get("companyLinks"),
+                  "links": it.get("links")}
                  for it in (dom.get("items") or [])[:12]]
         (base / f"experience-{stamp}.json").write_text(json.dumps({
             "url": getattr(page, "url", ""), "found": dom.get("found"), "how": dom.get("how"),
@@ -4940,7 +4955,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         if how == "pushback":
             _pushed_back(page, reach, why or "their profile")
             return [], "pushback", reach
-        if how == "stopped":
+        if how == "stopped" or stop_requested():
+            # Stop pressed while their profile was open: never on to their list.
             reach["more"] = True
             return [], "stopped", reach
 
@@ -6220,6 +6236,21 @@ EXPERIENCE_JS = r"""
     }
     return null;
   };
+  // The company page's address, when nothing on the link names it: "/company/aerotek/"
+  // (Blake's network, 2026-10-12: a link with no logo text and no label). A number
+  // there ("/company/1234/") names nothing, and isn't taken.
+  const slugOf = (li) => {
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      if (a.closest('li') !== li) continue;
+      const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/);
+      if (m && !/^\d+$/.test(m[1])) return decodeURIComponent(m[1]).slice(0, 80);
+    }
+    return null;
+  };
+  // What each company link carries, for the kept evidence when a company isn't read.
+  const linksOf = (li) => [...li.querySelectorAll('a[href*="/company/"]')].filter((a) => a.closest('li') === li).slice(0, 2)
+    .map((a) => ({ href: (a.getAttribute('href') || '').split('?')[0].slice(0, 100), text: norm(a.innerText).slice(0, 80),
+      aria: norm(a.getAttribute('aria-label')).slice(0, 80), alts: [...a.querySelectorAll('img')].map((i) => norm(i.getAttribute('alt'))).slice(0, 2) }));
   const items = [];
   for (const li of section.querySelectorAll('li')) {
     const up = li.parentElement && li.parentElement.closest('li');
@@ -6229,7 +6260,11 @@ EXPERIENCE_JS = r"""
       .map((s) => linesOf(s).slice(0, 10));
     const lines = linesOf(li).slice(0, 12);
     const logo = companyOf(li, lines[0]);
-    if (lines.length || subs.length) items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length, ...(logo ? { logo } : {}) });
+    const slug = logo ? null : slugOf(li);
+    if (lines.length || subs.length) {
+      items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length,
+        ...(logo ? { logo } : {}), ...(slug ? { slug } : {}), links: linksOf(li) });
+    }
   }
   const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
   return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null };
@@ -6295,6 +6330,20 @@ def role_from_lines(lines, company=None):
     return {"title": lines[0][:120], "company": company or found, "start": start, "end": end, "current": current}
 
 
+def company_from_slug(slug):
+    """A company page's address as a name: "aston-carter" → "Aston Carter", "ibm" → "IBM".
+    None for nothing, or for a number (which names nothing)."""
+    s = str(slug or "").strip().strip("/")
+    if not s or s.isdigit():
+        return None
+    words = [w for w in re.split(r"[-_\s]+", s) if w]
+    if not words:
+        return None
+    # Short all-letter words are mostly initials (IBM, AT&T's "att", HP); the rest are words.
+    return " ".join(w.upper() if len(w) <= 3 and w.isalpha() and len(words) == 1 else w[:1].upper() + w[1:]
+                    for w in words)[:120]
+
+
 def roles_from_items(items):
     """The roles in the Experience section's items (EXPERIENCE_JS).
 
@@ -6308,8 +6357,9 @@ def roles_from_items(items):
         subs = [role_from_lines(s) for s in (it.get("subs") or [])]
         subs = [r for r in subs if r]
         # The company from the entry's logo or company link (EXPERIENCE_JS companyOf),
-        # since 2026 the only place many entries name it.
-        logo = str(it.get("logo") or "").strip()[:120] or None
+        # since 2026 the only place many entries name it; failing that, its company
+        # page's address ("aston-carter" → "Aston Carter", company_from_slug).
+        logo = str(it.get("logo") or "").strip()[:120] or company_from_slug(it.get("slug"))
         if subs:
             company = lines[0][:120] if lines and not parse_date_range(lines[0]) else None
             for r in subs:

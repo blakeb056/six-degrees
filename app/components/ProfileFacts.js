@@ -52,7 +52,7 @@ export default function ProfileFacts({ person, reach }) {
             <li key={`${r.title}-${r.start}-${i}`} style={{ fontSize: 12, lineHeight: 1.4 }}>
               <span style={{ fontWeight: 650, color: r.current ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #b8c4c4)' }}>{r.title}</span>
               {r.company && <span style={{ color: 'var(--sd-fg-2, #b8c4c4)' }}> · {r.company}</span>}
-              {span(r) && <span style={{ color: 'var(--sd-fg-4, #778)', marginLeft: 6, fontSize: 11 }}>{span(r)}</span>}
+              {span(r) && <span style={{ color: 'var(--sd-fg-4, #778)', fontSize: 11 }}> · {span(r)}</span>}
             </li>
           ))}
           {roles.length > 6 && <li style={{ fontSize: 11, color: 'var(--sd-fg-4, #778)' }}>and {roles.length - 6} more</li>}

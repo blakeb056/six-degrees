@@ -98,20 +98,83 @@ out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from
   assert.equal(by['Senior Recruiter'], 'Invented Robotics');
 });
 
-test('a read with no company on any role is read again: the reader missed logo-only companies until 2026-10-12', (t) => {
+test('Dig deeper is done with someone for good only once it has their roles with a company and their card', (t) => {
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 import json as j
-none = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': None}]})}
-some = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}]})}
-card = {'experience': j.dumps({'status': 'card', 'card': {'followers': 10}})}
+CARD = {'followers': 10, 'connections': 500, 'connectionsPlus': True}
+none = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': None}], 'card': CARD})}
+nocard = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}]})}
+full = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}], 'card': CARD})}
+card = {'experience': j.dumps({'status': 'card', 'card': CARD})}
+bad = {'experience': j.dumps({'status': 'unreadable', 'why': 'x', 'card': CARD})}
 out['none'] = ns['_experience_on_file'](none)
-out['some'] = ns['_experience_on_file'](some)
+out['nocard'] = ns['_experience_on_file'](nocard)
+out['full'] = ns['_experience_on_file'](full)
 out['card'] = ns['_experience_on_file'](card)
+out['bad'] = ns['_experience_on_file'](bad)
 out['empty'] = ns['_experience_on_file']({})`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: scratch() } });
   if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   const out = JSON.parse(r.stdout.trimEnd().split('\n').pop().replace(/^RESULT /, ''));
-  assert.deepEqual(out, { none: false, some: true, card: false, empty: false });
+  // Done for good only with everything: roles with a company, and the card (Blake, 2026-10-12).
+  assert.deepEqual(out, { none: false, nocard: false, full: true, card: false, bad: false, empty: false });
+});
+
+test('a company page address names the company when the entry shows no name', (t) => {
+  const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
+out['names'] = [ns['company_from_slug'](x) for x in ('invented-staffing', 'aerotek', 'ibm', '12345', '', None, 'invented_robotics-inc')]
+items = [{'lines': ['Account Manager', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos'], 'subs': [], 'slug': 'invented-staffing'},
+         {'lines': ['Recruiter', 'Mar 2017 - Oct 2018 · 1 yr 8 mos'], 'subs': [], 'slug': '98765'}]
+out['roles'] = [[x['title'], x['company']] for x in ns['roles_from_items'](items)]`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: scratch() } });
+  if (noPython(t, r)) return;
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout.trimEnd().split('\n').pop().replace(/^RESULT /, ''));
+  assert.deepEqual(out.names, ['Invented Staffing', 'Aerotek', 'IBM', null, null, null, 'Invented Robotics Inc']);
+  assert.deepEqual(out.roles, [['Account Manager', 'Invented Staffing'], ['Recruiter', null]], 'a number names nothing');
+});
+
+test('manual Dig deeper: a profile still loading is never "the foot" until you have scrolled, and it moves on in time', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${WINDOW}
+class Short(Window):
+    # A profile that hasn't loaded: short, so the window reads as at its foot, and you haven't moved.
+    def evaluate(self, js, *a):
+        if js == ns['PAGE_FOOT_JS']: return {'foot': True, 'scrolled': 0, 'height': 900}
+        if js == ns['EXPERIENCE_JS']: return {'found': False}
+        return super().evaluate(js, *a)
+w = Short()
+w.goto(PROFILE)
+result, note = ns['_read_experience_by_hand'](w, [], 'Invented Bridge')
+out['result'] = result
+out['waited'] = round(clock.t - NOW)
+out['note'] = note`);
+    if (!r) return;
+    assert.equal(r.out.result, null, 'nothing concluded: you never scrolled');
+    assert.ok(r.out.waited >= 45 && r.out.waited < 50, `moves on after the wait (${r.out.waited}s)`);
+    assert.match(r.log, /Not scrolling: it moves on to their list in 45 seconds/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('Stop pressed while their profile is open never goes on to their list', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${WINDOW}
+def dig_then_stop(*a, **k):
+    ns['_stop_requested'] = True
+    return None, None
+ns['_dig_into_profile'] = dig_then_stop
+ns['stop_requested'] = lambda: bool(ns.get('_stop_requested'))
+w = Window(card={'followers': 1, 'connections': 500, 'connectionsPlus': True})
+out.update(scan(w, urn=URN, dig=True))`);
+    if (!r) return;
+    assert.equal(r.out.status, 'stopped');
+    assert.ok(r.out.opened.every((u) => !u.includes('/search/')), 'their list never opened');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 // ── the top card reader ─────────────────────────────────────────────────────

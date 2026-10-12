@@ -469,6 +469,19 @@ settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limi
     a profile with none. Anything it can't make out is kept in `debug/experience-<time>.json`
     in the data folder (`_keep_experience_evidence`, local only), so the reader can be fixed
     against the real page.
+  - **A company link with no name on it:** each entry had one link to its company page,
+    with no logo text and no label. `slugOf` takes the page address (`/company/aerotek/`)
+    and `company_from_slug` turns it into a name. A numeric address names nothing. The kept
+    evidence now records each link's address, text, label and image alts.
+  - **Manual mode's foot rule:** a still-loading profile is short, so it read as "at the
+    foot" before Blake had moved, and concluded there was no Experience. The foot now only
+    counts after `MANUAL_DIG_SCROLLED` px of scrolling, with the page height unchanged for
+    `MANUAL_SAY` seconds. Not scrolling at all moves on to their list after
+    `MANUAL_DIG_WAIT` (45 s), as the notch says.
+  - **Stop while a profile is open** never goes on to their list (a stop check after
+    `_dig_into_profile`).
+  - **Done for good:** `_experience_on_file` is true only with roles read, a company on at
+    least one, and the card. Anything less is dug again.
   - **No list total:** a live look found no "About N results" on today's people search,
     nor in its data. For anyone over 500 the only count is the profile's "500+", so their
     ring keeps its dashed band until the list ends.
