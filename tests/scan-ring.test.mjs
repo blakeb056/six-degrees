@@ -32,8 +32,22 @@ test('a list read to the end is the whole ring', () => {
 });
 
 test('page 100 is the end: LinkedIn search goes no further', () => {
+  // With no length known, that's the whole ring, as it always was.
   const f = fillFor({ pages: 100, more: true, connections: 500, connectionsPlus: true });
-  assert.deepEqual([f.read, f.unknown, f.done], [1, 0, true]);
+  assert.deepEqual([f.read, f.unknown, f.done, f.capped], [1, 0, true, true]);
+  // With their network's length known, their share that was reachable: the ring
+  // stays 1 to 1 with their network (Blake, 2026-10-12).
+  const big = fillFor({ pages: 100, more: true }, { card: { followers: 6100, connections: 500, connectionsPlus: true } });
+  assert.deepEqual([big.done, big.capped, big.size, big.unknown], [true, true, 6100, 0]);
+  assert.ok(near(big.read, 1000 / 6100));
+  assert.equal(scanFillWords(big), "about 1,000 of about 6,100 scanned, the most LinkedIn shows of anyone's list (going by their 6,100 followers)");
+  const counted = fillFor({ pages: 100, more: true, total: 5000 });
+  assert.ok(near(counted.read, 0.2));
+  assert.equal(scanFillWords(counted), "about 1,000 of 5,000 scanned, the most LinkedIn shows of anyone's list");
+  // A list that ended before page 100 is whole, whatever count was guessed.
+  const ended = fillFor({ pages: 48, more: false }, { card: { followers: 6100, connections: 500, connectionsPlus: true } });
+  assert.deepEqual([ended.read, ended.done, ended.capped], [1, true, false]);
+  assert.equal(scanFillWords(ended), 'their whole list is scanned');
 });
 
 test('a known small list: pages read against its length', () => {
@@ -50,12 +64,14 @@ test('a known small list: pages read against its length', () => {
   assert.deepEqual([over.read, over.done], [1, false]);
 });
 
-test('a known big list is read against the 1,000 LinkedIn shows', () => {
+test('a known big list is read against its whole length, not the 1,000 LinkedIn shows', () => {
   const f = fillFor({ pages: 25, more: true, total: 5000 });
-  assert.ok(near(f.read, 0.25));
+  assert.ok(near(f.read, 0.05));
   assert.equal(f.unknown, 0);
-  assert.equal(f.size, 1000);
-  assert.ok(near(fillFor({ pages: 50, more: true, total: 1200 }).read, 0.5));
+  assert.equal(f.size, 5000);
+  assert.equal(scanFillWords(f), "about 250 of 5,000 scanned, about 4,750 to go; LinkedIn shows at most 1,000 of anyone's list");
+  assert.ok(near(fillFor({ pages: 50, more: true, total: 1200 }).read, 500 / 1200));
+  assert.equal(scanFillWords(fillFor({ pages: 6, more: true, total: 120 })), 'about 60 of 120 scanned, about 60 to go');
 });
 
 test('"500+": the first 70% fills to 500, then the unknown band fills on to 1,000', () => {
@@ -76,14 +92,15 @@ test('"500+": the first 70% fills to 500, then the unknown band fills on to 1,00
 });
 
 test('"500+" with their followers known: followers is the length, no unknown band', () => {
-  // Blake, 2026-10-12: "if we gather their total follower count … we go off of that metric".
+  // Blake, 2026-10-12: "if we gather their total follower count … we go off of that metric",
+  // measured against all of it, not the 1,000 LinkedIn shows: "more 1 to 1 of the person's network".
   const big = { followers: 6100, connections: 500, connectionsPlus: true };
   const f = fillFor({ pages: 22, more: true, total: null }, { card: big });
-  assert.equal(f.size, 1000, 'over 1,000 followers: the 1,000 LinkedIn shows');
-  assert.ok(near(f.read, 0.22));
+  assert.equal(f.size, 6100);
+  assert.ok(near(f.read, 220 / 6100));
   assert.equal(f.unknown, 0);
   assert.equal(f.followers, 6100);
-  assert.equal(scanFillWords(f), 'about 220 of the 1,000 LinkedIn shows scanned, about 780 to go (they have 6,100 followers)');
+  assert.equal(scanFillWords(f), "about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers); LinkedIn shows at most 1,000 of anyone's list");
   // Fewer than 1,000 followers: their followers are the length.
   const mid = fillFor({ pages: 20, more: true }, { card: { followers: 800, connections: 500, connectionsPlus: true } });
   assert.equal(mid.size, 800);
@@ -130,11 +147,14 @@ test('read + unknown is never above 1, and nothing goes down as pages are read',
   const kinds = [
     { total: 120 }, { total: 5000 }, { connections: 342, connectionsPlus: false }, { connections: 1500, connectionsPlus: false },
     { connections: 500, connectionsPlus: true }, { connections: 800, connectionsPlus: true }, { connections: 1200, connectionsPlus: true }, {},
+    { card: { followers: 640, connections: 500, connectionsPlus: true } }, { card: { followers: 27000, connections: 500, connectionsPlus: true } },
   ];
-  for (const kind of kinds) {
+  // How whole each ends at page 101: a length known past what page 100 reaches leaves their share.
+  const ends = { 1: 1010 / 5000, 3: 1010 / 1500, 9: 1010 / 27000 };
+  for (const [i, { card, ...kind }] of kinds.entries()) {
     let last = -1;
     for (let pages = 0; pages <= 101; pages++) {
-      const f = fillFor({ pages, more: pages < 101, ...kind });
+      const f = fillFor({ pages, more: pages < 101, ...kind }, { card });
       const label = `${JSON.stringify(kind)} at page ${pages}`;
       assert.ok(f.read >= 0 && f.read <= 1, label);
       assert.ok(f.unknown >= 0 && f.unknown <= 1, label);
@@ -142,7 +162,7 @@ test('read + unknown is never above 1, and nothing goes down as pages are read',
       assert.ok(f.read >= last - 1e-12, `${label}: went down`);
       last = f.read;
     }
-    assert.equal(last, 1, `${JSON.stringify(kind)} ends whole`);
+    assert.ok(near(last, ends[i] ?? 1), `${JSON.stringify(kinds[i])} ends at ${ends[i] ?? 1}`);
   }
 });
 

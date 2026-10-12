@@ -43,13 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with the CSV import and the sample too, and call scanning optional, with every warning kept.
 
 - **The ring round a scanned connection's dot is one line that fills as their list is read.**
-  It is measured against how long their list is: the search's own count, else their exact
+  It is measured against their whole network: the search's own count, else their exact
   connection count, else, when their profile says only "500+", their follower count, which is
   about their connections plus people who only follow them, so the ring never shows more read
-  than there is. The platform shows at most about 1,000 of anyone's list, so that is the most
-  it measures against. With none of those known, its last 30% is a dashed band for the unknown
-  part, which fills as the list is read on. Their card says the same in words: "about 220 of the
-  1,000 the platform shows scanned, about 780 to go".
+  than there is. The platform's search stops at page 100, about 1,000 people, so for someone
+  with 6,100 followers a ring read as far as it goes shows about a sixth, and says so; a list
+  that ends before then is the whole ring. With no length known, its last 30% is a dashed band
+  for the unknown part, which fills as the list is read on. Their card says the same in words:
+  "about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers)".
 
 ### Fixed
 - **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",
