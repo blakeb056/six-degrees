@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
-import { reframe, settle, seedAngles } from '../../lib/galaxy';
+import { reframe, settle, seedAngles, FULL_CIRCLE, FAN_HALF, FAN_SPREAD, UP, fanSpan, toFan, fromFan, forceFan, fanDrop, ringPath } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
 import { fillArcs, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
@@ -32,6 +32,11 @@ const inkier = (c) => (/^#[0-9a-f]{6}$/i.test(c || '')
   : c);
 const CENTER_ID = '__center__';
 const HEAT_GLOWS = 700;   // glows drawn under Colour by → Heat, hottest first
+// How far a dot's push on the others reaches in the fan. All the way round you,
+// everyone's push from every side cancels out; in the fan the thousands above
+// would press the rings near you down into its corners, so there each dot only
+// makes room among its neighbours.
+const FAN_REACH = 120;
 
 // Builds the avatar tooltip through the DOM rather than a string, so no value
 // can break out of the attribute it is written into. Only a photo saved on this
@@ -106,6 +111,9 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   // The view, kept across rebuilds: the zoom, and the size of box it was set for.
   const viewRef = useRef({ transform: null, size: null });
   const sizeRef = useRef(null);
+  // A fit asked for that the scene was rebuilt before it could make, as when a
+  // shape picked also changes the filter: the new scene makes it once it settles.
+  const fitOwedRef = useRef(false);
   const [dimensions, setDimensions] = useState(null);
   const stampRef = useRef(null);
 
@@ -206,6 +214,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const select = (d) => onSelectRef.current?.(d);
     const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current, routes);
     sceneRef.current = scene;
+    if (fitOwedRef.current) { fitOwedRef.current = false; scene.fitWhenSettled(); }
     scene.select(selectedIdRef.current);
     setClock({ min: scene.range.min, max: scene.range.max, of: scene.range.of });
     scene.setTime(clockNow().at);
@@ -225,6 +234,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       // the same nodes, so they fought each other and the graph shook.
       // Refreshing made it worse because nothing ever stopped the old ones.
       scene.simulation.stop();
+      fitOwedRef.current = scene.fitOwed();
       scene.dispose();
       unregister();
       // And any glide or fly-to still under way, which would otherwise go on
@@ -424,10 +434,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // drawn: the roomier tier rings.
   const layered = multi;
   const slotOf = (b) => Math.min(Math.max(1, b) - 1, SLOTS.length - 1);
+  // In the fan each ring is further out (spread, below), for the same room.
   const radiusOf = (d) => {
-    if (!layered) return tierRadius(d.tier);
+    if (!layered) return tierRadius(d.tier) * spread();
     const t = TIERS.indexOf(d.tier);
-    return SLOTS[slotOf(bandOf(d))][t < 0 ? 4 : t];
+    return SLOTS[slotOf(bandOf(d))][t < 0 ? 4 : t] * spread();
   };
 
   // A phone. Judged by the window, as the page judges it, not by the graph's
@@ -436,13 +447,26 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // The physics lab's settings (lib/galaxy-lab.js); today's layout when it's
   // off, and always on a phone, whose layout has no physics.
-  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels, tierLines: lab.tierLines } : lab;
+  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels, tierLines: lab.tierLines, shape: lab.shape } : lab;
   // Physics off: nothing on the map moves by itself. The layout is worked out
   // without drawing it and drawn once where it settles (lib/galaxy.js settle);
   // no orbit, no easing, no pulsing ring, and it redraws only when something
   // changes. Every option still works: a change jumps to where it settles.
   const isStill = () => !L.physics;
   const reach = reachCounts(nodes, parentOf);
+
+  // Shape → Wi-Fi fan (Blake, 2026-10-12: "like a wifi symbol shape of all the
+  // degrees"): Degrees' rings, each only the arc over you, FAN_HALF either side
+  // of straight up, and further out by FAN_SPREAD so each has the room it had
+  // all the way round. You sit half the outermost ring below the middle of the
+  // map (lib/galaxy.js fanDrop), so the fan is in the middle where the view and
+  // a fit look. Everyone is held in it by the `fan` force below. A phone, whose
+  // layout is still, draws its tier rings as arcs, as they are.
+  const isFan = () => L.shape === 'fan';
+  const spread = () => (isFan() && !isMobileGraph ? FAN_SPREAD : 1);
+  const outerRing = layered && !isMobileGraph ? SLOTS[slotOf(bands.at(-1) ?? 1)][4] : tierRadius('D');
+  const youY = () => (isFan() ? fanDrop(outerRing * spread()) : 0);
+  centerNode.y = centerNode.fy = youY();
 
   const nodeRadius = (d) => {
     if (d.id === CENTER_ID) return L.sizeBy === 'links' ? 24 : 18;
@@ -466,8 +490,25 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // the tier bands read at a glance. Not on a phone, whose layout has no rings.
   // Once the layout settles they move to where each tier's dots actually sit
   // (the median distance out), which the other forces push past that radius.
+  // Drawn as paths round you, so the fan draws each as its arc: the whole
+  // circle in every other shape (lib/galaxy.js ringPath). Moved with you.
   const guideRings = new Map();
+  const bandRings = [];
   let guidesG = null;
+  const guideHalf = () => (isFan() ? FAN_HALF : Math.PI);
+  const shapeGuides = () => {
+    guidesG?.attr('transform', youY() ? `translate(0,${youY()})` : null);
+    for (const { ring, label, r, top } of bandRings) {
+      ring.attr('d', ringPath(r * spread(), { half: guideHalf() }));
+      label.attr('y', -top * spread() - 8);
+    }
+    // A tier's ring starts where its dots are held; it moves to where they settle (placeGuides).
+    for (const [tier, guide] of guideRings) {
+      guide.r = tierRadius(tier) * spread();
+      guide.ring.attr('d', ringPath(guide.r, { half: guideHalf() }));
+      guide.label.attr('y', -guide.r - 4);
+    }
+  };
   if (!isMobileGraph && layered) {
     // In bands: a faint ring and a label for each step along the chain instead.
     const guides = guidesG = g.append('g').attr('class', 'degree-guides').style('pointer-events', 'none');
@@ -476,17 +517,18 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     for (const b of bands) if (!slots.has(slotOf(b))) slots.set(slotOf(b), b);
     slots.forEach((b, slot) => {
       const r = SLOTS[slot][2];
-      guides.append('circle').attr('r', r).attr('fill', 'none').attr('stroke', '#8899aa')
+      const ring = guides.append('path').attr('fill', 'none').attr('stroke', '#8899aa')
         .attr('stroke-opacity', 0.12).attr('stroke-width', 1).attr('stroke-dasharray', '2 4');
-      guides.append('text').attr('x', 0).attr('y', -SLOTS[slot][4] - 8).attr('text-anchor', 'middle')
+      const label = guides.append('text').attr('x', 0).attr('y', -SLOTS[slot][4] - 8).attr('text-anchor', 'middle')
         .attr('font-size', 10).attr('font-weight', 700).attr('fill', '#8899aa').attr('fill-opacity', 0.55)
         .text(names[b] || `${b}th`);
+      bandRings.push({ ring, label, r, top: SLOTS[slot][4] });
     });
   } else if (!isMobileGraph) {
     const guides = guidesG = g.append('g').attr('class', 'tier-guides').style('pointer-events', 'none');
     for (const tier of ['S', 'A', 'B', 'C', 'D']) {
       const r = tierRadius(tier);
-      const ring = guides.append('circle').attr('r', r).attr('fill', 'none')
+      const ring = guides.append('path').attr('fill', 'none')
         .attr('stroke', tierColors[tier] || '#666').attr('stroke-opacity', 0.16).attr('stroke-width', 1)
         .attr('stroke-dasharray', '2 4');
       const label = guides.append('text').attr('x', 0).attr('y', -r - 4).attr('text-anchor', 'middle')
@@ -495,6 +537,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       guideRings.set(tier, { ring, label });
     }
   }
+  shapeGuides();
   // Where the view is going while a transition takes it there. A resize part-way
   // through re-fits the destination, and a rebuild starts from it, rather than
   // from a point along the way.
@@ -587,21 +630,25 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     };
   }
 
-  // On mobile: pre-compute static positions (no simulation jitter/reset on resize)
-  if (isMobileGraph) {
+  // On mobile: pre-compute static positions (no simulation jitter/reset on resize).
+  // In the fan each tier is shared out along its arc, not all the way round.
+  const placePhone = () => {
     const tierGroups = {};
     nodes.forEach(n => { const t = n.tier || 'D'; if (!tierGroups[t]) tierGroups[t] = []; tierGroups[t].push(n); });
+    const [a0, a1] = isFan() ? fanSpan() : FULL_CIRCLE;
+    const middle = isFan() ? 0.5 : 0;   // round, the last one would sit on the first
     Object.entries(tierGroups).forEach(([tier, group]) => {
       group.forEach((n, i) => {
-        if (n.id === CENTER_ID) { n.x = 0; n.y = 0; n.fx = n.x; n.fy = n.y; return; }
+        if (n.id === CENTER_ID) { n.x = 0; n.y = youY(); n.fx = n.x; n.fy = n.y; return; }
         const r = tierRadius(tier);
-        const angle = (i / group.length) * Math.PI * 2 - Math.PI / 2;
+        const angle = a0 + ((i + middle) / group.length) * (a1 - a0);
         n.x = r * Math.cos(angle);
-        n.y = r * Math.sin(angle);
+        n.y = youY() + r * Math.sin(angle);
         n.fx = n.x; n.fy = n.y; // Fixed positions — no physics
       });
     });
-  }
+  };
+  if (isMobileGraph) placePhone();
 
   // Each force is today's value times its slider in the lab (1 when it's off).
   const linkBase = isMobileGraph ? 0 : layered ? 0.06 : 0.1;
@@ -627,33 +674,40 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const lineOpacity = () => (MAP_LOOK.light ? Math.min(0.7, 0.22 + 0.08 * L.lines) : Math.min(0.45, 0.1 + 0.05 * L.lines));
   // Physics off: everyone starts on their own ring, in a slice of the circle
   // beside the connection they hang off (lib/galaxy.js seedAngles). With it
-  // on, d3 places them, as it always has, and the map is seen settling.
-  if (!isMobileGraph && isStill()) {
-    const angles = seedAngles(nodes.filter(n => n.id !== CENTER_ID).map(n => n.id), parentOf);
+  // on, d3 places them, as it always has, and the map is seen settling. In the
+  // fan everyone starts on their arc that way, physics or not: d3 would start
+  // half of them below you, outside it.
+  if (!isMobileGraph && (isStill() || isFan())) {
+    const angles = seedAngles(nodes.filter(n => n.id !== CENTER_ID).map(n => n.id), parentOf, isFan() ? fanSpan() : FULL_CIRCLE);
     for (const n of nodes) {
       if (n.id === CENTER_ID) continue;
-      const a = angles.get(n.id) ?? 0, r = radiusOf(n);
+      const a = angles.get(n.id) ?? UP, r = radiusOf(n);
       n.x = r * Math.cos(a);
-      n.y = r * Math.sin(a);
+      n.y = youY() + r * Math.sin(a);
     }
   }
+  // The fan's edges, round you wherever you sit (lib/galaxy.js forceFan): the last force, always.
+  const fanForce = forceFan(() => ({ x: 0, y: youY() }));
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(linkStrength))
-    .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge))
-    .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
+    .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge).distanceMax(isFan() ? FAN_REACH : Infinity))
+    // Round you, the middle of everyone is held on you; in the fan, you are at its foot instead.
+    .force('center', isMobileGraph || isFan() ? null : d3.forceCenter(0, 0))
     .force('gravityX', isMobileGraph ? null : d3.forceX(0).strength(gravity))
-    .force('gravityY', isMobileGraph ? null : d3.forceY(0).strength(gravity))
+    .force('gravityY', isMobileGraph ? null : d3.forceY(youY()).strength(gravity))
     .force('collision', isMobileGraph ? null : d3.forceCollide().radius(d => nodeRadius(d) + 2))
-    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : radiusOf(d), 0, 0).strength(radialBase * L.rings));
+    .force('radial', isMobileGraph ? null : d3.forceRadial(d => d.id === CENTER_ID ? 0 : radiusOf(d), 0, youY()).strength(radialBase * L.rings))
+    .force('fan', isMobileGraph || !isFan() ? null : fanForce);
   // Physics off: its own timer never ticks; settleNow, below, runs it instead.
   if (isStill()) simulation.stop();
   guidesG?.attr('opacity', Math.min(1, L.rings));
   const placeGuides = () => {
-    for (const [tier, { ring, label }] of guideRings) {
-      const out = nodes.filter((n) => n.tier === tier && n.id !== CENTER_ID).map((n) => Math.hypot(n.x || 0, n.y || 0)).sort((x, y) => x - y);
+    for (const [tier, guide] of guideRings) {
+      const { ring, label } = guide;
+      const out = nodes.filter((n) => n.tier === tier && n.id !== CENTER_ID).map((n) => Math.hypot(n.x || 0, (n.y || 0) - youY())).sort((x, y) => x - y);
       if (!out.length) { ring.attr('opacity', 0); label.attr('opacity', 0); continue; }
-      const r = out[Math.floor(out.length / 2)];
-      ring.attr('r', r).attr('opacity', 1);
+      const r = guide.r = out[Math.floor(out.length / 2)];
+      ring.attr('d', ringPath(r, { half: guideHalf() })).attr('opacity', 1);
       label.attr('y', -r - 4).attr('opacity', 1);
     }
   };
@@ -984,7 +1038,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // settling it dragged every circle off its hub). Moved in place every frame
   // rather than by the forces, so it costs a repaint; a big network repaints
   // every second or third frame, at the same speed. Never with Reduce Motion,
-  // nor on a phone (whose layout has no physics).
+  // nor on a phone (whose layout has no physics), nor in the fan, which opens upward.
   const every = nodes.length > 12000 ? 3 : nodes.length > 3000 ? 2 : 1;
   let orbitTimer = null;
   let lastT = 0;
@@ -1008,9 +1062,39 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (performance.now() - tickedAt > 50) paint();
   };
   const setOrbit = () => {
-    const on = !isMobileGraph && L.orbit > 0 && !reducedMotion() && !isStill();
+    const on = !isMobileGraph && L.orbit > 0 && !reducedMotion() && !isStill() && !isFan();
     if (on && !orbitTimer) { lastT = 0; frame = 0; orbitTimer = d3.timer(turn); }
     if (!on && orbitTimer) { orbitTimer.stop(); orbitTimer = null; }
+  };
+
+  // A shape picked (Shape → Wi-Fi fan, or back out of it): everyone moves into
+  // the fan, or out of it round you, each the same distance from you and in the
+  // same order as their neighbours (lib/galaxy.js toFan, fromFan), and the
+  // forces settle from there. Without that, half the map would start below you.
+  const setShape = () => {
+    const x0 = centerNode.x || 0, y0 = centerNode.y || 0, to = youY();
+    const grow = isFan() ? FAN_SPREAD : 1 / FAN_SPREAD;   // each ring further out in the fan
+    for (const n of nodes) {
+      if (n.id === CENTER_ID) continue;
+      const dx = (n.x || 0) - x0, dy = (n.y || 0) - y0, r = Math.hypot(dx, dy) * grow;
+      const a = isFan() ? toFan(Math.atan2(dy, dx)) : fromFan(Math.atan2(dy, dx));
+      n.x = r * Math.cos(a);
+      n.y = to + r * Math.sin(a);
+    }
+    centerNode.x = centerNode.fx = 0;
+    centerNode.y = centerNode.fy = to;
+    simulation.force('center', isFan() ? null : d3.forceCenter(0, 0));
+    simulation.force('charge').distanceMax(isFan() ? FAN_REACH : Infinity);
+    simulation.force('gravityY').y(to);
+    simulation.force('radial').y(to);
+    // Set last, so it stays the last force: it reads where the others send everyone.
+    simulation.force('fan', isFan() ? fanForce : null);
+    shapeGuides();
+    setOrbit();
+    paint();
+    // A new shape is a new size of map: everyone on screen once it settles,
+    // even if the fit the pick asked for came while the old shape was still drawn.
+    fitArmed = true;
   };
 
   // A slider moved: change the running layout in place and let it settle again.
@@ -1018,11 +1102,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (isMobileGraph) {
       if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); showBorn(); }
       if (next.tierLines !== L.tierLines) { L = { ...L, tierLines: next.tierLines }; applyLines({ tiers: true }); }
+      if (next.shape !== L.shape) { L = { ...L, shape: next.shape }; placePhone(); paint(); }
       return;
     }
     const prev = L;
     L = next;
     if (prev.physics !== L.physics) setPhysics();
+    const shaped = (prev.shape === 'fan') !== isFan();
+    if (shaped) setShape();
     const sized = prev.dotSize !== L.dotSize || prev.sizeBy !== L.sizeBy;
     if (sized) {
       node.attr('r', nodeRadius);
@@ -1039,7 +1126,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     g.classed('lab-pop', L.on && nodes.length < 5000 && !isStill());
     if (prev.orbit !== L.orbit) setOrbit();
     const forces = FORCE_KEYS.some(k => prev[k] !== L[k]);
-    if (!forces && !sized) return;
+    if (!forces && !sized && !shaped) return;
     simulation.force('link').distance(linkDistance).strength(linkStrength);
     simulation.force('charge').strength(charge);
     simulation.force('gravityX').strength(gravity);
@@ -1183,7 +1270,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   setOrbit();
   if (isStill()) settleNow({ first: true });
   const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); stopSettling?.(); };
-  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, dispose, range };
+  const fitOwed = () => fitArmed;
+  // Settled already (Physics off, a small map worked out at once): now; otherwise once it is.
+  const fitWhenSettled = () => {
+    if (!stopSettling && simulation.alpha() < SETTLED) fitView();
+    else fitArmed = true;
+  };
+  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, fitOwed, fitWhenSettled, dispose, range };
 }
 
 // With Physics off (isStill), a dragged dot moves on its own, nothing pulled

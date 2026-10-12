@@ -161,10 +161,10 @@ test('the branch light-up starts off, even in a setting saved when it was on', a
   } finally { delete globalThis.localStorage; }
 });
 
-test('Network Circle\'s notch and the Physics panel pick a layout the same way, Rings · Clusters · Orbit · Degrees', async () => {
+test('Filters → Shape and the Physics panel pick a layout the same way, Rings · Clusters · Orbit · Degrees · Wi-Fi fan', async () => {
   // A copy of the module of its own, so the sliders it moves are its own.
   const lab = await import('../lib/galaxy-lab.js?notch-layouts');
-  assert.deepEqual(lab.LAYOUTS.map((l) => l.key), ['rings', 'clusters', 'orbit', 'degrees']);
+  assert.deepEqual(lab.LAYOUTS.map((l) => l.key), ['rings', 'clusters', 'orbit', 'degrees', 'fan']);
   const fit = lab.clockNow().fit;
   lab.pickLayout('clusters');
   assert.equal(lab.layoutNow(), 'clusters');
@@ -205,4 +205,66 @@ test('Reset to today\'s layout keeps Physics as you left it, as it keeps Names',
   assert.equal(labNow().physics, false);
   assert.equal(labNow().push, LAB_DEFAULTS.push);
   setLab({ physics: true });
+});
+
+import { DEGREES, FAN, LAYOUTS, showsEveryDegree } from '../lib/galaxy-lab.js';
+
+test('the Wi-Fi fan: Degrees\' forces and colours, told apart by its shape', () => {
+  assert.equal(LAB_DEFAULTS.shape, 'round');
+  assert.deepEqual(FAN, DEGREES);
+  assert.equal(LAYOUT_LOOKS.fan.shape, 'fan');
+  assert.equal(LAYOUT_LOOKS.fan.colourBy, 'degree');
+  const fan = { ...LAB_DEFAULTS, ...FAN, ...LAYOUT_LOOKS.fan };
+  assert.equal(layoutOf(fan), 'fan');
+  assert.equal(layoutOf({ ...fan, shape: 'round' }), 'degrees');
+  assert.equal(layoutOf({ ...fan, push: 9 }), null);              // a slider of your own, still a fan: your own
+  assert.equal(layoutOf({ ...fan, colourBy: 'tier' }), null);
+  // Rings' forces drawn as a fan isn't Rings.
+  assert.equal(layoutOf({ ...LAB_DEFAULTS, shape: 'fan' }), null);
+  // A setting saved before shapes existed is round.
+  const { shape: _shape, ...old } = LAB_DEFAULTS;
+  assert.equal(layoutOf(old), 'rings');
+});
+
+test('Degrees and the fan are the layouts of everyone by degree', () => {
+  assert.deepEqual(LAYOUTS.map((l) => l.key).filter(showsEveryDegree), ['degrees', 'fan']);
+  assert.equal(showsEveryDegree(null), false);
+  assert.equal(showsEveryDegree('nonsense'), false);
+});
+
+test('every shape has a name, a line, a longer word and a picture for the Shape tab', () => {
+  for (const l of LAYOUTS) {
+    assert.ok(l.label && l.line && l.about, l.key);
+    assert.ok(l.line.length <= 70, `${l.key}'s line is one line`);
+    assert.ok(Array.isArray(l.icon) && l.icon.length > 0, l.key);
+    for (const part of l.icon) {
+      if (part.dot) assert.equal(part.dot.length, 3);
+      else assert.match(part.d, /^M[-\d.]/);
+    }
+  }
+});
+
+test('picking the fan and back: shape and colours go with it, and leave as it leaves', async () => {
+  const lab = await import('../lib/galaxy-lab.js?fan-picks');
+  const fit = lab.clockNow().fit;
+  lab.pickLayout('fan');
+  assert.equal(lab.layoutNow(), 'fan');
+  assert.equal(lab.labNow().shape, 'fan');
+  assert.equal(lab.labNow().colourBy, 'degree');
+  assert.equal(lab.clockNow().fit, fit + 1);
+  lab.pickLayout('degrees');                          // fan to Degrees: rings again, colours kept
+  assert.equal(lab.layoutNow(), 'degrees');
+  assert.equal(lab.labNow().shape, 'round');
+  assert.equal(lab.labNow().colourBy, 'degree');
+  lab.pickLayout('fan');
+  lab.pickLayout('clusters');                         // fan to Clusters: round, by tier
+  assert.equal(lab.layoutNow(), 'clusters');
+  assert.equal(lab.labNow().shape, 'round');
+  assert.equal(lab.labNow().colourBy, 'tier');
+  lab.pickLayout('fan');
+  lab.setLab(null);                                   // Reset: today's layout, round
+  assert.equal(lab.labNow().shape, 'round');
+  assert.equal(lab.layoutNow(), 'rings');
+  lab.pickLayout('toString');                         // not a layout, however it's spelt: nothing moves
+  assert.equal(lab.layoutNow(), 'rings');
 });

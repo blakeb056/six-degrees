@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TIERS, NETWORK_GRID, DEGREES_GRID, makeGrid, shows, showing, showingIn,
   toggleCell, toggleTier, toggleDegree, showAllTiers, gridCounts,
+  toggleTiers, showsDegree, sameGrid,
 } from '../lib/tier-grid.js';
 
 const counts = { S: { 1: 10, 2: 100 }, A: { 1: 20, 2: 200, 3: 5 }, B: { 1: 30 }, C: { 1: 40 }, D: { 1: 50 } };
@@ -73,4 +74,67 @@ test('counts by tier and degree, for the dots', () => {
   assert.equal(c.S[2], 1);
   assert.equal(c.D[2], 1);
   assert.equal(c.A[1], undefined);
+});
+
+// Blake, 2026-10-12: "the user can click above where it says tiers, it can be toggled
+// off or on and turns off all the tiering and leaves the user to pick which degree
+// they want or not like usual".
+test('Tiers off: every tier is in, at the degrees picked, whatever their tier', () => {
+  const picked = toggleTier(toggleCell(NETWORK_GRID, 'S', 2, counts), 'C', counts);   // S at 1st and 2nd, C hidden
+  const off = toggleTiers(picked);
+  assert.equal(off.tiersOff, true);
+  // Every degree a tier on screen showed: S's 2nd is everyone's 2nd now, and C is back in.
+  assert.deepEqual(off.flat, [1, 2]);
+  assert.equal(shows(off, 'C', 1), true);
+  assert.equal(shows(off, 'A', 2), true);
+  assert.equal(shows(off, undefined, 2), true);
+  assert.equal(shows(off, 'S', 3), false);
+  assert.equal(showingIn(off, counts, 'A'), 220);
+  assert.equal(showing(off, counts), 450);
+  // Nobody who was on screen goes when tiers turn off.
+  assert.ok(showing(off, counts) >= showing(picked, counts));
+});
+
+test('with tiers off a degree switches like usual, and the last one on can\'t be', () => {
+  const off = toggleTiers(NETWORK_GRID);
+  assert.deepEqual(off.flat, [1]);
+  const three = toggleDegree(off, 3, counts);
+  assert.deepEqual(three.flat, [1, 3]);
+  assert.equal(shows(three, 'S', 3), true);           // nobody in S at 3rd, but the degree is on for all
+  assert.equal(showing(three, counts), 155);
+  assert.deepEqual(toggleDegree(three, 3, counts).flat, [1]);
+  assert.equal(toggleDegree(off, 1, counts), off);    // the last people on screen stay
+  assert.equal(toggleDegree(off, 5, counts), off);    // nobody at 5th: nothing to switch
+  assert.deepEqual(toggleDegree(off, 2).flat, [1, 2]);   // the legend under the map passes no counts
+});
+
+test('Tiers on again: the tier rows exactly as they were, whatever was picked meanwhile', () => {
+  const picked = toggleTier(toggleCell(NETWORK_GRID, 'A', 3, counts), 'D', counts);
+  const off = toggleDegree(toggleTiers(picked), 2, counts);
+  const on = toggleTiers(off);
+  assert.deepEqual(on, picked);
+  assert.equal('tiersOff' in on || 'flat' in on, false);
+  // The grid it was given is never changed.
+  assert.equal(picked.tiersOff, undefined);
+  assert.deepEqual(NETWORK_GRID.degrees.S, [1]);
+});
+
+test('a degree is on screen at any tier: the legend under the map', () => {
+  assert.equal(showsDegree(NETWORK_GRID, 1), true);
+  assert.equal(showsDegree(NETWORK_GRID, 2), false);
+  assert.equal(showsDegree(toggleCell(NETWORK_GRID, 'B', 2, counts), 2), true);
+  const off = toggleTiers(makeGrid([1, 3]));
+  assert.equal(showsDegree(off, 3), true);
+  assert.equal(showsDegree(toggleDegree(off, 3), 3), false);
+});
+
+test('Degrees and the Wi-Fi fan start with every degree and the tiers off', () => {
+  const g = makeGrid([1, 2, 3], { tiersOff: true });
+  assert.equal(g.tiersOff, true);
+  assert.deepEqual(g.flat, [1, 2, 3]);
+  assert.ok(TIERS.every((t) => [1, 2, 3].every((d) => shows(g, t, d))));
+  // Tiers back on there: every tier at every degree, not an empty grid.
+  assert.deepEqual(toggleTiers(g), makeGrid([1, 2, 3]));
+  assert.equal(sameGrid(g, makeGrid([1, 2, 3], { tiersOff: true })), true);
+  assert.equal(sameGrid(g, makeGrid([1, 2, 3])), false);
 });

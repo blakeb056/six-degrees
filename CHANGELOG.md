@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan until every role has its company.
 
 ### Changed
+- **Network Circle's shapes, by degree.** Its Filters panel has a Shape tab with a picture of
+  each layout: Rings, Clusters, Orbit, and two new ones, *Degrees* (everyone you know, a ring
+  for each degree, coloured by degree) and *Wi-Fi fan* (you at the bottom, each degree an arc
+  fanning out above you). Picking either shows every degree, and a legend under the map turns a
+  degree on or off; picking another shape brings back the filter you had. The layout tabs above
+  the map are gone, since the Shape tab does their job. A third-degree person reached through a
+  company scan no longer draws a line from you as if you knew them.
+- **A Tiers switch.** The word *Tiers* above the tier rows is a switch: off, tiers stop
+  mattering and one row of degrees with their counts takes their place, so you pick by degree
+  alone. Turning it back on brings the tier rows back as they were.
 - **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
   now comes first, marked Recommended and already chosen, so the button a new install opens on
   says *Import a CSV* instead of leading into the scanner's setup: the official export carries
