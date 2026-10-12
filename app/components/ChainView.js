@@ -32,7 +32,7 @@
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
-import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanFill } from '../../lib/reach';
+import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanFill, scanFillWords } from '../../lib/reach';
 import { stoppedLine } from '../../lib/in-progress';
 import { fillArcs, RING } from '../../lib/dot-rings';
 import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
@@ -508,18 +508,11 @@ function bridgeTitle(b, ready, fill) {
   if (notes) parts.push(`${notes} notification${notes === 1 ? '' : 's'} about their circle${b.activity.unread ? `, ${b.activity.unread} new` : ''}`);
   if (ready) parts.push(`${ready} in ${firstName(b)}’s circle ${ready === 1 ? 'is' : 'are'} ready for a scan`);
   if (b.chains) parts.push(`${b.chains} scanned since, with ${b.chains === 1 ? 'a cluster' : 'clusters'} of their own`);
-  if (fill) parts.push(scanWords(fill));
+  if (fill) parts.push(scanFillWords(fill));
   return parts.length ? parts.join(' · ') : `${firstName(b)}’s circle`;
 }
 
 /** How much of someone's list is scanned, in words (lib/reach.js scanFill). */
-function scanWords(fill) {
-  if (fill.done) return 'their whole list is scanned';
-  const seen = fill.seen.toLocaleString('en-US');
-  if (fill.size) return `about ${Math.max(1, Math.min(99, Math.round(fill.read * 100)))}% of their list is scanned`;
-  if (fill.atLeast) return `about ${seen} of their ${fill.atLeast.toLocaleString('en-US')}+ connections scanned so far`;
-  return `about ${seen} of their connections scanned so far; how many they have isn't known yet`;
-}
 
 /** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
 // The preview grows out of the bridge when you hover it (Blake, 2026-10-03: "the

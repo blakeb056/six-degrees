@@ -4296,6 +4296,10 @@ def _wait_for_profile_view(page):
 # score as Read profiles' do, and their followers as recognition.
 # ---------------------------------------------------------------------------
 MANUAL_DIG_WAIT = 90              # manual mode: how long it waits for you to reach their Experience
+MANUAL_DIG_STUCK = 12             # manual mode: Experience in view this long with nothing it can read: it says so and moves on
+
+# You're at the foot of their profile: nothing more will load as you scroll.
+PAGE_FOOT_JS = "() => (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 300)"
 
 # What the profile's top card says about their reach: "500+ connections",
 # "312 connections", "27K followers", "1,234 followers · 500+ connections". Read
@@ -4390,6 +4394,9 @@ def _read_experience_by_hand(page, responses, name):
     print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience; it's read as it shows, "
           f"then Sixgree opens their list.", flush=True)
     start = time.time()
+    seen_at = None        # when their Experience section first showed with entries in it
+    foot_at = None        # when you first reached the foot of their profile
+    said = set()
     while time.time() - start < MANUAL_DIG_WAIT:
         if stop_requested():
             return {"status": "stopped", "why": "stopped"}, None
@@ -4409,6 +4416,29 @@ def _read_experience_by_hand(page, responses, name):
         if data or roles_from_items(dom.get("items")):
             _chime("read-1")
             return _experience_result(dom, data)
+        now = time.time()
+        if dom.get("found") and dom.get("items"):
+            seen_at = seen_at or now
+            if "seen" not in said:
+                said.add("seen")
+                print(f"  (their Experience section is in view with {len(dom['items'])} entries, "
+                      f"but none it can read yet)", flush=True)
+            if now - seen_at >= MANUAL_DIG_STUCK:
+                _keep_experience_evidence(page, dom, name)
+                return {"status": "unreadable", "why": "an Experience section with entries it couldn't read"}, (
+                    f"  Couldn't read {name}'s experience: the section has {len(dom['items'])} entries, none "
+                    f"in a shape the reader knows. Marked \"couldn't read\", and what it showed is kept on this "
+                    f"computer so the reader can be fixed.")
+        try:
+            at_foot = bool(page.evaluate(PAGE_FOOT_JS))
+        except Exception:
+            at_foot = False
+        if at_foot and not dom.get("found"):
+            foot_at = foot_at or now
+            if now - foot_at >= MANUAL_SAY:
+                return {"status": "unreadable", "why": "no Experience section on their profile"}, (
+                    f"  {name}'s profile has no Experience section that loaded, at the foot of the page. "
+                    f"Marked \"couldn't read\", not empty.")
         _manual_wait(page, MANUAL_POLL)
     return None, f"  You didn't reach {name}'s Experience within {MANUAL_DIG_WAIT} seconds, so it's left for next time."
 
@@ -4421,7 +4451,22 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
     if card:
         _LIST_CARDS[profile_url] = card
         print(f"  Their profile: {_card_words(card)}.", flush=True)
+
+    def save(result):
+        # To the app on this computer, never to LinkedIn: a refusal is said and the scan goes on.
+        try:
+            push_experience({"profile_url": profile_url}, result)
+        except Exception as exc:
+            print(f"  (their profile couldn't be saved to the app: {str(exc)[:120]})", flush=True)
+
+    def card_only():
+        # The top card on its own, for their card and their score (lib/experience.js
+        # status "card"; the app adds it to a read already on file, never in its place).
+        if card:
+            save({"status": "card", "card": card})
+
     if not dig:
+        card_only()
         return None, None
     print(f"  Dig deeper: reading {name}'s profile while it's open.", flush=True)
     if manual:
@@ -4429,12 +4474,40 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
     else:
         result, note = read_experience(page, responses)
     if result and result.get("status") in ("pushback", "stopped"):
+        card_only()
         return result["status"], result.get("why")
     if note:
         print(note, flush=True)
     if result:
-        push_experience({"profile_url": profile_url}, {**result, **({"card": card} if card else {})})
+        save({**result, **({"card": card} if card else {})})
+        if result.get("status") == "unreadable" or any(not r.get("company") for r in result.get("roles") or []):
+            try:
+                _keep_experience_evidence(page, page.evaluate(EXPERIENCE_JS) or {}, name)
+            except Exception:
+                pass
+    else:
+        card_only()
     return None, None
+
+
+def _keep_experience_evidence(page, dom, name):
+    """What their Experience section showed, when the reader couldn't make it all out
+    (no role read, or a role with no company), kept beside the database as
+    debug/experience-<time>.json so the reader can be fixed against the real page.
+    Local only, like pushback/ (_keep_pushback_evidence); nothing leaves the machine."""
+    try:
+        base = _home() / "debug"
+        base.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        items = [{"lines": (it.get("lines") or [])[:8], "subs": [s[:6] for s in (it.get("subs") or [])[:6]],
+                  "logo": it.get("logo"), "companyLinks": it.get("companyLinks")}
+                 for it in (dom.get("items") or [])[:12]]
+        (base / f"experience-{stamp}.json").write_text(json.dumps({
+            "url": getattr(page, "url", ""), "found": dom.get("found"), "how": dom.get("how"),
+            "showAll": dom.get("showAll"), "items": items}, indent=2))
+        print(f"  (what {name}'s Experience section showed is kept in {base}/experience-{stamp}.json)", flush=True)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -6120,6 +6193,30 @@ EXPERIENCE_JS = r"""
     }
     return out;
   };
+  // The company an entry is at, from its logo or its link to the company's page:
+  // since 2026 LinkedIn draws an entry as title, dates and description, with the
+  // company only as the logo beside it ("Aerotek logo"), not as a line of text
+  // (Blake's network, 2026-10-12: every company read as none). Never the title.
+  const companyOf = (li, title) => {
+    const own = (el) => { const l = el.closest('li'); return l === li; };
+    const pick = (v) => {
+      const t = norm(v).replace(/\s*(company )?logo$/i, '');
+      return t && t.length <= 100 && t !== title && !/^\d/.test(t) ? t : null;
+    };
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      if (!own(a)) continue;
+      const img = a.querySelector('img[alt]');
+      const got = (img && pick(img.getAttribute('alt'))) || pick(a.getAttribute('aria-label'));
+      if (got) return got;
+    }
+    for (const img of li.querySelectorAll('img[alt]')) {
+      if (own(img) && /logo$/i.test(norm(img.getAttribute('alt')))) {
+        const got = pick(img.getAttribute('alt'));
+        if (got) return got;
+      }
+    }
+    return null;
+  };
   const items = [];
   for (const li of section.querySelectorAll('li')) {
     const up = li.parentElement && li.parentElement.closest('li');
@@ -6128,7 +6225,8 @@ EXPERIENCE_JS = r"""
       .filter((s) => s.parentElement && s.parentElement.closest('li') === li)
       .map((s) => linesOf(s).slice(0, 10));
     const lines = linesOf(li).slice(0, 12);
-    if (lines.length || subs.length) items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length });
+    const logo = companyOf(li, lines[0]);
+    if (lines.length || subs.length) items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length, ...(logo ? { logo } : {}) });
   }
   const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
   return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null };
@@ -6206,15 +6304,19 @@ def roles_from_items(items):
         lines = [str(x).strip() for x in (it.get("lines") or []) if str(x).strip()]
         subs = [role_from_lines(s) for s in (it.get("subs") or [])]
         subs = [r for r in subs if r]
+        # The company from the entry's logo or company link (EXPERIENCE_JS companyOf),
+        # since 2026 the only place many entries name it.
+        logo = str(it.get("logo") or "").strip()[:120] or None
         if subs:
             company = lines[0][:120] if lines and not parse_date_range(lines[0]) else None
             for r in subs:
                 # In a company's list the line under a title is how they worked, not where.
-                r["company"] = company or r["company"]
+                r["company"] = company or logo or r["company"]
                 roles.append(r)
             continue
         r = role_from_lines(lines)
         if r:
+            r["company"] = r["company"] or logo
             roles.append(r)
     return _unique_roles(roles)
 

@@ -157,6 +157,8 @@ old *Read full profiles* round:
 - **Cost:** it reads someone once (anyone whose experience is on file is skipped). A first
   scan opens their profile anyway, so it costs nothing extra. Carrying on with someone never
   read opens their profile once, a profile view, and not when today's profile views are used.
+- **What you see:** each person's card shows *From their profile*: followers, connections,
+  the roles their profile lists, and how much of their circle is read.
 - **Without it:** every profile a scan opens still has its top card read (followers and
   "500+ connections"). Their connection count fills the ring round their dot, showing how much
   of their circle is read.

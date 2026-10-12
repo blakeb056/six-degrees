@@ -455,6 +455,23 @@ settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limi
   - Only for someone without experience on file (`_experience_on_file`). With their search id
     known, their profile is opened once just for this (one profile view), and not at all
     when today's profile views are used.
+- **The first live reads (2026-10-12):**
+  - **No company line:** LinkedIn's Experience entries are now title, dates and description,
+    with the company only as the entry's logo or company link. `EXPERIENCE_JS` `companyOf`
+    reads it into `logo`, and `roles_from_items` uses it when no company line is found.
+    Andre's four roles all read with no company until then.
+  - **The card is saved on every visit:** as `{status: "card"}` when the experience isn't
+    read. `app/api/ingest` adds it to a read already on file, never replacing it, and the
+    ring falls back to it (`lib/reach.js scanFill`). A stop before the list used to lose
+    the card.
+  - **Manual mode stops waiting early:** it moves on with a reason after `MANUAL_DIG_STUCK`
+    seconds of an Experience section it can't read, or `MANUAL_SAY` seconds at the foot of
+    a profile with none. Anything it can't make out is kept in `debug/experience-<time>.json`
+    in the data folder (`_keep_experience_evidence`, local only), so the reader can be fixed
+    against the real page.
+  - **No list total:** a live look found no "About N results" on today's people search,
+    nor in its data. For anyone over 500 the only count is the profile's "500+", so their
+    ring keeps its dashed band until the list ends.
 - **The old round:** the app no longer offers Read profiles' batch round. `--read-profiles` and
   its route action remain for the command line. Its queue still reads the highest power first.
 

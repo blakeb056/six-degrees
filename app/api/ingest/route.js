@@ -4,7 +4,7 @@ import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
-import { cleanExperience } from '../../../lib/experience';
+import { cleanExperience, readExperience } from '../../../lib/experience';
 
 function parseHeadline(h) {
   if (!h) return { role: '', company: '' };
@@ -29,17 +29,23 @@ async function saveExperience({ people, userId }) {
   for (const p of people) {
     const url = typeof p?.profileUrl === 'string' ? p.profileUrl.trim() : '';
     if (!url) { notFound += 1; continue; }
-    const stored = cleanExperience(p);
-    let q = supabase.from('linkedin_connections').select('id').eq('profile_url', url).eq('degree', 1);
+    let stored = cleanExperience(p);
+    let q = supabase.from('linkedin_connections').select('id, experience').eq('profile_url', url).eq('degree', 1);
     if (userId) q = q.eq('user_id', userId);
     const { data: rows } = await q;
     if (!rows?.length) { notFound += 1; continue; }
+    // A top card on its own (lib/experience.js status 'card') never replaces a read of
+    // their experience: it's added to the one already there, newer numbers winning.
+    if (stored.status === 'card') {
+      const had = readExperience(rows[0]);
+      if (had && had.status !== 'card') stored = { ...had, card: stored.card };
+    }
     let u = supabase.from('linkedin_connections').update({ experience: JSON.stringify(stored) }).eq('profile_url', url).eq('degree', 1);
     if (userId) u = u.eq('user_id', userId);
     const { error } = await u;
     if (error) return Response.json({ error: error.message }, { status: 500 });
     if (stored.status === 'read') saved += 1;
-    else unreadable += 1;
+    else if (stored.status === 'unreadable') unreadable += 1;
   }
   try { await supabase.rpc('score_new_connections'); } catch { /* scoring is best-effort, as for every ingest */ }
   return Response.json({ ok: true, saved, unreadable, notFound });

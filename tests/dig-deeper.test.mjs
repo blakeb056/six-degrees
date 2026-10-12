@@ -12,7 +12,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { cleanCard, cleanExperience, experienceCard } from '../lib/experience.js';
+import { cleanCard, cleanExperience, experienceCard, readProfileQueue } from '../lib/experience.js';
+import { reachIndex, scanFill } from '../lib/reach.js';
 import { readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { PYTHON, noPython } from './python.mjs';
 
@@ -58,6 +59,43 @@ test('Dig deeper is off unless turned on, and only "on" is written', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('a card on its own is kept as status "card", never replaces a read, and keeps them waiting for one', () => {
+  const at = '2026-10-12T15:00:00Z';
+  const only = cleanExperience({ status: 'card', card: { followers: 64944, connections: 500, connectionsPlus: true } }, at);
+  assert.deepEqual(only, { v: 1, status: 'card', at, card: { followers: 64944, connections: 500, connectionsPlus: true } });
+  assert.equal(cleanExperience({ status: 'card', card: { followers: null } }, at).status, 'unreadable', 'a card that says nothing is no card');
+  assert.deepEqual(experienceCard({ experience: JSON.stringify(only) }), only.card);
+  const queue = readProfileQueue([{ degree: 1, profile_url: 'https://www.linkedin.com/in/invented-a/', power_score: 9, experience: JSON.stringify(only) }]);
+  assert.equal(queue.length, 1, 'still waiting for their experience');
+});
+
+test('the ring takes their connection count from their card when their list has none', () => {
+  const person = { id: 'b1', degree: 1, profile_url: 'https://www.linkedin.com/in/invented-bridge/',
+    experience: JSON.stringify({ v: 1, status: 'card', at: '2026-10-12T15:00:00Z', card: { followers: 900, connections: 312, connectionsPlus: false } }) };
+  const reach = reachIndex([person], [], { lists: { 'https://www.linkedin.com/in/invented-bridge/': { pages: 10, more: true } } });
+  const fill = scanFill(person, reach);
+  assert.equal(fill.size, 312, 'an exact count under 500 is their list size');
+  assert.ok(Math.abs(fill.read - 100 / 312) < 1e-9);
+});
+
+test('an Experience entry with no company line takes its company from its logo', (t) => {
+  const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
+items = [
+  {'lines': ['Account Manager', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos', 'Invented staffing company description.'], 'subs': [], 'logo': 'Invented Staffing'},
+  {'lines': ['Technical Recruiter', 'Invented Search Partners · Full-time', 'Mar 2017 - Oct 2018 · 1 yr 8 mos'], 'subs': [], 'logo': 'Something Else'},
+  {'lines': ['Invented Robotics', 'Full-time · 4 yrs'], 'subs': [['Senior Recruiter', 'Mar 2021 - Present · 4 yrs']], 'logo': 'Invented Robotics'},
+]
+out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from_items'](items)]`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: scratch() } });
+  if (noPython(t, r)) return;
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout.trimEnd().split('\n').pop().replace(/^RESULT /, ''));
+  assert.equal(out.roles.length, 3);
+  const by = Object.fromEntries(out.roles.map(([title, company]) => [title, company]));
+  assert.equal(by['Account Manager'], 'Invented Staffing', 'no company line: the logo names it');
+  assert.equal(by['Technical Recruiter'], 'Invented Search Partners', 'a company line still wins over the logo');
+  assert.equal(by['Senior Recruiter'], 'Invented Robotics');
 });
 
 // ── the top card reader ─────────────────────────────────────────────────────
@@ -145,7 +183,7 @@ def scan(window, urn=None, dig=False, manual=False):
     return {'status': out[1], 'opened': window.opened, 'pushed': pushed, 'cards': ns['_LIST_CARDS']}
 `;
 
-test('a first scan reads the top card on the profile it opens anyway, for the ring, with Dig deeper off', (t) => {
+test('a first scan reads the top card on the profile it opens anyway, for the ring and their card, with Dig deeper off', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${WINDOW}
@@ -153,7 +191,10 @@ out.update(scan(Window(card={'followers': 27000, 'connections': 500, 'connection
     if (!r) return;
     assert.equal(r.out.opened[0], 'https://www.linkedin.com/in/invented-bridge/');
     assert.deepEqual(r.out.cards['https://www.linkedin.com/in/invented-bridge/'], { followers: 27000, connections: 500, connectionsPlus: true });
-    assert.deepEqual(r.out.pushed, [], 'nothing goes to their row without Dig deeper');
+    // The card on its own goes to their row (status "card"), for their card and their score;
+    // their experience isn't read without Dig deeper.
+    assert.deepEqual(r.out.pushed, [{ url: 'https://www.linkedin.com/in/invented-bridge/', status: 'card',
+      card: { followers: 27000, connections: 500, connectionsPlus: true } }]);
     assert.match(r.log, /Their profile: 500\+ connections, 27,000 followers\./);
   } finally {
     rmSync(home, { recursive: true, force: true });

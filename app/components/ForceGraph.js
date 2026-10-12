@@ -351,9 +351,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     bandMemo.set(n.id, b);
     return b;
   };
+  // Past the 2nd degree with no one drawn to hang off (the people a company scan
+  // finds): no line to you, which would say you know them (Blake, 2026-10-12:
+  // "they are listed as a degree 1"). The link is kept, so links[i] stays
+  // connections[i], but it's never drawn and pulls nothing (`none`).
   const links = connections.map(c => {
     const via = parentOf.get(c.id) ?? CENTER_ID;
-    return { source: via, target: c.id, near: via !== CENTER_ID };
+    const none = via === CENTER_ID && (c.degree || 1) >= 3;
+    return { source: via, target: c.id, near: via !== CENTER_ID, ...(none ? { none: true } : {}) };
   });
   // Every other way in, for someone two steps away who is in more than one
   // circle on screen: a line to each of those connections too, so they sit
@@ -390,12 +395,16 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const TIERS = ['S', 'A', 'B', 'C', 'D'];
   const SLOTS = [[115, 135, 155, 175, 192], [265, 300, 335, 370, 398], [465, 500, 535, 565, 590], [660, 690, 720, 745, 765]];
   const bands = [...new Set(nodes.filter(n => n.id !== CENTER_ID).map(n => bandOf(n)))].sort((a, b) => a - b);
-  const layered = multi && bands.length > 1;
+  // Each step along the chain has its own ring, by its number, the 1st nearest
+  // you: a 3rd degree drawn on its own sits out on the 3rd ring, never on the
+  // rings your own connections use (Blake, 2026-10-12). Only your connections
+  // drawn: the roomier tier rings.
+  const layered = multi;
+  const slotOf = (b) => Math.min(Math.max(1, b) - 1, SLOTS.length - 1);
   const radiusOf = (d) => {
     if (!layered) return tierRadius(d.tier);
-    const slot = Math.min(bands.indexOf(bandOf(d)), SLOTS.length - 1);
     const t = TIERS.indexOf(d.tier);
-    return SLOTS[slot][t < 0 ? 4 : t];
+    return SLOTS[slotOf(bandOf(d))][t < 0 ? 4 : t];
   };
 
   // A phone. Judged by the window, as the page judges it, not by the graph's
@@ -437,7 +446,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     // In bands: a faint ring and a label for each step along the chain instead.
     const guides = guidesG = g.append('g').attr('class', 'degree-guides').style('pointer-events', 'none');
     const names = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
-    bands.slice(0, SLOTS.length).forEach((b, slot) => {
+    const slots = new Map();   // each ring once, named for the nearest step on it
+    for (const b of bands) if (!slots.has(slotOf(b))) slots.set(slotOf(b), b);
+    slots.forEach((b, slot) => {
       const r = SLOTS[slot][2];
       guides.append('circle').attr('r', r).attr('fill', 'none').attr('stroke', '#8899aa')
         .attr('stroke-opacity', 0.12).attr('stroke-width', 1).attr('stroke-dasharray', '2 4');
@@ -578,6 +589,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     const petal = d.source.id === CENTER_ID ? 7 * Math.sqrt(circleOf.get(d.target.id) || 0) : 0;
     return base + nodeRadius(d.source) + nodeRadius(d.target) + petal;
   };
+  // A line that isn't drawn (`none`) pulls nothing either.
+  const linkStrength = (d) => (d.none ? 0 : Math.min(1, linkBase * L.pull));
   const charge = d => (d.id === CENTER_ID ? -20 : -1) * L.push;
   // The center force pulls you, your connections and every hub; someone in a
   // circle mostly follows their hub, so each circle holds together round it
@@ -599,7 +612,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
   }
   const simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(Math.min(1, linkBase * L.pull)))
+    .force('link', d3.forceLink(links).id(d => d.id).distance(linkDistance).strength(linkStrength))
     .force('charge', d3.forceManyBody().strength(isMobileGraph ? 0 : charge))
     .force('center', isMobileGraph ? null : d3.forceCenter(0, 0))
     .force('gravityX', isMobileGraph ? null : d3.forceX(0).strength(gravity))
@@ -651,6 +664,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const lineColour = (d) => (MAP_LOOK.lines === 'one' ? MAP_LOOK.line : colourOf(d.target) || '#333');
   const link = g.append('g').selectAll('line').data(links).join('line')
     .attr('class', 'gl')
+    .style('display', d => (d.none ? 'none' : null))
     .attr('stroke', lineColour)
     .attr('stroke-opacity', lineOpacity()).attr('stroke-width', 0.5 * L.lines);
 
@@ -1000,7 +1014,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (prev.orbit !== L.orbit) setOrbit();
     const forces = FORCE_KEYS.some(k => prev[k] !== L[k]);
     if (!forces && !sized) return;
-    simulation.force('link').distance(linkDistance).strength(Math.min(1, linkBase * L.pull));
+    simulation.force('link').distance(linkDistance).strength(linkStrength);
     simulation.force('charge').strength(charge);
     simulation.force('gravityX').strength(gravity);
     simulation.force('gravityY').strength(gravity);
@@ -1047,7 +1061,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // is touched, so a change costs one pass over the lines and no rebuild.
   const ends = links.map((l) => [idxOf.get(l.source.id), idxOf.get(l.target.id)]);
   const byTier = new Uint8Array(links.length).fill(1);
-  const lineOn = new Uint8Array(links.length).fill(1);
+  const lineOn = Uint8Array.from(links, (l) => (l.none ? 0 : 1));
   applyLines = ({ tiers = false } = {}) => {
     if (tiers) {
       keptLines = ringNode?.id ?? null;
@@ -1055,7 +1069,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
     const list = [];
     for (let j = 0; j < links.length; j++) {
-      const on = byTier[j] && shown[ends[j][0]] && shown[ends[j][1]] ? 1 : 0;
+      const on = !links[j].none && byTier[j] && shown[ends[j][0]] && shown[ends[j][1]] ? 1 : 0;
       if (on) list.push(j);
       if (on === lineOn[j]) continue;
       lineOn[j] = on;
