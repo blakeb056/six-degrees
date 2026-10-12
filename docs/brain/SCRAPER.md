@@ -278,6 +278,60 @@ says so, and lifting again is one click.
 - one scan at a time, and the queue with every check at its turn;
 - the one-time *I understand* before the first scan (`lib/scan-risk.js`).
 
+## Dev mode and manual mode (2026-10-12)
+
+Two switches in Scanner settings, saved in `scan-limits.json` beside the daily number and
+read by both sides (`lib/linkedin-limits.js` `readLimits`/`writeLimits`; `scrape.py`
+`_scan_settings`). Both are read from the file each time they're asked, so a scan under way
+follows a change. Both belong to the scanner, and leave with it if it becomes a program of
+its own.
+
+- **Dev mode** (`"dev": true`, `"devSince"` in epoch seconds). `scrape.py` `dev_mode()` feeds
+  `limits_lifted()`, so everything the lift takes off goes too, and also: Auto's invite caps
+  (`invites_left`, `take_invite`, which still writes the invite down), Auto scan's hours
+  (`_sitting_over`, `_drip_before_search`) and, app-side, the queue's length
+  (`DEV_QUEUE_CAP`) and Auto scan's hours (`autoPlan` `anyHour`). The speed is never touched:
+  `apply_pace` still sets `PAGE_PAUSE`, `CHUNK_COOLDOWN`, `PROFILE_GAP` and the breaks, and
+  Auto scan's sitting and rest are its pace. **Off on pushback, twice over:** `set_cooldown`
+  calls `turn_dev_mode_off` before anything else (even when an older, longer pause means it
+  writes no new one), and `devMode()` in the app turns it off on seeing a pause whose
+  `set_at` is after `devSince`. Never put it in `SIX_DEGREES_LIMITS_LIFTED`: that is read once
+  at the start, so a pushback mid-run couldn't take it back.
+- **Manual mode** (`"manual": true`). `scrape_bridge` decides it (`manual_reads()`, never in a
+  `--sitting`, never headless), sets `CHROME_WINDOW["show"]` so the window is in front, and
+  passes `manual=True` to `_scrape_one_bridge`, which does everything it always did up to and
+  including opening page `start_page` and checking it (in manual mode a window already on
+  another page carries on from there instead of stopping), then hands over to `_read_by_hand`. That
+  polls the window every second and never scrolls or clicks: the page number is
+  `CURRENT_PAGE_JS` (the page bar), the address only without one, because LinkedIn's Next
+  left the address on the old page (2026-10-12: page 10 read as 9, skipped forever); a page
+  counts once `AT_FOOT_JS` sees the pagination bar (or the last person) in view and its
+  `RESULT_LINKS_JS` differ from the last page read's; it is read with `BRIDGE_RESULTS_JS`; a
+  wait on one thing for `MANUAL_SAY` seconds is said once in the log; and
+  `reach["last"]` only advances through pages read one after another (TRAPS §34). A page is
+  charged as a search the first time it's seen. It prints the same `Page N... X found (total:
+  Y)` lines the route counts, and `LinkedIn needs you:` lines for the notch, ended by `Manual
+  read done` (`lib/scan-progress.js` `THROUGH`). Closing the window returns `success` with
+  `more` set, without the global stop, so `auto_bridge_all` moves on; `MANUAL_IDLE` with
+  nothing read sets the global stop. Auto scan refuses to start and stops while it's on
+  (`autoRefusal`, `autoPlan` `manual`, `MANUAL_STOPS_AUTO`).
+
+Mutual counts read "A, B & 8 other mutual connections" since 2026-10-12: both readers took
+only "and", so every stored count was 1 (`mutual_count_text` and the page reader's
+`mutualCount`, kept in step by `tests/scraper-mutuals.test.mjs`).
+
+Chimes (`_chime`, `lib/chimes.js`, `lib/chime-files.js`): `_read_by_hand` plays `read-N` for
+the Nth page in a row (to `MANUAL_STREAK_TOP`), `done` when the list ends, and `next` once a
+click (`MANUAL_TAP_GAP`): from a `page.on("request")` listener for a voyager search request
+(only after the first page is read, so the scanner's own load never taps) or, failing that,
+when the page bar moves. Events only arrive while Playwright runs, so the loop waits with
+`page.wait_for_timeout` (`_manual_wait`), never `time.sleep`, which would hold the tap until
+the next look. `_chime` never waits for the sound and never raises.
+
+Tests: `tests/dev-manual-mode.test.mjs` drives `_read_by_hand` with a stand-in window and
+clock: a person scrolling and clicking Next. `tests/chimes.test.mjs` checks the sounds, the
+files, the settings, the player and when each chime plays.
+
 ## Pacing: gentle, on top of the old waits (2026-10-05)
 
 > "polish the pacing, with extra intervals" · "add scroll intervals as well" · "random scrolls
@@ -374,6 +428,81 @@ the table, the daily limit is still found by its words. Both tables are one
 `exitCode` in `GET ?job=1` stays what the app always read (0 for a calm end); `exitKind` says
 which. An Auto-Bridge batch that ended early exits with why (`BATCH_END`, after saving its
 photos). Install's pip codes are pip's own: read as plain errors.
+
+## Dig deeper and the top card (2026-10-12)
+
+Blake: "when people auto scan or manual will have the option to dig deeper", built on Read
+profiles, which it replaces in the app ("repurpose or remove" the old switch). Scanner
+settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limits.json`;
+`scrape.py dig_deeper`).
+
+- **The top card, on every profile visit:** `TOP_CARD_JS` / `read_top_card`. It reads followers
+  and the connection count ("500+ connections" is `{connections: 500, connectionsPlus: true}`)
+  from the section holding their name, the `connectionOf` link, and the Activity heading.
+  - It never reads the rest of the page: Interests shows companies' followers.
+  - The count goes to `_LIST_CARDS` and from there into bridge progress (`connections`,
+    `connectionsPlus`; kept when a later read has none), for the ring round their dot
+    (`lib/reach.js`).
+- **With Dig deeper:** `_dig_into_profile` reads their experience on the same visit.
+  - In auto mode it uses `read_experience`, which scrolls and reads LinkedIn's own data from
+    a response listener registered before the `goto`. In manual mode it uses
+    `_read_experience_by_hand`, which never scrolls: the notch asks you to scroll to
+    Experience, it reads as it shows, waits up to `MANUAL_DIG_WAIT` and notes nothing if you
+    don't reach it.
+  - It sends the result to their row with the card (`push_experience`;
+    `lib/experience.js cleanCard`, the stored experience's `card`). Scoring reads followers
+    as recognition (`lib/scoring.js`).
+  - Only for someone without experience on file (`_experience_on_file`). With their search id
+    known, their profile is opened once just for this (one profile view), and not at all
+    when today's profile views are used.
+- **The first live reads (2026-10-12):**
+  - **No company line:** LinkedIn's Experience entries are now title, dates and description,
+    with the company only as the entry's logo or company link. `EXPERIENCE_JS` `companyOf`
+    reads it into `logo`, and `roles_from_items` uses it when no company line is found.
+    Andre's four roles all read with no company until then.
+  - **The card is saved on every visit:** as `{status: "card"}` when the experience isn't
+    read. `app/api/ingest` adds it to a read already on file, never replacing it, and the
+    ring falls back to it (`lib/reach.js scanFill`). A stop before the list used to lose
+    the card.
+  - **Manual mode stops waiting early:** it moves on with a reason after `MANUAL_DIG_STUCK`
+    seconds of an Experience section it can't read, or `MANUAL_SAY` seconds at the foot of
+    a profile with none. Anything it can't make out is kept in `debug/experience-<time>.json`
+    in the data folder (`_keep_experience_evidence`, local only), so the reader can be fixed
+    against the real page.
+  - **A company link with no name on it:** each entry had one link to its company page,
+    with no logo text and no label. `slugOf` takes the page address (`/company/aerotek/`)
+    and `company_from_slug` turns it into a name. A numeric address names nothing. The kept
+    evidence now records each link's address, text, label and image alts.
+  - **Manual mode's foot rule:** a still-loading profile is short, so it read as "at the
+    foot" before Blake had moved, and concluded there was no Experience. The foot now only
+    counts after `MANUAL_DIG_SCROLLED` px of scrolling, with the page height unchanged for
+    `MANUAL_SAY` seconds. Not scrolling at all moves on to their list after
+    `MANUAL_DIG_WAIT` (45 s), as the notch says.
+  - **Stop while a profile is open** never goes on to their list (a stop check after
+    `_dig_into_profile`).
+  - **Done for good:** `_experience_on_file` is true only with roles read, a company on at
+    least one, and the card. Anything less is dug again.
+  - **Companies named only by their number:** Andre's entries link to `/company/2889/` and
+    carry no name, no logo text and no label. They're named three ways, at no extra
+    request:
+    - from a description that opens with the company (`company_from_description`);
+    - from any top card that named that number as someone's current company
+      (`TOP_CARD_JS` companies, `remember_company`);
+    - from the number's remembered name in `company-names.json` in the data folder. A top
+      card's name wins over a description's.
+  - **Logos:** each role keeps `companyId`, and its logo is saved once per company beside the
+    photos (`_company_logos` → `store_avatar(src, "company:<id>")`, shown on the person's
+    card). The page's logo link never reaches the app.
+  - **Manual mode reads while you scroll:** once Experience is found, it keeps reading while
+    you scroll through it. It moves on when the section's bottom is past the top of the
+    window, at the foot of the page, after `MANUAL_DIG_SETTLE` s with the whole section in
+    view and nothing new, or after `MANUAL_DIG_READ_MAX`. Blake: "the second it finds the
+    experience the app captures and moves on but doesn't let the user scroll all the way".
+  - **No list total:** a live look found no "About N results" on today's people search,
+    nor in its data. For anyone over 500 the only count is the profile's "500+", so their
+    ring keeps its dashed band until the list ends.
+- **The old round:** the app no longer offers Read profiles' batch round. `--read-profiles` and
+  its route action remain for the command line. Its queue still reads the highest power first.
 
 ## Read profiles: optional, off by default (2026-10-05)
 

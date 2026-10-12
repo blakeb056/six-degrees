@@ -206,7 +206,8 @@ export default function ImportPage() {
             haven&rsquo;t met yet.
           </p>
           <p style={{ margin: 0, color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7 }}>
-            Want those? Run the local scanner: it captures 2nd-degree circles and real photos.{' '}
+            Want those? The optional scanner adds 2nd-degree circles and real photos. It runs your own account
+            automatically, and the platform may restrict accounts that do this.{' '}
             <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>See setup →</Link>
           </p>
         </div>

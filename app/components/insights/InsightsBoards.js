@@ -163,15 +163,16 @@ function Empty({ source }) {
         Nothing to rank yet. Once your connections are in, everyone within two steps of you shows here, ranked by power,
         with who holds the doors and what’s still closed.
       </p>
+      {/* The CSV import first, as on the welcome screen; scanning is the opt-in. */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <Link href="/import" style={{ padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, textDecoration: 'none', color: '#000', background: 'linear-gradient(135deg, #00ff88, #1abc9c)' }}>
+          Import a CSV →
+        </Link>
         {source === 'own' && (
-          <Link href="/setup" style={{ padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, textDecoration: 'none', color: '#000', background: 'linear-gradient(135deg, #00ff88, #1abc9c)' }}>
-            Scan your connections →
+          <Link href="/setup" style={{ padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, textDecoration: 'none', color: 'var(--sd-fg-1, #fff)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.2)' }}>
+            Scan your connections
           </Link>
         )}
-        <Link href="/import" style={{ padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, textDecoration: 'none', color: 'var(--sd-fg-1, #fff)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.2)' }}>
-          Import a CSV
-        </Link>
       </div>
       <p style={{ fontSize: 12.5, color: 'var(--sd-fg-4, #6f7a88)', marginTop: 18 }}>
         Or look around first: the <Link href="/" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>map’s welcome screen</Link> opens a sample network where every person is invented.

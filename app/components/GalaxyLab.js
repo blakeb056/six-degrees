@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, labNow, setLab, watchLab,
+  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, drawsByDegree, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
@@ -93,7 +93,12 @@ const subscribeMotion = (f) => {
 
 const month = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
-export default function GalaxyLab() {
+/**
+ * `onPickLayout`: how a layout is picked. Network Circle passes its own
+ * (app/page.js pickGalaxyLayout), which also shows every degree for Degrees and
+ * the fan, so this row and Filters → Shape always do the same thing.
+ */
+export default function GalaxyLab({ onPickLayout = pickLayout }) {
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
   const clock = useSyncExternalStore(watchClock, clockNow, clockNow);
   const layouts = useSyncExternalStore(watchLayouts, layoutsNow, () => noLayouts);
@@ -153,16 +158,18 @@ export default function GalaxyLab() {
           <Choice
             value={preset}
             // A layout's forces and look, then everyone on screen: lib/galaxy-lab.js
-            // pickLayout, the same as Network Circle's notch picking one.
+            // pickLayout, the same as Filters → Shape picking one (its list too).
             options={LAYOUTS.map((l) => [l.key, l.label])}
-            onPick={pickLayout}
+            onPick={onPickLayout}
           />
           <div style={{ ...small, marginBottom: 6 }}>
-            {preset === 'clusters'
-              ? 'As Obsidian draws notes: each connection with a scanned circle is a hub, its circle round it, and everyone sized by their lines. Someone in several circles sits between those hubs, linked to each.'
-              : preset === 'orbit'
-                ? `Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them.${lab.physics ? ' Drag a bridge and its circle follows.' : ''}`
-                : lab.physics ? 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.' : 'Try Rings at 0 and Pull up. With Physics off a dragged dot moves on its own.'}
+            {showsEveryDegree(preset)
+              ? LAYOUTS.find((l) => l.key === preset).about
+              : preset === 'clusters'
+                ? 'As Obsidian draws notes: each connection with a scanned circle is a hub, its circle round it, and everyone sized by their lines. Someone in several circles sits between those hubs, linked to each.'
+                : preset === 'orbit'
+                  ? `Each tier on its own orbit, S nearest you, with each connection’s circle tucked in behind them.${lab.physics ? ' Drag a bridge and its circle follows.' : ''}`
+                  : lab.physics ? 'Drag a dot to see what it pulls with it. Try Rings at 0 and Pull up.' : 'Try Rings at 0 and Pull up. With Physics off a dragged dot moves on its own.'}
           </div>
 
           <button onClick={fit} title="Zoom so everyone on the map is on screen" style={{
@@ -173,9 +180,9 @@ export default function GalaxyLab() {
           <div style={heading}>Forces</div>
           {FORCES.map((f) => <Slider key={f.key} spec={f} value={lab[f.key]} />)}
           <Slider spec={ORBIT_SLIDER} value={lab.orbit} />
-          {lab.orbit > 0 && (!lab.physics || still) && (
+          {lab.orbit > 0 && (!lab.physics || still || lab.shape === 'fan') && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
-              {lab.physics ? 'Reduce Motion is on in your computer’s settings' : 'Physics is off'}, so the map holds still.
+              {!lab.physics ? 'Physics is off' : still ? 'Reduce Motion is on in your computer’s settings' : 'The Wi-Fi fan opens upward'}, so the map holds still.
             </div>
           )}
 
@@ -189,6 +196,11 @@ export default function GalaxyLab() {
             options={[['tier', 'Tier'], ['heat', 'Heat'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
             onPick={(v) => setLab({ colourBy: v })}
           />
+          {drawsByDegree(lab) && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+              Degrees and the Wi-Fi fan colour and size everyone by degree, and their lines pull no one: Size by, Colour by and Link force are for the other shapes.
+            </div>
+          )}
           {lab.colourBy === 'heat' && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
               Power as a thermal map: the higher someone&rsquo;s score among the people showing, the hotter, and the hottest glow. Where the glow pools, powerful people cluster.

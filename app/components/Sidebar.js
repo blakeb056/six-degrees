@@ -16,6 +16,7 @@ import { topCompanies } from '../../lib/scoring';
 import { reachIndex, reachState, circleState, readyToScan, circleScanCost } from '../../lib/reach';
 import { exclusiveReach, bridgeOverlap } from '../../lib/brokerage';
 import StrategyNote from './StrategyNote';
+import ProfileFacts from './ProfileFacts';
 import { profileInsights } from '../../lib/insights';
 import Avatar from './Avatar';
 import NoteDetail from './NoteDetail';
@@ -99,7 +100,10 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           <span style={{ fontSize: 16 }}>&larr;</span> Back to list
         </button>
         <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase' }}>
-          {selected.degree === 2 ? 'Degree 2 Connection' : 'Degree 1 Connection'}
+          {/* The 3rd degree is the people a company scan finds: no known way in yet. */}
+          {selected.degree >= 3
+            ? `Degree 3 · found by a company scan${selected.scanned_company ? ` at ${selected.scanned_company}` : ''}`
+            : selected.degree === 2 ? 'Degree 2 Connection' : 'Degree 1 Connection'}
         </div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
           <div style={{
@@ -161,6 +165,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             )}
           </div>
         </div>
+
+        {/* What a scan read on their profile: followers, connections, their roles, their circle (ProfileFacts.js). */}
+        <ProfileFacts person={selected} reach={insightReach} />
 
         {/* The strategy engine (experimental): nothing unless Settings → Experimental has it on. */}
         <StrategyNote person={selected} />

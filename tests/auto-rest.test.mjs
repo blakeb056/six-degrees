@@ -77,6 +77,9 @@ ns.update({
     # Every launch goes through launch_chrome (tests/chrome-launch.test.mjs): here, the stand-in browser.
     'launch_chrome': lambda p, headless=False, sign_in=False: p.chromium.launch_persistent_context(),
     'ensure_logged_in': lambda page, **kw: True,
+    'manual_reads': lambda: False,
+    'dig_deeper': lambda: False,
+    '_experience_on_file': lambda row: False,
     'stop_requested': lambda: False,
     # LinkedIn pushed back partway through the list: nothing read, nothing concluded.
     '_scrape_one_bridge': lambda *a, **kw: ([], 'unclear', {

@@ -357,7 +357,8 @@ import ast, json, os, sys, time
 from datetime import datetime
 from pathlib import Path
 tree = ast.parse(open(sys.argv[1]).read())
-want = {'_home', '_write_json_atomic', 'read_cooldown', '_cooldown_on_file', 'limits_lifted', 'set_cooldown', '_when'}
+want = {'_home', '_write_json_atomic', 'read_cooldown', '_cooldown_on_file', 'limits_lifted', 'set_cooldown', '_when',
+        '_scan_settings', 'dev_mode', 'turn_dev_mode_off'}
 body = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name in want)
         or (isinstance(n, ast.Assign) and any(getattr(x, 'id', '') == 'LIMITS' for x in n.targets))]
 ns = {'json': json, 'os': os, 'Path': Path, 'time': time, 'datetime': datetime}

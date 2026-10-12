@@ -32,9 +32,9 @@
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
-import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanBars } from '../../lib/reach';
+import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanFill, scanFillWords } from '../../lib/reach';
 import { stoppedLine } from '../../lib/in-progress';
-import { reachSegments, RING } from '../../lib/dot-rings';
+import { fillArcs, RING } from '../../lib/dot-rings';
 import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
 import { noteCircle } from '../../lib/notifications';
 import { useUser } from './UserProvider';
@@ -365,26 +365,31 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
           const sCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'S').length;
           const aCount = (bridgeMap[b.id] || []).filter(d => d.tier === 'A').length;
           const ready = readyCount.get(b.id) || 0;
+          const fill = scanFill(b, reach);
+          const arcs = fillArcs((isHov ? 13 : 11) + 3.6, fill);
           return (
             <g key={'b-' + b.id}
               onClick={() => { setHovered(null); setPath([b.id]); }}
               onMouseEnter={() => setHovered(b.id)}
               onMouseLeave={() => setHovered(null)}
               style={{ cursor: 'pointer' }}>
-              <title>{bridgeTitle(b, ready, scanBars(b, reach))}</title>
+              <title>{bridgeTitle(b, ready, fill)}</title>
               {/* Glow */}
               <circle className="sd-dot" cx={b.x} cy={b.y} r={isHov ? 21 : 18} fill={`${TIER_COLORS[b.tier]}${isHov ? '14' : '08'}`} />
-              {/* The ring, tight on the dot: one bar for each person you added through
-                  this circle. Orange: scanned since, with a cluster of their own.
-                  Green: ready for a scan. Nobody yet: one faint line. */}
+              {/* The ring, tight on the dot: how much of their list is scanned (Blake,
+                  2026-10-12: "the circle line around each dot in the bridge so it will
+                  tell the user how scanned through this person is"). Read solid, the
+                  rest faint, the unknown band dashed (lib/reach.js scanFill). It used
+                  to be a bar for each person added through this circle (reachSegments,
+                  2026-10-02); who is ready is the number top right, and who was
+                  scanned since is in the tooltip and drawn inside the opened circle. */}
               <g transform={`translate(${b.x} ${b.y})`} pointerEvents="none">
-                {b.chains + ready === 0 && (
-                  <circle r={(isHov ? 13 : 11) + 3.6} fill="none" stroke={RING.empty} strokeWidth={1} />
+                {!fill && (
+                  <circle r={(isHov ? 13 : 11) + 3.6} fill="none" stroke={RING.rest} strokeWidth={1} />
                 )}
-                {reachSegments((isHov ? 13 : 11) + 3.6, { formed: b.chains, ready }).map((seg, i) => (
-                  <path key={i} d={seg.d} fill="none" strokeLinecap="round" strokeWidth={2}
-                    stroke={seg.kind === 'ready' ? GREEN : DEGREE_COLORS[2]} />
-                ))}
+                {arcs.rest && <path d={arcs.rest} fill="none" strokeWidth={2} stroke={RING.rest} />}
+                {arcs.unknown && <path d={arcs.unknown} fill="none" strokeWidth={2} stroke={RING.unknown} strokeDasharray={RING.dash} />}
+                {arcs.read && <path d={arcs.read} fill="none" strokeLinecap="round" strokeWidth={2} stroke={RING.filled} />}
               </g>
               {/* Node, with their photo or initial */}
               <NodeFace row={b} x={b.x} y={b.y} r={isHov ? 13 : 11} hov={isHov} clipId={'bc-' + b.id} />
@@ -497,15 +502,17 @@ export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1, bare = 
 }
 
 /** What a bridge's ring and number mean, in words, for its tooltip. */
-function bridgeTitle(b, ready, bars) {
+function bridgeTitle(b, ready, fill) {
   const parts = [];
   const notes = b.activity?.notes || 0;
   if (notes) parts.push(`${notes} notification${notes === 1 ? '' : 's'} about their circle${b.activity.unread ? `, ${b.activity.unread} new` : ''}`);
   if (ready) parts.push(`${ready} in ${firstName(b)}’s circle ${ready === 1 ? 'is' : 'are'} ready for a scan`);
   if (b.chains) parts.push(`${b.chains} scanned since, with ${b.chains === 1 ? 'a cluster' : 'clusters'} of their own`);
-  if (bars != null) parts.push(bars === 5 ? 'their whole list is scanned' : `about ${bars * 20}% of their list is scanned`);
+  if (fill) parts.push(scanFillWords(fill));
   return parts.length ? parts.join(' · ') : `${firstName(b)}’s circle`;
 }
+
+/** How much of someone's list is scanned, in words (lib/reach.js scanFill). */
 
 /** A bridge's circle on hover: the people you reached through it first, then their S, A and B. */
 // The preview grows out of the bridge when you hover it (Blake, 2026-10-03: "the

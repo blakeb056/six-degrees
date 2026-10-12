@@ -62,9 +62,12 @@ const Waiting = ({ children }) => <button type="button" className="ob-btn primar
 
 // ── 1. Welcome ───────────────────────────────────────────────────────────────
 
+// The CSV import comes first, recommended and already chosen: the official
+// export carries no risk to your account (2026-10-09). Then the sample, and
+// last the opt-in, scanning, for who your connections know, with its risk line.
 export function Welcome({ ctx }) {
   const router = useRouter();
-  const [choice, setChoice] = useState('scan');
+  const [choice, setChoice] = useState('csv');
   const [csvProblem, setCsvProblem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -113,11 +116,13 @@ export function Welcome({ ctx }) {
         <Primary onClick={go} disabled={loading}>{loading ? 'Loading…' : { scan: 'Continue', csv: 'Import a CSV', sample: 'Open the sample' }[choice]}</Primary>
       </>}
     >
-      {option('scan', Ico.radar, 'Scan my network', 'The whole picture, including who your connections know. A few minutes to set up, and it needs Google Chrome.', {
-        tag: 'Recommended', note: 'It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this.',
+      {option('csv', Ico.csv, 'Import a connections CSV', 'The official export, by email in about ten minutes. The people you know, with no risk to your account.', {
+        tag: 'Recommended', note: csvProblem,
       })}
-      {option('csv', Ico.csv, 'Import a connections CSV', 'The official export, by email in about ten minutes. The people you know, not who they know.', { note: csvProblem })}
       {option('sample', Ico.spark, 'Try the sample', '150 invented people and the 598 they know, to look around before you decide.')}
+      {option('scan', Ico.radar, 'Scan my network', 'Adds who your connections know. A few minutes to set up, and it needs Google Chrome.', {
+        note: 'It runs your own LinkedIn account automatically, and LinkedIn may restrict accounts that do this.',
+      })}
     </Frame>
   );
 }

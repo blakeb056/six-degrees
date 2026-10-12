@@ -5,7 +5,7 @@ import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
-import { linkedinState, linkedinUsage, writeLimits } from '../../../lib/linkedin-limits';
+import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode } from '../../../lib/linkedin-limits';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
@@ -26,11 +26,12 @@ import {
   pythonLooker, thisHostKey, scannerCommand, installSteps, downloadedPython, downloadVerified,
   placeDownloadedPython, sweepSetupLeftovers, megabytes, SETUP_WORK_PREFIX, ScannerSetupError,
 } from '../../../lib/scanner-python';
-import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, waitingIn, QUEUE_CAP } from '../../../lib/scan-queue';
+import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind, waitingIn, QUEUE_CAP, DEV_QUEUE_CAP } from '../../../lib/scan-queue';
 import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
-import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList } from '../../../lib/auto-scan';
+import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList, MANUAL_STOPS_AUTO } from '../../../lib/auto-scan';
 import { exitOutcome } from '../../../lib/scan-exit';
 import { experienceCounts } from '../../../lib/experience';
+import { ensureChimes } from '../../../lib/chime-files';
 
 // The app runs the scraper itself.
 //
@@ -103,7 +104,8 @@ const autoNow = () => globalThis[Symbol.for('six-degrees.auto-clock')]?.() ?? Da
 /**
  * What Auto scan would do now, from the daily limit and the cooldown. While the
  * limits are lifted for this session linkedinState gives neither (leftToday and
- * cooldown are null), so only Auto scan's hours and rests hold it back.
+ * cooldown are null), so only Auto scan's hours and rests hold it back; in Dev
+ * mode only its rests, which are its pace. Manual mode stops it.
  */
 function autoPlanNow() {
   const a = auto();
@@ -112,7 +114,17 @@ function autoPlanNow() {
   return autoPlan({
     now, pace: a.pace, restUntil: a.restUntil,
     leftToday: li.leftToday, daily: li.limits?.daily ?? null, cooldown: li.cooldown,
+    anyHour: li.dev === true, manual: li.limits?.manual === true,
   });
+}
+
+/** How many may wait in the queue: QUEUE_CAP, or DEV_QUEUE_CAP in Dev mode. */
+function queueCap() {
+  try {
+    return devMode(dataDir()) ? DEV_QUEUE_CAP : QUEUE_CAP;
+  } catch {
+    return QUEUE_CAP;
+  }
 }
 
 /** Auto scan, for the button, its panel and the notch. From memory: the plan is the last tick's. */
@@ -191,6 +203,7 @@ async function autoRefusal() {
   if (pendingImport(dataDir())) return { error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' };
   if (!projectRoot()) return { error: 'Could not find scripts/scrape.py next to the app.' };
   if (!(await machineChecks()).python.run) return { error: 'The scanner’s packages are not installed yet. Do step 1 first.' };
+  if (readLimits(dataDir()).manual) return { error: MANUAL_STOPS_AUTO.replace('so Auto scan has stopped', 'so Auto scan can’t start'), manualMode: true };
   return null;
 }
 
@@ -329,9 +342,13 @@ function scanNotes() {
     if (me) {
       const progress = readProgress(dataDir(), me.id);
       read = Object.keys(progress);
-      // How far each list was read, for the rings round a dot (lib/reach.js scanBars).
+      // How far each list was read, and how long it is (the search's count, or the
+      // one on their profile, "500+" as connectionsPlus), for the ring round a dot
+      // (lib/reach.js scanFill).
       for (const [url, e] of Object.entries(progress)) {
-        lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null };
+        const connections = Number.isInteger(e?.connections) && e.connections >= 0 ? e.connections : null;
+        lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null,
+          connections, connectionsPlus: connections != null && e?.connectionsPlus === true };
       }
     }
   } catch {}
@@ -604,7 +621,7 @@ function job() {
     // The daily limit for the notch: lifted for this session, or just reached.
     limits: limitsNow(),
     // What waits to run after this (lib/scan-queue.js queueView), for the notch and the buttons.
-    queue: queueView(queue()),
+    queue: queueView(queue(), { cap: queueCap() }),
     // Auto scan, when it's on or has just ended (autoView).
     auto: autoView(),
   };
@@ -619,6 +636,7 @@ function budgetNow() {
       // Profile views count against the same daily number.
       profiles: li.profilesToday ?? 0, profileCap: li.limits?.daily ?? null,
       lifted: li.lifted,
+      dev: li.dev,
       // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
       pace: li.limits?.pace ?? null,
     };
@@ -635,13 +653,14 @@ function budgetNow() {
  * page makes stays as cheap as the rest of job().
  */
 function limitsNow() {
-  if (liftedAt() == null && !state.limitHit) return { lifted: false, reached: false };
+  if (liftedAt() == null && !state.limitHit && !readLimits(dataDir()).dev) return { lifted: false, reached: false };
   try {
     const li = linkedinState(dataDir());
     const reached = !li.lifted && (li.limitReached || li.profilesLeftToday === 0);
     if (!reached) state.limitHit = null;
     return {
       lifted: li.lifted,
+      ...(li.dev ? { dev: true } : {}),
       reached: Boolean(state.limitHit) && reached,
       searches: Number.isFinite(li.searchesToday) ? li.searchesToday : null,
       daily: li.limits.daily,
@@ -958,18 +977,18 @@ export async function POST(request) {
   if (action === 'queue-remove') {
     const removed = removeItem(queue(), String(body.item ?? ''));
     if (removed) queueChanged();
-    return Response.json({ ok: true, removed, queue: queueView(queue()) });
+    return Response.json({ ok: true, removed, queue: queueView(queue(), { cap: queueCap() }) });
   }
   if (action === 'queue-clear') {
     clearQueue(queue());
     queueChanged();
-    return Response.json({ ok: true, queue: queueView(queue()) });
+    return Response.json({ ok: true, queue: queueView(queue(), { cap: queueCap() }) });
   }
   if (action === 'queue-resume') {
     queue().paused = null;
     queueChanged();
     if (!state.running) await runNext();
-    return Response.json({ ok: true, queue: queueView(queue()) });
+    return Response.json({ ok: true, queue: queueView(queue(), { cap: queueCap() }) });
   }
   return startJob(body);
 }
@@ -1002,15 +1021,16 @@ async function runNext() {
 function queueUp(body, action, target) {
   const request = { action, id: target.id, ...(body.showWindow === true ? { showWindow: true } : {}) };
   if (target.name) request.name = target.name;
+  const cap = queueCap();
   const said = enqueue(queue(), {
     id: `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     action, target: { id: target.id, name: target.name ?? null }, request, at: Date.now(),
-  }, { action: state.action, target: state.target });
+  }, { action: state.action, target: state.target }, { cap });
   if (said.full) {
-    return Response.json({ error: `The queue is full: ${QUEUE_CAP} are waiting. Try again once one has run.`, queueFull: true }, { status: 409 });
+    return Response.json({ error: `The queue is full: ${cap} are waiting. Try again once one has run.`, queueFull: true }, { status: 409 });
   }
   if (said.queued) queueChanged();
-  return Response.json({ ok: true, queued: true, duplicate: Boolean(said.duplicate), running: Boolean(said.running), place: said.place ?? null, queue: queueView(queue()) });
+  return Response.json({ ok: true, queued: true, duplicate: Boolean(said.duplicate), running: Boolean(said.running), place: said.place ?? null, queue: queueView(queue(), { cap: queueCap() }) });
 }
 
 /** Once a job ends: the next one, after a breath, unless the queue waits for you. */
@@ -1031,7 +1051,17 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
 
   // The settings a person changes here. None starts anything.
   if (action === 'set-limits') {
-    const limits = writeLimits(dataDir(), { daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads });
+    const limits = writeLimits(dataDir(), {
+      daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads,
+      // Dev mode and manual mode (lib/linkedin-limits.js). The scanner reads both from the
+      // file as it goes, so a scan under way follows; Dev mode off brings the limits back.
+      dev: body.dev, manual: body.manual, digDeeper: body.digDeeper,
+      // Settings → Sound: manual mode's chimes and how loud (lib/chimes.js).
+      chimes: body.chimes, chimeVolume: body.chimeVolume,
+    });
+    if (body.dev === false) state.limitHit = null;
+    // Manual mode on while Auto scan waits between sittings: it stops now, with why.
+    if (body.manual === true && auto().on && !(state.running && state.autoSitting)) autoEnd('stopped', MANUAL_STOPS_AUTO);
     return Response.json({ ok: true, limits });
   }
   // Lift limits for this session (lib/limits-lift.js): in this server's memory
@@ -1261,6 +1291,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.autoSitting = Boolean(sitting);
   if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
   forgetChecks();
+  // Manual mode's chimes, as files the scanner can play (lib/chime-files.js): written once, never in the way.
+  ensureChimes(dataDir());
 
   // Name the profile outright. The scraper would otherwise ask the app which one
   // to use; passing it means the page and the scrape cannot disagree.

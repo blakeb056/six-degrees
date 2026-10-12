@@ -36,7 +36,7 @@ import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'rea
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue, liftLimitsForSession, putLimitsBack, setDailyLimit,
+  watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue, liftLimitsForSession, putLimitsBack, setDailyLimit, turnDevModeOff,
 } from '../../lib/scraper-client';
 import { DailyLimitInput, LiftLimits, LiftedTag } from './LinkedInLimits';
 import { KIND_LABEL } from '../../lib/scan-queue';
@@ -176,6 +176,8 @@ export default function ScanStatusBar() {
   // The daily limit held a scan back (and nothing else is going on), or it's lifted for this session.
   const limits = job?.limits || {};
   const lifted = limits.lifted === true;
+  // Dev mode (Scanner settings) lifts them too, until it's turned off rather than for the session.
+  const devOn = limits.dev === true;
   const limitHeld = !running && limits.reached === true;
   const status = running || other || allDay || queued.length > 0 || limitHeld || lifted;
   // Pages with a heading at the top leave room for the notch while it's showing.
@@ -248,13 +250,13 @@ export default function ScanStatusBar() {
   const sitting = running && job.auto?.phase === 'running';
   const label = needs ? 'LinkedIn needs you' : running ? (sitting ? 'Auto scan' : WHAT[job.action] || 'Scanning') : other ? other.label
     : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next')
-    : limitHeld ? 'Daily limit reached' : auto ? 'Auto scan' : lifted ? 'Limits lifted' : 'Auto scan';
+    : limitHeld ? 'Daily limit reached' : auto ? 'Auto scan' : lifted ? (devOn ? 'Dev mode' : 'Limits lifted') : 'Auto scan';
   const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail
     : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null)
     : limitHeld && limits.daily ? `${limits.searches ?? limits.daily} of ${limits.daily} today`
     : auto ? auto.text.toLowerCase() : null;
   // "Limits lifted" beside whatever else it says, when that isn't already what it says.
-  const liftedTag = lifted && label !== 'Limits lifted';
+  const liftedTag = lifted && label !== 'Limits lifted' && label !== 'Dev mode';
   const idle = !running && !other && !queueOnly && !limitHeld && !lifted && !auto;
   // "+2 queued" beside what runs.
   const more = (running || other) && waiting > 0 ? `+${waiting} queued` : null;
@@ -350,7 +352,7 @@ export default function ScanStatusBar() {
                       background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
                     }}>{more}</span>
                   )}
-                  {liftedTag && <LiftedTag small />}
+                  {liftedTag && <LiftedTag small dev={devOn} />}
                 </span>
                 {idle && expanded && <span style={{ color: 'var(--sd-fg-3, #8b9a9a)' }}>off · open Auto scan beside Scan to start it</span>}
               </button>
@@ -380,7 +382,9 @@ export default function ScanStatusBar() {
                 <Link href="/setup#usage" style={{ color: 'var(--sd-fg-2, #cfd8d8)', textDecoration: 'none' }} title="Open LinkedIn usage">
                   {b.searches} searches in the last 24 hours
                 </Link>
-                <button type="button" onClick={() => putLimitsBack().catch(() => {})} style={SMALL} title="The daily limit and the cooldown come back on now">Put limits back</button>
+                {b.dev
+                  ? <button type="button" onClick={() => turnDevModeOff().catch(() => {})} style={SMALL} title="Every limit comes back on now">Turn off Dev mode</button>
+                  : <button type="button" onClick={() => putLimitsBack().catch(() => {})} style={SMALL} title="The daily limit and the cooldown come back on now">Put limits back</button>}
               </span>
             ) : (
               <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone(b.searches, b.cap) }}>
@@ -423,7 +427,7 @@ export default function ScanStatusBar() {
         {/* Lifted, and nothing running: what that means, and the way back. */}
         {expanded && lifted && !running && !limitHeld && (
           <div style={{ margin: '8px 8px 6px', width: 340, maxWidth: 'calc(100vw - 48px)' }}>
-            <LiftLimits small lifted onPutBack={() => putLimitsBack().catch(() => {})} />
+            <LiftLimits small lifted dev={devOn} onPutBack={() => putLimitsBack().catch(() => {})} onDevOff={() => turnDevModeOff().catch(() => {})} />
           </div>
         )}
         {expanded && queued.length > 0 && (

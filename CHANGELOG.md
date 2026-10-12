@@ -6,6 +6,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Manual mode for circle scans.** A switch in Scanner settings. A circle scan opens the
+  scanner's Chrome in front of you at the person's list, and nothing on the page moves unless
+  you move it: each page is read once you scroll to its foot, and you click Next yourself. Every
+  page is still counted against your searches a day, and a stop the moment the platform pushes
+  back is unchanged. Closing the window is "done with this person", and a round moves on to the
+  next one. Auto scan stays off while it's on. A tap answers each Next the moment you click, and
+  a chime says each page is read, one step higher for every page in a row, with a flourish when a
+  list is finished. **Settings → Sound** turns them off, sets the volume and plays each one.
+- **Dev mode.** A switch in Scanner settings that takes off every limit Sixgree sets until you
+  turn it off: the daily limit, the cooldown, Auto's caps on connection requests, Auto scan's
+  hours and the queue's length. The speed you pick still sets every wait, and the platform
+  pushing back still stops the scan and turns Dev mode off. The notch and the usage page say
+  *Dev mode* in gold the whole time it's on.
+
+- **Dig deeper.** A switch in Scanner settings, in place of *Read full profiles*. While a
+  circle scan has someone's profile open, it reads their current and past roles too, so their
+  score counts what they actually do, not only their headline, and their followers count as
+  recognition. Manual mode reads it as you scroll through their Experience and moves on once
+  you're past it. Every profile a scan opens has its follower and connection counts read, and
+  each person's card shows what was read: followers, connections and their roles, each with its
+  company's logo. A company the page names only by its number takes its name from the role's
+  description, or from anyone's profile that named it. Roles are read by their company links,
+  so several roles at one company show under it once, and someone is read again on their next
+  scan until every role has its company.
+
+### Changed
+- **Network Circle's shapes, by degree.** Its Filters panel has a Shape tab with a picture of
+  each layout: Rings, Clusters, Orbit, and two new ones, *Degrees* (a ring for each degree) and
+  *Wi-Fi fan* (you at the bottom, each degree a bar fanning out above you). Both are drawn by
+  degree alone, 1st out to 6th: one band per degree, an empty one a thin bar, every dot in a
+  degree its colour and size, spread evenly with each circle kept together, no tier, catalyst
+  or name marks, and lines only for the person you pick or point at. Picking either shows every
+  degree, and a legend under the map turns a degree on or off; picking another shape brings back
+  the filter you had. The layout tabs above
+  the map are gone, since the Shape tab does their job. A third-degree person reached through a
+  company scan no longer draws a line from you as if you knew them.
+- **A Tiers switch.** The word *Tiers* above the tier rows is a switch: off, tiers stop
+  mattering and one row of degrees with their counts takes their place, so you pick by degree
+  alone. Turning it back on brings the tier rows back as they were.
+- **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
+  now comes first, marked Recommended and already chosen, so the button a new install opens on
+  says *Import a CSV* instead of leading into the scanner's setup: the official export carries
+  no risk to your account. The sample comes next, and *Scan my network* last, as the opt-in that
+  adds who your connections know, with its risk line as before. Insights' empty page leads with
+  *Import a CSV*, and the Import page and Degrees, which suggested the scanner to people with a
+  CSV, now say it's optional and what it risks. The README, the website and its llms.txt lead
+  with the CSV import and the sample too, and call scanning optional, with every warning kept.
+
+- **The ring round a scanned connection's dot is one line that fills as their list is read.**
+  It is measured against their whole network: the search's own count, else their exact
+  connection count, else, when their profile says only "500+", their follower count, which is
+  about their connections plus people who only follow them, so the ring never shows more read
+  than there is. The platform's search stops at page 100, about 1,000 people, so for someone
+  with 6,100 followers a ring read as far as it goes shows about a sixth, and says so; a list
+  that ends before then is the whole ring. With no length known, its last 30% is a dashed band
+  for the unknown part, which fills as the list is read on. Their card says the same in words:
+  "about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers)".
+
+### Fixed
+- **Manual Dig deeper says when someone's Experience hasn't loaded.** The platform loads the
+  jobs in a profile's Experience only while that part is on screen, so scrolling straight past
+  it left the heading with nothing under it, and the read waited in silence. It now says to
+  scroll back up to it and stop a moment, and gives that time.
+- **Manual mode goes back for the page a list opened for.** Carrying on someone's list could
+  open with the page bar one page ahead; every page after was read but that one never was, so
+  each scan started there again. It now asks you to click Previous to it first, says when a page
+  before the one you're on is still unread, and no longer guesses a page from the address while
+  the page bar is being redrawn (which counted a search for a page nobody opened).
+- **Manual mode stops when LinkedIn shows its own notice anywhere in the window.** Sent from a
+  list to "Your account has been temporarily restricted", it said the window wasn't on the list
+  and waited, so no pause was written and Dev mode stayed on. A notice on any page now stops the
+  read, writes the pause and turns Dev mode off, as on the list itself.
+- **Each scan keeps its own log.** In the data folder's `logs` folder on this computer, the
+  newest 40, so a run that went wrong can be read after the next one has started.
+- **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",
+  and only "and" was understood, so every count was saved as 1. Both forms are read now.
+
+### Security
+- **Next.js 16.3.8 and sharp 0.35.5, for published security fixes.** Both ship inside the app.
+  Sixgree's server only answers your own computer (`127.0.0.1`), and it uses none of the
+  affected features: images fetched from other sites, cached pages behind a catch-all route or
+  the Pages Router, draft mode with Cache Components, metadata image routes, and sharp reading
+  SVG files. The one advisory for Next's development server reaches only people running
+  `npm run dev` on Sixgree's code. source-map-js, used only while building, moves to 1.2.2.
+
 ## [1.2.8] - 2026-10-09
 
 ### Changed

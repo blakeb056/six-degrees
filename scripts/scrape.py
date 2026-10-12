@@ -37,7 +37,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
@@ -2530,6 +2530,56 @@ def _home():
     return base
 
 
+RUN_LOGS_KEPT = 40   # each run's own log in <data>/logs, newest kept, so a run that went wrong can be read afterwards
+
+
+class _Tee:
+    """What the scanner prints, to the app as ever and to this run's log file too."""
+    def __init__(self, stream, log):
+        self._stream, self._log = stream, log
+
+    def write(self, text):
+        n = self._stream.write(text)
+        try:
+            self._log.write(text)
+        except Exception:
+            pass
+        return n
+
+    def flush(self):
+        self._stream.flush()
+        try:
+            self._log.flush()
+        except Exception:
+            pass
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def keep_run_log(argv):
+    """Keep this run's log in <data>/logs/scan-<when>.log, the newest RUN_LOGS_KEPT of them.
+    The app shows only the last run's log, so a run stopped and started again lost the
+    one that went wrong (Blake, 2026-10-12: a profile's jobs not read the first time,
+    read the second, and nothing left to say why). On this computer only."""
+    try:
+        folder = _home() / "logs"
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"scan-{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.log"
+        log = open(path, "a", encoding="utf-8", buffering=1)
+        log.write(f"# {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} scrape.py {' '.join(argv)}\n")
+        sys.stdout = _Tee(sys.stdout, log)
+        sys.stderr = _Tee(sys.stderr, log)
+        for old in sorted(folder.glob("scan-*.log"))[:-RUN_LOGS_KEPT]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        return path
+    except Exception:
+        return None
+
+
 def _write_json_atomic(path, data):
     import tempfile
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
@@ -2727,8 +2777,114 @@ def search_limits():
 
 
 def limits_lifted():
-    """The Scan page lifted the daily limit and the cooldown for this session."""
-    return bool(LIMITS["lifted"])
+    """The Scan page lifted the daily limit and the cooldown for this session, or Dev mode is on."""
+    return bool(LIMITS["lifted"]) or dev_mode()
+
+
+# Dev mode and manual mode (Blake, 2026-10-12), two switches in Scanner
+# settings, saved in scan-limits.json beside the daily limit
+# (lib/linkedin-limits.js readLimits says the same):
+#
+#   "dev": true, "devSince": epoch s   Every limit Sixgree sets is off until it's
+#                turned off: the daily limit and the cooldown (limits_lifted),
+#                Auto's caps on connection requests (take_invite) and Auto scan's
+#                hours (_sitting_over). The speed still sets every wait
+#                (apply_pace), and LinkedIn pushing back still stops the scan and
+#                turns Dev mode off (set_cooldown).
+#   "manual": true   Circle scans open Chrome in front and read each page of
+#                someone's list once you've scrolled to its foot; you click Next
+#                (_read_by_hand). Not in Auto scan's sittings, which run while
+#                you're away (the app stops Auto scan while this is on).
+#
+# Both are read from the file each time they're asked, so turning one on or off
+# reaches a scan under way.
+
+
+def _scan_settings():
+    try:
+        data = json.loads((_home() / "scan-limits.json").read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def dev_mode():
+    """Dev mode is on, and LinkedIn hasn't pushed back since it was turned on."""
+    data = _scan_settings()
+    if data.get("dev") is not True:
+        return False
+    since = data.get("devSince")
+    try:
+        cd = json.loads((_home() / "linkedin-cooldown.json").read_text())
+        if isinstance(since, (int, float)) and float(cd.get("set_at", 0)) > since \
+                and float(cd.get("until", 0)) > time.time():
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def turn_dev_mode_off(why):
+    """LinkedIn pushed back: Dev mode goes off and stays off until it's turned on again."""
+    data = _scan_settings()
+    if data.get("dev") is not True:
+        return False
+    data["dev"] = False
+    data.pop("devSince", None)
+    try:
+        _write_json_atomic(_home() / "scan-limits.json", data)
+        print(f"  Dev mode is off: {why}. Every limit is back on.", flush=True)
+        return True
+    except Exception as exc:
+        print(f"  (could not turn Dev mode off: {exc})")
+        return False
+
+
+def manual_reads():
+    """Manual mode: circle scans wait for you to page through each list (_read_by_hand)."""
+    return _scan_settings().get("manual") is True
+
+
+def dig_deeper():
+    """Scanner settings → "Dig deeper": a circle scan also reads the person's profile (_dig_into_profile)."""
+    return _scan_settings().get("digDeeper") is True
+
+
+def _chime(name):
+    """Play one of manual mode's chimes (lib/chimes.js): read-1 … read-8, next, done.
+
+    Settings → Sound turns them off ("chimes": false) and sets how loud
+    ("chimeVolume", 0 to 1). The app writes the sounds into the data folder
+    (lib/chime-files.js) before a scan starts; with no file, nothing plays.
+    Never waits for the sound and never fails a scan: a sound is a nicety."""
+    try:
+        data = _scan_settings()
+        if data.get("chimes") is False:
+            return False
+        vol = data.get("chimeVolume")
+        vol = vol if isinstance(vol, (int, float)) and not isinstance(vol, bool) and 0 <= vol <= 1 else 0.6
+        if vol == 0:
+            return False
+        path = _home() / "sounds" / f"{name}.wav"
+        if not path.is_file():
+            return False
+        import subprocess
+        import shutil
+        quiet = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+        if sys.platform == "darwin":
+            subprocess.Popen(["afplay", "-v", f"{vol:.2f}", str(path)], **quiet)
+        elif sys.platform == "win32":
+            import winsound   # no volume control: the sound plays as written
+            winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+        elif shutil.which("paplay"):
+            subprocess.Popen(["paplay", f"--volume={int(vol * 65536)}", str(path)], **quiet)
+        elif shutil.which("aplay"):
+            subprocess.Popen(["aplay", "-q", str(path)], **quiet)
+        else:
+            return False
+        return True
+    except Exception:
+        return False
 
 
 def _listen_for_limits():
@@ -2827,7 +2983,9 @@ def _cooldown_on_file(now=None):
 
 
 def set_cooldown(seconds=None, until=None, reason=""):
-    """Nothing searches LinkedIn until this lifts. Never shortens an existing one."""
+    """Nothing searches LinkedIn until this lifts. Never shortens an existing one.
+    Turns Dev mode off whatever is on file: LinkedIn pushed back."""
+    turn_dev_mode_off(reason or "LinkedIn pushed back")
     now = time.time()
     until = until if until is not None else now + seconds
     current = _cooldown_on_file(now)
@@ -2916,6 +3074,10 @@ def _change_progress(change):
 # page read (RESULT_COUNT_JS), kept until the read's progress is written: the
 # app's rings round a dot show pages read against it. Approximate, like the line.
 _LIST_TOTALS = {}
+# Their connection count from their profile's top card (read_top_card), kept with
+# where their list got to: { profile_url: {"connections": n, "connectionsPlus": bool} }.
+# The ring round their dot reads it (lib/reach.js) when LinkedIn gives no "About N results".
+_LIST_CARDS = {}
 
 
 def record_bridge_progress(profile_url, name, pages, more, urn=None):
@@ -2937,6 +3099,12 @@ def record_bridge_progress(profile_url, name, pages, more, urn=None):
         total = _LIST_TOTALS.get(profile_url) or old.get("total")
         if total:
             entry["total"] = int(total)
+        card = _LIST_CARDS.get(profile_url) or {}
+        connections = card.get("connections") if card.get("connections") is not None else old.get("connections")
+        if isinstance(connections, int) and connections >= 0:
+            entry["connections"] = connections
+            entry["connectionsPlus"] = bool(card.get("connectionsPlus") if card.get("connections") is not None
+                                            else old.get("connectionsPlus"))
         mine[profile_url] = entry
     _change_progress(change)
 
@@ -3027,11 +3195,13 @@ def mutual_count_text(text):
     if not re.search(r"\bmutual connections?$", line, re.I) or len(line) > 300:
         return None
     num = lambda v: int(str(v).replace(",", ""))
-    names = lambda v: len([p for p in re.split(r"\s*,\s*|\s+and\s+", v) if p])
+    # "and" or "&": LinkedIn writes "A, B & 8 other mutual connections" now
+    # (2026-10); reading only "and", every count came back as 1.
+    names = lambda v: len([p for p in re.split(r"\s*,\s*|\s+(?:and|&)\s+", v) if p])
     m = re.match(r"^([\d,]+) mutual connections?$", line, re.I)
     if m:
         return num(m.group(1))
-    m = re.match(r"^(.*?)\s*\band ([\d,]+) others? mutual connections?$", line, re.I)
+    m = re.match(r"^(.*?)\s*(?:\band|&) ([\d,]+) others? mutual connections?$", line, re.I)
     if m:
         return max(1, names(m.group(1))) + num(m.group(2))
     if re.search(r"\bis a mutual connection$", line, re.I):
@@ -3479,7 +3649,7 @@ def _sitting_over(now=None):
         return EXPERIMENT["ended"]
     if EXPERIMENT["pages"] >= EXPERIMENT["sitting"]:
         return f"This sitting's {EXPERIMENT['sitting']} searches are done"
-    if not _in_drip_hours(now):
+    if not _in_drip_hours(now) and not dev_mode():
         return f"It's outside Auto scan's hours ({DRIP_HOURS[0]}:00 to {DRIP_HOURS[1]}:00)"
     left, kind = searches_left(now)
     if left <= 0:
@@ -3508,7 +3678,7 @@ def _drip_before_search():
                 return False
             continue
         now = datetime.fromtimestamp(time.time())
-        if not (DRIP_HOURS[0] <= now.hour < DRIP_HOURS[1]):
+        if not (DRIP_HOURS[0] <= now.hour < DRIP_HOURS[1]) and not dev_mode():
             start = now.replace(hour=DRIP_HOURS[0], minute=0, second=0, microsecond=0)
             if now.hour >= DRIP_HOURS[1]:
                 start += timedelta(days=1)
@@ -3662,10 +3832,11 @@ BRIDGE_RESULTS_JS = r"""
             const l = String(text || '').replace(/\s+/g, ' ').trim();
             if (!/\bmutual connections?$/i.test(l) || l.length > 300) return null;
             const num = (s) => Number(String(s).replace(/,/g, ''));
-            const names = (s) => s.split(/\s*,\s*|\s+and\s+/).filter(Boolean).length;
+            // "and" or "&" (2026-10: "A, B & 8 other mutual connections").
+            const names = (s) => s.split(/\s*,\s*|\s+(?:and|&)\s+/).filter(Boolean).length;
             let m = l.match(/^([\d,]+) mutual connections?$/i);
             if (m) return num(m[1]);
-            m = l.match(/^(.*?)\s*\band ([\d,]+) others? mutual connections?$/i);
+            m = l.match(/^(.*?)\s*(?:\band|&) ([\d,]+) others? mutual connections?$/i);
             if (m) return Math.max(1, names(m[1])) + num(m[2]);
             if (/\bis a mutual connection$/i.test(l)) return 1;
             m = l.match(/^(.+?)\s+are mutual connections$/i);
@@ -3686,7 +3857,7 @@ BRIDGE_RESULTS_JS = r"""
           };
           // The rest of a mutual line when the names are drawn above it, each on
           // a line of its own ("Maya Chen" / "and 23 other mutual connections").
-          const tailOf = (l) => /^(and [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
+          const tailOf = (l) => /^((?:and|&) [\d,]+ others? mutual connections?|is a mutual connection|are mutual connections)$/i.test(l);
           let current = null;
           const give = (n) => {
             if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
@@ -3901,13 +4072,48 @@ def _pushed_back(page, reach, reason):
 # Which page the pagination bar says is showing, when it says.
 CURRENT_PAGE_JS = r"""
 () => {
-  for (const el of document.querySelectorAll('[aria-current="true"], [aria-current="page"]')) {
-    const t = (el.innerText || el.textContent || '').trim();
-    if (/^\d{1,3}$/.test(t)) return parseInt(t, 10);
+  // The page bar's highlighted number: one marked current, in a box that also holds
+  // Next or Previous, so a count elsewhere (a badge's "1" in the top bar) is never
+  // taken for the page. Failing that, a marked number outside the top bar.
+  const num = (el) => { const t = (el.innerText || el.textContent || '').trim(); return /^\d{1,3}$/.test(t) ? parseInt(t, 10) : null; };
+  const turn = (b) => /^(next|previous)$/i.test((b.innerText || b.getAttribute('aria-label') || '').trim());
+  const marked = [...document.querySelectorAll('[aria-current="true"], [aria-current="page"]')]
+    .filter((el) => num(el) != null && !el.closest('header, #global-nav, [class*="global-nav"]'));
+  for (const el of marked) {
+    for (let p = el.parentElement, i = 0; p && i < 6; p = p.parentElement, i++) {
+      if ([...p.querySelectorAll('button, a')].some(turn)) return num(el);
+    }
   }
-  return null;
+  return marked.length ? num(marked[0]) : null;
 }
 """
+
+# What the page bar is made of, kept when it and the address disagree about the page
+# (Blake, 2026-10-12: a list opened at page 51 read as 52, twice in a day), so which
+# one is right can be settled. Numbers and labels only, no one's name.
+PAGE_BAR_JS = r"""
+() => {
+  const marked = [...document.querySelectorAll('[aria-current]')].slice(0, 12).map((el) => ({
+    tag: el.tagName, current: el.getAttribute('aria-current'), text: (el.innerText || '').trim().slice(0, 30),
+    label: el.getAttribute('aria-label'), inTopBar: !!el.closest('header, #global-nav, [class*="global-nav"]') }));
+  const next = [...document.querySelectorAll('button, a')].find((b) => /^next$/i.test((b.innerText || b.getAttribute('aria-label') || '').trim()));
+  let bar = next;
+  for (let i = 0; bar && i < 4 && !/\b(2|3)\b/.test(bar.innerText || ''); i++) bar = bar.parentElement;
+  return { marked, html: bar ? bar.outerHTML.replace(/<img[^>]*>/g, '').slice(0, 6000) : null };
+}
+"""
+
+
+def _keep_page_bar_evidence(page, start_page, shown, at):
+    """The page bar and the address, when they disagree about the page a list opened on."""
+    try:
+        bar = page.evaluate(PAGE_BAR_JS) or {}
+        folder = _home() / "debug"
+        folder.mkdir(parents=True, exist_ok=True)
+        _write_json_atomic(folder / f"page-bar-{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.json",
+                           {"opened": start_page, "bar": shown, "address": at, **bar})
+    except Exception:
+        pass
 
 
 def _url_page(url):
@@ -4159,8 +4365,686 @@ def _wait_for_profile_view(page):
             return "stopped"
 
 
+# ---------------------------------------------------------------------------
+# Dig deeper and the top card (Blake, 2026-10-12: "when scanning the user it will
+# either say they have 500 plus connections or sometimes over 27k … why not use
+# that", follower count "into their score if is there", and for the people whose
+# headline hides where they work, "the profile extraction as a way to retitle
+# them", built on the Read profiles pieces already here).
+#
+# The top card is read on every profile visit a circle scan makes: it's on the
+# page already, so it costs nothing. Its connection count goes with their list's
+# progress (record_bridge_progress, for the ring round their dot). With Scanner
+# settings → "Dig deeper" on, the same visit also reads their experience
+# (read_experience, or by hand in manual mode) and sends it with the card to
+# their row (push_experience): their current and past roles count in their
+# score as Read profiles' do, and their followers as recognition.
+# ---------------------------------------------------------------------------
+MANUAL_DIG_WAIT = 45              # manual mode: how long it waits for you to reach their Experience, then on to their list
+MANUAL_DIG_SCROLLED = 800         # px you've scrolled before "the foot of their profile" means anything
+MANUAL_DIG_STUCK = 12             # manual mode: Experience in view this long with nothing it can read: it says so and moves on
+MANUAL_DIG_SETTLE = 6             # manual mode: the whole section in view, nothing new for this long: done with it
+MANUAL_DIG_READ_MAX = 120         # manual mode: reading their Experience as you scroll, at most this long
+MANUAL_DIG_EMPTY = 3              # manual mode: their Experience heading with no jobs under it this long: it says why
+MANUAL_DIG_EMPTY_WAIT = 30        # manual mode: once that's said, at least this long more to scroll back to it
+
+# You're at the foot of their profile: nothing more will load as you scroll.
+# Measured with how far you've scrolled: a profile still loading is short, so it
+# reads as "at the foot" before you've moved (Blake, 2026-10-12: it decided there
+# was no Experience while he sat and watched).
+PAGE_FOOT_JS = ("() => ({ foot: (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 300), "
+                "scrolled: window.scrollY, height: document.documentElement.scrollHeight })")
+
+# What the profile's top card says about their reach: "500+ connections",
+# "312 connections", "27K followers", "1,234 followers · 500+ connections". Read
+# from the section that holds their name, and the link their search id comes
+# from; followers also from the Activity section's own heading. Never anywhere
+# else on the page: Interests and the side columns show other people's and
+# companies' followers.
+TOP_CARD_JS = r"""
+() => {
+  const count = (s) => {
+    const m = String(s || '').replace(/,/g, '').replace(/\s+/g, '').match(/^(\d+(?:\.\d+)?)([KkMm])?(\+)?$/);
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    if (m[2]) n *= /k/i.test(m[2]) ? 1e3 : 1e6;
+    return Number.isFinite(n) ? { n: Math.round(n), plus: Boolean(m[3]) } : null;
+  };
+  const out = { followers: null, connections: null, connectionsPlus: false };
+  const read = (text, followers, connections) => {
+    for (const raw of String(text || '').split('\n')) {
+      for (const part of raw.replace(/\s+/g, ' ').trim().split(/\s*[·•|]\s*/)) {
+        let m = part.match(/^([\d.,]+\s*[KkMm]?\+?)\s+connections?$/i);
+        if (m && connections && out.connections == null) {
+          const c = count(m[1]);
+          if (c) { out.connections = c.n; out.connectionsPlus = c.plus; }
+        }
+        m = part.match(/^([\d.,]+\s*[KkMm]?)\s+followers?$/i);
+        if (m && followers && out.followers == null) {
+          const c = count(m[1]);
+          if (c) out.followers = c.n;
+        }
+      }
+    }
+  };
+  const h1 = document.querySelector('main h1');
+  const card = h1 && (h1.closest('section') || h1.parentElement);
+  if (card) read(card.innerText, true, true);
+  // The company the top card names (their current one), with its number: the
+  // number is how Experience entries point at a company they don't name.
+  out.companies = [];
+  if (card) {
+    for (const a of card.querySelectorAll('a[href*="/company/"]')) {
+      const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/);
+      const name = (a.innerText || a.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
+        .replace(/^current company:?\s*/i, '').replace(/\s*(company )?logo$/i, '');
+      if (m && name && name.length <= 100 && !/followers?|connections?/i.test(name)) out.companies.push({ id: m[1], name });
+    }
+  }
+  for (const a of document.querySelectorAll('a[href*="connectionOf"]')) read(a.innerText, false, true);
+  if (out.followers == null) {
+    for (const sec of document.querySelectorAll('main section')) {
+      const head = (sec.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3);
+      if (head[0] === 'Activity') { read(head.join('\n'), true, false); break; }
+    }
+  }
+  return out;
+}
+"""
+
+
+def read_top_card(page):
+    """Their followers and connection count from the open profile's top card, or None when it shows neither."""
+    return read_top_card_full(page)[0]
+
+
+def read_top_card_full(page):
+    """(card, companies): read_top_card's card, and the companies the top card names
+    with their numbers ([{"id", "name"}], their current company), for company_names."""
+    try:
+        got = page.evaluate(TOP_CARD_JS) or {}
+    except Exception:
+        return None, []
+    companies = [c for c in (got.get("companies") or []) if isinstance(c, dict) and c.get("id") and c.get("name")]
+    return _card_from(got), companies
+
+
+def _card_from(got):
+    card = {k: got.get(k) for k in ("followers", "connections")}
+    card = {k: v for k, v in card.items() if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10 ** 9}
+    if not card:
+        return None
+    card.setdefault("followers", None)
+    card.setdefault("connections", None)
+    card["connectionsPlus"] = bool(got.get("connectionsPlus")) and card["connections"] is not None
+    return card
+
+
+def _card_words(card):
+    bits = []
+    if card.get("connections") is not None:
+        bits.append(f"{card['connections']:,}{'+' if card.get('connectionsPlus') else ''} connections")
+    if card.get("followers") is not None:
+        bits.append(f"{card['followers']:,} followers")
+    return ", ".join(bits)
+
+
+def _experience_on_file(row):
+    """Dig deeper has everything for them already, so it never opens their profile for it
+    again (Blake, 2026-10-12: "if the user was successfully dug deeper and got all points
+    of data, from experience to followers, they won't be done again"): their experience
+    read, with a company for every role, and their top card. Anything less is read
+    again: a read missing a company (until 2026-10-12 the reader missed companies shown
+    only as logos, and a group's "Full-time · 8 yrs" line), one with no card, "couldn't
+    read", or the card on its own."""
+    raw = (row or {}).get("experience")
+    if not raw:
+        return False
+    try:
+        e = json.loads(raw) if isinstance(raw, str) else raw
+        roles = e.get("roles") if isinstance(e, dict) else None
+        return (e.get("status") == "read" and isinstance(roles, list) and len(roles) > 0
+                and all(isinstance(r, dict) and r.get("company") for r in roles)
+                and isinstance(e.get("card"), dict))
+    except Exception:
+        return False
+
+
+def _read_experience_by_hand(page, responses, name):
+    """Manual mode's Dig deeper: nothing on the page moves unless you move it, so
+    it says where to scroll and reads their experience as it shows, from
+    LinkedIn's own data or the page's Experience section. (result, note), or
+    (None, note) when you don't reach it in MANUAL_DIG_WAIT: nothing is noted
+    then, and the next scan of them tries again."""
+    print(f"{NEEDS_YOU} scroll down {name}'s profile to their Experience and stop on it a moment; it's read as "
+          f"it shows, then Sixgree opens their list. Not scrolling: it moves on to their list in {MANUAL_DIG_WAIT} seconds.",
+          flush=True)
+    start = time.time()
+    deadline = start + MANUAL_DIG_WAIT
+    empty_at = None       # when their Experience heading first showed with no jobs under it yet
+    seen_at = None        # when their Experience section first showed with entries in it
+    found_at = None       # when roles were first read from it: then it reads on as you scroll
+    changed_at = None     # when the count of roles read last changed
+    last_count = 0
+    best = None           # (dom, data, count): the fullest read so far
+    foot_at = None        # when you first reached the foot of their profile, having scrolled
+    foot_height = None    # how tall the page was then: still growing means still loading
+    said = set()
+    # Until it's found, MANUAL_DIG_WAIT; once found, it reads on as you scroll (MANUAL_DIG_READ_MAX).
+    while found_at is not None or time.time() < deadline:
+        if stop_requested():
+            return {"status": "stopped", "why": "stopped"}, None
+        try:
+            if page.is_closed():
+                return {"status": "stopped", "why": "the window was closed"}, None
+        except Exception:
+            return {"status": "stopped", "why": "the window was closed"}, None
+        why = _pushback(page)
+        if why:
+            return {"status": "pushback", "why": why}, None
+        try:
+            dom = page.evaluate(EXPERIENCE_JS) or {}
+        except Exception:
+            dom = {}
+        data = _profile_data(page, responses)
+        now = time.time()
+        current = data or page_roles(dom)
+        if current or best is not None:
+            # Found: keep reading while you scroll through it, for the roles further
+            # down (Blake, 2026-10-12: "the second it finds the experience the app
+            # captures and moves on but doesn't let the user scroll all the way").
+            # It moves on once you're past the section, at the foot of the page, or
+            # it's all in view and nothing new has shown for MANUAL_DIG_SETTLE seconds.
+            count = len(current) if current else best[2]
+            if current and (best is None or count >= best[2]):
+                best = (dom, data, count)
+            if found_at is None:
+                found_at = changed_at = now
+                print(f"{NEEDS_YOU} their Experience is being read: scroll through it to the end, and "
+                      f"Sixgree opens their list once you're past it.", flush=True)
+            elif count != last_count:
+                changed_at = now
+            last_count = count
+            rect = dom.get("rect") or {}
+            past = rect.get("bottom") is not None and rect["bottom"] < 80
+            all_in_view = rect.get("bottom") is not None and rect["bottom"] <= (rect.get("vh") or 0)
+            try:
+                where = page.evaluate(PAGE_FOOT_JS) or {}
+            except Exception:
+                where = {}
+            at_end = bool(where.get("foot")) and (where.get("scrolled") or 0) >= MANUAL_DIG_SCROLLED
+            settled = all_in_view and now - changed_at >= MANUAL_DIG_SETTLE
+            if past or at_end or settled or now - found_at >= MANUAL_DIG_READ_MAX:
+                _chime("read-1")
+                return _experience_result(best[0], best[1])
+            _manual_wait(page, MANUAL_POLL)
+            continue
+        entries = len(dom.get("items") or []) or len(dom.get("runs") or [])
+        if dom.get("found") and not entries:
+            # Its heading is there and its jobs aren't: LinkedIn loads them while the
+            # section is on screen, so one scrolled past quickly stays empty (Blake,
+            # 2026-10-12: "i scrolled all the way down but nothing read", then a
+            # second, slower try read it). Said once, with time to go back up to it.
+            rect = dom.get("rect") or {}
+            empty_at = empty_at or now
+            if now - empty_at >= MANUAL_DIG_EMPTY and "empty" not in said:
+                said.add("empty")
+                deadline = max(deadline, now + MANUAL_DIG_EMPTY_WAIT)
+                if rect.get("bottom") is not None and rect["bottom"] < 0:
+                    print(f"{NEEDS_YOU} {name}'s Experience hasn't loaded their jobs: LinkedIn loads them only "
+                          f"while it's on screen. Scroll back up to Experience and stop there a moment.", flush=True)
+                else:
+                    print(f"  (waiting: {name}'s Experience is on screen and its jobs are still loading)", flush=True)
+        elif dom.get("found") and entries:
+            seen_at = seen_at or now
+            if "seen" not in said:
+                said.add("seen")
+                print(f"  (their Experience section is in view with {entries} entries, "
+                      f"but none it can read yet)", flush=True)
+            if now - seen_at >= MANUAL_DIG_STUCK:
+                _keep_experience_evidence(page, dom, name)
+                return {"status": "unreadable", "why": "an Experience section with entries it couldn't read"}, (
+                    f"  Couldn't read {name}'s experience: the section has {entries} entries, none "
+                    f"in a shape the reader knows. Marked \"couldn't read\", and what it showed is kept on this "
+                    f"computer so the reader can be fixed.")
+        try:
+            where = page.evaluate(PAGE_FOOT_JS) or {}
+        except Exception:
+            where = {}
+        at_foot = bool(where.get("foot")) and (where.get("scrolled") or 0) >= MANUAL_DIG_SCROLLED
+        if not at_foot or where.get("height") != foot_height:
+            foot_at, foot_height = None, where.get("height")
+        if not dom.get("found") and now - start >= MANUAL_SAY and "none" not in said:
+            said.add("none")
+            print(f"  (waiting: no Experience section on {name}'s profile yet; scroll down to it)", flush=True)
+        if at_foot and not dom.get("found"):
+            foot_at = foot_at or now
+            if now - foot_at >= MANUAL_SAY:
+                return {"status": "unreadable", "why": "no Experience section on their profile"}, (
+                    f"  {name}'s profile has no Experience section that loaded, at the foot of the page. "
+                    f"Marked \"couldn't read\", not empty.")
+        _manual_wait(page, MANUAL_POLL)
+    if empty_at is not None:
+        return None, (f"  {name}'s Experience never loaded their jobs (LinkedIn loads them while it's on screen), "
+                      f"so it's left for next time.")
+    return None, f"  You didn't reach {name}'s Experience within {MANUAL_DIG_WAIT} seconds, so it's left for next time."
+
+
+def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
+    """On their open profile: the top card always (for the ring), and with Dig
+    deeper their experience too, sent with the card to their row. (how, why):
+    ("pushback", reason), ("stopped", why), or (None, None) to carry on to their list."""
+    card, companies = read_top_card_full(page)
+    if card:
+        _LIST_CARDS[profile_url] = card
+        print(f"  Their profile: {_card_words(card)}.", flush=True)
+    # The company their top card names, by its number: names that number in anyone's Experience.
+    for c in companies:
+        remember_company(c["id"], c["name"], "card")
+
+    def save(result):
+        # To the app on this computer, never to LinkedIn: a refusal is said and the scan goes on.
+        try:
+            push_experience({"profile_url": profile_url}, result)
+        except Exception as exc:
+            print(f"  (their profile couldn't be saved to the app: {str(exc)[:120]})", flush=True)
+
+    def card_only():
+        # The top card on its own, for their card and their score (lib/experience.js
+        # status "card"; the app adds it to a read already on file, never in its place).
+        if card:
+            save({"status": "card", "card": card})
+
+    if not dig:
+        card_only()
+        return None, None
+    print(f"  Dig deeper: reading {name}'s profile while it's open.", flush=True)
+    if manual:
+        result, note = _read_experience_by_hand(page, responses, name)
+    else:
+        result, note = read_experience(page, responses)
+    if result and result.get("status") in ("pushback", "stopped"):
+        card_only()
+        return result["status"], result.get("why")
+    if note:
+        print(note, flush=True)
+    if result and result.get("roles"):
+        _company_logos(result["roles"])
+    if result:
+        save({**result, **({"card": card} if card else {})})
+        if result.get("status") == "unreadable" or any(not r.get("company") for r in result.get("roles") or []):
+            try:
+                _keep_experience_evidence(page, page.evaluate(EXPERIENCE_JS) or {}, name)
+            except Exception:
+                pass
+    else:
+        card_only()
+    return None, None
+
+
+def _company_logos(roles):
+    """Each role's company logo, saved small beside the photos (image_store.store_avatar,
+    keyed by the company's number, so one logo serves every role there), its path on the
+    role as "logo"; the link it came from never leaves this computer. A logo that can't
+    be saved is simply left out (Blake, 2026-10-12: "have the company logo displayed by
+    each role")."""
+    saved = {}
+    for r in roles:
+        src, cid = r.pop("logoSrc", None), r.get("companyId")
+        if not src or not cid:
+            continue
+        if cid not in saved:
+            try:
+                saved[cid] = store_avatar(src, f"company:{cid}", overwrite=False)
+            except Exception:
+                saved[cid] = None
+        if saved[cid]:
+            r["logo"] = saved[cid]
+
+
+def _keep_experience_evidence(page, dom, name):
+    """What their Experience section showed, when the reader couldn't make it all out
+    (no role read, or a role with no company), kept beside the database as
+    debug/experience-<time>.json so the reader can be fixed against the real page.
+    Local only, like pushback/ (_keep_pushback_evidence); nothing leaves the machine."""
+    try:
+        base = _home() / "debug"
+        base.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        items = [{"lines": (it.get("lines") or [])[:8], "subs": [s[:6] for s in (it.get("subs") or [])[:6]],
+                  "logo": it.get("logo"), "slug": it.get("slug"), "companyId": it.get("companyId"),
+                  "logoSrc": (it.get("logoSrc") or "").split("?")[0][:120] or None,
+                  "companyLinks": it.get("companyLinks"), "links": it.get("links"), "imgs": it.get("imgs")}
+                 for it in (dom.get("items") or [])[:12]]
+        (base / f"experience-{stamp}.json").write_text(json.dumps({
+            "url": getattr(page, "url", ""), "found": dom.get("found"), "how": dom.get("how"),
+            "showAll": dom.get("showAll"), "items": items, "runs": (dom.get("runs") or [])[:120],
+            "logos": {k: str(v).split("?")[0][:120] for k, v in (dom.get("logos") or {}).items()}}, indent=2))
+        print(f"  (what {name}'s Experience section showed is kept in {base}/experience-{stamp}.json)", flush=True)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Manual mode (Blake, 2026-10-12: "playwright loads up the window and the user
+# has to manually scroll per page for the python to scan each page … to make
+# the user feel safer"). Scanner settings → "Manual mode for circle scans"
+# (manual_reads). The scanner still opens their profile and the first page of
+# their list, as ever; from there the Chrome window is in front of you, and
+# nothing on the page moves unless you move it. Each page is read once you've
+# scrolled to its foot, and you click Next yourself. The window can't sit
+# inside Sixgree's own: Chrome is a program of its own, and the only browser
+# that could would make Sixgree the scanner.
+# ---------------------------------------------------------------------------
+MANUAL_POLL = 0.4                 # how often it looks at the window, in seconds
+MANUAL_TAP_GAP = 1.2              # one Next tap a click: requests closer together than this are the same click
+MANUAL_IDLE = 10 * 60             # no new page for this long: the read of that person ends
+MANUAL_SAY = 8                    # seconds of waiting on one thing before the log says what it waits for
+
+# You've reached the foot of the page: the pagination bar (Next or Previous) is
+# in view, or on a list with no bar, the last person on it. Measured against
+# the window, so it holds whichever part of the page scrolls. The buttons' own
+# words and the profile links, never a class (TRAPS §5).
+AT_FOOT_JS = r"""
+() => {
+  const h = window.innerHeight || document.documentElement.clientHeight;
+  const seen = (el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < h && r.bottom > 0; };
+  for (const b of document.querySelectorAll('button')) {
+    const t = (b.innerText || b.textContent || '').trim();
+    if ((t === 'Next' || t === 'Previous') && seen(b)) return true;
+  }
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const links = [...root.querySelectorAll('a[href*="/in/"]')].filter((a) => !a.closest('nav, header, footer'));
+  return links.length > 0 && seen(links[links.length - 1]);
+}
+"""
+
+# This page's Next: "on" (there's another page), "off" (LinkedIn's Next is
+# there but disabled: the last page), or null (no Next on the page).
+NEXT_STATE_JS = r"""
+() => {
+  for (const b of document.querySelectorAll('button')) {
+    const t = (b.innerText || b.textContent || '').trim();
+    if (t === 'Next') return b.disabled || b.getAttribute('aria-disabled') === 'true' ? 'off' : 'on';
+  }
+  return null;
+}
+"""
+
+
+MANUAL_STREAK_TOP = 8             # the read chime climbs this many steps (lib/chimes.js READ_STEPS)
+
+
+def _manual_wait(page, seconds):
+    """Wait between looks at the window, letting the browser's events through
+    (the Next tap listens for them); time.sleep would hold them until the next
+    look. A stand-in page in the tests has no wait_for_timeout."""
+    try:
+        page.wait_for_timeout(int(seconds * 1000))
+        return
+    except AttributeError:
+        pass
+    except Exception:
+        pass
+    time.sleep(seconds)
+
+
+def _their_search(url, urn):
+    """The window shows their connections search, at any page of it."""
+    try:
+        u = unquote(url or "")
+    except Exception:
+        return False
+    return bool(urn) and "/search/results/people" in u and urn in u
+
+
+def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None):
+    """Manual mode, from the moment their list is open at start_page in a window
+    in front of you. Returns what _scrape_one_bridge returns.
+
+    A page is read once you've scrolled to its foot (AT_FOOT_JS), and only once.
+    Every page LinkedIn opens is a search on your account, counted the first
+    time it's seen, and the daily limit holds as it does anywhere (not in Dev
+    mode). LinkedIn pushing back stops it, as ever. `reach["last"]` only moves
+    through pages read one after another from start_page, so a page you skip
+    is never noted as read (TRAPS §34); the people on it are kept all the same.
+
+    Ends when their list does (LinkedIn's Next is disabled, or the count says
+    so), at max_pages, on Stop, when you close the window (done with them: a
+    round moves on to the next person in a new window), or after MANUAL_IDLE
+    with no new page (and with nothing read at all, the whole scan stops, so a
+    round doesn't open window after window for nobody).
+    """
+    global _stop_requested
+    urn = reach["urn"]
+    pages = -(-int(total) // 10) if total else None
+    done, counted = set(), {start_page}
+    chunk, chunk_pages = [], 0
+    contiguous = start_page - 1
+    last_seen = time.time()
+    status, how = "success", None
+    last_links = None              # who the last page read showed: a page still showing them isn't the next one
+    last_read = None               # the page read last: the one the window is on until you click on
+    bar_seen = False               # the page bar has shown a page: from then on, only it says which
+    said, waiting = set(), {}      # each "why it waits" said once, after MANUAL_SAY seconds of it
+    streak = 0                     # pages read in a row: each read chime climbs one step (lib/chimes.js)
+    tapped = {"at": None}          # when the last Next tap played
+
+    def tap():
+        """The Next chime, once a click."""
+        now = time.time()
+        if tapped["at"] is None or now - tapped["at"] >= MANUAL_TAP_GAP:
+            tapped["at"] = now
+            _chime("next")
+
+    def on_request(request):
+        # You clicked Next (or a page number): LinkedIn asks its search API for
+        # the next page at once, well before the page bar moves, so the tap
+        # answers the click. Only after the first page is read, so the
+        # scanner's own opening of the list doesn't tap. Read off the network,
+        # never off the page: nothing is added to LinkedIn's page.
+        try:
+            if done and request.resource_type in ("xhr", "fetch") and "/voyager/api/" in request.url \
+                    and "search" in request.url.lower():
+                tap()
+        except Exception:
+            pass
+
+    try:
+        page.on("request", on_request)
+    except Exception:
+        pass
+
+    def tell(what):
+        print(f"{NEEDS_YOU} {what}", flush=True)
+
+    def wait_note(key, what):
+        """Say why nothing is read yet, once, when it has been so for MANUAL_SAY seconds."""
+        since = waiting.setdefault(key, time.time())
+        if key not in said and time.time() - since >= MANUAL_SAY:
+            said.add(key)
+            print(f"  (waiting: {what})", flush=True)
+
+    print(f"  Manual mode: you page through {bridge_name}'s list, and each page is read when you reach its foot.")
+    if reach.get("opened_ahead"):
+        tell(f"LinkedIn's page bar shows page {reach['opened_ahead']}, and page {start_page} isn't read yet. "
+             f"Click Previous to page {start_page} and scroll to its bottom, then carry on with Next. "
+             f"Close the window when you're done with {bridge_name}.")
+    else:
+        tell(f"scroll to the bottom of each page of {bridge_name}'s connections in the Chrome window, then click Next. "
+             f"Close the window when you're done with them.")
+    while True:
+        if stop_requested():
+            status, how = "stopped", "stopped"
+            break
+        try:
+            closed = page.is_closed()
+        except Exception:
+            closed = True
+        if closed:
+            how = "closed"
+            break
+        if time.time() - last_seen > MANUAL_IDLE:
+            how = "idle"
+            break
+        _manual_wait(page, MANUAL_POLL)
+        try:
+            url = page.url
+        except Exception:
+            continue
+        if not _their_search(url, urn):
+            # Somewhere else in the window. LinkedIn's own notice is push-back wherever it
+            # shows (Blake, 2026-10-12: sent to "Your account has been temporarily
+            # restricted" from page 69 of a list, read as "go back to it", so no pause
+            # was written and Dev mode stayed on). Anywhere else, it waits for you.
+            why = _pushback(page)
+            if why:
+                _pushed_back(page, reach, why)
+                status, how = "pushback", "pushback"
+                break
+            wait_note(("away", url.split("?")[0]), f"the window isn't on {bridge_name}'s list. Go back to it to carry on.")
+            continue
+        # Which page this is: the page bar's highlighted number, as LinkedIn shows it.
+        # Next changes the page without always changing the address (Blake, 2026-10-12:
+        # the address still said page 9 on page 10), so the address is only for a
+        # list with no page bar.
+        try:
+            shown = page.evaluate(CURRENT_PAGE_JS)
+        except Exception:
+            shown = None
+        if isinstance(shown, int) and shown > 0:
+            pg, bar_seen = shown, True
+        elif bar_seen:
+            # The page bar is being drawn again between pages, and the address can be a
+            # page behind or name no page at all (Blake's log, 2026-10-12: "scroll to the
+            # bottom of page 1" on the way from page 55 to 56, and a search counted for
+            # it): it waits for the bar rather than guess.
+            continue
+        else:
+            pg = _url_page(url)
+        if pg not in counted:
+            left, kind = searches_left()
+            if left <= 0:
+                reach["budget"] = kind
+                print("  " + budget_message(kind))
+                status, how = "budget", "budget"
+                break
+            charge_linkedin("searches")   # a page you opened is a search like any other
+            counted.add(pg)
+            last_seen = time.time()
+            if done:
+                tap()   # in case the click's request went by unseen; once a click either way
+        if pg in done:
+            if pg != last_read and ("again", pg) not in said:
+                said.add(("again", pg))
+                tell(f"page {pg} is already read. Click Next to page {pg + 1}. "
+                     f"Close the window when you're done with {bridge_name}.")
+            continue
+        why = _pushback(page)
+        if why:
+            _pushed_back(page, reach, why)
+            status, how = "pushback", "pushback"
+            break
+        try:
+            at_foot = bool(page.evaluate(AT_FOOT_JS))
+        except Exception:
+            at_foot = False
+        if not at_foot:
+            wait_note(("foot", pg), f"scroll to the bottom of page {pg} and it's read.")
+            continue
+        links = _result_links(page)
+        if last_links is not None and links == last_links:
+            # The page bar has moved on but the people haven't yet: reading now
+            # would save the last page's people as this one's.
+            wait_note(("same", pg), f"page {pg} still shows the last page's people. It's read once it changes.")
+            continue
+        try:
+            found = page.evaluate(BRIDGE_RESULTS_JS) or []
+        except Exception:
+            found = []
+        if not found:
+            try:
+                limit_banner = bool(page.evaluate(SEARCH_LIMIT_JS))
+            except Exception:
+                limit_banner = False
+            if limit_banner:
+                print("  LinkedIn's monthly search limit, and nobody on the page to read.")
+                reach["limited"] = True
+                _keep_pushback_evidence(page, "the monthly search limit")
+                status, how = "limited", "limited"
+                break
+            hidden = _hidden_members(page)
+            if hidden:
+                done.add(pg)
+                print(f"  Page {pg}: LinkedIn hides the {hidden} people on it (\"LinkedIn Member\"), "
+                      f"so there's no one to read there.")
+            else:
+                wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
+            continue   # still loading, or nothing there yet: it looks again
+        found = [c for c in found if slug not in c.get("profileUrl", "")]
+        done.add(pg)
+        last_links = links
+        last_read = pg
+        last_seen = time.time()
+        PACE_STATE["pages"] += 1
+        chunk.extend(found)
+        chunk_pages += 1
+        reach["found"] += len(found)
+        while contiguous + 1 in done:
+            contiguous += 1
+        reach["last"] = max(reach["last"], contiguous)
+        # The same line an automatic read prints, so the app counts it the same way.
+        print(f"  Page {pg}... {len(found)} found (total: {reach['found']})", flush=True)
+        try:
+            nxt = page.evaluate(NEXT_STATE_JS)
+        except Exception:
+            nxt = None
+        at_end = pg >= LINKEDIN_MAX_PAGES or nxt == "off" or (pages is not None and pg >= pages)
+        streak += 1
+        if at_end and contiguous >= pg:
+            print("  That's the end of their list." if pg < LINKEDIN_MAX_PAGES
+                  else f"  That was page {pg}, as far as LinkedIn's search goes.")
+            _chime("done")
+            how = "finished"
+            break
+        _chime(f"read-{min(streak, MANUAL_STREAK_TOP)}")
+        if contiguous >= max_pages:
+            print(f"  That's the {max_pages} pages this scan reads.")
+            how = "limit"
+            break
+        if on_save and chunk_pages >= SAVE_EVERY_PAGES:
+            on_save(_dedupe(chunk), reach["last"], True, urn)
+            chunk, chunk_pages = [], 0
+        if contiguous < pg - 1:
+            # A page before this one isn't read: until it is, the next scan starts there again.
+            tell(f"page {pg} is read ({len(found)} people). Page {contiguous + 1} isn't read yet, so the next scan "
+                 f"starts there again: click back to it, or carry on with Next to page {pg + 1}. "
+                 f"Close the window when you're done with {bridge_name}.")
+        else:
+            tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
+                 f"Close the window when you're done with {bridge_name}.")
+
+    try:
+        page.remove_listener("request", on_request)
+    except Exception:
+        pass
+    reach["more"] = how != "finished"
+    if how == "closed":
+        print(f"  The window was closed: done with {bridge_name}, and what was read is kept.")
+    elif how == "idle":
+        print(f"  No new page for {MANUAL_IDLE // 60} minutes, so the read of {bridge_name} ends here.")
+        if not done:
+            # Nobody's there: a round would open the next person's window only to wait again.
+            _stop_requested = True
+            status = "stopped"
+            print("  Nothing was read, so the scan stops.")
+    n = len(done)
+    print(f"Manual read done: {n} page{'' if n == 1 else 's'} of {bridge_name}'s list.", flush=True)
+    return _dedupe(chunk), status, reach
+
+
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
-                       start_page=1, urn=None, on_save=None):
+                       start_page=1, urn=None, on_save=None, manual=False, dig=False):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -4175,6 +5059,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
       limited  LinkedIn's monthly search limit ended the read
       budget   "daily" or "profiles": today's limit ended it (status "budget")
 
+    manual: once their list is open, you page through it (_read_by_hand).
+    dig:    Dig deeper: read their profile while it's open (_dig_into_profile);
+            with their search id known already, their profile is opened for it
+            once (a profile view).
+
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
     - 10s after search URL navigation
@@ -4185,7 +5074,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
              "pushed_back": False}
 
-    if urn:
+    known_urn = urn
+    if urn and not dig:
         # Known from an earlier read, so their profile needn't be opened again —
         # one fewer profile view, which is what LinkedIn counts most.
         print(f"  Going straight to {bridge_name}'s connections (their search id is known).")
@@ -4198,6 +5088,22 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             reach["budget"] = "profiles"
         if why:
             return [], why, reach
+
+        # Dig deeper reads LinkedIn's own data for the profile as it arrives,
+        # so it listens before the page opens (as read_profiles does).
+        responses = []
+
+        def keep(response):
+            if "/voyager/api/" in response.url and len(responses) < 60:
+                responses.append(response)
+
+        if dig:
+            try:
+                page.on("response", keep)
+            except Exception:
+                pass
+        if known_urn:
+            print(f"  Dig deeper: opening {bridge_name}'s profile once to read it (a profile view), then their list.")
 
         # Navigate to profile (wait_until="commit" — don't wait for full load)
         print(f"  Opening {bridge_name}'s profile...")
@@ -4223,10 +5129,20 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                 print("  Profile is not viewable — skipping.")
                 return [], "private", reach
 
-            urn = _find_connection_urn(page)
-            if urn:
+            found = _find_connection_urn(page)
+            if found:
+                urn = found
                 print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
                 break
+            if known_urn:
+                # Opened only to dig deeper: their search id is known, so a
+                # profile that has shown is enough.
+                try:
+                    if page.evaluate(PROFILE_SHOWN_JS, bridge_name):
+                        print(f"  Profile loaded ({(attempt + 1) * BRIDGE_LOAD_STEP}s)")
+                        break
+                except Exception:
+                    pass
 
             # The connections block lazy-loads; nudge it once part-way through.
             if attempt == BRIDGE_LOAD_ATTEMPTS // 2:
@@ -4258,8 +5174,23 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             print(f"  Could not find URN — connections are private.")
             return [], "private", reach
 
-        print(f"  Found URN: {urn[:30]}...")
+        if not known_urn:
+            print(f"  Found URN: {urn[:30]}...")
         reach["urn"] = urn
+
+        # The top card, and with Dig deeper their experience, while it's open.
+        how, why = _dig_into_profile(page, bridge_name, profile_url, responses, dig, manual=manual)
+        try:
+            page.remove_listener("response", keep)
+        except Exception:
+            pass
+        if how == "pushback":
+            _pushed_back(page, reach, why or "their profile")
+            return [], "pushback", reach
+        if how == "stopped" or stop_requested():
+            # Stop pressed while their profile was open: never on to their list.
+            reach["more"] = True
+            return [], "stopped", reach
 
     # Step 4: search everyone they are connected to. network=["F","S","O"] is
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
@@ -4376,7 +5307,22 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         except Exception:
             pass
         at = _url_page(page.url)
-        if at != start_page or (shown is not None and shown != start_page):
+        if (shown is not None and shown != at) or at != start_page:
+            _keep_page_bar_evidence(page, start_page, shown, at)
+        if manual and (at != start_page or (shown is not None and shown != start_page)):
+            # You can see the window in manual mode. _read_by_hand reads whichever page
+            # you're on, and never notes a page as read that wasn't (it only moves
+            # "last" through pages read in order), so the page it opened for has to be
+            # read before the bookmark moves on (Blake, 2026-10-12: opened at page 51,
+            # the page bar said 52, and every page after it was read but 51 never was,
+            # so the next scan started at 51 again).
+            ahead = shown or at
+            if ahead > start_page:
+                reach["opened_ahead"] = ahead     # _read_by_hand's first words: go back to start_page
+                print(f"  LinkedIn's page bar shows page {ahead}, not page {start_page}.")
+            else:
+                print(f"  The window is on page {ahead} already; you carry on from there.")
+        elif at != start_page or (shown is not None and shown != start_page):
             print(f"  LinkedIn opened page {shown or at}, not page {start_page}. "
                   "Stopping so no page is noted as read that wasn't.")
             reach["more"] = True
@@ -4391,6 +5337,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         pages = -(-total // 10)
         print(f"  About {total:,} results in their list: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
+    if manual:
+        return _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total)
+
     until = "until their list ends" if max_pages >= LINKEDIN_MAX_PAGES else f"up to page {max_pages}"
     print(f"  Reading from page {start_page} {until}, saving every {SAVE_EVERY_PAGES} pages.")
 
@@ -4619,6 +5568,19 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     if not urn and profiles_left() <= 0:
         raise BudgetReached(0, "profiles")
 
+    # Manual mode: the window in front, and you page through (_read_by_hand).
+    # Never in Auto scan's sittings, which run while you're away, nor headless.
+    manual = manual_reads() and not EXPERIMENT.get("sitting") and not headless
+    if manual:
+        CHROME_WINDOW["show"] = True
+    # Dig deeper: only for someone whose experience isn't read yet. With their
+    # search id known, it would open their profile just for this: not with
+    # today's profile views used (the list itself needs none).
+    dig = dig_deeper() and not _experience_on_file(bridge)
+    if dig and urn and profiles_left() <= 0:
+        dig = False
+        print("  Dig deeper waits: today's profile views are used, and their list needs none.")
+
     print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scanning'} connections of {bridge_name} ===\n")
 
     read = []
@@ -4649,7 +5611,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
                                              max_pages=max_pages, start_page=start_page, urn=urn,
-                                             on_save=save)
+                                             on_save=save, manual=manual, dig=dig)
             finally:
                 try:
                     browser.close()
@@ -5102,7 +6064,10 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log(budget_message(kind))
         return []
     use, lim = linkedin_usage(), search_limits()
-    if limits_lifted():
+    if dev_mode():
+        log(f"Dev mode, no limits: {use['searches_today']} searches and {use['profiles_today']} "
+            f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
+    elif limits_lifted():
         log(f"Limits lifted for this session: {use['searches_today']} searches and {use['profiles_today']} "
             f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
     else:
@@ -5489,6 +6454,45 @@ EXPERIENCE_JS = r"""
     }
     return out;
   };
+  // The company an entry is at, from its logo or its link to the company's page:
+  // since 2026 LinkedIn draws an entry as title, dates and description, with the
+  // company only as the logo beside it ("Aerotek logo"), not as a line of text
+  // (Blake's network, 2026-10-12: every company read as none). Never the title.
+  const companyOf = (li, title) => {
+    const own = (el) => { const l = el.closest('li'); return l === li; };
+    const pick = (v) => {
+      const t = norm(v).replace(/\s*(company )?logo$/i, '');
+      return t && t.length <= 100 && t !== title && !/^\d/.test(t) ? t : null;
+    };
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      if (!own(a)) continue;
+      const img = a.querySelector('img[alt]');
+      const got = (img && pick(img.getAttribute('alt'))) || pick(a.getAttribute('aria-label'));
+      if (got) return got;
+    }
+    for (const img of li.querySelectorAll('img[alt]')) {
+      if (own(img) && /logo$/i.test(norm(img.getAttribute('alt')))) {
+        const got = pick(img.getAttribute('alt'));
+        if (got) return got;
+      }
+    }
+    return null;
+  };
+  // The company page's address, when nothing on the link names it: "/company/aerotek/"
+  // (Blake's network, 2026-10-12: a link with no logo text and no label). A number
+  // there ("/company/1234/") names nothing, and isn't taken.
+  const slugOf = (li) => {
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      if (a.closest('li') !== li) continue;
+      const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/);
+      if (m && !/^\d+$/.test(m[1])) return decodeURIComponent(m[1]).slice(0, 80);
+    }
+    return null;
+  };
+  // What each company link carries, for the kept evidence when a company isn't read.
+  const linksOf = (li) => [...li.querySelectorAll('a[href*="/company/"]')].filter((a) => a.closest('li') === li).slice(0, 2)
+    .map((a) => ({ href: (a.getAttribute('href') || '').split('?')[0].slice(0, 100), text: norm(a.innerText).slice(0, 80),
+      aria: norm(a.getAttribute('aria-label')).slice(0, 80), alts: [...a.querySelectorAll('img')].map((i) => norm(i.getAttribute('alt'))).slice(0, 2) }));
   const items = [];
   for (const li of section.querySelectorAll('li')) {
     const up = li.parentElement && li.parentElement.closest('li');
@@ -5497,10 +6501,64 @@ EXPERIENCE_JS = r"""
       .filter((s) => s.parentElement && s.parentElement.closest('li') === li)
       .map((s) => linesOf(s).slice(0, 10));
     const lines = linesOf(li).slice(0, 12);
-    if (lines.length || subs.length) items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length });
+    const logo = companyOf(li, lines[0]);
+    const slug = logo ? null : slugOf(li);
+    // The company's number on LinkedIn ("/company/2889/"): many entries name their
+    // company by nothing else, so the scanner names it from elsewhere (company_names).
+    let companyId = null;
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      const m = a.closest('li') === li && (a.getAttribute('href') || '').match(/\/company\/(\d+)/);
+      if (m) { companyId = m[1]; break; }
+    }
+    // Its logo: one of LinkedIn's company logos in the entry, never a person's photo.
+    const imgs = [...li.querySelectorAll('img')].filter((i) => i.closest('li') === li);
+    const logoImg = imgs.find((i) => /licdn\.com/.test(i.src || '') && /company-logo|organization-logo|logo/i.test(i.src || ''))
+      || imgs.find((i) => /licdn\.com/.test(i.src || '') && !/profile-displayphoto|profile-framedphoto/i.test(i.src || ''));
+    if (lines.length || subs.length) {
+      items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length,
+        ...(logo ? { logo } : {}), ...(slug ? { slug } : {}), ...(companyId ? { companyId } : {}),
+        ...(logoImg ? { logoSrc: logoImg.src } : {}), links: linksOf(li),
+        imgs: imgs.slice(0, 3).map((i) => ({ alt: norm(i.getAttribute('alt')).slice(0, 60), src: (i.src || '').split('?')[0].slice(0, 120) })) });
+    }
+  }
+  // Every line the section links to a company page, in reading order, with the company's
+  // page ("2889", or a name like "aerotek"): since 2026 most entries aren't list items at
+  // all, and a company with several roles is a heading ("Aerotek", "4 yrs 1 mo") with its
+  // roles listed under it, so the list items alone missed every role that wasn't in a
+  // group, and every group's name (Blake, 2026-10-12, from a copy of a real profile).
+  // roles_from_runs (Python) reads roles from these.
+  const runs = [];
+  const logos = {};
+  const keyOf = (a) => { const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/); return m ? decodeURIComponent(m[1]).slice(0, 80) : null; };
+  for (const a of section.querySelectorAll('a[href*="/company/"]')) {
+    const key = keyOf(a);
+    if (!key) continue;
+    for (const raw of (a.innerText || '').split('\n')) {
+      const t = norm(raw);
+      const last = runs[runs.length - 1];
+      if (t && !(last && last.c === key && last.t === t)) runs.push({ c: key, t: t.slice(0, 160) });
+    }
+    if (runs.length >= 300) break;
+  }
+  // Each company's logo: an image of LinkedIn's in or beside one of its links (the
+  // nearest box holding both), never a person's photo.
+  for (const img of section.querySelectorAll('img')) {
+    const src = img.currentSrc || img.src || '';
+    if (!/licdn\.com/.test(src) || /profile-displayphoto|profile-framedphoto/.test(src)) continue;
+    let key = null;
+    const own = img.closest('a[href*="/company/"]');
+    if (own) key = keyOf(own);
+    for (let el = img.parentElement, i = 0; !key && el && el !== section && i < 6; el = el.parentElement, i++) {
+      const a = el.querySelector('a[href*="/company/"]');
+      if (a) key = keyOf(a);
+    }
+    if (key && !logos[key]) logos[key] = src;
   }
   const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
-  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null };
+  // Where the section is in the window, for manual mode: read while you scroll through it.
+  const r = section.getBoundingClientRect();
+  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null, runs, logos,
+    rect: { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight } };
 }
 """
 
@@ -5563,6 +6621,169 @@ def role_from_lines(lines, company=None):
     return {"title": lines[0][:120], "company": company or found, "start": start, "end": end, "current": current}
 
 
+# Company names by LinkedIn's number for them, kept beside the database
+# (company-names.json): {"2889": {"name": "Aerotek", "from": "card" | "description"}}.
+# Many Experience entries point at their company only by its number (2026-10-12);
+# a top card names someone's current company with its number, and a description
+# often opens with the company's name ("Aerotek is your leading provider …"). Each
+# one the scanner sees is remembered here, so a number is named everywhere once any
+# profile has named it. A top card's name wins over a description's.
+_COMPANY_NAMES = {"data": None}
+
+
+def company_names():
+    if _COMPANY_NAMES["data"] is None:
+        try:
+            data = json.loads((_home() / "company-names.json").read_text())
+            _COMPANY_NAMES["data"] = data if isinstance(data, dict) else {}
+        except Exception:
+            _COMPANY_NAMES["data"] = {}
+    return _COMPANY_NAMES["data"]
+
+
+def remember_company(company_id, name, source):
+    """Note a company's name for its number. A top card's ("card") replaces a description's."""
+    cid, name = str(company_id or "").strip(), str(name or "").strip()[:100]
+    if not cid.isdigit() or not name:
+        return False
+    names = company_names()
+    had = names.get(cid)
+    # A top card's or the Experience section's own name ("card", "page") is LinkedIn's
+    # name for it; a description's is a reading. LinkedIn's replaces a reading, never the other way.
+    firm = ("card", "page")
+    if had and had.get("name") and (had.get("from") in firm or source not in firm):
+        return False
+    names[cid] = {"name": name, "from": source}
+    try:
+        _write_json_atomic(_home() / "company-names.json", names)
+    except Exception:
+        pass
+    return True
+
+
+def company_name(company_id):
+    """The name remembered for a company's number, or None."""
+    got = company_names().get(str(company_id or ""))
+    return (got or {}).get("name") or None
+
+
+_DESCRIPTION_COMPANY = re.compile(
+    r"^((?:The\s+)?[A-Z][\w&.'’-]*(?:\s+(?:of|and|&|[A-Z][\w&.'’-]*)){0,5})\*?\s*(?:\([^)]{0,60}\)\s*)?"
+    r"(?:is|was|are|were|provides|specializes|specialises|offers|helps|delivers|builds|designs|makes|serves|operates|empowers)\b")
+_NOT_A_COMPANY = {"i", "we", "our", "my", "this", "it", "he", "she", "they", "at", "as", "in", "the", "a", "an",
+                  "responsible", "led", "managed", "worked", "currently", "role", "team"}
+
+
+def company_from_description(lines, title=""):
+    """The company a role's description opens by naming ("Aerotek is your leading
+    provider …", "Aston Carter (An Aerotek Company) specializes …"), or None. Only
+    the first two lines, and only a name that isn't the title or a common opener."""
+    for line in [str(x).strip() for x in (lines or [])][:2]:
+        m = _DESCRIPTION_COMPANY.match(line)
+        if not m:
+            continue
+        name = m.group(1).strip()
+        if name.lower() in _NOT_A_COMPANY or name.lower() == str(title).strip().lower() or len(name) > 80:
+            continue
+        return name
+    return None
+
+
+def company_from_slug(slug):
+    """A company page's address as a name: "aston-carter" → "Aston Carter", "ibm" → "IBM".
+    None for nothing, or for a number (which names nothing)."""
+    s = str(slug or "").strip().strip("/")
+    if not s or s.isdigit():
+        return None
+    words = [w for w in re.split(r"[-_\s]+", s) if w]
+    if not words:
+        return None
+    # Short all-letter words are mostly initials (IBM, AT&T's "att", HP); the rest are words.
+    return " ".join(w.upper() if len(w) <= 3 and w.isalpha() and len(words) == 1 else w[:1].upper() + w[1:]
+                    for w in words)[:120]
+
+
+# A group's length ("4 yrs 1 mo", "6 yrs", "8 mos"), the line under its company's name,
+# sometimes after how they worked there ("Full-time · 8 yrs 1 mo", _is_duration).
+_DURATION = re.compile(r"^(\d+\s+yrs?(\s+\d+\s+mos?)?|\d+\s+mos?)$", re.I)
+# How someone worked, written after the company ("SuperAnnotate · Part-time") or on its own.
+_EMPLOYMENT = re.compile(r"^(full-time|part-time|self-employed|freelance|contract|internship|apprenticeship|"
+                         r"seasonal|temporary|permanent|casual)$", re.I)
+
+
+def _is_duration(line):
+    """A group's length line, alone or after how they worked: "4 yrs 1 mo", "Full-time · 8 yrs 1 mo"."""
+    return any(_DURATION.match(part.strip()) for part in str(line or "").split(" · "))
+
+
+def _company_text(line):
+    """ "SuperAnnotate · Part-time" → "SuperAnnotate"; an employment type alone → None."""
+    head = str(line or "").split(" · ")[0].strip()
+    return None if not head or _EMPLOYMENT.match(head) or parse_date_range(head) else head[:120]
+
+
+def roles_from_runs(rows, logos=None):
+    """The roles in the Experience section, from its company links in reading order
+    (EXPERIENCE_JS runs): [{"c": company page, "t": a line}]. Each company's lines
+    in a row are one entry:
+      one role      title, "Company · Full-time", dates, place
+      a group       "Company", "4 yrs 1 mo", place, then for each role: title, dates
+    A line with dates is a role; in a group its title is the line before (an
+    employment type passed over) and its company the group's; on its own its title
+    is the entry's first line and its company the second. Every company named here
+    is remembered by its number (company_names), and its logo kept (logoSrc)."""
+    runs = []
+    for r in rows or []:
+        key, text = str((r or {}).get("c") or ""), str((r or {}).get("t") or "").strip()
+        if not key or not text:
+            continue
+        if runs and runs[-1][0] == key:
+            runs[-1][1].append(text)
+        else:
+            runs.append((key, [text]))
+    logos = logos or {}
+    roles = []
+    for key, lines in runs:
+        dated = [i for i, x in enumerate(lines) if parse_date_range(x)]
+        if not dated:
+            continue
+        first = dated[0]
+        group = next((i for i in range(1, first) if _is_duration(lines[i])), None)
+        company = _company_text(lines[0]) if group is not None else (_company_text(lines[1]) if first >= 2 else None)
+        cid = key if key.isdigit() else None
+        if cid and company:
+            remember_company(cid, company, "page")
+        company = company or (company_name(cid) if cid else None) or (None if cid else company_from_slug(key))
+        prev = -1
+        for n, d in enumerate(dated):
+            if group is None and n == 0:
+                title = lines[0]
+            else:
+                j = d - 1
+                while j > max(prev, group if group is not None else -1) and _EMPLOYMENT.match(lines[j].split(" · ")[0].strip()):
+                    j -= 1
+                title = lines[j] if j > max(prev, group if group is not None else -1) else None
+            prev = d
+            if not title or parse_date_range(title):
+                continue
+            start, end, current = parse_date_range(lines[d])
+            role = {"title": title[:120], "company": company, "start": start, "end": end, "current": current}
+            if cid:
+                role["companyId"] = cid
+            if logos.get(key):
+                role["logoSrc"] = logos[key]
+            roles.append(role)
+    return _unique_roles(roles)
+
+
+def page_roles(dom):
+    """The roles the open Experience section shows: from its company links (roles_from_runs)
+    when they read at least as many as its list items (roles_from_items) do, else those."""
+    by_runs = roles_from_runs((dom or {}).get("runs"), (dom or {}).get("logos"))
+    by_items = roles_from_items((dom or {}).get("items"))
+    return by_runs if len(by_runs) >= len(by_items) and by_runs else by_items
+
+
 def roles_from_items(items):
     """The roles in the Experience section's items (EXPERIENCE_JS).
 
@@ -5575,15 +6796,29 @@ def roles_from_items(items):
         lines = [str(x).strip() for x in (it.get("lines") or []) if str(x).strip()]
         subs = [role_from_lines(s) for s in (it.get("subs") or [])]
         subs = [r for r in subs if r]
+        # The company from the entry's logo or company link (EXPERIENCE_JS companyOf),
+        # since 2026 the only place many entries name it; failing that, its company
+        # page's address ("aston-carter" → "Aston Carter", company_from_slug).
+        logo = str(it.get("logo") or "").strip()[:120] or company_from_slug(it.get("slug"))
         if subs:
             company = lines[0][:120] if lines and not parse_date_range(lines[0]) else None
             for r in subs:
                 # In a company's list the line under a title is how they worked, not where.
-                r["company"] = company or r["company"]
+                r["company"] = company or logo or r["company"]
                 roles.append(r)
             continue
         r = role_from_lines(lines)
         if r:
+            cid = str(it.get("companyId") or "") or None
+            at = next((i for i, x in enumerate(lines) if parse_date_range(x)), None)
+            described = company_from_description(lines[at + 1:] if at is not None else [], r["title"])
+            if cid and described:
+                remember_company(cid, described, "description")
+            r["company"] = r["company"] or logo or (company_name(cid) if cid else None) or described
+            if cid:
+                r["companyId"] = cid
+            if it.get("logoSrc"):
+                r["logoSrc"] = it["logoSrc"]
             roles.append(r)
     return _unique_roles(roles)
 
@@ -5756,29 +6991,34 @@ def read_experience(page, responses, rng=None):
         except Exception:
             seen["page"] = {}
         seen["data"] = _profile_data(p, responses)
-        if seen["data"] or roles_from_items(seen["page"].get("items")):
+        if seen["data"] or page_roles(seen["page"]):
             return True
         return None
 
     got, answer, _ = read_with_backoff(page, look, "Their experience")
     if got in ("pushback", "stopped"):
         return {"status": got, "why": answer}, None
-    dom = seen["page"] or {}
-    page_roles = roles_from_items(dom.get("items"))
-    data_roles = seen["data"]
-    where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(page_roles)}"
+    return _experience_result(seen["page"] or {}, seen["data"])
+
+
+def _experience_result(dom, data_roles):
+    """What read_experience (or Dig deeper's manual read) found, as (result, note):
+    LinkedIn's own data first, else the page's Experience section; with no role
+    in either, "unreadable", never an empty list (TRAPS §7)."""
+    on_page = page_roles(dom)
+    where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(on_page)}"
              if dom.get("found") else "the page had no Experience section")
     count = f"LinkedIn's own data had {len(data_roles)}; {where}"
     if dom.get("showAll"):
         count += f" (LinkedIn says {dom['showAll']} in all; only the profile's first ones are read)"
-    roles = data_roles or page_roles
+    roles = data_roles or on_page
     if not roles:
         why = ("no Experience section on their profile" if not dom.get("found")
                else "an Experience section with no role in it that could be read")
         return {"status": "unreadable", "why": why}, f"  Couldn't read their experience: {count}. Marked \"couldn't read\", not empty."
     current = sum(1 for r in roles if r.get("current"))
     source = "data" if data_roles else "page"
-    return ({"status": "read", "roles": roles, "source": source, "shown": dom.get("showAll") or len(page_roles)},
+    return ({"status": "read", "roles": roles, "source": source, "shown": dom.get("showAll") or len(on_page)},
             f"  Experience: {len(roles)} roles ({current} current), from "
             f"{'LinkedIn' + chr(39) + 's own data' if source == 'data' else 'the page'}. {count[0].upper() + count[1:]}.")
 
@@ -6061,7 +7301,10 @@ SENT_NOTICE = re.compile(r"invitation to (.+?) (?:was|has been) sent", re.I)
 
 
 def invites_left(now=None):
-    """(how many more requests Auto may send, "day" | "week": whichever runs out first)."""
+    """(how many more requests Auto may send, "day" | "week": whichever runs out first).
+    As good as no end in Dev mode."""
+    if dev_mode():
+        return (10 ** 9, "day")
     now = now if now is not None else time.time()
     invites = _read_activity()["invites"]
     day = INVITE_DAY_CAP - sum(1 for t in invites if t > now - DAY_SECONDS)
@@ -6079,6 +7322,10 @@ def take_invite(now=None):
         now = now if now is not None else time.time()
         data = _read_activity()
         invites = data["invites"]
+        if dev_mode():
+            # No caps in Dev mode; still written down, so the record stays true.
+            _charge(data, "invites", 1, now)
+            return None
         if sum(1 for t in invites if t > now - DAY_SECONDS) >= INVITE_DAY_CAP:
             return "day"
         if sum(1 for t in invites if t > now - WEEK_SECONDS) >= INVITE_WEEK_CAP:
@@ -6790,6 +8037,8 @@ Examples:
                         help="Scan in a normal Chrome window in front, to watch it work. Without it the window "
                              "stays out of sight and comes forward only when LinkedIn needs you")
     args = parser.parse_args()
+    if not getattr(args, "server", False):
+        keep_run_log(sys.argv[1:])
     CHROME_WINDOW["show"] = bool(args.show_window)
     if getattr(args, "experimental", False):
         EXPERIMENT["on"] = True

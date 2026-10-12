@@ -9,12 +9,12 @@ import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
-import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts } from '../lib/tier-grid';
+import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts, makeGrid, sameGrid, toggleDegree, showsDegree, GRID_DEGREES } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
 import useNotchTabs from './components/useNotchTabs';
-import { LAYOUTS, layoutNow, pickLayout, watchLab } from '../lib/galaxy-lab';
+import { layoutNow, pickLayout, showsEveryDegree, watchLab } from '../lib/galaxy-lab';
 import OnboardingGate from './components/OnboardingGate';
 import Onboarding from './components/onboarding/Onboarding';
 import { opensSetup, readSetupMemory, rememberSetup } from '../lib/onboarding';
@@ -28,9 +28,6 @@ import { TIER_COLORS } from '../lib/themes';   // the theme's dot colours, fille
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
-
-// Network Circle's notch: the Galaxy's layouts (lib/galaxy-lab.js LAYOUTS).
-const GALAXY_LAYOUTS = LAYOUTS.map((l) => ({ key: l.key, label: l.label, title: l.about }));
 
 // A job that changes the network. Setting the scanner up and signing in don't.
 const CHANGES_NETWORK = (job) => Boolean(job) && !['install', 'setup', 'login'].includes(job.action);
@@ -265,24 +262,64 @@ function HomeInner() {
 
   // This tab's views live in the notch under the header (app/components/ScanStatusBar.js);
   // the Filters panel only filters. Every tab has its notch, if only its one
-  // view lit: Separation's is 🏆 Separation. Network Circle's one view is the
-  // Galaxy, so its notch holds the Galaxy's layouts instead, Rings · Clusters ·
-  // Orbit (Blake, 2026-10-04: the notch "doesnt show in the network circle"):
-  // picking one does what the Physics panel's Layout row does, and with the
-  // sliders moved to your own, none is lit.
+  // view lit: Separation's is 🏆 Separation, Network Circle's 🌌 Galaxy. The
+  // Galaxy's layouts were its notch tabs, Rings · Clusters · Orbit · Degrees,
+  // until they moved into the Filter panel's Shape tab (Blake, 2026-10-12:
+  // "we will have no tabs needed as the rest will be buttons that are already there").
   const hasNetwork = degree1.length > 0;
   const layout = useSyncExternalStore(watchLab, layoutNow, () => 'rings');
+  // Degrees and the Wi-Fi fan (Blake, 2026-10-12: "a degree filter where it shows
+  // everyone by degree"): picking one turns every degree on in the filter, with
+  // the tiers off to start (Filters → Tiers turns them back on), and picking a
+  // shape that isn't by degree puts back the filter you had, so Rings opens as
+  // you left it. From the Shape tab and the Physics panel's Layout row alike.
+  const gridBeforeDegrees = useRef(null);
+  const pickGalaxyLayout = useCallback((key) => {
+    pickLayout(key);
+    if (showsEveryDegree(key)) {
+      // Coming from Rings, say, rather than between Degrees and the fan, whose tiers stay as you set them.
+      const entering = !gridBeforeDegrees.current;
+      setGrids((g) => {
+        if (entering) gridBeforeDegrees.current = g.network;
+        const next = makeGrid([1, 2, 3], { tiersOff: entering || Boolean(g.network.tiersOff) });
+        // The same picks keep the same grid, so the map isn't drawn again for nothing.
+        return sameGrid(g.network, next) ? g : { ...g, network: next };
+      });
+    } else if (gridBeforeDegrees.current) {
+      const back = gridBeforeDegrees.current;
+      gridBeforeDegrees.current = null;
+      setGrids((g) => ({ ...g, network: back }));
+    }
+  }, []);
+  // Opened in Degrees or the fan (the shape is remembered, the filter isn't, so a
+  // reload showed only your connections): every degree, as picking it gives, with
+  // the starting filter to go back to.
+  const openedByDegree = useRef(false);
+  useEffect(() => {
+    if (openedByDegree.current || !showsEveryDegree(layout)) return;
+    openedByDegree.current = true;
+    if (gridBeforeDegrees.current) return;
+    setGrids((g) => {
+      if (g.network !== NETWORK_GRID) return g;
+      gridBeforeDegrees.current = g.network;
+      return { ...g, network: makeGrid([1, 2, 3], { tiersOff: true }) };
+    });
+  }, [layout]);
+  // The legend under the map, in Degrees and the fan: each degree with how many
+  // are in it, tapped to show or hide it, for every tier at once (lib/tier-grid.js toggleDegree).
+  const degreeLegend = useMemo(() => {
+    if (mode !== 'network' || !showsEveryDegree(layout)) return null;
+    return GRID_DEGREES.filter((d) => d <= 3).map((d) => ({ degree: d, count: (byDegree[d] || []).length, shown: showsDegree(grids.network, d) }));
+  }, [mode, layout, grids.network, byDegree]);
+  const toggleLegendDegree = useCallback((d) => setGrids((g) => ({ ...g, network: toggleDegree(g.network, d) })), []);
   const notchTabs = useMemo(() => {
     if (!hasNetwork || setupOpen) return null; // none over the setup, which a network can be under (setupOpen)
-    if (view.key === 'galaxy') {
-      return { items: GALAXY_LAYOUTS, current: layout, onPick: pickLayout };
-    }
     return {
       items: viewsForMode(mode).map((v) => ({ key: v.key, label: v.label, icon: v.icon, title: v.desc })),
       current: view.key,
       onPick: setVisualMode,
     };
-  }, [mode, view.key, hasNetwork, layout, setupOpen]);
+  }, [mode, view.key, hasNetwork, setupOpen]);
   useNotchTabs(notchTabs);
 
   if (loading) {
@@ -360,6 +397,9 @@ function HomeInner() {
           grid={grid}
           gridCounts={panelCounts}
           onGridChange={(next) => setGrids((g) => ({ ...g, [isDegreesMode ? 'degrees' : 'network']: next }))}
+          // Network Circle's Galaxy: the Shape tab, and the Physics panel's Layout row, pick through here.
+          shape={layout}
+          onPickShape={pickGalaxyLayout}
         />
         {/* Visualization — switches based on visualMode */}
         {(() => {
@@ -390,7 +430,8 @@ function HomeInner() {
                         time: the first shows up here in a few minutes, and the rest fill in over days.</>}
                   </p>
                   <p style={{ color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                    {csvMode ? <>The local scanner maps those circles (and captures real photos).{' '}</> : null}
+                    {csvMode ? <>The optional scanner maps those circles and captures real photos. It runs your own
+                      account automatically, and the platform may restrict accounts that do this.{' '}</> : null}
                     <Link href="/setup" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>
                       {csvMode ? 'Set up scanning' : 'Map who they know'} &rarr;
                     </Link>
@@ -429,6 +470,9 @@ function HomeInner() {
             onOpenCircle: openCircle,
             onCircle: setChainIn,
             preset: separationPreset,
+            // Degrees' legend: tap a degree to show or hide it (Network Circle only).
+            degreeLegend,
+            onToggleDegree: toggleLegendDegree,
           };
           return <View {...viewProps} />;
         })()}

@@ -81,6 +81,11 @@ test('the mutual line, in every form LinkedIn writes it', (t) => {
     ['and 23 other mutual connections', 24],   // the names drawn on a line of their own
     ['12 mutual connections', 12],
     ['1 mutual connection', 1],
+    // LinkedIn's wording since 2026-10, with "&": read as "and", every count used to come back as 1.
+    ['Maya Chen, Leo Park & 8 other mutual connections', 10],
+    ['Maya Chen & 23 other mutual connections', 24],
+    ['Maya Chen & Leo Park are mutual connections', 2],
+    ['& 8 other mutual connections', 9],   // the names drawn on a line of their own
   ]) assert.equal(count(line), n, line);
   // Anything else is no count, never a guess: other lines on the card, other languages.
   for (const line of ['Marketing Director at Northwind Labs', 'Connect', '500+ connections', '12 conexiones en común',
