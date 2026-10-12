@@ -4099,7 +4099,7 @@ PAGE_BAR_JS = r"""
   const next = [...document.querySelectorAll('button, a')].find((b) => /^next$/i.test((b.innerText || b.getAttribute('aria-label') || '').trim()));
   let bar = next;
   for (let i = 0; bar && i < 4 && !/\b(2|3)\b/.test(bar.innerText || ''); i++) bar = bar.parentElement;
-  return { marked, bar: bar ? bar.outerHTML.replace(/<img[^>]*>/g, '').slice(0, 6000) : null };
+  return { marked, html: bar ? bar.outerHTML.replace(/<img[^>]*>/g, '').slice(0, 6000) : null };
 }
 """
 
