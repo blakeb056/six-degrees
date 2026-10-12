@@ -4238,6 +4238,7 @@ def _wait_for_profile_view(page):
 # ---------------------------------------------------------------------------
 MANUAL_POLL = 1.0                 # how often it looks at the window, in seconds
 MANUAL_IDLE = 10 * 60             # no new page for this long: the read of that person ends
+MANUAL_SAY = 8                    # seconds of waiting on one thing before the log says what it waits for
 
 # You've reached the foot of the page: the pagination bar (Next or Previous) is
 # in view, or on a list with no bar, the last person on it. Measured against
@@ -4304,9 +4305,18 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     contiguous = start_page - 1
     last_seen = time.time()
     status, how = "success", None
+    last_links = None              # who the last page read showed: a page still showing them isn't the next one
+    said, waiting = set(), {}      # each "why it waits" said once, after MANUAL_SAY seconds of it
 
     def tell(what):
         print(f"{NEEDS_YOU} {what}", flush=True)
+
+    def wait_note(key, what):
+        """Say why nothing is read yet, once, when it has been so for MANUAL_SAY seconds."""
+        since = waiting.setdefault(key, time.time())
+        if key not in said and time.time() - since >= MANUAL_SAY:
+            said.add(key)
+            print(f"  (waiting: {what})", flush=True)
 
     print(f"  Manual mode: you page through {bridge_name}'s list, and each page is read when you reach its foot.")
     tell(f"scroll to the bottom of each page of {bridge_name}'s connections in the Chrome window, then click Next. "
@@ -4331,8 +4341,18 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         except Exception:
             continue
         if not _their_search(url, urn):
-            continue   # you're somewhere else in the window; it waits for you to come back
-        pg = _url_page(url)
+            # You're somewhere else in the window; it waits for you to come back.
+            wait_note(("away", url.split("?")[0]), f"the window isn't on {bridge_name}'s list. Go back to it to carry on.")
+            continue
+        # Which page this is: the page bar's highlighted number, as LinkedIn shows it.
+        # Next changes the page without always changing the address (Blake, 2026-10-12:
+        # the address still said page 9 on page 10), so the address is only for a
+        # list with no page bar.
+        try:
+            shown = page.evaluate(CURRENT_PAGE_JS)
+        except Exception:
+            shown = None
+        pg = shown if isinstance(shown, int) and shown > 0 else _url_page(url)
         if pg not in counted:
             left, kind = searches_left()
             if left <= 0:
@@ -4355,6 +4375,13 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         except Exception:
             at_foot = False
         if not at_foot:
+            wait_note(("foot", pg), f"scroll to the bottom of page {pg} and it's read.")
+            continue
+        links = _result_links(page)
+        if last_links is not None and links == last_links:
+            # The page bar has moved on but the people haven't yet: reading now
+            # would save the last page's people as this one's.
+            wait_note(("same", pg), f"page {pg} still shows the last page's people. It's read once it changes.")
             continue
         try:
             found = page.evaluate(BRIDGE_RESULTS_JS) or []
@@ -4376,9 +4403,12 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 done.add(pg)
                 print(f"  Page {pg}: LinkedIn hides the {hidden} people on it (\"LinkedIn Member\"), "
                       f"so there's no one to read there.")
+            else:
+                wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if slug not in c.get("profileUrl", "")]
         done.add(pg)
+        last_links = links
         last_seen = time.time()
         PACE_STATE["pages"] += 1
         chunk.extend(found)
@@ -4643,7 +4673,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         except Exception:
             pass
         at = _url_page(page.url)
-        if at != start_page or (shown is not None and shown != start_page):
+        if manual and (at != start_page or (shown is not None and shown != start_page)):
+            # You can see the window in manual mode, and may have clicked on already:
+            # _read_by_hand reads whichever page you're on, and never notes a page
+            # as read that wasn't (it only moves "last" through pages read in order).
+            print(f"  The window is on page {shown or at} already; you carry on from there.")
+        elif at != start_page or (shown is not None and shown != start_page):
             print(f"  LinkedIn opened page {shown or at}, not page {start_page}. "
                   "Stopping so no page is noted as read that wasn't.")
             reach["more"] = True

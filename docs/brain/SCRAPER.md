@@ -300,9 +300,14 @@ its own.
 - **Manual mode** (`"manual": true`). `scrape_bridge` decides it (`manual_reads()`, never in a
   `--sitting`, never headless), sets `CHROME_WINDOW["show"]` so the window is in front, and
   passes `manual=True` to `_scrape_one_bridge`, which does everything it always did up to and
-  including opening page `start_page` and checking it, then hands over to `_read_by_hand`. That
-  polls the window every second and never scrolls or clicks: a page counts once `AT_FOOT_JS`
-  sees the pagination bar (or the last person) in view, is read with `BRIDGE_RESULTS_JS`, and
+  including opening page `start_page` and checking it (in manual mode a window already on
+  another page carries on from there instead of stopping), then hands over to `_read_by_hand`. That
+  polls the window every second and never scrolls or clicks: the page number is
+  `CURRENT_PAGE_JS` (the page bar), the address only without one, because LinkedIn's Next
+  left the address on the old page (2026-10-12: page 10 read as 9, skipped forever); a page
+  counts once `AT_FOOT_JS` sees the pagination bar (or the last person) in view and its
+  `RESULT_LINKS_JS` differ from the last page read's; it is read with `BRIDGE_RESULTS_JS`; a
+  wait on one thing for `MANUAL_SAY` seconds is said once in the log; and
   `reach["last"]` only advances through pages read one after another (TRAPS §34). A page is
   charged as a search the first time it's seen. It prints the same `Page N... X found (total:
   Y)` lines the route counts, and `LinkedIn needs you:` lines for the notch, ended by `Manual

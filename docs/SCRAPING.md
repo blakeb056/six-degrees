@@ -125,7 +125,11 @@ turning it off reaches a scan under way.
 person's profile and the first page of their list, but in a Chrome window in front of you,
 and from there nothing on the page moves unless you move it. A page is read once you've
 scrolled to its foot (the Next or Previous button, or the last person on it, is in view), and
-only once; then you click **Next** yourself. The notch says what to do next, in gold. Each
+only once; then you click **Next** yourself. The notch says what to do next, in gold. Which
+page you're on comes from LinkedIn's page bar (the highlighted number), because Next doesn't
+always change the page's address; a page that still shows the last page's people waits until
+they change; and if you click on before the notch says it's your turn, it carries on from the
+page you're on. When it has waited on one thing for a few seconds, the log says what. Each
 page LinkedIn opens is still a search on your account, counted the first time it's seen and
 held to the daily limit (not in Dev mode); LinkedIn pushing back stops it as ever. A page you
 skip to is read, but the pages between are never noted as read. It ends when their list

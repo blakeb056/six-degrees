@@ -243,21 +243,41 @@ out['on'] = ns['_sitting_over'](night)`);
 const MANUAL_PAGE = `
 URN = 'ACoAAInventedUrn'
 class ManualPage:
-    def __init__(self, pages, plan, hidden=()):
+    """url_follows: Next changes the address too (False: only the page bar moves, as
+    LinkedIn did on 2026-10-12). lag: seconds the list still shows the last page's
+    people after Next. bar: the page bar is there (CURRENT_PAGE_JS answers)."""
+    def __init__(self, pages, plan, hidden=(), url_follows=True, lag=0, bar=True, start=1):
         self.pages, self.plan, self.hidden = pages, sorted(plan, key=lambda x: x[0]), set(hidden)
-        self.pg, self.foot, self.closed, self.read_at = 1, False, False, []
+        self.url_follows, self.lag, self.bar = url_follows, lag, bar
+        self.pg = self.url_pg = start
+        self.foot, self.closed, self.read_at, self.prev, self.moved_at = False, False, [], None, None
     def _act(self):
         while self.plan and NOW + self.plan[0][0] <= clock.t:
             _, what = self.plan.pop(0)
             if what == 'foot': self.foot = True
-            elif what == 'next': self.pg, self.foot = self.pg + 1, False
             elif what == 'close': self.closed = True
-            elif isinstance(what, list) and what[0] == 'go': self.pg, self.foot = what[1], False
+            elif what == 'next' or (isinstance(what, list) and what[0] == 'go'):
+                self.prev, self.moved_at = self.pg, clock.t
+                self.pg = self.pg + 1 if what == 'next' else what[1]
+                if self.url_follows: self.url_pg = self.pg
+                self.foot = False
+    def _showing(self):
+        if self.lag and self.prev is not None and clock.t - self.moved_at < self.lag:
+            return self.prev
+        return self.pg
+    def _people(self):
+        shows = self._showing()
+        return [] if shows in self.hidden else [person((shows - 1) * 10 + i) for i in range(10)]
     @property
     def url(self):
         self._act()
         return ('https://www.linkedin.com/search/results/people/?network=%5B%22F%22%5D'
-                '&connectionOf=%5B%22' + URN + '%22%5D&page=' + str(self.pg))
+                '&connectionOf=%5B%22' + URN + '%22%5D&page=' + str(self.url_pg))
+    def goto(self, url, **_):
+        self.pg = self.url_pg = ns['_url_page'](url)
+        return types.SimpleNamespace(status=200)
+    def wait_for_selector(self, *a, **k):
+        if not self._people(): raise TimeoutError('no results')
     def is_closed(self):
         self._act()
         return self.closed
@@ -265,10 +285,13 @@ class ManualPage:
         self._act()
         if js == ns['AT_FOOT_JS']: return self.foot
         if js == ns['NEXT_STATE_JS']: return 'on' if self.pg < self.pages else 'off'
+        if js == ns['CURRENT_PAGE_JS']: return self.pg if self.bar else None
+        if js == ns['RESULT_COUNT_JS']: return self.pages * 10
+        if js == ns['RESULT_LINKS_JS']: return sorted(p['profileUrl'] for p in self._people())
         if js == ns['BRIDGE_RESULTS_JS']:
-            if self.pg in self.hidden: return []
-            self.read_at.append([self.pg, clock.t - NOW])
-            return [person((self.pg - 1) * 10 + i) for i in range(10)]
+            people = self._people()
+            if people: self.read_at.append([self.pg, clock.t - NOW, self._showing()])
+            return people
         return None
 
 def read_by_hand(page, total=None, max_pages=100, start=1):
@@ -374,6 +397,89 @@ out['dev'] = read_by_hand(ManualPage(3, [[x + 20, w] for x, w in ${plan}]), tota
     assert.equal(r.out.limited.budget, 'daily');
     assert.equal(r.out.limited.people, 10, 'page 1 was read before the limit held page 2 back');
     assert.equal(r.out.dev.people, 20, 'in Dev mode page 2 is read too');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode: LinkedIn\'s Next can leave the address on the old page; the page bar says which page it is', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+page = ManualPage(3, [[3, 'foot'], [6, 'next'], [9, 'foot'], [12, 'next'], [15, 'foot']], url_follows=False)
+out.update(read_by_hand(page, total=30))`);
+    if (!r) return;
+    assert.equal(r.out.people, 30, 'pages 2 and 3 are read although the address still says page 1');
+    assert.equal(r.out.last, 3);
+    assert.equal(r.out.more, false);
+    assert.equal(r.out.searches, 2);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode never reads a page while it still shows the last page\'s people, and says why it waits', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+page = ManualPage(3, [[3, 'foot'], [6, 'next'], [7, 'foot'], [40, 'close']], lag=15)
+out.update(read_by_hand(page, total=30))`);
+    if (!r) return;
+    assert.equal(r.out.people, 20, 'twenty different people: page 1 is never saved again as page 2');
+    const two = r.out.read_at.find(([pg]) => pg === 2);
+    assert.ok(two && two[2] === 2, 'page 2 was read showing page 2’s people');
+    assert.ok(two[1] >= 21, 'once the list had changed');
+    assert.match(r.log, /\(waiting: page 2 still shows the last page's people/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode says what it waits for when you are at the foot of a page with no one on it yet', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+page = ManualPage(3, [[3, 'foot'], [30, 'close']], hidden=(1,))
+out.update(read_by_hand(page, total=30))`);
+    if (!r) return;
+    assert.equal(r.out.people, 0);
+    assert.match(r.log, /\(waiting: page 1 shows no one yet/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('manual mode: clicking on before your turn carries on from that page, never stops the read', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+page = ManualPage(12, [[1, 'next'], [30, 'foot'], [40, 'close']], start=9)
+people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', 'https://www.linkedin.com/in/invented-bridge/',
+                                                start_page=9, urn=URN, manual=True)
+out.update({'people': len(people), 'status': status, 'last': reach['last'], 'more': reach['more']})`);
+    if (!r) return;
+    assert.doesNotMatch(r.log, /Stopping so no page is noted/);
+    assert.match(r.log, /The window is on page 10 already; you carry on from there/);
+    assert.equal(r.out.status, 'success');
+    assert.equal(r.out.people, 10, 'page 10 is read');
+    assert.equal(r.out.last, 8, 'page 9 was never read, so it is never noted as read');
+    assert.equal(r.out.more, true);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic read that LinkedIn opens on another page still stops, as before', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+page = ManualPage(12, [[1, 'next']], start=9)
+people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', 'https://www.linkedin.com/in/invented-bridge/',
+                                                start_page=9, urn=URN)
+out.update({'people': len(people), 'status': status})`);
+    if (!r) return;
+    assert.match(r.log, /LinkedIn opened page 10, not page 9\. Stopping so no page is noted as read that wasn't\./);
+    assert.equal(r.out.status, 'error');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
