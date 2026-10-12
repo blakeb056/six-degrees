@@ -4457,7 +4457,7 @@ def _read_experience_by_hand(page, responses, name):
             dom = {}
         data = _profile_data(page, responses)
         now = time.time()
-        current = data or roles_from_items(dom.get("items"))
+        current = data or page_roles(dom)
         if current or best is not None:
             # Found: keep reading while you scroll through it, for the roles further
             # down (Blake, 2026-10-12: "the second it finds the experience the app
@@ -4488,16 +4488,17 @@ def _read_experience_by_hand(page, responses, name):
                 return _experience_result(best[0], best[1])
             _manual_wait(page, MANUAL_POLL)
             continue
-        if dom.get("found") and dom.get("items"):
+        entries = len(dom.get("items") or []) or len(dom.get("runs") or [])
+        if dom.get("found") and entries:
             seen_at = seen_at or now
             if "seen" not in said:
                 said.add("seen")
-                print(f"  (their Experience section is in view with {len(dom['items'])} entries, "
+                print(f"  (their Experience section is in view with {entries} entries, "
                       f"but none it can read yet)", flush=True)
             if now - seen_at >= MANUAL_DIG_STUCK:
                 _keep_experience_evidence(page, dom, name)
                 return {"status": "unreadable", "why": "an Experience section with entries it couldn't read"}, (
-                    f"  Couldn't read {name}'s experience: the section has {len(dom['items'])} entries, none "
+                    f"  Couldn't read {name}'s experience: the section has {entries} entries, none "
                     f"in a shape the reader knows. Marked \"couldn't read\", and what it showed is kept on this "
                     f"computer so the reader can be fixed.")
         try:
@@ -4605,7 +4606,8 @@ def _keep_experience_evidence(page, dom, name):
                  for it in (dom.get("items") or [])[:12]]
         (base / f"experience-{stamp}.json").write_text(json.dumps({
             "url": getattr(page, "url", ""), "found": dom.get("found"), "how": dom.get("how"),
-            "showAll": dom.get("showAll"), "items": items}, indent=2))
+            "showAll": dom.get("showAll"), "items": items, "runs": (dom.get("runs") or [])[:120],
+            "logos": {k: str(v).split("?")[0][:120] for k, v in (dom.get("logos") or {}).items()}}, indent=2))
         print(f"  (what {name}'s Experience section showed is kept in {base}/experience-{stamp}.json)", flush=True)
     except Exception:
         pass
@@ -6362,10 +6364,43 @@ EXPERIENCE_JS = r"""
         imgs: imgs.slice(0, 3).map((i) => ({ alt: norm(i.getAttribute('alt')).slice(0, 60), src: (i.src || '').split('?')[0].slice(0, 120) })) });
     }
   }
+  // Every line the section links to a company page, in reading order, with the company's
+  // page ("2889", or a name like "aerotek"): since 2026 most entries aren't list items at
+  // all, and a company with several roles is a heading ("Aerotek", "4 yrs 1 mo") with its
+  // roles listed under it, so the list items alone missed every role that wasn't in a
+  // group, and every group's name (Blake, 2026-10-12, from a copy of a real profile).
+  // roles_from_runs (Python) reads roles from these.
+  const runs = [];
+  const logos = {};
+  const keyOf = (a) => { const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/); return m ? decodeURIComponent(m[1]).slice(0, 80) : null; };
+  for (const a of section.querySelectorAll('a[href*="/company/"]')) {
+    const key = keyOf(a);
+    if (!key) continue;
+    for (const raw of (a.innerText || '').split('\n')) {
+      const t = norm(raw);
+      const last = runs[runs.length - 1];
+      if (t && !(last && last.c === key && last.t === t)) runs.push({ c: key, t: t.slice(0, 160) });
+    }
+    if (runs.length >= 300) break;
+  }
+  // Each company's logo: an image of LinkedIn's in or beside one of its links (the
+  // nearest box holding both), never a person's photo.
+  for (const img of section.querySelectorAll('img')) {
+    const src = img.currentSrc || img.src || '';
+    if (!/licdn\.com/.test(src) || /profile-displayphoto|profile-framedphoto/.test(src)) continue;
+    let key = null;
+    const own = img.closest('a[href*="/company/"]');
+    if (own) key = keyOf(own);
+    for (let el = img.parentElement, i = 0; !key && el && el !== section && i < 6; el = el.parentElement, i++) {
+      const a = el.querySelector('a[href*="/company/"]');
+      if (a) key = keyOf(a);
+    }
+    if (key && !logos[key]) logos[key] = src;
+  }
   const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
   // Where the section is in the window, for manual mode: read while you scroll through it.
   const r = section.getBoundingClientRect();
-  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null,
+  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null, runs, logos,
     rect: { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight } };
 }
 """
@@ -6456,7 +6491,10 @@ def remember_company(company_id, name, source):
         return False
     names = company_names()
     had = names.get(cid)
-    if had and (had.get("from") == "card" or source != "card") and had.get("name"):
+    # A top card's or the Experience section's own name ("card", "page") is LinkedIn's
+    # name for it; a description's is a reading. LinkedIn's replaces a reading, never the other way.
+    firm = ("card", "page")
+    if had and had.get("name") and (had.get("from") in firm or source not in firm):
         return False
     names[cid] = {"name": name, "from": source}
     try:
@@ -6506,6 +6544,81 @@ def company_from_slug(slug):
     # Short all-letter words are mostly initials (IBM, AT&T's "att", HP); the rest are words.
     return " ".join(w.upper() if len(w) <= 3 and w.isalpha() and len(words) == 1 else w[:1].upper() + w[1:]
                     for w in words)[:120]
+
+
+# A group's length ("4 yrs 1 mo", "6 yrs", "8 mos"), the line under its company's name.
+_DURATION = re.compile(r"^(\d+\s+yrs?(\s+\d+\s+mos?)?|\d+\s+mos?)$", re.I)
+# How someone worked, written after the company ("SuperAnnotate · Part-time") or on its own.
+_EMPLOYMENT = re.compile(r"^(full-time|part-time|self-employed|freelance|contract|internship|apprenticeship|"
+                         r"seasonal|temporary|permanent|casual)$", re.I)
+
+
+def _company_text(line):
+    """ "SuperAnnotate · Part-time" → "SuperAnnotate"; an employment type alone → None."""
+    head = str(line or "").split(" · ")[0].strip()
+    return None if not head or _EMPLOYMENT.match(head) or parse_date_range(head) else head[:120]
+
+
+def roles_from_runs(rows, logos=None):
+    """The roles in the Experience section, from its company links in reading order
+    (EXPERIENCE_JS runs): [{"c": company page, "t": a line}]. Each company's lines
+    in a row are one entry:
+      one role      title, "Company · Full-time", dates, place
+      a group       "Company", "4 yrs 1 mo", place, then for each role: title, dates
+    A line with dates is a role; in a group its title is the line before (an
+    employment type passed over) and its company the group's; on its own its title
+    is the entry's first line and its company the second. Every company named here
+    is remembered by its number (company_names), and its logo kept (logoSrc)."""
+    runs = []
+    for r in rows or []:
+        key, text = str((r or {}).get("c") or ""), str((r or {}).get("t") or "").strip()
+        if not key or not text:
+            continue
+        if runs and runs[-1][0] == key:
+            runs[-1][1].append(text)
+        else:
+            runs.append((key, [text]))
+    logos = logos or {}
+    roles = []
+    for key, lines in runs:
+        dated = [i for i, x in enumerate(lines) if parse_date_range(x)]
+        if not dated:
+            continue
+        first = dated[0]
+        group = next((i for i in range(1, first) if _DURATION.match(lines[i].split(" · ")[0].strip())), None)
+        company = _company_text(lines[0]) if group is not None else (_company_text(lines[1]) if first >= 2 else None)
+        cid = key if key.isdigit() else None
+        if cid and company:
+            remember_company(cid, company, "page")
+        company = company or (company_name(cid) if cid else None) or (None if cid else company_from_slug(key))
+        prev = -1
+        for n, d in enumerate(dated):
+            if group is None and n == 0:
+                title = lines[0]
+            else:
+                j = d - 1
+                while j > max(prev, group if group is not None else -1) and _EMPLOYMENT.match(lines[j].split(" · ")[0].strip()):
+                    j -= 1
+                title = lines[j] if j > max(prev, group if group is not None else -1) else None
+            prev = d
+            if not title or parse_date_range(title):
+                continue
+            start, end, current = parse_date_range(lines[d])
+            role = {"title": title[:120], "company": company, "start": start, "end": end, "current": current}
+            if cid:
+                role["companyId"] = cid
+            if logos.get(key):
+                role["logoSrc"] = logos[key]
+            roles.append(role)
+    return _unique_roles(roles)
+
+
+def page_roles(dom):
+    """The roles the open Experience section shows: from its company links (roles_from_runs)
+    when they read at least as many as its list items (roles_from_items) do, else those."""
+    by_runs = roles_from_runs((dom or {}).get("runs"), (dom or {}).get("logos"))
+    by_items = roles_from_items((dom or {}).get("items"))
+    return by_runs if len(by_runs) >= len(by_items) and by_runs else by_items
 
 
 def roles_from_items(items):
@@ -6715,7 +6828,7 @@ def read_experience(page, responses, rng=None):
         except Exception:
             seen["page"] = {}
         seen["data"] = _profile_data(p, responses)
-        if seen["data"] or roles_from_items(seen["page"].get("items")):
+        if seen["data"] or page_roles(seen["page"]):
             return True
         return None
 
@@ -6729,20 +6842,20 @@ def _experience_result(dom, data_roles):
     """What read_experience (or Dig deeper's manual read) found, as (result, note):
     LinkedIn's own data first, else the page's Experience section; with no role
     in either, "unreadable", never an empty list (TRAPS §7)."""
-    page_roles = roles_from_items(dom.get("items"))
-    where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(page_roles)}"
+    on_page = page_roles(dom)
+    where = (f"the page's Experience section, found by its {dom.get('how')}, had {len(on_page)}"
              if dom.get("found") else "the page had no Experience section")
     count = f"LinkedIn's own data had {len(data_roles)}; {where}"
     if dom.get("showAll"):
         count += f" (LinkedIn says {dom['showAll']} in all; only the profile's first ones are read)"
-    roles = data_roles or page_roles
+    roles = data_roles or on_page
     if not roles:
         why = ("no Experience section on their profile" if not dom.get("found")
                else "an Experience section with no role in it that could be read")
         return {"status": "unreadable", "why": why}, f"  Couldn't read their experience: {count}. Marked \"couldn't read\", not empty."
     current = sum(1 for r in roles if r.get("current"))
     source = "data" if data_roles else "page"
-    return ({"status": "read", "roles": roles, "source": source, "shown": dom.get("showAll") or len(page_roles)},
+    return ({"status": "read", "roles": roles, "source": source, "shown": dom.get("showAll") or len(on_page)},
             f"  Experience: {len(roles)} roles ({current} current), from "
             f"{'LinkedIn' + chr(39) + 's own data' if source == 'data' else 'the page'}. {count[0].upper() + count[1:]}.")
 

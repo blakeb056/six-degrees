@@ -275,6 +275,50 @@ out['at'] = round(clock.t - NOW)`);
   }
 });
 
+// A profile's Experience section as its company links read in order, the shape of a real
+// one on 2026-10-12 (invented people and companies): three roles on their own, then two
+// companies with two roles each, under a heading with the company's name and how long.
+const RUNS = [
+  ['1001', 'Senior Recruiter'], ['1001', 'Invented Robotics'], ['1001', 'Aug 2025 - Present · 1 yr 3 mos'], ['1001', 'Costa Mesa, California, United States'],
+  ['1002', 'Senior Recruiter'], ['1002', 'Invented Labels · Part-time'], ['1002', 'Jul 2025 - Aug 2025 · 2 mos'], ['1002', 'San Francisco Bay Area · Remote'],
+  ['1003', 'Senior Technical Recruiter'], ['1003', 'Invented Streams'], ['1003', 'Mar 2021 - Jul 2025 · 4 yrs 5 mos'], ['1003', 'Palo Alto, California, United States'],
+  ['2889', 'Invented Staffing'], ['2889', '4 yrs 1 mo'], ['2889', 'Greater Sacramento'],
+  ['2889', 'Account Manager'], ['2889', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos'],
+  ['2889', 'Technical Recruiter'], ['2889', 'Mar 2017 - Oct 2018 · 1 yr 8 mos'],
+  ['2377059', 'Invented Source Technologies®'], ['2377059', '6 yrs 1 mo'],
+  ['2377059', 'Project Manager / Sales Support Representative'], ['2377059', 'Sep 2014 - Feb 2017 · 2 yrs 6 mos'],
+  ['2377059', 'Mobility Team Lead'], ['2377059', 'Full-time'], ['2377059', 'Feb 2011 - Aug 2014 · 3 yrs 7 mos'],
+].map(([c, t]) => ({ c, t }));
+
+test('Experience read by its company links: every role, on its own or under its company, with its company and logo', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `
+rows = ${JSON.stringify(RUNS)}
+logos = {'2889': 'https://media.licdn.com/dms/image/x/company-logo_100_100/staffing', '1001': 'https://media.licdn.com/dms/image/y/company-logo_100_100/robotics'}
+roles = ns['roles_from_runs'](rows, logos)
+out['roles'] = [[x['title'], x['company'], x.get('companyId'), x['current'], x['start'], x['end'], bool(x.get('logoSrc'))] for x in roles]
+# The list items alone saw only the four roles inside the two companies, with no company.
+items = [{'lines': [x['t'] for x in rows[15:17]], 'subs': []}]
+out['chosen'] = len(ns['page_roles']({'runs': rows, 'logos': logos, 'items': items}))
+out['names'] = json.loads((ns['_home']() / 'company-names.json').read_text())`);
+    if (!r) return;
+    assert.deepEqual(r.out.roles, [
+      ['Senior Recruiter', 'Invented Robotics', '1001', true, '2025-08', null, true],
+      ['Senior Recruiter', 'Invented Labels', '1002', false, '2025-07', '2025-08', false],
+      ['Senior Technical Recruiter', 'Invented Streams', '1003', false, '2021-03', '2025-07', false],
+      ['Account Manager', 'Invented Staffing', '2889', false, '2018-10', '2021-03', true],
+      ['Technical Recruiter', 'Invented Staffing', '2889', false, '2017-03', '2018-10', true],
+      ['Project Manager / Sales Support Representative', 'Invented Source Technologies®', '2377059', false, '2014-09', '2017-02', false],
+      ['Mobility Team Lead', 'Invented Source Technologies®', '2377059', false, '2011-02', '2014-08', false],
+    ]);
+    assert.equal(r.out.chosen, 7, 'the company links win over the list items');
+    assert.deepEqual(r.out.names['2889'], { name: 'Invented Staffing', from: 'page' }, 'the page’s own name, remembered by number');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 // ── the top card reader ─────────────────────────────────────────────────────
 
 function topCardJs() {
