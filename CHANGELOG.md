@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you move it: each page is read once you scroll to its foot, and you click Next yourself. Every
   page is still counted against your searches a day, and a stop the moment the platform pushes
   back is unchanged. Closing the window is "done with this person", and a round moves on to the
-  next one. Auto scan stays off while it's on.
+  next one. Auto scan stays off while it's on. A tap answers each Next the moment you click, and
+  a chime says each page is read, one step higher for every page in a row, with a flourish when a
+  list is finished. **Settings → Sound** turns them off, sets the volume and plays each one.
 - **Dev mode.** A switch in Scanner settings that takes off every limit Sixgree sets until you
   turn it off: the daily limit, the cooldown, Auto's caps on connection requests, Auto scan's
   hours and the queue's length. The speed you pick still sets every wait, and the platform

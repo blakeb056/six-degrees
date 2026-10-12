@@ -671,7 +671,8 @@ function SetupInner() {
                     moves on to the next person; Stop ends the round. Ten minutes with no new page ends that
                     person&rsquo;s read. Auto scan stays off while this is on: it scans while you&rsquo;re away.
                     Your own connections, company scans and profile reads still run by themselves. The window
-                    can&rsquo;t sit inside Sixgree: Chrome is a program of its own.
+                    can&rsquo;t sit inside Sixgree: Chrome is a program of its own. A tap answers each Next and a chime
+                    each page read, a step higher for every page in a row: Settings &rarr; Sound.
                   </>} />
               </div>
               <div data-dev-mode-switch="">

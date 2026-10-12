@@ -31,6 +31,7 @@ import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
 import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList, MANUAL_STOPS_AUTO } from '../../../lib/auto-scan';
 import { exitOutcome } from '../../../lib/scan-exit';
 import { experienceCounts } from '../../../lib/experience';
+import { ensureChimes } from '../../../lib/chime-files';
 
 // The app runs the scraper itself.
 //
@@ -1051,6 +1052,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // Dev mode and manual mode (lib/linkedin-limits.js). The scanner reads both from the
       // file as it goes, so a scan under way follows; Dev mode off brings the limits back.
       dev: body.dev, manual: body.manual,
+      // Settings → Sound: manual mode's chimes and how loud (lib/chimes.js).
+      chimes: body.chimes, chimeVolume: body.chimeVolume,
     });
     if (body.dev === false) state.limitHit = null;
     // Manual mode on while Auto scan waits between sittings: it stops now, with why.
@@ -1284,6 +1287,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.autoSitting = Boolean(sitting);
   if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
   forgetChecks();
+  // Manual mode's chimes, as files the scanner can play (lib/chime-files.js): written once, never in the way.
+  ensureChimes(dataDir());
 
   // Name the profile outright. The scraper would otherwise ask the app which one
   // to use; passing it means the page and the scrape cannot disagree.

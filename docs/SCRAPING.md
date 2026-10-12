@@ -129,7 +129,14 @@ only once; then you click **Next** yourself. The notch says what to do next, in 
 page you're on comes from LinkedIn's page bar (the highlighted number), because Next doesn't
 always change the page's address; a page that still shows the last page's people waits until
 they change; and if you click on before the notch says it's your turn, it carries on from the
-page you're on. When it has waited on one thing for a few seconds, the log says what. Each
+page you're on. When it has waited on one thing for a few seconds, the log says what.
+**Chimes:** a short tap the moment you click Next (the scanner hears LinkedIn ask for the next
+page, off the network, so nothing is added to the page), a bell when each page is read and
+it's your turn again, one step higher for every page in a row (up 8 steps of a pentatonic
+ladder), and a flourish when a list is finished. Settings → Sound turns them off, sets the
+volume and plays each one. They're synthesised by the app (`lib/chimes.js`), written into
+`sounds/` in the data folder before a scan starts, and played by the scanner on this
+computer's speakers (`afplay` on a Mac, `winsound` on Windows, `paplay` or `aplay` on Linux). Each
 page LinkedIn opens is still a search on your account, counted the first time it's seen and
 held to the daily limit (not in Dev mode); LinkedIn pushing back stops it as ever. A page you
 skip to is read, but the pages between are never noted as read. It ends when their list

@@ -13,6 +13,7 @@ import TierSection from '../components/settings/TierSection';
 import TitleSection from '../components/settings/TitleSection';
 import AppearanceSection from '../components/settings/AppearanceSection';
 import ExperimentalSection from '../components/settings/ExperimentalSection';
+import SoundSection from '../components/settings/SoundSection';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -46,7 +47,7 @@ export default function SettingsPage() {
 
 // The notch's tabs: the page's sections, top to bottom, by their ids.
 const SECTIONS = [
-  ['updates', 'Updates'], ['appearance', 'Appearance'],
+  ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
   ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['about', 'About'],
 ];
 
@@ -163,6 +164,7 @@ function SettingsInner() {
           </Body>
         </Section>
         <AppearanceSection />
+        <SoundSection />
         <Section id="scoring" title="Scores">
           <Body>
             How someone&rsquo;s power score is worked out, and the four things you can change about it:{' '}

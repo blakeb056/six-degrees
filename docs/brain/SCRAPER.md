@@ -316,8 +316,17 @@ its own.
   nothing read sets the global stop. Auto scan refuses to start and stops while it's on
   (`autoRefusal`, `autoPlan` `manual`, `MANUAL_STOPS_AUTO`).
 
+Chimes (`_chime`, `lib/chimes.js`, `lib/chime-files.js`): `_read_by_hand` plays `read-N` for
+the Nth page in a row (to `MANUAL_STREAK_TOP`), `done` when the list ends, and `next` once a
+click (`MANUAL_TAP_GAP`): from a `page.on("request")` listener for a voyager search request
+(only after the first page is read, so the scanner's own load never taps) or, failing that,
+when the page bar moves. Events only arrive while Playwright runs, so the loop waits with
+`page.wait_for_timeout` (`_manual_wait`), never `time.sleep`, which would hold the tap until
+the next look. `_chime` never waits for the sound and never raises.
+
 Tests: `tests/dev-manual-mode.test.mjs` drives `_read_by_hand` with a stand-in window and
-clock: a person scrolling and clicking Next.
+clock: a person scrolling and clicking Next. `tests/chimes.test.mjs` checks the sounds, the
+files, the settings, the player and when each chime plays.
 
 ## Pacing: gentle, on top of the old waits (2026-10-05)
 

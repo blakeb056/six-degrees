@@ -2795,6 +2795,43 @@ def manual_reads():
     return _scan_settings().get("manual") is True
 
 
+def _chime(name):
+    """Play one of manual mode's chimes (lib/chimes.js): read-1 … read-8, next, done.
+
+    Settings → Sound turns them off ("chimes": false) and sets how loud
+    ("chimeVolume", 0 to 1). The app writes the sounds into the data folder
+    (lib/chime-files.js) before a scan starts; with no file, nothing plays.
+    Never waits for the sound and never fails a scan: a sound is a nicety."""
+    try:
+        data = _scan_settings()
+        if data.get("chimes") is False:
+            return False
+        vol = data.get("chimeVolume")
+        vol = vol if isinstance(vol, (int, float)) and not isinstance(vol, bool) and 0 <= vol <= 1 else 0.6
+        if vol == 0:
+            return False
+        path = _home() / "sounds" / f"{name}.wav"
+        if not path.is_file():
+            return False
+        import subprocess
+        import shutil
+        quiet = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+        if sys.platform == "darwin":
+            subprocess.Popen(["afplay", "-v", f"{vol:.2f}", str(path)], **quiet)
+        elif sys.platform == "win32":
+            import winsound   # no volume control: the sound plays as written
+            winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+        elif shutil.which("paplay"):
+            subprocess.Popen(["paplay", f"--volume={int(vol * 65536)}", str(path)], **quiet)
+        elif shutil.which("aplay"):
+            subprocess.Popen(["aplay", "-q", str(path)], **quiet)
+        else:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def _listen_for_limits():
     """The app says "limits: lifted" or "limits: on" on stdin when you change it
     mid-scan, so a scan under way follows at once. Started only from the app."""
@@ -4236,7 +4273,8 @@ def _wait_for_profile_view(page):
 # inside Sixgree's own: Chrome is a program of its own, and the only browser
 # that could would make Sixgree the scanner.
 # ---------------------------------------------------------------------------
-MANUAL_POLL = 1.0                 # how often it looks at the window, in seconds
+MANUAL_POLL = 0.4                 # how often it looks at the window, in seconds
+MANUAL_TAP_GAP = 1.2              # one Next tap a click: requests closer together than this are the same click
 MANUAL_IDLE = 10 * 60             # no new page for this long: the read of that person ends
 MANUAL_SAY = 8                    # seconds of waiting on one thing before the log says what it waits for
 
@@ -4269,6 +4307,23 @@ NEXT_STATE_JS = r"""
   return null;
 }
 """
+
+
+MANUAL_STREAK_TOP = 8             # the read chime climbs this many steps (lib/chimes.js READ_STEPS)
+
+
+def _manual_wait(page, seconds):
+    """Wait between looks at the window, letting the browser's events through
+    (the Next tap listens for them); time.sleep would hold them until the next
+    look. A stand-in page in the tests has no wait_for_timeout."""
+    try:
+        page.wait_for_timeout(int(seconds * 1000))
+        return
+    except AttributeError:
+        pass
+    except Exception:
+        pass
+    time.sleep(seconds)
 
 
 def _their_search(url, urn):
@@ -4307,6 +4362,33 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     status, how = "success", None
     last_links = None              # who the last page read showed: a page still showing them isn't the next one
     said, waiting = set(), {}      # each "why it waits" said once, after MANUAL_SAY seconds of it
+    streak = 0                     # pages read in a row: each read chime climbs one step (lib/chimes.js)
+    tapped = {"at": None}          # when the last Next tap played
+
+    def tap():
+        """The Next chime, once a click."""
+        now = time.time()
+        if tapped["at"] is None or now - tapped["at"] >= MANUAL_TAP_GAP:
+            tapped["at"] = now
+            _chime("next")
+
+    def on_request(request):
+        # You clicked Next (or a page number): LinkedIn asks its search API for
+        # the next page at once, well before the page bar moves, so the tap
+        # answers the click. Only after the first page is read, so the
+        # scanner's own opening of the list doesn't tap. Read off the network,
+        # never off the page: nothing is added to LinkedIn's page.
+        try:
+            if done and request.resource_type in ("xhr", "fetch") and "/voyager/api/" in request.url \
+                    and "search" in request.url.lower():
+                tap()
+        except Exception:
+            pass
+
+    try:
+        page.on("request", on_request)
+    except Exception:
+        pass
 
     def tell(what):
         print(f"{NEEDS_YOU} {what}", flush=True)
@@ -4335,7 +4417,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         if time.time() - last_seen > MANUAL_IDLE:
             how = "idle"
             break
-        time.sleep(MANUAL_POLL)
+        _manual_wait(page, MANUAL_POLL)
         try:
             url = page.url
         except Exception:
@@ -4363,6 +4445,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             charge_linkedin("searches")   # a page you opened is a search like any other
             counted.add(pg)
             last_seen = time.time()
+            if done:
+                tap()   # in case the click's request went by unseen; once a click either way
         if pg in done:
             continue
         why = _pushback(page)
@@ -4424,11 +4508,14 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         except Exception:
             nxt = None
         at_end = pg >= LINKEDIN_MAX_PAGES or nxt == "off" or (pages is not None and pg >= pages)
+        streak += 1
         if at_end and contiguous >= pg:
             print("  That's the end of their list." if pg < LINKEDIN_MAX_PAGES
                   else f"  That was page {pg}, as far as LinkedIn's search goes.")
+            _chime("done")
             how = "finished"
             break
+        _chime(f"read-{min(streak, MANUAL_STREAK_TOP)}")
         if contiguous >= max_pages:
             print(f"  That's the {max_pages} pages this scan reads.")
             how = "limit"
@@ -4439,6 +4526,10 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
              f"Close the window when you're done with {bridge_name}.")
 
+    try:
+        page.remove_listener("request", on_request)
+    except Exception:
+        pass
     reach["more"] = how != "finished"
     if how == "closed":
         print(f"  The window was closed: done with {bridge_name}, and what was read is kept.")
