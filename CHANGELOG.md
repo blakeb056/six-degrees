@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
+  now comes first, marked Recommended and already chosen, so the button a new install opens on
+  says *Import a CSV* instead of leading into the scanner's setup: the official export carries
+  no risk to your account. The sample comes next, and *Scan my network* last, as the opt-in that
+  adds who your connections know, with its risk line as before. Insights' empty page leads with
+  *Import a CSV*, and the Import page and Degrees, which suggested the scanner to people with a
+  CSV, now say it's optional and what it risks. The README, the website and its llms.txt lead
+  with the CSV import and the sample too, and call scanning optional, with every warning kept.
+
 ### Security
 - **Next.js 16.3.8 and sharp 0.35.5, for published security fixes.** Both ship inside the app.
   Sixgree's server only answers your own computer (`127.0.0.1`), and it uses none of the
