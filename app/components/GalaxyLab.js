@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, labNow, setLab, watchLab,
+  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, drawsByDegree, labNow, setLab, watchLab,
   clockNow, setClock, watchClock, play, pause, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
@@ -196,6 +196,11 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
             options={[['tier', 'Tier'], ['heat', 'Heat'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
             onPick={(v) => setLab({ colourBy: v })}
           />
+          {drawsByDegree(lab) && (
+            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+              Degrees and the Wi-Fi fan colour and size everyone by degree, and their lines pull no one: Size by, Colour by and Link force are for the other shapes.
+            </div>
+          )}
           {lab.colourBy === 'heat' && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
               Power as a thermal map: the higher someone&rsquo;s score among the people showing, the hotter, and the hottest glow. Where the glow pools, powerful people cluster.

@@ -5,7 +5,7 @@ import GalaxyLab, { NamesSwitch } from './GalaxyLab';
 import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, toggleTiers, showAllTiers } from '../../lib/tier-grid';
 import { TIER_COLORS } from '../../lib/themes';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
-import { LAB_DEFAULTS, LAYOUTS, labNow, setLab, watchLab } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, LAYOUTS, drawsByDegree, labNow, setLab, watchLab } from '../../lib/galaxy-lab';
 import { LINE_TIERS, cleanTierLines, toggleLineTier, isPicked, describeTierLines } from '../../lib/tier-lines';
 
 const PANEL_ID = 'sd-filters-panel';
@@ -227,6 +227,19 @@ function DegreeRow({ grid, counts, onChange, what, emptyTitle, waysIn }) {
  */
 export function TierLines() {
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
+  // Degrees and the fan draw only the lines of the one you pick or point at
+  // (Blake, 2026-10-12: "the connections are still showing the clusters"), so
+  // the chips wait for the shapes by tier, keeping what you chose there.
+  if (drawsByDegree(lab)) {
+    return (
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Lines</div>
+        <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #667)', lineHeight: 1.4 }}>
+          In Degrees and the Wi-Fi fan only the lines of the person you pick, or point at, are drawn.
+        </div>
+      </div>
+    );
+  }
   const choice = cleanTierLines(lab.tierLines);
   const pick = (next) => setLab({ tierLines: next });
   const chip = { flex: 1, minWidth: 0, height: 28, padding: '0 2px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' };

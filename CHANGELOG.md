@@ -34,10 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Network Circle's shapes, by degree.** Its Filters panel has a Shape tab with a picture of
-  each layout: Rings, Clusters, Orbit, and two new ones, *Degrees* (everyone you know, a ring
-  for each degree, coloured by degree) and *Wi-Fi fan* (you at the bottom, each degree an arc
-  fanning out above you). Picking either shows every degree, and a legend under the map turns a
-  degree on or off; picking another shape brings back the filter you had. The layout tabs above
+  each layout: Rings, Clusters, Orbit, and two new ones, *Degrees* (a ring for each degree) and
+  *Wi-Fi fan* (you at the bottom, each degree a bar fanning out above you). Both are drawn by
+  degree alone, 1st out to 6th: one band per degree, an empty one a thin bar, every dot in a
+  degree its colour and size, spread evenly with each circle kept together, no tier, catalyst
+  or name marks, and lines only for the person you pick or point at. Picking either shows every
+  degree, and a legend under the map turns a degree on or off; picking another shape brings back
+  the filter you had. The layout tabs above
   the map are gone, since the Shape tab does their job. A third-degree person reached through a
   company scan no longer draws a line from you as if you knew them.
 - **A Tiers switch.** The word *Tiers* above the tier rows is a switch: off, tiers stop
@@ -63,6 +66,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers)".
 
 ### Fixed
+- **Manual Dig deeper says when someone's Experience hasn't loaded.** The platform loads the
+  jobs in a profile's Experience only while that part is on screen, so scrolling straight past
+  it left the heading with nothing under it, and the read waited in silence. It now says to
+  scroll back up to it and stop a moment, and gives that time.
+- **Manual mode goes back for the page a list opened for.** Carrying on someone's list could
+  open with the page bar one page ahead; every page after was read but that one never was, so
+  each scan started there again. It now asks you to click Previous to it first, says when a page
+  before the one you're on is still unread, and no longer guesses a page from the address while
+  the page bar is being redrawn (which counted a search for a page nobody opened).
+- **Each scan keeps its own log.** In the data folder's `logs` folder on this computer, the
+  newest 40, so a run that went wrong can be read after the next one has started.
 - **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",
   and only "and" was understood, so every count was saved as 1. Both forms are read now.
 

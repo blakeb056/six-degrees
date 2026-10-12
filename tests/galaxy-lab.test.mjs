@@ -213,10 +213,13 @@ test('the Wi-Fi fan: Degrees\' forces and colours, told apart by its shape', () 
   assert.equal(LAB_DEFAULTS.shape, 'round');
   assert.deepEqual(FAN, DEGREES);
   assert.equal(LAYOUT_LOOKS.fan.shape, 'fan');
+  assert.equal(LAYOUT_LOOKS.degrees.shape, 'degrees');
   assert.equal(LAYOUT_LOOKS.fan.colourBy, 'degree');
   const fan = { ...LAB_DEFAULTS, ...FAN, ...LAYOUT_LOOKS.fan };
   assert.equal(layoutOf(fan), 'fan');
-  assert.equal(layoutOf({ ...fan, shape: 'round' }), 'degrees');
+  assert.equal(layoutOf({ ...fan, shape: 'degrees' }), 'degrees');
+  // Degrees' forces and colours drawn by tier are neither: your own.
+  assert.equal(layoutOf({ ...fan, shape: 'round' }), null);
   assert.equal(layoutOf({ ...fan, push: 9 }), null);              // a slider of your own, still a fan: your own
   assert.equal(layoutOf({ ...fan, colourBy: 'tier' }), null);
   // Rings' forces drawn as a fan isn't Rings.
@@ -252,9 +255,9 @@ test('picking the fan and back: shape and colours go with it, and leave as it le
   assert.equal(lab.labNow().shape, 'fan');
   assert.equal(lab.labNow().colourBy, 'degree');
   assert.equal(lab.clockNow().fit, fit + 1);
-  lab.pickLayout('degrees');                          // fan to Degrees: rings again, colours kept
+  lab.pickLayout('degrees');                          // fan to Degrees: a ring per degree again, colours kept
   assert.equal(lab.layoutNow(), 'degrees');
-  assert.equal(lab.labNow().shape, 'round');
+  assert.equal(lab.labNow().shape, 'degrees');
   assert.equal(lab.labNow().colourBy, 'degree');
   lab.pickLayout('fan');
   lab.pickLayout('clusters');                         // fan to Clusters: round, by tier
@@ -267,4 +270,58 @@ test('picking the fan and back: shape and colours go with it, and leave as it le
   assert.equal(lab.layoutNow(), 'rings');
   lab.pickLayout('toString');                         // not a layout, however it's spelt: nothing moves
   assert.equal(lab.layoutNow(), 'rings');
+});
+
+import { drawsByDegree, colourModeOf } from '../lib/galaxy-lab.js';
+
+// Blake, 2026-10-12: "i just want the visual to be the degrees build up from 1st to 6".
+test('Degrees and the fan are drawn by degree alone, coloured by degree whatever Colour by says', () => {
+  assert.equal(drawsByDegree(LAB_DEFAULTS), false);
+  assert.equal(drawsByDegree({ ...LAB_DEFAULTS, shape: 'degrees' }), true);
+  assert.equal(drawsByDegree({ ...LAB_DEFAULTS, shape: 'fan' }), true);
+  // A slider moved there keeps the drawing: it's the shape that says so.
+  assert.equal(drawsByDegree({ ...LAB_DEFAULTS, ...DEGREES, push: 40, shape: 'fan' }), true);
+  for (const shape of ['degrees', 'fan']) {
+    for (const colourBy of ['tier', 'heat', 'company', 'warmth', 'degree']) assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy }), 'degree');
+  }
+  assert.equal(colourModeOf({ ...LAB_DEFAULTS, colourBy: 'heat' }), 'heat');   // by tier, Colour by as ever
+  const deg = colourScheme('degree', [], tiers);
+  assert.deepEqual([1, 2, 3].map((d) => deg.of({ degree: d, tier: 'S' })), [1, 2, 3].map((d) => deg.of({ degree: d, tier: 'D' })));
+});
+
+test('picking Degrees draws it by degree; leaving for Rings, Clusters or Orbit puts everything back', async () => {
+  const lab = await import('../lib/galaxy-lab.js?degrees-picks');
+  lab.setLab({ tierLines: 'SA', colourBy: 'tier', dotSize: 1.4 });
+  const before = { ...lab.labNow() };
+  lab.pickLayout('degrees');
+  assert.equal(lab.labNow().shape, 'degrees');
+  assert.equal(lab.layoutNow(), 'degrees');
+  assert.equal(lab.labNow().tierLines, 'SA');            // the Lines choice waits, untouched
+  lab.pickLayout('fan');
+  assert.equal(lab.labNow().shape, 'fan');
+  for (const key of ['rings', 'clusters', 'orbit']) {
+    lab.pickLayout('degrees');
+    lab.pickLayout(key);
+    assert.equal(lab.layoutNow(), key);
+    assert.equal(lab.labNow().shape, 'round');
+    assert.equal(lab.labNow().colourBy, 'tier');
+    assert.equal(lab.labNow().tierLines, before.tierLines);
+    assert.equal(lab.labNow().dotSize, before.dotSize);
+    assert.equal(drawsByDegree(lab.labNow()), false);
+  }
+});
+
+test('Degrees saved when it was Rings coloured by degree opens drawn by degree', async () => {
+  const store = new Map([['six-degrees-galaxy-lab', JSON.stringify({ ...DEGREES, colourBy: 'degree', shape: 'round', v: 2 })]]);
+  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  try {
+    const old = await import('../lib/galaxy-lab.js?old-degrees');
+    assert.equal(old.labNow().shape, 'degrees');
+    assert.equal(old.layoutNow(), 'degrees');
+    // Rings coloured by degree by hand stays Rings.
+    store.set('six-degrees-galaxy-lab', JSON.stringify({ colourBy: 'degree', v: 2 }));
+    const rings = await import('../lib/galaxy-lab.js?rings-by-degree-colour');
+    assert.equal(rings.labNow().shape, 'round');
+    assert.equal(rings.layoutNow(), 'rings');
+  } finally { delete globalThis.localStorage; }
 });
