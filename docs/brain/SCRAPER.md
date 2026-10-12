@@ -482,6 +482,22 @@ settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limi
     `_dig_into_profile`).
   - **Done for good:** `_experience_on_file` is true only with roles read, a company on at
     least one, and the card. Anything less is dug again.
+  - **Companies named only by their number:** Andre's entries link to `/company/2889/` and
+    carry no name, no logo text and no label. They're named three ways, at no extra
+    request:
+    - from a description that opens with the company (`company_from_description`);
+    - from any top card that named that number as someone's current company
+      (`TOP_CARD_JS` companies, `remember_company`);
+    - from the number's remembered name in `company-names.json` in the data folder. A top
+      card's name wins over a description's.
+  - **Logos:** each role keeps `companyId`, and its logo is saved once per company beside the
+    photos (`_company_logos` → `store_avatar(src, "company:<id>")`, shown on the person's
+    card). The page's logo link never reaches the app.
+  - **Manual mode reads while you scroll:** once Experience is found, it keeps reading while
+    you scroll through it. It moves on when the section's bottom is past the top of the
+    window, at the foot of the page, after `MANUAL_DIG_SETTLE` s with the whole section in
+    view and nothing new, or after `MANUAL_DIG_READ_MAX`. Blake: "the second it finds the
+    experience the app captures and moves on but doesn't let the user scroll all the way".
   - **No list total:** a live look found no "About N results" on today's people search,
     nor in its data. For anyone over 500 the only count is the profile's "500+", so their
     ring keeps its dashed band until the list ends.

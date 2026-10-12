@@ -49,10 +49,16 @@ export default function ProfileFacts({ person, reach }) {
       {roles.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {roles.slice(0, 6).map((r, i) => (
-            <li key={`${r.title}-${r.start}-${i}`} style={{ fontSize: 12, lineHeight: 1.4 }}>
+            <li key={`${r.title}-${r.start}-${i}`} style={{ fontSize: 12, lineHeight: 1.4, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              {/* The company's logo, saved on this computer (scrape.py _company_logos); a blank tile without one. */}
+              {r.logo
+                ? <img src={r.logo} alt="" width={20} height={20} style={{ borderRadius: 4, flexShrink: 0, marginTop: 1, objectFit: 'cover' }} />
+                : <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 1, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)' }} />}
+              <span style={{ minWidth: 0 }}>
               <span style={{ fontWeight: 650, color: r.current ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #b8c4c4)' }}>{r.title}</span>
               {r.company && <span style={{ color: 'var(--sd-fg-2, #b8c4c4)' }}> · {r.company}</span>}
               {span(r) && <span style={{ color: 'var(--sd-fg-4, #778)', fontSize: 11 }}> · {span(r)}</span>}
+              </span>
             </li>
           ))}
           {roles.length > 6 && <li style={{ fontSize: 11, color: 'var(--sd-fg-4, #778)' }}>and {roles.length - 6} more</li>}

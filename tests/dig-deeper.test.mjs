@@ -177,6 +177,104 @@ out.update(scan(w, urn=URN, dig=True))`);
   }
 });
 
+test('a company named only by its number takes its name from a description, or from any top card that named that number', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `
+f = ns['company_from_description']
+out['described'] = [f(x) for x in (
+  ['Invented Staffing is your leading provider of staffing services.'],
+  ['Invented Carter* (An Invented Staffing Company) specializes in recruitment.'],
+  ['The Invented Bottling Company is the largest bottler in the region.'],
+  ['Administer over call center operations and device software.'],
+  ['I specialize in placing long term staff.'],
+  ['Account Manager is a role I loved.'],
+)]
+out['title'] = f(['Account Manager is a role I loved.'], 'Account Manager')
+items = [
+  {'lines': ['Account Manager', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos', 'Invented Staffing is your leading provider.'], 'subs': [], 'companyId': '2889'},
+  {'lines': ['Technical Recruiter', 'Mar 2017 - Oct 2018 · 1 yr 8 mos', 'Placed accountants.'], 'subs': [], 'companyId': '2889'},
+  {'lines': ['Team Lead', 'Feb 2011 - Aug 2014 · 3 yrs 7 mos', 'Ran a team.'], 'subs': [], 'companyId': '2377059'},
+]
+out['first'] = [[x['title'], x['company'], x.get('companyId')] for x in ns['roles_from_items'](items)]
+ns['remember_company']('2377059', 'Invented Wireless', 'card')
+ns['remember_company']('2889', 'Wrong From A Description', 'description')
+out['again'] = [[x['title'], x['company']] for x in ns['roles_from_items'](items)]
+out['file'] = json.loads((ns['_home']() / 'company-names.json').read_text())`);
+    if (!r) return;
+    assert.deepEqual(r.out.described, ['Invented Staffing', 'Invented Carter', 'The Invented Bottling Company', null, null, 'Account Manager']);
+    assert.equal(r.out.title, null, 'never the title itself');
+    // The second role at 2889 has no description naming it: it takes the number's remembered name.
+    assert.deepEqual(r.out.first, [['Account Manager', 'Invented Staffing', '2889'], ['Technical Recruiter', 'Invented Staffing', '2889'], ['Team Lead', null, '2377059']]);
+    assert.deepEqual(r.out.again, [['Account Manager', 'Invented Staffing'], ['Technical Recruiter', 'Invented Staffing'], ['Team Lead', 'Invented Wireless']],
+      'a top card names a number everywhere; a later description never replaces a name already there');
+    assert.deepEqual(r.out.file['2377059'], { name: 'Invented Wireless', from: 'card' });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('each role gets its company logo, saved once a company, and the link it came from goes no further', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `
+fetched = []
+ns['store_avatar'] = lambda src, key, overwrite=True: fetched.append(key) or '/avatars/' + key.replace('company:', 'c') + '.webp'
+roles = [{'title': 'A', 'companyId': '2889', 'logoSrc': 'https://media.licdn.com/x/company-logo_100_100/1'},
+         {'title': 'B', 'companyId': '2889', 'logoSrc': 'https://media.licdn.com/x/company-logo_100_100/1'},
+         {'title': 'C', 'companyId': '77', 'logoSrc': None},
+         {'title': 'D', 'logoSrc': 'https://media.licdn.com/x/company-logo_100_100/2'}]
+ns['_company_logos'](roles)
+out['roles'] = roles
+out['fetched'] = fetched`);
+    if (!r) return;
+    assert.deepEqual(r.out.fetched, ['company:2889'], 'one download for both roles at the company');
+    assert.equal(r.out.roles[0].logo, '/avatars/c2889.webp');
+    assert.equal(r.out.roles[1].logo, '/avatars/c2889.webp');
+    assert.ok(r.out.roles.every((x) => !('logoSrc' in x)), 'the link never reaches the app');
+    assert.equal(r.out.roles[2].logo, undefined);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+  const kept = cleanExperience({ status: 'read', roles: [{ title: 'Account Manager', company: 'Invented Staffing', start: '2018', companyId: '2889', logo: '/avatars/c2889.webp' },
+    { title: 'Recruiter', start: '2017', companyId: 'x9', logo: 'https://media.licdn.com/evil.png' }] }, '2026-10-12T00:00:00Z');
+  assert.equal(kept.roles[0].companyId, '2889');
+  assert.equal(kept.roles[0].logo, '/avatars/c2889.webp');
+  assert.equal(kept.roles[1].companyId, undefined, 'only a number');
+  assert.equal(kept.roles[1].logo, undefined, 'only a logo saved on this computer');
+});
+
+test('manual Dig deeper reads on as you scroll through Experience, and moves on once you are past it', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${WINDOW}
+MORE = ITEMS + [{'lines': ['Recruiter', 'Invented Search · Full-time', 'Mar 2015 - Oct 2016 · 1 yr 8 mos'], 'subs': []},
+                {'lines': ['Analyst', 'Invented Bank · Full-time', 'Jan 2012 - Feb 2015 · 3 yrs'], 'subs': []}]
+class Scrolling(Window):
+    # Experience shows at 5 s with its first entry; you scroll, two more show at 12 s; you're past it at 20 s.
+    def evaluate(self, js, *a):
+        t = clock.t - NOW
+        if js == ns['EXPERIENCE_JS']:
+            if t < 5: return {'found': False}
+            items = ITEMS if t < 12 else MORE
+            bottom = 900 if t < 20 else 40
+            return {'found': True, 'how': 'heading', 'items': items, 'rect': {'top': bottom - 600, 'bottom': bottom, 'vh': 720}}
+        if js == ns['PAGE_FOOT_JS']: return {'foot': False, 'scrolled': 1200, 'height': 5000}
+        return super().evaluate(js, *a)
+w = Scrolling()
+w.goto(PROFILE)
+result, note = ns['_read_experience_by_hand'](w, [], 'Invented Bridge')
+out['roles'] = [x['title'] for x in result['roles']]
+out['at'] = round(clock.t - NOW)`);
+    if (!r) return;
+    assert.deepEqual(r.out.roles, ['Founder', 'Recruiter', 'Analyst'], 'everything you scrolled through, not just the first');
+    assert.ok(r.out.at >= 20 && r.out.at < 25, `on once you were past it (${r.out.at}s)`);
+    assert.match(r.log, /their Experience is being read: scroll through it to the end/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 // ── the top card reader ─────────────────────────────────────────────────────
 
 function topCardJs() {
@@ -186,8 +284,12 @@ function topCardJs() {
 }
 
 /** A profile as far as the reader looks: the section with their name, the connections link, the page's sections. */
-function profile({ card = '', link = null, sections = [] }) {
-  const cardSection = { innerText: card };
+function profile({ card = '', link = null, sections = [], companies = [] }) {
+  // The top card's links to company pages: [href, text].
+  const cardSection = {
+    innerText: card,
+    querySelectorAll: (q) => (q.includes('/company/') ? companies.map(([href, text]) => ({ getAttribute: (k) => (k === 'href' ? href : null), innerText: text })) : []),
+  };
   const h1 = { closest: () => cardSection, parentElement: cardSection };
   return {
     querySelector: (q) => (q === 'main h1' ? h1 : null),
@@ -203,11 +305,17 @@ const readCard = (doc) => JSON.parse(JSON.stringify(vm.runInNewContext(`(${topCa
 
 test('the top card: "500+ connections", followers in K and M, and an exact count under 500', () => {
   assert.deepEqual(readCard(profile({ card: 'Jamie Invented\nFounder at Invented Sports Media\nNew York · Contact info\n27K followers · 500+ connections' })),
-    { followers: 27000, connections: 500, connectionsPlus: true });
+    { followers: 27000, connections: 500, connectionsPlus: true, companies: [] });
   assert.deepEqual(readCard(profile({ card: 'Riley Invented\nProfessor\n1.2M followers\n312 connections' })),
-    { followers: 1200000, connections: 312, connectionsPlus: false });
+    { followers: 1200000, connections: 312, connectionsPlus: false, companies: [] });
   assert.deepEqual(readCard(profile({ card: 'Sam Invented\nAnalyst', link: '500+ connections' })),
-    { followers: null, connections: 500, connectionsPlus: true }, 'the link the search id comes from says it too');
+    { followers: null, connections: 500, connectionsPlus: true, companies: [] }, 'the link the search id comes from says it too');
+});
+
+test('the top card names their current company with its number, for the roles that only point at it', () => {
+  const got = readCard(profile({ card: 'Jamie Invented\nRecruiter\nInvented Robotics\n500+ connections',
+    companies: [['https://www.linkedin.com/company/2889/', 'Invented Robotics'], ['/company/12/', '1,204 followers']] }));
+  assert.deepEqual(got.companies, [{ id: '2889', name: 'Invented Robotics' }], 'a follower count is never a company');
 });
 
 test('the top card: followers from their own Activity heading, never from Interests or anyone else', () => {
@@ -215,9 +323,9 @@ test('the top card: followers from their own Activity heading, never from Intere
     card: 'Avery Invented\nChief People Officer\n500+ connections',
     sections: ['Activity\n12,480 followers\nPosts', 'Interests\nTop Voices\nInvented Retail Co\n1,234,567 followers'],
   });
-  assert.deepEqual(readCard(doc), { followers: 12480, connections: 500, connectionsPlus: true });
+  assert.deepEqual(readCard(doc), { followers: 12480, connections: 500, connectionsPlus: true, companies: [] });
   const noActivity = profile({ card: 'Avery Invented\nChief People Officer', sections: ['Interests\nInvented Retail Co\n1,234,567 followers'] });
-  assert.deepEqual(readCard(noActivity), { followers: null, connections: null, connectionsPlus: false });
+  assert.deepEqual(readCard(noActivity), { followers: null, connections: null, connectionsPlus: false, companies: [] });
 });
 
 // ── the scanner's wiring ────────────────────────────────────────────────────
@@ -247,7 +355,8 @@ class Window:
         if js == ns['TOP_CARD_JS']: return self.card if profile else {}
         if js == ns['PROFILE_SHOWN_JS']: return profile
         if js == ns['EXPERIENCE_JS']:
-            return {'found': True, 'how': 'heading', 'items': ITEMS} if profile and clock.t - NOW >= self.roles_at else {'found': False}
+            return ({'found': True, 'how': 'heading', 'items': ITEMS, 'rect': {'top': 100, 'bottom': 500, 'vh': 720}}
+                    if profile and clock.t - NOW >= self.roles_at else {'found': False})
         if js == ns['EMBEDDED_DATA_JS']: return []
         if js == ns['BRIDGE_RESULTS_JS']: return [] if profile else [person(i) for i in range(10)]
         if js == ns['RESULT_COUNT_JS']: return None

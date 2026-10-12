@@ -24,8 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dig deeper.** A switch in Scanner settings, in place of *Read full profiles*. While a
   circle scan has someone's profile open, it reads their current and past roles too, so their
   score counts what they actually do, not only their headline, and their followers count as
-  recognition. Manual mode reads it as you scroll. Every profile a scan opens has its follower
-  and connection counts read.
+  recognition. Manual mode reads it as you scroll through their Experience and moves on once
+  you're past it. Every profile a scan opens has its follower and connection counts read, and
+  each person's card shows what was read: followers, connections and their roles, each with its
+  company's logo. A company the page names only by its number takes its name from the role's
+  description, or from anyone's profile that named it.
 
 ### Changed
 - **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*

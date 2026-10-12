@@ -4298,6 +4298,8 @@ def _wait_for_profile_view(page):
 MANUAL_DIG_WAIT = 45              # manual mode: how long it waits for you to reach their Experience, then on to their list
 MANUAL_DIG_SCROLLED = 800         # px you've scrolled before "the foot of their profile" means anything
 MANUAL_DIG_STUCK = 12             # manual mode: Experience in view this long with nothing it can read: it says so and moves on
+MANUAL_DIG_SETTLE = 6             # manual mode: the whole section in view, nothing new for this long: done with it
+MANUAL_DIG_READ_MAX = 120         # manual mode: reading their Experience as you scroll, at most this long
 
 # You're at the foot of their profile: nothing more will load as you scroll.
 # Measured with how far you've scrolled: a profile still loading is short, so it
@@ -4341,6 +4343,17 @@ TOP_CARD_JS = r"""
   const h1 = document.querySelector('main h1');
   const card = h1 && (h1.closest('section') || h1.parentElement);
   if (card) read(card.innerText, true, true);
+  // The company the top card names (their current one), with its number: the
+  // number is how Experience entries point at a company they don't name.
+  out.companies = [];
+  if (card) {
+    for (const a of card.querySelectorAll('a[href*="/company/"]')) {
+      const m = (a.getAttribute('href') || '').match(/\/company\/([^/?#]+)/);
+      const name = (a.innerText || a.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
+        .replace(/^current company:?\s*/i, '').replace(/\s*(company )?logo$/i, '');
+      if (m && name && name.length <= 100 && !/followers?|connections?/i.test(name)) out.companies.push({ id: m[1], name });
+    }
+  }
   for (const a of document.querySelectorAll('a[href*="connectionOf"]')) read(a.innerText, false, true);
   if (out.followers == null) {
     for (const sec of document.querySelectorAll('main section')) {
@@ -4355,10 +4368,21 @@ TOP_CARD_JS = r"""
 
 def read_top_card(page):
     """Their followers and connection count from the open profile's top card, or None when it shows neither."""
+    return read_top_card_full(page)[0]
+
+
+def read_top_card_full(page):
+    """(card, companies): read_top_card's card, and the companies the top card names
+    with their numbers ([{"id", "name"}], their current company), for company_names."""
     try:
         got = page.evaluate(TOP_CARD_JS) or {}
     except Exception:
-        return None
+        return None, []
+    companies = [c for c in (got.get("companies") or []) if isinstance(c, dict) and c.get("id") and c.get("name")]
+    return _card_from(got), companies
+
+
+def _card_from(got):
     card = {k: got.get(k) for k in ("followers", "connections")}
     card = {k: v for k, v in card.items() if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10 ** 9}
     if not card:
@@ -4408,10 +4432,15 @@ def _read_experience_by_hand(page, responses, name):
           flush=True)
     start = time.time()
     seen_at = None        # when their Experience section first showed with entries in it
+    found_at = None       # when roles were first read from it: then it reads on as you scroll
+    changed_at = None     # when the count of roles read last changed
+    last_count = 0
+    best = None           # (dom, data, count): the fullest read so far
     foot_at = None        # when you first reached the foot of their profile, having scrolled
     foot_height = None    # how tall the page was then: still growing means still loading
     said = set()
-    while time.time() - start < MANUAL_DIG_WAIT:
+    # Until it's found, MANUAL_DIG_WAIT; once found, it reads on as you scroll (MANUAL_DIG_READ_MAX).
+    while found_at is not None or time.time() - start < MANUAL_DIG_WAIT:
         if stop_requested():
             return {"status": "stopped", "why": "stopped"}, None
         try:
@@ -4427,10 +4456,38 @@ def _read_experience_by_hand(page, responses, name):
         except Exception:
             dom = {}
         data = _profile_data(page, responses)
-        if data or roles_from_items(dom.get("items")):
-            _chime("read-1")
-            return _experience_result(dom, data)
         now = time.time()
+        current = data or roles_from_items(dom.get("items"))
+        if current or best is not None:
+            # Found: keep reading while you scroll through it, for the roles further
+            # down (Blake, 2026-10-12: "the second it finds the experience the app
+            # captures and moves on but doesn't let the user scroll all the way").
+            # It moves on once you're past the section, at the foot of the page, or
+            # it's all in view and nothing new has shown for MANUAL_DIG_SETTLE seconds.
+            count = len(current) if current else best[2]
+            if current and (best is None or count >= best[2]):
+                best = (dom, data, count)
+            if found_at is None:
+                found_at = changed_at = now
+                print(f"{NEEDS_YOU} their Experience is being read: scroll through it to the end, and "
+                      f"Sixgree opens their list once you're past it.", flush=True)
+            elif count != last_count:
+                changed_at = now
+            last_count = count
+            rect = dom.get("rect") or {}
+            past = rect.get("bottom") is not None and rect["bottom"] < 80
+            all_in_view = rect.get("bottom") is not None and rect["bottom"] <= (rect.get("vh") or 0)
+            try:
+                where = page.evaluate(PAGE_FOOT_JS) or {}
+            except Exception:
+                where = {}
+            at_end = bool(where.get("foot")) and (where.get("scrolled") or 0) >= MANUAL_DIG_SCROLLED
+            settled = all_in_view and now - changed_at >= MANUAL_DIG_SETTLE
+            if past or at_end or settled or now - found_at >= MANUAL_DIG_READ_MAX:
+                _chime("read-1")
+                return _experience_result(best[0], best[1])
+            _manual_wait(page, MANUAL_POLL)
+            continue
         if dom.get("found") and dom.get("items"):
             seen_at = seen_at or now
             if "seen" not in said:
@@ -4464,10 +4521,13 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
     """On their open profile: the top card always (for the ring), and with Dig
     deeper their experience too, sent with the card to their row. (how, why):
     ("pushback", reason), ("stopped", why), or (None, None) to carry on to their list."""
-    card = read_top_card(page)
+    card, companies = read_top_card_full(page)
     if card:
         _LIST_CARDS[profile_url] = card
         print(f"  Their profile: {_card_words(card)}.", flush=True)
+    # The company their top card names, by its number: names that number in anyone's Experience.
+    for c in companies:
+        remember_company(c["id"], c["name"], "card")
 
     def save(result):
         # To the app on this computer, never to LinkedIn: a refusal is said and the scan goes on.
@@ -4495,6 +4555,8 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
         return result["status"], result.get("why")
     if note:
         print(note, flush=True)
+    if result and result.get("roles"):
+        _company_logos(result["roles"])
     if result:
         save({**result, **({"card": card} if card else {})})
         if result.get("status") == "unreadable" or any(not r.get("company") for r in result.get("roles") or []):
@@ -4507,6 +4569,26 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
     return None, None
 
 
+def _company_logos(roles):
+    """Each role's company logo, saved small beside the photos (image_store.store_avatar,
+    keyed by the company's number, so one logo serves every role there), its path on the
+    role as "logo"; the link it came from never leaves this computer. A logo that can't
+    be saved is simply left out (Blake, 2026-10-12: "have the company logo displayed by
+    each role")."""
+    saved = {}
+    for r in roles:
+        src, cid = r.pop("logoSrc", None), r.get("companyId")
+        if not src or not cid:
+            continue
+        if cid not in saved:
+            try:
+                saved[cid] = store_avatar(src, f"company:{cid}", overwrite=False)
+            except Exception:
+                saved[cid] = None
+        if saved[cid]:
+            r["logo"] = saved[cid]
+
+
 def _keep_experience_evidence(page, dom, name):
     """What their Experience section showed, when the reader couldn't make it all out
     (no role read, or a role with no company), kept beside the database as
@@ -4517,8 +4599,9 @@ def _keep_experience_evidence(page, dom, name):
         base.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         items = [{"lines": (it.get("lines") or [])[:8], "subs": [s[:6] for s in (it.get("subs") or [])[:6]],
-                  "logo": it.get("logo"), "slug": it.get("slug"), "companyLinks": it.get("companyLinks"),
-                  "links": it.get("links")}
+                  "logo": it.get("logo"), "slug": it.get("slug"), "companyId": it.get("companyId"),
+                  "logoSrc": (it.get("logoSrc") or "").split("?")[0][:120] or None,
+                  "companyLinks": it.get("companyLinks"), "links": it.get("links"), "imgs": it.get("imgs")}
                  for it in (dom.get("items") or [])[:12]]
         (base / f"experience-{stamp}.json").write_text(json.dumps({
             "url": getattr(page, "url", ""), "found": dom.get("found"), "how": dom.get("how"),
@@ -6261,13 +6344,29 @@ EXPERIENCE_JS = r"""
     const lines = linesOf(li).slice(0, 12);
     const logo = companyOf(li, lines[0]);
     const slug = logo ? null : slugOf(li);
+    // The company's number on LinkedIn ("/company/2889/"): many entries name their
+    // company by nothing else, so the scanner names it from elsewhere (company_names).
+    let companyId = null;
+    for (const a of li.querySelectorAll('a[href*="/company/"]')) {
+      const m = a.closest('li') === li && (a.getAttribute('href') || '').match(/\/company\/(\d+)/);
+      if (m) { companyId = m[1]; break; }
+    }
+    // Its logo: one of LinkedIn's company logos in the entry, never a person's photo.
+    const imgs = [...li.querySelectorAll('img')].filter((i) => i.closest('li') === li);
+    const logoImg = imgs.find((i) => /licdn\.com/.test(i.src || '') && /company-logo|organization-logo|logo/i.test(i.src || ''))
+      || imgs.find((i) => /licdn\.com/.test(i.src || '') && !/profile-displayphoto|profile-framedphoto/i.test(i.src || ''));
     if (lines.length || subs.length) {
       items.push({ lines, subs, companyLinks: li.querySelectorAll('a[href*="/company/"]').length,
-        ...(logo ? { logo } : {}), ...(slug ? { slug } : {}), links: linksOf(li) });
+        ...(logo ? { logo } : {}), ...(slug ? { slug } : {}), ...(companyId ? { companyId } : {}),
+        ...(logoImg ? { logoSrc: logoImg.src } : {}), links: linksOf(li),
+        imgs: imgs.slice(0, 3).map((i) => ({ alt: norm(i.getAttribute('alt')).slice(0, 60), src: (i.src || '').split('?')[0].slice(0, 120) })) });
     }
   }
   const more = norm(section.innerText || section.textContent).match(/show all (\d+) experiences?/i);
-  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null };
+  // Where the section is in the window, for manual mode: read while you scroll through it.
+  const r = section.getBoundingClientRect();
+  return { found: true, how, items: items.slice(0, 40), showAll: more ? parseInt(more[1], 10) : null,
+    rect: { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight } };
 }
 """
 
@@ -6330,6 +6429,71 @@ def role_from_lines(lines, company=None):
     return {"title": lines[0][:120], "company": company or found, "start": start, "end": end, "current": current}
 
 
+# Company names by LinkedIn's number for them, kept beside the database
+# (company-names.json): {"2889": {"name": "Aerotek", "from": "card" | "description"}}.
+# Many Experience entries point at their company only by its number (2026-10-12);
+# a top card names someone's current company with its number, and a description
+# often opens with the company's name ("Aerotek is your leading provider …"). Each
+# one the scanner sees is remembered here, so a number is named everywhere once any
+# profile has named it. A top card's name wins over a description's.
+_COMPANY_NAMES = {"data": None}
+
+
+def company_names():
+    if _COMPANY_NAMES["data"] is None:
+        try:
+            data = json.loads((_home() / "company-names.json").read_text())
+            _COMPANY_NAMES["data"] = data if isinstance(data, dict) else {}
+        except Exception:
+            _COMPANY_NAMES["data"] = {}
+    return _COMPANY_NAMES["data"]
+
+
+def remember_company(company_id, name, source):
+    """Note a company's name for its number. A top card's ("card") replaces a description's."""
+    cid, name = str(company_id or "").strip(), str(name or "").strip()[:100]
+    if not cid.isdigit() or not name:
+        return False
+    names = company_names()
+    had = names.get(cid)
+    if had and (had.get("from") == "card" or source != "card") and had.get("name"):
+        return False
+    names[cid] = {"name": name, "from": source}
+    try:
+        _write_json_atomic(_home() / "company-names.json", names)
+    except Exception:
+        pass
+    return True
+
+
+def company_name(company_id):
+    """The name remembered for a company's number, or None."""
+    got = company_names().get(str(company_id or ""))
+    return (got or {}).get("name") or None
+
+
+_DESCRIPTION_COMPANY = re.compile(
+    r"^((?:The\s+)?[A-Z][\w&.'’-]*(?:\s+(?:of|and|&|[A-Z][\w&.'’-]*)){0,5})\*?\s*(?:\([^)]{0,60}\)\s*)?"
+    r"(?:is|was|are|were|provides|specializes|specialises|offers|helps|delivers|builds|designs|makes|serves|operates|empowers)\b")
+_NOT_A_COMPANY = {"i", "we", "our", "my", "this", "it", "he", "she", "they", "at", "as", "in", "the", "a", "an",
+                  "responsible", "led", "managed", "worked", "currently", "role", "team"}
+
+
+def company_from_description(lines, title=""):
+    """The company a role's description opens by naming ("Aerotek is your leading
+    provider …", "Aston Carter (An Aerotek Company) specializes …"), or None. Only
+    the first two lines, and only a name that isn't the title or a common opener."""
+    for line in [str(x).strip() for x in (lines or [])][:2]:
+        m = _DESCRIPTION_COMPANY.match(line)
+        if not m:
+            continue
+        name = m.group(1).strip()
+        if name.lower() in _NOT_A_COMPANY or name.lower() == str(title).strip().lower() or len(name) > 80:
+            continue
+        return name
+    return None
+
+
 def company_from_slug(slug):
     """A company page's address as a name: "aston-carter" → "Aston Carter", "ibm" → "IBM".
     None for nothing, or for a number (which names nothing)."""
@@ -6369,7 +6533,16 @@ def roles_from_items(items):
             continue
         r = role_from_lines(lines)
         if r:
-            r["company"] = r["company"] or logo
+            cid = str(it.get("companyId") or "") or None
+            at = next((i for i, x in enumerate(lines) if parse_date_range(x)), None)
+            described = company_from_description(lines[at + 1:] if at is not None else [], r["title"])
+            if cid and described:
+                remember_company(cid, described, "description")
+            r["company"] = r["company"] or logo or (company_name(cid) if cid else None) or described
+            if cid:
+                r["companyId"] = cid
+            if it.get("logoSrc"):
+                r["logoSrc"] = it["logoSrc"]
             roles.append(r)
     return _unique_roles(roles)
 
