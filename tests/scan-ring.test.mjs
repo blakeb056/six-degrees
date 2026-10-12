@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { reachIndex, scanFill, scanBars } from '../lib/reach.js';
+import { reachIndex, scanFill, scanFillWords, scanBars } from '../lib/reach.js';
 import { arcPath, fillArcs, ringSegments } from '../lib/dot-rings.js';
 
 const u = (s) => `https://www.linkedin.com/in/${s}`;
@@ -16,8 +16,9 @@ const person = (s) => ({ id: s, name: s, degree: 1, profile_url: u(s) });
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 
 /** scanFill for one person with this note of their list. */
-function fillFor(list, { degree2 = [], skips = [] } = {}) {
+function fillFor(list, { degree2 = [], skips = [], card = null } = {}) {
   const p = person('ada-quill');
+  if (card) p.experience = JSON.stringify({ v: 1, status: 'card', at: '2026-10-12T16:00:00Z', card });
   const reach = reachIndex([p], degree2, { skips, read: list ? [p.profile_url] : [], lists: list ? { [p.profile_url]: list } : {} });
   return scanFill(p, reach);
 }
@@ -72,6 +73,31 @@ test('"500+": the first 70% fills to 500, then the unknown band fills on to 1,00
   assert.ok(near(on.unknown, 0.15));
   assert.ok(near(on.read + on.unknown, 1));
   assert.equal(on.done, false);
+});
+
+test('"500+" with their followers known: followers is the length, no unknown band', () => {
+  // Blake, 2026-10-12: "if we gather their total follower count … we go off of that metric".
+  const big = { followers: 6100, connections: 500, connectionsPlus: true };
+  const f = fillFor({ pages: 22, more: true, total: null }, { card: big });
+  assert.equal(f.size, 1000, 'over 1,000 followers: the 1,000 LinkedIn shows');
+  assert.ok(near(f.read, 0.22));
+  assert.equal(f.unknown, 0);
+  assert.equal(f.followers, 6100);
+  assert.equal(scanFillWords(f), 'about 220 of the 1,000 LinkedIn shows scanned, about 780 to go (they have 6,100 followers)');
+  // Fewer than 1,000 followers: their followers are the length.
+  const mid = fillFor({ pages: 20, more: true }, { card: { followers: 800, connections: 500, connectionsPlus: true } });
+  assert.equal(mid.size, 800);
+  assert.ok(near(mid.read, 0.25));
+  assert.equal(scanFillWords(mid), 'about 200 of about 800 scanned, about 600 to go (going by their 800 followers)');
+  // Never under the "500+" they show, and while pages remain never quite full.
+  assert.equal(fillFor({ pages: 5, more: true }, { card: { followers: 320, connections: 500, connectionsPlus: true } }).size, 500);
+  const past = fillFor({ pages: 40, more: true }, { card: { followers: 300, connections: null, connectionsPlus: false } });
+  assert.equal(past.size, 410, 'read past their followers: one more page still to go');
+  assert.ok(past.read < 1);
+  // An exact count still wins, and the end of the list is the end.
+  assert.equal(fillFor({ pages: 10, more: true, total: 240 }, { card: big }).size, 240);
+  assert.equal(fillFor({ pages: 10, more: true }, { card: { followers: 900, connections: 312, connectionsPlus: false } }).size, 312);
+  assert.equal(fillFor({ pages: 30, more: false }, { card: big }).done, true);
 });
 
 test('no count at all: progress against the 1,000 at most, the band stays whole until the end', () => {

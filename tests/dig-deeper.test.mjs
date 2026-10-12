@@ -98,26 +98,28 @@ out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from
   assert.equal(by['Senior Recruiter'], 'Invented Robotics');
 });
 
-test('Dig deeper is done with someone for good only once it has their roles with a company and their card', (t) => {
+test('Dig deeper is done with someone for good only once it has a company for every role and their card', (t) => {
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 import json as j
 CARD = {'followers': 10, 'connections': 500, 'connectionsPlus': True}
 none = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': None}], 'card': CARD})}
 nocard = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}]})}
 full = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}], 'card': CARD})}
+some = {'experience': j.dumps({'status': 'read', 'roles': [{'title': 'Account Manager', 'company': 'Invented Staffing'}, {'title': 'Director', 'company': None}], 'card': CARD})}
 card = {'experience': j.dumps({'status': 'card', 'card': CARD})}
 bad = {'experience': j.dumps({'status': 'unreadable', 'why': 'x', 'card': CARD})}
 out['none'] = ns['_experience_on_file'](none)
 out['nocard'] = ns['_experience_on_file'](nocard)
 out['full'] = ns['_experience_on_file'](full)
+out['some'] = ns['_experience_on_file'](some)
 out['card'] = ns['_experience_on_file'](card)
 out['bad'] = ns['_experience_on_file'](bad)
 out['empty'] = ns['_experience_on_file']({})`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: scratch() } });
   if (noPython(t, r)) return;
   assert.equal(r.status, 0, r.stderr);
   const out = JSON.parse(r.stdout.trimEnd().split('\n').pop().replace(/^RESULT /, ''));
-  // Done for good only with everything: roles with a company, and the card (Blake, 2026-10-12).
-  assert.deepEqual(out, { none: false, nocard: false, full: true, card: false, bad: false, empty: false });
+  // Done for good only with everything: a company on every role, and the card (Blake, 2026-10-12).
+  assert.deepEqual(out, { none: false, nocard: false, full: true, some: false, card: false, bad: false, empty: false });
 });
 
 test('a company page address names the company when the entry shows no name', (t) => {
@@ -314,6 +316,30 @@ out['names'] = json.loads((ns['_home']() / 'company-names.json').read_text())`);
     ]);
     assert.equal(r.out.chosen, 7, 'the company links win over the list items');
     assert.deepEqual(r.out.names['2889'], { name: 'Invented Staffing', from: 'page' }, 'the page’s own name, remembered by number');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('a company group whose length line starts with how they worked ("Full-time · 8 yrs 1 mo") is still one company', (t) => {
+  // The shape a real profile showed on 2026-10-12: its first company was read as a role
+  // titled with the company's name, and its roles had no company. Invented names.
+  const home = scratch();
+  try {
+    const rows = [
+      ['1694', 'Invented Beverages Company'], ['1694', 'Full-time · 8 yrs 1 mo'],
+      ['1694', 'VP Marketing, Invented Unit'], ['1694', 'Mar 2025 - Present · 1 yr 8 mos'], ['1694', 'Singapore · On-site'],
+      ['1694', 'VP, Global Marketing'], ['1694', 'Jan 2021 - Mar 2025 · 4 yrs 3 mos'], ['1694', 'Dublin, Ireland'],
+      ['2238', 'Marketing Director'], ['2238', 'Invented Waters'], ['2238', 'May 2017 - Oct 2018 · 1 yr 6 mos'],
+    ].map(([c, t]) => ({ c, t }));
+    const r = scanner(t, home, `
+out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from_runs'](${JSON.stringify(rows)})]`);
+    if (!r) return;
+    assert.deepEqual(r.out.roles, [
+      ['VP Marketing, Invented Unit', 'Invented Beverages Company', true],
+      ['VP, Global Marketing', 'Invented Beverages Company', false],
+      ['Marketing Director', 'Invented Waters', false],
+    ]);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

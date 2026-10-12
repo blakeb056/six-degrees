@@ -4406,16 +4406,18 @@ def _experience_on_file(row):
     """Dig deeper has everything for them already, so it never opens their profile for it
     again (Blake, 2026-10-12: "if the user was successfully dug deeper and got all points
     of data, from experience to followers, they won't be done again"): their experience
-    read, with a company for at least one role, and their top card. Anything less is read
-    again: a read with no company (until 2026-10-12 the reader missed companies shown
-    only as logos), one with no card, "couldn't read", or the card on its own."""
+    read, with a company for every role, and their top card. Anything less is read
+    again: a read missing a company (until 2026-10-12 the reader missed companies shown
+    only as logos, and a group's "Full-time · 8 yrs" line), one with no card, "couldn't
+    read", or the card on its own."""
     raw = (row or {}).get("experience")
     if not raw:
         return False
     try:
         e = json.loads(raw) if isinstance(raw, str) else raw
-        return (isinstance(e, dict) and e.get("status") == "read"
-                and any(isinstance(r, dict) and r.get("company") for r in e.get("roles") or [])
+        roles = e.get("roles") if isinstance(e, dict) else None
+        return (e.get("status") == "read" and isinstance(roles, list) and len(roles) > 0
+                and all(isinstance(r, dict) and r.get("company") for r in roles)
                 and isinstance(e.get("card"), dict))
     except Exception:
         return False
@@ -6546,11 +6548,17 @@ def company_from_slug(slug):
                     for w in words)[:120]
 
 
-# A group's length ("4 yrs 1 mo", "6 yrs", "8 mos"), the line under its company's name.
+# A group's length ("4 yrs 1 mo", "6 yrs", "8 mos"), the line under its company's name,
+# sometimes after how they worked there ("Full-time · 8 yrs 1 mo", _is_duration).
 _DURATION = re.compile(r"^(\d+\s+yrs?(\s+\d+\s+mos?)?|\d+\s+mos?)$", re.I)
 # How someone worked, written after the company ("SuperAnnotate · Part-time") or on its own.
 _EMPLOYMENT = re.compile(r"^(full-time|part-time|self-employed|freelance|contract|internship|apprenticeship|"
                          r"seasonal|temporary|permanent|casual)$", re.I)
+
+
+def _is_duration(line):
+    """A group's length line, alone or after how they worked: "4 yrs 1 mo", "Full-time · 8 yrs 1 mo"."""
+    return any(_DURATION.match(part.strip()) for part in str(line or "").split(" · "))
 
 
 def _company_text(line):
@@ -6585,7 +6593,7 @@ def roles_from_runs(rows, logos=None):
         if not dated:
             continue
         first = dated[0]
-        group = next((i for i in range(1, first) if _DURATION.match(lines[i].split(" · ")[0].strip())), None)
+        group = next((i for i in range(1, first) if _is_duration(lines[i])), None)
         company = _company_text(lines[0]) if group is not None else (_company_text(lines[1]) if first >= 2 else None)
         cid = key if key.isdigit() else None
         if cid and company:

@@ -28,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you're past it. Every profile a scan opens has its follower and connection counts read, and
   each person's card shows what was read: followers, connections and their roles, each with its
   company's logo. A company the page names only by its number takes its name from the role's
-  description, or from anyone's profile that named it.
+  description, or from anyone's profile that named it. Roles are read by their company links,
+  so several roles at one company show under it once, and someone is read again on their next
+  scan until every role has its company.
 
 ### Changed
 - **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
@@ -39,6 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Import a CSV*, and the Import page and Degrees, which suggested the scanner to people with a
   CSV, now say it's optional and what it risks. The README, the website and its llms.txt lead
   with the CSV import and the sample too, and call scanning optional, with every warning kept.
+
+- **The ring round a scanned connection's dot is one line that fills as their list is read.**
+  It is measured against how long their list is: the search's own count, else their exact
+  connection count, else, when their profile says only "500+", their follower count, which is
+  about their connections plus people who only follow them, so the ring never shows more read
+  than there is. The platform shows at most about 1,000 of anyone's list, so that is the most
+  it measures against. With none of those known, its last 30% is a dashed band for the unknown
+  part, which fills as the list is read on. Their card says the same in words: "about 220 of the
+  1,000 the platform shows scanned, about 780 to go".
 
 ### Fixed
 - **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",
