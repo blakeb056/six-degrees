@@ -16,9 +16,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
 const FIXTURES = path.join(here, 'fixtures', 'linkedin');
 const PY = process.env.SIX_DEGREES_PLAYWRIGHT_PYTHON;
 
@@ -77,6 +77,7 @@ print('RESULT ' + json.dumps(out))
 
 test('in a real Chrome: a lazy list is read in full, a list that never comes is said, and the Experience section is read', (t) => {
   if (!PY) return t.skip('SIX_DEGREES_PLAYWRIGHT_PYTHON is not set (a Python with Playwright, and Chrome)');
+  if (noScanner(t)) return;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-browser-'));
   const r = spawnSync(PY, ['-c', SCRIPT, SCRAPER], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home }, timeout: 120000 });
   fs.rmSync(home, { recursive: true, force: true });

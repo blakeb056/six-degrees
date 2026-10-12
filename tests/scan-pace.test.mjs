@@ -2,14 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 import { PACES, PACE_NAMES, DEFAULT_PACE, paceSeconds, searchesPerHour, durationText } from '../lib/scan-pace.js';
 import { readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
 test('Fast is today\'s pacing, and Medium and Slow are only ever slower', () => {
   assert.deepEqual([PACES.fast.pagePause, PACES.fast.chunkCooldown, PACES.fast.profileGap], [20, 60, 60]);
@@ -74,6 +72,7 @@ test('the speed is saved with the budget, and the budget is the same at every sp
 });
 
 test('the scanner\'s own speeds match the page\'s', (t) => {
+  if (noScanner(t)) return;
   const run = spawnSync(PYTHON, ['-c', `
 import ast, json, sys
 tree = ast.parse(open(sys.argv[1]).read())

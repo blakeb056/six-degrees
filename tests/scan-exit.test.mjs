@@ -13,17 +13,14 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, HARNESS, noScanner, standInRoot } from './helpers/scanner.mjs';
 import { EXIT_CODES, exitOutcome } from '../lib/scan-exit.js';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
-
 test('the scanner\'s exit codes are the app\'s, and each way a run ends has its own', (t) => {
+  if (noScanner(t)) return;
   const home = mkdtempSync(path.join(tmpdir(), 'six-degrees-exit-'));
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 out['codes'] = ns['EXIT_CODES']
@@ -85,8 +82,7 @@ process.env.SIX_DEGREES_PYTHON = path.join(dir, 'python');
 process.env.SIX_DEGREES_TEST_CHROME = 'found';
 process.env.SIX_DEGREES_QUEUE_GAP_MS = '0';
 mkdirSync(HOME);
-mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
-writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');
+standInRoot(path.join(dir, 'root'));
 writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',

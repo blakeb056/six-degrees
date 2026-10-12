@@ -6,12 +6,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { wheelAllowed, parseRequirements } from '../scripts/pin-python-packages.mjs';
+import { REQUIREMENTS as REQUIREMENTS_FILE, noScanner } from './helpers/scanner.mjs';
 
-const REQUIREMENTS = readFileSync(fileURLToPath(new URL('../scripts/requirements.txt', import.meta.url)), 'utf8');
-
-test('every package is pinned to one version, with hashes, wheels only', () => {
+test('every package is pinned to one version, with hashes, wheels only', (t) => {
+  // Read here, not as the file loads: a copy without the scanner skips this one and runs the rest.
+  if (noScanner(t)) return;
+  const REQUIREMENTS = readFileSync(REQUIREMENTS_FILE, 'utf8');
   const lines = REQUIREMENTS.split('\n');
   assert.ok(lines.includes('--require-hashes'), 'pip refuses any file whose hash isn\'t listed');
   assert.ok(lines.includes('--only-binary :all:'), 'nothing is built from source on someone\'s computer');

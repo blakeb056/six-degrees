@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // CI's check of the Windows and Linux apps as installed (docs/brain/DESKTOP.md
 // rule 6), the same checks release.yml runs on the Mac app: it opens, every
-// page answers, the scanner uses the Python inside the app, Settings → Updates
-// offers the installer and never the Mac's swap, a second copy hands over and
-// exits, it quits, and nothing of it is left running.
+// page answers, the scanner uses the Python inside the app (in a build that has
+// the scanner), Settings → Updates offers the installer and never the Mac's
+// swap, a second copy hands over and exits, it quits, and nothing of it is left
+// running.
 //
 //   node scripts/smoke-desktop.mjs --exe <app executable> --dir <install folder> --home <scratch data folder> [--shot <png>]
 //
@@ -16,6 +17,7 @@ import { existsSync, readFileSync, readdirSync, readlinkSync, mkdirSync, rmSync 
 import net from 'node:net';
 import path from 'node:path';
 import { startTestReleaseServer } from './test-release-server.mjs';
+import { scannerPresent } from '../lib/scanner-files.js';
 
 const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i > -1 ? process.argv[i + 1] : null; };
 const EXE = arg('exe');
@@ -32,6 +34,10 @@ const inside = (file, dir) => {
   const f = path.resolve(file); const d = path.resolve(dir) + path.sep;
   return WIN ? f.toLowerCase().startsWith(d.toLowerCase()) : f.startsWith(d);
 };
+// Whether this build has the scanner's files (lib/scanner-files.js), in the
+// app's server folder. Its Python is checked only then: the scanner is moving
+// out of the app, and a build without its files has no Python either.
+const SCANNER = scannerPresent(path.join(DIR, 'resources', 'server'));
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const slug = String(pkg.repository?.url || pkg.repository).match(/github\.com[/:]([^/]+\/[^/.#?]+)/)[1];
@@ -114,10 +120,14 @@ for (const p of ['', 'paths', 'queue', 'setup', 'settings', 'api/network', 'api/
 }
 
 // ---- the scanner runs on the app's own Python ------------------------------------
-const scanner = JSON.parse((await get(`${url}/api/scraper`)).body).checks;
-console.log('  scanner:', scanner.pythonSource, scanner.pythonVersion, scanner.pythonPath, '· chrome', scanner.chrome);
-if (scanner.pythonSource !== 'bundled' || !scanner.dependencies || !inside(scanner.pythonPath, DIR)) fail('The scanner isn\'t using the Python inside the app.');
-if (!scanner.chrome) fail('Google Chrome is installed on this runner, and the app didn\'t find it.');
+if (SCANNER) {
+  const scanner = JSON.parse((await get(`${url}/api/scraper`)).body).checks;
+  console.log('  scanner:', scanner.pythonSource, scanner.pythonVersion, scanner.pythonPath, '· chrome', scanner.chrome);
+  if (scanner.pythonSource !== 'bundled' || !scanner.dependencies || !inside(scanner.pythonPath, DIR)) fail('The scanner isn\'t using the Python inside the app.');
+  if (!scanner.chrome) fail('Google Chrome is installed on this runner, and the app didn\'t find it.');
+} else {
+  console.log('  no scanner in this build, so no Python to check');
+}
 
 // ---- Updates: the installer, never the Mac's swap or a Terminal line ---------------
 const local = JSON.parse((await get(`${url}/api/update`)).body);
@@ -143,7 +153,7 @@ if (await listening(port)) fail('The server was left running.');
 const left = appProcesses();
 if (left.length) fail(`App processes were left running:\n${left.join('\n')}`);
 const pyRoot = path.join(DIR, 'resources', 'python');
-const bytecode = (function find(dir) {
+const bytecode = SCANNER && (function find(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
     if (e.name === '__pycache__') return path.join(dir, e.name);
@@ -158,13 +168,14 @@ console.log('  quit, and nothing was left running');
 app = start({ SIX_DEGREES_PYTHON: '' });
 url = await ready(app);
 const checks = JSON.parse((await get(`${url}/api/scraper`)).body).checks;
-const action = checks.installFrom ? 'install' : checks.download ? 'setup' : null;
+// Setting up the scanner is the job; a build without it has none to start.
+const action = !SCANNER ? null : checks.installFrom ? 'install' : checks.download ? 'setup' : null;
 if (action) {
   const started = await post(`${url}/api/scraper`, { action });
   console.log(`  started "${action}" to have a job running:`, started.status);
   await sleep(3000);
 } else {
-  console.log('  no Python on this runner to install from: quitting without a job');
+  console.log(SCANNER ? '  no Python on this runner to install from: quitting without a job' : '  no scanner in this build: quitting without a job');
 }
 await quit(app);
 if (await listening(Number(new URL(url).port))) fail('The server was left running (second run).');
@@ -173,5 +184,5 @@ if (left2.length) fail(`App processes were left running after quitting mid-job:\
 
 await releases.close();
 rmSync(READY, { force: true });
-console.log('\n✓ Opened, reached every page, scanner on its own Python, updates by installer, refused a second copy, quit, left nothing.');
+console.log(`\n✓ Opened, reached every page,${SCANNER ? ' scanner on its own Python,' : ''} updates by installer, refused a second copy, quit, left nothing.`);
 process.exit(0);

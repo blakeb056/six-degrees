@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { standInRoot } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -35,8 +36,7 @@ process.env.SIX_DEGREES_PYTHON = path.join(dir, 'python');
 process.env.SIX_DEGREES_TEST_CHROME = 'found';
 process.env.SIX_DEGREES_QUEUE_GAP_MS = '0';
 mkdirSync(HOME);
-mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
-writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');
+standInRoot(path.join(dir, 'root'));
 writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',

@@ -17,13 +17,13 @@ import {
 import { ensureChimes } from '../lib/chime-files.js';
 import { readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixgree-chimes-'));
 
 function scanner(t, home, script) {
+  if (noScanner(t)) return null;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, script], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home } });
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);

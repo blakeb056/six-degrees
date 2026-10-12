@@ -14,10 +14,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const DUMP = `
 import ast, json, sys
@@ -55,6 +53,7 @@ function parses(js) {
 }
 
 test('every JavaScript snippet scrape.py injects is valid JavaScript', (t) => {
+  if (noScanner(t)) return;
   const run = spawnSync(PYTHON, ['-c', DUMP, SCRAPER], { encoding: 'utf8' });
   if (noPython(t, run)) return;
   assert.equal(run.status, 0, run.stderr);

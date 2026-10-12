@@ -17,6 +17,7 @@ import path from 'node:path';
 import {
   QUEUE_CAP, emptyQueue, enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, placeOf, ordinal, cleanQueue,
 } from '../lib/scan-queue.js';
+import { standInRoot } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -32,8 +33,7 @@ process.env.SIX_DEGREES_TEST_CHROME = 'found';
 // No breath between jobs here: the test waits for each end itself.
 process.env.SIX_DEGREES_QUEUE_GAP_MS = '0';
 mkdirSync(HOME);
-mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
-writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');
+standInRoot(path.join(dir, 'root'));
 writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',

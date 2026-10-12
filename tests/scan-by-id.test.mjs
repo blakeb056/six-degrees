@@ -20,6 +20,7 @@ import { register } from 'node:module';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { standInRoot } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -33,8 +34,7 @@ process.env.SIX_DEGREES_PYTHON = path.join(dir, 'python');
 // chromeInstalled): without it the server refuses every scan (tests/first-run.test.mjs).
 process.env.SIX_DEGREES_TEST_CHROME = 'found';
 mkdirSync(process.env.SIX_DEGREES_HOME);
-mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
-writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');
+standInRoot(path.join(dir, 'root'));
 writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',

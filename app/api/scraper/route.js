@@ -3,6 +3,7 @@ import { existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:f
 import path from 'node:path';
 import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
+import { scannerPresent, scannerScript, scannerRequirements, SCANNER_MISSING } from '../../../lib/scanner-files';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode } from '../../../lib/linkedin-limits';
@@ -198,10 +199,11 @@ function autoSittingEnded(code, stopped, log, failure) {
 
 /** Why Auto scan can't start at all, said at Start rather than at 9:00: the checks a sitting runs. */
 async function autoRefusal() {
+  // First: without the scanner, nothing else it would ask about matters.
+  if (!scannerPresent(projectRoot())) return { error: SCANNER_MISSING, scannerMissing: true };
   if (!scanRisk()) return { error: RISK_REFUSAL, needsRiskAcceptance: true };
   if (!chromeHere()) return { error: CHROME_REFUSAL, needsChrome: true };
   if (pendingImport(dataDir())) return { error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' };
-  if (!projectRoot()) return { error: 'Could not find scripts/scrape.py next to the app.' };
   if (!(await machineChecks()).python.run) return { error: 'The scanner’s packages are not installed yet. Do step 1 first.' };
   if (readLimits(dataDir()).manual) return { error: MANUAL_STOPS_AUTO.replace('so Auto scan has stopped', 'so Auto scan can’t start'), manualMode: true };
   return null;
@@ -429,7 +431,7 @@ async function look() {
     host: hostOnce(),
   });
 
-  return { root, python };
+  return { root, scanner: scannerPresent(root), python };
 }
 
 /** Google Chrome, where Playwright's "chrome" channel looks (lib/scanner-setup.js). A file check, so cheap enough for every POST. */
@@ -526,11 +528,12 @@ async function status() {
 
   const py = m.python;
   return {
-    ready: Boolean(m.root && py.run && chrome),
+    ready: Boolean(m.scanner && py.run && chrome),
     // Whose circle is being read now, for the Scan page's "Watch it fill in".
     mapping: mappingWho(me?.id),
     checks: {
-      scriptsFound: Boolean(m.root),
+      // The scanner's files are in this copy (lib/scanner-files.js); the page says "Files missing" when not.
+      scriptsFound: m.scanner,
       // A Python that runs the scanner, or one Install can build its environment from.
       python: Boolean(py.run || py.base),
       pythonPath: py.run?.path || py.base?.path || null,
@@ -882,7 +885,7 @@ function setupPlan(action, found, { root, data, say }) {
   // The environment, the pinned packages without the pip settings that would
   // put them elsewhere, and a check that they load there
   // (lib/scanner-python.js installSteps).
-  const requirements = path.join(root, 'scripts', 'requirements.txt');
+  const requirements = scannerRequirements(root);
   const install = (from) => installSteps({ base: from, dataDir: data, requirements });
   // A setup that already got as far as the download (it was stopped, or the
   // packages failed) carries on from its Python rather than fetching it again.
@@ -1081,6 +1084,12 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   if (!Object.hasOwn(ACTIONS, action)) {
     return Response.json({ error: `Unknown action '${action}'` }, { status: 400 });
   }
+  // Every action from here on runs the scanner or sets it up. A copy without
+  // its files (lib/scanner-files.js) says so before anything else is asked.
+  const root = projectRoot();
+  if (!scannerPresent(root)) {
+    return Response.json({ error: SCANNER_MISSING, scannerMissing: true }, { status: 409 });
+  }
   // Auto: who, by id, and whether a request can go to them at all, before
   // anything else is asked. Then its own one-time yes (the page asks it).
   let invitee = null;
@@ -1210,11 +1219,6 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
   }
 
-  const root = projectRoot();
-  if (!root) {
-    return Response.json({ error: 'Could not find scripts/scrape.py next to the app.' }, { status: 500 });
-  }
-
   // Which Python, looked at afresh: what the page saw may be seconds old.
   forgetChecks();
   const found = (await machineChecks()).python;
@@ -1238,7 +1242,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     // The app's own Python runs isolated from this user's Python settings; any
     // Python runs it without writing bytecode beside scrape.py, which in the Mac
     // app is inside the signed app (lib/scanner-python.js scannerCommand).
-    plan = [scannerCommand(found.run, path.join(root, 'scripts', 'scrape.py'), [
+    plan = [scannerCommand(found.run, scannerScript(root), [
       // `--flag=value` is one token on purpose: a name beginning with
       // "-" can then never be read as a flag of its own. Anyone found by
       // id is --bridge-url, which carries on where their last read stopped

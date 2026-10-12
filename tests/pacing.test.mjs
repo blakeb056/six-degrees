@@ -11,14 +11,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
+import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 
 function run(t, script) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-pacing-'));
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, script], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home } });
   fs.rmSync(home, { recursive: true, force: true });

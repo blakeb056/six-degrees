@@ -10,7 +10,6 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, REPORTED_MONTH, LEVELS, usageLevel, searchedAfterPushback, countAfter,
   estimate, levelWarning, warningParts, barMax, untilText, agoText, hoursText,
@@ -22,10 +21,10 @@ import {
 import { putLimitsBack } from '../lib/limits-lift.js';
 import { RESTRICTED_AT, limitNote, riskyDaily } from '../lib/search-risk.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const H = 3600;
 const DAY = 24 * H;
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixdeg-usage-'));
@@ -38,6 +37,7 @@ const liftedByHand = (pause, at) => ({ ...pause, until: at, lifted_at: at, was_u
 // ── Auto scan's rules are the scanner's ──────────────────────────────────────
 
 test('Auto scan\'s rules on the page are the ones scrape.py keeps', (t) => {
+  if (noScanner(t)) return;
   const lift = `
 import ast, json, sys
 tree = ast.parse(open(sys.argv[1]).read())
@@ -349,6 +349,7 @@ test('a pause with no kept page (two unclear in a row) is the last pushback too;
 // ── a lifted pause ───────────────────────────────────────────────────────────
 
 test('the scanner reads a lifted pause as none, and can pause again after it', (t) => {
+  if (noScanner(t)) return;
   const dir = scratch();
   const now = Date.now();
   write(dir, 'linkedin-cooldown.json', liftedByHand({ until: now / 1000 + DAY, reason: 'LinkedIn pushed back: a security check', set_at: now / 1000 - 60 }, now / 1000));

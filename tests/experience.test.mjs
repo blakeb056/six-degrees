@@ -16,17 +16,17 @@ import os, { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 import { cleanExperience, readProfileQueue, experienceCounts, experienceRoles, RETRY_UNREADABLE_DAYS } from '../lib/experience.js';
 import { scorePerson, rolesWithCompanies } from '../lib/scoring.js';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
 const FIXTURES = path.join(here, 'fixtures', 'linkedin');
 
 function run(t, script) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-experience-'));
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `FIXTURES = ${JSON.stringify(FIXTURES)}\n${script}`],
     { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home } });

@@ -2,7 +2,8 @@
 // ?job=1, what runs (and whose scan it is), from memory; and ?resume=<id>,
 // where a profile card's Resume would carry on. And a second job is still
 // refused while one runs, saying which. On a temporary data folder, never the
-// real one. Invented people.
+// real one, with a stand-in scanner (tests/helpers/scanner.mjs), never this
+// checkout's. Invented people.
 
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,12 +11,14 @@ import { register } from 'node:module';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { standInRoot } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
 const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-scraper-job-'));
 process.env.SIX_DEGREES_HOME = dir;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
+process.env.SIX_DEGREES_ROOT = standInRoot(path.join(dir, 'root'));
 // Google Chrome is here, whatever the computer running this has (lib/scanner-setup.js
 // chromeInstalled): without it the server refuses every scan (tests/first-run.test.mjs).
 process.env.SIX_DEGREES_TEST_CHROME = 'found';

@@ -16,10 +16,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const LIFT = `
 import ast, json, os, sys, types
@@ -99,6 +97,7 @@ print(json.dumps({'raised': raised, 'cooldowns': cooldowns,
 
 /** { raised, cooldowns, day, auto } after one pushed-back read, or null when python3 is missing. */
 function pushedBack(t, experimental) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-auto-rest-'));
   const r = spawnSync(PYTHON, ['-c', LIFT, SCRAPER, JSON.stringify({ experimental })], {
     encoding: 'utf8',

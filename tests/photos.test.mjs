@@ -11,9 +11,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { localPhoto, waitingPhotos, waitingPhotoCount } from '../lib/photos.js';
 import { PYTHON, noPython } from './python.mjs';
+import { IMAGE_STORE, noScanner } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -163,7 +163,6 @@ test('a link the scanner could not save is forgotten, once, and only where it st
 // ── What the scanner fetches ────────────────────────────────────────────────
 
 // scripts/image_store.py is_linkedin_image, as written, without its packages.
-const IMAGE_STORE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'image_store.py');
 const CHECK = `
 import ast, json, sys
 src = open(sys.argv[1]).read()
@@ -174,6 +173,7 @@ print(json.dumps([ns['is_linkedin_image'](u) for u in json.loads(sys.argv[2])]))
 `;
 
 test('saving a photo fetches only from LinkedIn\'s image servers, over https', (t) => {
+  if (noScanner(t)) return;
   const cases = {
     [LINK]: true,
     'https://media-exp1.licdn.com/dms/image/C5603AQ/x.jpg': true,
@@ -261,6 +261,7 @@ print(json.dumps({'result': result, 'fetched': fetched, 'posted': posted, 'said'
 `;
 
 function savePhotos(t, links) {
+  if (noScanner(t)) return null;
   const home = mkdtempSync(path.join(dir, 'home-'));
   const run = spawnSync(PYTHON, ['-c', SAVE_PHOTOS, SCRIPTS, JSON.stringify(links)], {
     encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home },

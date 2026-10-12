@@ -180,15 +180,23 @@ jobs:
           # ("a sealed resource is missing or invalid") and fails the check
           # after the first quit. Not set for the whole step: the app must keep
           # its own Python from writing, and this check is how CI knows it does.
-          py="$app/Contents/Resources/python/bin/python3"
-          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; from importlib.metadata import version as v; print("Python", sys.version.split()[0], platform.machine(), "· Playwright", v("playwright"), "· requests", v("requests"), "· Pillow", v("pillow"))'
-          want=$([ "${{ matrix.arch }}" = x64 ] && echo x86_64 || echo arm64)
-          got=$(PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import platform; print(platform.machine())')
-          [ "$got" = "$want" ] || { echo "::error::The app's Python runs as $got, not $want"; exit 1; }
-          # scrape.py's pure functions on it: the same checks npm test runs on python3.
-          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$py" node --test \
-            tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
-            tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+          # Only in a build that has the scanner's files (lib/scanner-files.js):
+          # they are moving out of the app, and a build without them has no
+          # Python, and no setup to start further down.
+          s="$app/Contents/Resources/server/scripts"
+          if [ -f "$s/scrape.py" ] && [ -f "$s/image_store.py" ] && [ -f "$s/requirements.txt" ]; then scanner=yes; else scanner=no; fi
+          echo "The scanner in this build: $scanner"
+          if [ "$scanner" = yes ]; then
+            py="$app/Contents/Resources/python/bin/python3"
+            PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; from importlib.metadata import version as v; print("Python", sys.version.split()[0], platform.machine(), "· Playwright", v("playwright"), "· requests", v("requests"), "· Pillow", v("pillow"))'
+            want=$([ "${{ matrix.arch }}" = x64 ] && echo x86_64 || echo arm64)
+            got=$(PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$py" -c 'import platform; print(platform.machine())')
+            [ "$got" = "$want" ] || { echo "::error::The app's Python runs as $got, not $want"; exit 1; }
+            # scrape.py's pure functions on it: the same checks npm test runs on python3.
+            PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$py" node --test \
+              tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
+              tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+          fi
 
           export SIX_DEGREES_HOME="$RUNNER_TEMP/six-degrees-home" SIX_DEGREES_SMOKE=1
           export SIX_DEGREES_SMOKE_SHOT="$RUNNER_TEMP/window-${{ matrix.arch }}.png"
@@ -221,11 +229,13 @@ jobs:
             [ "$code" = 200 ] || exit 1
           done
           # The scanner runs on the app's own Python: nothing to install.
-          curl -s "$url/api/scraper" | APP="$app" node -e '
-            const c = JSON.parse(require("fs").readFileSync(0, "utf8")).checks;
-            console.log("  scanner:", c.pythonSource, c.pythonVersion, c.pythonPath);
-            if (c.pythonSource !== "bundled" || !c.dependencies || !c.pythonPath.startsWith(process.env.APP + "/")) process.exit(1);
-          ' || { echo "::error::The scanner isn't using the Python inside the app"; exit 1; }
+          if [ "$scanner" = yes ]; then
+            curl -s "$url/api/scraper" | APP="$app" node -e '
+              const c = JSON.parse(require("fs").readFileSync(0, "utf8")).checks;
+              console.log("  scanner:", c.pythonSource, c.pythonVersion, c.pythonPath);
+              if (c.pythonSource !== "bundled" || !c.dependencies || !c.pythonPath.startsWith(process.env.APP + "/")) process.exit(1);
+            ' || { echo "::error::The scanner isn't using the Python inside the app"; exit 1; }
+          fi
 
           "$app/Contents/MacOS/Six Degrees" > "$RUNNER_TEMP/second.log" 2>&1 &
           second=$!
@@ -234,20 +244,23 @@ jobs:
           echo "A second launch handed over and exited"
           quit_app ""
           # The app ran its Python (the checks above), and must not have written into itself.
-          if find "$app/Contents/Resources/python" -name __pycache__ | grep -q .; then echo "::error::Something wrote bytecode into the app's Python"; exit 1; fi
+          if [ "$scanner" = yes ] && find "$app/Contents/Resources/python" -name __pycache__ | grep -q .; then echo "::error::Something wrote bytecode into the app's Python"; exit 1; fi
 
           # Again with the app's Python turned off (an empty SIX_DEGREES_PYTHON):
           # the fallback that npm and source copies use, and a job to stop. The
           # scanner's setup (pip, no LinkedIn), uncached so it runs a while.
-          SIX_DEGREES_PYTHON= start_app "$RUNNER_TEMP/app-fallback.log"
-          server=$(lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN | awk 'NR==2{print $2}')
-          answer=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"action":"install"}' "$url/api/scraper"); echo "$answer"
-          echo "$answer" | grep -q '"ok":true' || { echo "::error::The scanner's setup didn't start"; exit 1; }
-          sleep 3
-          jobs=$(pgrep -P "$server" | tr '\n' ' ' || true)
-          echo "job processes: ${jobs:-none}"
-          [ -n "$jobs" ] || { echo "::error::No job was running to stop"; exit 1; }
-          quit_app "$jobs"
+          # A build without the scanner has no setup to start, so no job to stop.
+          if [ "$scanner" = yes ]; then
+            SIX_DEGREES_PYTHON= start_app "$RUNNER_TEMP/app-fallback.log"
+            server=$(lsof -nP -iTCP:"${url##*:}" -sTCP:LISTEN | awk 'NR==2{print $2}')
+            answer=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"action":"install"}' "$url/api/scraper"); echo "$answer"
+            echo "$answer" | grep -q '"ok":true' || { echo "::error::The scanner's setup didn't start"; exit 1; }
+            sleep 3
+            jobs=$(pgrep -P "$server" | tr '\n' ' ' || true)
+            echo "job processes: ${jobs:-none}"
+            [ -n "$jobs" ] || { echo "::error::No job was running to stop"; exit 1; }
+            quit_app "$jobs"
+          fi
           echo "Installed from the image, its Python works, opened, reached, refused a second copy, quit mid-job, left nothing."
         env:
           PIP_NO_CACHE_DIR: '1'
@@ -317,10 +330,17 @@ jobs:
           foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Sixgree.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Sixgree.lnk'))) {
             if (-not (Test-Path $lnk)) { throw "No shortcut at $lnk" }
           }
-          $env:PYTHONDONTWRITEBYTECODE = '1'
-          & "$app\resources\python\python.exe" -E -s -B -X utf8 -c "import sys, platform, zoneinfo, requests; from PIL import Image; from playwright.sync_api import sync_playwright; zoneinfo.ZoneInfo('America/Los_Angeles'); print('Python', sys.version.split()[0], platform.machine(), '→ ok')"
-          if ($LASTEXITCODE -ne 0) { throw 'The app''s Python failed its check' }
-          Remove-Item Env:PYTHONDONTWRITEBYTECODE
+          # The app's Python, only in a build that has the scanner's files (lib/scanner-files.js):
+          # they are moving out of the app, and a build without them has no Python.
+          $scripts = "$app\resources\server\scripts"
+          if ((Test-Path "$scripts\scrape.py") -and (Test-Path "$scripts\image_store.py") -and (Test-Path "$scripts\requirements.txt")) {
+            $env:PYTHONDONTWRITEBYTECODE = '1'
+            & "$app\resources\python\python.exe" -E -s -B -X utf8 -c "import sys, platform, zoneinfo, requests; from PIL import Image; from playwright.sync_api import sync_playwright; zoneinfo.ZoneInfo('America/Los_Angeles'); print('Python', sys.version.split()[0], platform.machine(), '→ ok')"
+            if ($LASTEXITCODE -ne 0) { throw 'The app''s Python failed its check' }
+            Remove-Item Env:PYTHONDONTWRITEBYTECODE
+          } else {
+            Write-Host 'No scanner in this build, so no Python to check.'
+          }
           node scripts/smoke-desktop.mjs --exe "$app\Six Degrees.exe" --dir $app --home "$env:RUNNER_TEMP\sd-home" --shot "$env:RUNNER_TEMP\window-windows.png"
           if ($LASTEXITCODE -ne 0) { throw 'The smoke test failed' }
           # Uninstall: the app goes, the data stays (DESKTOP.md rule 3).
@@ -373,10 +393,17 @@ jobs:
           app=/opt/six-degrees
           [ "$(stat -c '%U %a' $app/chrome-sandbox)" = "root 4755" ] || { echo "::error::chrome-sandbox isn't setuid root"; exit 1; }
           if find "$app" -type l -exec readlink {} \; | grep -q '^/'; then echo "::error::The installed app has absolute symlinks"; exit 1; fi
-          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$app/resources/python/bin/python3" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; print("Python", sys.version.split()[0], platform.machine(), "→ ok")'
-          PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$app/resources/python/bin/python3" node --test \
-            tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
-            tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+          # The app's Python, only in a build that has the scanner's files (lib/scanner-files.js):
+          # they are moving out of the app, and a build without them has no Python.
+          s="$app/resources/server/scripts"
+          if [ -f "$s/scrape.py" ] && [ -f "$s/image_store.py" ] && [ -f "$s/requirements.txt" ]; then
+            PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 "$app/resources/python/bin/python3" -c 'import sys, platform, requests; from PIL import Image; from playwright.sync_api import sync_playwright; print("Python", sys.version.split()[0], platform.machine(), "→ ok")'
+            PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 SIX_DEGREES_TEST_PYTHON="$app/resources/python/bin/python3" node --test \
+              tests/linkedin-limits.test.mjs tests/paused.test.mjs tests/bridge-progress.test.mjs \
+              tests/profile-shown.test.mjs tests/scraper-js.test.mjs
+          else
+            echo "No scanner in this build, so no Python to check."
+          fi
           Xvfb :99 -screen 0 1600x1000x24 > /dev/null 2>&1 &
           export DISPLAY=:99
           sleep 2
