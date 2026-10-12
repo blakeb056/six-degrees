@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Manual mode for circle scans.** A switch in Scanner settings. A circle scan opens the
+  scanner's Chrome in front of you at the person's list, and nothing on the page moves unless
+  you move it: each page is read once you scroll to its foot, and you click Next yourself. Every
+  page is still counted against your searches a day, and a stop the moment the platform pushes
+  back is unchanged. Closing the window is "done with this person", and a round moves on to the
+  next one. Auto scan stays off while it's on.
+- **Dev mode.** A switch in Scanner settings that takes off every limit Sixgree sets until you
+  turn it off: the daily limit, the cooldown, Auto's caps on connection requests, Auto scan's
+  hours and the queue's length. The speed you pick still sets every wait, and the platform
+  pushing back still stops the scan and turns Dev mode off. The notch and the usage page say
+  *Dev mode* in gold the whole time it's on.
+
 ### Changed
 - **The welcome screen recommends the CSV import, not scanning.** *Import a connections CSV*
   now comes first, marked Recommended and already chosen, so the button a new install opens on

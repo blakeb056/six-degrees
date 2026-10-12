@@ -186,6 +186,10 @@ function SetupInner() {
   // on unless turned off, and Read full profiles, off unless turned on.
   const gentle = li?.limits?.gentle !== false;
   const profileReads = li?.limits?.profileReads === true;
+  // Dev mode and manual mode (Blake, 2026-10-12; lib/linkedin-limits.js): two more switches
+  // in the same file. Dev mode can be turned off at any moment, a scan running or not.
+  const devOn = li?.dev === true;
+  const manualOn = li?.limits?.manual === true;
   const firstCircle = durationText(firstCircleSeconds(pace, gentle));
   // A run that ended badly, and the line that says why — the last thing it
   // printed before stopping. Shown as a box, not left for someone to find in the log.
@@ -423,7 +427,7 @@ function SetupInner() {
               <Part title="Their circles" hint={<>
                 Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
                 circle shows in {firstCircle}; the rest fills in over days,{' '}
-                {li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
+                {devOn ? 'with no daily limit in Dev mode' : li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
               </>}>
                 {/* Lifting the limits for this session lifts the pause too (lib/limits-lift.js). */}
                 <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-limits')} />
@@ -574,10 +578,12 @@ function SetupInner() {
                   {li?.limits?.daily != null && (
                     <DailyLimitInput id="settings-daily" value={li.limits.daily} onSave={(daily) => run('set-limits', { daily })} />
                   )}
-                  {li?.lifted
+                  {devOn
+                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, below.</span></>
+                    : li?.lifted
                     ? <><LiftedTag /> <span>No daily limit until you quit Sixgree.</span></>
                     : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
-                  <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>
+                  {!devOn && <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 8 }}>
                   Always, lifted or not: at most one profile view a minute, the pause before every page, and a stop the
@@ -644,6 +650,44 @@ function SetupInner() {
                   <ProfileReads li={li} experience={s?.experience} pace={pace} gentle={gentle} running={running} reading={Boolean(running && s?.action === 'read-profiles')}
                     canStart={canScanList && !busy} onStart={(batch) => run('read-profiles', { batch })} />
                 )}
+              </div>
+            </div>
+            {/* Blake, 2026-10-12: manual mode ("the user has to manually scroll per page for the
+                python to scan each page … to make the user feel safer") and Dev mode ("a dev mode
+                that basically removes the limits", the speed excepted). Both saved in
+                scan-limits.json; the scanner reads them as it goes (scrape.py manual_reads, dev_mode). */}
+            <div className="scan-two" style={{ marginTop: 18, paddingTop: 16, borderTop: LINE }}>
+              <div data-manual-mode="">
+                <Toggle checked={manualOn} disabled={running || busy} onChange={(on) => run('set-limits', { manual: on })}
+                  title="Manual mode for circle scans" tag="You page through"
+                  line={manualOn
+                    ? 'On: a circle scan opens the scanner’s Chrome in front, at their list. Scroll to the bottom of each page and it’s read; then click Next. Close the window when you’re done with them.'
+                    : 'Off: circle scans page through each list by themselves, out of sight.'}
+                  more={<>
+                    The scanner still opens their profile and the first page of their list; from there nothing on
+                    the page moves unless you move it. A page is read once you reach its foot, and only once. Every
+                    page you open is still a LinkedIn search on your account, counted against your searches a day,
+                    and a stop the moment LinkedIn pushes back. In a round of several people, closing the window
+                    moves on to the next person; Stop ends the round. Ten minutes with no new page ends that
+                    person&rsquo;s read. Auto scan stays off while this is on: it scans while you&rsquo;re away.
+                    Your own connections, company scans and profile reads still run by themselves. The window
+                    can&rsquo;t sit inside Sixgree: Chrome is a program of its own.
+                  </>} />
+              </div>
+              <div data-dev-mode-switch="">
+                <Toggle checked={devOn} disabled={busy} onChange={(on) => run('set-limits', { dev: on })}
+                  title="Dev mode: no limits" tag="Your account, your risk"
+                  line={devOn
+                    ? 'On: no daily limit, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.'
+                    : 'Takes off every limit Sixgree sets, until you turn it off. The speed you pick still sets every wait.'}
+                  more={<>
+                    What stays on whatever this says: the speed (Slow, Medium or Fast) and everything it sets,
+                    the pause before each page, the gap between profile views and Auto scan&rsquo;s sittings and
+                    rests; one scan at a time; and a stop the moment LinkedIn shows a sign-in, a security check or a
+                    restriction. LinkedIn pushing back also turns Dev mode off, and it stays off until you turn it on
+                    again. LinkedIn restricts accounts that search too much, and the limits are what keep an account
+                    clear of that: LinkedIn usage, below, still counts everything.
+                  </>} />
               </div>
             </div>
           </section>
@@ -745,7 +789,8 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
           <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             It costs <b>{cost.profileViews} profile view</b> to find their list, then <b>one LinkedIn search for
             every page</b> of it: up to {cost.searches} {cost.searches === 1 ? 'page' : 'pages'}, about {cost.minutes} minutes.
-            {li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit.</>
+            {li?.dev ? <> Dev mode is on, so it reads at its pace with no daily limit.</>
+              : li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit.</>
               : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
           </div>
           {circle === 'scanned' && (

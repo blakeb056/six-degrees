@@ -278,6 +278,42 @@ says so, and lifting again is one click.
 - one scan at a time, and the queue with every check at its turn;
 - the one-time *I understand* before the first scan (`lib/scan-risk.js`).
 
+## Dev mode and manual mode (2026-10-12)
+
+Two switches in Scanner settings, saved in `scan-limits.json` beside the daily number and
+read by both sides (`lib/linkedin-limits.js` `readLimits`/`writeLimits`; `scrape.py`
+`_scan_settings`). Both are read from the file each time they're asked, so a scan under way
+follows a change. Both belong to the scanner, and leave with it if it becomes a program of
+its own.
+
+- **Dev mode** (`"dev": true`, `"devSince"` in epoch seconds). `scrape.py` `dev_mode()` feeds
+  `limits_lifted()`, so everything the lift takes off goes too, and also: Auto's invite caps
+  (`invites_left`, `take_invite`, which still writes the invite down), Auto scan's hours
+  (`_sitting_over`, `_drip_before_search`) and, app-side, the queue's length
+  (`DEV_QUEUE_CAP`) and Auto scan's hours (`autoPlan` `anyHour`). The speed is never touched:
+  `apply_pace` still sets `PAGE_PAUSE`, `CHUNK_COOLDOWN`, `PROFILE_GAP` and the breaks, and
+  Auto scan's sitting and rest are its pace. **Off on pushback, twice over:** `set_cooldown`
+  calls `turn_dev_mode_off` before anything else (even when an older, longer pause means it
+  writes no new one), and `devMode()` in the app turns it off on seeing a pause whose
+  `set_at` is after `devSince`. Never put it in `SIX_DEGREES_LIMITS_LIFTED`: that is read once
+  at the start, so a pushback mid-run couldn't take it back.
+- **Manual mode** (`"manual": true`). `scrape_bridge` decides it (`manual_reads()`, never in a
+  `--sitting`, never headless), sets `CHROME_WINDOW["show"]` so the window is in front, and
+  passes `manual=True` to `_scrape_one_bridge`, which does everything it always did up to and
+  including opening page `start_page` and checking it, then hands over to `_read_by_hand`. That
+  polls the window every second and never scrolls or clicks: a page counts once `AT_FOOT_JS`
+  sees the pagination bar (or the last person) in view, is read with `BRIDGE_RESULTS_JS`, and
+  `reach["last"]` only advances through pages read one after another (TRAPS §34). A page is
+  charged as a search the first time it's seen. It prints the same `Page N... X found (total:
+  Y)` lines the route counts, and `LinkedIn needs you:` lines for the notch, ended by `Manual
+  read done` (`lib/scan-progress.js` `THROUGH`). Closing the window returns `success` with
+  `more` set, without the global stop, so `auto_bridge_all` moves on; `MANUAL_IDLE` with
+  nothing read sets the global stop. Auto scan refuses to start and stops while it's on
+  (`autoRefusal`, `autoPlan` `manual`, `MANUAL_STOPS_AUTO`).
+
+Tests: `tests/dev-manual-mode.test.mjs` drives `_read_by_hand` with a stand-in window and
+clock: a person scrolling and clicking Next.
+
 ## Pacing: gentle, on top of the old waits (2026-10-05)
 
 > "polish the pacing, with extra intervals" · "add scroll intervals as well" · "random scrolls

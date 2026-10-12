@@ -107,6 +107,35 @@ again puts them back by itself. **What never lifts:** the pace between pages and
 sign-in, a security check or a restriction, Auto's own caps on connection requests, and one
 scan at a time.
 
+**Dev mode.** A switch in Scanner settings, *Dev mode: no limits*, saved with the daily
+limit (`scan-limits.json`: `"dev": true` and `"devSince"`, when it was turned on). Until you
+turn it off, every limit Sixgree sets is off: the daily limit and the cooldown (what the lift
+does), Auto's caps on connection requests, Auto scan's hours (9:00 to 18:00) and the queue's
+length (500 instead of 10). **What it never touches:** the speed you pick (Slow, Medium or
+Fast) and everything it sets, which is the pause before each page, the gap between profile
+views and Auto scan's sittings and rests; one scan at a time; and the stop when LinkedIn shows
+a sign-in, a security check or a restriction. LinkedIn pushing back turns Dev mode off
+(`set_cooldown` writes it off; the app also turns it off on seeing a pause set after
+`devSince`), and it stays off until you turn it on again. Everything is still counted, so
+LinkedIn usage stays true. The scanner reads the switch from the file each time it asks, so
+turning it off reaches a scan under way.
+
+**Manual mode.** A switch in Scanner settings, *Manual mode for circle scans*
+(`"manual": true`). A circle scan (one person, Resume, or a round of several) still opens the
+person's profile and the first page of their list, but in a Chrome window in front of you,
+and from there nothing on the page moves unless you move it. A page is read once you've
+scrolled to its foot (the Next or Previous button, or the last person on it, is in view), and
+only once; then you click **Next** yourself. The notch says what to do next, in gold. Each
+page LinkedIn opens is still a search on your account, counted the first time it's seen and
+held to the daily limit (not in Dev mode); LinkedIn pushing back stops it as ever. A page you
+skip to is read, but the pages between are never noted as read. It ends when their list
+does, at the scan's page limit, on **Stop**, or when you close the window, which in a round
+means "done with this person": the next one opens in a new window. Ten minutes with no new
+page ends that person's read, and with nothing read at all the whole scan stops, so no window
+waits for nobody. Auto scan stays off while manual mode is on, because it scans while you're
+away; your own connections, company scans and profile reads still run by themselves. The
+window can't sit inside Sixgree's: Chrome is a program of its own.
+
 **Profile views.** A circle scan opens the person's profile once, and that is a profile
 view. Profile views are what got an account restricted, so at least a minute passes between
 any two profile opens, even across scans started one after another, lifted or not; the log
@@ -244,7 +273,7 @@ python3 scripts/scrape.py --full --headless      # no window at all
 ```
 
 `--show-window` is the Scan page's *Show the scanner's Chrome window* (in
-Fine-tune). `--headless` is for the command line only: headless Chrome is
+Fine-tune). Manual mode (above) puts circle scans in front too, whatever this says. `--headless` is for the command line only: headless Chrome is
 *more* detectable than a real window, a fingerprint sites check for, and a
 check LinkedIn asks for can't be seen or finished in it, so the scan stops
 instead. Log in once with a window first, so the profile has a session.

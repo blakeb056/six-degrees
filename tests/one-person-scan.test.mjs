@@ -78,6 +78,7 @@ ns.update({
     # Every launch goes through launch_chrome (tests/chrome-launch.test.mjs): here, the stand-in browser.
     'launch_chrome': lambda p, headless=False, sign_in=False: p.chromium.launch_persistent_context(),
     'ensure_logged_in': lambda page, **kw: True,
+    'manual_reads': lambda: False,
     'stop_requested': lambda: case.get('stop', False),
     '_scrape_one_bridge': lambda *a, **kw: calls['pages'].append(kw.get('start_page')) or (
         [], case['status'], {'last': 0, 'more': False, 'urn': None, 'found': 0, 'limited': False}),

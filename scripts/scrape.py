@@ -37,7 +37,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
@@ -2727,8 +2727,72 @@ def search_limits():
 
 
 def limits_lifted():
-    """The Scan page lifted the daily limit and the cooldown for this session."""
-    return bool(LIMITS["lifted"])
+    """The Scan page lifted the daily limit and the cooldown for this session, or Dev mode is on."""
+    return bool(LIMITS["lifted"]) or dev_mode()
+
+
+# Dev mode and manual mode (Blake, 2026-10-12), two switches in Scanner
+# settings, saved in scan-limits.json beside the daily limit
+# (lib/linkedin-limits.js readLimits says the same):
+#
+#   "dev": true, "devSince": epoch s   Every limit Sixgree sets is off until it's
+#                turned off: the daily limit and the cooldown (limits_lifted),
+#                Auto's caps on connection requests (take_invite) and Auto scan's
+#                hours (_sitting_over). The speed still sets every wait
+#                (apply_pace), and LinkedIn pushing back still stops the scan and
+#                turns Dev mode off (set_cooldown).
+#   "manual": true   Circle scans open Chrome in front and read each page of
+#                someone's list once you've scrolled to its foot; you click Next
+#                (_read_by_hand). Not in Auto scan's sittings, which run while
+#                you're away (the app stops Auto scan while this is on).
+#
+# Both are read from the file each time they're asked, so turning one on or off
+# reaches a scan under way.
+
+
+def _scan_settings():
+    try:
+        data = json.loads((_home() / "scan-limits.json").read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def dev_mode():
+    """Dev mode is on, and LinkedIn hasn't pushed back since it was turned on."""
+    data = _scan_settings()
+    if data.get("dev") is not True:
+        return False
+    since = data.get("devSince")
+    try:
+        cd = json.loads((_home() / "linkedin-cooldown.json").read_text())
+        if isinstance(since, (int, float)) and float(cd.get("set_at", 0)) > since \
+                and float(cd.get("until", 0)) > time.time():
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def turn_dev_mode_off(why):
+    """LinkedIn pushed back: Dev mode goes off and stays off until it's turned on again."""
+    data = _scan_settings()
+    if data.get("dev") is not True:
+        return False
+    data["dev"] = False
+    data.pop("devSince", None)
+    try:
+        _write_json_atomic(_home() / "scan-limits.json", data)
+        print(f"  Dev mode is off: {why}. Every limit is back on.", flush=True)
+        return True
+    except Exception as exc:
+        print(f"  (could not turn Dev mode off: {exc})")
+        return False
+
+
+def manual_reads():
+    """Manual mode: circle scans wait for you to page through each list (_read_by_hand)."""
+    return _scan_settings().get("manual") is True
 
 
 def _listen_for_limits():
@@ -2827,7 +2891,9 @@ def _cooldown_on_file(now=None):
 
 
 def set_cooldown(seconds=None, until=None, reason=""):
-    """Nothing searches LinkedIn until this lifts. Never shortens an existing one."""
+    """Nothing searches LinkedIn until this lifts. Never shortens an existing one.
+    Turns Dev mode off whatever is on file: LinkedIn pushed back."""
+    turn_dev_mode_off(reason or "LinkedIn pushed back")
     now = time.time()
     until = until if until is not None else now + seconds
     current = _cooldown_on_file(now)
@@ -3479,7 +3545,7 @@ def _sitting_over(now=None):
         return EXPERIMENT["ended"]
     if EXPERIMENT["pages"] >= EXPERIMENT["sitting"]:
         return f"This sitting's {EXPERIMENT['sitting']} searches are done"
-    if not _in_drip_hours(now):
+    if not _in_drip_hours(now) and not dev_mode():
         return f"It's outside Auto scan's hours ({DRIP_HOURS[0]}:00 to {DRIP_HOURS[1]}:00)"
     left, kind = searches_left(now)
     if left <= 0:
@@ -3508,7 +3574,7 @@ def _drip_before_search():
                 return False
             continue
         now = datetime.fromtimestamp(time.time())
-        if not (DRIP_HOURS[0] <= now.hour < DRIP_HOURS[1]):
+        if not (DRIP_HOURS[0] <= now.hour < DRIP_HOURS[1]) and not dev_mode():
             start = now.replace(hour=DRIP_HOURS[0], minute=0, second=0, microsecond=0)
             if now.hour >= DRIP_HOURS[1]:
                 start += timedelta(days=1)
@@ -4159,8 +4225,207 @@ def _wait_for_profile_view(page):
             return "stopped"
 
 
+# ---------------------------------------------------------------------------
+# Manual mode (Blake, 2026-10-12: "playwright loads up the window and the user
+# has to manually scroll per page for the python to scan each page … to make
+# the user feel safer"). Scanner settings → "Manual mode for circle scans"
+# (manual_reads). The scanner still opens their profile and the first page of
+# their list, as ever; from there the Chrome window is in front of you, and
+# nothing on the page moves unless you move it. Each page is read once you've
+# scrolled to its foot, and you click Next yourself. The window can't sit
+# inside Sixgree's own: Chrome is a program of its own, and the only browser
+# that could would make Sixgree the scanner.
+# ---------------------------------------------------------------------------
+MANUAL_POLL = 1.0                 # how often it looks at the window, in seconds
+MANUAL_IDLE = 10 * 60             # no new page for this long: the read of that person ends
+
+# You've reached the foot of the page: the pagination bar (Next or Previous) is
+# in view, or on a list with no bar, the last person on it. Measured against
+# the window, so it holds whichever part of the page scrolls. The buttons' own
+# words and the profile links, never a class (TRAPS §5).
+AT_FOOT_JS = r"""
+() => {
+  const h = window.innerHeight || document.documentElement.clientHeight;
+  const seen = (el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < h && r.bottom > 0; };
+  for (const b of document.querySelectorAll('button')) {
+    const t = (b.innerText || b.textContent || '').trim();
+    if ((t === 'Next' || t === 'Previous') && seen(b)) return true;
+  }
+  const root = document.querySelector('[role="main"], main') || document.body;
+  const links = [...root.querySelectorAll('a[href*="/in/"]')].filter((a) => !a.closest('nav, header, footer'));
+  return links.length > 0 && seen(links[links.length - 1]);
+}
+"""
+
+# This page's Next: "on" (there's another page), "off" (LinkedIn's Next is
+# there but disabled: the last page), or null (no Next on the page).
+NEXT_STATE_JS = r"""
+() => {
+  for (const b of document.querySelectorAll('button')) {
+    const t = (b.innerText || b.textContent || '').trim();
+    if (t === 'Next') return b.disabled || b.getAttribute('aria-disabled') === 'true' ? 'off' : 'on';
+  }
+  return null;
+}
+"""
+
+
+def _their_search(url, urn):
+    """The window shows their connections search, at any page of it."""
+    try:
+        u = unquote(url or "")
+    except Exception:
+        return False
+    return bool(urn) and "/search/results/people" in u and urn in u
+
+
+def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None):
+    """Manual mode, from the moment their list is open at start_page in a window
+    in front of you. Returns what _scrape_one_bridge returns.
+
+    A page is read once you've scrolled to its foot (AT_FOOT_JS), and only once.
+    Every page LinkedIn opens is a search on your account, counted the first
+    time it's seen, and the daily limit holds as it does anywhere (not in Dev
+    mode). LinkedIn pushing back stops it, as ever. `reach["last"]` only moves
+    through pages read one after another from start_page, so a page you skip
+    is never noted as read (TRAPS §34); the people on it are kept all the same.
+
+    Ends when their list does (LinkedIn's Next is disabled, or the count says
+    so), at max_pages, on Stop, when you close the window (done with them: a
+    round moves on to the next person in a new window), or after MANUAL_IDLE
+    with no new page (and with nothing read at all, the whole scan stops, so a
+    round doesn't open window after window for nobody).
+    """
+    global _stop_requested
+    urn = reach["urn"]
+    pages = -(-int(total) // 10) if total else None
+    done, counted = set(), {start_page}
+    chunk, chunk_pages = [], 0
+    contiguous = start_page - 1
+    last_seen = time.time()
+    status, how = "success", None
+
+    def tell(what):
+        print(f"{NEEDS_YOU} {what}", flush=True)
+
+    print(f"  Manual mode: you page through {bridge_name}'s list, and each page is read when you reach its foot.")
+    tell(f"scroll to the bottom of each page of {bridge_name}'s connections in the Chrome window, then click Next. "
+         f"Close the window when you're done with them.")
+    while True:
+        if stop_requested():
+            status, how = "stopped", "stopped"
+            break
+        try:
+            closed = page.is_closed()
+        except Exception:
+            closed = True
+        if closed:
+            how = "closed"
+            break
+        if time.time() - last_seen > MANUAL_IDLE:
+            how = "idle"
+            break
+        time.sleep(MANUAL_POLL)
+        try:
+            url = page.url
+        except Exception:
+            continue
+        if not _their_search(url, urn):
+            continue   # you're somewhere else in the window; it waits for you to come back
+        pg = _url_page(url)
+        if pg not in counted:
+            left, kind = searches_left()
+            if left <= 0:
+                reach["budget"] = kind
+                print("  " + budget_message(kind))
+                status, how = "budget", "budget"
+                break
+            charge_linkedin("searches")   # a page you opened is a search like any other
+            counted.add(pg)
+            last_seen = time.time()
+        if pg in done:
+            continue
+        why = _pushback(page)
+        if why:
+            _pushed_back(page, reach, why)
+            status, how = "pushback", "pushback"
+            break
+        try:
+            at_foot = bool(page.evaluate(AT_FOOT_JS))
+        except Exception:
+            at_foot = False
+        if not at_foot:
+            continue
+        try:
+            found = page.evaluate(BRIDGE_RESULTS_JS) or []
+        except Exception:
+            found = []
+        if not found:
+            try:
+                limit_banner = bool(page.evaluate(SEARCH_LIMIT_JS))
+            except Exception:
+                limit_banner = False
+            if limit_banner:
+                print("  LinkedIn's monthly search limit, and nobody on the page to read.")
+                reach["limited"] = True
+                _keep_pushback_evidence(page, "the monthly search limit")
+                status, how = "limited", "limited"
+                break
+            hidden = _hidden_members(page)
+            if hidden:
+                done.add(pg)
+                print(f"  Page {pg}: LinkedIn hides the {hidden} people on it (\"LinkedIn Member\"), "
+                      f"so there's no one to read there.")
+            continue   # still loading, or nothing there yet: it looks again
+        found = [c for c in found if slug not in c.get("profileUrl", "")]
+        done.add(pg)
+        last_seen = time.time()
+        PACE_STATE["pages"] += 1
+        chunk.extend(found)
+        chunk_pages += 1
+        reach["found"] += len(found)
+        while contiguous + 1 in done:
+            contiguous += 1
+        reach["last"] = max(reach["last"], contiguous)
+        # The same line an automatic read prints, so the app counts it the same way.
+        print(f"  Page {pg}... {len(found)} found (total: {reach['found']})", flush=True)
+        try:
+            nxt = page.evaluate(NEXT_STATE_JS)
+        except Exception:
+            nxt = None
+        at_end = pg >= LINKEDIN_MAX_PAGES or nxt == "off" or (pages is not None and pg >= pages)
+        if at_end and contiguous >= pg:
+            print("  That's the end of their list." if pg < LINKEDIN_MAX_PAGES
+                  else f"  That was page {pg}, as far as LinkedIn's search goes.")
+            how = "finished"
+            break
+        if contiguous >= max_pages:
+            print(f"  That's the {max_pages} pages this scan reads.")
+            how = "limit"
+            break
+        if on_save and chunk_pages >= SAVE_EVERY_PAGES:
+            on_save(_dedupe(chunk), reach["last"], True, urn)
+            chunk, chunk_pages = [], 0
+        tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
+             f"Close the window when you're done with {bridge_name}.")
+
+    reach["more"] = how != "finished"
+    if how == "closed":
+        print(f"  The window was closed: done with {bridge_name}, and what was read is kept.")
+    elif how == "idle":
+        print(f"  No new page for {MANUAL_IDLE // 60} minutes, so the read of {bridge_name} ends here.")
+        if not done:
+            # Nobody's there: a round would open the next person's window only to wait again.
+            _stop_requested = True
+            status = "stopped"
+            print("  Nothing was read, so the scan stops.")
+    n = len(done)
+    print(f"Manual read done: {n} page{'' if n == 1 else 's'} of {bridge_name}'s list.", flush=True)
+    return _dedupe(chunk), status, reach
+
+
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
-                       start_page=1, urn=None, on_save=None):
+                       start_page=1, urn=None, on_save=None, manual=False):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -4174,6 +4439,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
       found    how many people were read in all
       limited  LinkedIn's monthly search limit ended the read
       budget   "daily" or "profiles": today's limit ended it (status "budget")
+
+    manual: once their list is open, you page through it (_read_by_hand).
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -4391,6 +4658,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         pages = -(-total // 10)
         print(f"  About {total:,} results in their list: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
+    if manual:
+        return _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total)
+
     until = "until their list ends" if max_pages >= LINKEDIN_MAX_PAGES else f"up to page {max_pages}"
     print(f"  Reading from page {start_page} {until}, saving every {SAVE_EVERY_PAGES} pages.")
 
@@ -4619,6 +4889,12 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     if not urn and profiles_left() <= 0:
         raise BudgetReached(0, "profiles")
 
+    # Manual mode: the window in front, and you page through (_read_by_hand).
+    # Never in Auto scan's sittings, which run while you're away, nor headless.
+    manual = manual_reads() and not EXPERIMENT.get("sitting") and not headless
+    if manual:
+        CHROME_WINDOW["show"] = True
+
     print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scanning'} connections of {bridge_name} ===\n")
 
     read = []
@@ -4649,7 +4925,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
                                              max_pages=max_pages, start_page=start_page, urn=urn,
-                                             on_save=save)
+                                             on_save=save, manual=manual)
             finally:
                 try:
                     browser.close()
@@ -5102,7 +5378,10 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log(budget_message(kind))
         return []
     use, lim = linkedin_usage(), search_limits()
-    if limits_lifted():
+    if dev_mode():
+        log(f"Dev mode, no limits: {use['searches_today']} searches and {use['profiles_today']} "
+            f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
+    elif limits_lifted():
         log(f"Limits lifted for this session: {use['searches_today']} searches and {use['profiles_today']} "
             f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
     else:
@@ -6061,7 +6340,10 @@ SENT_NOTICE = re.compile(r"invitation to (.+?) (?:was|has been) sent", re.I)
 
 
 def invites_left(now=None):
-    """(how many more requests Auto may send, "day" | "week": whichever runs out first)."""
+    """(how many more requests Auto may send, "day" | "week": whichever runs out first).
+    As good as no end in Dev mode."""
+    if dev_mode():
+        return (10 ** 9, "day")
     now = now if now is not None else time.time()
     invites = _read_activity()["invites"]
     day = INVITE_DAY_CAP - sum(1 for t in invites if t > now - DAY_SECONDS)
@@ -6079,6 +6361,10 @@ def take_invite(now=None):
         now = now if now is not None else time.time()
         data = _read_activity()
         invites = data["invites"]
+        if dev_mode():
+            # No caps in Dev mode; still written down, so the record stays true.
+            _charge(data, "invites", 1, now)
+            return None
         if sum(1 for t in invites if t > now - DAY_SECONDS) >= INVITE_DAY_CAP:
             return "day"
         if sum(1 for t in invites if t > now - WEEK_SECONDS) >= INVITE_WEEK_CAP:

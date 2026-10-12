@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import { inProgressSummary } from '../../lib/in-progress';
-import { LIFT_LINE } from '../../lib/limits-lift';
+import { LIFT_LINE, DEV_LINE } from '../../lib/limits-lift';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -95,8 +95,22 @@ export function DailyLimitInput({ value, onSave, disabled, small = false, id }) 
  * back". Held in the server's memory only (lib/limits-lift.js): quitting
  * Sixgree puts them back.
  */
-export function LiftLimits({ lifted, onLift, onPutBack, disabled, small = false }) {
+export function LiftLimits({ lifted, onLift, onPutBack, disabled, small = false, dev = false, onDevOff }) {
   const size = small ? 11.5 : 12.5;
+  // Dev mode (Scanner settings): the limits are off until it's turned off, not for the session.
+  if (dev) {
+    return (
+      <div data-dev-mode="" style={{
+        display: 'flex', alignItems: small ? 'flex-start' : 'center', flexDirection: small ? 'column' : 'row', gap: 8, flexWrap: 'wrap', fontSize: size, lineHeight: 1.5,
+      }}>
+        {!small && <LiftedTag dev />}
+        <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', flex: small ? undefined : '1 1 260px' }}>{DEV_LINE}</span>
+        {onDevOff && (
+          <button type="button" onClick={onDevOff} disabled={disabled} style={{ ...pill(small), color: 'var(--sd-fg-1, #fff)' }}>Turn off Dev mode</button>
+        )}
+      </div>
+    );
+  }
   if (lifted) {
     return (
       <div data-limits-lifted="" style={{
@@ -120,7 +134,7 @@ export function LiftLimits({ lifted, onLift, onPutBack, disabled, small = false 
 }
 
 /** The small gold "Limits lifted" the notch and the Scan page show while they are. */
-export function LiftedTag({ small = false }) {
+export function LiftedTag({ small = false, dev = false }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6, padding: small ? '0 7px' : '2px 9px', borderRadius: 999,
@@ -128,7 +142,7 @@ export function LiftedTag({ small = false }) {
       color: GOLD, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: GOLD }} />
-      Limits lifted
+      {dev ? 'Dev mode' : 'Limits lifted'}
     </span>
   );
 }

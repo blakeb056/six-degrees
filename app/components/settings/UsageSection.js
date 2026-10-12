@@ -109,7 +109,7 @@ function Meter({ title, used, of, max, color, ticks = [], band, children }) {
  * last 7 days, each against its cap, one bar under the other. Its own caps,
  * not the search budget: a request is the one thing Sixgree sends.
  */
-function InviteMeter({ day, week, freesAt, weekFreesAt, now }) {
+function InviteMeter({ day, week, freesAt, weekFreesAt, now, capped = true }) {
   const known = Number.isFinite(day) && Number.isFinite(week);
   const bars = [
     { label: 'Last 24 hours', used: day, cap: INVITE_CAPS.day },
@@ -136,6 +136,7 @@ function InviteMeter({ day, week, freesAt, weekFreesAt, now }) {
       ))}
       <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 6 }}>
         {!known ? null
+          : !capped ? <>Dev mode is on, so Auto&rsquo;s caps are off: each request still takes one press, and LinkedIn&rsquo;s own invitation limit still applies.</>
           : freesAt ? <>Auto&rsquo;s {INVITE_CAPS.day} a day are used. The next one frees {whenAndUntil(freesAt, now)}.</>
           : weekFreesAt ? <>Auto&rsquo;s {INVITE_CAPS.week} a week are used. The next one frees {whenAndUntil(weekFreesAt, now)}.</>
           : <>{plural(left, 'request')} left for Auto now.</>}
@@ -214,6 +215,8 @@ export default function UsageSection() {
   const now = u.now;
   const { limits = {} } = u;
   const lifted = u.lifted === true;
+  // Dev mode (Scanner settings) lifts them until it's turned off, not for the session.
+  const dev = u.dev === true;
   const day = u.searchesToday;
   const level = usageLevel({ cooldown: u.cooldown, searchesDay: day, lastPushback: u.lastPushback, searchesSincePushback: u.searchesSincePushback, now });
   // The level's warning, then the limit's own note when it invites trouble whatever has been
@@ -243,7 +246,7 @@ export default function UsageSection() {
     <Section id="usage" title="LinkedIn usage">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Pill level={level} />
-        {lifted && <LiftedTag />}
+        {lifted && <LiftedTag dev={dev} />}
         <span style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', flex: '1 1 260px', lineHeight: 1.5 }}>
           What Sixgree has asked of your LinkedIn account from this computer, and how close that is to the line.
         </span>
@@ -272,9 +275,11 @@ export default function UsageSection() {
       )}
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Meter title="Searches in the last 24 hours" used={day} of={lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
+      <Meter title="Searches in the last 24 hours" used={day} of={dev ? '· no limit in Dev mode' : lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
         max={dayMax} color={(LEVELS[dayLevel] || LEVELS.unknown).color} ticks={dayTicks}>
-        {u.unreadable ? null : lifted
+        {u.unreadable ? null : dev
+          ? <>Dev mode: scans don&rsquo;t stop at {limits.daily} until you turn it off in Scanner settings, or LinkedIn pushes back.</>
+          : lifted
           ? <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree.</>
           : u.dayFreesAt
             ? <>Your {limits.daily} a day are used. The next one frees {whenAndUntil(u.dayFreesAt, now)}.</>
@@ -288,8 +293,9 @@ export default function UsageSection() {
           </span>
         </div>
         <div style={{ marginTop: 10 }}>
-          <LiftLimits lifted={lifted} disabled={saving}
-            onLift={() => change({ action: 'lift-limits' })} onPutBack={() => change({ action: 'put-limits-back' })} />
+          <LiftLimits lifted={lifted} dev={dev} disabled={saving}
+            onLift={() => change({ action: 'lift-limits' })} onPutBack={() => change({ action: 'put-limits-back' })}
+            onDevOff={() => change({ action: 'set-limits', dev: false })} />
           {lifted && u.heldCooldown && (
             <div style={{ ...small, color: 'var(--sd-gold, #FFD700)' }}>
               The pause after LinkedIn pushed back ({u.heldCooldown.reason}, until {whenText(u.heldCooldown.until)}) is off too, and comes back with the limits.
@@ -305,7 +311,7 @@ export default function UsageSection() {
         </div>
       </Meter>
 
-      <InviteMeter day={u.invitesToday} week={u.invitesWeek} freesAt={u.invitesFreeAt} weekFreesAt={u.invitesWeekFreeAt} now={now} />
+      <InviteMeter day={u.invitesToday} week={u.invitesWeek} freesAt={u.invitesFreeAt} weekFreesAt={u.invitesWeekFreeAt} now={now} capped={u.invitesCapped !== false} />
 
       <div style={{ marginTop: 22 }}>
         <Row label="Speed">
