@@ -454,7 +454,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     // person with a full circle behind them next to one with nobody.
     if (L.sizeBy === 'reach') return Math.min(28, 2.5 + 1.6 * Math.sqrt(reach.get(d.id) || 0)) * L.dotSize;
     const r = Math.max(3, Math.min(12, (d.power_score || 1) * 1.3));
-    return (d.degree > 1 ? Math.max(2.5, r * 0.75) : r) * L.dotSize;   // further out, a little smaller
+    // Further out, a little smaller; coloured by degree (the Degrees layout, everyone at
+    // once), smaller again, so ten thousand 2nd-degree dots don't swallow the ring past them.
+    const out = L.colourBy === 'degree' ? 0.5 : 0.75;
+    return (d.degree > 1 ? Math.max(2, r * out) : r) * L.dotSize;
   };
 
   const g = svg.append('g');
