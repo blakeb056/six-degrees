@@ -555,6 +555,43 @@ out['oldest_gone'] = not (folder / 'scan-2026-01-01_000000.log').exists()`);
   }
 });
 
+test('manual mode: sent to the restriction page mid-list is push-back, not "go back to it"', (t) => {
+  // Blake, 2026-10-12: page 69, then LinkedIn's "Your account has been temporarily restricted";
+  // the read said the window wasn't on the list, so no pause was written and Dev mode stayed on.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+RESTRICTED = 'https://www.linkedin.com/checkpoint/restricted/'
+class Restricted(ManualPage):
+    @property
+    def url(self):
+        u = ManualPage.url.fget(self)
+        return RESTRICTED if clock.t - NOW >= 12 else u
+    def evaluate(self, js, *a):
+        if js == ns['PUSHBACK_JS']:
+            return 'the account being restricted' if clock.t - NOW >= 12 else None
+        return super().evaluate(js, *a)
+page = Restricted(60, [[2, 'foot'], [8, 'next']], start=1)
+out.update(read_by_hand(page))
+class Away(ManualPage):
+    @property
+    def url(self):
+        return 'https://www.linkedin.com/feed/' if clock.t - NOW >= 5 else ManualPage.url.fget(self)
+    def is_closed(self):
+        return clock.t - NOW >= 30
+away = Away(60, [[2, 'foot']], start=1)
+out['away'] = read_by_hand(away)['status']`);
+    if (!r) return;
+    assert.equal(r.out.status, 'pushback');
+    assert.equal(r.out.last, 1, 'the page read before it is kept');
+    assert.match(r.log, /LinkedIn is pushing back \(the account being restricted\)\. Stopping here\./);
+    assert.equal(r.out.away, 'success', 'any other page: it waits for you, as before');
+    assert.match(r.log, /the window isn't on Invented Bridge's list/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('an automatic read that LinkedIn opens on another page still stops, as before', (t) => {
   const home = scratch();
   try {

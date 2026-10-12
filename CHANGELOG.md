@@ -75,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each scan started there again. It now asks you to click Previous to it first, says when a page
   before the one you're on is still unread, and no longer guesses a page from the address while
   the page bar is being redrawn (which counted a search for a page nobody opened).
+- **Manual mode stops when LinkedIn shows its own notice anywhere in the window.** Sent from a
+  list to "Your account has been temporarily restricted", it said the window wasn't on the list
+  and waited, so no pause was written and Dev mode stayed on. A notice on any page now stops the
+  read, writes the pause and turns Dev mode off, as on the list itself.
 - **Each scan keeps its own log.** In the data folder's `logs` folder on this computer, the
   newest 40, so a run that went wrong can be read after the next one has started.
 - **Mutual connection counts.** The platform now writes "A, B & 8 other mutual connections",

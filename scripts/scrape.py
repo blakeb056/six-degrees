@@ -4893,7 +4893,15 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         except Exception:
             continue
         if not _their_search(url, urn):
-            # You're somewhere else in the window; it waits for you to come back.
+            # Somewhere else in the window. LinkedIn's own notice is push-back wherever it
+            # shows (Blake, 2026-10-12: sent to "Your account has been temporarily
+            # restricted" from page 69 of a list, read as "go back to it", so no pause
+            # was written and Dev mode stayed on). Anywhere else, it waits for you.
+            why = _pushback(page)
+            if why:
+                _pushed_back(page, reach, why)
+                status, how = "pushback", "pushback"
+                break
             wait_note(("away", url.split("?")[0]), f"the window isn't on {bridge_name}'s list. Go back to it to carry on.")
             continue
         # Which page this is: the page bar's highlighted number, as LinkedIn shows it.
