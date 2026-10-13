@@ -11,18 +11,16 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import { fileURLToPath } from 'node:url';
 import { cleanCard, cleanExperience, experienceCard, readProfileQueue } from '../lib/experience.js';
 import { reachIndex, scanFill } from '../lib/reach.js';
 import { readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixgree-dig-'));
 
 function scanner(t, home, script) {
+  if (noScanner(t)) return null;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, script], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home } });
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);
@@ -81,6 +79,7 @@ test('the ring takes their connection count from their card when their list has 
 });
 
 test('an Experience entry with no company line takes its company from its logo', (t) => {
+  if (noScanner(t)) return;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 items = [
   {'lines': ['Account Manager', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos', 'Invented staffing company description.'], 'subs': [], 'logo': 'Invented Staffing'},
@@ -99,6 +98,7 @@ out['roles'] = [[x['title'], x['company'], x['current']] for x in ns['roles_from
 });
 
 test('Dig deeper is done with someone for good only once it has a company for every role and their card', (t) => {
+  if (noScanner(t)) return;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 import json as j
 CARD = {'followers': 10, 'connections': 500, 'connectionsPlus': True}
@@ -123,6 +123,7 @@ out['empty'] = ns['_experience_on_file']({})`], { encoding: 'utf8', env: { ...pr
 });
 
 test('a company page address names the company when the entry shows no name', (t) => {
+  if (noScanner(t)) return;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, `
 out['names'] = [ns['company_from_slug'](x) for x in ('invented-staffing', 'aerotek', 'ibm', '12345', '', None, 'invented_robotics-inc')]
 items = [{'lines': ['Account Manager', 'Oct 2018 - Mar 2021 · 2 yrs 6 mos'], 'subs': [], 'slug': 'invented-staffing'},
@@ -373,7 +374,8 @@ function profile({ card = '', link = null, sections = [], companies = [] }) {
 // As plain data: an object made inside the sandbox isn't deep-equal to one made here.
 const readCard = (doc) => JSON.parse(JSON.stringify(vm.runInNewContext(`(${topCardJs()})()`, { document: doc })));
 
-test('the top card: "500+ connections", followers in K and M, and an exact count under 500', () => {
+test('the top card: "500+ connections", followers in K and M, and an exact count under 500', (t) => {
+  if (noScanner(t)) return;
   assert.deepEqual(readCard(profile({ card: 'Jamie Invented\nFounder at Invented Sports Media\nNew York · Contact info\n27K followers · 500+ connections' })),
     { followers: 27000, connections: 500, connectionsPlus: true, companies: [] });
   assert.deepEqual(readCard(profile({ card: 'Riley Invented\nProfessor\n1.2M followers\n312 connections' })),
@@ -382,13 +384,15 @@ test('the top card: "500+ connections", followers in K and M, and an exact count
     { followers: null, connections: 500, connectionsPlus: true, companies: [] }, 'the link the search id comes from says it too');
 });
 
-test('the top card names their current company with its number, for the roles that only point at it', () => {
+test('the top card names their current company with its number, for the roles that only point at it', (t) => {
+  if (noScanner(t)) return;
   const got = readCard(profile({ card: 'Jamie Invented\nRecruiter\nInvented Robotics\n500+ connections',
     companies: [['https://www.linkedin.com/company/2889/', 'Invented Robotics'], ['/company/12/', '1,204 followers']] }));
   assert.deepEqual(got.companies, [{ id: '2889', name: 'Invented Robotics' }], 'a follower count is never a company');
 });
 
-test('the top card: followers from their own Activity heading, never from Interests or anyone else', () => {
+test('the top card: followers from their own Activity heading, never from Interests or anyone else', (t) => {
+  if (noScanner(t)) return;
   const doc = profile({
     card: 'Avery Invented\nChief People Officer\n500+ connections',
     sections: ['Activity\n12,480 followers\nPosts', 'Interests\nTop Voices\nInvented Retail Co\n1,234,567 followers'],

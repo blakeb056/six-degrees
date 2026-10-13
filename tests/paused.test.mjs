@@ -4,11 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { pausedList, nextPageToRead } from '../lib/paused.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const p = (id, url, extra = {}) => ({ id, name: `Person ${id}`, tier: 'A', profile_url: url, ...extra });
 
 test('mapped before 0.1.6 (no note): paused at page 10, carries on at 11', () => {
@@ -46,6 +45,7 @@ test('newest connection first, and repeatedly unclear people are flagged', () =>
 });
 
 test('nextPageToRead matches the scanner, case by case', (t) => {
+  if (noScanner(t)) return;
   const cases = [null, { pages: 25, more: true }, { pages: 37, more: false }, { pages: 12, more: true, hidden: true },
     { pages: 99, more: true }, { pages: 100, more: true }, { pages: 0, more: true }];
   const lift = `

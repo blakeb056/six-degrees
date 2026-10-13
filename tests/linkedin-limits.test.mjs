@@ -11,15 +11,14 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
   usage, readLimits, writeLimits, readCooldown, linkedinState, sessionLift, DEFAULT_LIMITS, DAILY_RANGE,
   validDaily, budgetFileProblem, mergeTimes, mergeBudgetFiles,
 } from '../lib/linkedin-limits.js';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../lib/limits-lift.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixdeg-limits-'));
 const write = (dir, name, value) => writeFileSync(path.join(dir, name), JSON.stringify(value));
 const read = (dir, name) => JSON.parse(readFileSync(path.join(dir, name), 'utf8'));
@@ -29,6 +28,7 @@ afterEach(() => putLimitsBack());
 
 /** Run scrape.py's own functions (lifted out of the file, nothing else of it) and print `expr`. */
 function scanner(t, dir, expr, { lifted = false, args = [] } = {}) {
+  if (noScanner(t)) return undefined;
   const lift = `
 import ast, json, os, sys, time
 from datetime import datetime

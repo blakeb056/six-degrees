@@ -7,10 +7,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 const GET = `
 import ast, json, sys
 for node in ast.walk(ast.parse(open(sys.argv[1]).read())):
@@ -19,6 +18,7 @@ for node in ast.walk(ast.parse(open(sys.argv[1]).read())):
 `;
 
 function shown(t, name, title, heading) {
+  if (noScanner(t)) return null;
   const run = spawnSync(PYTHON, ['-c', GET, SCRAPER], { encoding: 'utf8' });
   if (noPython(t, run)) return null;
   const js = JSON.parse(run.stdout);

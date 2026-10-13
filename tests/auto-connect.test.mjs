@@ -18,16 +18,14 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 import {
   INVITE_CAPS, OUTCOMES, RESULT_NAMES, CONNECT_RESULT, connectResultIn, connectMarks, connectOutcome,
   inviteRefusal, personRefusal, AUTO_ACCEPTED_SETTING, AUTO_CONFIRM, AUTO_EXPLAIN,
 } from '../lib/auto-connect.js';
 import { INVITE_CAPS as USAGE_INVITE_CAPS } from '../lib/usage.js';
 import { SETTINGS } from '../lib/settings.js';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
 const HARNESS = String.raw`
 import ast, json, re, sys, types
@@ -262,6 +260,7 @@ print('RESULT ' + json.dumps(out))
 
 /** Run one case: `body` sets up the stand-in page and fills `out` (usually out = run()). */
 function connect(t, body) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-auto-'));
   const r = spawnSync(PYTHON, ['-c', HARNESS, SCRAPER, body], {
     encoding: 'utf8',
@@ -627,6 +626,7 @@ out = run()
 // ── the scanner and the app agree ────────────────────────────────────────────
 
 test('Auto’s caps and result names in the app are the scanner’s', (t) => {
+  if (noScanner(t)) return;
   const lift = `
 import ast, json, sys
 tree = ast.parse(open(sys.argv[1]).read())

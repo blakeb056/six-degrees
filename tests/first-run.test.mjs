@@ -24,6 +24,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir, release } from 'node:os';
 import path from 'node:path';
 import { CHROME_REFUSAL, macosVersion } from '../lib/scanner-setup.js';
+import { standInRoot } from './helpers/scanner.mjs';
 
 register('./helpers/extensionless.mjs', import.meta.url);
 
@@ -35,8 +36,7 @@ process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 process.env.SIX_DEGREES_ROOT = path.join(dir, 'root');
 process.env.SIX_DEGREES_PYTHON = path.join(dir, 'python');
 mkdirSync(HOME);
-mkdirSync(path.join(dir, 'root', 'scripts'), { recursive: true });
-writeFileSync(path.join(dir, 'root', 'scripts', 'scrape.py'), 'raise SystemExit("a stand-in: never a real scan")\n');
+standInRoot(path.join(dir, 'root'));
 writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',

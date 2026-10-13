@@ -10,14 +10,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 import { mutualCountOf } from '../lib/ingest.js';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
 // The snippet as Python delivers it (a raw string, read through the AST).
 function reader(t) {
+  if (noScanner(t)) return null;
   const run = spawnSync(PYTHON, ['-c', `
 import ast, json, sys
 tree = ast.parse(open(sys.argv[1]).read())

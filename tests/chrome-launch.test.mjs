@@ -22,11 +22,9 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 import { needsYou } from '../lib/scan-progress.js';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
 const HARNESS = `
 import ast, json, sys, types
@@ -85,6 +83,7 @@ print('RESULT ' + json.dumps(out))
 
 /** { out, log, home } from the case, or null when there is no Python here. */
 function run(t, script, { keep = false } = {}) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-chrome-'));
   const r = spawnSync(PYTHON, ['-c', HARNESS, SCRAPER, script], {
     encoding: 'utf8',
@@ -210,7 +209,8 @@ out['leftovers'] = sorted(p.name for p in prefs.parent.iterdir())
   assert.match(r.log, /left as they are/);
 });
 
-test('every Chrome the scanner starts goes through launch_chrome', () => {
+test('every Chrome the scanner starts goes through launch_chrome', (t) => {
+  if (noScanner(t)) return;
   const src = fs.readFileSync(SCRAPER, 'utf8');
   const launches = src.split('\n').filter((l) => l.includes('launch_persistent_context(')).map((l) => l.trim());
   assert.deepEqual(launches, ['context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode, displays=displays))']);

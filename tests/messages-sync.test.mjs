@@ -13,10 +13,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const LIFT = `
 import ast, json, re, sys
@@ -64,6 +62,7 @@ const payload = {
 };
 
 function read(t) {
+  if (noScanner(t)) return null;
   const r = spawnSync(PYTHON, ['-c', LIFT, SCRAPER], { input: JSON.stringify(payload), encoding: 'utf8' });
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);

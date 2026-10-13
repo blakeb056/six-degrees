@@ -17,17 +17,14 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readLimits, writeLimits, linkedinState, devMode, DEFAULT_LIMITS } from '../lib/linkedin-limits.js';
 import { inviteRefusal, INVITE_CAPS } from '../lib/auto-connect.js';
 import { autoPlan, MANUAL_STOPS_AUTO } from '../lib/auto-scan.js';
 import { enqueue, emptyQueue, queueView, QUEUE_CAP, DEV_QUEUE_CAP } from '../lib/scan-queue.js';
 import { needsYou } from '../lib/scan-progress.js';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const SCRAPER = path.join(here, '..', 'scripts', 'scrape.py');
-const HARNESS = path.join(here, 'helpers', 'scanner_harness.py');
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixgree-devmanual-'));
 const write = (dir, name, value) => writeFileSync(path.join(dir, name), JSON.stringify(value));
 const read = (dir, name) => JSON.parse(readFileSync(path.join(dir, name), 'utf8'));
@@ -45,6 +42,7 @@ real('searches_left', 'charge_linkedin')
 
 /** The scanner's own code on a data folder: `script` runs with ns, clock and out (scanner_harness.py). */
 function scanner(t, home, script) {
+  if (noScanner(t)) return null;
   const r = spawnSync(PYTHON, [HARNESS, SCRAPER, REAL_COUNT + script], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_HOME: home } });
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);

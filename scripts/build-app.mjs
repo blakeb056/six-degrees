@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 import {
   standaloneBuild, downloadVerified, machoSlices, machoSlice, megabytes, IMPORTS,
 } from '../lib/scanner-python.js';
+import { scannerPresent } from '../lib/scanner-files.js';
 import {
   signingSetup, signDeveloperId, signatureInfo, signerName, signImage, notarize, staple, stapleValid, assess, SigningError,
 } from './mac-sign.mjs';
@@ -384,8 +385,12 @@ async function buildElectronShell() {
   rmSync(STAGE, { recursive: true, force: true });
 
   // Put straight into the finished app, so its links are made where they stay
-  // and nothing copies them again (TRAPS §37).
-  await bundlePython(path.join(APP, 'Contents', 'Resources'));
+  // and nothing copies them again (TRAPS §37). Only with the scanner: this
+  // Python is there to run it, and pip installs its requirements.txt. A checkout
+  // without the scanner's files (they are moving out of the app,
+  // lib/scanner-files.js) builds an app with neither.
+  if (scannerPresent(ROOT)) await bundlePython(path.join(APP, 'Contents', 'Resources'));
+  else step('No scanner in this checkout, so no Python in the app');
   localizeDisplayName(path.join(APP, 'Contents', 'Resources'));
 
   if (DEVELOPER_ID) {

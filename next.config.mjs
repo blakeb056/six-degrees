@@ -9,10 +9,10 @@ const nextConfig = {
   // the bundle. The page still renders and every API route returns 500, which
   // is a miserable thing to debug in a packaged app. Name the artefacts.
   //
-  // The whole project folder gets traced (lib/paths.js looks around the working
-  // directory for the scraper), so anything sitting in it rides along unless it
-  // is named here. `.git` above all: inside the Mac app it made the installed
-  // copy look like a checkout, so its Updates panel would have tried to
+  // The whole project folder gets traced (every API route's trace has all of
+  // it), so anything sitting in it rides along unless it is named here. `.git`
+  // above all: inside the Mac app it made the installed copy look like a
+  // checkout, so its Updates panel would have tried to
   // `git pull` into the app bundle. In a git worktree `.git` is a file, not a
   // folder, which '.git/**' doesn't match, so both are named. Logs carry local
   // paths and are never needed.

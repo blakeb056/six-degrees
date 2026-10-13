@@ -12,10 +12,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const LIFT = `
 import ast, json, re, sys
@@ -49,6 +47,7 @@ const ME = link('ACoAME0');
 const convo = (n, people, at, extra = {}) => ({ people: [ME, ...people].sort(), at, unread: 0, names: {}, url: thread(n), group: null, latest: null, ...extra });
 
 function run(t, job) {
+  if (noScanner(t)) return null;
   const r = spawnSync(PYTHON, ['-c', LIFT, SCRAPER], { input: JSON.stringify(job), encoding: 'utf8' });
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);

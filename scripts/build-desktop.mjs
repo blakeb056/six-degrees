@@ -33,6 +33,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { standaloneBuild, downloadVerified, IMPORTS } from '../lib/scanner-python.js';
+import { scannerPresent } from '../lib/scanner-files.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLATFORM = (process.argv.find((a) => a.startsWith('--platform='))?.split('=')[1]) || process.platform;
@@ -122,7 +123,11 @@ if (existsSync(path.join(SERVER_DIR, '.git'))) rmSync(path.join(SERVER_DIR, '.gi
 // The files the app runs from scripts/, by name (TRAPS §27). Not apply-update.sh:
 // only the Mac app replaces itself; here an update is the new installer, and a
 // missing helper is one more thing that keeps the Mac swap from ever running.
+// Each one this checkout has, as build-app.mjs does: the scanner's files are
+// moving out of the app (lib/scanner-files.js), and a build without them must
+// still finish.
 for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt', 'scripts/audit-avatars.mjs']) {
+  if (!existsSync(path.join(ROOT, rel))) continue;
   mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
   cpSync(path.join(ROOT, rel), path.join(SERVER_DIR, rel));
 }
@@ -196,69 +201,76 @@ console.log(`  Electron ${electronVersion} (${PLATFORM} ${ARCH})`);
 const RES = path.join(APP_DIR, 'resources');
 
 // ---- 5. the scanner's Python (DESKTOP.md D2, D3) ------------------------------
-const build = standaloneBuild(WIN ? 'win32-x64' : 'linux-x64');
-const xy = build.version.split('.').slice(0, 2).join('.');
-step(`Fetching Python ${build.version}`);
-const pyArchive = await fetchPinned(build, 'Python');
-const PY = path.join(RES, 'python');
-rmSync(PY, { recursive: true, force: true });
-run(TAR, ['-xzf', pyArchive, '-C', RES]);
-const python = WIN ? path.join(PY, 'python.exe') : path.join(PY, 'bin', 'python3');
-const SITE = WIN ? path.join(PY, 'Lib', 'site-packages') : path.join(PY, 'lib', `python${xy}`, 'site-packages');
-// Only this Python's own packages and settings: nothing from the build machine's
-// user site-packages, PYTHONPATH or pip configuration. Windows' Python can't start without SYSTEMROOT.
-const pyEnv = WIN
-  ? Object.fromEntries(Object.entries({
-    SYSTEMROOT: process.env.SYSTEMROOT, WINDIR: process.env.WINDIR, TEMP: process.env.TEMP, TMP: process.env.TMP,
-    USERPROFILE: process.env.USERPROFILE, LOCALAPPDATA: process.env.LOCALAPPDATA, APPDATA: process.env.APPDATA,
-    PATH: path.join(process.env.SYSTEMROOT || 'C:\\Windows', 'System32'),
-    PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1',
-  }).filter(([, v]) => v))
-  : { HOME: os.homedir(), TMPDIR: os.tmpdir(), PATH: '/usr/bin:/bin', LANG: 'C.UTF-8', PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1' };
+// Only with the scanner: this Python is there to run it, and pip installs its
+// requirements.txt. A checkout without the scanner's files (they are moving
+// out of the app, lib/scanner-files.js) builds an app with neither.
+if (!scannerPresent(ROOT)) {
+  step('No scanner in this checkout, so no Python in the app');
+} else {
+  const build = standaloneBuild(WIN ? 'win32-x64' : 'linux-x64');
+  const xy = build.version.split('.').slice(0, 2).join('.');
+  step(`Fetching Python ${build.version}`);
+  const pyArchive = await fetchPinned(build, 'Python');
+  const PY = path.join(RES, 'python');
+  rmSync(PY, { recursive: true, force: true });
+  run(TAR, ['-xzf', pyArchive, '-C', RES]);
+  const python = WIN ? path.join(PY, 'python.exe') : path.join(PY, 'bin', 'python3');
+  const SITE = WIN ? path.join(PY, 'Lib', 'site-packages') : path.join(PY, 'lib', `python${xy}`, 'site-packages');
+  // Only this Python's own packages and settings: nothing from the build machine's
+  // user site-packages, PYTHONPATH or pip configuration. Windows' Python can't start without SYSTEMROOT.
+  const pyEnv = WIN
+    ? Object.fromEntries(Object.entries({
+      SYSTEMROOT: process.env.SYSTEMROOT, WINDIR: process.env.WINDIR, TEMP: process.env.TEMP, TMP: process.env.TMP,
+      USERPROFILE: process.env.USERPROFILE, LOCALAPPDATA: process.env.LOCALAPPDATA, APPDATA: process.env.APPDATA,
+      PATH: path.join(process.env.SYSTEMROOT || 'C:\\Windows', 'System32'),
+      PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1',
+    }).filter(([, v]) => v))
+    : { HOME: os.homedir(), TMPDIR: os.tmpdir(), PATH: '/usr/bin:/bin', LANG: 'C.UTF-8', PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1' };
 
-step('Installing the scanner\'s packages into it');
-run(python, ['-E', '-s', '-m', 'pip', '--isolated', 'install', '--disable-pip-version-check', '--no-input',
-  '--no-warn-script-location', '--no-compile', '--index-url', 'https://pypi.org/simple',
-  '--cache-dir', path.join(CACHE, 'pip'), '--require-hashes', '--only-binary', ':all:',
-  '-r', path.join(ROOT, 'scripts', 'requirements.txt')], { env: pyEnv });
-run(python, ['-E', '-s', '-m', 'pip', '--isolated', 'check', '--disable-pip-version-check'], { env: pyEnv });
+  step('Installing the scanner\'s packages into it');
+  run(python, ['-E', '-s', '-m', 'pip', '--isolated', 'install', '--disable-pip-version-check', '--no-input',
+    '--no-warn-script-location', '--no-compile', '--index-url', 'https://pypi.org/simple',
+    '--cache-dir', path.join(CACHE, 'pip'), '--require-hashes', '--only-binary', ':all:',
+    '-r', path.join(ROOT, 'scripts', 'requirements.txt')], { env: pyEnv });
+  run(python, ['-E', '-s', '-m', 'pip', '--isolated', 'check', '--disable-pip-version-check'], { env: pyEnv });
 
-step('Trimming what the scanner never uses');
-const libDir = WIN ? path.join(PY, 'Lib') : path.join(PY, 'lib', `python${xy}`);
-const remove = [
-  ...['idlelib', 'tkinter', 'turtledemo', 'turtle.py', 'lib2to3', 'ensurepip', 'test'].map((n) => path.join(libDir, n)),
-  ...readdirSync(SITE).filter((n) => n === 'pip' || /^pip-.*\.dist-info$/.test(n)).map((n) => path.join(SITE, n)),
-  ...(WIN
-    ? ['Scripts', 'include', 'libs', 'tcl', path.join('DLLs', '_tkinter.pyd'), path.join('DLLs', 'tcl86t.dll'), path.join('DLLs', 'tk86t.dll')].map((n) => path.join(PY, n))
-    : [
-      ...['include', 'share', path.join('lib', 'pkgconfig')].map((n) => path.join(PY, n)),
-      ...readdirSync(path.join(PY, 'lib')).filter((n) => /^(libtcl|libtk|tcl|tk|itcl|thread)/.test(n)).map((n) => path.join(PY, 'lib', n)),
-      ...readdirSync(libDir).filter((n) => n.startsWith('config-')).map((n) => path.join(libDir, n)),
-      ...readdirSync(path.join(libDir, 'lib-dynload')).filter((n) => n.startsWith('_tkinter.')).map((n) => path.join(libDir, 'lib-dynload', n)),
-      ...readdirSync(path.join(PY, 'bin')).filter((n) => ![`python${xy}`, 'python3', 'python'].includes(n)).map((n) => path.join(PY, 'bin', n)),
-    ]),
-];
-for (const p of remove) rmSync(p, { recursive: true, force: true });
-for (const dir of [...findDirs(PY, (n) => n === '__pycache__'), ...findDirs(SITE, (n) => n === 'tests')]) rmSync(dir, { recursive: true, force: true });
+  step('Trimming what the scanner never uses');
+  const libDir = WIN ? path.join(PY, 'Lib') : path.join(PY, 'lib', `python${xy}`);
+  const remove = [
+    ...['idlelib', 'tkinter', 'turtledemo', 'turtle.py', 'lib2to3', 'ensurepip', 'test'].map((n) => path.join(libDir, n)),
+    ...readdirSync(SITE).filter((n) => n === 'pip' || /^pip-.*\.dist-info$/.test(n)).map((n) => path.join(SITE, n)),
+    ...(WIN
+      ? ['Scripts', 'include', 'libs', 'tcl', path.join('DLLs', '_tkinter.pyd'), path.join('DLLs', 'tcl86t.dll'), path.join('DLLs', 'tk86t.dll')].map((n) => path.join(PY, n))
+      : [
+        ...['include', 'share', path.join('lib', 'pkgconfig')].map((n) => path.join(PY, n)),
+        ...readdirSync(path.join(PY, 'lib')).filter((n) => /^(libtcl|libtk|tcl|tk|itcl|thread)/.test(n)).map((n) => path.join(PY, 'lib', n)),
+        ...readdirSync(libDir).filter((n) => n.startsWith('config-')).map((n) => path.join(libDir, n)),
+        ...readdirSync(path.join(libDir, 'lib-dynload')).filter((n) => n.startsWith('_tkinter.')).map((n) => path.join(libDir, 'lib-dynload', n)),
+        ...readdirSync(path.join(PY, 'bin')).filter((n) => ![`python${xy}`, 'python3', 'python'].includes(n)).map((n) => path.join(PY, 'bin', n)),
+      ]),
+  ];
+  for (const p of remove) rmSync(p, { recursive: true, force: true });
+  for (const dir of [...findDirs(PY, (n) => n === '__pycache__'), ...findDirs(SITE, (n) => n === 'tests')]) rmSync(dir, { recursive: true, force: true });
 
-// Linux: Playwright's driver carries its own Node; when it is byte for byte the
-// app's, it becomes a relative link to it (as on the Mac). Not on Windows, where
-// a symlink needs admin rights.
-const driverNode = path.join(SITE, 'playwright', 'driver', WIN ? 'node.exe' : 'node');
-if (!WIN && existsSync(driverNode) && sha256File(driverNode) === sha256File(path.join(RES, 'node'))) {
-  rmSync(driverNode);
-  symlinkSync(path.relative(path.dirname(driverNode), path.join(RES, 'node')), driverNode);
-  if (realpathSync(driverNode) !== realpathSync(path.join(RES, 'node'))) throw new Error('The driver\'s link to the app\'s Node is wrong.');
-  console.log('  Playwright runs on the app\'s own Node');
+  // Linux: Playwright's driver carries its own Node; when it is byte for byte the
+  // app's, it becomes a relative link to it (as on the Mac). Not on Windows, where
+  // a symlink needs admin rights.
+  const driverNode = path.join(SITE, 'playwright', 'driver', WIN ? 'node.exe' : 'node');
+  if (!WIN && existsSync(driverNode) && sha256File(driverNode) === sha256File(path.join(RES, 'node'))) {
+    rmSync(driverNode);
+    symlinkSync(path.relative(path.dirname(driverNode), path.join(RES, 'node')), driverNode);
+    if (realpathSync(driverNode) !== realpathSync(path.join(RES, 'node'))) throw new Error('The driver\'s link to the app\'s Node is wrong.');
+    console.log('  Playwright runs on the app\'s own Node');
+  }
+
+  step('Checking the Python inside the app');
+  // As the app runs it (lib/scanner-python.js OWN_PYTHON_FLAGS), with a "→" to
+  // prove its output is UTF-8 on Windows too.
+  const check = `${IMPORTS}; import sys, zoneinfo; zoneinfo.ZoneInfo('America/Los_Angeles'); from importlib.metadata import version as v; print('→ Python', sys.version.split()[0], '· Playwright', v('playwright'))`;
+  run(python, ['-E', '-s', '-B', '-u', '-X', 'utf8', '-c', check], { env: pyEnv });
+  run(driverNode, [path.join(SITE, 'playwright', 'driver', 'package', 'cli.js'), '--version'], { env: { ...pyEnv } });
+  for (const dir of findDirs(PY, (n) => n === '__pycache__')) rmSync(dir, { recursive: true, force: true });
 }
-
-step('Checking the Python inside the app');
-// As the app runs it (lib/scanner-python.js OWN_PYTHON_FLAGS), with a "→" to
-// prove its output is UTF-8 on Windows too.
-const check = `${IMPORTS}; import sys, zoneinfo; zoneinfo.ZoneInfo('America/Los_Angeles'); from importlib.metadata import version as v; print('→ Python', sys.version.split()[0], '· Playwright', v('playwright'))`;
-run(python, ['-E', '-s', '-B', '-u', '-X', 'utf8', '-c', check], { env: pyEnv });
-run(driverNode, [path.join(SITE, 'playwright', 'driver', 'package', 'cli.js'), '--version'], { env: { ...pyEnv } });
-for (const dir of findDirs(PY, (n) => n === '__pycache__')) rmSync(dir, { recursive: true, force: true });
 
 // Windows' 260-character path limit: installed under
 // C:\Users\<name>\AppData\Local\Programs\Six Degrees\ (about 70), the deepest file must still fit.

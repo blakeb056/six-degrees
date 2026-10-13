@@ -15,10 +15,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
 const LIFT = `
 import ast, json, os, sys
@@ -53,6 +51,7 @@ function run(script) {
 
 /** { value } from the script's printed JSON, or null when python3 is missing. */
 function results(t, script) {
+  if (noScanner(t)) return null;
   const r = run(script);
   if (noPython(t, r)) return null;
   assert.equal(r.status, 0, r.stderr);

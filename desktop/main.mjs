@@ -50,7 +50,7 @@ const REPO = path.resolve(HERE, '..'); // only meaningful when run from a checko
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, 'server') : path.join(REPO, '.next', 'standalone');
 // node.exe on Windows (DESKTOP.md D3); the same Node binary as the Mac's otherwise.
 const NODE = app.isPackaged ? path.join(process.resourcesPath, process.platform === 'win32' ? 'node.exe' : 'node') : (process.env.SIX_DEGREES_NODE || 'node');
-const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the folder holding scripts/scrape.py
+const ROOT = app.isPackaged ? SERVER_DIR : REPO; // the app's folder: the one with its package.json (lib/paths.js)
 // The scanner's own Python, inside the app (DESKTOP.md D2): a standalone CPython
 // with the scanner's packages installed when the app was built. The server runs
 // the scanner on it before any other Python, so there is nothing to install.

@@ -15,11 +15,9 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PYTHON, noPython } from './python.mjs';
+import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 import { SIGNED_IN_FILE } from '../lib/scanner-setup.js';
-
-const SCRAPER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'scrape.py');
 
 const HARNESS = `
 import ast, json, sys, types
@@ -88,6 +86,7 @@ print('RESULT ' + json.dumps(out))
 
 /** { out, log } from the case, or null when there is no Python here. */
 function run(t, script) {
+  if (noScanner(t)) return null;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-signed-in-'));
   const r = spawnSync(PYTHON, ['-c', HARNESS, SCRAPER, script], {
     encoding: 'utf8',
