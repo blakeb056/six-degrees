@@ -101,9 +101,22 @@ test("a copy that fails the importer's check is never kept under a backup's name
 
 test('only the kinds Sixgree makes', () => {
   const { dir, db } = network('k');
-  assert.throws(() => makeBackup('before-import', opts(dir, db)), /no kind of backup/);
   assert.throws(() => makeBackup('../x', opts(dir, db)), /no kind of backup/);
+  assert.throws(() => makeBackup('weekly', opts(dir, db)), /no kind of backup/);
   db.close();
+});
+
+test('a network file import backs up first: a whole .sixdegrees, kept like the copies from before an import', () => {
+  const { dir, db } = network('n', { people: 2 });
+  const made = makeBackup('before-import', opts(dir, db, { now: new Date('2026-10-12T21:00:00.000Z') }));
+  db.close();
+  assert.equal(made.name, 'before-import-0.7.0-2026-10-12T21-00-00-000Z.sixdegrees');
+  assert.equal(made.people, 2);
+  assert.equal(made.photos, 2);
+  const [row] = describeBackups(backupsIn(dir));
+  assert.deepEqual([row.kind, row.format, row.restorable, row.byHand, row.version], ['before-import', 'sixdegrees', true, false, '0.7.0']);
+  // Under the same rotation as the database copies an import keeps: three, and none under 30 days old.
+  assert.deepEqual(rotateBackups(backupsIn(dir), { now: new Date(Date.UTC(2026, 9, 13)) }), []);
 });
 
 test('REGRESSION (TRAPS §7): a damaged or cut-short backup is reported as not verified, never as verified', () => {
