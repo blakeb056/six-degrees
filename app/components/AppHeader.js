@@ -32,6 +32,8 @@ import { startHere, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { networkLevel, rememberLevel, levelNow, watchLevel } from '../../lib/level';
 import { IS_DEMO } from '../../lib/demo';
+import { headerShows } from '../../lib/network-origin';
+import { networkFromExportNow, watchNetworkFromExport } from '../../lib/csv';
 
 // A phone by the window's own width (a media query), not innerWidth: on a phone
 // innerWidth grows with anything wider than the screen, so the header's first,
@@ -68,10 +70,17 @@ const TITLE = { margin: 0, fontWeight: 800 };
 export default function AppHeader({ active, isMobile: mobileProp, csvMode = false, onMode, chips, level, onOpenNote, openNoteId = null, brand: Brand = 'h1', children }) {
   const mobileSeen = useIsMobile();
   const isMobile = mobileProp ?? mobileSeen;
-  const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
+  // Your own network from an export keeps the header a CSV import always had,
+  // nothing that scans, until the scanner reads it (lib/network-origin.js).
+  // Asked once per page (lib/csv.js). While that answer is on its way (a few
+  // milliseconds, on a page that draws before it), what scans waits too: a
+  // button that turns up a moment late is better than one that goes as you
+  // reach for it. A server that doesn't answer is taken as a scanned network.
+  const origin = useSyncExternalStore(watchNetworkFromExport, networkFromExportNow, () => null);
+  const shows = headerShows({ demo: IS_DEMO, csvMode, fromExport: origin !== false });
   const tabs = (
-    <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} onMode={onMode}
-      after={own ? <AutoScanButton isMobile={isMobile} /> : null}>
+    <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} scanTab={shows.scanTab} onMode={onMode}
+      after={shows.autoScan ? <AutoScanButton isMobile={isMobile} /> : null}>
       {chips}
     </AppTabs>
   );
@@ -97,14 +106,14 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
             background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{'⚙︎'}</Link>}
-          {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
-          {own && <RefreshButton isMobile={isMobile} />}
-          <ProfileButton isMobile={isMobile} csvMode={csvMode} level={level} />
+          {shows.notifications && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
+          {shows.checkForNew && <RefreshButton isMobile={isMobile} />}
+          <ProfileButton isMobile={isMobile} csvMode={csvMode} level={level} href={shows.profileHref} />
         </div>
       </div>
       {children}
       {/* While a scan runs: a dot on the line below for each page it reads */}
-      {own && <ScanTrail inset={isMobile ? 12 : 30} />}
+      {shows.scanTab && <ScanTrail inset={isMobile ? 12 : 30} />}
     </header>
   );
 }
@@ -264,7 +273,7 @@ function RefreshButton({ isMobile }) {
 let levelLoad = null;
 
 /** Your level, opening your Profile (the sample's launch page, or a CSV's import page). */
-function ProfileButton({ isMobile, csvMode, level }) {
+function ProfileButton({ isMobile, csvMode, level, href }) {
   const { userId } = useUser();
   const source = IS_DEMO ? 'sample' : csvMode ? 'csv' : 'own';
   const remembered = useSyncExternalStore(watchLevel, () => levelNow(source), () => null);
@@ -279,7 +288,7 @@ function ProfileButton({ isMobile, csvMode, level }) {
   // A <Link>, as every other button up here is: a plain link reloaded the whole
   // app on the way to Profile, blank screen and all, now that Insights is there.
   return (
-    <Link href={IS_DEMO ? '/launch' : csvMode ? '/import' : '/profile'} title={shown != null ? `Your profile · level ${shown}` : 'Your profile'} style={{
+    <Link href={href} title={shown != null ? `Your profile · level ${shown}` : 'Your profile'} style={{
       width: isMobile ? 30 : 36, height: isMobile ? 30 : 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(135deg, #FFD700, #FF6B35)', color: '#000', fontWeight: 800, fontSize: isMobile ? 11 : 14,
       textDecoration: 'none', marginLeft: isMobile ? 2 : 4, flexShrink: 0,

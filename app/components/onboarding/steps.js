@@ -7,16 +7,14 @@
 // the scanner, App Management, the risks and the budget are the ones the Scan
 // page uses (lib/scanner-setup.js, lib/scan-risk.js, lib/search-risk.js).
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { appManagementHref, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
 import { readyChecks, connectState, firstScan, photosNote, escapeHatch } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
 import { SAFE_LIMITS, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
 import { watchAllDay, allDayNow, setAllDay } from '../../../lib/experimental-client';
-import { keptCsvProblem } from '../../../lib/csv';
+import { keptCsvProblem, importLines } from '../../../lib/csv';
 import { INDUSTRIES } from '../../../lib/companies';
 import { sectorByKey } from '../../../lib/sector-directory';
 import { MAX_SECTORS } from '../../../lib/sector-focus';
@@ -65,8 +63,8 @@ const Waiting = ({ children }) => <button type="button" className="ob-btn primar
 // The CSV import comes first, recommended and already chosen: the official
 // export carries no risk to your account (2026-10-09). Then the sample, and
 // last the opt-in, scanning, for who your connections know, with its risk line.
+// Import a CSV opens the import's own screen, here in the setup (ImportCsv).
 export function Welcome({ ctx }) {
-  const router = useRouter();
   const [choice, setChoice] = useState('csv');
   const [csvProblem, setCsvProblem] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -80,7 +78,7 @@ export function Welcome({ ctx }) {
 
   async function go() {
     if (choice === 'scan') return ctx.start();
-    if (choice === 'csv') { router.push('/import'); return undefined; }
+    if (choice === 'csv') return ctx.openCsv();
     setLoading(true);
     setError('');
     const why = await ctx.openSample();
@@ -325,7 +323,8 @@ export function GetReady({ ctx }) {
         <input type="checkbox" className="ob-sr" checked={r.risk} disabled={r.risk || scan.busy} onChange={() => scan.acceptRisk()} />
         <span className="ob-check" aria-hidden="true"><Ico.check /></span>
         <span>
-          <span className="ct">I understand what scanning risks{!r.risk && <> <Link className="ob-link" href="/import" style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 500 }}>Rather not? Import a CSV</Link></>}</span>
+          <span className="ct">I understand what scanning risks{!r.risk && <> <button type="button" className="ob-link" onClick={(e) => { e.preventDefault(); ctx.openCsv(); }}
+            style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 500, background: 'none', border: 0, padding: 0 }}>Rather not? Import a CSV</button></>}</span>
           <ul>{RISK_POINTS.map((p) => <li key={p}>{p}</li>)}</ul>
         </span>
       </label>
@@ -636,7 +635,115 @@ export function MapPeople({ ctx }) {
         <div><span className="fi"><Ico.pause /></span>Stop anytime. Everything found so far is kept.</div>
         <div><span className="fi"><Ico.spark /></span>Your galaxy fills in as it reads.</div>
       </div>
-      {failed && <div className="ob-quiet">Rather not try again? <Link className="ob-link" href="/import">Import a CSV instead</Link>.</div>}
+      {failed && <div className="ob-quiet">Rather not try again? <button type="button" className="ob-link" onClick={ctx.openCsv}
+        style={{ background: 'none', border: 0, padding: 0, font: 'inherit' }}>Import a CSV instead</button>.</div>}
+    </Frame>
+  );
+}
+
+// ── Import a connections CSV ─────────────────────────────────────────────────
+// Off the five steps: the CSV's door (Blake, 2026-10-12). Drop or pick the
+// file, see what it adds, Import, then the map. The import itself is
+// useCsvImport's (Onboarding.js holds it, so a file dropped on any step lands
+// here), the same as the Import page's.
+
+const many = (n, one, more) => `${(Number(n) || 0).toLocaleString()} ${Number(n) === 1 ? one : more}`;
+
+/** What the import would do, or did, one line each (lib/csv.js importLines). */
+function ImportLines({ of, done }) {
+  const lines = importLines(of, { done });
+  if (!lines.length) return null;
+  return (
+    <div className="ob-facts" data-import-lines="">
+      {lines.map((l) => (
+        <div key={l.key} data-line={l.key}>
+          <span className="fi">{l.key === 'noLink' || l.key === 'repeated' ? <Ico.info /> : <Ico.check />}</span>{l.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ImportCsv({ ctx }) {
+  const { csv } = ctx;
+  const input = useRef(null);
+  const [over, setOver] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const pick = () => input.current?.click();
+  const reading = csv.step === 'reading';
+  const p = csv.preview;
+  const r = csv.result;
+  const art = (progress, badge) => (
+    <div><div className="ob-art-galaxy"><Galaxy progress={progress} ghost={progress === 0} /></div><div className="ob-badge">{badge}</div></div>
+  );
+
+  if (csv.step === 'done') {
+    const total = Number(r.network) || 0;
+    return (
+      <Frame
+        eyebrow="Imported"
+        title={<>Your people<br />are in.</>}
+        lede={`${many(total, 'connection', 'connections')} in your network, scored and kept on ${ctx.here}.`}
+        art={art(1, <><Ico.check />{many(total, 'person', 'people')} mapped</>)}
+        foot={<>
+          <Spacer />
+          <Primary onClick={async () => { setOpening(true); await ctx.finish(); }} disabled={opening}>{opening ? 'Opening…' : 'Open the map'}</Primary>
+        </>}
+      >
+        <ImportLines of={{ counts: r.counts, leftOut: r.leftOut, repeated: p?.repeated }} done />
+        <p className="ob-quiet" style={{ marginTop: 6 }}>Import a newer export anytime from the Import page: it adds anyone new and brings everyone else up to date, and never removes anyone.</p>
+      </Frame>
+    );
+  }
+
+  if (csv.step === 'preview' || csv.step === 'importing') {
+    const people = (p.counts?.add || 0) + (p.counts?.update || 0) + (p.counts?.promote || 0);
+    const importing = csv.step === 'importing';
+    return (
+      <Frame
+        eyebrow="Import a connections CSV"
+        title="Ready to import"
+        lede={`${many(p.received, 'person', 'people')} in ${p.fileName}. Here’s what importing it adds to your network on ${ctx.here}. Nothing has changed yet.`}
+        error={csv.error}
+        art={art(importing ? 1 : 0.6, importing ? <><span className="ob-spin" />Importing…</> : <><Ico.csv />{p.fileName}</>)}
+        foot={<>
+          <button type="button" className="ob-btn ghost" onClick={csv.again} disabled={importing}><Ico.left />Choose another file</button>
+          <Spacer />
+          {importing ? <Waiting>Importing…</Waiting>
+            : <Primary onClick={csv.confirm} disabled={people === 0}>{people === 0 ? 'Nothing new to import' : `Import ${many(people, 'person', 'people')}`}</Primary>}
+        </>}
+      >
+        <ImportLines of={p} />
+      </Frame>
+    );
+  }
+
+  return (
+    <Frame
+      eyebrow="Import a connections CSV"
+      title="Bring in your connections"
+      lede={`Drop the Connections.csv from your connections export. It’s read on ${ctx.here}, and you see what it adds before anything changes. Nothing is uploaded.`}
+      error={csv.error}
+      art={art(0, <><Ico.lock />Read on {ctx.here}. Nothing is uploaded.</>)}
+      foot={<>
+        <Back onClick={ctx.closeCsv} />
+        <Spacer />
+        <Primary onClick={pick} disabled={reading} icon={null}>{reading ? 'Reading…' : 'Choose the file'}</Primary>
+      </>}
+    >
+      <button type="button" className={`ob-drop${over ? ' over' : ''}`} id="ob-drop" onClick={pick} disabled={reading}
+        onDragEnter={() => setOver(true)} onDragLeave={() => setOver(false)} onDrop={() => setOver(false)}>
+        <span className="ci"><Ico.csv /></span>
+        <span className="dt">{reading ? 'Reading…' : 'Drop Connections.csv here'}</span>
+        <span className="dd">or click to choose the file</span>
+      </button>
+      <input ref={input} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
+        onChange={(e) => { csv.choose(e.target.files?.[0]); e.target.value = ''; }} />
+      <div className="ob-note"><Ico.info /><span>
+        No file yet? On the platform: <b>Settings &amp; Privacy → Data privacy → Get a copy of your data</b>, pick <b>Connections</b>,
+        and a download link arrives by email in about ten minutes. Unzip it and drop <b>Connections.csv</b> here.
+        Its email addresses are never read.
+      </span></div>
     </Frame>
   );
 }

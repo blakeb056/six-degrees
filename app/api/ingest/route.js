@@ -5,6 +5,17 @@ import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
 import { cleanExperience, readExperience } from '../../../lib/experience';
+import { getDb } from '../../../lib/db-client';
+import { clearFromExport } from '../../../lib/network-origin';
+
+/**
+ * The scanner has read this network: from now on it's a scanned one, not an
+ * export's, and the header has Scan, Auto scan and Check for new again
+ * (lib/network-origin.js). Quietly: a failure here never costs a scan its save.
+ */
+function scannerArrived() {
+  try { clearFromExport(getDb()); } catch { /* the header stays as it was until the next batch */ }
+}
 
 /**
  * Read profiles' answer (scripts/scrape.py push_experience): for each person,
@@ -41,6 +52,7 @@ async function saveExperience({ people, userId }) {
     if (stored.status === 'read') saved += 1;
     else if (stored.status === 'unreadable') unreadable += 1;
   }
+  scannerArrived();
   try { await supabase.rpc('score_new_connections'); } catch { /* scoring is best-effort, as for every ingest */ }
   return Response.json({ ok: true, saved, unreadable, notFound });
 }
@@ -221,6 +233,7 @@ export async function POST(request) {
       console.error('Supabase insert error:', insertError);
       return Response.json({ error: insertError.message }, { status: 500 });
     }
+    scannerArrived();
 
     // How many mutual connections you share with someone is one fact about
     // the two of you, whichever bridge's circle turned them up. Every copy of

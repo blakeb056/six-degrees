@@ -15,6 +15,12 @@
 // The step is also kept with your settings (lib/onboarding.js setupStep):
 // turning App Management on makes macOS quit and reopen Sixgree, and the setup
 // comes back on the step it was on, with the permission asked again.
+//
+// The CSV import has its own screen here, off the five steps (Blake,
+// 2026-10-12: onboarding is the CSV's door, "drag and drop or find the CSV
+// file needed"): Import a CSV on the welcome screen, or the way out at the
+// top, opens it, and a Connections.csv dropped anywhere on the setup does too.
+// It goes straight into your network through the importer (useCsvImport).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useScanStatus from '../useScanStatus';
@@ -25,9 +31,10 @@ import {
 import { askForField } from '../../../lib/scanner-setup';
 import { saveSettings } from '../../../lib/settings-client';
 import { loadSampleIntoSession } from '../../../lib/demo';
+import useCsvImport from '../useCsvImport';
 import { ONBOARDING_CSS } from './styles';
 import Wordmark from '../Wordmark';
-import { Welcome, GetReady, Connect, Pace, MapPeople, Final } from './steps';
+import { Welcome, GetReady, Connect, Pace, MapPeople, Final, ImportCsv } from './steps';
 
 const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: MapPeople };
 const OUT_MS = 190;
@@ -136,6 +143,16 @@ export default function Onboarding({ onFinish, again = false }) {
   const [dir, setDir] = useState(1);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // The CSV import's screen, over whichever step was open; Back goes back to that step.
+  const csv = useCsvImport();
+  const [csvOpen, setCsvOpen] = useState(false);
+  const openCsv = useCallback((open) => {
+    scan.setError(null);
+    setDir(open ? 1 : -1);
+    setPhase('out');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => { setCsvOpen(open); setPhase('in'); window.scrollTo(0, 0); }, OUT_MS);
+  }, [scan]);
 
   const go = useCallback((next) => {
     if (!next || next === view) return;
@@ -171,6 +188,11 @@ export default function Onboarding({ onFinish, again = false }) {
     start: () => { setMemory(rememberSetup({ started: true })); go('ready'); },
     // Set your pace → Continue: it has no check of its own, so this browser remembers it.
     paced: () => { setMemory(rememberSetup({ paced: true })); go('map'); },
+    // The CSV import (useCsvImport), its screen, and the map once it's in.
+    csv,
+    openCsv: () => openCsv(true),
+    closeCsv: () => { csv.again(); openCsv(false); },
+    finish: async () => { kept.current = null; await saveSettings({ setupStep: null }); return onFinish(); },
     // Try the sample, from the welcome screen or the way out at the top
     // (the welcome screen did this before the setup). Resolves to
     // why it didn't open, or never, since the page reloads into it.
@@ -191,12 +213,26 @@ export default function Onboarding({ onFinish, again = false }) {
   // comes back (useScanStatus), so this follows the end within a second or two.
   const scanDone = firstScan(s, following).state === 'done';
   const fieldOpen = askForField(s, settings, { duringFirstScan: true }) === true;
-  const final = scanDone && (again || (view === 'map' && !fieldOpen));
+  // Never over the CSV import's screen: people saved by an import aren't a first scan, and it has its own end.
+  const final = !csvOpen && scanDone && (again || (view === 'map' && !fieldOpen));
   const Screen = view && SCREENS[view];
   const at = view || 'welcome';
 
+  // A file dropped anywhere on the setup is the CSV import, wherever you were.
+  const takesDrop = !final && csv.step !== 'importing' && csv.step !== 'done';
+  const drop = takesDrop ? {
+    onDragOver: (e) => { if (Array.from(e.dataTransfer?.types || []).includes('Files')) e.preventDefault(); },
+    onDrop: (e) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+      e.preventDefault();
+      csv.choose(file);
+      if (!csvOpen) openCsv(true);
+    },
+  } : {};
+
   return (
-    <div className="ob" data-onboarding={final ? 'ready' : view || 'loading'}>
+    <div className="ob" data-onboarding={final ? 'ready' : csvOpen ? 'csv' : view || 'loading'} {...drop}>
       <style>{ONBOARDING_CSS}</style>
       <header className="ob-top">
         <div className="ob-mark"><Wordmark size={20} /></div>
@@ -214,11 +250,15 @@ export default function Onboarding({ onFinish, again = false }) {
             })}
           </nav>
         )}
-        {final || at === 'welcome' ? <span /> : <WayOut openSample={ctx.openSample} />}
+        {final || at === 'welcome' || csvOpen ? <span /> : <WayOut openSample={ctx.openSample} openCsv={ctx.openCsv} />}
       </header>
 
-      {final ? <Final ctx={ctx} onFinish={async () => { kept.current = null; await saveSettings({ setupStep: null }); return onFinish(); }} />
-        : Screen ? (
+      {final ? <Final ctx={ctx} onFinish={ctx.finish} />
+        : csvOpen ? (
+          <section key="csv" className={`ob-card ob-step-${phase}`} style={{ '--dir': dir }} data-glass-panel aria-label="Setup: Import a connections CSV">
+            <ImportCsv ctx={ctx} />
+          </section>
+        ) : Screen ? (
           <section key={view} className={`ob-card ob-step-${phase}`} style={{ '--dir': dir }} data-glass-panel aria-label={`Setup: ${STEP_LABELS[view]}`}>
             <Screen ctx={ctx} />
           </section>
@@ -230,12 +270,12 @@ export default function Onboarding({ onFinish, again = false }) {
 }
 
 /** Rather not scan: the CSV and the sample, from any step. */
-function WayOut({ openSample }) {
+function WayOut({ openSample, openCsv }) {
   const [busy, setBusy] = useState(false);
   return (
     <div className="ob-out">
       <span className="long">Rather not scan? </span>
-      <a href="/import">Import a CSV</a>{' or '}
+      <button type="button" onClick={openCsv}>Import a CSV</button>{' or '}
       <button type="button" disabled={busy} onClick={async () => { setBusy(true); if (await openSample()) setBusy(false); }}>
         {busy ? 'opening the sample…' : 'try the sample'}
       </button>

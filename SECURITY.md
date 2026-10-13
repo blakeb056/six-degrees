@@ -12,18 +12,21 @@ This app is designed to run **on your own machine, against your own network**.
 
 - The web UI binds to localhost. It is not hardened for exposure to the
   internet, and it has no multi-user authentication or per-user authorization.
-- Thirteen API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
+- Fourteen API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
   `setup-profile`, `scraper`, `update`, Settings → Your data's
   `data/export`, `data/import`, `data/restart`, `data/reveal`, `data/backup`,
-  `data/restore`, and `data/csv`). The first four can irreversibly destroy or rewrite data,
+  `data/restore`, `data/csv`, and `data/network`, with `data/network/apply` under it). The first four can irreversibly destroy or rewrite data,
   `scraper` starts processes, and `update` changes the code that runs next. `data/export` hands over the whole
   network in one file, `data/import` replaces it, `data/restart` stops the
   server, `data/reveal` starts a process (Finder, or the Linux file
   browser, on the data folder's own path or a backup in it), `data/backup`
   writes the whole network to a file in `backups/`, `data/restore`
   replaces the network with one of those backups, named as `backups/` lists
-  it, never by a path from the request, and `data/csv` keeps, hands over and
-  removes a CSV import kept in the data folder. While the server is bound to
+  it, never by a path from the request, `data/csv` keeps, hands over and
+  removes a CSV import kept in the data folder, and `data/network` stages a
+  network file (a CSV import, as a Connections.csv becomes one) in a private
+  folder inside the data folder, and `data/network/apply` imports it into the
+  network, named by the stage's random name, never by a path. While the server is bound to
   127.0.0.1 they need no token — anyone who can reach it can already open the
   database file directly, so a token there adds friction rather than safety. If
   it is bound to any other address, every caller must send `ADMIN_TOKEN` as a

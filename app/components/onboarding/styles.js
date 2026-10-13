@@ -116,6 +116,16 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-choice.sel .ob-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ob-fg1); }
 .ob-quiet { font-size: 13px; color: var(--ob-fg3); }
 
+/* The CSV import: where the file is dropped */
+.ob-drop { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 34px 20px; border-radius: 18px;
+  border: 1.5px dashed var(--ob-line2); background: var(--ob-surface); text-align: center; transition: border-color .2s, background .2s; }
+.ob-drop:hover, .ob-drop.over { border-color: var(--ob-gold); background: color-mix(in srgb, var(--ob-gold) 6%, transparent); }
+.ob-drop:disabled { cursor: progress; }
+.ob-drop .ci { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: rgba(var(--ob-ink), 0.06); color: var(--ob-fg2); margin-bottom: 4px; }
+.ob-drop .ci svg { width: 23px; height: 23px; }
+.ob-drop .dt { font-size: 16.5px; font-weight: 750; }
+.ob-drop .dd { font-size: 13px; color: var(--ob-fg3); }
+
 /* Get ready */
 .ob-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ob-pair.wide { grid-template-columns: minmax(0, 1fr) 170px; }

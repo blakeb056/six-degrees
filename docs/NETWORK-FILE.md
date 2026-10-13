@@ -6,7 +6,8 @@ one documented, versioned format, so Sixgree never needs to know which program m
 and anyone can write one.
 
 Sixgree's own reader and writer are in `lib/network-file.js`; the importer is
-`lib/network-import.js`. Where this page and the code disagree, the code is wrong or this page
+`lib/network-import.js`. The first producer is Sixgree's own: a Connections.csv import is
+written as a network file with source `export` (`lib/csv-network-file.js`) and imported from it. Where this page and the code disagree, the code is wrong or this page
 is stale: fix one of them in the same change.
 
 ## At a glance
