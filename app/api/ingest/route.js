@@ -1,16 +1,10 @@
 import { db as supabase } from '../../../lib/db';
-import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf } from '../../../lib/ingest';
+import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf, parseHeadline } from '../../../lib/ingest';
 import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
 import { cleanExperience, readExperience } from '../../../lib/experience';
-
-function parseHeadline(h) {
-  if (!h) return { role: '', company: '' };
-  const m = h.match(/^(.+?)\s+(?:at|@)\s+(.+?)(?:\s*\|.*)?$/i);
-  return m ? { role: m[1].trim(), company: m[2].trim() } : { role: h.split('|')[0].trim(), company: '' };
-}
 
 /**
  * Read profiles' answer (scripts/scrape.py push_experience): for each person,
