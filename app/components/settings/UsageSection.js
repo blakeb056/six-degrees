@@ -239,6 +239,9 @@ export default function UsageSection() {
   if (!lifted && limits.daily && !dayTicks.some((t) => t.at === limits.daily)) {
     dayTicks.push({ at: limits.daily, label: `${limits.daily} yours`, title: 'Your daily limit', color: 'var(--sd-blue, #3498DB)' });
   }
+  if (dev && u.devCeiling) {
+    dayTicks.push({ at: u.devCeiling, label: `${u.devCeiling} ceiling`, title: 'Dev mode’s ceiling', color: 'var(--sd-gold, #FFD700)' });
+  }
   const dayMax = barMax(day, dayTicks.map((t) => t.at));
   const views = u.profilesToday;
 
@@ -275,10 +278,12 @@ export default function UsageSection() {
       )}
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Meter title="Searches in the last 24 hours" used={day} of={dev ? '· no limit in Dev mode' : lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
+      <Meter title="Searches in the last 24 hours" used={day} of={dev ? `of ${u.devCeiling}, Dev mode’s ceiling` : lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
         max={dayMax} color={(LEVELS[dayLevel] || LEVELS.unknown).color} ticks={dayTicks}>
         {u.unreadable ? null : dev
-          ? <>Dev mode: scans don&rsquo;t stop at {limits.daily} until you turn it off in Scanner settings, or LinkedIn pushes back.</>
+          ? u.devFreesAt
+            ? <>Dev mode&rsquo;s ceiling of {u.devCeiling} is reached. The next one frees {whenAndUntil(u.devFreesAt, now)}.</>
+            : <>Dev mode: scans don&rsquo;t stop at {limits.daily}, but never pass {u.devCeiling} in 24 hours ({plural(u.devLeftToday, 'search', 'searches')} left), until you turn it off in Scanner settings, or LinkedIn pushes back.</>
           : lifted
           ? <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree.</>
           : u.dayFreesAt

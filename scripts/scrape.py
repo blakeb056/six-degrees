@@ -2509,6 +2509,16 @@ def note_unclear(profile_url, clear=False):
 # ---------------------------------------------------------------------------
 DEFAULT_DAILY_SEARCHES = 50
 DAILY_MAX = 1000                  # the most the Scan page's number takes (lib/linkedin-limits.js DAILY_RANGE)
+# Dev mode's ceiling (Blake, 2026-10-14, who chose the number): search pages in
+# the same rolling 24 hours the daily limit counts. Dev mode takes off every other
+# limit, and this one stays: an account was restricted at 373 search pages in 24
+# hours (2026-09-28, TRAPS §16) and again at 305 with Dev mode on (2026-10-12),
+# both in Blake's restrictions log ("Sixgree - LinkedIn Restrictions Log", its
+# takeaway 2: "Dev mode should keep a hard ceiling"). Search pages only: profile
+# views and Auto's requests keep what Dev mode does to them. The app shows the same
+# number (lib/linkedin-limits.js DEV_CEILING; tests/dev-manual-mode.test.mjs checks
+# they match).
+DEV_CEILING = 250
 # Lifted for this session, or not. Read at the start, and changed by the app
 # while a scan runs (_listen_for_limits).
 LIMITS = {"lifted": os.environ.get("SIX_DEGREES_LIMITS_LIFTED") == "1"}
@@ -2666,7 +2676,8 @@ def _read_activity():
             pass
         print("  (the record of LinkedIn searches couldn't be read; counting today as used)")
         lim = search_limits()
-        fresh = {"searches": [now] * lim["daily"], "profiles": [now] * lim["profiles"],
+        # Enough searches to use Dev mode's ceiling too, so Dev mode can't read it as room.
+        fresh = {"searches": [now] * max(lim["daily"], DEV_CEILING), "profiles": [now] * lim["profiles"],
                  "invites": [now] * INVITE_DAY_CAP}
         try:
             _write_json_atomic(path, fresh)
@@ -2788,7 +2799,8 @@ def limits_lifted():
 #   "dev": true, "devSince": epoch s   Every limit Sixgree sets is off until it's
 #                turned off: the daily limit and the cooldown (limits_lifted),
 #                Auto's caps on connection requests (take_invite) and Auto scan's
-#                hours (_sitting_over). The speed still sets every wait
+#                hours (_sitting_over). One stays: DEV_CEILING search pages in
+#                the last 24 hours (searches_left). The speed still sets every wait
 #                (apply_pace), and LinkedIn pushing back still stops the scan and
 #                turns Dev mode off (set_cooldown).
 #   "manual": true   Circle scans open Chrome in front and read each page of
@@ -2918,7 +2930,13 @@ def linkedin_usage(now=None):
 
 
 def searches_left(now=None):
-    """(how many searches may still be made today, "daily"). Lifted, as good as no end."""
+    """(how many searches may still be made today, "daily"). Lifted for the session, as
+    good as no end. In Dev mode, what's left of DEV_CEILING, counted over the same
+    rolling 24 hours as the daily limit (linkedin_usage). It goes by the same name,
+    "daily", so every place that stops at the daily limit (or, for Auto scan on the
+    command line, waits for it) does the same at the ceiling; budget_message says which."""
+    if dev_mode():
+        return (max(0, DEV_CEILING - linkedin_usage(now)["searches_today"]), "daily")
     if limits_lifted():
         return (10 ** 9, "daily")
     use, lim = linkedin_usage(now), search_limits()
@@ -2959,8 +2977,22 @@ def budget_message(kind):
         return (f"Today's limit of {lim['profiles']} profile views is used — it counts the last 24 hours.{free} "
                 f"No profile was opened and nothing was recorded, so the next run starts with the same person."
                 + _lift_hint())
+    if dev_mode():
+        return dev_ceiling_message()
     return (f"Today's limit of {lim['daily']} searches is used — it counts the last 24 hours. "
             f"The next run carries on from the same page." + _lift_hint())
+
+
+def dev_ceiling_message(now=None):
+    """What a scan says when Dev mode's ceiling stops it (searches_left). Not the daily
+    limit's words, which the app reads as "offer to lift it": lifting doesn't lift this."""
+    now = now if now is not None else time.time()
+    recent = sorted(t for t in _read_activity()["searches"] if t > now - DAY_SECONDS)
+    # The one that stops counting soonest frees the next page, as for profile views.
+    extra = len(recent) - DEV_CEILING
+    at = f", at {_when(recent[extra] + DAY_SECONDS)}" if extra >= 0 else ""
+    return (f"Dev mode's ceiling: {DEV_CEILING} search pages a day, reached. Scanning resumes when "
+            f"the oldest of them is a day old{at}. The next run carries on from the same page.")
 
 
 def read_cooldown(now=None):
@@ -4253,8 +4285,9 @@ def _gentle_after_page(page, waited, page_results):
     return True
 
 
-def _find_next(page):
-    """LinkedIn's Next button when there is another page, else None.
+def _find_next(page, label="Next"):
+    """LinkedIn's Next button when there is another page, else None. With
+    label="Previous", its Previous button the same way (_advance going back).
 
     Looked for END_CHECKS times, scrolling to the foot of the list and waiting a
     little longer each time: the pagination bar renders late, and calling a list
@@ -4263,13 +4296,13 @@ def _find_next(page):
     """
     for attempt in range(1, END_CHECKS + 1):
         try:
-            btn = page.locator('button:has-text("Next")').first
+            btn = page.locator(f'button:has-text("{label}")').first
             if btn.is_visible() and btn.is_enabled():
                 return btn
         except Exception:
             pass
         if attempt < END_CHECKS:
-            print(f"  No Next button yet; looking again ({attempt + 1} of {END_CHECKS})...")
+            print(f"  No {label} button yet; looking again ({attempt + 1} of {END_CHECKS})...")
             _scroll_to_foot(page)
             time.sleep(2 * attempt)
     return None
@@ -4287,16 +4320,18 @@ def _wait_for_new_results(page, before, seconds):
     return False
 
 
-def _advance(page, pg):
-    """Go from results page pg to pg + 1. Returns "moved", "end" or "stuck".
+def _advance(page, pg, back=False):
+    """Go from results page pg to pg + 1 (back: to pg - 1, with Previous). Returns
+    "moved", "end" or "stuck".
 
-    "end" only once _find_next has looked END_CHECKS times. A click that leaves
-    the same results showing is tried again, up to END_CHECKS times; after that
-    the read stops as "stuck", which leaves the rest to the next run rather than
-    calling the list finished.
+    "end" only once _find_next has looked END_CHECKS times (going back: no
+    Previous). A click that leaves the same results showing is tried again, up to
+    END_CHECKS times; after that the read stops as "stuck", which leaves the rest
+    to the next run rather than calling the list finished.
     """
+    label, to = ("Previous", pg - 1) if back else ("Next", pg + 1)
     before = _result_links(page)
-    btn = _find_next(page)
+    btn = _find_next(page, label)
     if btn is None:
         # The end of a list is only believed from a live page that was showing
         # results. A closed window or a blank page proves nothing, and a wrong
@@ -4312,15 +4347,46 @@ def _advance(page, pg):
             pass
         if _wait_for_new_results(page, before, 10):
             return "moved"
-        if _url_page(page.url) == pg + 1:
+        if _url_page(page.url) == to:
             # The click landed and the page is just slow. Clicking again could
             # skip a page, so give it longer instead.
             return "moved" if _wait_for_new_results(page, before, 15) else "stuck"
-        print(f"  Page {pg + 1} did not open; clicking Next again ({attempt + 1} of {END_CHECKS})...")
-        btn = _find_next(page)
+        print(f"  Page {to} did not open; clicking {label} again ({attempt + 1} of {END_CHECKS})...")
+        btn = _find_next(page, label)
         if btn is None:
             return "stuck"
     return "stuck"
+
+
+def _back_to_start(page, start_page, had_bar):
+    """LinkedIn opened start_page + 1 for a list carried on at start_page: click
+    Previous once, with _advance's careful click and wait (a search, like any page
+    load), then check the page bar. True only once the bar shows start_page; with
+    no bar on the page before the click either, the address must. Anything else,
+    or no Previous, is False, and the read stops as it always has."""
+    if _advance(page, start_page + 1, back=True) != "moved":
+        print("  Previous didn't take it back a page.")
+        return False
+    shown = None
+    for attempt in range(1, END_CHECKS + 1):
+        try:
+            shown = page.evaluate(CURRENT_PAGE_JS)
+        except Exception:
+            shown = None
+        # The bar can be drawn again a moment after the list changes: wait for it
+        # rather than go by the address, when there was a bar to begin with.
+        if shown is not None or not had_bar:
+            break
+        time.sleep(2 * attempt)
+    now_on = shown if shown is not None else (None if had_bar else _url_page(page.url))
+    if now_on == start_page:
+        print(f"  Back on page {start_page}.")
+        return True
+    if now_on is None:
+        print(f"  After Previous no page bar says which page it is, so it isn't taken for page {start_page}.")
+    else:
+        print(f"  After Previous it's on page {now_on}, not page {start_page}.")
+    return False
 
 
 def _dedupe(connections):
@@ -5323,10 +5389,37 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             else:
                 print(f"  The window is on page {ahead} already; you carry on from there.")
         elif at != start_page or (shown is not None and shown != start_page):
-            print(f"  LinkedIn opened page {shown or at}, not page {start_page}. "
-                  "Stopping so no page is noted as read that wasn't.")
-            reach["more"] = True
-            return [], "error", reach
+            opened = shown or at
+            # Asked for page N, LinkedIn opens page N + 1: seen four times by 2026-10-14
+            # (9 to 10, 30 to 31, 51 to 52, 64 to 65), with the address and the page bar
+            # both saying N + 1. Stopping there meant no automatic read could ever carry
+            # a list on. Exactly one page ahead, it goes back one with Previous, paced
+            # and counted like any page, and reads on only once the bar shows N. Any
+            # other page, or a Previous that doesn't land on N, stops as before.
+            back = False
+            if opened == start_page + 1 and at in (start_page, start_page + 1):
+                print(f"  LinkedIn opened page {opened}, not page {start_page}: going back a page with Previous.")
+                # A page load like any other: the budget first, then the pause before it.
+                left, kind = searches_left()
+                if left <= 0 and not (EXPERIMENT["on"] and kind == "daily"):
+                    reach["budget"] = kind
+                    reach["more"] = True
+                    print("  " + budget_message(kind))
+                    return [], "budget", reach
+                if not interruptible_sleep(PAGE_PAUSE) or not rest(gentle_extra(PAGE_PAUSE), page=page) \
+                        or _window_closed(page) or (EXPERIMENT["on"] and not _drip_before_search()):
+                    reach["more"] = True
+                    print(f"  Stopped before going back to page {start_page}; the next run carries on from there.")
+                    return [], "stopped", reach
+                back = _back_to_start(page, start_page, had_bar=shown is not None)
+                if not back and (stop_requested() or _window_closed(page)):
+                    reach["more"] = True
+                    return [], "stopped", reach
+            if not back:
+                print(f"  LinkedIn opened page {opened}, not page {start_page}. "
+                      "Stopping so no page is noted as read that wasn't.")
+                reach["more"] = True
+                return [], "error", reach
 
     try:
         total = page.evaluate(RESULT_COUNT_JS)
@@ -6065,8 +6158,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         return []
     use, lim = linkedin_usage(), search_limits()
     if dev_mode():
-        log(f"Dev mode, no limits: {use['searches_today']} searches and {use['profiles_today']} "
-            f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
+        log(f"Dev mode: {use['searches_today']} of its ceiling of {DEV_CEILING} search pages and "
+            f"{use['profiles_today']} profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
     elif limits_lifted():
         log(f"Limits lifted for this session: {use['searches_today']} searches and {use['profiles_today']} "
             f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")

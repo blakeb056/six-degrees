@@ -107,7 +107,8 @@ const autoNow = () => globalThis[Symbol.for('six-degrees.auto-clock')]?.() ?? Da
  * What Auto scan would do now, from the daily limit and the cooldown. While the
  * limits are lifted for this session linkedinState gives neither (leftToday and
  * cooldown are null), so only Auto scan's hours and rests hold it back; in Dev
- * mode only its rests, which are its pace. Manual mode stops it.
+ * mode its rests, which are its pace, and Dev mode's ceiling, which it stops at
+ * as at the daily limit (the scanner holds it either way). Manual mode stops it.
  */
 function autoPlanNow() {
   const a = auto();
@@ -115,7 +116,8 @@ function autoPlanNow() {
   const li = linkedinState(dataDir(), now);
   return autoPlan({
     now, pace: a.pace, restUntil: a.restUntil,
-    leftToday: li.leftToday, daily: li.limits?.daily ?? null, cooldown: li.cooldown,
+    leftToday: li.dev ? li.devLeftToday : li.leftToday,
+    daily: li.dev ? li.devCeiling : li.limits?.daily ?? null, cooldown: li.cooldown,
     anyHour: li.dev === true, manual: li.limits?.manual === true,
   });
 }
@@ -657,6 +659,8 @@ function budgetNow() {
       profiles: li.profilesToday ?? 0, profileCap: li.limits?.daily ?? null,
       lifted: li.lifted,
       dev: li.dev,
+      // Dev mode's ceiling (lib/linkedin-limits.js DEV_CEILING): the notch shows it in place of "no limit".
+      devCeiling: li.devCeiling,
       // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
       pace: li.limits?.pace ?? null,
     };

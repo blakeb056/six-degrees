@@ -17,7 +17,10 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readLimits, writeLimits, linkedinState, devMode, DEFAULT_LIMITS } from '../lib/linkedin-limits.js';
+import {
+  readLimits, writeLimits, linkedinState, linkedinUsage, devMode, freesAt, DEFAULT_LIMITS, DEV_CEILING,
+} from '../lib/linkedin-limits.js';
+import { DEV_LINE } from '../lib/limits-lift.js';
 import { inviteRefusal, INVITE_CAPS } from '../lib/auto-connect.js';
 import { autoPlan, MANUAL_STOPS_AUTO } from '../lib/auto-scan.js';
 import { enqueue, emptyQueue, queueView, QUEUE_CAP, DEV_QUEUE_CAP } from '../lib/scan-queue.js';
@@ -172,7 +175,7 @@ ns['time'] = _t
 out['dev'] = ns['dev_mode']()
 out['lifted'] = ns['limits_lifted']()
 ns['charge_linkedin']('searches')
-out['left'] = ns['searches_left']()[0] > 1000
+out['left'] = ns['searches_left']()
 data = ns['_read_activity']()
 data['invites'] = [_t.time() - 60] * 20
 ns['_write_json_atomic'](ns['_home']() / 'linkedin-activity.json', data)
@@ -182,7 +185,8 @@ out['gap'] = ns['PROFILE_GAP']`);
     if (!r) return;
     assert.equal(r.out.dev, true);
     assert.equal(r.out.lifted, true);
-    assert.equal(r.out.left, true, 'no daily limit');
+    // Past the daily limit of 1; Dev mode's ceiling is the one that counts (2026-10-14).
+    assert.deepEqual(r.out.left, [249, 'daily'], 'no daily limit, only the ceiling');
     assert.equal(r.out.invite, null, 'past Auto’s 15 a day');
     assert.equal(r.out.invites, 21, 'and still written down');
     assert.equal(r.out.gap, 60, 'the gap between profile views is the speed’s, untouched');
@@ -231,6 +235,140 @@ out['on'] = ns['_sitting_over'](night)`);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
+});
+
+// ── Dev mode's ceiling (Fix 1, 2026-10-14) ───────────────────────────────────
+// Blake chose 250 search pages a day after two restrictions: 373 search pages in 24
+// hours (9/28), and 305 with Dev mode on (10/12), which took off every limit Sixgree
+// sets. Dev mode keeps this one, over the daily limit's own rolling 24 hours.
+
+// A stand-in record of searches, and the settings file, for the scanner's cases.
+const RECORD = `
+NOW_S = clock.t
+def record(searches):
+    ns['_write_json_atomic'](ns['_home']() / 'linkedin-activity.json', {'searches': searches, 'profiles': [], 'invites': []})
+def settings(**kw):
+    (ns['_home']() / 'scan-limits.json').write_text(json.dumps(kw))
+DEV = {'dev': True, 'devSince': NOW_S - 3600}
+def in_day():
+    return len([s for s in ns['_read_activity']()['searches'] if s > clock.t - 86400])
+`;
+
+test('Dev mode keeps one limit, its ceiling: 250 search pages over the same rolling 24 hours the daily limit counts', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${RECORD}
+# 249 in the last 24 hours; 5 exactly a day old and 100 older, which neither limit counts.
+record([NOW_S - 60 * (i + 1) for i in range(249)] + [NOW_S - 86400] * 5 + [NOW_S - 86401 - i for i in range(100)])
+out['ceiling'] = ns['DEV_CEILING']
+settings(daily=1, **DEV)
+out['dev'] = ns['searches_left']()
+settings(daily=250)
+out['daily'] = ns['searches_left']()
+settings(daily=1, **DEV)
+ns['charge_linkedin']('searches')
+out['at'] = ns['searches_left']()
+out['line'] = ns['budget_message']('daily')
+out['now'] = clock.t`);
+    if (!r) return;
+    assert.equal(r.out.ceiling, 250);
+    assert.deepEqual(r.out.dev, [1, 'daily'], 'past the daily limit of 1, one short of the ceiling');
+    assert.deepEqual(r.out.daily, [1, 'daily'], 'a daily limit of 250 counts the very same window');
+    assert.deepEqual(r.out.at, [0, 'daily'], 'reached: it stops wherever the daily limit stops a scan');
+    assert.match(r.out.line, /^Dev mode's ceiling: 250 search pages a day, reached\. Scanning resumes when the oldest of them is a day old, at .+\. The next run carries on from the same page\.$/);
+    assert.doesNotMatch(r.out.line, /Today's limit of|lift limits/i, 'not the daily limit\'s words: the app would offer a lift that doesn\'t lift it');
+
+    // The app counts the same window, from the same files.
+    const now = r.out.now * 1000;
+    const li = linkedinState(home, now);
+    assert.equal(li.dev, true);
+    assert.equal(li.devCeiling, DEV_CEILING);
+    assert.equal(li.devLeftToday, 0);
+    assert.equal(li.leftToday, null, 'the daily limit is still off in Dev mode');
+    const searches = JSON.parse(readFileSync(path.join(home, 'linkedin-activity.json'), 'utf8')).searches;
+    assert.equal(linkedinUsage(home, now).devFreesAt, freesAt(searches, now, DEV_CEILING));
+    writeLimits(home, { dev: false }, now);
+    const off = linkedinState(home, now);
+    assert.deepEqual([off.devCeiling, off.devLeftToday, off.leftToday], [null, null, 0], 'Dev mode off: the daily limit, as before');
+    assert.equal(linkedinUsage(home, now).devFreesAt, null);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('a scan in Dev mode runs past the daily limit below the ceiling, and stops at it with a plain line', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${RECORD}
+ns['GENTLE']['on'] = False
+settings(daily=1, **DEV)
+def run(pages):
+    urls, status, reach = read(ResultsPage(pages=pages))
+    return {'people': len(urls), 'status': status, 'last': reach['last'], 'more': reach['more'],
+            'budget': reach.get('budget'), 'searches': in_day()}
+record([NOW_S - 60 * (i + 1) for i in range(200)])
+out['below'] = run(3)
+record([NOW_S - 60 * (i + 1) for i in range(248)])
+out['at'] = run(5)
+out['again'] = run(5)`);
+    if (!r) return;
+    assert.deepEqual(r.out.below, { people: 30, status: 'success', last: 3, more: false, budget: null, searches: 203 },
+      'all of a three-page list, past the daily limit of 1');
+    assert.deepEqual(r.out.at, { people: 20, status: 'success', last: 2, more: true, budget: 'daily', searches: 250 },
+      'the list and one Next take it to 250; page 3 is left for later, never noted as read');
+    assert.deepEqual(r.out.again, { people: 0, status: 'budget', last: 0, more: true, budget: 'daily', searches: 250 },
+      'at the ceiling nothing more opens');
+    assert.equal((r.log.match(/^ {2}Dev mode's ceiling: 250 search pages a day, reached\./gm) || []).length, 2);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('with Dev mode off the ceiling changes nothing: the daily limit as before, and a lift for the session has no end', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${RECORD}
+record([NOW_S - 60 * (i + 1) for i in range(300)])
+settings(daily=50)
+out['off'] = ns['searches_left']()
+out['line'] = ns['budget_message']('daily')
+settings(daily=400)
+out['high'] = ns['searches_left']()
+ns['LIMITS']['lifted'] = True
+out['lifted'] = ns['searches_left']()[0] >= 10 ** 9
+settings(daily=50, **DEV)
+out['lifted_dev'] = ns['searches_left']()
+ns['LIMITS']['lifted'] = False
+(ns['_home']() / 'linkedin-activity.json').write_text('{"searches": [1, 2')
+out['damaged'] = ns['searches_left']()`);
+    if (!r) return;
+    assert.deepEqual(r.out.damaged, [0, 'daily'], 'a record that can\'t be read counts as the ceiling used, never as room');
+    assert.deepEqual(r.out.off, [0, 'daily']);
+    assert.match(r.out.line, /^Today's limit of 50 searches is used/);
+    assert.deepEqual(r.out.high, [100, 'daily'], 'a daily limit set above 250 is the person\'s choice, as before');
+    assert.equal(r.out.lifted, true, '300 in the last 24 hours, and the session\'s lift still has no end');
+    assert.deepEqual(r.out.lifted_dev, [0, 'daily'], 'Dev mode on as well: its ceiling holds');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('the notch, LinkedIn usage and the Scan page show Dev mode\'s ceiling, not "no limit"', () => {
+  const src = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+  assert.ok(DEV_LINE.includes(`ceiling of ${DEV_CEILING} search pages`), 'Dev mode\'s own words name the number');
+  // The notch while a scan runs: the route hands it the ceiling, and it shows "N of 250".
+  assert.match(src('app/api/scraper/route.js'), /devCeiling: li\.devCeiling/);
+  assert.match(src('app/components/ScanStatusBar.js'), /b\.dev && b\.devCeiling \? ` of \$\{b\.devCeiling\}`/);
+  // LinkedIn usage: the meter is "of 250" with a mark there, never "no limit in Dev mode".
+  const usage = src('app/components/settings/UsageSection.js');
+  assert.match(usage, /of \$\{u\.devCeiling\}, Dev mode’s ceiling/);
+  assert.match(usage, /label: `\$\{u\.devCeiling\} ceiling`/);
+  assert.doesNotMatch(usage, /no limit in Dev mode/);
+  // The Scan page's Dev mode switch.
+  const page = src('app/setup/page.js');
+  const sw = page.slice(page.indexOf('data-dev-mode-switch'), page.indexOf('more={', page.indexOf('data-dev-mode-switch')));
+  assert.match(sw, /a ceiling of \$\{li\.devCeiling\} search pages in any 24 hours/);
+  assert.doesNotMatch(page, /no daily limit in Dev mode/);
 });
 
 // ── Manual mode, the scanner's side ──────────────────────────────────────────
@@ -590,17 +728,139 @@ out['away'] = read_by_hand(away)['status']`);
   }
 });
 
-test('an automatic read that LinkedIn opens on another page still stops, as before', (t) => {
+// ── An automatic read carrying a list on (Fix 2, 2026-10-14) ──────────────────
+// Asked for page N, LinkedIn opened page N + 1, four times (9 to 10, 30 to 31, 51 to 52,
+// 64 to 65), the address and the page bar both. It used to stop every time, so no
+// automatic read could carry a list on. Exactly one page ahead, it now clicks Previous
+// once and reads on from N; anything else stops as before.
+
+// A list that opens `off_by` pages past the one asked for. `prev`: a Previous button is
+// there; `back`: how many pages it goes back. Records the pages read, in order, and when
+// the list opened and Previous was clicked.
+const AHEAD_PAGE = `
+ns['GENTLE']['on'] = False
+class Previous:
+    def __init__(self, page):
+        self.page = page
+    @property
+    def first(self):
+        return self
+    def is_visible(self):
+        return self.page.prev and self.page.pg > 1
+    def is_enabled(self):
+        return True
+    def click(self, timeout=None):
+        self.page.prev_at.append(clock.t)
+        self.page.pg -= self.page.back
+        self.page.scrolled = 0
+
+class Ahead(ResultsPage):
+    def __init__(self, *a, off_by=1, prev=True, back=1, **k):
+        super().__init__(*a, **k)
+        self.off_by, self.prev, self.back = off_by, prev, back
+        self.reads, self.prev_at, self.opened_at = [], [], None
+    def goto(self, url, **k):
+        if 'connectionOf' in url:
+            self.pg = ns['_url_page'](url) + self.off_by
+            self.opened_at = clock.t
+        return super().goto(url, **k)
+    def locator(self, selector):
+        return Previous(self) if 'Previous' in selector else super().locator(selector)
+    def evaluate(self, js, *a):
+        if js == ns['BRIDGE_RESULTS_JS'] and (not self.reads or self.reads[-1] != self.pg):
+            self.reads.append(self.pg)
+        return super().evaluate(js, *a)
+
+def carry_on(page, start_page=9):
+    urls, status, reach = read(page, start_page=start_page)
+    return {'people': len(urls), 'status': status, 'last': reach['last'], 'more': reach['more'],
+            'reads': page.reads, 'prev_clicks': len(page.prev_at),
+            'prev_after': page.prev_at[0] - page.opened_at if page.prev_at else None,
+            'searches': len(ns['_read_activity']()['searches'])}
+`;
+
+test('an automatic read that LinkedIn opens one page ahead goes back with Previous, then reads on from the page asked for', (t) => {
   const home = scratch();
   try {
-    const r = scanner(t, home, `${MANUAL_PAGE}
-page = ManualPage(12, [[1, 'next']], start=9)
-people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', 'https://www.linkedin.com/in/invented-bridge/',
-                                                start_page=9, urn=URN)
-out.update({'people': len(people), 'status': status})`);
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out.update(carry_on(Ahead(pages=12, off_by=1)))
+out['pause'] = ns['PAGE_PAUSE']`);
     if (!r) return;
-    assert.match(r.log, /LinkedIn opened page 10, not page 9\. Stopping so no page is noted as read that wasn't\./);
-    assert.equal(r.out.status, 'error');
+    assert.match(r.log, /LinkedIn opened page 10, not page 9: going back a page with Previous\./);
+    assert.match(r.log, /Back on page 9\./);
+    assert.doesNotMatch(r.log, /Stopping so no page is noted/);
+    assert.equal(r.out.prev_clicks, 1, 'Previous, once');
+    assert.ok(r.out.prev_after >= r.out.pause, `the pause before a page holds before Previous too (${r.out.prev_after}s)`);
+    assert.deepEqual(r.out.reads, [9, 10, 11, 12], 'page 9 first, then on in order');
+    assert.equal(r.out.status, 'success');
+    assert.equal(r.out.people, 40);
+    assert.equal(r.out.last, 12, 'the bookmark ends at the last page read');
+    assert.equal(r.out.more, false);
+    assert.equal(r.out.searches, 5, 'the list, Previous, then Next three times: Previous is a search');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic read that LinkedIn opens on any other page still stops, as before', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out['two'] = carry_on(Ahead(pages=12, off_by=2))
+out['behind'] = carry_on(Ahead(pages=12, off_by=-1))`);
+    if (!r) return;
+    assert.match(r.log, /LinkedIn opened page 11, not page 9\. Stopping so no page is noted as read that wasn't\./);
+    assert.match(r.log, /LinkedIn opened page 8, not page 9\. Stopping so no page is noted as read that wasn't\./);
+    assert.doesNotMatch(r.log, /going back a page with Previous/);
+    for (const k of ['two', 'behind']) {
+      assert.equal(r.out[k].status, 'error', k);
+      assert.equal(r.out[k].prev_clicks, 0, `${k}: no Previous`);
+      assert.deepEqual(r.out[k].reads, [], `${k}: nothing read`);
+      assert.equal(r.out[k].last, 8, `${k}: nothing noted as read`);
+      assert.equal(r.out[k].more, true);
+    }
+    assert.equal(r.out.behind.searches, 2, 'one search each: the list');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('one page ahead, but no Previous, or a Previous that lands anywhere but the page asked for, stops as before', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out['none'] = carry_on(Ahead(pages=12, off_by=1, prev=False))
+out['two_back'] = carry_on(Ahead(pages=12, off_by=1, back=2))`);
+    if (!r) return;
+    assert.match(r.log, /Previous didn't take it back a page\./);
+    assert.match(r.log, /After Previous it's on page 8, not page 9\./);
+    assert.equal((r.log.match(/LinkedIn opened page 10, not page 9\. Stopping so no page is noted as read that wasn't\./g) || []).length, 2);
+    assert.equal(r.out.none.prev_clicks, 0);
+    assert.equal(r.out.two_back.prev_clicks, 1);
+    for (const k of ['none', 'two_back']) {
+      assert.equal(r.out[k].status, 'error', k);
+      assert.deepEqual(r.out[k].reads, [], `${k}: nothing read`);
+      assert.equal(r.out[k].last, 8, `${k}: nothing noted as read`);
+    }
+    assert.equal(r.out.none.searches, 1, 'the list only');
+    assert.equal(r.out.two_back.searches, 3, 'then the list again, and its Previous');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic read that LinkedIn opens on the page asked for is unchanged', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out.update(carry_on(Ahead(pages=12, off_by=0)))`);
+    if (!r) return;
+    assert.doesNotMatch(r.log, /LinkedIn opened page|Previous/);
+    assert.equal(r.out.prev_clicks, 0);
+    assert.deepEqual(r.out.reads, [9, 10, 11, 12]);
+    assert.equal(r.out.last, 12);
+    assert.equal(r.out.status, 'success');
+    assert.equal(r.out.searches, 4, 'the list, then Next three times');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
