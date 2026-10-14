@@ -25,7 +25,7 @@ import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
 import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
-import useScanner, { useScanShows } from './useScanner';
+import useScanner, { useScanShows, useCircleMode } from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { useUser } from './UserProvider';
 import { startHere, busyReason } from '../../lib/scraper-client';
@@ -71,9 +71,12 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
   // Auto scan and Check for new come with the auto plugin, or the built-in scanner (lib/scanner-capabilities.js).
   const auto = useScanShows().auto;
+  // Auto scan only while circle scans run Automatic: By hand, it isn't offered at all (circleMode).
+  const mode = useCircleMode();
+  const autoScan = auto && mode !== 'manual';
   const tabs = (
     <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} onMode={onMode}
-      after={own && auto ? <AutoScanButton isMobile={isMobile} /> : null}>
+      after={own && autoScan ? <AutoScanButton isMobile={isMobile} /> : null}>
       {chips}
     </AppTabs>
   );

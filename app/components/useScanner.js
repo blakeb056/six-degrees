@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { watchScanner, scannerNow, capabilitiesNow, SCANNER_UNKNOWN } from '../../lib/scraper-client';
+import { watchScanner, scannerNow, capabilitiesNow, circleModeNow, SCANNER_UNKNOWN } from '../../lib/scraper-client';
 import { scanShows } from '../../lib/scanner-capabilities';
 
 /**
@@ -25,4 +25,13 @@ const NOT_KNOWN = () => null;
  */
 export function useScanShows() {
   return scanShows(useSyncExternalStore(watchScanner, capabilitiesNow, NOT_KNOWN));
+}
+
+/**
+ * How circle scans run, Automatic or By hand ('auto', 'manual', or null until
+ * the server has said): the Scan page's choice (lib/scanner-capabilities.js
+ * circleMode). Drawn again only when it changes.
+ */
+export function useCircleMode() {
+  return useSyncExternalStore(watchScanner, circleModeNow, NOT_KNOWN);
 }

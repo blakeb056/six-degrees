@@ -302,12 +302,14 @@ test('Start says why it can\'t, at once: no tier picked, or the scan\'s "I under
 // Blake, 1.2.0: "there's no setting in the scanner to turn off the Auto scan
 // button, it was only in the onboarding."
 
-test('the Auto scan switch is first in Scanner settings, never greyed out, and the same setting everywhere', () => {
+test('the Auto scan switch is in Scanner settings, first under Speed, never greyed out, and the same setting everywhere', () => {
   const page = readFileSync(new URL('../app/setup/page.js', import.meta.url), 'utf8');
   const sw = page.indexOf('data-auto-scan-switch');
   const settings = page.indexOf('id="scan-settings"');
   assert.ok(sw > settings, 'in Scanner settings');
-  assert.ok(sw < page.indexOf('className="scan-two"', settings), 'first, above the budget');
+  // Behaviour changed on purpose (Blake, 2026-10-14): How circle scans run comes first now, then the switch.
+  assert.ok(sw > page.indexOf('<Group title="How circle scans run"', settings), 'after the choice of how circle scans run');
+  assert.ok(sw < page.indexOf('id="settings-daily"', settings), 'first under Speed, above the budget');
   const toggle = page.slice(sw, page.indexOf('more={', sw));
   assert.match(toggle, /onChange=\{setAllDay\}/);
   assert.doesNotMatch(toggle, /disabled=/, 'never greyed out while something runs');

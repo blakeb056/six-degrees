@@ -2,6 +2,7 @@
 // Build the scanner's two plugin packages from the app's own scanner files:
 //
 //   node scripts/build-plugin.mjs [--version=1.0.0] [--out=dist/plugins] [--catalog <base-url>]
+//   (the version is lib/plugins-shipped.js SHIPPED_PLUGIN_VERSION unless given)
 //   npm run build:plugins
 //
 // → dist/plugins/auto-scan-<version>.sgplugin and manual-scan-<version>.sgplugin
@@ -34,29 +35,14 @@ import { writeZip } from '../lib/zip-write.js';
 import { readPackage, PLUGIN_FORMAT, PLUGIN_FORMAT_VERSION, MANIFEST_FILE } from '../lib/plugins.js';
 import { checkCatalog, CATALOG_FORMAT, CATALOG_FORMAT_VERSION } from '../lib/plugin-catalog.js';
 import { SCANNER_FILES, scannerPresent } from '../lib/scanner-files.js';
+import { SHIPPED_PLUGINS, SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// The honest risk each one carries, shown before it installs: the Scan page's
-// own points (lib/scan-risk.js RISK_POINTS), said for what each plugin does.
-const RISK_TERMS = 'LinkedIn’s User Agreement doesn’t allow automated tools, and LinkedIn may restrict accounts that use them.';
-
-export const PLUGINS = [
-  {
-    id: 'auto-scan',
-    name: 'Auto scan',
-    unlocks: ['auto'],
-    about: 'The scanner, reading by itself: circle scans that turn the pages on their own, Auto scan, Auto connect and Dev mode.',
-    risk: `It runs your own LinkedIn account automatically, in Chrome on this computer. ${RISK_TERMS}`,
-  },
-  {
-    id: 'manual-scan',
-    name: 'Manual scan',
-    unlocks: ['manual'],
-    about: 'The scanner, by hand: you scroll and click Next in its Chrome window, and it reads each page as you go, with chimes.',
-    risk: `It reads LinkedIn pages with your own account, in Chrome on this computer, as you page through them. ${RISK_TERMS}`,
-  },
-];
+// What each one is (name, what it does, its risk, what it unlocks) is the
+// shipped copy of the official list (lib/plugins-shipped.js), which the app
+// draws its cards from before it goes online, so the two always say the same.
+export const PLUGINS = SHIPPED_PLUGINS.map(({ id, name, unlocks, about, risk }) => ({ id, name, unlocks: [...unlocks], about, risk }));
 
 function option(name, fallback) {
   const args = process.argv.slice(2);
@@ -123,7 +109,7 @@ export function buildCatalog(built, { base, version, appVersion }) {
 }
 
 function main() {
-  const version = option('version', '1.0.0');
+  const version = option('version', SHIPPED_PLUGIN_VERSION);
   const out = path.resolve(ROOT, option('out', path.join('dist', 'plugins')));
   const base = option('catalog', null);
   if (base !== null && !URL.canParse(base)) {

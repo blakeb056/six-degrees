@@ -13,17 +13,31 @@ The first kind of plugin is a **scanner**. Other kinds come later.
 
 - **Off:** installed plugins stay installed, and none of them is used. Sixgree works as it
   does without any.
-- **On:** the section shows, in this order:
-  - **Browse:** the plugin list's cards (name, what it does, its risk, version, size), each
-    with *Install*, *Installed* or *Update*;
+- **Browse,** on or off: the plugin list's cards (name, what it does, its risk, version), each
+  with *Install*, *Installed* or *Update*, from the copy of the official list shipped with the
+  app until the live list is fetched. With plugins off, a card's *Install* turns them on first,
+  and its yes says so; *Cancel*, or a failure, turns them back off.
+- **On,** then:
   - **Installed:** the plugins on this computer, each with *Uninstall*;
   - **Advanced** (closed until opened): *Install from a file* and *Install from a link*.
 
-The guided setup has the same cards, under its CSV import: an **Allow plugins** box,
-unticked until you tick it. Ticking it turns Enable plugins on and loads the list;
-unticking it turns Enable plugins off.
+An install from a card happens inside that card: *Install*, a bar while the list and the
+package are fetched and checked, the yes (the package's name, version, what it does, its
+risk, that a plugin runs its own code on this computer, where it came from), a bar while it
+installs, then *Installed ✓*, or what went wrong. A package from a file or a link keeps its
+own small yes under its form.
 
-Only Settings → Plugins and the setup's box change the switch (`POST /api/plugins/enabled`).
+The guided setup has the same cards, under its CSV import: **Other ways to bring in your
+network**, a titled section with both scanners in sight at once. The CSV stays the main way
+in, never a gate. The section is on the import's result too while no scanner is installed.
+With a scanner installed, the CSV step also offers *Continue without a CSV: set up scanning*,
+and the import's result offers **Set up scanning** or *Skip, see your galaxy*; with none,
+*See your galaxy*. Setting up is Get ready, Connect, Pace (left out with Manual scan alone),
+then a first scan: one person's circle, three pages of it, with your people in; with nobody
+yet, a scan of your connections with Auto scan, or, with Manual scan alone, the way to bring
+them in (the CSV, or Auto scan). *Later, from the Scan tab* skips it (`lib/onboarding.js`).
+
+Only Settings → Plugins and a card's *Install* change the switch (`POST /api/plugins/enabled`).
 The general settings route refuses it, because the switch decides whose code runs on this
 computer.
 
@@ -268,9 +282,12 @@ loaded*, why, and offers *Try again*. Only the first 200 entries are read.
 
 ### When Sixgree goes online for it
 
-Never by itself. The list is fetched only when someone opens Settings → Plugins with plugins
-on (the first time its Browse comes into view), presses *Try again*, or ticks *Allow plugins*
-in the setup. A package is downloaded only when *Install* is pressed.
+Never by itself. The cards are drawn from a copy of the official list that ships with the app
+(`lib/plugins-shipped.js`, which `scripts/build-plugin.mjs` builds the packages from), so they
+show at once, plugins on or off. The live list is fetched only when someone opens Settings →
+Plugins with plugins on (the first time its Browse comes into view), presses *Try again*, or
+presses a card's *Install*, in Settings or in the setup; where the two disagree, the live list
+wins. A package is downloaded only when *Install* is pressed.
 
 Both are fetched by Sixgree's server, never by the page:
 

@@ -20,7 +20,7 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
 import useScanStatus from '../components/useScanStatus';
 import { useScanShows } from '../components/useScanner';
-import { MANUAL_ALWAYS } from '../../lib/scanner-capabilities';
+import { AUTO_NEEDS_AUTOMATIC, modeChoices, modeSetting } from '../../lib/scanner-capabilities';
 import UsageSection from '../components/settings/UsageSection';
 
 // Everything here runs through /api/scraper. There is deliberately no second
@@ -193,8 +193,10 @@ function SetupInner() {
   // Dev mode and manual mode (Blake, 2026-10-12; lib/linkedin-limits.js): two more switches
   // in the same file. Dev mode can be turned off at any moment, a scan running or not.
   const devOn = li?.dev === true;
-  // Always on with only the manual plugin (lib/scanner-capabilities.js), whatever was saved.
-  const manualOn = li?.limits?.manual === true || shows.manualLocked;
+  // How circle scans run, Automatic or By hand, never both (lib/scanner-capabilities.js
+  // modeChoices): from the plugins installed and the saved manual mode.
+  const modes = modeChoices(s?.capabilities ?? null, li?.limits?.manual === true);
+  const manualOn = modes.mode === 'manual';
   const digOn = li?.limits?.digDeeper === true;
   const firstCircle = durationText(firstCircleSeconds(pace, gentle));
   // A run that ended badly, and the line that says why — the last thing it
@@ -215,14 +217,15 @@ function SetupInner() {
     {
       key: 'scanner', name: 'Scanner and Chrome',
       state: notFound || !step1.done ? 'bad' : 'done',
-      summary: notFound ? 'Files missing' : step1.done ? 'Ready' : needsChrome ? 'Needs Google Chrome' : 'Needs setting up',
+      summary: notFound ? 'Not installed' : step1.done ? 'Ready' : needsChrome ? 'Needs Google Chrome' : 'Needs setting up',
       body: <>
+        {/* The app carries no scanner: a plugin brings it (Settings → Plugins). */}
         {notFound && (
           <Box tone="bad">
-              <b>Can’t find the scanner files.</b><br />
+              <b>No scanner is installed.</b><br />
               <span style={{ color: 'var(--sd-fg-3, #9aa)' }}>
-                This copy of Sixgree is missing part of its scanner. Download it again from
-                sixgree.com and put the new copy in place of this one.
+                Scanning comes from a plugin. Install Auto scan or Manual scan
+                from <Link href="/settings#plugins" style={{ color: 'inherit' }}>Settings → Plugins</Link>.
               </span>
           </Box>
         )}
@@ -551,105 +554,126 @@ function SetupInner() {
             <SetupBox steps={steps} allSet={allSet} left={left} isOpen={isOpen} onToggle={toggle} />
           </div>
 
-          {/* ---- The scanner's settings: each one a line that says what it does ---- */}
+          {/* ---- The scanner's settings, calmer (Blake, 2026-10-14: "a more friendly ui instead of the button
+               box"): a few short groups with plain headings, one control a row, each with a line on what it
+               does. How circle scans run first, as one choice of two. ---- */}
           <section aria-labelledby="scan-settings" className="scan-card" style={{ marginTop: 20 }}>
             <h2 id="scan-settings" style={h2}>Scanner settings</h2>
-            <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 14 }}>
-              How fast it goes, how much it may search, and how much of each list it reads. Speed is beside the Scan button above.
+            <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 6 }}>
+              How circle scans run, how fast, what they read, and what keeps your account safe.
             </div>
-            {/* Auto scan's switch, first and always here (Blake, 1.2.0: "there's no setting in the scanner
-                to turn off the Auto scan button, it was only in the onboarding"). Never greyed out: turning
-                it off while Auto scan runs stops it (setAllDay). */}
-            {shows.auto && <div data-auto-scan-switch="" style={{ marginBottom: 18, paddingBottom: 16, borderBottom: LINE }}>
-              <Toggle checked={experimental} onChange={setAllDay} tag="Experimental"
-                title="Auto scan"
-                line={experimental
-                  ? 'On: Auto scan sits beside Scan in the header. Hover or click it to pick a pace and tiers, then Start. Turning this off stops it and takes the button away.'
-                  : 'Puts an Auto scan button beside Scan in the header: it scans your connections’ circles in small sittings with rests, 9:00 to 18:00, while Sixgree is open.'}
-                more={<>
-                  Hover or click Auto scan to pick its pace (Slow, Medium or Fast: how many searches in a sitting and how
-                  long it rests after) and which tiers&rsquo; circles it scans, then Start. It searches only from 9:00 to
-                  18:00, with no browser open while it rests; it stops at your daily limit and after any check from
-                  LinkedIn; anything you queue goes first; and it saves every page. Scans you start yourself never keep
-                  its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
-                  two compare.
-                </>} />
-            </div>}
-            <div className="scan-two">
-              <div>
-                {/* One limit (Blake, 2026-10-05): this number replaces the old searches a day, a month and
-                    profile views a day. The lift and the meter are under LinkedIn usage below. */}
+
+            {/* Blake, 2026-10-14: "make sure that the user cant auto scan and do manual mode and making that option
+                more apparent". One choice of two, never both (lib/scanner-capabilities.js modeChoices): By hand is
+                manual mode in scan-limits.json, which the scanner reads as it goes (scrape.py manual_reads). The
+                plugins decide what's there: with one, it's chosen and locked; the other says which plugin to install. */}
+            <Group title="How circle scans run" data-circle-mode={modes.mode || 'none'}>
+              <ModeCards choices={modes} disabled={running || busy} onPick={(mode) => run('set-limits', modeSetting(mode))} />
+              {shows.manual && (
+                <details style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 10 }}>
+                  <summary style={{ cursor: 'pointer', color: 'var(--sd-fg-2, #aab7c4)', fontWeight: 600 }}>More about By hand</summary>
+                  <div style={{ marginTop: 4 }}>
+                    The scanner still opens their profile and the first page of their list; from there nothing on
+                    the page moves unless you move it. A page is read once you reach its foot, and only once. Every
+                    page you open is still a LinkedIn search on your account, counted against your searches a day,
+                    and a stop the moment LinkedIn pushes back. In a round of several people, closing the window
+                    moves on to the next person; Stop ends the round. Ten minutes with no new page ends that
+                    person&rsquo;s read. Your own connections, company scans and profile reads still run by themselves.
+                    The window can&rsquo;t sit inside Sixgree: Chrome is a program of its own. A tap answers each Next
+                    and a chime each page read, a step higher for every page in a row: Settings &rarr; Sound.
+                  </div>
+                </details>
+              )}
+            </Group>
+
+            <Group title="Speed">
+              {/* Auto scan's switch (Blake, 1.2.0: "there's no setting in the scanner to turn off the Auto scan
+                  button, it was only in the onboarding"). Never greyed out: turning it off while Auto scan runs
+                  stops it (setAllDay). By hand, it isn't offered: a line says why instead. */}
+              {shows.auto && <div data-auto-scan-switch="" style={rowStyle}>
+                {modes.autoScan ? (
+                  <Toggle checked={experimental} onChange={setAllDay} tag="Experimental"
+                    title="Auto scan"
+                    line={experimental
+                      ? 'On: Auto scan sits beside Scan in the header. Hover or click it to pick a pace and tiers, then Start. Turning this off stops it and takes the button away.'
+                      : 'Puts an Auto scan button beside Scan in the header: it scans your connections’ circles in small sittings with rests, 9:00 to 18:00, while Sixgree is open.'}
+                    more={<>
+                      Hover or click Auto scan to pick its pace (Slow, Medium or Fast: how many searches in a sitting and how
+                      long it rests after) and which tiers&rsquo; circles it scans, then Start. It searches only from 9:00 to
+                      18:00, with no browser open while it rests; it stops at your daily limit and after any check from
+                      LinkedIn; anything you queue goes first; and it saves every page. Scans you start yourself never keep
+                      its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
+                      two compare.
+                    </>} />
+                ) : (
+                  // By hand: Auto scan scans while you're away, so it isn't offered (the header hides it too).
+                  <SettingTitle title="Auto scan" line={AUTO_NEEDS_AUTOMATIC} />
+                )}
+              </div>}
+              {/* One limit (Blake, 2026-10-05): this number replaces the old searches a day, a month and
+                  profile views a day. The lift and the meter are under LinkedIn usage below. */}
+              <div style={rowStyle}>
                 <SettingTitle title="Searches a day" line="The one limit, counting the last 24 hours: a scan, and Auto scan, stops at it and carries on next time. Profile views count against the same number." />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--sd-fg-2, #b8c4c4)' }}>
                   {li?.limits?.daily != null && (
                     <DailyLimitInput id="settings-daily" value={li.limits.daily} onSave={(daily) => run('set-limits', { daily })} />
                   )}
                   {devOn
-                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, below, but never past Dev mode’s ceiling of {li.devCeiling} in the last 24 hours.</span></>
+                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, under Safety, but never past Dev mode’s ceiling of {li.devCeiling} in the last 24 hours.</span></>
                     : li?.lifted
                     ? <><LiftedTag /> <span>No daily limit until you quit Sixgree.</span></>
                     : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
                   {!devOn && <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 8 }}>
-                  Always, lifted or not: at most one profile view a minute, the pause before every page, and a stop the
-                  moment LinkedIn asks you to check in.
-                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <SettingTitle title="How much of each list" line="Every page is one LinkedIn search; LinkedIn shows 100 pages at most." />
-                  <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle} aria-label="Read up to">
-                    <option value={100}>Every page, to the end of their list</option>
-                    <option value={50}>50 pages each</option>
-                    <option value={25}>25 pages each</option>
-                    <option value={10}>10 pages (~100 people) each</option>
-                  </select>
-                </div>
+              {/* Blake, 2026-10-05: gentle pacing, on. Saved with the daily limit (scan-limits.json), so the
+                  scanner reads it at the start of each scan. It only ever adds waiting to the read as it was. */}
+              <div style={rowStyle}>
+                <Toggle checked={gentle} disabled={running || busy} onChange={(on) => run('set-limits', { gentle: on })}
+                  title="Gentle pacing and scrolling"
+                  line={gentle
+                    ? 'On: each wait runs a little longer at random, with reading time and a scroll through each page, and now and then a break.'
+                    : 'Off: the fixed waits and the plain read the scanner always had.'}
+                  more={<>
+                    It never shortens a wait or skips a check: the scanner&rsquo;s own waits and reader run exactly as
+                    before, and this adds time after them (never under the old wait), a scroll down each page in
+                    uneven steps before it&rsquo;s read, reading time for the people it showed, a short break about
+                    once in a hundred pages, and a longer rest every 60. A page that&rsquo;s slow to load is tried
+                    again after 2, 4, 8 and 16 seconds. The speed beside the Scan button sets the pace either way.
+                  </>} />
+              </div>
+              <div style={{ ...rowLine, ...rowStyle }}>
+                {/* Worked out from the scanner's own numbers (lib/scan-pace.js), with gentle pacing or without. */}
+                <span data-speed-line="">{paceLine(li?.limits?.pace, gentle).replace(/\.$/, '')}, so a long list takes about{' '}
+                {circleScanCost(pages, li?.limits?.pace, gentle).minutes} minutes a person.</span>{' '}
+                The speed itself is beside the Scan button above.
+              </div>
+            </Group>
+
+            <Group title="What it reads">
+              <div style={rowStyle}>
+                <SettingTitle title="How much of each list" line="Every page is one LinkedIn search; LinkedIn shows 100 pages at most." />
+                <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle} aria-label="Read up to">
+                  <option value={100}>Every page, to the end of their list</option>
+                  <option value={50}>50 pages each</option>
+                  <option value={25}>25 pages each</option>
+                  <option value={10}>10 pages (~100 people) each</option>
+                </select>
+              </div>
+              <div style={rowStyle}>
                 <Toggle checked={finish} disabled={running} onChange={setFinish}
                   title="Finish lists that stopped partway"
                   line="Each round also carries on with people already mapped, from the page each one stopped at." />
-                <div>
-                  <SettingTitle title="Hidden lists" line="People whose list was hidden last time, in case they’ve opened it. Costs a profile view each." />
-                  <Btn onClick={() => run('auto-bridge-retry', roundOptions)} disabled={!canSearch || (order === 'score' && !tiers.length)}>
-                    Retry hidden ones
-                  </Btn>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6 }}>
-                  {/* Worked out from the scanner's own numbers (lib/scan-pace.js), with gentle pacing or without. */}
-                  <span data-speed-line="">{paceLine(li?.limits?.pace, gentle).replace(/\.$/, '')}, so a long list takes about{' '}
-                  {circleScanCost(pages, li?.limits?.pace, gentle).minutes} minutes a person.</span>{' '}
-                  If LinkedIn says a free account&rsquo;s monthly search limit is reached, the scan saves what it read and
-                  carries on from that page next time. Keep batches small.
-                </div>
               </div>
-            </div>
-            {/* Blake, 2026-10-05: gentle pacing (on), and optional full profile reads (off). Saved
-                with the daily limit (scan-limits.json), so the scanner reads them at the start of
-                each scan. Gentle pacing only ever adds waiting to the read as it was. */}
-            <div className="scan-two" style={{ marginTop: 18, paddingTop: 16, borderTop: LINE }}>
-              <Toggle checked={gentle} disabled={running || busy} onChange={(on) => run('set-limits', { gentle: on })}
-                title="Gentle pacing and scrolling (new)"
-                line={gentle
-                  ? 'On: each wait runs a little longer at random, with reading time and a scroll through each page, and now and then a break.'
-                  : 'Off: the fixed waits and the plain read the scanner always had.'}
-                more={<>
-                  It never shortens a wait or skips a check: the scanner&rsquo;s own waits and reader run exactly as
-                  before, and this adds time after them (never under the old wait), a scroll down each page in
-                  uneven steps before it&rsquo;s read, reading time for the people it showed, a short break about
-                  once in a hundred pages, and a longer rest every 60. A page that&rsquo;s slow to load is tried
-                  again after 2, 4, 8 and 16 seconds. The speeds above say how long it takes either way.
-                </>} />
               {/* Blake, 2026-10-12: "when people auto scan or manual will have the option to dig deeper".
-                  It replaces "Read full profiles (experience)", a round of its own (Blake: "repurpose or
-                  remove … that doesn't really matter now"): the same reader (scrape.py read_experience),
-                  on the profile a circle scan opens anyway (_dig_into_profile). */}
-              <div data-dig-deeper="">
+                  The same reader as Read profiles (scrape.py read_experience), on the profile a circle scan
+                  opens anyway (_dig_into_profile). */}
+              <div data-dig-deeper="" style={rowStyle}>
                 <Toggle checked={digOn} disabled={running || busy} onChange={(on) => run('set-limits', { digDeeper: on })}
                   title="Dig deeper: read their profile" tag="Better scores"
                   line={digOn
                     ? (manualOn
-                      ? 'On: a circle scan reads the person’s profile while it’s open. In manual mode you scroll to their Experience and it’s read as it shows.'
+                      ? 'On: a circle scan reads the person’s profile while it’s open. By hand, you scroll to their Experience and it’s read as it shows.'
                       : 'On: a circle scan reads the person’s profile while it’s open: their current and past roles, followers and connection count.')
                     : 'Off: a circle scan only reads their top card (followers, connection count) on the way to their list.'}
                   more={<>
@@ -661,40 +685,46 @@ function SetupInner() {
                     never read opens it once, a profile view, and waits when today&rsquo;s profile views are used.
                   </>} />
               </div>
-            </div>
-            {/* Blake, 2026-10-12: manual mode ("the user has to manually scroll per page for the
-                python to scan each page … to make the user feel safer") and Dev mode ("a dev mode
-                that basically removes the limits", the speed excepted). Both saved in
-                scan-limits.json; the scanner reads them as it goes (scrape.py manual_reads, dev_mode). */}
-            <div className="scan-two" style={{ marginTop: 18, paddingTop: 16, borderTop: LINE }}>
-              {/* Free with both plugins (or built in), locked on with only the manual one, gone without it. */}
-              {shows.manual && <div data-manual-mode="">
-                <Toggle checked={manualOn} disabled={running || busy || shows.manualLocked} onChange={(on) => run('set-limits', { manual: on })}
-                  title="Manual mode for circle scans" tag="You page through"
-                  line={<>
-                    {manualOn
-                      ? 'On: a circle scan opens the scanner’s Chrome in front, at their list. Scroll to the bottom of each page and it’s read; then click Next. Close the window when you’re done with them.'
-                      : 'Off: circle scans page through each list by themselves, out of sight.'}
-                    {shows.manualLocked && <span data-manual-locked="" style={{ display: 'block', marginTop: 4 }}>{MANUAL_ALWAYS}</span>}
-                  </>}
-                  more={<>
-                    The scanner still opens their profile and the first page of their list; from there nothing on
-                    the page moves unless you move it. A page is read once you reach its foot, and only once. Every
-                    page you open is still a LinkedIn search on your account, counted against your searches a day,
-                    and a stop the moment LinkedIn pushes back. In a round of several people, closing the window
-                    moves on to the next person; Stop ends the round. Ten minutes with no new page ends that
-                    person&rsquo;s read. Auto scan stays off while this is on: it scans while you&rsquo;re away.
-                    Your own connections, company scans and profile reads still run by themselves. The window
-                    can&rsquo;t sit inside Sixgree: Chrome is a program of its own. A tap answers each Next and a chime
-                    each page read, a step higher for every page in a row: Settings &rarr; Sound.
-                  </>} />
-              </div>}
-              {shows.auto && <div data-dev-mode-switch="">
+              <div style={rowStyle}>
+                <SettingTitle title="Hidden lists" line="People whose list was hidden last time, in case they’ve opened it. Costs a profile view each." />
+                <Btn onClick={() => run('auto-bridge-retry', roundOptions)} disabled={!canSearch || (order === 'score' && !tiers.length)}>
+                  Retry hidden ones
+                </Btn>
+              </div>
+              {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
+                  every scan runs in a real Chrome window kept out of sight, which comes forward only when
+                  LinkedIn needs you. This is for anyone who wants to watch instead. */}
+              <div style={rowStyle}>
+                <Toggle checked={showChrome} disabled={running} onChange={setShowChrome}
+                  title="Show the scanner’s Chrome window"
+                  line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
+                  more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily limit." />
+              </div>
+              {social && shows.auto && (
+                <div style={rowStyle}>
+                  <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
+                    title="Sync messages once a day"
+                    line="Brings your LinkedIn conversations up to date for the Social tab, once a day, with the scanner." />
+                </div>
+              )}
+            </Group>
+
+            <Group title="Safety">
+              <div style={{ ...rowLine, ...rowStyle }}>
+                Always, lifted or not: at most one profile view a minute, the pause before every page, and a stop the
+                moment LinkedIn asks you to check in. If LinkedIn says a free account&rsquo;s monthly search limit is
+                reached, the scan saves what it read and carries on from that page next time. Keep batches small.{' '}
+                <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>LinkedIn usage &rarr;</a>
+              </div>
+              {/* Blake, 2026-10-12: Dev mode ("a dev mode that basically removes the limits", the speed
+                  excepted), marked as advanced. Saved in scan-limits.json; the scanner reads it as it goes
+                  (scrape.py dev_mode). It keeps one limit: the ceiling on search pages a day. */}
+              {shows.auto && <div data-dev-mode-switch="" style={rowStyle}>
                 <Toggle checked={devOn} disabled={busy} onChange={(on) => run('set-limits', { dev: on })}
-                  title="Dev mode: no limits but a ceiling" tag="Your account, your risk"
+                  title="Dev mode: no limits but a ceiling" tag="Advanced · your account, your risk"
                   line={devOn
                     ? `On: no daily limit but a ceiling of ${li.devCeiling} search pages in any 24 hours, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.`
-                    : 'Takes off every limit Sixgree sets but a ceiling on search pages a day, until you turn it off. The speed you pick still sets every wait.'}
+                    : `Takes off every limit Sixgree sets but a ceiling of ${li?.devCeiling ?? 250} search pages a day, until you turn it off. The speed you pick still sets every wait.`}
                   more={<>
                     What stays on whatever this says: the ceiling on search pages in any 24 hours, set below
                     where accounts were restricted; the speed (Slow, Medium or Fast) and everything it sets,
@@ -705,26 +735,7 @@ function SetupInner() {
                     clear of that: LinkedIn usage, below, still counts everything.
                   </>} />
               </div>}
-            </div>
-          </section>
-
-          {/* ---- Extras: the switches, each with what it does in a line ---- */}
-          <section aria-labelledby="scan-extras" className="scan-card" style={{ marginTop: 20 }}>
-            <h2 id="scan-extras" style={h2}>Extras</h2>
-            <div className="scan-two" style={{ marginTop: 10 }}>
-              {/* Blake, 2026-10-04: seamless, "not to have any disruption through pop ups or windows":
-                  every scan runs in a real Chrome window kept out of sight, which comes forward only when
-                  LinkedIn needs you. This is for anyone who wants to watch instead. */}
-              <Toggle checked={showChrome} disabled={running} onChange={setShowChrome}
-                title="Show the scanner’s Chrome window"
-                line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
-                more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily limit." />
-              {social && shows.auto && (
-                <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
-                  title="Sync messages once a day"
-                  line="Brings your LinkedIn conversations up to date for the Social tab, once a day, with the scanner." />
-              )}
-            </div>
+            </Group>
           </section>
 
           {/* ---- LinkedIn usage, last (Blake, 2026-10-04: "usage should be more at the bottom and should be
@@ -854,6 +865,15 @@ const PAGE_CSS = `
 .scan-step-head:hover { background: rgba(var(--sd-ink, 255, 255, 255), 0.05); }
 .scan-step-head:focus-visible { outline: 2px solid var(--sd-blue, #3498DB); outline-offset: 1px; }
 .scan-chev { transition: transform .15s ease; }
+.scan-modes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.scan-mode { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; border-radius: 14px; border: 1.5px solid rgba(var(--sd-ink, 255, 255, 255), 0.12); background: rgba(var(--sd-ink, 255, 255, 255), 0.03); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.scan-mode:hover:not(.off):not(.on) { border-color: rgba(var(--sd-ink, 255, 255, 255), 0.28); }
+.scan-mode:focus-visible { outline: 2px solid var(--sd-blue, #3498DB); outline-offset: 2px; }
+.scan-mode.on { border-color: var(--sd-green, #00c870); background: rgba(0, 200, 112, 0.08); cursor: default; }
+.scan-mode.off { opacity: .75; cursor: default; }
+.scan-mode-dot { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid rgba(var(--sd-ink, 255, 255, 255), 0.35); display: grid; place-items: center; }
+.scan-mode.on .scan-mode-dot { border-color: var(--sd-green, #00c870); }
+.scan-mode.on .scan-mode-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sd-green, #00c870); }
 .launch-go { transition: transform .15s ease, box-shadow .2s ease, filter .2s ease; }
 .launch-go:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,255,136,.35); filter: brightness(1.08); }
 .launch-go:not(:disabled):active { transform: translateY(0) scale(.98); }
@@ -861,8 +881,9 @@ const PAGE_CSS = `
   .scan-top, .scan-two { grid-template-columns: minmax(0, 1fr); }
   .scan-setup-first .scan-setup { order: -1; }
 }
+@media (max-width: 640px) { .scan-modes { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .scan-card { padding: 18px 16px; } }
-@media (prefers-reduced-motion: reduce) { .scan-chev, .launch-go { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .scan-chev, .launch-go, .scan-mode { transition: none; } }
 `;
 
 const LIGHT = {
@@ -958,6 +979,63 @@ const StepText = ({ children }) => (
 const StepActions = ({ children }) => (
   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>{children}</div>
 );
+
+// The settings' rows: one control a row, a thin line between them, and a line under one in a quieter grey.
+const rowStyle = { padding: '14px 0', borderTop: LINE };
+const rowLine = { fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 8 };
+
+/** One group of settings: a plain heading, then its rows. */
+function Group({ title, children, ...data }) {
+  return (
+    <div className="scan-group" {...data} style={{ marginTop: 22 }}>
+      <h3 style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--sd-fg-2, #aab7c4)', margin: '0 0 8px' }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+const MODE_OPTIONS = [
+  { key: 'auto', title: 'Automatic', line: 'The scanner turns the pages for you. Auto scan can run it in the background.' },
+  { key: 'manual', title: 'By hand', line: 'You scroll each page and click Next; it reads each page as you go, with chimes.' },
+];
+
+/**
+ * How circle scans run, as two big cards, one chosen (lib/scanner-capabilities.js
+ * modeChoices): Automatic or By hand, never both. A choice whose plugin isn't
+ * installed says which to install, with the way to Settings → Plugins; with
+ * only one installed, that one is chosen and locked.
+ */
+function ModeCards({ choices, disabled, onPick }) {
+  return (
+    <div role="radiogroup" aria-label="How circle scans run" className="scan-modes">
+      {MODE_OPTIONS.map((o) => {
+        const c = choices[o.key];
+        const off = !c.available;
+        const fixed = disabled || off || c.selected || c.locked;
+        const pick = () => { if (!fixed) onPick(o.key); };
+        return (
+          <div key={o.key} role="radio" aria-checked={c.selected} aria-disabled={off || (disabled && !c.selected)}
+            tabIndex={off ? -1 : 0} data-mode={o.key} data-mode-state={off ? 'needs-plugin' : c.selected ? 'chosen' : 'open'}
+            className={`scan-mode${c.selected ? ' on' : ''}${off ? ' off' : ''}`}
+            onClick={pick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }}>
+            <span className="scan-mode-dot" aria-hidden="true" />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 800 }}>
+                {o.title}
+                {c.selected && c.locked && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-3, #8b9a9a)' }}>the only one installed</span>}
+              </span>
+              <span style={{ display: 'block', fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5, marginTop: 2 }}>{o.line}</span>
+              {off && (
+                <Link href="/settings#plugins" data-mode-needs="" style={{ display: 'inline-block', marginTop: 6, fontSize: 12.5, fontWeight: 700, color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}
+                  onClick={(e) => e.stopPropagation()}>{c.needs} &rarr;</Link>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const SettingTitle = ({ title, line }) => (
   <div style={{ marginBottom: 8 }}>

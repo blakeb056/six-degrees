@@ -26,10 +26,13 @@ before(async () => {
   process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 });
 
-const NOTHING = { first: 0, second: 0, third: 0 };
+// The people a CSV import put in: the scanner's steps, Get ready among them,
+// come after them (lib/onboarding.js onboardingStep, since the app carries no
+// scanner and scanning is set up from the import's result).
+const PEOPLE = { first: 300, second: 0, third: 0 };
 const ready = (mac = { version: 26, app: true }, checks = {}) => ({
   checks: { scriptsFound: true, chrome: true, dependencies: true, pythonSource: 'bundled', riskAccepted: true, signedIn: false, mac, ...checks },
-  running: false, network: NOTHING, log: [],
+  running: false, network: PEOPLE, log: [],
 });
 const ON = { needed: true, granted: true, why: null };
 const OFF = { needed: true, granted: false, why: null };
