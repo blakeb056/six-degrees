@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checksums it lists, one from the plugin list must match the list's own checksum, and one
   made for another version of Sixgree is refused. A scanner plugin, once installed, is what
   scans run. Off, every plugin stays installed and none is used.
+- **The scan screens follow the scanner plugins.** Scan, Auto scan and *Check for new* show only
+  with a scanner. *Auto scan* unlocks the automatic features and Dev mode, *Manual scan* unlocks
+  manual mode and its chimes, and with only the manual one circle scans are always manual.
 - **Allow plugins in the guided setup.** A box under the CSV import, unticked until you tick
   it. Ticking it turns plugins on and shows the same cards, the scanners included, each with
   its risk. The CSV stays the main way in, and nothing in the setup waits for the list.

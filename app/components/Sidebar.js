@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 
 import Link from 'next/link';
 import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
 import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
-import useScanner from './useScanner';
+import useScanner, { useScanShows } from './useScanner';
 import useRequests from './useRequests';
 import InlineNote, { useFadingNote } from './InlineNote';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
@@ -28,8 +28,10 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
-  // the person up in the database, and these two never reach it.
-  const canScan = !csvSource;
+  // the person up in the database, and these two never reach it. And only with
+  // a scanner (lib/scanner-capabilities.js): without one, no card offers a scan.
+  const scanner = useScanShows().scan;
+  const canScan = !csvSource && scanner;
   const { userId, userProfile: ctxProfile } = useUser();
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
   const [searchQuery, setSearchQuery] = useState('');
@@ -532,7 +534,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
           canScan
             ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} resume={resume} />
-            : <ScansNeedYourNetwork csvSource={csvSource} style={{ marginTop: 16 }} />
+            : csvSource && <ScansNeedYourNetwork csvSource={csvSource} style={{ marginTop: 16 }} />
         )}
 
         {selected.profile_url && (
@@ -569,7 +571,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {/* Who to scan next: people you reached, whose own circle is next */}
         {canScan
           ? <ReadyToScan connections={connections} degree2={degree2} scanNotes={scanNotes} tierColors={tierColors} />
-          : <ScansNeedYourNetwork csvSource={csvSource} style={{ marginBottom: 16 }} />}
+          : csvSource && <ScansNeedYourNetwork csvSource={csvSource} style={{ marginBottom: 16 }} />}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           <StatBox label="Degree-2 Found" value={degree2.length} />

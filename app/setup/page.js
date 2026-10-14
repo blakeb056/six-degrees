@@ -19,6 +19,8 @@ import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
 import useScanStatus from '../components/useScanStatus';
+import { useScanShows } from '../components/useScanner';
+import { MANUAL_ALWAYS } from '../../lib/scanner-capabilities';
 import UsageSection from '../components/settings/UsageSection';
 
 // Everything here runs through /api/scraper. There is deliberately no second
@@ -64,6 +66,9 @@ function SetupInner() {
   // The scanner's status, your settings, and what the buttons do: shared with
   // the guided setup (app/components/useScanStatus.js).
   const { s, settings, busy, error, run, stop, acceptRisk, answerAppManagement, appAnswer } = useScanStatus();
+  // What the installed scanner unlocks (lib/scanner-capabilities.js): the auto plugin's
+  // buttons and switches, and manual mode free, locked on, or not there.
+  const shows = useScanShows();
   // Ten, not twenty-five. The only measured number this project has is that
   // roughly nineteen bridges in an hour got a real account restricted, so a
   // default above that is a default that can hurt whoever trusts it.
@@ -188,7 +193,8 @@ function SetupInner() {
   // Dev mode and manual mode (Blake, 2026-10-12; lib/linkedin-limits.js): two more switches
   // in the same file. Dev mode can be turned off at any moment, a scan running or not.
   const devOn = li?.dev === true;
-  const manualOn = li?.limits?.manual === true;
+  // Always on with only the manual plugin (lib/scanner-capabilities.js), whatever was saved.
+  const manualOn = li?.limits?.manual === true || shows.manualLocked;
   const digOn = li?.limits?.digDeeper === true;
   const firstCircle = durationText(firstCircleSeconds(pace, gentle));
   // A run that ended badly, and the line that says why — the last thing it
@@ -401,8 +407,8 @@ function SetupInner() {
                 </Box>
               )}
 
-              {/* ---- Your connections: the first scan, then Check for new ---- */}
-              <Part title="Your connections" hint={mapped > 0
+              {/* ---- Your connections: the first scan, then Check for new (the auto plugin's) ---- */}
+              {shows.auto && <Part title="Your connections" hint={mapped > 0
                 ? 'Check for new picks up anyone you’ve added since. Scan it all again reads the whole list.'
                 : 'Reads your connections list and saves everyone here. About a minute and a half for 750 people.'}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -421,7 +427,7 @@ function SetupInner() {
                   )}
                 </div>
                 {why && <Why>{why}</Why>}
-              </Part>
+              </Part>}
 
               {/* ---- Their circles: Auto-Bridge, the radar with today's budget round it ---- */}
               <Part title="Their circles" hint={<>
@@ -554,7 +560,7 @@ function SetupInner() {
             {/* Auto scan's switch, first and always here (Blake, 1.2.0: "there's no setting in the scanner
                 to turn off the Auto scan button, it was only in the onboarding"). Never greyed out: turning
                 it off while Auto scan runs stops it (setAllDay). */}
-            <div data-auto-scan-switch="" style={{ marginBottom: 18, paddingBottom: 16, borderBottom: LINE }}>
+            {shows.auto && <div data-auto-scan-switch="" style={{ marginBottom: 18, paddingBottom: 16, borderBottom: LINE }}>
               <Toggle checked={experimental} onChange={setAllDay} tag="Experimental"
                 title="Auto scan"
                 line={experimental
@@ -568,7 +574,7 @@ function SetupInner() {
                   its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
                   two compare.
                 </>} />
-            </div>
+            </div>}
             <div className="scan-two">
               <div>
                 {/* One limit (Blake, 2026-10-05): this number replaces the old searches a day, a month and
@@ -661,12 +667,16 @@ function SetupInner() {
                 that basically removes the limits", the speed excepted). Both saved in
                 scan-limits.json; the scanner reads them as it goes (scrape.py manual_reads, dev_mode). */}
             <div className="scan-two" style={{ marginTop: 18, paddingTop: 16, borderTop: LINE }}>
-              <div data-manual-mode="">
-                <Toggle checked={manualOn} disabled={running || busy} onChange={(on) => run('set-limits', { manual: on })}
+              {/* Free with both plugins (or built in), locked on with only the manual one, gone without it. */}
+              {shows.manual && <div data-manual-mode="">
+                <Toggle checked={manualOn} disabled={running || busy || shows.manualLocked} onChange={(on) => run('set-limits', { manual: on })}
                   title="Manual mode for circle scans" tag="You page through"
-                  line={manualOn
-                    ? 'On: a circle scan opens the scanner’s Chrome in front, at their list. Scroll to the bottom of each page and it’s read; then click Next. Close the window when you’re done with them.'
-                    : 'Off: circle scans page through each list by themselves, out of sight.'}
+                  line={<>
+                    {manualOn
+                      ? 'On: a circle scan opens the scanner’s Chrome in front, at their list. Scroll to the bottom of each page and it’s read; then click Next. Close the window when you’re done with them.'
+                      : 'Off: circle scans page through each list by themselves, out of sight.'}
+                    {shows.manualLocked && <span data-manual-locked="" style={{ display: 'block', marginTop: 4 }}>{MANUAL_ALWAYS}</span>}
+                  </>}
                   more={<>
                     The scanner still opens their profile and the first page of their list; from there nothing on
                     the page moves unless you move it. A page is read once you reach its foot, and only once. Every
@@ -678,8 +688,8 @@ function SetupInner() {
                     can&rsquo;t sit inside Sixgree: Chrome is a program of its own. A tap answers each Next and a chime
                     each page read, a step higher for every page in a row: Settings &rarr; Sound.
                   </>} />
-              </div>
-              <div data-dev-mode-switch="">
+              </div>}
+              {shows.auto && <div data-dev-mode-switch="">
                 <Toggle checked={devOn} disabled={busy} onChange={(on) => run('set-limits', { dev: on })}
                   title="Dev mode: no limits but a ceiling" tag="Your account, your risk"
                   line={devOn
@@ -694,7 +704,7 @@ function SetupInner() {
                     again. LinkedIn restricts accounts that search too much, and the limits are what keep an account
                     clear of that: LinkedIn usage, below, still counts everything.
                   </>} />
-              </div>
+              </div>}
             </div>
           </section>
 
@@ -709,7 +719,7 @@ function SetupInner() {
                 title="Show the scanner’s Chrome window"
                 line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
                 more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily limit." />
-              {social && (
+              {social && shows.auto && (
                 <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
                   title="Sync messages once a day"
                   line="Brings your LinkedIn conversations up to date for the Social tab, once a day, with the scanner." />

@@ -7,6 +7,7 @@
 
 import { useEffect } from 'react';
 import { watchScanner, scannerNow, beginScrape } from '../../lib/scraper-client';
+import { scanShows } from '../../lib/scanner-capabilities';
 import { IS_DEMO } from '../../lib/demo';
 
 let tried = false;
@@ -25,7 +26,8 @@ export default function SocialAutoSync() {
         if (!now.known || tried) return;
         tried = true;
         stop();
-        if (!now.running) beginScrape('messages').catch(() => {});
+        // Message sync is the Auto scan plugin's (lib/scanner-capabilities.js): without it, nothing starts.
+        if (!now.running && scanShows(now.capabilities).auto) beginScrape('messages').catch(() => {});
       });
     }).catch(() => {});
     return () => stop();

@@ -17,7 +17,7 @@
 // Both hold the same scanner (scripts/scrape.py, image_store.py and
 // requirements.txt, under scanner/), with a manifest that lists each file's
 // SHA-256 (docs/PLUGINS.md). What differs is the name, what each says it does,
-// and what it unlocks; what each unlocks in the app comes in a later change.
+// and what it unlocks in the app (lib/scanner-capabilities.js).
 // Built for trying the installer now, until the scanner's code moves to a
 // repository of its own and is packaged there.
 //

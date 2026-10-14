@@ -15,6 +15,7 @@ import { RARITY } from '../../../lib/rarity';
 import { roleLine } from '../../../lib/insights-board';
 import { markRequested } from '../../../lib/requests-client';
 import ConnectChoice, { secondaryLook } from '../AutoConnect';
+import { useScanShows } from '../useScanner';
 
 export const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 export const one = (x) => (Math.round(Number(x || 0) * 10) / 10).toFixed(1);
@@ -193,6 +194,9 @@ export function OpenCircle({ id, compact }) {
 
 /** The Scan page's "Scan one circle" for them (/setup?scan=<id>): what it costs, and one button that starts it. */
 export function ScanCircle({ id, compact }) {
+  // Only with a scanner to scan with (lib/scanner-capabilities.js).
+  const scanner = useScanShows().scan;
+  if (!scanner) return null;
   return <Link href={`/setup?scan=${encodeURIComponent(id)}`} style={{ ...OUTLINE, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }} title="Opens the Scan page with them picked: what the scan costs, and one button that starts it">Scan circle</Link>;
 }
 

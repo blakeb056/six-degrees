@@ -11,7 +11,7 @@ import { loadCsvNetwork } from '../../lib/csv';
 import OnboardingGate from '../components/OnboardingGate';
 import PathsAnalyzer from '../components/PathsAnalyzer';
 import { useUser } from '../components/UserProvider';
-import useScanner from '../components/useScanner';
+import useScanner, { useScanShows } from '../components/useScanner';
 import InlineNote, { useFadingNote } from '../components/InlineNote';
 import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
@@ -122,6 +122,8 @@ function PathsInner() {
   // Anything else the scanner runs (a profile card's scan, say) greys this out too.
   const scan = useScanner();
   const busy = !scanning && scan.running ? busyReason(scan) : null;
+  // Company scans come with the Auto scan plugin, or the built-in scanner (lib/scanner-capabilities.js).
+  const companyScans = useScanShows().auto;
 
   function enrichPeople(people) {
     const d1Urls = new Set(d1Data.map(c => c.profile_url));
@@ -278,7 +280,7 @@ function PathsInner() {
               </span>
               {localOnly ? (
                 <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>Scanning needs your own network</span>
-              ) : (
+              ) : companyScans && (
               <span style={{ marginLeft: 'auto', position: 'relative', display: 'inline-flex' }}>
                 <button onClick={scanFullCompany} disabled={scanning || Boolean(busy)}
                   title={busy ? `${busy}. One scan at a time.` : `Scan everyone visible at ${selectedCompany.name}. ${COMPANY_SCAN_NOTE}`}
@@ -292,13 +294,13 @@ function PathsInner() {
                 <InlineNote note={scanNote} float />
               </span>
               )}
-              <span
+              {(localOnly || companyScans) && <span
                 title={COMPANY_SCAN_NOTE}
                 style={{
                   fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, padding: '3px 7px',
                   borderRadius: 20, border: '1px solid rgba(255,215,0,0.45)', color: 'var(--sd-gold, #FFD700)',
                 }}
-              >EXPERIMENTAL</span>
+              >EXPERIMENTAL</span>}
             </>
           )}
         </div>

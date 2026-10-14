@@ -42,6 +42,7 @@ import { score, compareBridges } from '../../lib/separation';
 import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, willQueue, queuedFor } from '../../lib/scraper-client';
 import { paceOf } from '../../lib/scan-pace';
 import useScanner from './useScanner';
+import { scanShows } from '../../lib/scanner-capabilities';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { FormingCluster } from './ClusterSpinner';
 import { NodeFace, Halo, Tip, ZoomButtons, HALO_TEXT } from './ChainView';
@@ -727,7 +728,8 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
             : job ? endedLine(first, job, state)
             : state === 'hidden' ? `${first} keeps their connections hidden, so there is no circle to build.`
             : state === 'scanned' ? `${first}’s list has been read, and everyone on it was already one of your connections.`
-            : !canScan ? 'Scanning needs your own network.'
+            // The sample or a CSV, not a copy with no scanner at all (lib/scanner-capabilities.js), which offers no scan.
+            : !canScan && scanShows(scan.capabilities).scan ? 'Scanning needs your own network.'
             : null;
           if (!line) return null;
           const live = mine || starting;

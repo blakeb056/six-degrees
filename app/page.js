@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useRef, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fillsCircles, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
-import useScanner from './components/useScanner';
+import useScanner, { useScanShows } from './components/useScanner';
 import { loadNetwork } from '../lib/network';
 import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
@@ -105,6 +105,8 @@ function HomeInner() {
   // What the scanner noted: hidden lists, and lists read with nothing new in
   // them. With the network, they say who is ready for a circle scan (lib/reach.js).
   const [scanNotes, setScanNotes] = useState(NO_SCAN_NOTES);
+  // A scanner to scan with: a scanner plugin, or the built-in one (lib/scanner-capabilities.js).
+  const scanner = useScanShows().scan;
   const shapeRef = useRef('');
   // No network yet: the guided setup, the whole window (app/components/onboarding).
   // Decided once, when the network first loads, and kept until its Open the map:
@@ -235,7 +237,7 @@ function HomeInner() {
   if (mode !== 'degrees' && degreesOpened) setDegreesOpened(false);
   if (mode === 'degrees' && !degreesOpened && !loading) {
     setDegreesOpened(true);
-    const opensOn = chainOpen ? visualMode : degreesOpensOn({ view: visualMode, bridgeIds, canScan: !IS_DEMO && !csvMode });
+    const opensOn = chainOpen ? visualMode : degreesOpensOn({ view: visualMode, bridgeIds, canScan: !IS_DEMO && !csvMode && scanner });
     if (opensOn !== visualMode) setVisualMode(opensOn);
   }
   // How many people stand behind each dot of the grid. In Degrees, 1st degree
@@ -336,8 +338,9 @@ function HomeInner() {
     return <Onboarding again={setupOpen === 'again'} onFinish={async () => { rememberSetup({ finished: true }); await reload(); setSetupOpen(false); }} />;
   }
 
-  // Scanning and the Scan page belong to your own network, not the sample or a CSV.
-  const canScan = !IS_DEMO && !csvMode;
+  // Scanning and the Scan page belong to your own network, not the sample or a
+  // CSV, and need a scanner: without one, no view offers a scan.
+  const canScan = !IS_DEMO && !csvMode && scanner;
 
   return (
     <div data-map style={{ height: '100vh', overflow: 'hidden', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: 'var(--sd-font)' }}>

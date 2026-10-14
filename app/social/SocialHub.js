@@ -22,6 +22,7 @@ import {
 import { mergeSocial } from '../../lib/galaxy-lab';
 import { keyFor } from '../../lib/separation';
 import { runScrape, watchScanner, scannerNow } from '../../lib/scraper-client';
+import { scanShows } from '../../lib/scanner-capabilities';
 import { Body, LINE, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
 import Crm from './Crm';
@@ -84,6 +85,8 @@ export default function SocialHub({ embedded = false }) {
   const lastMessages = useRef(null);
   const lastInvites = useRef(null);
   const keep = social?.keepMessages === true;
+  // Live sync is the scanner's, with the Auto scan plugin or the built-in one (lib/scanner-capabilities.js).
+  const syncs = scanShows(job.capabilities).auto;
 
   // The Conversations list reads again whenever this does (listToken).
   const reload = () => fetch('/api/social').then((r) => r.json()).then((d) => setSocial(d.social || null)).catch(() => setSocial(null))
@@ -278,8 +281,8 @@ export default function SocialHub({ embedded = false }) {
           </div>
         </div>
 
-        <h2 style={h2}>Live messages sync <span style={{ fontSize: 11, color: 'var(--sd-gold, #FFD700)' }}>experimental</span></h2>
-        <div style={box}>
+        {syncs && <h2 style={h2}>Live messages sync <span style={{ fontSize: 11, color: 'var(--sd-gold, #FFD700)' }}>experimental</span></h2>}
+        {syncs && <div style={box}>
           <Body style={{ margin: 0 }}>
             Reads your messages list once, in your own Chrome: who each conversation is with, connections or not, when it
             was last active, whether it&rsquo;s unread and who wrote last. It uses no search budget and opens no
@@ -299,7 +302,7 @@ export default function SocialHub({ embedded = false }) {
               Once a day while the app is open (daytime only)
             </label>
           </div>
-        </div>
+        </div>}
         {note && <div style={{ marginTop: 10, fontSize: 13, color: note.good ? 'var(--sd-green, #00ff88)' : 'var(--sd-fg-2, #ff9b9b)' }}>{note.text}</div>}
 
         <h2 style={h2}>People</h2>

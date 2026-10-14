@@ -21,7 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import useScanner from './useScanner';
+import useScanner, { useScanShows } from './useScanner';
 import { beginScrape, busyReason, willQueue, queuedPlace, queuedLabel } from '../../lib/scraper-client';
 import { sawRequested } from '../../lib/requests-client';
 import { AUTO_EXPLAIN, AUTO_CONFIRM, INVITE_CAPS, connectOutcome } from '../../lib/auto-connect';
@@ -217,12 +217,15 @@ const resultColor = (r) => (r.ok ? 'var(--sd-green, #00ff88)' : 'var(--sd-coral,
  * `connect(secondary)` draws the page's own Connect, told whether it now stands
  * second (an outline) or alone (as it always looked). Without Auto (`canAuto`
  * false: the sample, a CSV, someone with no profile on file) Connect stands
- * alone. `size`: 'card' (the person card: a line under it says what Auto does),
+ * alone, and so it does without the Auto scan plugin, whose Auto this is
+ * (lib/scanner-capabilities.js).
+ * `size`: 'card' (the person card: a line under it says what Auto does),
  * 'quest' (Outlink's move cards), 'table' (Insights' rows) or 'row' (a list row: the line is the
  * button's tooltip, and how it went shows in a small note under the buttons).
  */
 export default function ConnectChoice({ person, canAuto = true, size = 'card', connect, onSent, style }) {
-  const available = canAuto && Boolean(person?.id) && Boolean(person?.profile_url);
+  const auto = useScanShows().auto;
+  const available = canAuto && auto && Boolean(person?.id) && Boolean(person?.profile_url);
   if (!available) return connect(false);
   // Keyed by person: a card reused for the next person starts fresh, never
   // showing the last one's result as theirs.

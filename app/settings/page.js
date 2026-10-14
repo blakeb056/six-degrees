@@ -15,6 +15,7 @@ import AppearanceSection from '../components/settings/AppearanceSection';
 import ExperimentalSection from '../components/settings/ExperimentalSection';
 import SoundSection from '../components/settings/SoundSection';
 import PluginsSection from '../components/settings/PluginsSection';
+import { useScanShows } from '../components/useScanner';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, FONT } from '../components/ui';
 import { IS_DEMO } from '../../lib/demo';
@@ -81,6 +82,8 @@ function SettingsInner() {
   // Saving your field or tiers rescores everyone; the company list reads its scores again when this changes.
   const [saves, setSaves] = useState(0);
   const saved = () => setSaves((n) => n + 1);
+  // Sound is manual mode's chimes: only with the manual plugin, or the built-in scanner (lib/scanner-capabilities.js).
+  const chimes = useScanShows().chimes;
 
   useEffect(() => {
     fetch('/api/settings')
@@ -127,10 +130,10 @@ function SettingsInner() {
     window.scrollTo({ top: top <= below ? 0 : top, behavior: 'smooth' });
   }, []);
   useNotchTabs(useMemo(() => (IS_DEMO ? null : {
-    items: SECTIONS.map(([key, label]) => ({ key, label })),
+    items: SECTIONS.filter(([key]) => chimes || key !== 'sound').map(([key, label]) => ({ key, label })),
     current: section,
     onPick: pick,
-  }), [section, pick]));
+  }), [section, pick, chimes]));
 
   if (IS_DEMO) {
     return (
@@ -165,7 +168,7 @@ function SettingsInner() {
           </Body>
         </Section>
         <AppearanceSection />
-        <SoundSection />
+        {chimes && <SoundSection />}
         <Section id="scoring" title="Scores">
           <Body>
             How someone&rsquo;s power score is worked out, and the four things you can change about it:{' '}

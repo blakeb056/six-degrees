@@ -247,14 +247,16 @@ test('a network from a CSV is your own network: every page opens on it, with the
   assert.equal(csv.openNetworkSource({ csvKept: Boolean(opening.csv), scannedFirstDegree: opening.scanned }), 'own');
   assert.equal(await csv.csvNetworkSource(), null, 'no CSV mode: your own profile, your own header');
   // The header keys what scans on your own network alone (not the demo, not the
-  // sample or a kept CSV), never on where the network came from.
+  // sample or a kept CSV), never on where the network came from; and, since the
+  // scanner became plugins, on which scanner is installed
+  // (lib/scanner-capabilities.js), which says nothing of where it came from either.
   const header = readFileSync(new URL('../app/components/AppHeader.js', import.meta.url), 'utf8');
   assert.match(header, /const own = !IS_DEMO && !csvMode;/);
-  assert.match(header, /after=\{own \? <AutoScanButton/);
-  assert.match(header, /\{own && <RefreshButton/);
+  assert.match(header, /after=\{own && auto \? <AutoScanButton/);
+  assert.match(header, /\{own && auto && <RefreshButton/);
   assert.doesNotMatch(header, /fromExport|network-origin/);
   const tabs = readFileSync(new URL('../app/components/AppTabs.js', import.meta.url), 'utf8');
-  assert.match(tabs, /p\.own \? !csvMode : true/);
+  assert.match(tabs, /p\.own \? !csvMode && \(scanner \|\| !p\.scanner\) : true/);
   // And the scanner reading it later finds the people the CSV put there: nobody twice.
   const res = await ingest([{ name: 'Ava Quill', headline: 'Chief Executive Officer at Northwind Labs', profileUrl: stored('invented-ava-quill') }]);
   assert.equal((await res.json()).alreadyKnown, 1);
