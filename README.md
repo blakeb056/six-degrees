@@ -108,8 +108,8 @@ sends without one. It calls a request sent only once their profile shows it pend
 stops at 15 in any 24 hours and 80 in any 7 days, opens their profile once (a profile
 view), and counts toward your usage on the Scan page.
 
-**Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
-lock, and a **Paused** list you can carry on from.
+**Scan** *(needs a scanner plugin)*. The guided scanner. It shows progress, the budget
+that's left, the cooldown lock, and a **Paused** list you can carry on from.
 
 **Also in the app:**
 - **Who only one connection reaches.** For every connection whose circle you've scanned,
@@ -176,29 +176,16 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 
 ## Before you scan
 
+Scanning doesn't come with the app. It comes as optional plugins, **Auto scan** and
+**Manual scan**, that you install from **Settings → Plugins**. Without one, Sixgree is the
+CSV import and the sample network, which carry no risk to your account.
+
 > [!WARNING]
 > **Scanning automates your own account, which may break the platform's User Agreement,
-> and the platform may restrict accounts that do this.** It has happened twice while
-> building this:
-> - The account was temporarily restricted after about 20 profile views in one sitting
->   (2026-09-09); it was lifted the same evening.
-> - Search was blocked after results were read too fast (2026-09-24).
->
-> The scanner now reads slowly and keeps to one daily limit (by default 50 searches a day,
-> and as many profile views, at least a minute apart). You can change it on the Scan page,
-> or lift it until you quit Sixgree. It locks itself during a cooldown, and stops at the
-> first sign of push-back, lifted or not. The risk is still yours.
->
-> **The CSV import and the sample network carry no risk to your account at all.** Details:
+> and the platform may restrict accounts that do this.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
->
-> The app asks for an explicit "I understand" once, before the first scan.
->
-> **The scanner reads; the one thing it ever sends is a connection request, and only when
-> you press Auto** on a person (one each press, without a note, at most 15 a day and 80 a
-> week). Auto asks once before its first request.
->
-> Sixgree is independent software, not affiliated with or endorsed by any networking platform.
+
+Sixgree is independent software, not affiliated with or endorsed by any networking platform.
 
 ## First run
 
@@ -213,22 +200,13 @@ recommends the CSV import, and has it chosen when it opens:
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
 - **Scan my network** (optional): adds who your connections know, the only way to
-  Degrees and Outlink for your own network. It runs your own account automatically, and
-  the platform may restrict accounts that do this: read the warning above first. A
-  guided page ticks each step off as it goes. It first asks one optional question, what
-  field you're in (see *Your sector* below), and *Skip for now* is fine. Then it sets up
-  the scanner in one click, you sign into your account yourself in a Chrome window, and
-  then it scans in the background: the scanner's Chrome stays out of your way and comes
-  forward only if the platform needs you (to sign in again, or to finish a check it asks
-  for). Needs Google Chrome. The Mac app brings its own Python; with `npx sixgree` the
-  page uses yours, or sets up a private one with a click. It checks and says what's
-  missing. On a Mac, macOS may ask whether Sixgree can manage apps while you scan:
-  that's Chrome updating itself, and scanning works either way (step 1 has a button to
-  allow it once).
+  Degrees and Outlink for your own network. It needs a scanner plugin (see *Before you
+  scan* above) and Google Chrome, and it runs your own account automatically: read the
+  warning above first.
 
 |  | Your `Connections.csv` | Sample network | Your scan (optional) |
 |---|---|---|---|
-| Setup | ~10 min (the file comes by email) | none | Chrome (Python comes with the Mac app) |
+| Setup | ~10 min (the file comes by email) | none | a scanner plugin, and Chrome |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
 | **Degrees** (people you *haven't* met) | — | ✅ | ✅ |
 | **Outlink** (getting introduced) | — | — | ✅ |
