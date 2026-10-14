@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Settings → Plugins.** An *Enable plugins* switch, off until you turn it on. On, it lists
+  the plugins installed on this computer, each with its version, what it does and Uninstall,
+  and installs a new one from a package file (`.sgplugin`). Before anything is installed you
+  see its name, version, what it does and any risk it carries, and nothing goes in without
+  your yes. Every package is checked first: its files must match the checksums it lists, and
+  one made for another version of Sixgree is refused. A scanner plugin, once installed, is
+  what scans run. Off, every plugin stays installed and none is used.
 - **Manual mode for circle scans.** A switch in Scanner settings. A circle scan opens the
   scanner's Chrome in front of you at the person's list, and nothing on the page moves unless
   you move it: each page is read once you scroll to its foot, and you click Next yourself. Every

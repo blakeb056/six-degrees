@@ -74,6 +74,7 @@
     "audit:avatars": "node scripts/audit-avatars.mjs",
     "build:app": "node scripts/build-app.mjs",
     "build:desktop": "node scripts/build-app.mjs --shell=electron",
+    "build:plugins": "node scripts/build-plugin.mjs",
     "desktop": "electron desktop",
     "update": "node scripts/update.mjs"
   },

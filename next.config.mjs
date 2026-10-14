@@ -36,7 +36,10 @@ const nextConfig = {
           // it. In contains mode these match at any depth, node_modules included,
           // and nothing the app depends on has such a file (checked when added).
           // A dependency that ships one would lose it, so smoke-test every route.
-          '*.csv', '*.sqlite*', '*.sixdegrees', 'chrome-profile/**'],
+          '*.csv', '*.sqlite*', '*.sixdegrees', 'chrome-profile/**',
+          // Plugin packages that scripts/build-plugin.mjs puts in dist/plugins/:
+          // installed from a file, never shipped inside the app.
+          '*.sgplugin'],
   },
   // Emits .next/standalone with a server and only the dependencies actually
   // reached, so the published package can run without node_modules being
