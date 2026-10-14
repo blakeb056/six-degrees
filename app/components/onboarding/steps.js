@@ -7,7 +7,7 @@
 // the scanner, App Management, the risks and the budget are the ones the Scan
 // page uses (lib/scanner-setup.js, lib/scan-risk.js, lib/search-risk.js).
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { appManagementHref, askForField, CHROME_DOWNLOAD } from '../../../lib/scanner-setup';
 import { readyChecks, connectState, firstScan, photosNote, escapeHatch } from '../../../lib/onboarding';
 import { RISK_POINTS } from '../../../lib/scan-risk';
@@ -22,6 +22,8 @@ import { saveField, skipField } from '../FieldStep';
 import SectorPicker from '../settings/SectorPicker';
 import { DailyLimitInput } from '../LinkedInLimits';
 import ClusterSpinner from '../ClusterSpinner';
+import { usePluginInstall, PluginCards, PluginOfferAt } from '../settings/PluginBrowse';
+import { fetchPlugins, savePluginsEnabled } from '../../../lib/plugins-client';
 import { Ico, Galaxy, MacSettings, ChecksArt, ConnectArt, PaceArt } from './art';
 
 // What the scanner uses when nothing is saved yet (lib/linkedin-limits.js DEFAULT_LIMITS).
@@ -744,7 +746,72 @@ export function ImportCsv({ ctx }) {
         and a download link arrives by email in about ten minutes. Unzip it and drop <b>Connections.csv</b> here.
         Its email addresses are never read.
       </span></div>
+      <AllowPlugins />
     </Frame>
+  );
+}
+
+// ── Allow plugins, under the CSV import ──────────────────────────────────────
+// Blake, 2026-10-13: "in the onboarding we can push the csv mainly but also
+// have a box below that says allow plug ins and then shows the available plug
+// ins which would be the scanners". Unticked by default. Ticking it turns
+// plugins on (POST /api/plugins/enabled, as Settings → Plugins does) and
+// loads the plugin list, the one moment the setup goes online for it: each
+// plugin's card with its risk note, and Install with the same yes as
+// Settings (settings/PluginBrowse.js). Unticking turns plugins off again.
+// Already on (someone came back to the setup), the list waits for a press.
+// It sits below the CSV, quieter, and nothing in the setup waits on the list.
+
+function AllowPlugins() {
+  const id = useId();
+  const [view, setView] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const install = usePluginInstall({ onInstalled: setView });
+
+  // Whether plugins are on, and what is installed: from this computer, never online.
+  useEffect(() => {
+    let off = false;
+    fetchPlugins().then((v) => { if (!off) setView(v); }).catch(() => { if (!off) setView({ enabled: false, plugins: [] }); });
+    return () => { off = true; };
+  }, []);
+
+  const on = view?.enabled === true;
+  async function toggle(next) {
+    setSaving(true);
+    setError(null);
+    try {
+      setView(await savePluginsEnabled(next));
+      if (next) install.load();
+      else install.reset();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="ob-plugins" data-allow-plugins={on ? 'on' : 'off'}>
+      <label className="ob-allow" htmlFor={id}>
+        <input id={id} type="checkbox" checked={on} disabled={!view || saving} onChange={(e) => toggle(e.target.checked)} />
+        <span>
+          <b>Allow plugins</b>
+          <span className="d">Plugins add features from packages you install on this computer, such as the scanners, which add who your connections know.</span>
+        </span>
+      </label>
+      {error && <div className="ob-error" role="alert">{error}</div>}
+      {on && install.catalog.status === 'idle' && (
+        <button type="button" className="ob-link" onClick={install.load} style={{ alignSelf: 'flex-start', fontSize: 13 }}>Show the available plugins</button>
+      )}
+      {on && (
+        <>
+          <PluginCards catalog={install.catalog} installed={view.plugins} busy={install.busy} onGet={install.get} onRetry={install.load}
+            quiet columns="1fr" />
+          <PluginOfferAt at="browse" install={install} />
+        </>
+      )}
+    </div>
   );
 }
 
