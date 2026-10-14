@@ -47,7 +47,7 @@ import {
 } from '../lib/scanner-python.js';
 import { pluginRuntimeWanted, SCANNER_FILES } from '../lib/scanner-files.js';
 import {
-  signingSetup, signDeveloperId, signatureInfo, signerName, signImage, notarize, staple, stapleValid, assess, SigningError,
+  signingSetup, signDeveloperId, signatureInfo, signerName, signImage, notarize, staple, stapleValid, stapleCheck, assess, SigningError,
 } from './mac-sign.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -933,7 +933,8 @@ function checkImage(image) {
     // Notarized: the app inside carries its ticket, and Gatekeeper accepts it.
     if (NOTARIZE && !problem) {
       const verdict = assess(inside, 'exec');
-      if (!stapleValid(inside)) problem = 'it has no valid stapled notarization ticket';
+      const ticket = stapleCheck(inside, { log: console.log });
+      if (!ticket.ok) problem = `it has no valid stapled notarization ticket (stapler: ${ticket.text || 'no answer'})`;
       else if (!verdict.ok && !verdict.disabled) problem = `Gatekeeper doesn't accept it as notarized (${oneLine(verdict.text)})`;
     }
     const escaping = execFileSync('find', [inside, '-type', 'l'])
@@ -955,7 +956,8 @@ function checkImage(image) {
   // signature (context:primary-signature) and its own ticket.
   if (NOTARIZE) {
     const verdict = assess(image, 'open');
-    if (!stapleValid(image)) fail(`${path.basename(image)} has no valid stapled notarization ticket.`);
+    const imageTicket = stapleCheck(image, { log: console.log });
+    if (!imageTicket.ok) fail(`${path.basename(image)} has no valid stapled notarization ticket (stapler: ${imageTicket.text || 'no answer'}).`);
     if (!verdict.ok && !verdict.disabled) fail(`Gatekeeper doesn't accept ${path.basename(image)} as notarized: ${oneLine(verdict.text)}`);
     if (verdict.disabled) console.log(gatekeeperOff());
   }
