@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import {
   SECRET_NAMES, ENTITLEMENTS, signingSetup, signingRequired, releaseSigningPlan, codesignArgs, signingPlan,
   bundleOfExecutable, parseSpctl, parseNotaryJson, notaryIssueLines, scrub, parseCodesignInfo, signerName,
-  notarize, staple, SigningError, machoFileType, findCode, signDeveloperId,
+  notarize, staple, stapleCheck, SigningError, machoFileType, findCode, signDeveloperId,
 } from '../scripts/mac-sign.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mac-sign.mjs', import.meta.url));
@@ -267,7 +267,10 @@ case "$1 $2" in
     n=$(cat "$STAPLE_COUNT" 2>/dev/null || echo 0); echo $((n + 1)) > "$STAPLE_COUNT"
     if [ "$n" -lt "\${STAPLE_FAILS:-0}" ]; then echo "CloudKit query for x failed due to \\"Record not found\\"." >&2; exit 65; fi
     echo "The staple and validate action worked!" ;;
-  "stapler validate") echo "The validate action worked!" ;;
+  "stapler validate")
+    v=$(cat "$VALIDATE_COUNT" 2>/dev/null || echo 0); echo $((v + 1)) > "$VALIDATE_COUNT"
+    if [ "$v" -lt "\${VALIDATE_FAILS:-0}" ]; then echo "CloudKit query for x failed due to \\"Network\\"." >&2; exit 65; fi
+    echo "The validate action worked!" ;;
   *) exit 64 ;;
 esac
 `, { mode: 0o755 });
@@ -276,7 +279,7 @@ esac
   };
   const env = (extra = {}) => ({
     ...process.env, PATH: `${bin}:${process.env.PATH}`, NOTARY_ANSWER: files.answer, NOTARY_LOG: files.log,
-    XCRUN_CALLS: files.calls, STAPLE_COUNT: files.count, ...extra,
+    XCRUN_CALLS: files.calls, STAPLE_COUNT: files.count, VALIDATE_COUNT: `${files.count}-validate`, ...extra,
   });
   return { files, env };
 }
@@ -334,6 +337,20 @@ test('staple: tried again while Apple\'s ticket isn\'t served yet, then validate
   assert.match(fs.readFileSync(files.calls, 'utf8'), /^stapler validate \/x\/Six Degrees\.app$/m);
   fs.rmSync(files.count);
   assert.throws(() => staple('/x/app', { env: env({ STAPLE_FAILS: '9' }), log: () => {}, attempts: 3, retrySeconds: 0 }), /Record not found/);
+});
+
+test('stapleCheck: asks Apple again before failing, and says what Apple said', (t) => {
+  const dir = tmp(t);
+  const { env } = stubXcrun(dir);
+  const out = printed();
+  const ok = stapleCheck('/x/Six Degrees.app', { env: env({ VALIDATE_FAILS: '2' }), log: out.log, retrySeconds: 0 });
+  assert.equal(ok.ok, true);
+  assert.match(out.text(), /try 2 of 4/);
+  const dir2 = tmp(t);
+  const { env: env2 } = stubXcrun(dir2);
+  const no = stapleCheck('/x/app', { env: env2({ VALIDATE_FAILS: '9' }), attempts: 3, retrySeconds: 0 });
+  assert.equal(no.ok, false);
+  assert.match(no.text, /CloudKit query for x failed/);
 });
 
 // ── for real, with an identity on this Mac (optional) ──

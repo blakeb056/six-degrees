@@ -524,6 +524,26 @@ export function stapleValid(file, { env = process.env } = {}) {
 }
 
 /**
+ * Does `file` carry a valid stapled ticket, asked a few times: { ok, text }.
+ * `stapler validate` checks the ticket with Apple, and Apple doesn't always
+ * answer at once (2.0.0's release failed this check twice, minutes after the
+ * same file was stapled and validated, when its dry run had passed it), so a
+ * "no" is asked again before it fails a build, as staple() does. `text` is
+ * Apple's own words from the last try, so a failure says why.
+ */
+export function stapleCheck(file, { env = process.env, log = () => {}, attempts = 4, retrySeconds = 20 } = {}) {
+  let last = '';
+  for (let i = 1; i <= attempts; i++) {
+    const v = capture('xcrun', ['stapler', 'validate', file], { env });
+    if (v.status === 0) return { ok: true, text: lastLines(v.stdout || v.stderr) };
+    last = lastLines(v.stderr || v.stdout);
+    log(`  checking ${path.basename(file)}'s stapled ticket didn't work yet (try ${i} of ${attempts}): ${last}`);
+    if (i < attempts) pause(retrySeconds);
+  }
+  return { ok: false, text: last };
+}
+
+/**
  * What Gatekeeper says about `file`: an app ('exec') or a disk image ('open',
  * judged by its own signature). { ok, accepted, source, origin, disabled, text },
  * ok when it is accepted as "Notarized Developer ID". `disabled` when this
