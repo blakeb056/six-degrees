@@ -39,7 +39,14 @@ const nextConfig = {
           '*.csv', '*.sqlite*', '*.sixdegrees', 'chrome-profile/**',
           // Plugin packages that scripts/build-plugin.mjs puts in dist/plugins/:
           // installed from a file, never shipped inside the app.
-          '*.sgplugin'],
+          '*.sgplugin',
+          // The scanner: it comes only as a plugin now (lib/scanner-files.js), so
+          // its code stays out of every download, and so does its package list,
+          // which a shipped copy never reads (a plugin brings its own; the desktop
+          // apps' Python is built from the checkout's). build-plugin.mjs packs it
+          // into those plugins, a developer's tool like pin-python-packages.mjs.
+          // Its test harness is under tests/, excluded above.
+          'scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt', 'scripts/build-plugin.mjs'],
   },
   // Emits .next/standalone with a server and only the dependencies actually
   // reached, so the published package can run without node_modules being

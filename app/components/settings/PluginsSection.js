@@ -2,26 +2,30 @@
 
 // Settings → Plugins (Blake, 2026-10-12: "a plugins tab in the settings to
 // install these plugins"). Enable plugins is a switch, off by default ("we
-// would first have to enable plug ins"). Off, the section is the switch and a
-// sentence. On: Browse first, the plugin list's cards with one-click Install
-// (Blake, 2026-10-14: "i dont want them have to drag and drop"); then the
-// installed plugins, each with Uninstall; then a closed Advanced, with Install
+// would first have to enable plug ins"). Browse comes next, plugins on or off,
+// so the plugins are never hard to find (Blake, 2026-10-14): the plugin
+// list's cards with one-click Install ("i dont want them have to drag and
+// drop"), from the copy of the official list that ships with the app until
+// the live one is fetched (lib/plugins-shipped.js). With plugins off, a
+// card's Install turns them on first, and its yes says so. On: then the
+// installed plugins, each with Uninstall, and a closed Advanced, with Install
 // from a file and Install from a link. The server does the work
 // (app/api/plugins, lib/plugins.js, lib/plugin-catalog.js); this section only
 // asks, on a person's open or click.
 //
-// The plugin list is the one thing here that goes online, and only when the
-// section is opened with plugins on: the first time its Browse comes into
-// view (scrolled to, picked in the notch, or just switched on), then again
-// only on Try again. Settings is one long page, so opening it for anything
-// else never fetches the list.
+// The plugin list is the one thing here that goes online: when a card's
+// Install is pressed, and with plugins on, the first time Browse comes into
+// view (scrolled to, picked in the notch, or just switched on), so a newer
+// version shows as Update; then again only on Try again. Settings is one long
+// page, so opening it for anything else never fetches the list.
 //
-// Nothing installs without a yes (PluginBrowse.js PluginOffer): a package,
-// from the list, a link or a file, is checked through first, and its name,
-// version, what it does and its risk are shown with the plain line that a
-// plugin runs its own code here. Install then sends the checksum that check
-// answered, so only the package agreed to goes in (lib/plugins-client.js
-// CONFIRM_HEADER).
+// Nothing installs without a yes: a package, from the list, a link or a file,
+// is checked through first, and its name, version, what it does and its risk
+// are shown with the plain line that a plugin runs its own code here, in the
+// card that was pressed (PluginBrowse.js PluginCards), or for a file or a
+// link under its own form (PluginOffer). Install then sends the checksum that
+// check answered, so only the package agreed to goes in
+// (lib/plugins-client.js CONFIRM_HEADER).
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Section, Body, Status, Btn, LINE } from '../ui';
@@ -55,7 +59,7 @@ export default function PluginsSection() {
   const [confirming, setConfirming] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [rowNote, setRowNote] = useState(null);
-  const install = usePluginInstall({ onInstalled: setView });
+  const install = usePluginInstall({ onView: setView, enabled: view?.enabled === true });
   const busy = install.busy || (toggling ? 'enable' : null) || (removing ? `uninstall:${removing}` : null);
   const { load } = install;
 
@@ -156,17 +160,22 @@ export default function PluginsSection() {
       </div>
       {error && <Status tone="bad">{error}</Status>}
 
-      {on && (
+      {/* Browse, plugins on or off: the shipped copy's cards until the live list is in. */}
+      {view && (
         <>
           <h3 style={subhead}>Browse</h3>
           <div ref={browseRef} data-plugins-browse="">
             <Body>
-              The plugins on the official list. Install downloads one and shows you what it is before anything is installed.
+              The plugins on the official list. Install downloads one and shows you what it is, in its card, before
+              anything is installed.{on ? '' : ' With plugins off, Install turns them on.'}
             </Body>
-            <PluginCards catalog={install.catalog} installed={plugins} busy={busy} onGet={install.get} onRetry={load} />
+            <PluginCards install={install} installed={plugins} />
           </div>
-          <PluginOfferAt at="browse" install={install} />
+        </>
+      )}
 
+      {on && (
+        <>
           <h3 style={subhead}>Installed</h3>
           {plugins.length === 0 && <Body>None yet.</Body>}
           {plugins.map((p) => {

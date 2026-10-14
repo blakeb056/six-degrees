@@ -252,7 +252,9 @@ test('a network from a CSV is your own network: every page opens on it, with the
   // (lib/scanner-capabilities.js), which says nothing of where it came from either.
   const header = readFileSync(new URL('../app/components/AppHeader.js', import.meta.url), 'utf8');
   assert.match(header, /const own = !IS_DEMO && !csvMode;/);
-  assert.match(header, /after=\{own && auto \? <AutoScanButton/);
+  // Auto scan also only while circle scans run Automatic, never By hand (tests/circle-mode.test.mjs): on purpose.
+  assert.match(header, /const autoScan = auto && mode !== 'manual';/);
+  assert.match(header, /after=\{own && autoScan \? <AutoScanButton/);
   assert.match(header, /\{own && auto && <RefreshButton/);
   assert.doesNotMatch(header, /fromExport|network-origin/);
   const tabs = readFileSync(new URL('../app/components/AppTabs.js', import.meta.url), 'utf8');

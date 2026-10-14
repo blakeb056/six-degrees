@@ -85,7 +85,7 @@ test('the disk image name and SHA256SUMS are what the build and the release publ
 
 test('the helper ships inside the app, and the app tells the server where it is', () => {
   const build = repoFile('scripts/build-app.mjs');
-  assert.match(build, /'scripts\/apply-update\.sh'\]\) \{/, 'copied into the server folder with the scanner files');
+  assert.match(build, /'scripts\/apply-update\.sh'\]\) \{/, 'copied into the server folder by name');
   assert.match(build, /export SIX_DEGREES_APP=/, 'the classic launcher says where the app is');
   assert.match(repoFile('desktop/main.mjs'), /SIX_DEGREES_APP: APP_BUNDLE/, 'the Electron app says where it is');
 });

@@ -64,6 +64,15 @@ jobs:
             exit 1
           fi
           echo "No Python in the package ($(tar -tzf *.tgz | wc -l | tr -d ' ') files)."
+      # The scanner comes only as a plugin (lib/scanner-files.js): its code and
+      # test harness stay out of the package, the traced server's copy included.
+      - name: No scanner code inside
+        run: |
+          if tar -tzf *.tgz | grep -E '(^|/)(scrape|image_store|scanner_harness)\.py$'; then
+            echo "::error::The package contains the scanner's code (listed above). It ships only as a plugin."
+            exit 1
+          fi
+          echo "No scanner code in the package."
       - name: Installs from the tarball and serves the app
         run: |
           PREFIX="$RUNNER_TEMP/prefix"

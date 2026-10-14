@@ -17,11 +17,12 @@ import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { pluginsEnabled, scannerCapabilitiesNow } from '../../../lib/plugins-view';
-import { capabilityRefusal, settingRefusal, lockedModes, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
+import { capabilityRefusal, settingRefusal, lockedModes, circleMode, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
-import { reachIndex, circleState } from '../../../lib/reach';
+import { reachIndex, circleState, cleanProfileUrl } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
 import { checkAppManagement } from '../../../lib/app-management';
+import { FIRST_SCAN_PAGES } from '../../../lib/onboarding';
 import { installKind } from '../../../lib/release';
 import { AUTO_REFUSAL, connectResultIn, connectMarks, inviteRefusal, personRefusal } from '../../../lib/auto-connect';
 import { markSentRows, awardXP, whose, requestStanding } from '../../../lib/requests';
@@ -575,7 +576,7 @@ async function status() {
     // Whose circle is being read now, for the Scan page's "Watch it fill in".
     mapping: mappingWho(me?.id),
     checks: {
-      // The scanner's files are here, built in or from a plugin (lib/scanner-files.js); the page says "Files missing" when not.
+      // The scanner's files are here, built in or from a plugin (lib/scanner-files.js); the page says "Not installed" when not.
       scriptsFound: scanner.found,
       // Which scanner scans run: 'plugin' (and which) or 'built-in', the program
       // itself, and why an installed scanner plugin wasn't used, when one wasn't.
@@ -677,7 +678,19 @@ function job() {
     // What the installed scanner unlocks (lib/scanner-capabilities.js): which
     // scan screens and buttons every page shows. A look up to 2 s old.
     capabilities: capabilitiesSeen(),
+    // How circle scans run, Automatic or By hand, never both: the header
+    // offers Auto scan only with Automatic (lib/scanner-capabilities.js circleMode).
+    mode: modeNow(),
   };
+}
+
+/** 'auto' or 'manual' (null with no scanner): the installed plugins, then the saved manual-mode setting. */
+function modeNow() {
+  try {
+    return circleMode(capabilitiesSeen(), readLimits(dataDir()).manual === true);
+  } catch {
+    return null;
+  }
 }
 
 /** What the scanner unlocks, for the job answer: a recent look is reused, and a failed one reads as not known (null). */
@@ -808,6 +821,12 @@ export async function GET(request) {
 // A fixed set. Anything taking a name uses `--flag=value`, a single argv token,
 // so a name that begins with "-" can never be read as a flag of its own — and
 // spawn takes an array, so there is no shell for it to escape into either.
+// How many pages of each list a circle scan may be asked to read: a fixed
+// set, like everything else that reaches the command line. 100 is every page.
+// FIRST_SCAN_PAGES is the guided setup's first scan, a few pages of one
+// circle, gentle on a new account (lib/onboarding.js).
+const PAGE_CAPS = Object.freeze([FIRST_SCAN_PAGES, 10, 25, 50, 100]);
+
 const ACTIONS = {
   install:       { label: 'Installing the scanner’s Python packages' },
   // Only when this computer has no Python to install into: downloads the one
@@ -887,15 +906,6 @@ function connectTarget(id) {
 /** Auto's one-time yes (lib/auto-connect.js), given on the page that first offers it. */
 function autoAccepted() {
   try { return Boolean(readSettings(getDb()).autoConnectAccepted); } catch { return false; }
-}
-
-/** Only a plain linkedin.com/in/ profile URL becomes an argument. */
-function cleanProfileUrl(raw) {
-  const url = String(raw ?? '').trim();
-  if (url.length > 400 || /[\u0000-\u001f\s]/.test(url)) return null;
-  // Any LinkedIn host (www., a country subdomain) and any profile slug, which
-  // can be non-ASCII; passed as one --flag=value token, so no shell ever sees it.
-  return /^https?:\/\/([a-z]{2,3}\.|www\.)?linkedin\.com\/in\/[^/?#]+\/?$/i.test(url) ? url : null;
 }
 
 /** Names come from the page, so they are checked before becoming an argument. */
@@ -1080,10 +1090,17 @@ async function runNext() {
  * Keep a press for later: { ok, queued, place } (place 1 runs next), the same
  * for one already waiting or running (`duplicate`), or 409 once QUEUE_CAP
  * wait. Only what a press of it would send again is kept: the action, who (by
- * id), and the Chrome window setting. Never the URL: that is looked up again.
+ * id), the Chrome window setting, and how many pages to read, so a read that
+ * was capped (the guided setup's first scan reads three) stays capped when its
+ * turn comes. Never the URL: that is looked up again. The pages are checked
+ * again then too.
  */
 function queueUp(body, action, target) {
-  const request = { action, id: target.id, ...(body.showWindow === true ? { showWindow: true } : {}) };
+  const request = {
+    action, id: target.id,
+    ...(body.showWindow === true ? { showWindow: true } : {}),
+    ...(PAGE_CAPS.includes(body.maxPages) ? { maxPages: body.maxPages } : {}),
+  };
   if (target.name) request.name = target.name;
   const cap = queueCap();
   const said = enqueue(queue(), {
@@ -1220,7 +1237,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // are a fixed set, like everything else that reaches the command line. 100 is
   // every page: LinkedIn's search goes no further, and most lists end sooner.
   const order = body.order === 'score' ? 'score' : 'newest';
-  const maxPages = [10, 25, 50, 100].includes(body.maxPages) ? body.maxPages : 100;
+  const maxPages = PAGE_CAPS.includes(body.maxPages) ? body.maxPages : 100;
   const readsCircles = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all'].includes(action);
   // Carry on with people already mapped, from the page each one stopped at.
   const deeper = body.deeper === true && (action.startsWith('auto-bridge') || action === 'bridge');

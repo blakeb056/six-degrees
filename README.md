@@ -52,8 +52,123 @@ no server.
 
 ## Download
 
-**Downloads are paused** while Sixgree is reorganized. They'll be back soon.
-Already have it? It keeps working, and your network stays on your computer.
+<p align="center">
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg"><img src="docs/img/download-apple-silicon.png" width="346" alt="Download Sixgree for a Mac with Apple Silicon (M1 or newer)"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg"><img src="docs/img/download-intel.png" width="346" alt="Download Sixgree for a Mac with an Intel chip"></a><br>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe"><img src="docs/img/download-windows.png" width="346" alt="Download Sixgree for Windows 10 or 11 (beta): one-click Setup.exe"></a>
+  <a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb"><img src="docs/img/download-linux.png" width="346" alt="Download Sixgree for Linux (beta): .deb for Ubuntu and Debian"></a>
+</p>
+
+| Platform | Download | Needs |
+|---|---|---|
+| **macOS**, Apple Silicon (M1 or newer) | [Sixgree-Mac-Apple-Silicon.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg) | macOS 13.5 (Ventura) or later |
+| **macOS**, Intel | [Sixgree-Mac-Intel.dmg](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg) | macOS 13.5 (Ventura) or later |
+| **Windows** (beta) | [Sixgree-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe) | Windows 10 or 11, 64-bit |
+| **Linux** (beta) | [Sixgree-Linux-x64.deb](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb) or [.tar.gz](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.tar.gz), or from the Terminal: `npx sixgree` ([how](https://sixgree.com/download/#linux)) | Ubuntu or Debian, 64-bit (npx: Node 22.13 or later) |
+
+<sub>Every release is on [GitHub Releases](https://github.com/blakeb056/six-degrees/releases) with a
+`SHA256SUMS` file ([latest](https://github.com/blakeb056/six-degrees/releases/latest/download/SHA256SUMS)); the Terminal install below checks the download against it.
+The links above always fetch the newest release.</sub>
+
+## Install it
+
+**Which download?** Apple menu → **About This Mac**. If it says "Chip: Apple M…", take
+**Apple Silicon**. If it says "Processor: …Intel…", take **Intel**. It needs **macOS 13.5
+(Ventura) or later**, and it's about 210 MB. It doesn't include a scanner: scanning is an
+optional plugin (Settings → Plugins), and the Python those plugins run on is already inside.
+
+1. Open the file you downloaded (**Six-Degrees-Mac-….dmg**, in your Downloads folder).
+   In the window that opens, drag **Sixgree** onto the **Applications** folder.
+2. Open **Sixgree** from Applications. Signed by Blake Burford and notarized by
+   Apple: it opens like any Mac app. The first time, macOS asks whether to open an app
+   downloaded from the internet: click **Open**.
+
+(A copy of 0.8.0 or earlier wasn't signed yet: if macOS says it can't check it for
+malware, close that message, not *Move to Trash*, then **System Settings → Privacy &
+Security → Open Anyway**. Or update it, below.)
+
+**Or install it from Terminal.** Press ⌘ Space, type *Terminal* and
+press Return. Paste this line into the window that opens and press Return:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blakeb056/six-degrees/main/install.sh | bash
+```
+
+It downloads the right version for your Mac, checks the file is exactly the one
+published here, puts **Sixgree** in Applications and opens it.
+[Read the script](install.sh) first if you like.
+
+**Updating.** Choose *Sixgree → Check for Updates…* (or open **Settings** with the ⚙
+button or ⌘,). It opens the Updates section and checks. Nothing checks by
+itself. If there's a newer version, click **Install and restart**: the app downloads it
+from GitHub, checks it against the release's published checksums and checks that its code
+signature is intact, closes, puts the new version in its place and opens it again. If the
+new version can't be put in place, won't open, or closes before its first page appears,
+your old one is put back and opened. Once the new one has started, the version you had is
+kept, zipped, in `~/Library/Caches/Six Degrees` until the next update: if the new one
+misbehaves later, unzip it and drag the app into Applications to go back. When the app
+can't update itself (for example, it's running from the disk image), it says why and what
+to do, usually with a Terminal line to paste and what that line will do. Copies of 0.2.1
+and older don't have the button yet, so they take the Terminal line once more.
+Downloading the new `.dmg` and dragging it to Applications works too.
+
+Your network isn't stored in the app. It's in a hidden folder in your home folder,
+`.six-degrees` (open it any time with *Help → Show the Data Folder*), so updates never
+touch it. Each new version also backs up your data, photos and all, into its `backups`
+folder before it first opens it, and Sixgree makes a backup each day it's open
+(see [Backups](#backups)). To take it to another computer, see
+[Moving to a new computer](#moving-to-a-new-computer).
+
+**Windows (beta):** download [Sixgree-Windows-Setup.exe](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe)
+and open it. It installs for you alone (no administrator password), adds Start Menu and
+Desktop shortcuts, and opens Sixgree. It isn't signed with a paid certificate yet, so
+SmartScreen may say it protected your PC: **More info → Run anyway**. A newer Setup.exe
+updates it in place; your network stays in `%USERPROFILE%\.six-degrees`, which
+uninstalling never touches. Scanning needs a scanner plugin (Settings → Plugins) and Google Chrome.
+
+**Linux app (beta):** `sudo apt install ./Six-Degrees-Linux-x64.deb` with the
+[.deb](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb), then open it from your apps. The
+[.tar.gz](https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.tar.gz) runs from its folder; on Ubuntu 24.04 and
+later run `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` in it
+once (or start it with `--no-sandbox`). Scanning needs a scanner plugin (Settings → Plugins) and Google Chrome (not Chromium).
+
+**Linux from the Terminal:** install **Node 22.13 or later** (from nodejs.org or nvm; Ubuntu's own
+`nodejs` package is too old), then run:
+
+```bash
+npx sixgree
+```
+
+It opens http://127.0.0.1:6363 in your browser (`--no-open` on a machine without a
+desktop), keeps your data in `~/.six-degrees` (it prints the folder when it starts;
+`--data-dir` puts it elsewhere), and stops with Ctrl-C. To update, stop it and run
+`npx sixgree@latest`; **Settings → Updates** gives the same
+line. Scanning also needs Google Chrome (not Chromium), and Python: your own 3.10
+to 3.14 if you have it (on Ubuntu with `python3-venv`), or, if not, the Scan page's **Set
+up the scanner** button downloads a private copy into your data folder (24–33 MB, from
+GitHub, checked against a checksum built into Sixgree). It's tested on Ubuntu, and
+works on a Mac too if you'd rather not install the app.
+
+`npx sixgree` doesn't run on Windows; use the Windows app above.
+
+<details>
+<summary>Run it from source (contributors)</summary>
+
+Needs **Node 22.13 or later** and git.
+
+```bash
+git clone https://github.com/blakeb056/six-degrees.git
+cd six-degrees
+npm ci
+npm run build
+npm run start:packaged      # opens http://127.0.0.1:6363 in your browser
+```
+
+To update later: stop it (Ctrl-C), then
+`git pull && npm ci && npm run build && npm run start:packaged`.
+Scanning also needs Google Chrome, and Python 3.10 to 3.14 or the Scan page's
+**Set up the scanner** (see below).
+</details>
 
 ## Features
 
@@ -108,8 +223,8 @@ sends without one. It calls a request sent only once their profile shows it pend
 stops at 15 in any 24 hours and 80 in any 7 days, opens their profile once (a profile
 view), and counts toward your usage on the Scan page.
 
-**Scan.** The guided scanner. It shows progress, the budget that's left, the cooldown
-lock, and a **Paused** list you can carry on from.
+**Scan** *(needs a scanner plugin)*. The guided scanner. It shows progress, the budget
+that's left, the cooldown lock, and a **Paused** list you can carry on from.
 
 **Also in the app:**
 - **Who only one connection reaches.** For every connection whose circle you've scanned,
@@ -176,29 +291,16 @@ Something out of date, or unfair to another tool? [Open an issue](https://github
 
 ## Before you scan
 
+Scanning doesn't come with the app. It comes as optional plugins, **Auto scan** and
+**Manual scan**, that you install from **Settings → Plugins**. Without one, Sixgree is the
+CSV import and the sample network, which carry no risk to your account.
+
 > [!WARNING]
 > **Scanning automates your own account, which may break the platform's User Agreement,
-> and the platform may restrict accounts that do this.** It has happened twice while
-> building this:
-> - The account was temporarily restricted after about 20 profile views in one sitting
->   (2026-09-09); it was lifted the same evening.
-> - Search was blocked after results were read too fast (2026-09-24).
->
-> The scanner now reads slowly and keeps to one daily limit (by default 50 searches a day,
-> and as many profile views, at least a minute apart). You can change it on the Scan page,
-> or lift it until you quit Sixgree. It locks itself during a cooldown, and stops at the
-> first sign of push-back, lifted or not. The risk is still yours.
->
-> **The CSV import and the sample network carry no risk to your account at all.** Details:
+> and the platform may restrict accounts that do this.** Details:
 > [how scanning works and what it risks](docs/SCRAPING.md).
->
-> The app asks for an explicit "I understand" once, before the first scan.
->
-> **The scanner reads; the one thing it ever sends is a connection request, and only when
-> you press Auto** on a person (one each press, without a note, at most 15 a day and 80 a
-> week). Auto asks once before its first request.
->
-> Sixgree is independent software, not affiliated with or endorsed by any networking platform.
+
+Sixgree is independent software, not affiliated with or endorsed by any networking platform.
 
 ## First run
 
@@ -213,22 +315,13 @@ recommends the CSV import, and has it chosen when it opens:
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
 - **Scan my network** (optional): adds who your connections know, the only way to
-  Degrees and Outlink for your own network. It runs your own account automatically, and
-  the platform may restrict accounts that do this: read the warning above first. A
-  guided page ticks each step off as it goes. It first asks one optional question, what
-  field you're in (see *Your sector* below), and *Skip for now* is fine. Then it sets up
-  the scanner in one click, you sign into your account yourself in a Chrome window, and
-  then it scans in the background: the scanner's Chrome stays out of your way and comes
-  forward only if the platform needs you (to sign in again, or to finish a check it asks
-  for). Needs Google Chrome. The Mac app brings its own Python; with `npx sixgree` the
-  page uses yours, or sets up a private one with a click. It checks and says what's
-  missing. On a Mac, macOS may ask whether Sixgree can manage apps while you scan:
-  that's Chrome updating itself, and scanning works either way (step 1 has a button to
-  allow it once).
+  Degrees and Outlink for your own network. It needs a scanner plugin (see *Before you
+  scan* above) and Google Chrome, and it runs your own account automatically: read the
+  warning above first.
 
 |  | Your `Connections.csv` | Sample network | Your scan (optional) |
 |---|---|---|---|
-| Setup | ~10 min (the file comes by email) | none | Chrome (Python comes with the Mac app) |
+| Setup | ~10 min (the file comes by email) | none | a scanner plugin, and Chrome |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
 | **Degrees** (people you *haven't* met) | — | ✅ | ✅ |
 | **Outlink** (getting introduced) | — | — | ✅ |

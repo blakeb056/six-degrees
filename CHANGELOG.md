@@ -6,33 +6,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-14
+
+Sixgree no longer includes a scanner. It maps the Connections.csv you export, and scanning, if you want it, comes from the Auto scan or Manual scan plugin in Settings → Plugins. Everything you've mapped stays.
+
 ### Added
-- **Settings → Plugins.** An *Enable plugins* switch, off until you turn it on. On, *Browse*
-  comes first: the available plugins as cards, each with what it does, its risk, its version
-  and size, and one-click *Install*, *Installed* or *Update* when a newer version is out. Then
+- **Settings → Plugins.** An *Enable plugins* switch, off until you turn it on, then *Browse*,
+  on or off: the available plugins as cards, each with what it does, its risk and its version,
+  and one-click *Install*, *Installed* or *Update* when a newer version is out. With plugins
+  off, *Install* turns them on, and says so before anything installs. Then, with plugins on,
   the plugins installed on this computer, each with Uninstall, and a closed *Advanced* with
-  *Install from a file* (`.sgplugin`) and *Install from a link*. Before anything is installed
-  you see its name, version, what it does, any risk it carries and where it came from, and
-  nothing goes in without your yes. Every package is checked first: its files must match the
-  checksums it lists, one from the plugin list must match the list's own checksum, and one
-  made for another version of Sixgree is refused. A scanner plugin, once installed, is what
-  scans run. Off, every plugin stays installed and none is used.
+  *Install from a file* (`.sgplugin`) and *Install from a link*. An install from a card
+  happens in that card: a bar while it downloads, then its name, version, what it does, any
+  risk it carries and where it came from, and nothing goes in without your yes; a bar while it
+  installs, then *Installed*, or what went wrong. Every package is checked first: its files
+  must match the checksums it lists, one from the plugin list must match the list's own
+  checksum, and one made for another version of Sixgree is refused. A scanner plugin, once
+  installed, is what scans run. Off, every plugin stays installed and none is used.
 - **The scan screens follow the scanner plugins.** Scan, Auto scan and *Check for new* show only
   with a scanner. *Auto scan* unlocks the automatic features and Dev mode, *Manual scan* unlocks
   manual mode and its chimes, and with only the manual one circle scans are always manual.
-- **Allow plugins in the guided setup.** A box under the CSV import, unticked until you tick
-  it. Ticking it turns plugins on and shows the same cards, the scanners included, each with
-  its risk. The CSV stays the main way in, and nothing in the setup waits for the list.
-- **Sixgree never goes online for plugins by itself.** The plugin list is fetched only when you
-  open Settings → Plugins with plugins on, press *Try again*, or tick *Allow plugins*, and a
-  package is downloaded only when you press *Install*. Both are https only, capped in size and
-  time, and send no cookies. When the list can't be had, it says so and offers *Try again*.
-- **Manual mode for circle scans.** A switch in Scanner settings. A circle scan opens the
+- **Other ways to bring in your network, in the guided setup.** Under the CSV import, a titled
+  section with both scanners' cards in sight at once, each with its risk, and *Install*, which
+  turns plugins on. The CSV stays the main way in, and nothing in the setup waits for it.
+- **Sixgree never goes online for plugins by itself.** The cards come from a copy of the plugin
+  list that ships with the app. The live list is fetched only when you open Settings → Plugins
+  with plugins on, press *Try again*, or press a card's *Install*, and a package is downloaded
+  only when you press *Install*; where the live list differs, it wins. Both are https only,
+  capped in size and time, and send no cookies. When the list can't be had, it says so and
+  offers *Try again*.
+- **Circle scans by hand.** Scanner settings starts with *How circle scans run*, one choice of
+  two: *Automatic*, where the scanner turns the pages and Auto scan can run in the background, or
+  *By hand*. Never both: By hand, Auto scan isn't offered and can't start. A choice whose plugin
+  isn't installed says which to install, and with only one installed it's chosen and locked. By
+  hand, a circle scan opens the
   scanner's Chrome in front of you at the person's list, and nothing on the page moves unless
   you move it: each page is read once you scroll to its foot, and you click Next yourself. Every
   page is still counted against your searches a day, and a stop the moment the platform pushes
   back is unchanged. Closing the window is "done with this person", and a round moves on to the
-  next one. Auto scan stays off while it's on. A tap answers each Next the moment you click, and
+  next one. A tap answers each Next the moment you click, and
   a chime says each page is read, one step higher for every page in a row, with a flourish when a
   list is finished. **Settings → Sound** turns them off, sets the volume and plays each one.
 - **Dev mode.** A switch in Scanner settings that takes off every limit Sixgree sets until you
@@ -53,6 +65,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan until every role has its company.
 
 ### Changed
+- **The app no longer includes the scanner; install Auto scan or Manual scan from Settings → Plugins.**
+- **Settings opens on Plugins,** first on the page and first in its sections, since the scanner
+  comes from them now.
+- **A calmer Scan page.** Scanner settings is a few short groups with plain headings: *How circle
+  scans run*, *Speed*, *What it reads* and *Safety*, one control a row with a line on what it
+  does, and the risk and limit notes kept. Dev mode is under Safety, marked as advanced, with its
+  ceiling of 250 search pages a day. *Show the scanner's Chrome window* and the messages sync
+  moved in from Extras.
+- **The guided setup sets up scanning only with a scanner, and the CSV is recommended, never
+  required.** The welcome screen no longer offers *Scan my network*: the CSV import is the way
+  in, with the sample beside it. Once Auto scan or Manual scan is installed, the CSV step also
+  offers *Continue without a CSV: set up scanning*, and an import's result offers *Set up
+  scanning* beside *Skip, see your galaxy*; with no scanner, *See your galaxy*. Setting up is
+  Get ready, Connect, Pace (left out with Manual scan alone) and a first scan that follows what's
+  there: with your people in, one circle, the highest scored person you know whose circle isn't
+  mapped yet or anyone you pick, three pages of their list, gentle on your account; with nobody
+  yet and Auto scan, a scan of your connections; with nobody yet and Manual scan alone, which
+  can't bring them in, the way to: import your Connections.csv or install Auto scan. *Later,
+  from the Scan tab* is always there. With no scanner, the setup and the Scan page say to install
+  Auto scan or Manual scan from Settings → Plugins, instead of downloading the app again.
 - **Dev mode keeps one limit: 250 search pages a day.** Everything else Dev mode takes off stays
   off, but a scan in Dev mode now stops at 250 search pages in the last 24 hours, counted over the
   same rolling 24 hours as the daily limit, and says so in a plain line: scanning resumes when the
