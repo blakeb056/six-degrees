@@ -27,6 +27,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Section, Body, Status, Btn, LINE } from '../ui';
 import { fetchPlugins, savePluginsEnabled, removePlugin, MAX_PLUGIN_BYTES } from '../../../lib/plugins-client';
 import { usePluginInstall, PluginCards, PluginOfferAt, size } from './PluginBrowse';
+import { askScannerAgain } from '../../../lib/scraper-client';
 
 const row = { display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' };
 const subhead = { fontSize: 14, fontWeight: 650, margin: '26px 0 4px', color: 'var(--sd-fg-1, #e8e8ee)' };
@@ -65,6 +66,11 @@ export default function PluginsSection() {
   }, []);
 
   const on = view?.enabled === true;
+
+  // Each answer here follows an install, an uninstall or the switch (or the
+  // first look): the header's scan tabs and buttons ask again at once, rather
+  // than at their next round (lib/scanner-capabilities.js).
+  useEffect(() => { if (view) askScannerAgain(); }, [view]);
 
   // The plugin list, the first time Browse is in view with plugins on. Once
   // per visit: `asked` outlives React's second run of effects in development,

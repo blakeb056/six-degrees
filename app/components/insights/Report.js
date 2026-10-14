@@ -12,6 +12,7 @@ import { shortName } from '../../../lib/separation';
 import { RARITY } from '../../../lib/rarity';
 import { DECIDES } from '../../../lib/insights-board';
 import { fmt, one, pc, TierChip, Bars, NeedsCircles, LINE, CARD_BG, ELLIPSIS } from './parts';
+import { useScanShows } from '../useScanner';
 
 const TIERS = ['S', 'A', 'B', 'C', 'D'];
 const today = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -52,7 +53,9 @@ const tierParts = (counts) => TIERS.map((t) => ({ value: counts[t] || 0, color: 
 export default function Report({ data, heavy, open, net, source, isMobile }) {
   const { reach, kings, gates, hidden, grid, cover, sure } = data;
   const circles = kings.scanned > 0;
-  const own = source === 'own';
+  // Your own network, with a scanner to scan it (lib/scanner-capabilities.js): its links to scan a circle.
+  const scanner = useScanShows().scan;
+  const own = source === 'own' && scanner;
   const S = reach.tiers.d1.S + reach.tiers.d2.S;
   const A = reach.tiers.d1.A + reach.tiers.d2.A;
   const k0 = kings.list[0];

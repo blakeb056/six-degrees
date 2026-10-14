@@ -42,6 +42,7 @@ import { DailyLimitInput, LiftLimits, LiftedTag } from './LinkedInLimits';
 import { KIND_LABEL } from '../../lib/scan-queue';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
 import { autoStatus } from '../../lib/auto-scan';
+import { useScanShows } from './useScanner';
 import {
   watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown, isCurrentTab, notchGroups,
   watchNotchTucked, notchTuckedNow, notTucked, setNotchTucked, isTuckKey, comesBackDown,
@@ -102,6 +103,9 @@ export default function ScanStatusBar() {
   // The page's own buttons (its views or sub-tabs), when it has any.
   const tabs = useSyncExternalStore(watchNotchTabs, notchTabsNow, noNotchTabs);
   const tucked = useSyncExternalStore(watchNotchTucked, notchTuckedNow, notTucked);
+  // What the installed scanner unlocks (lib/scanner-capabilities.js): no scanner, no budget here;
+  // no auto plugin, no Auto scan.
+  const shows = useScanShows();
   // The daily limit holding a scan back opens the notch by itself, once each
   // time, so the lift is a click away from the press that was refused.
   const heldRef = useRef(false);
@@ -174,12 +178,12 @@ export default function ScanStatusBar() {
   const queued = queue?.items || [];
   const waiting = queue?.waiting || 0;
   // The daily limit held a scan back (and nothing else is going on), or it's lifted for this session.
-  const limits = job?.limits || {};
+  const limits = (shows.scan && job?.limits) || {};
   const lifted = limits.lifted === true;
   // Dev mode (Scanner settings) lifts them too, until it's turned off rather than for the session.
   const devOn = limits.dev === true;
   const limitHeld = !running && limits.reached === true;
-  const status = running || other || allDay || queued.length > 0 || limitHeld || lifted;
+  const status = running || other || (allDay && shows.auto) || queued.length > 0 || limitHeld || lifted;
   // Pages with a heading at the top leave room for the notch while it's showing.
   const showing = Boolean(status || tabs);
   useEffect(() => {
@@ -230,7 +234,7 @@ export default function ScanStatusBar() {
     : p?.kind === 'walk' && p.total ? `${(p.done || 0).toLocaleString()} of ${p.total.toLocaleString()}`
     : p?.kind === 'saving' ? 'saving' : null;
   const fraction = p?.total ? Math.min(1, (p.current || p.done || 0) / p.total) : other?.progress ?? null;
-  const b = job?.budget;
+  const b = shows.scan ? job?.budget : null;
   const last = running ? [...(job.log || [])].reverse().find((l) => l && l.trim())?.trim() : null;
   const expanded = open || pinned;
 

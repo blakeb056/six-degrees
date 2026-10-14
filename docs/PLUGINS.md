@@ -104,7 +104,7 @@ A folder entry is allowed only for a folder that holds a listed file.
 | `about` | What it does, shown before installing and in the list. Up to 400 characters. |
 | `risk` | Optional. Shown before installing, beside the yes. Up to 1000 characters. |
 | `kind` | `"scanner"`. |
-| `unlocks` | What it turns on in the app: `["auto"]`, `["manual"]` or both. Stored and shown for now. |
+| `unlocks` | What it turns on in the app: `["auto"]`, `["manual"]` or both (see *What a scanner plugin unlocks*). |
 | `files` | Every file in the package except `manifest.json`, each with its SHA-256 as 64 lowercase hex digits. Up to 200. |
 
 Text fields are plain text: no control characters, and none of the characters that turn
@@ -144,6 +144,39 @@ Sixgree starts a scanner plugin exactly as it starts the built-in scanner:
 
 Install and *Set up the scanner* install the plugin's `scanner/requirements.txt` into the
 scanner's Python.
+
+### What a scanner plugin unlocks
+
+The app's scan screens show only when there is a scanner, and each scanner plugin unlocks its
+own part of them (`lib/scanner-capabilities.js`):
+
+- **`auto`** (the *Auto scan* plugin): circle scans that turn the pages by themselves, Auto
+  scan's sittings, Auto connect, company scans, *Check for new* and the first scan of your
+  connections, message sync, and Dev mode.
+- **`manual`** (the *Manual scan* plugin): manual mode, where you scroll and click Next in the
+  scanner's Chrome, and its chimes (Settings → Sound).
+
+What shows, by what is installed while plugins are on:
+
+| Installed | What shows |
+|---|---|
+| Nothing (plugins off, or on with nothing installed) | The built-in scanner, while the app has one: everything, as before plugins. Without one, no Scan tab, Auto scan or *Check for new*, and no scan buttons anywhere. The map, Degrees, Separation, Paths, Outlink (with *Open profile*), Insights and Settings all stay. |
+| `manual` only | Circle scans, always in manual mode: the Scan page's manual-mode switch shows on and locked, and says the Auto scan plugin isn't installed. No Auto scan, Auto connect, *Check for new*, company scans, message sync or Dev mode. Settings → Sound shows. |
+| `auto` only | Everything but manual mode: its switch is hidden and every scan runs without it. Settings → Sound is hidden. |
+| Both | Everything, as before plugins. |
+
+What's unlocked is the union of every sound scanner plugin installed (a broken one, or one
+made for another Sixgree, unlocks nothing), and the job answer every page asks for
+(`GET /api/scraper`, `capabilities`) carries it. The server keeps to it too, not just the
+pages:
+
+- Whatever only the auto plugin does is refused with a plain reason (409), and Auto scan
+  ends if the auto plugin goes while it rests.
+- Manual mode and Dev mode are kept in line in `scan-limits.json` before every scan and
+  whenever the Scan page looks, since the scanner reads them from there: with only the
+  manual plugin, manual mode on and Dev mode off, so a circle scan is a manual one whatever
+  was saved; with only the auto plugin, manual mode off. A change of either that the
+  plugins don't allow is refused.
 
 ## Installing from a file, step by step
 

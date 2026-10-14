@@ -25,7 +25,7 @@ import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
 import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
-import useScanner from './useScanner';
+import useScanner, { useScanShows } from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { useUser } from './UserProvider';
 import { startHere, busyReason } from '../../lib/scraper-client';
@@ -69,9 +69,11 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const mobileSeen = useIsMobile();
   const isMobile = mobileProp ?? mobileSeen;
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
+  // Auto scan and Check for new come with the auto plugin, or the built-in scanner (lib/scanner-capabilities.js).
+  const auto = useScanShows().auto;
   const tabs = (
     <AppTabs active={active} isMobile={isMobile} csvMode={csvMode} onMode={onMode}
-      after={own ? <AutoScanButton isMobile={isMobile} /> : null}>
+      after={own && auto ? <AutoScanButton isMobile={isMobile} /> : null}>
       {chips}
     </AppTabs>
   );
@@ -98,7 +100,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{'⚙︎'}</Link>}
           {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
-          {own && <RefreshButton isMobile={isMobile} />}
+          {own && auto && <RefreshButton isMobile={isMobile} />}
           <ProfileButton isMobile={isMobile} csvMode={csvMode} level={level} />
         </div>
       </div>

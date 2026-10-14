@@ -78,16 +78,21 @@ const post = (body) => POST(new Request('http://127.0.0.1/api/scraper', {
 }));
 const ask = async (query = '') => (await GET(new Request(`http://127.0.0.1/api/scraper${query}`))).json();
 
-/** Start Check for new, and say which scrape.py the stand-in was started with, and where. */
+/**
+ * Start the sign-in, and say which scrape.py the stand-in was started with, and
+ * where. The sign-in, since either scanner plugin runs it: Check for new, which
+ * this used to start, needs the auto plugin now (lib/scanner-capabilities.js),
+ * and these tests install the manual one.
+ */
 async function scanned() {
   rmSync(ARGS, { force: true });
   rmSync(CWD, { force: true });
-  const res = await post({ action: 'refresh' });
+  const res = await post({ action: 'login' });
   assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
   for (let i = 0; i < 200 && (await ask('?job=1')).running; i++) await new Promise((r) => setTimeout(r, 25));
   const args = readFileSync(ARGS, 'utf8').trim().split('\n');
   const script = args.find((a) => a.endsWith('scrape.py'));
-  assert.deepEqual(args.slice(args.indexOf(script) + 1), ['--refresh']);
+  assert.deepEqual(args.slice(args.indexOf(script) + 1), ['--login']);
   return { script, cwd: readFileSync(CWD, 'utf8').trim() };
 }
 

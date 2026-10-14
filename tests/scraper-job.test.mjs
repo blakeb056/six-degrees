@@ -52,6 +52,9 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
     queue: { paused: null, cap: 10, waiting: 0, items: [] },
     // Auto scan, off until its Start (lib/auto-scan.js, tests/auto-scan.test.mjs).
     auto: { on: false, pace: 'medium', tiers: ['S', 'A'], sittings: 0, ended: null, phase: 'off' },
+    // What the scanner unlocks: plugins off and the built-in scanner here, so
+    // everything (lib/scanner-capabilities.js, tests/scanner-capabilities.test.mjs).
+    capabilities: { auto: true, manual: true, from: 'built-in' },
   });
 
   const state = registerScanState({});

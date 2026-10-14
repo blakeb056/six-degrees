@@ -6,7 +6,7 @@ import { projectRoot, dataDir } from '../../../lib/paths';
 import { findScanner, SCANNER_MISSING } from '../../../lib/scanner-files';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
-import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode } from '../../../lib/linkedin-limits';
+import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode, applyLockedModes } from '../../../lib/linkedin-limits';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
 import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
@@ -16,7 +16,8 @@ import { registerScanState, runningNow } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
-import { pluginsEnabled } from '../../../lib/plugins-view';
+import { pluginsEnabled, scannerCapabilitiesNow } from '../../../lib/plugins-view';
+import { capabilityRefusal, settingRefusal, lockedModes, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
@@ -160,6 +161,9 @@ async function autoTick() {
   if (!a.on || a.ticking || state.running) return;
   a.ticking = true;
   try {
+    // Only with the auto plugin (lib/scanner-capabilities.js): one removed, or
+    // plugins switched off, while Auto scan rests ends it here, with why.
+    if (!scannerCapabilitiesNow().auto) return autoEnd('stopped', AUTO_NEEDED);
     const plan = autoPlanNow();
     a.plan = plan;
     if (plan.kind === 'stop') {
@@ -202,6 +206,10 @@ function autoSittingEnded(code, stopped, log, failure) {
 async function autoRefusal() {
   // First: without the scanner, nothing else it would ask about matters.
   if (!scannerHere().found) return { error: SCANNER_MISSING, scannerMissing: true };
+  // Auto scan is the auto plugin's (lib/scanner-capabilities.js). Looked at
+  // here, which also takes manual mode off with only that plugin, so the
+  // manual-mode check below can't hold it back with no switch to change.
+  if (!capabilitiesHere().auto) return { error: AUTO_NEEDED, needsPlugin: 'auto' };
   if (!scanRisk()) return { error: RISK_REFUSAL, needsRiskAcceptance: true };
   if (!chromeHere()) return { error: CHROME_REFUSAL, needsChrome: true };
   if (pendingImport(dataDir())) return { error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' };
@@ -445,6 +453,20 @@ function scannerHere(root = projectRoot()) {
   return findScanner(root, { dataDir: dataDir(), pluginsEnabled: pluginsEnabled() });
 }
 
+/**
+ * What the scanner unlocks (lib/scanner-capabilities.js), looked at afresh,
+ * with scan-limits.json brought into line with it first (lockedModes): with
+ * only the manual plugin, manual mode on and Dev mode off; with only the auto
+ * plugin, manual mode off. The scanner reads both from that file and nowhere
+ * else (scrape.py manual_reads, dev_mode), so this runs before every scan, and
+ * whenever the Scan page looks, so its switches and the file agree.
+ */
+function capabilitiesHere() {
+  const caps = scannerCapabilitiesNow();
+  applyLockedModes(dataDir(), lockedModes(caps));
+  return caps;
+}
+
 /** Google Chrome, where Playwright's "chrome" channel looks (lib/scanner-setup.js). A file check, so cheap enough for every POST. */
 function chromeHere() {
   return chromeInstalled({ platform: process.platform, env: process.env, exists: existsSync });
@@ -540,6 +562,11 @@ async function status() {
     }
   } catch { experience = null; }
 
+  // What the scanner unlocks, afresh, with scan-limits.json brought into line
+  // with it before linkedinState reads it below. Unreadable: the job answer's.
+  let capabilities = null;
+  try { capabilities = capabilitiesHere(); } catch { /* the job answer's look, below */ }
+
   const py = m.python;
   return {
     ready: Boolean(scanner.found && py.run && chrome),
@@ -582,6 +609,7 @@ async function status() {
     photosWaiting,
     experience,
     ...job(),
+    ...(capabilities ? { capabilities } : {}),
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
     paused: paused(me?.id),
@@ -644,7 +672,19 @@ function job() {
     queue: queueView(queue(), { cap: queueCap() }),
     // Auto scan, when it's on or has just ended (autoView).
     auto: autoView(),
+    // What the installed scanner unlocks (lib/scanner-capabilities.js): which
+    // scan screens and buttons every page shows. A look up to 2 s old.
+    capabilities: capabilitiesSeen(),
   };
+}
+
+/** What the scanner unlocks, for the job answer: a recent look is reused, and a failed one reads as not known (null). */
+function capabilitiesSeen() {
+  try {
+    return scannerCapabilitiesNow({ maxAge: 2000 });
+  } catch {
+    return null;
+  }
 }
 
 /** Today's searches against the daily limit, for the notch every page shows while a scan runs. */
@@ -1071,6 +1111,11 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
 
   // The settings a person changes here. None starts anything.
   if (action === 'set-limits') {
+    // Manual mode and Dev mode only as the installed plugins allow
+    // (lib/scanner-capabilities.js): the file is brought into line first, so a
+    // save that sends every setting back as it is goes through.
+    const refused = settingRefusal(capabilitiesHere(), body);
+    if (refused) return Response.json({ error: refused }, { status: 409 });
     const limits = writeLimits(dataDir(), {
       daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads,
       // Dev mode and manual mode (lib/linkedin-limits.js). The scanner reads both from the
@@ -1109,6 +1154,19 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   if (!scanner.found) {
     return Response.json({ error: SCANNER_MISSING, scannerMissing: true }, { status: 409 });
   }
+  // What the installed plugins unlock (lib/scanner-capabilities.js), with
+  // manual mode and Dev mode set in scan-limits.json as they decide before the
+  // scanner reads it: with only the manual plugin, a circle scan is a manual
+  // one whatever was saved. What only the auto plugin does is refused here,
+  // and so is one of Auto scan's sittings without it.
+  let caps;
+  try {
+    caps = capabilitiesHere();
+  } catch (err) {
+    return Response.json({ error: `The scanner’s settings couldn’t be saved, so nothing started (${err.message}).` }, { status: 500 });
+  }
+  const locked = capabilityRefusal(caps, sitting ? 'auto-start' : action);
+  if (locked) return Response.json({ error: locked, needsPlugin: 'auto' }, { status: 409 });
   // Auto: who, by id, and whether a request can go to them at all, before
   // anything else is asked. Then its own one-time yes (the page asks it).
   let invitee = null;
@@ -1315,7 +1373,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
   forgetChecks();
   // Manual mode's chimes, as files the scanner can play (lib/chime-files.js): written once, never in the way.
-  ensureChimes(dataDir());
+  // Only with manual mode there to play them (the manual plugin, or built in).
+  if (caps.manual) ensureChimes(dataDir());
 
   // Name the profile outright. The scraper would otherwise ask the app which one
   // to use; passing it means the page and the scrape cannot disagree.
