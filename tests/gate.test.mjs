@@ -11,11 +11,14 @@ test('exactly these routes are gated; everything else, reads included, is not', 
   const gated = [
     '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
     '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal', '/api/data/backup', '/api/data/restore', '/api/data/csv',
-    '/api/data/network',
+    '/api/data/network', '/api/plugins',
   ];
   for (const p of gated) assert.equal(isDestructive(p), true, p);
   // A network file's Import sits under its preview, and is gated with it.
   assert.equal(isDestructive('/api/data/network/apply'), true);
+  // Settings → Plugins: install, uninstall and the Enable plugins switch sit under the list, gated with it.
+  for (const p of ['/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled']) assert.equal(isDestructive(p), true, p);
+  assert.equal(isDestructive('/api/pluginsx'), false);
   // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
   assert.deepEqual([...DESTRUCTIVE_ROUTES].sort(), [...gated].sort());
   for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import', '/api/settings', '/api/data']) {
@@ -245,7 +248,8 @@ test('middleware.js runs on every /api route and every photo except exactly POST
   assert.equal(covered('/api/data/import'), false, 'the one route left alone');
   for (const p of ['/api', '/api/', '/api/users', '/api/network', '/api/data', '/api/data/export', '/api/data/restart',
     '/api/data/reveal', '/api/data/csv', '/api/data/network', '/api/data/network/apply', '/api/scraper', '/api/update', '/api/admin-delete', '/api/settings', '/api/data/import/',
-    '/api/data/import/x', '/api/data/imports', '/api/data/import.json', '/api/data/importx', '/avatars/a.webp']) {
+    '/api/data/import/x', '/api/data/imports', '/api/data/import.json', '/api/data/importx', '/avatars/a.webp',
+    '/api/plugins', '/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled']) {
     assert.equal(covered(p), true, p);
   }
   // Every route it leaves alone must make the checks itself: today, one.

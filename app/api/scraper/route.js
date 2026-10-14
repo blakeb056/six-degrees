@@ -3,7 +3,7 @@ import { existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:f
 import path from 'node:path';
 import { release as osRelease } from 'node:os';
 import { projectRoot, dataDir } from '../../../lib/paths';
-import { scannerPresent, scannerScript, scannerRequirements, SCANNER_MISSING } from '../../../lib/scanner-files';
+import { findScanner, SCANNER_MISSING } from '../../../lib/scanner-files';
 import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode } from '../../../lib/linkedin-limits';
@@ -16,6 +16,7 @@ import { registerScanState, runningNow } from '../../../lib/scan-state';
 import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
+import { pluginsEnabled } from '../../../lib/plugins-view';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
@@ -200,7 +201,7 @@ function autoSittingEnded(code, stopped, log, failure) {
 /** Why Auto scan can't start at all, said at Start rather than at 9:00: the checks a sitting runs. */
 async function autoRefusal() {
   // First: without the scanner, nothing else it would ask about matters.
-  if (!scannerPresent(projectRoot())) return { error: SCANNER_MISSING, scannerMissing: true };
+  if (!scannerHere().found) return { error: SCANNER_MISSING, scannerMissing: true };
   if (!scanRisk()) return { error: RISK_REFUSAL, needsRiskAcceptance: true };
   if (!chromeHere()) return { error: CHROME_REFUSAL, needsChrome: true };
   if (pendingImport(dataDir())) return { error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' };
@@ -431,7 +432,17 @@ async function look() {
     host: hostOnce(),
   });
 
-  return { root, scanner: scannerPresent(root), python };
+  return { root, python };
+}
+
+/**
+ * Where scans get the scanner from (lib/scanner-files.js findScanner): an
+ * installed scanner plugin while Settings → Plugins has Enable plugins on,
+ * otherwise the app's own. Looked at afresh each time: a plugin is checked
+ * file by file, which costs a millisecond or two.
+ */
+function scannerHere(root = projectRoot()) {
+  return findScanner(root, { dataDir: dataDir(), pluginsEnabled: pluginsEnabled() });
 }
 
 /** Google Chrome, where Playwright's "chrome" channel looks (lib/scanner-setup.js). A file check, so cheap enough for every POST. */
@@ -502,6 +513,9 @@ function paused(userId) {
 async function status() {
   const m = await machineChecks();
   const chrome = chromeHere();
+  // Which scanner, looked at afresh on every call, unlike the Python above: a
+  // plugin installed or switched on a moment ago shows at once.
+  const scanner = scannerHere(m.root);
 
   // How much is already mapped, by degree, so the page can mark the scan step
   // done and offer the way to the galaxy instead of leaving someone on a form.
@@ -528,12 +542,15 @@ async function status() {
 
   const py = m.python;
   return {
-    ready: Boolean(m.scanner && py.run && chrome),
+    ready: Boolean(scanner.found && py.run && chrome),
     // Whose circle is being read now, for the Scan page's "Watch it fill in".
     mapping: mappingWho(me?.id),
     checks: {
-      // The scanner's files are in this copy (lib/scanner-files.js); the page says "Files missing" when not.
-      scriptsFound: m.scanner,
+      // The scanner's files are here, built in or from a plugin (lib/scanner-files.js); the page says "Files missing" when not.
+      scriptsFound: scanner.found,
+      // Which scanner scans run: 'plugin' (and which) or 'built-in', the program
+      // itself, and why an installed scanner plugin wasn't used, when one wasn't.
+      scanner: { from: scanner.from, plugin: scanner.plugin, script: scanner.script, skipped: scanner.skipped },
       // A Python that runs the scanner, or one Install can build its environment from.
       python: Boolean(py.run || py.base),
       pythonPath: py.run?.path || py.base?.path || null,
@@ -860,7 +877,7 @@ function cleanName(raw) {
  *            before anything is unpacked: downloadVerified only names the file
  *            once it matches, and deletes it otherwise.
  */
-function setupPlan(action, found, { root, data, say }) {
+function setupPlan(action, found, { requirements, data, say }) {
   if (found.run) {
     return {
       status: 409,
@@ -884,8 +901,8 @@ function setupPlan(action, found, { root, data, say }) {
 
   // The environment, the pinned packages without the pip settings that would
   // put them elsewhere, and a check that they load there
-  // (lib/scanner-python.js installSteps).
-  const requirements = scannerRequirements(root);
+  // (lib/scanner-python.js installSteps). `requirements` is the scanner's own
+  // list, wherever it comes from (lib/scanner-files.js findScanner).
   const install = (from) => installSteps({ base: from, dataDir: data, requirements });
   // A setup that already got as far as the download (it was stopped, or the
   // packages failed) carries on from its Python rather than fetching it again.
@@ -1085,9 +1102,11 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     return Response.json({ error: `Unknown action '${action}'` }, { status: 400 });
   }
   // Every action from here on runs the scanner or sets it up. A copy without
-  // its files (lib/scanner-files.js) says so before anything else is asked.
+  // its files, built in or from a plugin (lib/scanner-files.js), says so
+  // before anything else is asked.
   const root = projectRoot();
-  if (!scannerPresent(root)) {
+  const scanner = scannerHere(root);
+  if (!scanner.found) {
     return Response.json({ error: SCANNER_MISSING, scannerMissing: true }, { status: 409 });
   }
   // Auto: who, by id, and whether a request can go to them at all, before
@@ -1232,7 +1251,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   let plan;
   let cleanup = null;
   if (action === 'install' || action === 'setup') {
-    const made = setupPlan(action, found, { root, data: dataDir(), say: push });
+    const made = setupPlan(action, found, { requirements: scanner.requirements, data: dataDir(), say: push });
     if (made.error) return Response.json({ error: made.error }, { status: made.status });
     ({ plan, cleanup } = made);
   } else {
@@ -1242,7 +1261,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     // The app's own Python runs isolated from this user's Python settings; any
     // Python runs it without writing bytecode beside scrape.py, which in the Mac
     // app is inside the signed app (lib/scanner-python.js scannerCommand).
-    plan = [scannerCommand(found.run, scannerScript(root), [
+    plan = [scannerCommand(found.run, scanner.script, [
       // `--flag=value` is one token on purpose: a name beginning with
       // "-" can then never be read as a flag of its own. Anyone found by
       // id is --bridge-url, which carries on where their last read stopped
@@ -1308,7 +1327,9 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     SIX_DEGREES_USER_ID: profileId,
     APP_URL: `http://127.0.0.1:${port}`,
     PYTHONUNBUFFERED: '1',
-    SIX_DEGREES_ROOT: root,
+    // The app's own folder, as it always was. A scanner plugin may run with no
+    // app folder found at all, and then whatever this server was given stays.
+    ...(root ? { SIX_DEGREES_ROOT: root } : {}),
     // So the scraper's hints name the Scan page's settings, not its flags.
     SIX_DEGREES_FROM_APP: '1',
     // Lifted for this session, or not: the scanner skips the daily limit and the
@@ -1436,7 +1457,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // On Windows `detached` means a console of its own, a visible window for
       // Playwright's driver: there taskkill /T reaches the tree instead (stopChild).
       const win = process.platform === 'win32';
-      child = spawn(step.cmd, step.args, { cwd: root, env: step.env ? step.env(childEnv) : childEnv, detached: !win, windowsHide: true });
+      // In the scanner's own folder: the app's for the built-in one, the plugin's for a plugin's.
+      child = spawn(step.cmd, step.args, { cwd: scanner.cwd, env: step.env ? step.env(childEnv) : childEnv, detached: !win, windowsHide: true });
     } catch (err) {
       push(`Could not start: ${err.message}`);
       return finish(-1);
