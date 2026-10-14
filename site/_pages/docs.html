@@ -5,7 +5,7 @@ crumb: Docs
 path: /docs/
 type: WebPage
 faq: true
-updated: 2026-10-09
+updated: 2026-10-14
 -->
     <header class="page-hero">
       <p class="kicker">Docs</p>
@@ -26,7 +26,7 @@ updated: 2026-10-09
       <p class="kicker">Get started</p>
       <h2>Bring your network in</h2>
       <p class="intro">The app opens on three ways in. We recommend the official connections export: it carries no risk
-        to your account. The sample needs nothing at all. Scanning is optional, and the only way to see who <em>your
+        to your account. The sample needs nothing at all. Scanning is optional, added by a plugin, and the only way to see who <em>your
         connections</em> know, but it runs your own account automatically, at your own risk.</p>
       <div class="cards" id="network">
         <article>
@@ -45,9 +45,10 @@ updated: 2026-10-09
         <article>
           <p class="risk some">Optional · Your account, your risk</p>
           <h3>Scan your network</h3>
-          <p>The only way to see who <em>your connections</em> know. The app opens Google Chrome with a profile of its
-            own, you sign into your account in that window yourself, and it reads slowly with daily limits, in the background: its
-            window comes forward only if the platform needs you.</p>
+          <p>The only way to see who <em>your connections</em> know. Install the Auto scan or Manual scan plugin from
+            <strong>Settings → Plugins</strong>. The app opens Google Chrome with a profile of its own, you sign into your
+            account in that window yourself, and it reads slowly with daily limits. Auto scan works in the background, its
+            window coming forward only if the platform needs you; with Manual scan, you scroll and click Next yourself.</p>
         </article>
       </div>
       <figure class="video" id="export">
@@ -101,8 +102,9 @@ updated: 2026-10-09
         <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
         <li><strong>It only goes online when you act:</strong> the platform when you scan or press Auto (profile photos are saved on your
           computer as they're read, and shown only from there), and GitHub when you check for updates (and to download
-          one, if you click Install). The Mac app carries the scanner's Python inside it, so setting it up downloads
-          nothing.</li>
+          one, if you click Install). Scanning comes as a plugin: GitHub is asked for the plugin list only when you
+          open Settings → Plugins with plugins on or tick Allow plugins in the setup, and a plugin, with what it needs to
+          run, is downloaded only when you install it.</li>
         <li><strong>One thing that runs on a timer, if you turn it on:</strong> the experimental daily
           messages sync (Outlink → Messages &amp; follow-ups) opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.</li>
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
@@ -123,11 +125,11 @@ updated: 2026-10-09
         </div>
         <div>
           <dt>Does it upload my network data anywhere?</dt>
-          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: the platform when you scan or press Auto, and GitHub when you check for an update.</dd>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: the platform when you scan or press Auto, and GitHub when you check for an update or browse plugins.</dd>
         </div>
         <div>
           <dt>Does it work on Windows?</dt>
-          <dd>Yes, in beta, on Windows 10 or 11, and there's a Linux app too. Downloads are paused for now while Sixgree is reorganized (<a href="/download/">more</a>).</dd>
+          <dd>Yes, in beta: a one-click Setup.exe for Windows 10 or 11, the same app as on the Mac (<a href="/download/#windows">how</a>). There's a Linux app too (.deb or .tar.gz), and on Linux it still runs with <code>npx sixgree</code> as well.</dd>
         </div>
         <div>
           <dt>Is the Mac app signed?</dt>

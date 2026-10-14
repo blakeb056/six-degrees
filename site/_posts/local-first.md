@@ -2,10 +2,12 @@
 title: Local-first: why Sixgree has no account, no server and no telemetry
 description: Sixgree keeps your network in one folder on your own computer. What that means in practice, what the app contacts and when, and the protections that come with running on localhost.
 date: 2026-09-29
-updated: 2026-10-04
+updated: 2026-10-14
 tags: [privacy, local-first]
 image: /img/app/your-data.jpg
 ---
+
+**Scanning now comes as a plugin** from Settings → Plugins: Sixgree asks GitHub for the plugin list only when you browse plugins, and downloads one only when you install it.
 
 A map of your network is a map of other people: their names, their jobs, who they know. That's a good reason not to send it anywhere. So Sixgree doesn't. There's no account to create, no server that holds your data, and no telemetry. The app, and everything it knows, runs on your own computer.
 
