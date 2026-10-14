@@ -1,5 +1,7 @@
 # The scraper
 
+> The scanner now ships only as plugins (`auto-scan`, `manual-scan`, built by `scripts/build-plugin.mjs`); no download carries `scrape.py` or `image_store.py` (`lib/scanner-files.js` SCANNER_CODE). The source and its tests stay here.
+
 `scripts/scrape.py`, the scanner: Python + Playwright, driving the user's **real
 installed Chrome** through a persistent profile. It is the only implementation that has
 ever actually scanned, so treat it as load-bearing, not as a candidate for a rewrite. See

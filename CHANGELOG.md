@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan until every role has its company.
 
 ### Changed
+- **The app no longer includes the scanner; install Auto scan or Manual scan from Settings → Plugins.**
 - **Dev mode keeps one limit: 250 search pages a day.** Everything else Dev mode takes off stays
   off, but a scan in Dev mode now stops at 250 search pages in the last 24 hours, counted over the
   same rolling 24 hours as the daily limit, and says so in a plain line: scanning resumes when the

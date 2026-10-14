@@ -7,8 +7,10 @@
 //
 // The same app as the Mac's (scripts/build-app.mjs, left untouched): the same
 // standalone server on the same bundled Node, the same Electron shell
-// (desktop/), and the scanner's own Python with its packages installed, so
-// nothing needs installing before a scan. What differs is only the packaging:
+// (desktop/), and the plugin runtime: a Python with the scanner's packages
+// installed, so a scanner plugin needs nothing installed before a scan. The
+// scanner's own code is not in the app: it comes as a plugin
+// (lib/scanner-files.js). What differs is only the packaging:
 //   Windows  @electron/packager, then Inno Setup (preinstalled on GitHub's
 //            windows runners) for a one-click, per-user Setup.exe with Start
 //            Menu and Desktop shortcuts. No admin rights asked for.
@@ -33,7 +35,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { standaloneBuild, downloadVerified, IMPORTS } from '../lib/scanner-python.js';
-import { scannerPresent } from '../lib/scanner-files.js';
+import { pluginRuntimeWanted, SCANNER_FILES } from '../lib/scanner-files.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLATFORM = (process.argv.find((a) => a.startsWith('--platform='))?.split('=')[1]) || process.platform;
@@ -120,13 +122,19 @@ const SERVER_DIR = path.join(STAGE, 'server');
 mkdirSync(STAGE, { recursive: true });
 cpSync(path.join(ROOT, '.next', 'standalone'), SERVER_DIR, { recursive: true, verbatimSymlinks: true });
 if (existsSync(path.join(SERVER_DIR, '.git'))) rmSync(path.join(SERVER_DIR, '.git'), { recursive: true, force: true });
+// The scanner's files come only in a plugin, never inside the app, as
+// build-app.mjs makes sure too: next.config.mjs keeps them out of the trace,
+// and --fast can reuse a build from before that.
+for (const rel of SCANNER_FILES) {
+  if (!existsSync(path.join(SERVER_DIR, rel))) continue;
+  rmSync(path.join(SERVER_DIR, rel), { force: true });
+  console.log(`  removed ${rel}, which was traced into the bundle: check next.config.mjs`);
+}
 // The files the app runs from scripts/, by name (TRAPS §27). Not apply-update.sh:
 // only the Mac app replaces itself; here an update is the new installer, and a
 // missing helper is one more thing that keeps the Mac swap from ever running.
-// Each one this checkout has, as build-app.mjs does: the scanner's files are
-// moving out of the app (lib/scanner-files.js), and a build without them must
-// still finish.
-for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt', 'scripts/audit-avatars.mjs']) {
+// Not the scanner: scans run a plugin's copy.
+for (const rel of ['scripts/audit-avatars.mjs']) {
   if (!existsSync(path.join(ROOT, rel))) continue;
   mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
   cpSync(path.join(ROOT, rel), path.join(SERVER_DIR, rel));
@@ -200,12 +208,13 @@ renameSync(built, APP_DIR);
 console.log(`  Electron ${electronVersion} (${PLATFORM} ${ARCH})`);
 const RES = path.join(APP_DIR, 'resources');
 
-// ---- 5. the scanner's Python (DESKTOP.md D2, D3) ------------------------------
-// Only with the scanner: this Python is there to run it, and pip installs its
-// requirements.txt. A checkout without the scanner's files (they are moving
-// out of the app, lib/scanner-files.js) builds an app with neither.
-if (!scannerPresent(ROOT)) {
-  step('No scanner in this checkout, so no Python in the app');
+// ---- 5. the plugin runtime's Python (DESKTOP.md D2, D3) -----------------------
+// The Python a scanner plugin runs on, with the packages pinned in
+// scripts/requirements.txt: in every build that has that list, whether or not
+// the checkout still has the scanner's code (lib/scanner-files.js
+// pluginRuntimeWanted).
+if (!pluginRuntimeWanted(ROOT)) {
+  step('No scripts/requirements.txt in this checkout, so no plugin runtime (Python) in the app');
 } else {
   const build = standaloneBuild(WIN ? 'win32-x64' : 'linux-x64');
   const xy = build.version.split('.').slice(0, 2).join('.');

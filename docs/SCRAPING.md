@@ -1,5 +1,7 @@
 # The local scanner
 
+**The scanner no longer comes with the app.** It ships as plugins, Auto scan and Manual scan, installed from Settings → Plugins ([PLUGINS.md](PLUGINS.md)).
+
 > **Read this first.** Automating LinkedIn may violate its
 > [User Agreement](https://www.linkedin.com/legal/user-agreement), and accounts
 > have been restricted for it. This runs locally against your own account, at

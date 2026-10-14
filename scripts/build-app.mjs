@@ -13,8 +13,10 @@
 // What this removes: installing Node, cloning, npm install, and typing a
 // command. The Node runtime is bundled, so the app has no prerequisites at all
 // for the CSV path — download, double-click, drop in your export. The Electron
-// app also carries the scanner's own Python with its packages installed
-// (bundlePython, DESKTOP.md D2), so scanning needs no install step either.
+// app also carries the plugin runtime: a Python with the scanner's packages
+// installed (bundlePython, DESKTOP.md D2), so a scanner plugin needs no
+// install step either. The scanner's own code is not in the app: it comes as
+// a plugin (Settings → Plugins; lib/scanner-files.js).
 //
 // What it does NOT remove: Google Chrome, which the scanner drives. It stays a
 // runtime prerequisite and the Scan page already detects it. Bundling a
@@ -43,7 +45,7 @@ import { fileURLToPath } from 'node:url';
 import {
   standaloneBuild, downloadVerified, machoSlices, machoSlice, megabytes, IMPORTS,
 } from '../lib/scanner-python.js';
-import { scannerPresent } from '../lib/scanner-files.js';
+import { pluginRuntimeWanted, SCANNER_FILES } from '../lib/scanner-files.js';
 import {
   signingSetup, signDeveloperId, signatureInfo, signerName, signImage, notarize, staple, stapleValid, assess, SigningError,
 } from './mac-sign.mjs';
@@ -163,6 +165,14 @@ if (existsSync(path.join(SERVER_DIR, '.git'))) {
   rmSync(path.join(SERVER_DIR, '.git'), { recursive: true, force: true });
   console.log('  removed a .git that was traced into the bundle — check next.config.mjs');
 }
+// The scanner's files come only in a plugin, never inside the app
+// (lib/scanner-files.js). next.config.mjs keeps them out of the trace; this
+// makes sure, since --fast can reuse a build from before that.
+for (const rel of SCANNER_FILES) {
+  if (!existsSync(path.join(SERVER_DIR, rel))) continue;
+  rmSync(path.join(SERVER_DIR, rel), { force: true });
+  console.log(`  removed ${rel}, which was traced into the bundle: check next.config.mjs`);
+}
 // Anything not committed is somebody's local file, and it is about to be handed
 // to whoever gets this app. Releases build from a clean checkout; a local build
 // should at least say what it is shipping.
@@ -185,12 +195,12 @@ try {
   }
 } catch { /* not a git checkout: nothing to compare against */ }
 // The files the app runs from scripts/, copied by name so the app never
-// depends on what Next's tracing happens to bring along (TRAPS §27): the
-// scanner the Scan page runs, and apply-update.sh, the in-app updater's helper.
-// The helper ships inside the app, so the version that swaps the app is the one
-// the user is running, never a script fetched from the main branch.
-for (const rel of ['scripts/scrape.py', 'scripts/image_store.py', 'scripts/requirements.txt',
-                   'scripts/audit-avatars.mjs', 'scripts/apply-update.sh']) {
+// depends on what Next's tracing happens to bring along (TRAPS §27):
+// apply-update.sh, the in-app updater's helper, and the photo audit. The helper
+// ships inside the app, so the version that swaps the app is the one the user
+// is running, never a script fetched from the main branch. Not the scanner:
+// scans run a plugin's copy, and its packages are already in the app's Python.
+for (const rel of ['scripts/audit-avatars.mjs', 'scripts/apply-update.sh']) {
   const from = path.join(ROOT, rel);
   if (existsSync(from)) {
     mkdirSync(path.join(SERVER_DIR, path.dirname(rel)), { recursive: true });
@@ -385,12 +395,12 @@ async function buildElectronShell() {
   rmSync(STAGE, { recursive: true, force: true });
 
   // Put straight into the finished app, so its links are made where they stay
-  // and nothing copies them again (TRAPS §37). Only with the scanner: this
-  // Python is there to run it, and pip installs its requirements.txt. A checkout
-  // without the scanner's files (they are moving out of the app,
-  // lib/scanner-files.js) builds an app with neither.
-  if (scannerPresent(ROOT)) await bundlePython(path.join(APP, 'Contents', 'Resources'));
-  else step('No scanner in this checkout, so no Python in the app');
+  // and nothing copies them again (TRAPS §37). The plugin runtime: the Python a
+  // scanner plugin runs on, with the packages pinned in scripts/requirements.txt,
+  // in every build that has that list, whether or not the checkout still has
+  // the scanner's code (lib/scanner-files.js pluginRuntimeWanted).
+  if (pluginRuntimeWanted(ROOT)) await bundlePython(path.join(APP, 'Contents', 'Resources'));
+  else step('No scripts/requirements.txt in this checkout, so no plugin runtime (Python) in the app');
   localizeDisplayName(path.join(APP, 'Contents', 'Resources'));
 
   if (DEVELOPER_ID) {
@@ -498,11 +508,11 @@ function oneLine(text) {
   return String(text || '').trim().split('\n').join(' | ');
 }
 
-// ---- the scanner's Python (Electron app only; DESKTOP.md D2) ------------------
+// ---- the plugin runtime's Python (Electron app only; DESKTOP.md D2) -----------
 // A standalone CPython from python-build-standalone, with the scanner's packages
 // installed, at Contents/Resources/python. desktop/main.mjs names it to the
-// server (SIX_DEGREES_PYTHON), which runs the scanner on it before any other
-// Python: no install step, and scanning works offline.
+// server (SIX_DEGREES_PYTHON), which runs a scanner plugin on it before any
+// other Python: no install step, and scanning works offline.
 //
 // Pinned twice: the Python by the release and SHA-256 in lib/scanner-python.js,
 // the packages by the hash of every file in scripts/requirements.txt. Downloads
