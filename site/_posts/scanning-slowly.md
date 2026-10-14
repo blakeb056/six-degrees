@@ -2,10 +2,12 @@
 title: Scanning slowly and safely: pacing, budgets and the honest risk
 description: How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.
 date: 2026-09-29
-updated: 2026-10-04
+updated: 2026-10-14
 tags: [scanning, safety]
 image: /img/app/scan-budget.jpg
 ---
+
+**Scanning now comes as a plugin:** install Auto scan or Manual scan from Settings → Plugins, and the Scan page this post describes appears.
 
 Sixgree can show you who your connections know, but only if it can read their connection lists. The platform's own data export doesn't include them: it lists the people you're connected to, and nobody else. So the app has an optional **scanner** that reads them from the platform, in a Chrome window you sign into yourself.
 
