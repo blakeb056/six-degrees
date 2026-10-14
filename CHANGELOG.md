@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan until every role has its company.
 
 ### Changed
+- **Dev mode keeps one limit: 250 search pages a day.** Everything else Dev mode takes off stays
+  off, but a scan in Dev mode now stops at 250 search pages in the last 24 hours, counted over the
+  same rolling 24 hours as the daily limit, and says so in a plain line: scanning resumes when the
+  oldest of them is a day old. Auto scan stops there too. The notch, the usage page and the Scan
+  page's Dev mode switch show the ceiling instead of "no limit". An account was restricted at 373
+  search pages in 24 hours, and again at 305 with Dev mode on. Profile views and Auto's connection
+  requests are unchanged.
 - **A CSV import goes into your network.** Your connections export (Connections.csv) is now
   added to your own network on this computer, the same one scanning fills, instead of being
   kept beside it. The welcome screen takes the file itself: pick it, or drop it anywhere on the
@@ -99,6 +106,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers)".
 
 ### Fixed
+- **An automatic scan can carry a list on.** Asked for a page part-way through someone's list,
+  the platform sometimes opens the page after it, and an automatic scan stopped there every time,
+  so it never carried a list on. When the page bar or the address shows exactly one page ahead, it
+  now clicks Previous once, at the usual pace and counted as a search page, checks that the page bar
+  shows the page it asked for, and reads on from there. Any other page, or a Previous that doesn't
+  land on it, still stops with no page noted as read. Manual mode is unchanged.
 - **Manual Dig deeper says when someone's Experience hasn't loaded.** The platform loads the
   jobs in a profile's Experience only while that part is on screen, so scrolling straight past
   it left the heading with nothing under it, and the read waited in silence. It now says to

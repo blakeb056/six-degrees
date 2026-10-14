@@ -383,8 +383,8 @@ export default function ScanStatusBar() {
                 since midnight, with the number to change; the words open Scan → LinkedIn usage. */}
             {b && (b.lifted ? (
               <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Link href="/setup#usage" style={{ color: 'var(--sd-fg-2, #cfd8d8)', textDecoration: 'none' }} title="Open LinkedIn usage">
-                  {b.searches} searches in the last 24 hours
+                <Link href="/setup#usage" style={{ color: 'var(--sd-fg-2, #cfd8d8)', textDecoration: 'none' }} title={b.dev && b.devCeiling ? 'Dev mode’s ceiling: scans stop here. Open LinkedIn usage' : 'Open LinkedIn usage'}>
+                  {b.searches}{b.dev && b.devCeiling ? ` of ${b.devCeiling}` : ''} searches in the last 24 hours
                 </Link>
                 {b.dev
                   ? <button type="button" onClick={() => turnDevModeOff().catch(() => {})} style={SMALL} title="Every limit comes back on now">Turn off Dev mode</button>
