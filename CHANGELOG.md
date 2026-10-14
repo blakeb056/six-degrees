@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-14
+
+Sixgree no longer includes a scanner. It maps the Connections.csv you export, and scanning, if you want it, comes from the Auto scan or Manual scan plugin in Settings → Plugins. Everything you've mapped stays.
+
 ### Added
 - **Settings → Plugins.** An *Enable plugins* switch, off until you turn it on, then *Browse*,
   on or off: the available plugins as cards, each with what it does, its risk and its version,
