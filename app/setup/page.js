@@ -427,7 +427,7 @@ function SetupInner() {
               <Part title="Their circles" hint={<>
                 Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
                 circle shows in {firstCircle}; the rest fills in over days,{' '}
-                {devOn ? 'with no daily limit in Dev mode' : li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
+                {devOn ? `up to Dev mode’s ceiling of ${li.devCeiling} searches a day` : li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
               </>}>
                 {/* Lifting the limits for this session lifts the pause too (lib/limits-lift.js). */}
                 <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-limits')} />
@@ -579,7 +579,7 @@ function SetupInner() {
                     <DailyLimitInput id="settings-daily" value={li.limits.daily} onSave={(daily) => run('set-limits', { daily })} />
                   )}
                   {devOn
-                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, below.</span></>
+                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, below, but never past Dev mode’s ceiling of {li.devCeiling} in the last 24 hours.</span></>
                     : li?.lifted
                     ? <><LiftedTag /> <span>No daily limit until you quit Sixgree.</span></>
                     : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
@@ -681,12 +681,13 @@ function SetupInner() {
               </div>
               <div data-dev-mode-switch="">
                 <Toggle checked={devOn} disabled={busy} onChange={(on) => run('set-limits', { dev: on })}
-                  title="Dev mode: no limits" tag="Your account, your risk"
+                  title="Dev mode: no limits but a ceiling" tag="Your account, your risk"
                   line={devOn
-                    ? 'On: no daily limit, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.'
-                    : 'Takes off every limit Sixgree sets, until you turn it off. The speed you pick still sets every wait.'}
+                    ? `On: no daily limit but a ceiling of ${li.devCeiling} search pages in any 24 hours, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.`
+                    : 'Takes off every limit Sixgree sets but a ceiling on search pages a day, until you turn it off. The speed you pick still sets every wait.'}
                   more={<>
-                    What stays on whatever this says: the speed (Slow, Medium or Fast) and everything it sets,
+                    What stays on whatever this says: the ceiling on search pages in any 24 hours, set below
+                    where accounts were restricted; the speed (Slow, Medium or Fast) and everything it sets,
                     the pause before each page, the gap between profile views and Auto scan&rsquo;s sittings and
                     rests; one scan at a time; and a stop the moment LinkedIn shows a sign-in, a security check or a
                     restriction. LinkedIn pushing back also turns Dev mode off, and it stays off until you turn it on
@@ -764,7 +765,7 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
           <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             It costs <b>{cost.profileViews} profile view</b> to find their list, then <b>one LinkedIn search for
             every page</b> of it: up to {cost.searches} {cost.searches === 1 ? 'page' : 'pages'}, about {cost.minutes} minutes.
-            {li?.dev ? <> Dev mode is on, so it reads at its pace with no daily limit.</>
+            {li?.dev ? <> Dev mode is on, so it reads at its pace with no daily limit, up to its ceiling of {li.devCeiling} searches in 24 hours (<b>{li.devLeftToday}</b> left).</>
               : li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit.</>
               : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
           </div>
