@@ -3,29 +3,35 @@
 // Settings → Plugins (Blake, 2026-10-12: "a plugins tab in the settings to
 // install these plugins"). Enable plugins is a switch, off by default ("we
 // would first have to enable plug ins"). Off, the section is the switch and a
-// sentence; on, the installed plugins, each with Uninstall, and Install from a
-// file. The server does the work (app/api/plugins, lib/plugins.js); this
-// section only asks, on a click.
+// sentence. On: Browse first, the plugin list's cards with one-click Install
+// (Blake, 2026-10-14: "i dont want them have to drag and drop"); then the
+// installed plugins, each with Uninstall; then a closed Advanced, with Install
+// from a file and Install from a link. The server does the work
+// (app/api/plugins, lib/plugins.js, lib/plugin-catalog.js); this section only
+// asks, on a person's open or click.
 //
-// Nothing installs without a yes: a picked package is checked through first,
-// and its name, version, what it does and its risk are shown with the plain
-// line that a plugin runs its own code here. Install then sends the checksum
-// that check answered, so only the package agreed to goes in
-// (lib/plugins-client.js CONFIRM_HEADER).
+// The plugin list is the one thing here that goes online, and only when the
+// section is opened with plugins on: the first time its Browse comes into
+// view (scrolled to, picked in the notch, or just switched on), then again
+// only on Try again. Settings is one long page, so opening it for anything
+// else never fetches the list.
+//
+// Nothing installs without a yes (PluginBrowse.js PluginOffer): a package,
+// from the list, a link or a file, is checked through first, and its name,
+// version, what it does and its risk are shown with the plain line that a
+// plugin runs its own code here. Install then sends the checksum that check
+// answered, so only the package agreed to goes in (lib/plugins-client.js
+// CONFIRM_HEADER).
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Section, Body, Status, Btn, LINE } from '../ui';
-import {
-  fetchPlugins, savePluginsEnabled, checkPackage, installPackage, removePlugin, MAX_PLUGIN_BYTES, PLUGIN_TRUST_LINE,
-} from '../../../lib/plugins-client';
+import { fetchPlugins, savePluginsEnabled, removePlugin, MAX_PLUGIN_BYTES } from '../../../lib/plugins-client';
+import { usePluginInstall, PluginCards, PluginOfferAt, size } from './PluginBrowse';
 
 const row = { display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' };
 const subhead = { fontSize: 14, fontWeight: 650, margin: '26px 0 4px', color: 'var(--sd-fg-1, #e8e8ee)' };
+const minorhead = { fontSize: 13.5, fontWeight: 650, margin: '18px 0 2px', color: 'var(--sd-fg-1, #e8e8ee)' };
 const STATE_LABEL = { unsupported: 'Switched off', broken: 'Broken' };
-
-function size(bytes) {
-  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
-}
 
 /** Which scanner scans run now, in a sentence. */
 function scannerLine(scanner) {
@@ -38,15 +44,19 @@ function scannerLine(scanner) {
 export default function PluginsSection() {
   const id = useId();
   const picker = useRef(null);
+  const browseRef = useRef(null);
+  const asked = useRef(false);
   const [view, setView] = useState(null);
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(null);
-  // A picked package and what its check said: { file, plugin, sha256, replaces }.
-  const [offer, setOffer] = useState(null);
-  const [note, setNote] = useState(null);
+  const [toggling, setToggling] = useState(false);
+  const [link, setLink] = useState('');
   // The plugin whose Uninstall is asking "are you sure", and what its row says after.
   const [confirming, setConfirming] = useState(null);
+  const [removing, setRemoving] = useState(null);
   const [rowNote, setRowNote] = useState(null);
+  const install = usePluginInstall({ onInstalled: setView });
+  const busy = install.busy || (toggling ? 'enable' : null) || (removing ? `uninstall:${removing}` : null);
+  const { load } = install;
 
   useEffect(() => {
     let gone = false;
@@ -54,81 +64,79 @@ export default function PluginsSection() {
     return () => { gone = true; };
   }, []);
 
-  async function toggle(on) {
-    setBusy('enable');
+  const on = view?.enabled === true;
+
+  // The plugin list, the first time Browse is in view with plugins on. Once
+  // per visit: `asked` outlives React's second run of effects in development,
+  // and the observer stops at its first sight.
+  useEffect(() => {
+    const el = browseRef.current;
+    if (!on || asked.current || !el) return undefined;
+    const seen = () => {
+      if (asked.current) return;
+      asked.current = true;
+      load();
+    };
+    if (typeof IntersectionObserver === 'undefined') {
+      seen();
+      return undefined;
+    }
+    const watch = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        watch.disconnect();
+        seen();
+      }
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [on, load]);
+
+  async function toggle(next) {
+    setToggling(true);
     setError(null);
     try {
-      setView(await savePluginsEnabled(on));
-      if (!on) { setOffer(null); setNote(null); setConfirming(null); }
+      setView(await savePluginsEnabled(next));
+      if (!next) { install.reset(); setConfirming(null); }
     } catch (e) {
       setError(e.message);
     } finally {
-      setBusy(null);
+      setToggling(false);
     }
   }
 
-  async function choose(event) {
+  function choose(event) {
     const file = event.target.files?.[0] || null;
     if (picker.current) picker.current.value = '';
-    setOffer(null);
-    setNote(null);
+    install.reset();
     if (!file) return;
     if (file.size > MAX_PLUGIN_BYTES) {
-      setNote({ tone: 'bad', text: `That file is ${size(file.size)}. A plugin package can be up to ${size(MAX_PLUGIN_BYTES)}.` });
+      install.setNote({ at: 'file', tone: 'bad', text: `That file is ${size(file.size)}. A plugin package can be up to ${size(MAX_PLUGIN_BYTES)}.` });
       return;
     }
-    setBusy('check');
-    try {
-      const checked = await checkPackage(file);
-      setOffer({ file, ...checked });
-    } catch (e) {
-      setNote({ tone: 'bad', text: `${file.name} can’t be installed. ${e.message}` });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function install() {
-    if (!offer) return;
-    setBusy('install');
-    setNote(null);
-    try {
-      const done = await installPackage(offer.file, offer.sha256);
-      setView({ enabled: done.enabled, plugins: done.plugins, scanner: done.scanner });
-      setNote({
-        tone: 'ok',
-        text: `Installed ${done.installed.name} ${done.installed.version}${done.replaced?.version ? `, in place of ${done.replaced.version}` : ''}.`,
-      });
-      setOffer(null);
-    } catch (e) {
-      setNote({ tone: 'bad', text: e.message });
-    } finally {
-      setBusy(null);
-    }
+    install.checkFile(file);
   }
 
   async function uninstall(plugin) {
-    setBusy(`uninstall:${plugin.id}`);
+    setRemoving(plugin.id);
     setRowNote(null);
     try {
       const done = await removePlugin(plugin.id);
       setView({ enabled: done.enabled, plugins: done.plugins, scanner: done.scanner });
       setConfirming(null);
-      setNote({ tone: 'ok', text: `Uninstalled ${done.removed.name}${done.removed.version ? ` ${done.removed.version}` : ''}.` });
+      install.setNote({ at: 'installed', tone: 'ok', text: `Uninstalled ${done.removed.name}${done.removed.version ? ` ${done.removed.version}` : ''}.` });
     } catch (e) {
       setRowNote({ id: plugin.id, text: e.message });
     } finally {
-      setBusy(null);
+      setRemoving(null);
     }
   }
 
-  const on = view?.enabled === true;
   const plugins = view?.plugins || [];
 
   return (
     <Section id="plugins" title="Plugins">
       <div data-plugins-switch="" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 8 }}>
-        <input id={id} type="checkbox" checked={on} disabled={!view || busy === 'enable'} onChange={(e) => toggle(e.target.checked)}
+        <input id={id} type="checkbox" checked={on} disabled={!view || toggling} onChange={(e) => toggle(e.target.checked)}
           style={{ marginTop: 3, width: 16, height: 16, accentColor: '#00c870', cursor: 'pointer' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <label htmlFor={id} style={{ display: 'block', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
@@ -144,6 +152,15 @@ export default function PluginsSection() {
 
       {on && (
         <>
+          <h3 style={subhead}>Browse</h3>
+          <div ref={browseRef} data-plugins-browse="">
+            <Body>
+              The plugins on the official list. Install downloads one and shows you what it is before anything is installed.
+            </Body>
+            <PluginCards catalog={install.catalog} installed={plugins} busy={busy} onGet={install.get} onRetry={load} />
+          </div>
+          <PluginOfferAt at="browse" install={install} />
+
           <h3 style={subhead}>Installed</h3>
           {plugins.length === 0 && <Body>None yet.</Body>}
           {plugins.map((p) => {
@@ -169,9 +186,9 @@ export default function PluginsSection() {
                     into your network stays.
                     <div style={row}>
                       <Btn tone="bad" onClick={() => uninstall(p)} disabled={!!busy}>
-                        {busy === `uninstall:${p.id}` ? 'Uninstalling…' : 'Uninstall'}
+                        {removing === p.id ? 'Uninstalling…' : 'Uninstall'}
                       </Btn>
-                      <Btn onClick={() => { setConfirming(null); setRowNote(null); }} disabled={busy === `uninstall:${p.id}`}>Cancel</Btn>
+                      <Btn onClick={() => { setConfirming(null); setRowNote(null); }} disabled={removing === p.id}>Cancel</Btn>
                     </div>
                   </Status>
                 ) : (
@@ -187,41 +204,41 @@ export default function PluginsSection() {
             {scannerLine(view.scanner)}
             {view.scanner?.skipped ? ` ${view.scanner.skipped}` : ''}
           </Body>
+          <PluginOfferAt at="installed" install={install} />
 
-          <h3 style={subhead}>Install from a file</h3>
-          <Body>
-            Pick a plugin package (a .sgplugin file). You see what it is and what it does before anything is installed.
-          </Body>
-          <input ref={picker} type="file" accept=".sgplugin" onChange={choose} style={{ display: 'none' }} />
-          <div style={row}>
-            <Btn onClick={() => picker.current?.click()} disabled={!!busy}>
-              {busy === 'check' ? 'Checking the package…' : 'Install from a file…'}
-            </Btn>
-          </div>
-          {offer && (
-            <Status>
-              <div data-plugin-offer="" style={{ color: 'var(--sd-fg-1, #e8e8ee)', fontWeight: 650 }}>
-                {offer.plugin.name} {offer.plugin.version}
-              </div>
-              <div style={{ marginTop: 4 }}>{offer.plugin.about}</div>
-              {offer.plugin.risk && (
-                <div style={{ marginTop: 8, color: 'var(--sd-gold, #FFD700)' }}>
-                  <strong>Risk:</strong> {offer.plugin.risk}
-                </div>
-              )}
-              <div style={{ marginTop: 8 }}>{PLUGIN_TRUST_LINE}</div>
-              {offer.replaces && (
-                <div style={{ marginTop: 8 }}>
-                  It replaces {offer.replaces.version ? `version ${offer.replaces.version}` : 'the copy'}, which is installed now.
-                </div>
-              )}
-              <div style={row}>
-                <Btn primary onClick={install} disabled={!!busy}>{busy === 'install' ? 'Installing…' : 'Install'}</Btn>
-                <Btn onClick={() => setOffer(null)} disabled={busy === 'install'}>Cancel</Btn>
-              </div>
-            </Status>
-          )}
-          {note && <Status tone={note.tone}>{note.text}</Status>}
+          <details data-plugins-advanced="" style={{ marginTop: 24, borderTop: LINE, paddingTop: 12 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13.5, fontWeight: 650, color: 'var(--sd-fg-2, #c3cbda)' }}>Advanced</summary>
+
+            <h4 style={minorhead}>Install from a file</h4>
+            <Body>
+              Pick a plugin package (a .sgplugin file). You see what it is and what it does before anything is installed.
+            </Body>
+            <input ref={picker} type="file" accept=".sgplugin" onChange={choose} style={{ display: 'none' }} />
+            <div style={row}>
+              <Btn onClick={() => picker.current?.click()} disabled={!!busy}>
+                {busy === 'check' ? 'Checking the package…' : 'Install from a file…'}
+              </Btn>
+            </div>
+            <PluginOfferAt at="file" install={install} />
+
+            <h4 style={minorhead}>Install from a link</h4>
+            <Body>
+              Paste an https link to a .sgplugin package. It is downloaded when you press Install from the link, and you see
+              what it is before anything is installed.
+            </Body>
+            <form style={row} onSubmit={(e) => { e.preventDefault(); if (link.trim()) install.getLink(link.trim()); }}>
+              <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…/plugin.sgplugin"
+                aria-label="Link to a plugin package" data-plugin-link="" spellCheck={false} autoComplete="off"
+                style={{
+                  flex: '1 1 260px', minWidth: 0, padding: '9px 12px', borderRadius: 7, border: LINE, fontSize: 13.5,
+                  background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontFamily: 'inherit',
+                }} />
+              <Btn type="submit" disabled={!!busy || !link.trim()}>
+                {busy === 'link' ? 'Downloading…' : 'Install from the link…'}
+              </Btn>
+            </form>
+            <PluginOfferAt at="link" install={install} />
+          </details>
         </>
       )}
     </Section>

@@ -16,8 +16,8 @@ This app is designed to run **on your own machine, against your own network**.
   `setup-profile`, `scraper`, `update`, Settings → Your data's
   `data/export`, `data/import`, `data/restart`, `data/reveal`, `data/backup`,
   `data/restore`, `data/csv`, and `data/network`, with `data/network/apply` under it,
-  and Settings → Plugins' `plugins`, with `plugins/install`, `plugins/uninstall` and
-  `plugins/enabled` under it). The first four can irreversibly destroy or rewrite data,
+  and Settings → Plugins' `plugins`, with `plugins/install`, `plugins/uninstall`,
+  `plugins/enabled`, `plugins/catalog` and `plugins/download` under it). The first four can irreversibly destroy or rewrite data,
   `scraper` starts processes, and `update` changes the code that runs next. `data/export` hands over the whole
   network in one file, `data/import` replaces it, `data/restart` stops the
   server, `data/reveal` starts a process (Finder, or the Linux file
@@ -32,7 +32,13 @@ This app is designed to run **on your own machine, against your own network**.
   plugin's code on this computer (a package checked file by file against the checksums its
   manifest lists, installed only with the checksum the person agreed to), `plugins/enabled`
   decides whether scans run an installed scanner plugin, and `plugins/uninstall` removes
-  one, named by its id, never by a path. While the server is bound to
+  one, named by its id, never by a path. `plugins/catalog` and `plugins/download` are the
+  only routes that make the server go online for a plugin: the first fetches the plugin
+  list, the second downloads one package, from the address that list gave or an https link
+  the person pasted, and installs it only as `plugins/install` does. Both are POSTs, so
+  another website can't start them, and both fetch https only (redirects included), within a
+  time limit and a size cap, with no cookies and nothing but a User-Agent naming Sixgree's
+  version. While the server is bound to
   127.0.0.1 they need no token — anyone who can reach it can already open the
   database file directly, so a token there adds friction rather than safety. If
   it is bound to any other address, every caller must send `ADMIN_TOKEN` as a

@@ -180,6 +180,12 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-promises { display: grid; gap: 8px; margin-top: 6px; padding: 2px 4px; }
 .ob-promises div { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ob-fg2); }
 .ob-promises svg { width: 16px; height: 16px; color: var(--ob-green); flex-shrink: 0; }
+/* Allow plugins, under the CSV import: a quiet box below the drop, never the main way in */
+.ob-plugins { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--ob-line); }
+.ob-allow { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; color: var(--ob-fg2); cursor: pointer; }
+.ob-allow input { margin: 3px 0 0; width: 15px; height: 15px; flex-shrink: 0; accent-color: var(--ob-green); cursor: pointer; }
+.ob-allow b { color: var(--ob-fg1); font-weight: 700; }
+.ob-allow .d { display: block; color: var(--ob-fg3); font-size: 12.5px; line-height: 1.5; margin-top: 1px; }
 .ob-note { display: flex; gap: 12px; padding: 13px 16px; border-radius: 14px; background: rgba(var(--ob-ink), 0.035); border: 1px dashed var(--ob-line2); font-size: 13px; line-height: 1.55; color: var(--ob-fg3); margin-top: 6px; }
 .ob-note svg { width: 18px; height: 18px; color: var(--ob-fg2); margin-top: 1px; flex-shrink: 0; }
 .ob-note b { color: var(--ob-fg2); font-weight: 650; }

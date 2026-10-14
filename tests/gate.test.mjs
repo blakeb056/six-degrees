@@ -16,8 +16,10 @@ test('exactly these routes are gated; everything else, reads included, is not', 
   for (const p of gated) assert.equal(isDestructive(p), true, p);
   // A network file's Import sits under its preview, and is gated with it.
   assert.equal(isDestructive('/api/data/network/apply'), true);
-  // Settings → Plugins: install, uninstall and the Enable plugins switch sit under the list, gated with it.
-  for (const p of ['/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled']) assert.equal(isDestructive(p), true, p);
+  // Settings → Plugins: install, uninstall, the Enable plugins switch, the plugin list and its downloads sit under the list, gated with it.
+  for (const p of ['/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled', '/api/plugins/catalog', '/api/plugins/download']) {
+    assert.equal(isDestructive(p), true, p);
+  }
   assert.equal(isDestructive('/api/pluginsx'), false);
   // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
   assert.deepEqual([...DESTRUCTIVE_ROUTES].sort(), [...gated].sort());
@@ -219,6 +221,18 @@ test('requestRefusal: another name 421, another site 403, in that order', () => 
   assert.equal(otherPort.status, 403, 'a page on another local port');
 });
 
+test('requestRefusal: no other website can make Sixgree fetch the plugin list or a plugin', () => {
+  // Both go online, so both are POSTs: the one kind of request refused from another site.
+  for (const p of ['/api/plugins/catalog', '/api/plugins/download']) {
+    assert.equal(requestRefusal(req('POST', p, { host: '127.0.0.1:6363', 'sec-fetch-site': 'cross-site' })).status, 403, p);
+    assert.equal(requestRefusal(req('POST', p, { host: 'evil.example', 'sec-fetch-site': 'same-origin' })).status, 421, p);
+    assert.equal(requestRefusal(req('POST', p, { host: '127.0.0.1:6363', 'sec-fetch-site': 'same-origin' })), null, p);
+    assert.equal(requestRefusal(req('POST', p, { host: 'box.lan:6363' }, { SIX_DEGREES_BIND: '0.0.0.0' })).status, 503, p);
+  }
+  const routes = ['catalog', 'download'].map((r) => readFileSync(new URL(`../app/api/plugins/${r}/route.js`, import.meta.url), 'utf8'));
+  for (const route of routes) assert.doesNotMatch(route, /export async function GET\(/, 'no GET that a page elsewhere could send');
+});
+
 test('requestRefusal: a gated route on an exposed server needs ADMIN_TOKEN; an ordinary one doesn\'t', () => {
   const exposed = { SIX_DEGREES_BIND: '0.0.0.0' };
   assert.equal(requestRefusal(req('POST', '/api/data/import', { host: 'box.lan:6363' }, exposed)).status, 503);
@@ -249,7 +263,8 @@ test('middleware.js runs on every /api route and every photo except exactly POST
   for (const p of ['/api', '/api/', '/api/users', '/api/network', '/api/data', '/api/data/export', '/api/data/restart',
     '/api/data/reveal', '/api/data/csv', '/api/data/network', '/api/data/network/apply', '/api/scraper', '/api/update', '/api/admin-delete', '/api/settings', '/api/data/import/',
     '/api/data/import/x', '/api/data/imports', '/api/data/import.json', '/api/data/importx', '/avatars/a.webp',
-    '/api/plugins', '/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled']) {
+    '/api/plugins', '/api/plugins/install', '/api/plugins/uninstall', '/api/plugins/enabled', '/api/plugins/catalog',
+    '/api/plugins/download']) {
     assert.equal(covered(p), true, p);
   }
   // Every route it leaves alone must make the checks itself: today, one.

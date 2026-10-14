@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 // Build the scanner's two plugin packages from the app's own scanner files:
 //
-//   node scripts/build-plugin.mjs [--version=1.0.0] [--out=dist/plugins]
+//   node scripts/build-plugin.mjs [--version=1.0.0] [--out=dist/plugins] [--catalog <base-url>]
 //   npm run build:plugins
 //
 // → dist/plugins/auto-scan-<version>.sgplugin and manual-scan-<version>.sgplugin
+//
+// --catalog also writes dist/plugins/catalog.json, a plugin list
+// (docs/PLUGINS.md, "The plugin list") naming both packages at <base-url>,
+// with each one's SHA-256 and size. Served with the packages from a folder on
+// this computer, it is what SIX_DEGREES_PLUGIN_CATALOG points a test at:
+//
+//   node scripts/build-plugin.mjs --catalog http://127.0.0.1:4848
+//   SIX_DEGREES_PLUGIN_CATALOG=http://127.0.0.1:4848/catalog.json npm run dev
 //
 // Both hold the same scanner (scripts/scrape.py, image_store.py and
 // requirements.txt, under scanner/), with a manifest that lists each file's
@@ -24,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import pkg from '../package.json' with { type: 'json' };
 import { writeZip } from '../lib/zip-write.js';
 import { readPackage, PLUGIN_FORMAT, PLUGIN_FORMAT_VERSION, MANIFEST_FILE } from '../lib/plugins.js';
+import { checkCatalog, CATALOG_FORMAT, CATALOG_FORMAT_VERSION } from '../lib/plugin-catalog.js';
 import { SCANNER_FILES, scannerPresent } from '../lib/scanner-files.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,8 +59,13 @@ export const PLUGINS = [
 ];
 
 function option(name, fallback) {
-  const arg = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`));
-  return arg ? arg.slice(name.length + 3) : fallback;
+  const args = process.argv.slice(2);
+  const arg = args.find((a) => a.startsWith(`--${name}=`));
+  if (arg) return arg.slice(name.length + 3);
+  // `--name value` too; `--name` with nothing after it is an empty value, said by its check.
+  const at = args.indexOf(`--${name}`);
+  if (at < 0) return fallback;
+  return args[at + 1] && !args[at + 1].startsWith('--') ? args[at + 1] : '';
 }
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
@@ -75,22 +89,71 @@ export function buildPackage(plugin, { version, appVersion, root = ROOT }) {
   return writeZip([{ name: MANIFEST_FILE, data: `${JSON.stringify(manifest, null, 2)}\n` }, ...files]);
 }
 
+/**
+ * A plugin list naming `built` ({ plugin, file, zip, sha256 }) at `base`, as
+ * the app reads one (lib/plugin-catalog.js checkCatalog). A test's list: http
+ * on 127.0.0.1 is allowed in it, as SIX_DEGREES_PLUGIN_CATALOG allows it.
+ */
+export function buildCatalog(built, { base, version, appVersion }) {
+  const root = base.endsWith('/') ? base : `${base}/`;
+  const catalog = {
+    format: CATALOG_FORMAT,
+    format_version: CATALOG_FORMAT_VERSION,
+    plugins: built.map(({ plugin, file, zip, sha256: sum }) => ({
+      id: plugin.id,
+      name: plugin.name,
+      version,
+      about: plugin.about,
+      risk: plugin.risk,
+      kind: 'scanner',
+      unlocks: plugin.unlocks,
+      sixgree: `>=${appVersion}`,
+      url: new URL(file, root).href,
+      sha256: sum,
+      size: zip.length,
+    })),
+  };
+  // Read back as the app will, so a list this makes is always shown whole.
+  const checked = checkCatalog(catalog, { appVersion, test: true });
+  if (checked.problem || checked.dropped.length || checked.plugins.some((p) => p.problem)) {
+    throw new Error(`The plugin list didn’t read back whole: ${checked.problem
+      || [...checked.dropped.map((d) => d.reason), ...checked.plugins.map((p) => p.problem).filter(Boolean)].join(' ')}`);
+  }
+  return catalog;
+}
+
 function main() {
   const version = option('version', '1.0.0');
   const out = path.resolve(ROOT, option('out', path.join('dist', 'plugins')));
+  const base = option('catalog', null);
+  if (base !== null && !URL.canParse(base)) {
+    console.error(`\n  ✗ --catalog needs the address the packages will be served from, like http://127.0.0.1:4848 (got ${JSON.stringify(base)}).\n`);
+    process.exit(1);
+  }
   if (!scannerPresent(ROOT)) {
     console.error(`\n  ✗ This copy has no scanner to package (${SCANNER_FILES.join(', ')}).\n`);
     process.exit(1);
   }
   mkdirSync(out, { recursive: true });
+  const shown = (file) => {
+    const rel = path.relative(process.cwd(), file);
+    return rel.startsWith('..') ? file : rel;
+  };
+  const built = [];
   for (const plugin of PLUGINS) {
     const zip = buildPackage(plugin, { version, appVersion: pkg.version });
     // Read back as an install will, so a package this makes always installs.
     const checked = readPackage(zip, { appVersion: pkg.version });
-    const file = path.join(out, `${plugin.id}-${version}.sgplugin`);
+    const name = `${plugin.id}-${version}.sgplugin`;
+    const file = path.join(out, name);
     writeFileSync(file, zip);
-    const shown = path.relative(process.cwd(), file);
-    console.log(`  ✓ ${shown.startsWith('..') ? file : shown}: ${plugin.name} ${version}, ${Math.round(zip.length / 1024)} KB, sha256 ${checked.sha256}`);
+    built.push({ plugin, file: name, zip, sha256: checked.sha256 });
+    console.log(`  ✓ ${shown(file)}: ${plugin.name} ${version}, ${Math.round(zip.length / 1024)} KB, sha256 ${checked.sha256}`);
+  }
+  if (base !== null) {
+    const file = path.join(out, 'catalog.json');
+    writeFileSync(file, `${JSON.stringify(buildCatalog(built, { base, version, appVersion: pkg.version }), null, 2)}\n`);
+    console.log(`  ✓ ${shown(file)}: a plugin list naming both, at ${base}`);
   }
 }
 
