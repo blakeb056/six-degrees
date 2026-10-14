@@ -1,7 +1,6 @@
 import { dataDir, getDb, keptCsvMoved } from '../../../../lib/db-client';
 import { pendingImport } from '../../../../lib/data-import';
 import { resolveProfile, networkCounts } from '../../../../lib/profile';
-import { fromExport } from '../../../../lib/network-origin';
 import {
   readCsvNetwork, writeCsvNetwork, removeCsvNetwork, CsvStoreError, CSV_NETWORK_FILE,
 } from '../../../../lib/csv-store';
@@ -30,21 +29,17 @@ export async function GET() {
   const { csv, problem } = readCsvNetwork(dataDir());
   // Your scanned 1st-degree connections, under the profile the map shows
   // (lib/profile.js): once there are any, pages show them instead of a kept
-  // CSV (lib/csv.js openNetworkSource). And whether that network came from an
-  // export, for the header (lib/network-origin.js).
+  // CSV (lib/csv.js openNetworkSource).
   let scanned;
-  let exported;
   try {
     const me = resolveProfile({ create: false });
     scanned = me ? networkCounts(me.id).first : 0;
-    exported = me ? fromExport(getDb(), me.id) : false;
   } catch (err) {
     return Response.json({ error: `Your network couldn't be read (${err.message}).` }, { status: 500 });
   }
   return Response.json({
     csv,
     scanned,
-    fromExport: exported,
     // Said, never shown as no import at all (TRAPS §7): the welcome screen
     // puts this on the CSV card.
     problem: problem ? `Your kept CSV import couldn't be read: ${problem}. Import Connections.csv again to replace it.` : null,

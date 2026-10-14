@@ -41,9 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Sixgree tells people apart). Importing a newer export later from the Import page adds anyone
   new and picks up job changes, never removes anyone, and leaves what a scan read as it was.
   Your network is backed up first whenever there's one to lose. Outlink, your Profile, Insights
-  and Settings → Scores now work for an imported network, scored with your own settings. Until
-  it's scanned, the top bar leaves out Scan, Auto scan and Check for new, as it always did for a
-  CSV.
+  and Settings → Scores now work for an imported network, scored with your own settings.
 - **A CSV import an older version kept moves in by itself.** The next time Sixgree starts, it
   backs up your network with the kept import in the backup, adds the import to your network,
   and only then removes the kept file. There's nothing to click. If it can't be moved yet, the

@@ -11,10 +11,9 @@ import { stagedNetwork, dropStage } from '../../../../../lib/network-stage';
 // first whenever there's a network to lose; one transaction; then a rescore
 // with your own company scores and settings.
 //
-// Answers { ok, counts, folded, backup, rescored, leftOut, network, tiers,
-// fromExport }: what happened to each person, the backup made first (or null),
-// how many connections you have now, your 1st-degree tiers before and after,
-// and whether your network is an export's (lib/network-origin.js, the header).
+// Answers { ok, counts, folded, backup, rescored, leftOut, network, tiers }:
+// what happened to each person, the backup made first (or null), how many
+// connections you have now, and your 1st-degree tiers before and after.
 //
 // 409 while a scan runs or an import or a restore waits; 410 when the preview
 // has gone (it's kept an hour). Nothing is imported then, and the preview
@@ -64,6 +63,5 @@ export async function POST(request) {
     leftOut: done.leftOut,
     network: networkCounts(me.id).first,
     tiers: { before, after: tierCounts(db, me.id) },
-    fromExport: done.fromExport,
   });
 }

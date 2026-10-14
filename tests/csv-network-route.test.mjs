@@ -6,8 +6,8 @@
 // What they promise: the preview changes nothing and says what would happen,
 // with the people who had no profile link counted; Import merges and never
 // removes anyone; both refuse with a plain reason while a scan runs or an
-// import waits; and a network that came from an export has the header a CSV
-// always had, until the scanner's first batch (lib/network-origin.js).
+// import waits; and once imported, it's your own network, with the same header
+// as a scanned one (Blake, 2026-10-13: "the csv they import is to build off of").
 // Every person here is invented, on made-up profile links.
 
 import { test, before, beforeEach } from 'node:test';
@@ -25,7 +25,7 @@ const home = mkdtempSync(path.join(tmpdir(), 'sixgree-csv-network-route-'));
 process.env.SIX_DEGREES_HOME = home;
 process.env.SIX_DEGREES_DB = path.join(home, 'six-degrees.sqlite');
 
-let stageRoute, applyRoute, csvRoute, ingestRoute, csv, getDb, headerShows, gate;
+let stageRoute, applyRoute, csvRoute, ingestRoute, csv, getDb, gate;
 const SCAN_STATE = Symbol.for('six-degrees.scan-state');
 
 // What the page has: fetch to the app's own routes.
@@ -46,7 +46,6 @@ before(async () => {
   ingestRoute = await import('../app/api/ingest/route.js');
   csv = await import('../lib/csv.js');
   ({ getDb } = await import('../lib/db-client.js'));
-  ({ headerShows } = await import('../lib/network-origin.js'));
   gate = await import('../lib/gate.js');
   getDb();
   process.on('exit', () => { try { rmSync(home, { recursive: true, force: true }); } catch { /* the system's temp cleanup */ } });
@@ -120,7 +119,6 @@ test('Import puts them in your network: canonical links, scored, tiers before an
   assert.deepEqual(done.rescored, { ok: true });
   assert.deepEqual(done.tiers.before, { S: 0, A: 0, B: 0, C: 0, D: 0 });
   assert.equal(Object.values(done.tiers.after).reduce((a, b) => a + b, 0), 3);
-  assert.equal(done.fromExport, true);
   const rows = people();
   assert.deepEqual(rows.map((r) => [r.profile_url, r.degree, r.headline]), [
     [stored('invented-ava-quill'), 1, 'Chief Executive Officer at Northwind Labs'],
@@ -165,7 +163,6 @@ test('a second import merges: a new person added, a changed job brought up to da
   assert.deepEqual(csv.importLines(done, { done: true }).map((l) => l.text), [
     '1 new connection', '1 already here, brought up to date', '1 already here and up to date',
   ]);
-  assert.equal(done.fromExport, true, 'still an export\'s network');
 });
 
 test('Choose another file drops the preview at once', async () => {
@@ -238,56 +235,37 @@ test('both routes answer only on this computer, and refuse another site\'s write
   }
 });
 
-// ── where the network came from: the header ──────────────────────────────────
+// ── once it's in, it's your own network ──────────────────────────────────────
 
 const ingest = (connections, type = 'degree1') => post(ingestRoute, '/api/ingest', { connections, type, userId: getDb().prepare('SELECT id FROM users').get()?.id });
 
-test('a network from an export has no Scan tab, Auto scan or Check for new; the scanner\'s first batch brings them back', async () => {
+test('a network from a CSV is your own network: every page opens on it, with the same header as a scanned one', async () => {
   await csv.applyCsvImport((await csv.previewCsvImport(parsed(FIRST))).stage);
+  // What every page asks first (lib/csv.js): no kept CSV, and your connections in the database.
   const opening = await (await csvRoute.GET()).json();
-  assert.equal(opening.fromExport, true);
-  assert.equal(opening.scanned, 3);
-  assert.equal(opening.csv, null);
-  const exported = headerShows({ fromExport: opening.fromExport });
-  assert.deepEqual(exported, {
-    outlink: true, scanTab: false, autoScan: false, checkForNew: false, notifications: true, profileHref: '/profile',
-  }, 'Outlink, notifications and Profile work for it; nothing that scans');
-
-  // The scanner reads the network: a batch of your connections arrives.
+  assert.deepEqual(opening, { csv: null, scanned: 3, problem: null });
+  assert.equal(csv.openNetworkSource({ csvKept: Boolean(opening.csv), scannedFirstDegree: opening.scanned }), 'own');
+  assert.equal(await csv.csvNetworkSource(), null, 'no CSV mode: your own profile, your own header');
+  // The header keys what scans on your own network alone (not the demo, not the
+  // sample or a kept CSV), never on where the network came from.
+  const header = readFileSync(new URL('../app/components/AppHeader.js', import.meta.url), 'utf8');
+  assert.match(header, /const own = !IS_DEMO && !csvMode;/);
+  assert.match(header, /after=\{own \? <AutoScanButton/);
+  assert.match(header, /\{own && <RefreshButton/);
+  assert.doesNotMatch(header, /fromExport|network-origin/);
+  const tabs = readFileSync(new URL('../app/components/AppTabs.js', import.meta.url), 'utf8');
+  assert.match(tabs, /p\.own \? !csvMode : true/);
+  // And the scanner reading it later finds the people the CSV put there: nobody twice.
   const res = await ingest([{ name: 'Ava Quill', headline: 'Chief Executive Officer at Northwind Labs', profileUrl: stored('invented-ava-quill') }]);
-  assert.equal(res.status, 200);
-  const later = await (await csvRoute.GET()).json();
-  assert.equal(later.fromExport, false);
-  assert.deepEqual(headerShows({ fromExport: later.fromExport }), {
-    outlink: true, scanTab: true, autoScan: true, checkForNew: true, notifications: true, profileHref: '/profile',
-  });
-  assert.equal(people().length, 3, 'the scan found Ava where the export put her');
+  assert.equal((await res.json()).alreadyKnown, 1);
+  assert.equal(people().length, 3);
 });
 
-test('a scanned network keeps its full header, whatever export is imported into it', async () => {
+test('a CSV imported into a scanned network fills only what\'s blank, and adds who\'s missing', async () => {
   getDb().prepare("INSERT INTO users (id, name) VALUES ('me-scanned', 'You')").run();
   await ingest([{ name: 'Ava Quill', headline: 'Builds engines', profileUrl: stored('invented-ava-quill') }]);
   const done = await csv.applyCsvImport((await csv.previewCsvImport(parsed(FIRST))).stage);
   assert.deepEqual(done.counts, { add: 2, update: 1, promote: 0, unchanged: 0 });
-  assert.equal(done.fromExport, false);
-  assert.equal((await (await csvRoute.GET()).json()).fromExport, false);
   assert.equal(people().find((r) => r.name === 'Ava Quill').headline, 'Builds engines', 'what the scan read stays');
-});
-
-test('the header itself: AppHeader and AppTabs draw from headerShows, and the sample or a kept CSV keep theirs', () => {
-  assert.deepEqual(headerShows({ csvMode: true }), {
-    outlink: false, scanTab: false, autoScan: false, checkForNew: false, notifications: false, profileHref: '/import',
-  });
-  assert.deepEqual(headerShows({ demo: true }), {
-    outlink: false, scanTab: false, autoScan: false, checkForNew: false, notifications: false, profileHref: '/launch',
-  });
-  const header = readFileSync(new URL('../app/components/AppHeader.js', import.meta.url), 'utf8');
-  // Until the server has said, what scans waits: never shown, then taken away.
-  assert.match(header, /headerShows\(\{ demo: IS_DEMO, csvMode, fromExport: origin !== false \}\)/);
-  assert.match(header, /scanTab=\{shows\.scanTab\}/);
-  assert.match(header, /shows\.autoScan \? <AutoScanButton/);
-  assert.match(header, /\{shows\.checkForNew && <RefreshButton/);
-  const tabs = readFileSync(new URL('../app/components/AppTabs.js', import.meta.url), 'utf8');
-  assert.match(tabs, /key: 'scan', href: '\/setup', label: 'Scan', own: true, scans: true/);
-  assert.match(tabs, /p\.own \? !csvMode && \(!p\.scans \|\| scanTab\)/);
+  assert.equal(people().length, 3);
 });

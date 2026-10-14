@@ -32,7 +32,6 @@ const {
   csvNetworkParts, stageCsvNetwork, moveKeptCsv, CSV_PRODUCER,
 } = await import('../lib/csv-network-file.js');
 const { stagedNetwork } = await import('../lib/network-stage.js');
-const { fromExport } = await import('../lib/network-origin.js');
 const { NETWORK_STAGE_PREFIX } = await import('../lib/data-folder.js');
 
 const db = getDb();
@@ -174,7 +173,6 @@ test('the quiet move: a backup first, then the import, and only then does the ke
   ]);
   assert.ok(rows.every((r) => r.tier), 'scored, with your settings');
   assert.equal(existsSync(keptFile()), false);
-  assert.equal(fromExport(db, me()), true, 'an export\'s network: the header without scanning');
   assert.deepEqual(stages(), [], 'its working folder is gone');
 });
 
@@ -225,7 +223,6 @@ test('a failure part-way keeps the file: the backup was made, and the import rol
   assert.match(done.reason, /^Nothing was imported: the disk said no/);
   assert.equal(db.isTransaction, false);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM linkedin_connections').get().n, 0, 'nobody, not even the first three');
-  assert.equal(fromExport(db, me()), false);
   assert.equal(backups().length, 1, 'the backup came first');
   assert.ok(existsSync(keptFile()), 'kept, to be tried at the next start');
   assert.deepEqual(stages(), []);
@@ -246,7 +243,7 @@ test('a kept file it can\'t read, or with nobody linkable in it, stays as it is,
   assert.deepEqual(backups(), []);
 });
 
-test('a CSV kept behind a scanned network merges into it: it fills only what\'s blank, adds who\'s missing, and the network stays a scanned one', async () => {
+test('a CSV kept behind a scanned network merges into it: it fills only what\'s blank and adds who\'s missing', async () => {
   db.prepare("INSERT INTO users (id, name) VALUES ('me-scanned', 'You')").run();
   const add = db.prepare(`INSERT INTO linkedin_connections (id, degree, name, headline, role, company, profile_url, user_id)
     VALUES (?, 1, ?, ?, ?, ?, ?, 'me-scanned')`);
@@ -259,7 +256,6 @@ test('a CSV kept behind a scanned network merges into it: it fills only what\'s 
   assert.equal(ava.headline, 'Builds engines | Northwind Labs', 'what the scan read stays');
   assert.equal(ava.connected_date, '2026-09-28', 'and a blank is filled');
   assert.equal(rowsOf('me-scanned').length, 3);
-  assert.equal(fromExport(db, 'me-scanned'), false, 'a scanned network keeps its full header');
   assert.equal(backups().length, 1);
 });
 
@@ -287,7 +283,7 @@ test('at the start: the server\'s first getDb moves a kept file in, and the firs
     const out = JSON.parse(run.stdout.trim().split('\n').pop());
     assert.equal(out.rows, 3);
     assert.equal(out.moved.moved, true);
-    assert.deepEqual(out.answer, { csv: null, scanned: 3, fromExport: true, problem: null },
+    assert.deepEqual(out.answer, { csv: null, scanned: 3, problem: null },
       'the page opens on your network, never on the kept file a moment before it goes');
     assert.match(run.stdout, /moved your kept CSV import into your network \(3 people; 1 with no profile link left out\)/);
     assert.equal(existsSync(path.join(dir, 'csv-network.json')), false);

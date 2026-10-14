@@ -303,8 +303,7 @@ test('a CSV imported after a scan is kept, and the map stays on the scan', async
 
 test('no file is no import, with nothing to say', async () => {
   assert.deepEqual(store.readCsvNetwork(home), { csv: null, problem: null });
-  // fromExport: whether your own network came from an export, for the header (lib/network-origin.js).
-  assert.deepEqual(await (await route.GET()).json(), { csv: null, scanned: 0, fromExport: false, problem: null });
+  assert.deepEqual(await (await route.GET()).json(), { csv: null, scanned: 0, problem: null });
   assert.equal(await csv.keptCsvProblem(), null);
 });
 
