@@ -17,7 +17,7 @@ import useNotchTabs from './components/useNotchTabs';
 import { layoutNow, pickLayout, showsEveryDegree, watchLab } from '../lib/galaxy-lab';
 import OnboardingGate from './components/OnboardingGate';
 import Onboarding from './components/onboarding/Onboarding';
-import { opensSetup, readSetupMemory, rememberSetup } from '../lib/onboarding';
+import { opensSetup, setupMode, readSetupMemory, rememberSetup } from '../lib/onboarding';
 import { useUser } from './components/UserProvider';
 import { IS_DEMO, loadDemoNetwork } from '../lib/demo';
 import { loadCsvNetwork, closeCsvNetwork, REMOVE_CSV_QUESTION } from '../lib/csv';
@@ -52,6 +52,16 @@ export default function Home() {
       </Suspense>
     </OnboardingGate>
   );
+}
+
+/** The setup's kept step (GET /api/settings `setupStep`), or null when there is none or it can't be read. */
+async function savedSetupStep() {
+  try {
+    const r = await fetch('/api/settings');
+    return r.ok ? ((await r.json())?.settings?.setupStep ?? null) : null;
+  } catch {
+    return null;
+  }
 }
 
 function useIsMobile() {
@@ -136,10 +146,17 @@ function HomeInner() {
       setDegree1(d1);
       setDegree2(d2);
       setDegree3(d3 || []);
-      // No network yet, or a first scan that finished before Open the map was
-      // pressed: that one sees "Your galaxy is ready" this once (lib/onboarding.js opensSetup).
-      if (opensSetup({ firstDegree: d1.length, demo: IS_DEMO, csv: Boolean(csv), memory: readSetupMemory() })) {
-        setSetupOpen(d1.length > 0 ? 'again' : true);
+      // The step a setup was left on, kept with your settings: the scanner's
+      // steps come after the CSV has put people in your network, and turning
+      // App Management on makes macOS quit and reopen Sixgree, perhaps at a
+      // new address whose browser memory is empty (lib/onboarding.js setupLeftAt).
+      const saved = d1.length > 0 && !IS_DEMO && !csv ? await savedSetupStep() : null;
+      // No network yet, a setup left on one of the scanner's steps, or a first
+      // scan that finished before Open the map was pressed: that one sees "Your
+      // galaxy is ready" this once (lib/onboarding.js opensSetup, setupMode).
+      const memory = readSetupMemory();
+      if (opensSetup({ firstDegree: d1.length, demo: IS_DEMO, csv: Boolean(csv), memory, saved })) {
+        setSetupOpen(setupMode({ firstDegree: d1.length, secondDegree: d2.length, saved, memory }));
         if (d1.length > 0) rememberSetup({ finished: true });
       }
       shapeRef.current = networkShape(d1, d2);

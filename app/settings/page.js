@@ -48,9 +48,11 @@ export default function SettingsPage() {
 }
 
 // The notch's tabs: the page's sections, top to bottom, by their ids.
+// Plugins first, at the very top (Blake, 2026-10-14: "i want the plugins to be
+// at the very top in the settings page"): the scanner comes from them now.
 const SECTIONS = [
-  ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
-  ['scoring', 'Scores'], ['data', 'Your data'], ['plugins', 'Plugins'], ['experimental', 'Experimental'], ['about', 'About'],
+  ['plugins', 'Plugins'], ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
+  ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['about', 'About'],
 ];
 
 /** The section you're reading: the last whose top has passed just under the notch, or the last of all at the foot of the page. */
@@ -159,6 +161,8 @@ function SettingsInner() {
       <main style={{ maxWidth: 980, margin: '0 auto', padding: '40px 24px 64px' }}>
         {error && <Body style={{ color: 'var(--sd-red, #ff7676)', marginTop: 16 }}>{error}</Body>}
 
+        {/* Plugins first: where the scanner comes from (SECTIONS). */}
+        <PluginsSection />
         <UpdatePanel />
         {/* LinkedIn usage is on the Scan page now, last, with the scanner it measures. */}
         <Section id="usage" title="LinkedIn usage">
@@ -187,7 +191,6 @@ function SettingsInner() {
           </div>
         </Section>
         <DataSection />
-        <PluginsSection />
         <ExperimentalSection />
 
         <Section id="about" title="About this copy">

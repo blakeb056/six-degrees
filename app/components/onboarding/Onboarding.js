@@ -21,22 +21,30 @@
 // file needed"): Import a CSV on the welcome screen, or the way out at the
 // top, opens it, and a Connections.csv dropped anywhere on the setup does too.
 // It goes straight into your network through the importer (useCsvImport).
+//
+// The app carries no scanner now (Blake, 2026-10-14): a plugin brings it,
+// installed from "Other ways to bring in your network" under the CSV. So the scanner's steps
+// come after the import, and only with a scanner: its result offers Set up
+// scanning (Get ready, Connect, Pace, First scan) or Skip, see your galaxy;
+// with no scanner, See your galaxy alone. Pace is left out with Manual scan
+// alone (lib/onboarding.js stepsFor).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useScanStatus from '../useScanStatus';
 import {
   STEPS, STEP_LABELS, onboardingStep, readSetupMemory, rememberSetup, firstScan, followedScan, canOpen, here as hereWord,
-  appManagementGate, withSavedStep, startStep, OVERRIDE_AFTER_MS,
+  appManagementGate, withSavedStep, startStep, OVERRIDE_AFTER_MS, scannerKind, stepsFor, stepAfter, stepBefore, asksField,
+  fieldMoment, firstScanOffer, FIRST_SCAN_ACTION, FIRST_SCAN_PAGES, WALK_ACTION,
 } from '../../../lib/onboarding';
-import { askForField } from '../../../lib/scanner-setup';
+import { askScannerAgain } from '../../../lib/scraper-client';
 import { saveSettings } from '../../../lib/settings-client';
 import { loadSampleIntoSession } from '../../../lib/demo';
 import useCsvImport from '../useCsvImport';
 import { ONBOARDING_CSS } from './styles';
 import Wordmark from '../Wordmark';
-import { Welcome, GetReady, Connect, Pace, MapPeople, Final, ImportCsv } from './steps';
+import { Welcome, GetReady, Connect, Pace, FirstScan, Final, ImportCsv } from './steps';
 
-const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: MapPeople };
+const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: FirstScan };
 const OUT_MS = 190;
 // How often the Get ready step asks macOS about App Management while it's open.
 const APP_POLL_MS = 2000;
@@ -98,7 +106,7 @@ function useAppManagement(on) {
 }
 
 // `again`: back after a first scan that ended before Open the map (lib/onboarding.js
-// opensSetup): straight to "Your galaxy is ready", the field question or not.
+// setupMode): straight to "Your galaxy is ready", the field question or not.
 export default function Onboarding({ onFinish, again = false }) {
   const scan = useScanStatus();
   const { s, settings } = scan;
@@ -134,11 +142,28 @@ export default function Onboarding({ onFinish, again = false }) {
     kept.current = view;
     saveSettings({ setupStep: view });
   }, [view, settings, saved]);
-  // The first scan this setup has watched (lib/onboarding.js followedScan), so
-  // a scan that starts after it can't keep "Your galaxy is ready" back.
+  // What the installed scanner plugins unlock (lib/onboarding.js scannerKind):
+  // whether the CSV's result offers Set up scanning, and whether there's a Pace step.
+  const caps = s?.capabilities ?? null;
+  const kind = scannerKind(caps);
+  // The first scan, one person's circle or the walk of your own connections:
+  // which the setup started (a person's id, or WALK_ACTION), and the scan it
+  // watches (lib/onboarding.js followedScan), so Try again or someone else is
+  // watched in its place, and the queue's next never is.
+  const [startedFor, setStartedFor] = useState(null);
   const [follow, setFollow] = useState(null);
-  const following = followedScan(follow, s);
+  const following = followedScan(follow, s, startedFor);
   if (following !== follow) setFollow(following);
+  const fs = firstScan(s, following);
+  // Later, from the Scan tab: "Your galaxy is ready" without a first scan.
+  const [later, setLater] = useState(false);
+  // Your field, asked once while the first scan reads (lib/onboarding.js
+  // asksField), and kept on screen until it's answered or skipped, though the
+  // scan may end meanwhile.
+  const [fieldShown, setFieldShown] = useState(false);
+  const wantsField = asksField(settings);
+  if (!fieldShown && wantsField && view === 'map' && fieldMoment(fs)) setFieldShown(true);
+  const fieldOpen = fieldShown && wantsField && ['running', 'saving', 'done'].includes(fs.state);
   const [phase, setPhase] = useState('in');
   const [dir, setDir] = useState(1);
   const timer = useRef(null);
@@ -146,12 +171,22 @@ export default function Onboarding({ onFinish, again = false }) {
   // The CSV import's screen, over whichever step was open; Back goes back to that step.
   const csv = useCsvImport();
   const [csvOpen, setCsvOpen] = useState(false);
+  // Opened for its plugin cards (Get ready, with no scanner): they're brought into view.
+  const [toPlugins, setToPlugins] = useState(false);
   const openCsv = useCallback((open) => {
     scan.setError(null);
     setDir(open ? 1 : -1);
     setPhase('out');
     clearTimeout(timer.current);
     timer.current = setTimeout(() => { setCsvOpen(open); setPhase('in'); window.scrollTo(0, 0); }, OUT_MS);
+  }, [scan]);
+  // From the CSV's result to a step of the setup: Set up scanning.
+  const leaveCsvFor = useCallback((step) => {
+    scan.setError(null);
+    setDir(1);
+    setPhase('out');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => { setCsvOpen(false); setView(step); setPhase('in'); window.scrollTo(0, 0); }, OUT_MS);
   }, [scan]);
 
   const go = useCallback((next) => {
@@ -184,14 +219,48 @@ export default function Onboarding({ onFinish, again = false }) {
     // Before System Settings: keep this step, since turning App Management on
     // makes macOS quit and reopen Sixgree.
     keepStep: () => { kept.current = 'ready'; return saveSettings({ setupStep: 'ready' }); },
-    // Welcome → Scan my LinkedIn.
-    start: () => { setMemory(rememberSetup({ started: true })); go('ready'); },
+    // Your people are in (the CSV): "rather not scan" is then the map, not another import.
+    people: Number(s?.network?.first) > 0,
+    // Which scanner is installed, and the steps that follow from it.
+    caps,
+    kind,
+    next: (step) => go(stepAfter(step, caps)),
+    back: (step) => go(stepBefore(step, caps)),
+    // The CSV's result, or the CSV step without one → Set up scanning, the scanner's steps from Get ready.
+    setUpScanning: () => { setMemory(rememberSetup({ started: true })); leaveCsvFor('ready'); },
     // Set your pace → Continue: it has no check of its own, so this browser remembers it.
-    paced: () => { setMemory(rememberSetup({ paced: true })); go('map'); },
+    paced: () => { setMemory(rememberSetup({ paced: true })); go(stepAfter('pace', caps)); },
+    // The first scan (lib/onboarding.js firstScanOffer): with your people in,
+    // one person's circle, FIRST_SCAN_PAGES pages of it, by their id, as every
+    // Scan button starts one (the route looks up their link); with nobody yet,
+    // the walk of your own connections, with Auto scan.
+    firstScan: fs,
+    offer: firstScanOffer(s),
+    fieldOpen,
+    startFirstScan: (person) => {
+      setLater(false);
+      setStartedFor(person.id);
+      return scan.run(FIRST_SCAN_ACTION, { id: person.id, name: person.name, maxPages: FIRST_SCAN_PAGES });
+    },
+    startWalk: () => {
+      setLater(false);
+      setStartedFor(WALK_ACTION);
+      return scan.run(WALK_ACTION);
+    },
+    later: () => { setFieldShown(false); setLater(true); },
     // The CSV import (useCsvImport), its screen, and the map once it's in.
     csv,
+    csvDone: csv.step === 'done',
     openCsv: () => openCsv(true),
     closeCsv: () => { csv.again(); openCsv(false); },
+    // Get ready with no scanner: back to the plugin cards, under the CSV.
+    toPlugins,
+    openPlugins: () => { setToPlugins(true); openCsv(true); },
+    pluginsShown: () => setToPlugins(false),
+    // A plugin installed, removed, or plugins turned on or off: what's
+    // installed is asked again now, for this screen and the header, not at
+    // the next round (Settings → Plugins does the same).
+    pluginsChanged: () => { askScannerAgain(); scan.poll(); },
     finish: async () => { kept.current = null; await saveSettings({ setupStep: null }); return onFinish(); },
     // Try the sample, from the welcome screen or the way out at the top
     // (the welcome screen did this before the setup). Resolves to
@@ -207,16 +276,17 @@ export default function Onboarding({ onFinish, again = false }) {
     },
   };
 
-  // Your galaxy is ready: the first scan has saved people, and the field
-  // question, if it's asked, is answered. `s` already has the job answer the
-  // notch reads in it, and is asked again the moment a job ends or the window
-  // comes back (useScanStatus), so this follows the end within a second or two.
-  const scanDone = firstScan(s, following).state === 'done';
-  const fieldOpen = askForField(s, settings, { duringFirstScan: true }) === true;
-  // Never over the CSV import's screen: people saved by an import aren't a first scan, and it has its own end.
-  const final = !csvOpen && scanDone && (again || (view === 'map' && !fieldOpen));
+  // Your galaxy is ready: the first scan has ended with people read, or Later
+  // was pressed, and the field question, if it was asked, is answered. `s`
+  // already has the job answer the notch reads in it, and is asked again the
+  // moment a job ends or the window comes back (useScanStatus), so this
+  // follows the end within a second or two.
+  // Never over the CSV import's screen: it has its own end.
+  const final = !csvOpen && (again || (view === 'map' && (fs.state === 'done' || later) && !fieldOpen));
   const Screen = view && SCREENS[view];
   const at = view || 'welcome';
+  // The dots: the steps there are with what's installed (no Pace with Manual scan alone).
+  const dots = stepsFor(caps);
 
   // A file dropped anywhere on the setup is the CSV import, wherever you were.
   const takesDrop = !final && csv.step !== 'importing' && csv.step !== 'done';
@@ -238,10 +308,9 @@ export default function Onboarding({ onFinish, again = false }) {
         <div className="ob-mark"><Wordmark size={20} /></div>
         {!final && (
           <nav className="ob-dots" aria-label="Setup steps">
-            {STEPS.map((step) => {
-              const i = STEPS.indexOf(step);
+            {dots.map((step, i) => {
               const now = step === at;
-              const done = i < STEPS.indexOf(at);
+              const done = STEPS.indexOf(step) < STEPS.indexOf(at);
               return (
                 <button key={step} type="button" className={now ? 'now' : done ? 'done' : ''} aria-current={now ? 'step' : undefined}
                   aria-label={`Step ${i + 1}, ${STEP_LABELS[step]}${done ? ', done' : ''}`} title={STEP_LABELS[step]}
@@ -250,7 +319,8 @@ export default function Onboarding({ onFinish, again = false }) {
             })}
           </nav>
         )}
-        {final || at === 'welcome' || csvOpen ? <span /> : <WayOut openSample={ctx.openSample} openCsv={ctx.openCsv} />}
+        {final || at === 'welcome' || csvOpen ? <span />
+          : <WayOut people={ctx.people} onFinish={ctx.finish} openSample={ctx.openSample} openCsv={ctx.openCsv} />}
       </header>
 
       {final ? <Final ctx={ctx} onFinish={ctx.finish} />
@@ -269,9 +339,22 @@ export default function Onboarding({ onFinish, again = false }) {
   );
 }
 
-/** Rather not scan: the CSV and the sample, from any step. */
-function WayOut({ openSample, openCsv }) {
+/**
+ * Rather not scan, from any of the scanner's steps: with your people in (the
+ * CSV), the map; before them, the CSV and the sample.
+ */
+function WayOut({ people, onFinish, openSample, openCsv }) {
   const [busy, setBusy] = useState(false);
+  if (people) {
+    return (
+      <div className="ob-out" id="ob-way-out">
+        <span className="long">Rather not scan? </span>
+        <button type="button" disabled={busy} onClick={async () => { setBusy(true); await onFinish(); }}>
+          {busy ? 'opening…' : 'See your galaxy'}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="ob-out">
       <span className="long">Rather not scan? </span>

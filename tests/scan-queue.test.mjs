@@ -25,6 +25,8 @@ const dir = mkdtempSync(path.join(tmpdir(), 'six-degrees-scan-queue-'));
 const HOME = path.join(dir, 'home');
 const RUNS = path.join(dir, 'runs.txt');
 const SLEEP = path.join(dir, 'sleep.txt');
+// How many pages each run was told to read, apart from RUNS, which says whose.
+const PAGES = path.join(dir, 'pages.txt');
 process.env.SIX_DEGREES_HOME = HOME;
 process.env.SIX_DEGREES_DB = path.join(dir, 'test.sqlite');
 process.env.SIX_DEGREES_ROOT = path.join(dir, 'root');
@@ -38,6 +40,7 @@ writeFileSync(process.env.SIX_DEGREES_PYTHON, [
   '#!/bin/sh',
   'for a in "$@"; do [ "$a" = "-c" ] && { echo "version 3.12.4"; echo venv; echo imports; exit 0; }; done',
   `for a in "$@"; do case "$a" in --connect=*|--bridge-url=*) printf '%s\\n' "$a" >> '${RUNS}';; esac; done`,
+  `for a in "$@"; do case "$a" in --max-pages=*) printf '%s\\n' "$a" >> '${PAGES}';; esac; done`,
   `[ -f '${SLEEP}' ] && sleep "$(cat '${SLEEP}')"`,
   'echo "Saved."',
   'exit 0',
@@ -87,7 +90,7 @@ beforeEach(async () => {
   await until(settled, 'the last test’s jobs to end');
   const db = getDb();
   for (const t of ['linkedin_connections', 'users']) db.exec(`DELETE FROM ${t}`);
-  for (const f of [RUNS, SLEEP, path.join(HOME, 'linkedin-activity.json'), path.join(HOME, 'linkedin-cooldown.json'), path.join(HOME, 'scan-queue.json')]) rmSync(f, { force: true });
+  for (const f of [RUNS, SLEEP, PAGES, path.join(HOME, 'linkedin-activity.json'), path.join(HOME, 'linkedin-cooldown.json'), path.join(HOME, 'scan-queue.json')]) rmSync(f, { force: true });
   delete globalThis[QUEUE_KEY];
   writeSettings(db, { scanRiskAccepted: '2026-10-03T00:00:00.000Z', autoConnectAccepted: '2026-10-03T00:00:00.000Z' });
   db.prepare('INSERT INTO users (id, name) VALUES (?, ?)').run('me', 'You');
@@ -190,6 +193,21 @@ test('pressed while a scan runs: Auto and a circle are queued, not refused, and 
   const done = await job();
   assert.equal(done.queue.items.length, 0, 'each one leaves the queue as it starts');
   assert.deepEqual(done.recent.slice(0, 3).map((j) => j.action), ['bridge', 'connect', 'bridge']);
+});
+
+// The guided setup's first scan reads three pages of one circle (lib/onboarding.js
+// FIRST_SCAN_PAGES), gentle on the account. Pressed while something runs, it
+// waits in the queue, and must still read three, not every page.
+test('a circle scan that waits its turn keeps how many pages it was to read', async () => {
+  await startLong(1);
+  assert.equal((await (await post({ action: 'bridge', id: 'p-maren', maxPages: 3 })).json()).queued, true);
+  assert.equal((await (await post({ action: 'bridge', id: 'p-tobin' })).json()).queued, true);
+  await until(async () => runs().length === 3 && (await settled()), 'the queue to run');
+  assert.deepEqual(runs(), [`--bridge-url=${url('oriel-vantasse')}`, `--bridge-url=${url('maren-holt')}`, `--bridge-url=${url('tobin-ashgrove')}`]);
+  const pages = readFileSync(PAGES, 'utf8').trim().split('\n');
+  assert.deepEqual(pages, ['--max-pages=100', '--max-pages=3', '--max-pages=100']);
+  // What the page sees of the queue never carries what a start sends.
+  assert.ok(!('request' in ((await job()).recent[0] || {})));
 });
 
 test('the queue holds at most ten; the eleventh is refused, saying so', async () => {

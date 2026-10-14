@@ -96,6 +96,22 @@ test('a scan of someone picked by id reads their list, found by profile URL, fro
     ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-1', '--from-start', '--max-pages=100']);
 });
 
+// The guided setup's first scan (Blake, 2026-10-14): three pages of the circle
+// it picked, by id, gentle on a new account. Any other number reads every page,
+// as before: the pages are a fixed set, like everything on the command line.
+test('the setup\'s first scan reads three pages of the circle picked by id, and no other number gets through', async () => {
+  const { FIRST_SCAN_PAGES } = await import('../lib/onboarding.js');
+  const res = await post({ action: 'bridge', id: 'p-dalia-2', name: 'Dalia Fenmoor', maxPages: FIRST_SCAN_PAGES });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await scannerArgs(),
+    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=3']);
+  for (const maxPages of [4, 2, '3', 0, -3, 3.5]) {
+    assert.equal((await post({ action: 'bridge', id: 'p-dalia-2', maxPages })).status, 200);
+    assert.deepEqual(await scannerArgs(),
+      ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100'], String(maxPages));
+  }
+});
+
 test('nothing opens LinkedIn before the one-time "I understand", whichever button asks', async () => {
   const profile = path.join(process.env.SIX_DEGREES_HOME, 'chrome-profile');
   writeSettings(getDb(), { scanRiskAccepted: null });

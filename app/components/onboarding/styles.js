@@ -115,6 +115,13 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-choice.sel .ob-radio { border-color: var(--ob-fg1); }
 .ob-choice.sel .ob-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ob-fg1); }
 .ob-quiet { font-size: 13px; color: var(--ob-fg3); }
+/* First scan: whom to start with, a choice like the welcome screen's, smaller */
+.ob-people { display: flex; flex-direction: column; gap: 8px; }
+.ob-person { padding: 11px 14px; gap: 12px; border-radius: 13px; }
+.ob-person .ci { width: 36px; height: 36px; border-radius: 50%; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--ob-fg1); }
+.ob-person .ct { font-size: 15px; }
+.ob-person .cd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob-tier { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; }
 
 /* The CSV import: where the file is dropped */
 .ob-drop { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 34px 20px; border-radius: 18px;
@@ -180,12 +187,10 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-promises { display: grid; gap: 8px; margin-top: 6px; padding: 2px 4px; }
 .ob-promises div { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ob-fg2); }
 .ob-promises svg { width: 16px; height: 16px; color: var(--ob-green); flex-shrink: 0; }
-/* Allow plugins, under the CSV import: a quiet box below the drop, never the main way in */
-.ob-plugins { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--ob-line); }
-.ob-allow { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; color: var(--ob-fg2); cursor: pointer; }
-.ob-allow input { margin: 3px 0 0; width: 15px; height: 15px; flex-shrink: 0; accent-color: var(--ob-green); cursor: pointer; }
-.ob-allow b { color: var(--ob-fg1); font-weight: 700; }
-.ob-allow .d { display: block; color: var(--ob-fg3); font-size: 12.5px; line-height: 1.5; margin-top: 1px; }
+/* Other ways to bring in your network, under the CSV import: titled and in sight, never the main way in */
+.ob-plugins { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--ob-line); }
+.ob-plugins .ob-label { margin: 0; }
+.ob-plugins-d { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ob-fg3); }
 .ob-note { display: flex; gap: 12px; padding: 13px 16px; border-radius: 14px; background: rgba(var(--ob-ink), 0.035); border: 1px dashed var(--ob-line2); font-size: 13px; line-height: 1.55; color: var(--ob-fg3); margin-top: 6px; }
 .ob-note svg { width: 18px; height: 18px; color: var(--ob-fg2); margin-top: 1px; flex-shrink: 0; }
 .ob-note b { color: var(--ob-fg2); font-weight: 650; }
@@ -222,7 +227,7 @@ html[data-mode="light"] .ob-tag.rec { background: #f5c542; color: #3a2a00; }
 .ob-strip { display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 14px; border: 1px solid var(--ob-line); background: var(--ob-surface); font-size: 13.5px; color: var(--ob-fg2); font-variant-numeric: tabular-nums; }
 .ob-strip .ob-bar { flex: 1; margin: 0; height: 6px; }
 .ob-strip.ok { border-color: var(--ob-green-line); color: var(--ob-green); }
-.ob-strip svg { width: 16px; height: 16px; }
+.ob-strip svg { width: 16px; height: 16px; flex-shrink: 0; }
 .ob-field { padding: 18px 20px 20px; border-radius: 18px; border: 1px solid var(--ob-line); background: var(--ob-surface); }
 .ob-field .fe { font-size: 11.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ob-fg3); }
 .ob-field .ft { font-size: 20px; font-weight: 800; margin: 5px 0 3px; }

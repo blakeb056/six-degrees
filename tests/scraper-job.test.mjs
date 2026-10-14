@@ -55,6 +55,9 @@ test('?job=1 says what runs and whose scan it is, and how the last jobs ended', 
     // What the scanner unlocks: plugins off and the built-in scanner here, so
     // everything (lib/scanner-capabilities.js, tests/scanner-capabilities.test.mjs).
     capabilities: { auto: true, manual: true, from: 'built-in' },
+    // How circle scans run, Automatic or By hand, never both: Automatic until
+    // manual mode is chosen (lib/scanner-capabilities.js circleMode).
+    mode: 'auto',
   });
 
   const state = registerScanState({});

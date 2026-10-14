@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { reachIndex, circleState, reachState, readyToScan, readyByCircle, circleScanCost } from '../lib/reach.js';
+import { reachIndex, circleState, reachState, readyToScan, readyByCircle, circleScanCost, firstCirclePicks, cleanProfileUrl } from '../lib/reach.js';
 import { buildQuest } from '../lib/quest.js';
 
 const url = (id) => `https://www.linkedin.com/in/${id}`;
@@ -103,6 +103,35 @@ test("Outlink's new doors follow the same rule, hidden lists left out", () => {
   const added = n.connections.filter((c) => c.unlocked_from_bridge_id);
   const reach = reachIndex(n.connections, n.degree2, n.notes);
   assert.deepEqual(buildQuest({ added, reach }).newDoors.map((p) => p.id), ['marcus']);
+});
+
+// The guided setup's first scan (Blake, 2026-10-14): one person's circle,
+// picked for you, with the next few under "Pick someone else".
+test('the first scan offers the highest scored you know whose circle is still to do, with a profile link', () => {
+  const n = network();
+  const reach = reachIndex(n.connections, n.degree2, n.notes);
+  // Jane's circle is scanned, Nia's list hidden, Otto's scanned and Quin's read:
+  // left are Ray and Marcus, Ray the higher (A-tier over B).
+  assert.deepEqual(firstCirclePicks(n.connections, reach).map((p) => p.id), ['ray', 'marcus']);
+  // Scores order those of one tier; nobody without a link a scan can go by.
+  const people = [
+    d1('low', { power_score: 3 }), d1('high', { power_score: 9 }), d1('mid', { power_score: 6 }),
+    d1('nolink', { power_score: 10, profile_url: '' }), d1('elsewhere', { power_score: 10, profile_url: 'https://example.com/in/elsewhere' }),
+    d1('query', { power_score: 10, profile_url: `${url('query')}?trk=x` }),
+  ];
+  const fresh = reachIndex(people, [], {});
+  assert.deepEqual(firstCirclePicks(people, fresh).map((p) => p.id), ['high', 'mid', 'low']);
+  assert.deepEqual(firstCirclePicks(people, fresh, 2).map((p) => p.id), ['high', 'mid'], 'at most `count`');
+  assert.deepEqual(firstCirclePicks([], fresh), []);
+});
+
+test('a circle scan goes by a plain profile link, and only that', () => {
+  assert.equal(cleanProfileUrl(url('ada-quill')), url('ada-quill'));
+  assert.equal(cleanProfileUrl(`${url('ada-quill')}/`), `${url('ada-quill')}/`);
+  assert.equal(cleanProfileUrl('https://uk.linkedin.com/in/ada'), 'https://uk.linkedin.com/in/ada');
+  for (const bad of ['', null, `${url('ada')}?x=1`, `${url('ada')}/details`, 'https://example.com/in/ada', `${url('ada')} --flag`, `${url('a')}${'x'.repeat(400)}`]) {
+    assert.equal(cleanProfileUrl(bad), null, String(bad));
+  }
 });
 
 test('what one circle scan costs: a profile view, a search a page, about 0.55 min a page without gentle pacing', () => {
