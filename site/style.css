@@ -970,3 +970,29 @@ main.page { padding-bottom: 40px; }
   html { scroll-behavior: auto; }
   .dl, .tour-frames img, .demo-map * { transition: none !important; }
 }
+
+/* The home page's Plugins section: Settings → Plugins drawn in HTML, as the app shows it. */
+.plug-body { display: grid; gap: 12px; padding: 22px 22px 18px; background: var(--surface); }
+.plug-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+.plug-title { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; color: var(--text); }
+.plug-switch { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.plug-knob { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--green); }
+.plug-knob::after { content: ""; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(20, 22, 40, 0.25); }
+.plug-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; background: var(--surface); box-shadow: var(--card); }
+.plug-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; }
+.plug-ic svg { width: 22px; height: 22px; }
+.plug-ic-manual { background: var(--tint-gold); color: var(--gold-ink); }
+.plug-ic-auto { background: rgba(36, 119, 201, 0.1); color: var(--blue); }
+.plug-text { display: grid; gap: 3px; min-width: 0; }
+.plug-text strong { color: var(--text); font-size: 15.5px; }
+.plug-text strong .mono { margin-left: 4px; font-size: 12px; font-weight: 500; color: var(--faint); }
+.plug-text > span { color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.plug-btn { padding: 7px 14px; border-radius: 999px; background: var(--text); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.plug-btn.done { background: var(--tint-green); color: var(--green); box-shadow: inset 0 0 0 1px var(--tint-green-line); }
+.plug-note { display: flex; align-items: center; gap: 7px; margin: 2px 0 0; color: var(--faint); font-size: 12.5px; }
+.plug-note svg { flex: none; width: 15px; height: 15px; color: var(--green); }
+@media (max-width: 560px) {
+  .plug-body { padding: 16px 14px 14px; gap: 10px; }
+  .plug-card { grid-template-columns: auto 1fr; padding: 12px; }
+  .plug-btn { grid-column: 2; justify-self: start; }
+}
