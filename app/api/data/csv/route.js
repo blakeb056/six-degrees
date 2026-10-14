@@ -1,14 +1,17 @@
-import { dataDir } from '../../../../lib/db-client';
+import { dataDir, getDb, keptCsvMoved } from '../../../../lib/db-client';
 import { pendingImport } from '../../../../lib/data-import';
 import { resolveProfile, networkCounts } from '../../../../lib/profile';
 import {
   readCsvNetwork, writeCsvNetwork, removeCsvNetwork, CsvStoreError, CSV_NETWORK_FILE,
 } from '../../../../lib/csv-store';
 
-// A LinkedIn Connections.csv import, kept in the data folder so it is still
-// there after the window closes (lib/csv-store.js). The page reads the CSV and
-// sends only what the map needs (lib/csv.js packConnections); nothing here
-// sees the file itself.
+// A LinkedIn Connections.csv import as older versions kept it, in the data
+// folder beside the database (lib/csv-store.js), and which network every page
+// opens on (lib/csv.js openNetworkSource). A CSV import goes into the database
+// now (POST /api/data/network); a kept one is moved in at the start
+// (lib/csv-network-file.js moveKeptCsv), so this answers about a file only
+// when that move couldn't happen. POST still keeps one, for a page from an
+// older version still open in a window; the next start moves it in.
 //
 // Gated with the other routes under /api/data (lib/gate.js): POST replaces the
 // kept import, DELETE removes it, and GET hands it over, so all three answer
@@ -17,6 +20,12 @@ import {
 // from another site.
 
 export async function GET() {
+  // The first thing every page asks: opening the database starts the move of
+  // a kept import, and the answer waits for it (lib/db-client.js keptCsvMoved).
+  try {
+    getDb();
+    await keptCsvMoved();
+  } catch { /* the database couldn't be opened: said below, by the profile's read */ }
   const { csv, problem } = readCsvNetwork(dataDir());
   // Your scanned 1st-degree connections, under the profile the map shows
   // (lib/profile.js): once there are any, pages show them instead of a kept

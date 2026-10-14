@@ -33,6 +33,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scan until every role has its company.
 
 ### Changed
+- **A CSV import goes into your network.** Your connections export (Connections.csv) is now
+  added to your own network on this computer, the same one scanning fills, instead of being
+  kept beside it. The welcome screen takes the file itself: pick it, or drop it anywhere on the
+  setup. Before anything changes you see what it adds: new connections, people brought up to
+  date, and how many people had no profile link (they're left out, since the link is how
+  Sixgree tells people apart). Importing a newer export later from the Import page adds anyone
+  new and picks up job changes, never removes anyone, and leaves what a scan read as it was.
+  Your network is backed up first whenever there's one to lose. Outlink, your Profile, Insights
+  and Settings → Scores now work for an imported network, scored with your own settings.
+- **A CSV import an older version kept moves in by itself.** The next time Sixgree starts, it
+  backs up your network with the kept import in the backup, adds the import to your network,
+  and only then removes the kept file. There's nothing to click. If it can't be moved yet, the
+  kept import stays as it was and is tried again at the next start.
 - **Network Circle's shapes, by degree.** Its Filters panel has a Shape tab with a picture of
   each layout: Rings, Clusters, Orbit, and two new ones, *Degrees* (a ring for each degree) and
   *Wi-Fi fan* (you at the bottom, each degree a bar fanning out above you). Both are drawn by
