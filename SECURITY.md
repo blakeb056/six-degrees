@@ -150,7 +150,11 @@ Everything stays local:
   `api.github.com/repos/blakeb056/six-degrees/releases/latest`, the same request as
   *Check for updates*, with no cookies and nothing about you. GitHub sees an ordinary
   request from your computer. A newer version only leaves a notification, one per
-  version; nothing is downloaded until you press *Install and restart*. Untick
+  version; nothing is downloaded until you press *Install and restart*. With plugins on
+  and one installed, the same daily check also reads the plugin list (one capped GET,
+  `lib/plugin-catalog.js` readCatalog, the request Settings → Plugins makes) and leaves a
+  notification for a newer version of an installed plugin, one per version; it downloads
+  nothing, and the plugin is updated only when you press *Update* in its card. Untick
   *Check for updates once a day* in Settings → Updates to turn it off (or start the app
   with `SIX_DEGREES_NO_UPDATE_CHECK=1`). A git checkout is never checked automatically.
 

@@ -3,6 +3,7 @@ import { pluginsView, pluginsEnabled } from '../../../../lib/plugins-view';
 import { readPackage, installPlugin, installedPlugin, pluginSummary, PluginError } from '../../../../lib/plugins';
 import { MAX_PLUGIN_BYTES, SIZE_HEADER, CONFIRM_HEADER } from '../../../../lib/plugins-client';
 import { busyRefusal } from '../../../../lib/scan-state';
+import { settlePluginNotesNow } from '../../../../lib/update-check';
 
 // Settings → Plugins → Install from a file. The body is the .sgplugin package
 // itself (application/octet-stream), with its size in X-Six-Degrees-Size.
@@ -62,6 +63,8 @@ export async function POST(request) {
       });
     }
     const done = installPlugin(dir, buf, { sha256: request.headers.get(CONFIRM_HEADER) || null });
+    // An Update done: its "is out" notification has nothing left to say.
+    settlePluginNotesNow();
     return Response.json({ ok: true, ...done, ...pluginsView() });
   } catch (err) {
     if (err instanceof PluginError) return Response.json({ error: err.message }, { status: err.status });

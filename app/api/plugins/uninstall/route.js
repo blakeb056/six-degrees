@@ -2,6 +2,7 @@ import { dataDir } from '../../../../lib/db-client';
 import { pluginsView } from '../../../../lib/plugins-view';
 import { uninstallPlugin, PluginError } from '../../../../lib/plugins';
 import { busyRefusal } from '../../../../lib/scan-state';
+import { settlePluginNotesNow } from '../../../../lib/update-check';
 
 // Settings → Plugins → Uninstall: { id }, the plugin's id, never a path
 // (lib/plugins.js uninstallPlugin). Its folder goes, and nothing else: what it
@@ -21,6 +22,7 @@ export async function POST(request) {
   if (busy) return Response.json({ error: busy }, { status: 409 });
   try {
     const done = uninstallPlugin(dataDir(), body?.id);
+    settlePluginNotesNow();
     return Response.json({ ok: true, ...done, ...pluginsView() });
   } catch (err) {
     if (err instanceof PluginError) return Response.json({ error: err.message }, { status: err.status });

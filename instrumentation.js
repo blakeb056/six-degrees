@@ -2,7 +2,9 @@
 //
 // The one thing started here is the daily update check (lib/update-check.js):
 // once a day it asks GitHub for the newest release's version number and, when
-// there's a newer one, leaves a notification. Settings → Updates turns it off.
+// there's a newer one, leaves a notification; with plugins on and one
+// installed, it reads the plugin list too, and leaves one for a newer plugin
+// version. Settings → Updates turns it off.
 // It decides for itself when not to run: a git checkout, a test, or
 // SIX_DEGREES_NO_UPDATE_CHECK=1.
 //

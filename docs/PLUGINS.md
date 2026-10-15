@@ -282,12 +282,20 @@ loaded*, why, and offers *Try again*. Only the first 200 entries are read.
 
 ### When Sixgree goes online for it
 
-Never by itself. The cards are drawn from a copy of the official list that ships with the app
-(`lib/plugins-shipped.js`, which `scripts/build-plugin.mjs` builds the packages from), so they
-show at once, plugins on or off. The live list is fetched only when someone opens Settings →
-Plugins with plugins on (the first time its Browse comes into view), presses *Try again*, or
-presses a card's *Install*, in Settings or in the setup; where the two disagree, the live list
-wins. A package is downloaded only when *Install* is pressed.
+Never by itself, apart from the daily update check. The cards are drawn from a copy of the
+official list that ships with the app (`lib/plugins-shipped.js`, which `scripts/build-plugin.mjs`
+builds the packages from), so they show at once, plugins on or off. The live list is fetched
+only when someone opens Settings → Plugins with plugins on (the first time its Browse comes
+into view), presses *Check for plugin updates* or *Try again*, or presses a card's *Install*,
+in Settings or in the setup; the live list is merged over the shipped copy and wins, so an
+installed plugin older than the list shows *Update* in its card. A package is downloaded only
+when *Install* or *Update* is pressed.
+
+The daily update check (`lib/update-check.js`, spec invariant 2) reads the list too, once a
+day, only while plugins are on and one is installed, and only while *Check for updates once a
+day* is on: the same capped GET (`lib/plugin-catalog.js readCatalog`). A newer version of an
+installed plugin leaves one notification, once per plugin version (`app_meta`
+`plugin_update_notified:<id>`), which opens Settings → Plugins. It downloads nothing.
 
 Both are fetched by Sixgree's server, never by the page:
 

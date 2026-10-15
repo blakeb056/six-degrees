@@ -6,6 +6,7 @@ import {
 } from '../../../../lib/plugin-catalog';
 import { CONFIRM_HEADER } from '../../../../lib/plugins-client';
 import { busyRefusal } from '../../../../lib/scan-state';
+import { settlePluginNotesNow } from '../../../../lib/update-check';
 
 // Install from the plugin list, or from a link: the same two steps as Install
 // from a file (app/api/plugins/install), with the download in the first.
@@ -56,6 +57,8 @@ export async function POST(request) {
       }
       const done = installPlugin(dir, kept.buf, { sha256: sum });
       releaseDownload(sum);
+      // An Update done: its "is out" notification has nothing left to say.
+      settlePluginNotesNow();
       return Response.json({ ok: true, ...done, from: kept.from, ...pluginsView() });
     }
 
