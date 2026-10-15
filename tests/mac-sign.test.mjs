@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import {
   SECRET_NAMES, ENTITLEMENTS, signingSetup, signingRequired, releaseSigningPlan, codesignArgs, signingPlan,
   bundleOfExecutable, parseSpctl, parseNotaryJson, notaryIssueLines, scrub, parseCodesignInfo, signerName,
-  notarize, staple, stapleCheck, SigningError, machoFileType, findCode, signDeveloperId,
+  notarize, staple, stapleCheck, APPLE_UNREACHABLE, SigningError, machoFileType, findCode, signDeveloperId,
 } from '../scripts/mac-sign.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mac-sign.mjs', import.meta.url));
@@ -351,6 +351,16 @@ test('stapleCheck: asks Apple again before failing, and says what Apple said', (
   const no = stapleCheck('/x/app', { env: env2({ VALIDATE_FAILS: '9' }), attempts: 3, retrySeconds: 0 });
   assert.equal(no.ok, false);
   assert.match(no.text, /CloudKit query for x failed/);
+});
+
+test('stapleCheck: a dropped connection to Apple is told apart from "no ticket"', (t) => {
+  const dir = tmp(t);
+  const { env } = stubXcrun(dir);
+  const down = stapleCheck('/x/app', { env: env({ VALIDATE_FAILS: '9' }), attempts: 2, retrySeconds: 0 });
+  assert.equal(down.ok, false);
+  assert.equal(down.unreachable, false, 'the stand-in says "Network" without a dropped connection');
+  assert.ok(APPLE_UNREACHABLE.test('error is Error Domain=NSURLErrorDomain Code=-1005 "The network connection was lost."'));
+  assert.ok(!APPLE_UNREACHABLE.test('CloudKit query for x failed due to "Record not found".'));
 });
 
 // ── for real, with an identity on this Mac (optional) ──
