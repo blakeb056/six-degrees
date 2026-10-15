@@ -284,6 +284,12 @@ export default function WorldMap({ connections = [], onSelect, selectedId = null
           {picked && <PlacePanel place={picked} phone={phone} below={below} sheet={Math.round(shownH * 0.46)} selectedId={selectedId} onSelect={onSelect} onClose={() => setPickedKey(null)} />}
           {/* On a phone the place's list takes the bottom; who isn't on the map comes back when it closes. */}
           {where && !(phone && picked) && <Unplaced where={where} phone={phone} bottom={below + 8} />}
+          {/* GeoNames' licence (CC BY 4.0) asks for this credit wherever its places show (docs/PLACES.md). */}
+          {!(phone && picked) && (
+            <p data-map-credit="" style={{ position: 'absolute', right: 10, bottom: below + 6, margin: 0, fontSize: 9, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
+              Places: GeoNames (CC BY 4.0) · Natural Earth
+            </p>
+          )}
         </>
       )}
     </div>
