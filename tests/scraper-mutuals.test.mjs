@@ -39,12 +39,12 @@ function parser(js) {
 
 // A results page, as far as the reader looks at one: profile links inside
 // cards, and the page's text in reading order.
-function page(results, { extraLines = [] } = {}) {
+function page(results, { extraLines = [], degree = '• 2nd', button = 'Connect' } = {}) {
   const lines = [];
   const anchors = [];
   for (const r of results) {
     // `mutual` is the line, or its parts when LinkedIn draws the names on lines of their own.
-    const card = { innerText: [r.name, `View ${r.name}’s profile`, '• 2nd', r.headline, r.place || 'Orlando, FL', ...[r.mutual].flat(), 'Connect'].filter(Boolean).join('\n') };
+    const card = { innerText: [r.name, `View ${r.name}’s profile`, degree, r.headline, r.place || 'Orlando, FL', ...[r.mutual].flat(), button].filter(Boolean).join('\n') };
     card.parentElement = { innerText: card.innerText, parentElement: null };
     anchors.push({
       getAttribute: () => `/in/${r.slug}?miniProfileUrn=x`,
@@ -146,4 +146,25 @@ test('names drawn on lines of their own above the rest stay part of the line, an
   assert.deepEqual(['ada-stone', 'ben-ortiz', 'cy-moreno', 'di-lang'].map((s) => by[s].mutualCount), [24, 6, 1, 2]);
   // …and the mutuals themselves, your own connections, take none.
   assert.deepEqual([by['maya-chen'].mutualCount, by['leo-park'].mutualCount], [undefined, undefined]);
+});
+
+test('your own connections\' search (network=["F"]): a 1st-degree card keeps its place and its count, its mutuals take neither', (t) => {
+  // scrape.py scan_your_connections reads the same cards with this reader: "• 1st", a
+  // Message button, and the mutual line with "&" (Blake, 2026-10-15).
+  const js = reader(t);
+  if (!js) return;
+  const maya = { slug: 'maya-chen', name: 'Maya Chen' };
+  const leo = { slug: 'leo-park', name: 'Leo Park' };
+  const results = run(js, page([
+    { slug: 'ada-stone', name: 'Ada Stone', headline: 'VP Sales at Northwind Labs', place: 'Lisbon, Portugal',
+      mutual: 'Maya Chen, Leo Park & 103 other mutual connections', via: [maya, leo] },
+    { slug: 'ben-ortiz', name: 'Ben Ortiz', headline: 'Designer at Halcyon', place: 'Greater London', mutual: ['Maya Chen', '& 2 other mutual connections'], via: maya },
+  ], { degree: '• 1st', button: 'Message' }));
+  const by = Object.fromEntries(results.map((r) => [r.profileUrl.replace('https://www.linkedin.com/in/', '').replace(/\/$/, ''), r]));
+  assert.deepEqual([by['ada-stone'].mutualCount, by['ada-stone'].location, by['ada-stone'].headline], [105, 'Lisbon, Portugal', 'VP Sales at Northwind Labs']);
+  assert.deepEqual([by['ben-ortiz'].mutualCount, by['ben-ortiz'].location], [3, 'Greater London']);
+  for (const s of ['maya-chen', 'leo-park']) {
+    assert.equal(by[s].mutualCount, undefined, s);
+    assert.equal(by[s].location, undefined, s);
+  }
 });

@@ -83,8 +83,10 @@ export async function POST(request) {
         // photo on every rescan, and the app never shows one (lib/photos.js).
         profile_image_url: localPhoto(c.imageUrl),
         connected_date: toIsoDate(c.connectedDate),
-        // LinkedIn's own count, read off a circle's result card; nothing else sends one.
-        mutual_count: degree === 2 ? mutualCountOf(c.mutualCount) : null,
+        // LinkedIn's own count, read off a result card: in a circle's list, and in the
+        // search of your own connections (scrape.py scan_your_connections, "A, B & 103
+        // other mutual connections"). The connections walk and company scans send none.
+        mutual_count: degree <= 2 ? mutualCountOf(c.mutualCount) : null,
         // Where they are and their followers, when their card in the list showed
         // them (scripts/scrape.py placeOf, followersOf). Null when it didn't: an
         // update below never clears what an earlier scan read.
@@ -197,6 +199,7 @@ export async function POST(request) {
             ...(rec.profile_image_url ? { profile_image_url: rec.profile_image_url } : {}),
             ...(rec.location ? { location: rec.location } : {}),
             ...(rec.followers != null ? { followers: rec.followers } : {}),
+            ...(rec.mutual_count != null ? { mutual_count: rec.mutual_count } : {}),
           },
         });
         if (res.promoted) { promoted += 1; addedBack.push(res); }
@@ -227,6 +230,8 @@ export async function POST(request) {
         // Filled in or brought up to date like the headline; a card that showed none leaves them.
         if (rec.location) updates.location = rec.location;
         if (rec.followers != null) updates.followers = rec.followers;
+        // The search of your own connections reads how many mutuals you share; nothing else sends it.
+        if (rec.mutual_count != null) updates.mutual_count = rec.mutual_count;
         if (Object.keys(updates).length > 0) {
           await supabase
             .from('linkedin_connections')

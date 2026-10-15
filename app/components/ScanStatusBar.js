@@ -57,6 +57,7 @@ const WHAT = {
   bridge: 'Scanning a circle',
   resume: 'Carrying on with a circle',
   'resume-all': 'Carrying on with circles',
+  'your-connections': 'Adding locations to your connections',
   'auto-bridge': 'Auto-Bridge',
   'auto-bridge-retry': 'Auto-Bridge',
   rescrape: 'Re-scanning a circle',

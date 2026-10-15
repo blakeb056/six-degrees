@@ -429,13 +429,13 @@ test('each place that describes the daily check says it reads the plugin list wh
 
 test('the changelog: a Fixed line for the Update button, and plugins in the update notice', () => {
   const log = read('CHANGELOG.md');
-  const unreleased = log.slice(log.indexOf('## [Unreleased]'), log.indexOf('## [2.0.0]'));
+  // Released in 2.1.0: read that version's section, whatever is unreleased above it.
+  const unreleased = log.slice(log.indexOf('## [2.1.0]'), log.indexOf('## [2.0.0]'));
   const fixed = unreleased.slice(unreleased.indexOf('### Fixed'));
   assert.ok(unreleased.includes('### Fixed'), 'a Fixed section');
   assert.match(fixed, /A newer plugin shows its Update button/);
   assert.match(fixed, /Check for plugin updates/);
-  // From that entry to the next Changed heading after it (a newer release's notes come first).
-  const from = unreleased.indexOf('**Sixgree tells you when there\'s a new version.**');
-  const added = unreleased.slice(from, unreleased.indexOf('### Changed', from));
+  const start = unreleased.indexOf('**Sixgree tells you when there\'s a new version.**');
+  const added = unreleased.slice(start, unreleased.indexOf('### Changed', start));
   assert.match(added.replace(/\s+/g, ' '), /With plugins on and one installed, the same daily check also reads the plugin list/);
 });
