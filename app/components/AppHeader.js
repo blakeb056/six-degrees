@@ -34,6 +34,7 @@ import { startHere, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { networkLevel, rememberLevel, levelNow, watchLevel } from '../../lib/level';
 import { IS_DEMO } from '../../lib/demo';
+import { UPDATE_NOTE_TYPE, UPDATE_NOTES_SEEN_EVENT, UPDATES_HREF, openUpdates } from '../../lib/update-notice';
 
 // A phone by the window's own width (a media query), not innerWidth: on a phone
 // innerWidth grows with anything wider than the screen, so the header's first,
@@ -102,11 +103,7 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
           {/* While a scan runs: what it needs from you, green, yellow or red (ScanLight). Nothing otherwise. */}
           {own && shows.scan && <ScanLight isMobile={isMobile} />}
           {/* Settings: also in CSV or sample mode and on phones, so updates stay reachable */}
-          {!IS_DEMO && <Link href="/settings" title="Settings" aria-label="Settings" style={{
-            width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>{'⚙︎'}</Link>}
+          {!IS_DEMO && <SettingsGear isMobile={isMobile} />}
           {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
           {own && auto && <RefreshButton isMobile={isMobile} />}
           <ProfileButton isMobile={isMobile} csvMode={csvMode} level={level} />
@@ -116,6 +113,54 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
       {/* While a scan runs: a dot on the line below for each page it reads */}
       {own && <ScanTrail inset={isMobile ? 12 : 30} />}
     </header>
+  );
+}
+
+/**
+ * The update notifications nobody has read yet (lib/update-notice.js): the
+ * daily check's "Sixgree X.Y.Z is out". Any network's, so the gear shows them
+ * with a CSV import or no network open too, where there's no bell.
+ */
+function useUnreadUpdate() {
+  const [version, setVersion] = useState(null);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/notifications?type=${UPDATE_NOTE_TYPE}`).then((r) => r.json()).then((d) => {
+      const note = (d.notifications || []).find((n) => !n.seen);
+      if (live) setVersion(note ? note.data?.version || '' : null);
+    }).catch(() => {});
+    const seen = () => setVersion(null);
+    window.addEventListener(UPDATE_NOTES_SEEN_EVENT, seen);
+    return () => { live = false; window.removeEventListener(UPDATE_NOTES_SEEN_EVENT, seen); };
+  }, []);
+  return version;
+}
+
+/** Settings, with a small dot while a newer version waits: then it opens Settings → Updates and checks. */
+function SettingsGear({ isMobile }) {
+  const router = useRouter();
+  const update = useUnreadUpdate();
+  const label = update !== null ? `Settings: Sixgree ${update ? `${update} ` : ''}is out` : 'Settings';
+  return (
+    <Link href={update !== null ? UPDATES_HREF : '/settings'} title={label} aria-label={label}
+      onClick={(e) => {
+        if (update === null) return;
+        e.preventDefault();
+        openUpdates(router);
+      }}
+      style={{
+        width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', flexShrink: 0, position: 'relative',
+        background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-3, #888)', fontSize: isMobile ? 14 : 16, textDecoration: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+      {'⚙︎'}
+      {update !== null && (
+        <span data-update-dot="" aria-hidden="true" style={{
+          position: 'absolute', top: 1, right: 1, width: 8, height: 8, borderRadius: '50%',
+          background: 'var(--sd-green, #00ff88)', boxShadow: '0 0 0 2px var(--sd-bg, #0a0a12)',
+        }} />
+      )}
+    </Link>
   );
 }
 
@@ -138,6 +183,12 @@ function NotificationBell({ isMobile, onOpen, openId }) {
       if (asked && onOpenRef.current) { opened.current = true; onOpenRef.current(asked); }
     }).catch(() => {});
   }, [userId, openId]);
+  // A check in Settings → Updates counts the update notifications as read (app/api/update).
+  useEffect(() => {
+    const seen = () => setNotes((prev) => prev.map((n) => (n.type === UPDATE_NOTE_TYPE ? { ...n, seen: true } : n)));
+    window.addEventListener(UPDATE_NOTES_SEEN_EVENT, seen);
+    return () => window.removeEventListener(UPDATE_NOTES_SEEN_EVENT, seen);
+  }, []);
   const unseen = notes.filter((n) => !n.seen).length;
   const show = (n) => {
     // Open it, and count it as read.
@@ -146,7 +197,9 @@ function NotificationBell({ isMobile, onOpen, openId }) {
       setNotes((prev) => prev.map((x) => (x.id === n.id ? { ...x, seen: true } : x)));
     }
     setOpen(false);
-    if (onOpen) onOpen(n);
+    // A newer version: Settings → Updates, where its check offers Install and restart (or what to do instead).
+    if (n.type === UPDATE_NOTE_TYPE) openUpdates(router);
+    else if (onOpen) onOpen(n);
     else router.push(`/?note=${encodeURIComponent(n.id)}`);
   };
   return (

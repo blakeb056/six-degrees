@@ -1,12 +1,25 @@
 import { db as supabase } from '../../../lib/db';
+import { getDb } from '../../../lib/db-client';
+import { settleUpdateNotes } from '../../../lib/update-check';
+import { UPDATE_NOTE_TYPE } from '../../../lib/update-notice';
 
+// ?type= narrows the list to one kind: the header's gear asks for the daily
+// update check's notifications this way, with no userId, so it can show its dot
+// whoever's network is open (lib/update-notice.js).
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const type = searchParams.get('type');
+
+    // An update this copy has already installed has nothing left to say: read.
+    if (type === UPDATE_NOTE_TYPE) {
+      try { settleUpdateNotes(getDb()); } catch { /* shown as it is */ }
+    }
 
     let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50);
     if (userId) query = query.eq('user_id', userId);
+    if (type) query = query.eq('type', type);
 
     const { data } = await query;
     return Response.json({ notifications: data || [] });

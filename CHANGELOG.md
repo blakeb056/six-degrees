@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shape and words too. Click it for the instruction in large type with whose list and which
   page; for a scan that runs by itself, a briefing of whose circle, page N of about M, people
   found, their ring's fill, today's searches, about how long is left, and Stop.
+- **Sixgree tells you when there's a new version.** Once a day, while it's open, it asks GitHub
+  for the newest release's version number: one request, the same one *Check for updates* makes,
+  with nothing about you in it (GitHub sees an ordinary request from your computer). When
+  there's a newer version, a notification says so, once per version, and the ⚙ button gets a
+  small dot. Opening either takes you to Settings → Updates and checks, where *Install and
+  restart* updates the app, or, where it can't update itself, it says what to do instead.
+  Nothing is ever downloaded until you choose to update. It's on to begin with: untick *Check
+  for updates once a day* in Settings → Updates to turn it off, and it asks only when you press
+  *Check for updates*. Offline, it says nothing and tries again the next day.
 
 ### Changed
 - **Scanning by hand says each change the moment it happens** (the scanner plugins, 1.0.1): on a

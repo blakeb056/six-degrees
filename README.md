@@ -98,9 +98,13 @@ It downloads the right version for your Mac, checks the file is exactly the one
 published here, puts **Sixgree** in Applications and opens it.
 [Read the script](install.sh) first if you like.
 
-**Updating.** Choose *Sixgree → Check for Updates…* (or open **Settings** with the ⚙
-button or ⌘,). It opens the Updates section and checks. Nothing checks by
-itself. If there's a newer version, click **Install and restart**: the app downloads it
+**Updating.** Once a day, while it's open, Sixgree asks GitHub for the newest version
+number and, if there's a newer one, tells you in its notifications (and with a dot on the ⚙
+button). That one request carries nothing about you: GitHub sees an ordinary request from
+your computer. Nothing is downloaded until you choose to update. To turn the daily check off,
+untick *Check for updates once a day* in **Settings → Updates**. To check now, choose
+*Sixgree → Check for Updates…* (or open **Settings** with the ⚙ button or ⌘,): it opens the
+Updates section and checks. If there's a newer version, click **Install and restart**: the app downloads it
 from GitHub, checks it against the release's published checksums and checks that its code
 signature is intact, closes, puts the new version in its place and opens it again. If the
 new version can't be put in place, won't open, or closes before its first page appears,
@@ -407,7 +411,7 @@ It estimates **network position**, not what anyone is worth as a person.
 - A CSV import is read on your machine and never added to your network. It's kept in the
   data folder as `csv-network.json` (names, positions, companies, profile links and when
   you connected; never email addresses) until you click × beside *Your CSV*.
-- The app contacts only these, and only when you act:
+- The app contacts only these, and, apart from the daily update check, only when you act:
   - **Your networking platform**, while you scan, and when you press **Auto** (one
     connection request, sent from the scanner's Chrome). Each profile photo is saved on
     your computer as the scan reads it, and the app shows photos only from there, so
@@ -419,11 +423,14 @@ It estimates **network position**, not what anyone is worth as a person.
     scanner's add-ons, and, if the computer has no Python the scanner can use, **GitHub**
     for a copy of Python when you click *Set up the scanner*. Every file is checked
     against a checksum built into Sixgree.
-  - **GitHub**, only when you click *Check for updates*, to read the newest version
-    number. In the Mac app, also when you then click *Install and restart*, to download
+  - **GitHub**, once a day while the app is open, and when you click *Check for updates*,
+    to read the newest version number. A newer version leaves one notification; untick
+    *Check for updates once a day* in **Settings → Updates** and it asks only when you
+    click. In the Mac app, also when you then click *Install and restart*, to download
     that version and the file of checksums that proves it's the one published.
   
-  Nothing about you is sent, and nothing checks on its own.
+  Nothing about you is sent (GitHub sees an ordinary request from your computer). The daily
+  update check is the only request the app makes by itself, and it never downloads anything.
 - A **copy of your network** that you save (Settings → Your data) is a file you keep
   wherever you choose; the app never uploads it. It holds the names, headlines and profile
   links of the people in your network, their photos unless you leave them out, your

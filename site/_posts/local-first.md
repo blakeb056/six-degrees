@@ -7,7 +7,7 @@ tags: [privacy, local-first]
 image: /img/app/your-data.jpg
 ---
 
-**Scanning now comes as a plugin** from Settings → Plugins: Sixgree asks GitHub for the plugin list only when you browse plugins, and downloads one only when you install it.
+**Scanning now comes as a plugin** from Settings → Plugins: Sixgree asks GitHub for the plugin list only when you browse plugins, and downloads one only when you install it. **And it checks for updates once a day**, which you can turn off in Settings → Updates.
 
 A map of your network is a map of other people: their names, their jobs, who they know. That's a good reason not to send it anywhere. So Sixgree doesn't. There's no account to create, no server that holds your data, and no telemetry. The app, and everything it knows, runs on your own computer.
 
@@ -27,15 +27,15 @@ Everything Sixgree knows about your network lives in one hidden folder in your h
 
 ## What the app contacts, and when
 
-Nothing goes online by itself. The app contacts:
+The app goes online by itself for one thing only: once a day, to ask GitHub whether there's a newer version. Otherwise it waits for you. The app contacts:
 
 - **Your networking platform**, only while you scan, or when you press *Auto* to send someone a connection request. Each profile photo is saved on your computer as the scan reads it, and the app shows photos only from there, so browsing your network never contacts the platform.
-- **GitHub**, only when you click *Check for updates*, to read the newest version number, and in the Mac app when you then click *Install and restart*, to download it.
+- **GitHub**, once a day while the app is open, and when you click *Check for updates*, to read the newest version number. A newer version shows up in your notifications. In the Mac app, GitHub is also contacted when you then click *Install and restart*, to download it. Nothing about you is sent: GitHub sees an ordinary request from your computer. To turn the daily check off, untick *Check for updates once a day* in **Settings → Updates**.
 - **PyPI and GitHub**, only without the Mac app (with `npx sixgree` or from source), once, when you click *Set up the scanner*: for the scanner's Python packages and, if your computer has no Python it can use, a private copy of Python. Every file is checked against a checksum built into Sixgree.
 
 One experimental feature runs on a timer, and only if you turn it on: the **daily messages sync** in Outlink → Messages & follow-ups opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.
 
-There is no telemetry, no analytics and no crash reporting. The web framework the app is built on has anonymous usage statistics of its own; they're switched off. And the app never checks for updates on its own.
+There is no telemetry, no analytics and no crash reporting. The web framework the app is built on has anonymous usage statistics of its own; they're switched off. The daily update check reads a version number and nothing else, and it never downloads anything by itself.
 
 ## Local, and locked to your computer
 
