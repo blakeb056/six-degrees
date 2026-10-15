@@ -166,6 +166,47 @@ display; TRAPS §48), one display here, a local page:
 - The sign-in window and `bring_forward` came up centred on the main display; the saved
   placement afterwards was there too.
 
+## Sixgree's own browser (2026-10-15)
+
+In the desktop app, with a scanner plugin installed, the scanner drives a panel inside
+Sixgree's window instead of starting Chrome (docs/brain/DESKTOP.md, *Sixgree's own
+browser*). The app names it in two variables, `SIX_DEGREES_PANEL_CDP`
+(`http://127.0.0.1:<port>`, Chromium's debugging port) and `SIX_DEGREES_PANEL_TARGET` (the
+panel page's DevTools target id); `panel_settings` takes nothing else.
+
+- **One place**: `launch_chrome` attaches (`attach_panel`, Playwright's
+  `connect_over_cdp`) and returns a `PanelContext`, which behaves like the persistent
+  context the callers expect. Every mode gets its browser there, so nothing else changed.
+- **Only the panel's page.** Playwright puts every page of Electron in one context, the
+  app's own page among them. `_panel_page` asks the browser's `/json/list` where the target
+  is, then asks only pages there for their target id (all pages when the list can't be read
+  or doesn't match). `.pages` is that page alone; `new_page()` returns it again (Electron's
+  pages aren't the scanner's to make).
+- **Cookies are the panel's.** Playwright's `context.cookies()` reads Electron's default
+  session, the app's, not the panel's partition, so `PanelContext.cookies` asks the page
+  (`Network.getCookies`), and the page's `.context` is the `PanelContext` (`PanelPage`).
+  `ensure_logged_in`, `_has_session_cookie` and `signed-in.json` work unchanged on it.
+- **Closing only disconnects** (`browser.close()` on a CDP connection). The panel page's
+  own `close()` does nothing. The panel, the window and the app carry on.
+- **No window to move.** `_set_window`, `MacChrome`, off-screen placement and the profile's
+  quiet settings are all skipped. Where a Chrome window would come forward (`bring_forward`,
+  a launch in front: signing in, a manual read, *Show the scanner's Chrome window*) the
+  scanner prints `Sixgree's browser: in front`, and `Sixgree's browser: out of sight` where
+  it would go back; the app moves the panel (`lib/linkedin-panel.js panelWanted`). The
+  `LinkedIn needs you:` lines say "in Sixgree's own browser".
+- **Fallback**: a panel that can't be reached, or no page with that id, is said in one line
+  ("Sixgree's own browser couldn't be reached (…), so this uses a Chrome window instead") and
+  Chrome starts as before. With neither variable, nothing at all changes.
+- **Outlink** (`--outlink URL --outlink-name NAME`, `open_outlink`): only in the panel.
+  It checks the cooldown and the day's profile views, then `ensure_logged_in` (a security
+  check there is pushback, as for Auto), waits out the gap and takes one profile view
+  (`_wait_for_profile_view`, so `linkedin-activity.json` counts it), opens the profile,
+  clicks nothing, prints `Outlink result: opened` and lets go. The app writes down who and
+  when (`lib/outlink-opened.js`, `outlink-opened.json`) and starts it only for plugins from
+  1.0.5 (`outlinkSupported`); otherwise the page opens the profile in the user's browser.
+- Tests: `tests/scanner-panel.test.mjs` (stand-in Electron), `tests/linkedin-panel.test.mjs`.
+  The real check against a local page is in DESKTOP.md.
+
 ## Sign-in
 
 Once per machine. The persistent profile at `SIX_DEGREES_HOME/chrome-profile` keeps the

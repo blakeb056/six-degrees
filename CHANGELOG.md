@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sixgree's own browser: LinkedIn inside Sixgree's window** (the desktop app, with a scanner
+  plugin installed; the scanner plugins, 1.0.5). LinkedIn shows in a panel under the app's top
+  bar, so the tabs, the notch and the scan light stay in sight, and scanning drives that panel
+  instead of opening a Chrome window. It stays out of sight until it's needed: signing in, a
+  security check or a manual read bring it forward by themselves, and a thin bar over it says
+  what LinkedIn is doing there, with *Back to Sixgree*. Hiding it never stops a scan; *Show
+  LinkedIn* brings it back while one runs. It has its own sign-in, so you sign in to LinkedIn once
+  more, inside Sixgree; its pages are LinkedIn's alone, and any other link opens in your own
+  browser. LinkedIn sees Sixgree's browser (Electron's own Chromium, its usual user agent), not
+  Google Chrome. If the panel can't be reached, the scanner says so in one line and opens Chrome
+  as before; `SIX_DEGREES_PANEL=0` turns it off. The npm package and a plain browser keep the
+  scanner's own Chrome.
+- **Outlink opens profiles inside Sixgree.** In the desktop app with the panel, *Open profile*
+  and *Profile* on Outlink open the profile in Sixgree's own browser instead of your browser.
+  The scanner only takes it there and clicks nothing on it; you act. Each one is one of the day's
+  profile views, counted against the daily limit like the views a scan makes, and Sixgree writes
+  down which profile and when (`outlink-opened.json` in the data folder). Without the panel, or
+  with a scanner plugin before 1.0.5, Outlink opens your browser as before.
+
+### Changed
+- **The scanner plugins are 1.0.5**: they can drive Sixgree's own browser and open Outlink's
+  profiles there. Chrome is still what they use everywhere else.
+
 ## [2.3.0] - 2026-10-15
 
 Your own connections get their locations and mutual counts, and the Map knows about 34,000 cities.

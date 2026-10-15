@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "dist/**",
   ]),
   {
+    // Next's own configs cover these, and the plugins named below come with
+    // them: a .cjs file (desktop/preload.cjs, which Electron needs as CommonJS)
+    // is linted without them, and naming their rules there is an error.
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       // Identity and scraper-status are read from localStorage and from a
       // process on the user's own machine. Neither exists during server

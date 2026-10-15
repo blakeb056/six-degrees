@@ -10,6 +10,10 @@
 //   links   the app's own pages stay in the app; anything else, LinkedIn above
 //           all, opens in the user's own browser (rule 7), except the two
 //           System Settings panes the Scan page links to (lib.mjs SETTINGS_URLS)
+//   panel   with a scanner installed, LinkedIn can show in a panel of its own
+//           under the app's top bar ("Sixgree's own browser", below): the
+//           scanner drives it instead of starting Chrome, and Outlink opens
+//           profiles in it. Its own sign-in, its own storage, LinkedIn only
 //   quit    a running scan is stopped the way the Stop button stops it, so the
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
@@ -27,7 +31,7 @@
 // has drawn (and writes the address to SIX_DEGREES_SMOKE_READY=<file>, if given),
 // and SIX_DEGREES_SMOKE_SHOT=<file.png> saves a picture of the window.
 
-import { app, BrowserWindow, Menu, dialog, shell, session, nativeTheme } from 'electron';
+import { app, BrowserWindow, WebContentsView, Menu, dialog, shell, session, nativeTheme, ipcMain } from 'electron';
 
 // The window's frame follows the app, not the Mac's appearance setting: the app
 // is a dark sky, so the title bar, menus and dialogs are dark too, even when the
@@ -35,14 +39,15 @@ import { app, BrowserWindow, Menu, dialog, shell, session, nativeTheme } from 'e
 // ever shows.
 nativeTheme.themeSource = 'dark';
 import { spawn } from 'node:child_process';
-import { openSync, closeSync, writeFileSync, existsSync } from 'node:fs';
+import { openSync, closeSync, writeFileSync, existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
-  userDataPath,
+  userDataPath, isAppUrl, isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv,
+  LINKEDIN_PANEL_PARTITION,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -92,23 +97,41 @@ let pendingPath = startPathArg(process.argv);
 app.setName('Sixgree');
 // Still the "Six Degrees" folder (lib.mjs userDataPath), so a rename resets nothing.
 // Here, before anything reads it: the single-instance lock below is the first.
-const USER_DATA = userDataPath(app.getPath('appData'));
+// A checkout (npm run desktop, never a download) may name another folder in
+// SIX_DEGREES_SHELL_DATA, so a copy being worked on runs beside the installed
+// app instead of finding its lock and handing over to it.
+const USER_DATA = !app.isPackaged && process.env.SIX_DEGREES_SHELL_DATA
+  ? path.resolve(process.env.SIX_DEGREES_SHELL_DATA)
+  : userDataPath(app.getPath('appData'));
 app.setPath('userData', USER_DATA);
 app.setPath('sessionData', USER_DATA);
 app.enableSandbox();
 // Windows groups the taskbar button and the Start Menu shortcut by this (scripts/windows/six-degrees.iss).
 if (process.platform === 'win32') app.setAppUserModelId('com.blakeburford.sixdegrees');
 
+// Sixgree's own browser (the LinkedIn panel, below): only with a scanner to
+// drive it, and SIX_DEGREES_PANEL=0 turns it off (the scanner then starts its
+// own Chrome, as before). Read once, here: Chromium's switches must be set
+// before the app is ready.
+const PANEL_WANTED = process.env.SIX_DEGREES_PANEL !== '0' && scannerInstalled({
+  dataDir: DATA_DIR, repo: REPO, packaged: app.isPackaged, exists: existsSync, list: (dir) => readdirSync(dir),
+});
+// One more address the panel may show, for checking a checkout against a local
+// test page (lib.mjs panelRoute). Never in a download.
+const PANEL_TEST_ORIGIN = !app.isPackaged ? process.env.SIX_DEGREES_PANEL_TEST_ORIGIN || null : null;
+
 if (!app.requestSingleInstanceLock()) {
   // Another copy is running; it brings its window forward (second-instance).
   app.exit(0);
 } else {
   app.on('second-instance', showWindow);
+  if (PANEL_WANTED) openDebuggingPort();
   app.whenReady().then(start).catch((err) => fail('Sixgree could not start', err));
 }
 
 async function start() {
   lockDownSession();
+  setUpPanelMessages();
   Menu.setApplicationMenu(buildMenu());
   app.setAboutPanelOptions({
     applicationName: 'Sixgree',
@@ -118,6 +141,8 @@ async function start() {
     copyright: 'Runs on this computer only. MIT licence.',
   });
   showWindow(); // the "starting" page, until the server answers
+  // Before the server, which hands the panel's address on to every scanner it starts.
+  if (PANEL_WANTED) await createPanel();
   await startServer(await findFreePort(), { logMode: 'w' });
 }
 
@@ -142,6 +167,8 @@ async function startServer(port, { logMode }) {
       ...(app.isPackaged ? { SIX_DEGREES_INSTALL: INSTALL_KIND } : {}),
       ...(APP_BUNDLE ? { SIX_DEGREES_APP: APP_BUNDLE } : {}),
       ...(PYTHON && process.env.SIX_DEGREES_PYTHON === undefined && existsSync(PYTHON) ? { SIX_DEGREES_PYTHON: PYTHON } : {}),
+      // Where the scanner finds the LinkedIn panel (lib.mjs panelEnv), when there is one.
+      ...panelEnvVars,
     },
     stdio: ['ignore', log, log],
     // No console window for node.exe on Windows (the app has none of its own to share).
@@ -208,17 +235,35 @@ function showWindow() {
     title: 'Sixgree',
     backgroundColor: '#0a0a1a', // the app's own background: no white flash
     show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
+    webPreferences: {
+      contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false,
+      // Only the LinkedIn panel's controls (preload.cjs), answered for the app's own address alone.
+      preload: path.join(HERE, 'preload.cjs'),
+    },
   });
   win.once('ready-to-show', () => win.show());
+  // The panel outlives the window (a scan carries on with it closed): taken
+  // out before the window goes, and put into the next one.
+  win.on('close', () => { if (panel && win) win.contentView.removeChildView(panel); });
   win.on('closed', () => { win = null; });
+  for (const name of ['resize', 'enter-full-screen', 'leave-full-screen']) win.on(name, placePanel);
+  // Away from the app's own pages (the starting page while the server
+  // restarts), nothing says where the panel goes: it goes.
+  win.webContents.on('did-navigate', (_event, url) => { if (!isAppUrl(url, origin)) setPanelVisible(false); });
+  win.webContents.on('zoom-changed', () => setImmediate(placePanel));
+  attachPanel();
   if (SMOKE) win.webContents.on('did-finish-load', reportReadyOnce);
   if (ready) win.loadURL(origin);
   else win.loadFile(path.join(HERE, 'starting.html'));
 }
 
 // Every page in every window follows the same link rules (lib.mjs routeFor).
+// The LinkedIn panel follows its own (panelRules).
 app.on('web-contents-created', (_event, contents) => {
+  if (panelSession && contents.session === panelSession) {
+    panelRules(contents);
+    return;
+  }
   contents.setWindowOpenHandler(({ url }) => {
     const route = routeFor(url, origin);
     if (route === 'app') {
@@ -251,11 +296,208 @@ app.on('web-contents-created', (_event, contents) => {
 });
 
 // Only what the app uses: copying to the clipboard (the Updates panel) and full
-// screen. No camera, microphone, location or notifications.
+// screen. No camera, microphone, location or notifications. The LinkedIn panel's
+// session gets the same.
 function lockDownSession() {
+  lockDown(session.defaultSession);
+}
+
+function lockDown(ses) {
   const allowed = new Set(['clipboard-sanitized-write', 'fullscreen']);
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
-  session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+  ses.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
+  ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+}
+
+// ── Sixgree's own browser ────────────────────────────────────────────────────
+// LinkedIn in a panel of the window (a WebContentsView), under the app's top
+// bar, which stays in sight and in use: its tabs, the notch, the scan light.
+// Blake, 2026-10-15: "I want it embedded in the sixgree screen with maybe the
+// top ui tab visible with the notch". docs/brain/DESKTOP.md rule 7.
+//
+//   storage  its own partition (persist:linkedin): LinkedIn's sign-in lives
+//            there, apart from the app's pages, and lasts from one start to
+//            the next. The user signs in to LinkedIn once more, here.
+//   pages    LinkedIn's only. Any other link opens in the user's own browser,
+//            anything that isn't a web page nowhere (lib.mjs panelRoute)
+//   shown    hidden until the page asks: LinkedIn needs you (signing in, a
+//            security check, a manual read), Outlink opened a profile, or the
+//            user pressed Show LinkedIn. Hiding it never stops a scan: the
+//            page keeps working out of sight, as the scanner's Chrome did
+//   scanner  attaches over Chromium's debugging protocol and drives that one
+//            page (scripts/scrape.py attach_panel), told which by its target
+//            id (lib.mjs panelEnv). The user agent is Electron's own; nothing
+//            here changes or disguises it (no stealth, Blake's standing rule).
+//
+// The trade-off, said plainly: the debugging port listens on 127.0.0.1 only,
+// on a port the system picks at each start, and only while the app runs with a
+// scanner installed. But nothing asks who is knocking: any program running on
+// this computer as any user could attach to it while the app is open, and from
+// there read the panel's LinkedIn session or drive the app's own page. That is
+// as far as such a program could already reach (it can read ~/.six-degrees,
+// the old Chrome profile included, and call the app's local server), and it
+// never reaches another computer. SIX_DEGREES_PANEL=0 turns it all off.
+// SECURITY.md says the same.
+
+let panel = null;          // the panel's WebContentsView: one for the app's whole run
+let panelSession = null;   // its session (LINKEDIN_PANEL_PARTITION)
+let panelEnvVars = {};     // what the server is told about it (lib.mjs panelEnv)
+let panelVisible = false;  // asked for by the page
+let panelTop = null;       // where the page says it starts, in its CSS pixels
+
+/** Chromium's debugging port on a port the system picks (0), before the app is ready. */
+function openDebuggingPort() {
+  // A file from the last run would name its old port.
+  try { rmSync(path.join(USER_DATA, 'DevToolsActivePort'), { force: true }); } catch { /* read below */ }
+  // 127.0.0.1 is where Electron listens anyway; said here so it never isn't.
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+  app.commandLine.appendSwitch('remote-debugging-port', '0');
+}
+
+async function createPanel() {
+  try {
+    panelSession = session.fromPartition(LINKEDIN_PANEL_PARTITION);
+    lockDown(panelSession);
+    panel = new WebContentsView({
+      webPreferences: {
+        partition: LINKEDIN_PANEL_PARTITION,
+        contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false,
+        // Out of sight, its page still draws and runs its timers, as the
+        // scanner's hidden Chrome did with Playwright's flags.
+        backgroundThrottling: false,
+      },
+    });
+    panel.setBackgroundColor('#0a0a1a');
+    const contents = panel.webContents;
+    for (const name of ['did-navigate', 'did-navigate-in-page']) contents.on(name, sendPanelState);
+    await contents.loadURL('about:blank');
+    // Shown for its first frame (dark on the dark starting page), then hidden.
+    // A page that was never shown has no size at all, nothing is ever in its
+    // viewport, and the scanner could click nothing on it; once shown, it
+    // keeps its size and keeps drawing while hidden, minimised or with the
+    // window closed (checked 2026-10-15).
+    attachPanel();
+    panel.setVisible(true);
+    await Promise.race([
+      contents.executeJavaScript('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))'),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    placePanel();
+    const [targetId, port] = await Promise.all([targetIdOf(contents), waitForDevToolsPort()]);
+    panelEnvVars = panelEnv({ port, targetId });
+    if (!Object.keys(panelEnvVars).length) throw new Error(`no ${port ? 'target id' : 'debugging port'}`);
+  } catch (err) {
+    // The scanner starts its own Chrome instead, as before the panel.
+    console.error(`Sixgree's LinkedIn panel is off: ${err.message}`);
+    if (panel) {
+      try { win?.contentView.removeChildView(panel); } catch { /* not in it */ }
+      try { panel.webContents.close(); } catch { /* gone */ }
+    }
+    panel = null;
+    panelEnvVars = {};
+  }
+}
+
+/** The panel page's DevTools target id: what the scanner looks for among the pages. */
+async function targetIdOf(contents) {
+  const dbg = contents.debugger;
+  dbg.attach('1.3');
+  try {
+    return (await dbg.sendCommand('Target.getTargetInfo'))?.targetInfo?.targetId ?? null;
+  } finally {
+    dbg.detach();
+  }
+}
+
+/** The port Chromium chose, once it has written it down (a few milliseconds after start). */
+async function waitForDevToolsPort(timeoutMs = 5000) {
+  const file = path.join(USER_DATA, 'DevToolsActivePort');
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const port = devToolsPort(readFileSync(file, 'utf8'));
+      if (port) return port;
+    } catch { /* not yet */ }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return null;
+}
+
+/** Into the window, on top of the app's page, wherever the page last said. */
+function attachPanel() {
+  if (!panel || !win) return;
+  win.contentView.addChildView(panel);
+  placePanel();
+}
+
+function placePanel() {
+  if (!panel || !win || win.isDestroyed()) return;
+  const [width, height] = win.getContentSize();
+  // Sized even while hidden, for when it next shows (a hidden page keeps the
+  // size it last had in sight: createPanel).
+  const bounds = panelBounds({ width, height }, panelTop ?? 0, win.webContents.getZoomFactor());
+  if (bounds) panel.setBounds(bounds);
+  // In front only once the page has said where it starts.
+  panel.setVisible(panelVisible && panelTop !== null && Boolean(bounds));
+}
+
+function setPanelVisible(on) {
+  if (!panel || panelVisible === Boolean(on)) return;
+  panelVisible = Boolean(on);
+  placePanel();
+  // The keyboard goes with what's in front.
+  if (win && !win.isDestroyed()) (panelVisible ? panel.webContents : win.webContents).focus();
+  sendPanelState();
+}
+
+function panelState() {
+  return {
+    available: Boolean(panel),
+    visible: Boolean(panel) && panelVisible,
+    // Is a LinkedIn page open in it (so there is something to show)?
+    linkedin: Boolean(panel) && isLinkedInUrl(panel.webContents.getURL()),
+  };
+}
+
+function sendPanelState() {
+  if (win && !win.isDestroyed()) win.webContents.send('linkedin-panel:state', panelState());
+}
+
+/** Only the app's own page, in the main window, may move the panel. */
+function fromApp(event) {
+  return Boolean(win) && event.sender === win.webContents && isAppUrl(event.senderFrame?.url ?? '', origin);
+}
+
+function setUpPanelMessages() {
+  ipcMain.handle('linkedin-panel:state', (event) => (fromApp(event) ? panelState() : { available: false, visible: false, linkedin: false }));
+  ipcMain.on('linkedin-panel:show', (event) => { if (fromApp(event)) setPanelVisible(true); });
+  ipcMain.on('linkedin-panel:hide', (event) => { if (fromApp(event)) setPanelVisible(false); });
+  ipcMain.on('linkedin-panel:top', (event, px) => {
+    if (!fromApp(event)) return;
+    panelTop = Number.isFinite(px) ? px : null;
+    placePanel();
+  });
+}
+
+/** LinkedIn's pages stay in the panel; any other link goes to the user's browser (lib.mjs panelRoute). */
+function panelRules(contents) {
+  const route = (url) => panelRoute(url, { testOrigin: PANEL_TEST_ORIGIN });
+  contents.setWindowOpenHandler(({ url }) => {
+    // A LinkedIn link that would open a new window opens in the panel itself:
+    // it has no windows of its own.
+    if (route(url) === 'panel') contents.loadURL(url).catch(() => {});
+    else if (route(url) === 'browser') shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  // The page's own navigations and the redirects of any: the top page only.
+  // LinkedIn's frames (its security check among them) load from other hosts.
+  const guard = (event) => {
+    if (event.isMainFrame === false || route(event.url) === 'panel') return;
+    event.preventDefault();
+    if (route(event.url) === 'browser') shell.openExternal(event.url);
+  };
+  contents.on('will-navigate', guard);
+  contents.on('will-redirect', guard);
+  contents.on('will-attach-webview', (event) => event.preventDefault());
 }
 
 function openInApp(pathname) {

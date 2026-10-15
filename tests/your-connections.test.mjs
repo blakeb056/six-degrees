@@ -22,6 +22,7 @@ import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 import { capabilityRefusal, capabilities, lockedModes, pluginTooOld, PLUGIN_SINCE, AUTO_ACTIONS } from '../lib/scanner-capabilities.js';
 import { yourListNote, pausedList, YOUR_LIST } from '../lib/paused.js';
 import { scanLight, whoseConnections } from '../lib/scan-light.js';
+import { compareVersions } from '../lib/release.js';
 import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
 
 register('./helpers/extensionless.mjs', import.meta.url);
@@ -77,7 +78,7 @@ test('the scanner takes --your-connections, and the app runs it as its own actio
 
 test('a scanner plugin from before 1.0.4 is asked to update, never run with a flag it doesn\'t know', () => {
   assert.equal(PLUGIN_SINCE['your-connections'], '1.0.4');
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.4', 'the plugins it ships in');
+  assert.ok(compareVersions(SHIPPED_PLUGIN_VERSION, '1.0.4') >= 0, 'the plugins it ships in are 1.0.4 or newer');
   const plugin = (version) => ({ from: 'plugin', plugin: { id: 'auto-scan', name: 'Auto scan', version } });
   assert.match(pluginTooOld(plugin('1.0.3'), 'your-connections'), /version 1\.0\.4 or newer of the Auto scan plugin, and 1\.0\.3 is installed\. You can update it in Settings → Plugins\./);
   assert.equal(pluginTooOld(plugin('1.0.4'), 'your-connections'), null);

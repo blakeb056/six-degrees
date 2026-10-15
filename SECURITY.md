@@ -132,6 +132,17 @@ This app is designed to run **on your own machine, against your own network**.
   once each for links older versions stored, which a crafted import could also
   carry.
 - Do not bind this app to `0.0.0.0` or expose it through a tunnel.
+- **Sixgree's own browser opens a local debugging port** (the desktop app, with a scanner
+  plugin installed). LinkedIn shows in a panel inside the window and the scanner drives it
+  over Chromium's debugging protocol, so the app turns that port on: on `127.0.0.1` only, on
+  a port the system picks at each start, only while the app runs. It has no password. Any
+  program running on this computer could attach to it while the app is open, read the panel's
+  LinkedIn session and drive the app's own page. That is about as far as such a program could
+  already reach (it can read the data folder, the scanner's old Chrome profile included, and
+  call the app's local server), and nothing on another computer can reach it. Start the app
+  with `SIX_DEGREES_PANEL=0` to keep the port shut; the scanner then opens its own Chrome as
+  before. The panel shows linkedin.com pages only (any other link opens in your own browser),
+  with its own storage, and gets no access to Electron or the app (`desktop/main.mjs`).
 
 ## Your data
 

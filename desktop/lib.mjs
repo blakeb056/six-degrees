@@ -67,8 +67,8 @@ export const SETTINGS_URLS = Object.freeze([
  * What to do with a link the page opens or follows:
  *   'app'       one of the app's own pages: stays in the app
  *   'browser'   a web link (LinkedIn above all): the user's own browser. LinkedIn
- *               loaded inside the app would be a second, signed-out browser
- *               (DESKTOP.md rule 7)
+ *               opens inside Sixgree only in its own panel (panelRoute, below;
+ *               DESKTOP.md rule 7), never in the app's page
  *   'settings'  one of SETTINGS_URLS: System Settings opens on that pane
  *   'block'     anything else (file:, javascript:, custom schemes)
  */
@@ -321,4 +321,113 @@ export function serverExitAction({ code, signal, quitting = false, answered = tr
   if (code === UPDATE_HANDOFF_EXIT_CODE || STOPPED_FROM_OUTSIDE.includes(code)) return 'quit';
   if (code === RESTART_EXIT_CODE) return answered ? 'restart' : 'report';
   return 'report';
+}
+
+// ── Sixgree's own browser: LinkedIn in a panel inside the window ─────────────
+// Blake, 2026-10-15: "why not have the actual chrome playwright instead of open
+// up a new window, basically somehow takes over the screen of sixgree so it's
+// all in house and doesn't make the user click away", then, of three ways to do
+// it, "Sixgree's own browser": LinkedIn shows in a panel under the app's top bar
+// (main.mjs), on Electron's own Chromium, and the scanner drives that panel
+// instead of starting Chrome (scripts/scrape.py attach_panel). Only in the
+// desktop app; npm and a plain browser keep the scanner's own Chrome.
+
+/**
+ * The panel's own storage: its cookies (the LinkedIn sign-in) are kept apart
+ * from the app's, and from one start to the next. Never the app's default
+ * session, which serves the app's own pages.
+ */
+export const LINKEDIN_PANEL_PARTITION = 'persist:linkedin';
+
+/** Is this an https page on linkedin.com itself (www., the sign-in and security-check pages included)? */
+export function isLinkedInUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    return u.protocol === 'https:' && (host === 'linkedin.com' || host.endsWith('.linkedin.com'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What to do with a page the panel is asked to open, by a link or a redirect:
+ *   'panel'    a LinkedIn page, or about:blank (the empty panel): opens there
+ *   'browser'  any other web page (a link on someone's profile to their own
+ *              site, LinkedIn's lnkd.in short links): the user's own browser
+ *   'block'    anything else (file:, javascript:, custom schemes)
+ * `testOrigin` lets one more origin into the panel, for the local check of a
+ * checkout (main.mjs passes it only when the app isn't packaged, and only from
+ * SIX_DEGREES_PANEL_TEST_ORIGIN): never in a download.
+ */
+export function panelRoute(url, { testOrigin = null } = {}) {
+  if (url === 'about:blank') return 'panel';
+  if (isLinkedInUrl(url)) return 'panel';
+  if (testOrigin) {
+    try {
+      if (new URL(url).origin === testOrigin) return 'panel';
+    } catch { /* not a URL: below */ }
+  }
+  return isExternalWebUrl(url) ? 'browser' : 'block';
+}
+
+/**
+ * Where the panel goes in the window: from `top` down to the bottom, the whole
+ * width. `top` is where the page says the panel starts (the bottom of its top
+ * bar, so the tabs and the notch stay in sight), in the page's own CSS pixels;
+ * the window counts in its own points, which differ by the page's zoom (View →
+ * Zoom In). So top × zoom, rounded up, so the bar's last line is never covered.
+ * null when `top` isn't a number of pixels the page could mean, or the window
+ * has no room under it.
+ */
+export function panelBounds({ width, height }, top, zoom = 1) {
+  const t = typeof top === 'number' ? top : NaN;
+  const z = Number(zoom) > 0 ? Number(zoom) : 1;
+  if (!Number.isFinite(t) || t < 0 || !(width > 0) || !(height > 0)) return null;
+  const y = Math.ceil(t * z);
+  if (y >= height) return null;
+  return { x: 0, y, width: Math.floor(width), height: Math.floor(height) - y };
+}
+
+/**
+ * Is there a scanner that could use the panel? Then, and only then, the app
+ * turns on Chromium's debugging port, which the scanner attaches through
+ * (main.mjs). An installed scanner plugin is a folder <data>/plugins/<id>/
+ * with scanner/scrape.py in it (lib/plugins.js SCANNER_FOLDER); a checkout
+ * (`npm run desktop`, not packaged) has the built-in one in scripts/. Read
+ * once, at start: a plugin installed later counts from the next start.
+ */
+export function scannerInstalled({ dataDir, repo = null, packaged = true, exists, list }) {
+  if (!packaged && repo && exists(path.join(repo, 'scripts', 'scrape.py'))) return true;
+  let ids = [];
+  try {
+    ids = list(path.join(dataDir, 'plugins'));
+  } catch {
+    return false;
+  }
+  return ids.some((id) => !id.startsWith('.') && exists(path.join(dataDir, 'plugins', id, 'scanner', 'scrape.py')));
+}
+
+/**
+ * The port in Chromium's DevToolsActivePort file (its first line), which it
+ * writes into the app's own folder once it listens. The app asks for port 0,
+ * so the system picks a free one. null until there is one.
+ */
+export function devToolsPort(text) {
+  const port = Number(String(text ?? '').split('\n')[0].trim());
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : null;
+}
+
+/**
+ * What the app's server, and through it every scanner it starts, is told about
+ * the panel (scripts/scrape.py panel_settings; lib/linkedin-panel.js):
+ *   SIX_DEGREES_PANEL_CDP     http://127.0.0.1:<port>, the debugging port
+ *   SIX_DEGREES_PANEL_TARGET  the panel page's DevTools target id, so the
+ *                             scanner takes that page and never the app's own
+ * Nothing at all unless both are sound.
+ */
+export function panelEnv({ port, targetId } = {}) {
+  if (!Number.isInteger(port) || port <= 0 || port >= 65536) return {};
+  if (typeof targetId !== 'string' || !/^[0-9A-Fa-f]{16,64}$/.test(targetId)) return {};
+  return { SIX_DEGREES_PANEL_CDP: `http://127.0.0.1:${port}`, SIX_DEGREES_PANEL_TARGET: targetId };
 }
