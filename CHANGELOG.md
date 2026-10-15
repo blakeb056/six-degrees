@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Map: lines, filters and a finder** (Blake, 2026-10-15). Pick a place and lines run back to the
+  connections who reach the 2nd-degree people there, as thick as how many each reaches; its list
+  names them, each with *Ask for an intro* (Outlink, filtered to their circle). Pick one of your
+  connections (*Reach* in a place's list, the new finder, or the button that shows while their card
+  is open) and lines run from where they are to everywhere their circle lives; a line's end lists
+  who's there. *From you*, off to start, draws faint lines from home to your connections' places.
+  Lines follow great circles and draw in, unless the system asks for less motion, and only for
+  what's picked. The finder takes a person, a company or a place; Enter keeps the words as a filter
+  on names, companies and headlines. Filters show as chips you clear one by one, with *Clear all*.
+  *Declutter* hides places with fewer than N people, or fewer than N of tier S or A. The top of the
+  map counts who is located (*676 of 748 located*), the densest places glow, and *Heat* shades
+  where the network is thickest. All offline, in both dark and light looks. Docs: `docs/PLACES.md`.
+
 ## [2.4.0] - 2026-10-15
 
 LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree's own window instead of a separate Chrome.
