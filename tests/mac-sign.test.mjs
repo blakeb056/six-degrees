@@ -265,6 +265,7 @@ case "$1 $2" in
   "notarytool log") cat "$NOTARY_LOG" ;;
   "stapler staple")
     n=$(cat "$STAPLE_COUNT" 2>/dev/null || echo 0); echo $((n + 1)) > "$STAPLE_COUNT"
+    if [ "$n" -lt "\${STAPLE_FAILS:-0}" ] && [ -n "\${STAPLE_UNREACHABLE:-}" ]; then echo 'error is Error Domain=NSURLErrorDomain Code=-1005 "The network connection was lost."' >&2; exit 68; fi
     if [ "$n" -lt "\${STAPLE_FAILS:-0}" ]; then echo "CloudKit query for x failed due to \\"Record not found\\"." >&2; exit 65; fi
     echo "The staple and validate action worked!" ;;
   "stapler validate")
@@ -337,6 +338,16 @@ test('staple: tried again while Apple\'s ticket isn\'t served yet, then validate
   assert.match(fs.readFileSync(files.calls, 'utf8'), /^stapler validate \/x\/Six Degrees\.app$/m);
   fs.rmSync(files.count);
   assert.throws(() => staple('/x/app', { env: env({ STAPLE_FAILS: '9' }), log: () => {}, attempts: 3, retrySeconds: 0 }), /Record not found/);
+});
+
+test('staple: a dropped connection to Apple gets more, slower tries than "no ticket yet"', (t) => {
+  const dir = tmp(t);
+  const { files, env } = stubXcrun(dir);
+  const out = printed();
+  staple('/x/app', { env: env({ STAPLE_FAILS: '7', STAPLE_UNREACHABLE: '1' }), log: out.log, retrySeconds: 0, unreachableSeconds: 0 });
+  assert.match(out.text(), /try 7 of 12/, 'past the usual five, and validated on the eighth');
+  fs.rmSync(files.count);
+  assert.throws(() => staple('/x/app', { env: env({ STAPLE_FAILS: '99', STAPLE_UNREACHABLE: '1' }), log: () => {}, retrySeconds: 0, unreachableAttempts: 4, unreachableSeconds: 0 }), /network connection was lost/);
 });
 
 test('stapleCheck: asks Apple again before failing, and says what Apple said', (t) => {
