@@ -258,7 +258,7 @@ test('a network from a CSV is your own network: every page opens on it, with the
   assert.match(header, /\{own && auto && <RefreshButton/);
   assert.doesNotMatch(header, /fromExport|network-origin/);
   const tabs = readFileSync(new URL('../app/components/AppTabs.js', import.meta.url), 'utf8');
-  assert.match(tabs, /p\.own \? !csvMode && \(scanner \|\| !p\.scanner\) : true/);
+  assert.match(tabs, /p\.own \? !csvMode && \(scanner \|\| !p\.scanner\) && \(browser \|\| !p\.browser\) : true/);
   // And the scanner reading it later finds the people the CSV put there: nobody twice.
   const res = await ingest([{ name: 'Ava Quill', headline: 'Chief Executive Officer at Northwind Labs', profileUrl: stored('invented-ava-quill') }]);
   assert.equal((await res.json()).alreadyKnown, 1);

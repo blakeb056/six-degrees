@@ -28,6 +28,7 @@ import {
 import { AUTO_DEFAULTS, AUTO_HOURS, AUTO_PACES, PACE_KEYS, TIER_KEYS, autoStatus, cleanTiers, paceLine, tierList } from '../../lib/auto-scan';
 import { useEdgePanel } from './EdgeToggle';
 import InlineNote, { useFadingNote } from './InlineNote';
+import usePanelCover from './usePanelCover';
 
 const TONE = {
   running: 'var(--sd-green, #00ff88)', rest: 'var(--sd-blue, #3498db)', hours: 'var(--sd-fg-4, #8b9a9a)',
@@ -59,6 +60,8 @@ export default function AutoScanButton({ isMobile = false }) {
   const timer = useRef(null);
   const shown = open || pinned;
   const { shown: mounted, closing } = useEdgePanel(shown);
+  // Its panel hangs over Sixgree's own browser when that shows: it steps aside meanwhile (usePanelCover).
+  usePanelCover(mounted);
 
   const view = job?.auto || null;
   const live = Boolean(view?.on);

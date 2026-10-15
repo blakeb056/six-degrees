@@ -27,6 +27,8 @@ import ScanTrail from './ScanTrail';
 import ScanLight from './ScanLight';
 import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
+import { LinkedInButton } from './LinkedInBrowser';
+import usePanelCover from './usePanelCover';
 import useScanner, { useScanShows, useCircleMode } from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { useUser } from './UserProvider';
@@ -102,6 +104,8 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', justifySelf: 'end', gap: isMobile ? 4 : 8 }}>
           {/* While a scan runs: what it needs from you, green, yellow or red (ScanLight). Nothing otherwise. */}
           {own && shows.scan && <ScanLight isMobile={isMobile} />}
+          {/* The LinkedIn browser plugin: LinkedIn inside Sixgree, your network beside it (LinkedInBrowser.js). Desktop app only. */}
+          {own && <LinkedInButton isMobile={isMobile} />}
           {/* Settings: also in CSV or sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <SettingsGear isMobile={isMobile} />}
           {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}
@@ -170,6 +174,8 @@ function NotificationBell({ isMobile, onOpen, openId }) {
   const router = useRouter();
   const [notes, setNotes] = useState([]);
   const [open, setOpen] = useState(false);
+  // Open, the list hangs over Sixgree's own browser when it shows: it steps aside (usePanelCover).
+  usePanelCover(open);
   // A notification picked on another page arrives as /?note=<id>: opened once, when the list is in.
   const opened = useRef(false);
   const onOpenRef = useRef(onOpen);

@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { SHIPPED_PLUGINS, SHIPPED_PLUGIN_VERSION, cardsFrom } from '../lib/plugins-shipped.js';
+import { SHIPPED_PLUGINS, SHIPPED_PLUGIN_VERSION, LINKEDIN_BROWSER_VERSION, cardsFrom } from '../lib/plugins-shipped.js';
 import { cardInstall, cardState, catalogAction, CATALOG_UNLOADED } from '../lib/plugins-client.js';
 import { checkCatalog } from '../lib/plugin-catalog.js';
 import { PLUGINS, buildPackage, buildCatalog } from '../scripts/build-plugin.mjs';
@@ -31,12 +31,13 @@ const sameEntry = (p) => [p.id, p.name, p.version, p.about, p.risk, p.kind, [...
 
 // ── The shipped copy ─────────────────────────────────────────────────────────
 
-test('the shipped copy names both scanners, with what each does, its risk and what it unlocks', () => {
+test('the shipped copy names both scanners and the LinkedIn browser, with what each does, its risk and what it unlocks', () => {
   assert.deepEqual(SHIPPED_PLUGINS.map((p) => [p.id, p.version, [...p.unlocks]]),
-    [['auto-scan', SHIPPED_PLUGIN_VERSION, ['auto']], ['manual-scan', SHIPPED_PLUGIN_VERSION, ['manual']]]);
+    [['auto-scan', SHIPPED_PLUGIN_VERSION, ['auto']], ['manual-scan', SHIPPED_PLUGIN_VERSION, ['manual']],
+      ['linkedin-browser', LINKEDIN_BROWSER_VERSION, ['linkedin-browser']]]);
   for (const p of SHIPPED_PLUGINS) {
     assert.ok(p.about && p.risk, p.id);
-    assert.equal(p.kind, 'scanner');
+    assert.equal(p.kind, p.id === 'linkedin-browser' ? 'feature' : 'scanner');
     assert.ok(Object.isFrozen(p), 'never changed by a page');
   }
   // The pages read it: nothing from Node.
@@ -51,7 +52,7 @@ test('it is what a build makes the packages and the list from: the same ids, ver
   // A list built here, from the scanner's own files, as `npm run build:plugins -- --catalog` writes it.
   const built = PLUGINS.map((plugin) => {
     const zip = buildPackage(plugin, { version: SHIPPED_PLUGIN_VERSION, appVersion: '1.2.8' });
-    return { plugin, file: `${plugin.id}-${SHIPPED_PLUGIN_VERSION}.sgplugin`, zip, sha256: 'a'.repeat(64) };
+    return { plugin, file: `${plugin.id}-${plugin.version || SHIPPED_PLUGIN_VERSION}.sgplugin`, zip, sha256: 'a'.repeat(64) };
   });
   const list = buildCatalog(built, { base: 'http://127.0.0.1:4848', version: SHIPPED_PLUGIN_VERSION, appVersion: '1.2.8' });
   assert.deepEqual(list.plugins.map(sameEntry), SHIPPED_PLUGINS.map(sameEntry));
@@ -147,7 +148,7 @@ test('the shipped entries are a list the app accepts as it is', () => {
   const checked = checkCatalog(list, { appVersion: '1.2.8' });
   assert.equal(checked.problem, null);
   assert.deepEqual(checked.dropped, []);
-  assert.deepEqual(checked.plugins.map((p) => [p.id, p.problem]), [['auto-scan', null], ['manual-scan', null]]);
+  assert.deepEqual(checked.plugins.map((p) => [p.id, p.problem]), [['auto-scan', null], ['manual-scan', null], ['linkedin-browser', null]]);
 });
 
 // ── Each card's own state ────────────────────────────────────────────────────

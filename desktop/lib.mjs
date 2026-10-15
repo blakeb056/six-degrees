@@ -378,15 +378,21 @@ export function panelRoute(url, { testOrigin = null } = {}) {
  * the window counts in its own points, which differ by the page's zoom (View →
  * Zoom In). So top × zoom, rounded up, so the bar's last line is never covered.
  * null when `top` isn't a number of pixels the page could mean, or the window
- * has no room under it.
+ * has no room under it. `right` and `bottom` are kept clear, in CSS pixels.
  */
-export function panelBounds({ width, height }, top, zoom = 1) {
+export function panelBounds({ width, height }, top, zoom = 1, { right = 0, bottom = 0 } = {}) {
   const t = typeof top === 'number' ? top : NaN;
   const z = Number(zoom) > 0 ? Number(zoom) : 1;
   if (!Number.isFinite(t) || t < 0 || !(width > 0) || !(height > 0)) return null;
   const y = Math.ceil(t * z);
-  if (y >= height) return null;
-  return { x: 0, y, width: Math.floor(width), height: Math.floor(height) - y };
+  // What the page keeps beside and under it (the LinkedIn browser's people
+  // list on the right, a banner along the bottom), in its CSS pixels too:
+  // rounded up, so the panel never covers their first line.
+  const inset = (v) => (Number.isFinite(v) && v > 0 ? Math.ceil(v * z) : 0);
+  const w = Math.floor(width) - inset(right);
+  const h = Math.floor(height) - y - inset(bottom);
+  if (y >= height || w <= 0 || h <= 0) return null;
+  return { x: 0, y, width: w, height: h };
 }
 
 /**
@@ -430,4 +436,194 @@ export function panelEnv({ port, targetId } = {}) {
   if (!Number.isInteger(port) || port <= 0 || port >= 65536) return {};
   if (typeof targetId !== 'string' || !/^[0-9A-Fa-f]{16,64}$/.test(targetId)) return {};
   return { SIX_DEGREES_PANEL_CDP: `http://127.0.0.1:${port}`, SIX_DEGREES_PANEL_TARGET: targetId };
+}
+
+// ── The panel as plain Chrome (Blake, 2026-10-15) ────────────────────────────
+
+/**
+ * The panel's user agent: Electron's own for this app, with the app's token
+ * (Sixgree/x) and Electron's (Electron/x) taken out, so it reads as the
+ * Chrome it is built on. Derived from the real one at each start, so the
+ * Chrome version is always the one actually running. Only the panel's session
+ * (LINKEDIN_PANEL_PARTITION) gets it; the app's own pages keep the default.
+ * Nothing else is changed: no client hints, no navigator.webdriver, no
+ * fingerprint. `appNames` are the app tokens to take out (main.mjs passes
+ * app.getName()). A string with no Chrome token left is given back as it came.
+ */
+export function chromeUserAgent(ua, { appNames = ['Sixgree'] } = {}) {
+  const raw = String(ua ?? '');
+  const names = [...new Set(appNames.map((n) => String(n ?? '').replace(/\s+/g, '')).filter(Boolean)), 'Electron'];
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tokens = new RegExp(`(^|\\s)(?:${names.map(esc).join('|')})\\/\\S+`, 'g');
+  const out = raw.replace(tokens, '$1').replace(/\s{2,}/g, ' ').trim();
+  return /\bChrome\/\d/.test(out) ? out : raw;
+}
+
+// ── The LinkedIn browser plugin (Blake, 2026-10-15) ──────────────────────────
+// "an option to open LinkedIn within the actual application but they can use
+// the side panel on their right for finding people … a button at the top right
+// by the bell and settings and would be a plugin". The page decides whether the
+// plugin is installed and on (lib/plugins-view.js appFeatures); the shell only
+// needs to know whether to have a panel at all.
+
+/** The feature plugin's id (lib/plugins-shipped.js). */
+export const LINKEDIN_BROWSER_PLUGIN = 'linkedin-browser';
+
+/**
+ * Is the LinkedIn browser plugin installed (its folder with its manifest)?
+ * Then the panel is made even without a scanner, for browsing only: the
+ * debugging port still opens only with a scanner (scannerInstalled). Whether
+ * the plugin is sound and switched on is the server's to say, and the button
+ * shows only then. Read once, at start, like scannerInstalled.
+ */
+export function browserPluginInstalled({ dataDir, exists }) {
+  try {
+    return exists(path.join(dataDir, 'plugins', LINKEDIN_BROWSER_PLUGIN, 'manifest.json'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Where browsing starts when the panel has no LinkedIn page open yet: the
+ * feed, or the local check's test page (main.mjs passes `testOrigin` only in a
+ * checkout).
+ */
+export function browseHome({ testOrigin = null } = {}) {
+  return testOrigin ? `${testOrigin}/` : 'https://www.linkedin.com/feed/';
+}
+
+/**
+ * The profile the panel is on: the <slug> of a linkedin.com/in/<slug> page
+ * (any page under it, like /in/<slug>/details/experience/), decoded and in
+ * lower case, or null on any other page. The local check's origin counts as
+ * LinkedIn when it is named. Keep in step with lib/linkedin-browser.js
+ * profileSlug, which reads the stored profile_urls the same way (the shell
+ * can't import the app's files: tests/linkedin-browser.test.mjs checks the two agree).
+ */
+export function panelProfileSlug(url, { testOrigin = null } = {}) {
+  if (panelRoute(url, { testOrigin }) !== 'panel' || url === 'about:blank') return null;
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  const m = u.pathname.match(/^\/in\/([^/]+)/i);
+  if (!m) return null;
+  let slug = m[1];
+  try { slug = decodeURIComponent(slug); } catch { /* kept as it is */ }
+  slug = slug.trim().toLowerCase();
+  return slug && slug.length <= 200 ? slug : null;
+}
+
+// ── Nothing cut off while the panel shows ────────────────────────────────────
+// The panel is a view of its own, drawn over the app's page, so anything the
+// page opens over it (the bell's list, the scan light's briefing, the notch
+// opened, a note under a header button) would be under it. While the page
+// says something is open there, the panel is swapped for a still picture of
+// itself, drawn by the page in the same place and under what's open; once
+// nothing is, the panel comes back. (Blake, 2026-10-15: "I want the top tabs
+// and the UI to not be cut off".)
+//
+// The order, so nothing flashes: the picture is taken with the panel still in
+// front, the page draws it and says so (or ACK_MS passes), and only then does
+// the panel go; coming back, the panel is put in front first and the page
+// drops the picture after. Each picture has a number, so a late answer for an
+// old one is ignored, and a cover lifted while a picture was being taken
+// freezes nothing.
+
+export const STILL_ACK_MS = 400;
+
+/**
+ * The swap, without Electron (tests/linkedin-panel.test.mjs drives it):
+ *   capture()          → a picture of the panel now (main: capturePage, as a data URL)
+ *   sendStill(n, src)  the page draws picture n where the panel is, or none (src null)
+ *   apply()            the panel's visibility changed: main places it again (frozen hides it)
+ *   shown()            is the panel in front, or about to be, as the page asked?
+ * Returns { set(covered), drawn(n), refresh(), frozen }.
+ */
+export function createPanelCover({ capture, sendStill, apply, shown, ackMs = STILL_ACK_MS, wait = sleepFor }) {
+  let wanted = false;
+  let frozen = false;
+  let seq = 0;
+  let pictured = false;   // a picture was sent and not taken back yet
+  const acks = new Map();
+
+  async function freeze() {
+    const n = ++seq;
+    let src = null;
+    try { src = await capture(); } catch { src = null; }
+    if (n !== seq || !wanted || !shown()) return;
+    if (src) {
+      pictured = true;
+      sendStill(n, src);
+      await Promise.race([new Promise((resolve) => acks.set(n, resolve)), wait(ackMs)]);
+      acks.delete(n);
+      if (n !== seq || !wanted || !shown()) return;
+    }
+    // Without a picture the panel still goes: what's open matters more.
+    frozen = true;
+    apply();
+  }
+
+  function thaw() {
+    seq++;
+    const was = frozen;
+    frozen = false;
+    if (was) apply();
+    if (pictured) {
+      pictured = false;
+      sendStill(seq, null);
+    }
+  }
+
+  const api = {
+    /** The page says something is (true) or nothing is (false) open over the panel. */
+    set(covered) {
+      const on = Boolean(covered);
+      if (on === wanted) return;
+      wanted = on;
+      api.refresh();
+    },
+    /** The page has drawn picture n. */
+    drawn(n) {
+      acks.get(n)?.();
+    },
+    /** After the panel is shown or hidden: freeze it if something is open over it, else bring it back. */
+    refresh() {
+      if (wanted && shown()) {
+        if (!frozen) freeze();
+      } else {
+        thaw();
+      }
+    },
+    get frozen() { return frozen; },
+  };
+  return api;
+}
+
+// ── LinkedIn's sections, one at a time (Blake, 2026-10-15) ───────────────────
+// "for the actual LinkedIn section tab we can have where the notch will have
+// buttons for exact features like the feed and only the feed embedded into
+// the panel, same for messaging … feed, notifications and jobs". The LinkedIn
+// tab's notch buttons open the panel straight on one of these; the header's
+// LinkedIn button stays the whole website, with the people list.
+
+export const LINKEDIN_SECTIONS = Object.freeze({
+  feed: '/feed/',
+  messaging: '/messaging/',
+  notifications: '/notifications/',
+  jobs: '/jobs/',
+});
+
+/** The address of section `key` (LINKEDIN_SECTIONS), or the local check's stand-in for it; null for no such section. */
+export function sectionUrl(key, { testOrigin = null } = {}) {
+  if (!Object.hasOwn(LINKEDIN_SECTIONS, key)) return null;
+  return `${testOrigin || 'https://www.linkedin.com'}${LINKEDIN_SECTIONS[key]}`;
+}
+
+/** Which section the panel's page is in (any page under its path), or null: another LinkedIn page, or not LinkedIn. */
+export function sectionOf(url, { testOrigin = null } = {}) {
+  if (panelRoute(url, { testOrigin }) !== 'panel' || url === 'about:blank') return null;
+  let pathname;
+  try { pathname = new URL(url).pathname; } catch { return null; }
+  const p = pathname.endsWith('/') ? pathname : `${pathname}/`;
+  return Object.keys(LINKEDIN_SECTIONS).find((k) => p.startsWith(LINKEDIN_SECTIONS[k])) || null;
 }

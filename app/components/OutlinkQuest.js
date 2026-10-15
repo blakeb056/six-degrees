@@ -14,8 +14,8 @@ import { initialsFor } from '../../lib/tiers';
 import { localPhoto } from '../../lib/photos';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ConnectChoice from './AutoConnect';
-import { useLinkedInPanel, showLinkedInPanel } from './LinkedInPanel';
-import { beginScrape } from '../../lib/scraper-client';
+// A profile's link: in Sixgree's own browser where it can, one profile view, recorded (OpenProfile.js).
+import OpenProfile from './OpenProfile';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
@@ -49,38 +49,6 @@ function Ring({ progress, size = 86, color = '#FF6B35', children }) {
       </svg>
       <div style={{ position: 'absolute', inset: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</div>
     </div>
-  );
-}
-
-/**
- * A profile's link. In the desktop app with Sixgree's own browser
- * (lib/linkedin-panel.js; Blake, 2026-10-15: "yes on the outlink"), it opens
- * there instead of in your browser: the scanner takes it to the profile and
- * clicks nothing, it counts as one of the day's profile views, and Outlink
- * writes down which profile and when. Anywhere else, or where the app says it
- * can't (an older scanner plugin), your own browser, as before.
- */
-function OpenProfile({ person, style, children }) {
-  const panel = useLinkedInPanel();
-  const [note, setNote] = useState(null);
-  const url = person.profile_url;
-  if (!panel?.available) return <a href={url} target="_blank" rel="noopener noreferrer" style={style}>{children}</a>;
-  async function open(e) {
-    e.preventDefault();
-    setNote(null);
-    showLinkedInPanel();
-    try {
-      await beginScrape('outlink', { id: person.id, name: person.name });
-    } catch (err) {
-      if (err?.details?.fallback) window.open(url, '_blank', 'noopener');
-      else setNote(err?.message || 'It couldn’t be opened.');
-    }
-  }
-  return (
-    <>
-      <a href={url} onClick={open} style={style} title="Opens in Sixgree’s own browser, and counts as one of today’s profile views">{children}</a>
-      {note && <span role="status" style={{ fontSize: 11, color: 'var(--sd-gold, #FFD700)', maxWidth: 220 }}>{note}</span>}
-    </>
   );
 }
 

@@ -1,11 +1,18 @@
 #!/usr/bin/env node
-// Build the scanner's two plugin packages from the app's own scanner files:
+// Build the official plugin packages: the scanner's two from the app's own
+// scanner files, and the feature plugins from their README:
 //
 //   node scripts/build-plugin.mjs [--version=1.0.1] [--out=dist/plugins] [--catalog <base-url>]
-//   (the version is lib/plugins-shipped.js SHIPPED_PLUGIN_VERSION unless given)
+//   (the scanners' version is lib/plugins-shipped.js SHIPPED_PLUGIN_VERSION
+//   unless given; a feature plugin always has its own, from that list)
 //   npm run build:plugins
 //
-// → dist/plugins/auto-scan-<version>.sgplugin and manual-scan-<version>.sgplugin
+// → dist/plugins/auto-scan-<version>.sgplugin, manual-scan-<version>.sgplugin
+//   and linkedin-browser-<its version>.sgplugin
+//
+// A feature plugin (kind "feature", lib/plugins.js) carries its manifest and
+// README.md only, from scripts/plugins/<id>/README.md: its feature's code is
+// the app's own.
 //
 // --catalog also writes dist/plugins/catalog.json, a plugin list
 // (docs/PLUGINS.md, "The plugin list") naming both packages at <base-url>,
@@ -42,7 +49,17 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // What each one is (name, what it does, its risk, what it unlocks) is the
 // shipped copy of the official list (lib/plugins-shipped.js), which the app
 // draws its cards from before it goes online, so the two always say the same.
-export const PLUGINS = SHIPPED_PLUGINS.map(({ id, name, unlocks, about, risk }) => ({ id, name, unlocks: [...unlocks], about, risk }));
+export const PLUGINS = SHIPPED_PLUGINS.map(({ id, name, unlocks, about, risk, kind, version }) => ({
+  id, name, unlocks: [...unlocks], about, risk, kind,
+  // A feature plugin's own version; the scanners take the build's.
+  ...(kind === 'feature' ? { version } : {}),
+}));
+
+/** The version `plugin` is built at: its own (a feature plugin's), or the build's (the scanners'). */
+export const versionOf = (plugin, version) => plugin.version || version;
+
+/** Where a feature plugin's README is kept. */
+export const featureReadme = (id, root = ROOT) => path.join(root, 'scripts', 'plugins', id, 'README.md');
 
 function option(name, fallback) {
   const args = process.argv.slice(2);
@@ -56,19 +73,22 @@ function option(name, fallback) {
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 
-/** One package: its manifest and the scanner's files, in the order an install reads them. */
+/** One package: its manifest and its files (the scanner's, or a feature's README), in the order an install reads them. */
 export function buildPackage(plugin, { version, appVersion, root = ROOT }) {
-  const files = SCANNER_FILES.map((rel) => ({ name: `scanner/${path.basename(rel)}`, data: readFileSync(path.join(root, rel)) }));
+  const kind = plugin.kind || 'scanner';
+  const files = kind === 'feature'
+    ? [{ name: 'README.md', data: readFileSync(featureReadme(plugin.id, root)) }]
+    : SCANNER_FILES.map((rel) => ({ name: `scanner/${path.basename(rel)}`, data: readFileSync(path.join(root, rel)) }));
   const manifest = {
     format: PLUGIN_FORMAT,
     format_version: PLUGIN_FORMAT_VERSION,
     id: plugin.id,
     name: plugin.name,
-    version,
+    version: versionOf(plugin, version),
     sixgree: `>=${appVersion}`,
     about: plugin.about,
     risk: plugin.risk,
-    kind: 'scanner',
+    kind,
     unlocks: plugin.unlocks,
     files: Object.fromEntries(files.map((f) => [f.name, sha256(f.data)])),
   };
@@ -88,10 +108,10 @@ export function buildCatalog(built, { base, version, appVersion }) {
     plugins: built.map(({ plugin, file, zip, sha256: sum }) => ({
       id: plugin.id,
       name: plugin.name,
-      version,
+      version: versionOf(plugin, version),
       about: plugin.about,
       risk: plugin.risk,
-      kind: 'scanner',
+      kind: plugin.kind || 'scanner',
       unlocks: plugin.unlocks,
       sixgree: `>=${appVersion}`,
       url: new URL(file, root).href,
@@ -130,16 +150,16 @@ function main() {
     const zip = buildPackage(plugin, { version, appVersion: pkg.version });
     // Read back as an install will, so a package this makes always installs.
     const checked = readPackage(zip, { appVersion: pkg.version });
-    const name = `${plugin.id}-${version}.sgplugin`;
+    const name = `${plugin.id}-${versionOf(plugin, version)}.sgplugin`;
     const file = path.join(out, name);
     writeFileSync(file, zip);
     built.push({ plugin, file: name, zip, sha256: checked.sha256 });
-    console.log(`  ✓ ${shown(file)}: ${plugin.name} ${version}, ${Math.round(zip.length / 1024)} KB, sha256 ${checked.sha256}`);
+    console.log(`  ✓ ${shown(file)}: ${plugin.name} ${versionOf(plugin, version)}, ${Math.round(zip.length / 1024)} KB, sha256 ${checked.sha256}`);
   }
   if (base !== null) {
     const file = path.join(out, 'catalog.json');
     writeFileSync(file, `${JSON.stringify(buildCatalog(built, { base, version, appVersion: pkg.version }), null, 2)}\n`);
-    console.log(`  ✓ ${shown(file)}: a plugin list naming both, at ${base}`);
+    console.log(`  ✓ ${shown(file)}: a plugin list naming all ${built.length}, at ${base}`);
   }
 }
 

@@ -11,6 +11,9 @@ import Link from 'next/link';
 import { IS_DEMO } from '../../lib/demo';
 import { MODES } from '../../lib/app-tabs';
 import { useScanShows } from './useScanner';
+import useFeature from './useFeature';
+import { useLinkedInPanel } from './linkedInPanelState';
+import { LINKEDIN_BROWSER } from '../../lib/linkedin-browser';
 
 // One calm style for every tab (Blake, 2026-10-05: the tabs looked like "gradient
 // AI" and "the colours make no sense"): the look's secondary words, a touch
@@ -26,6 +29,9 @@ const PAGES = [
   { key: 'outlink', href: '/queue', label: 'Outlink', own: true },
   // Only with a scanner to scan with: a scanner plugin, or the built-in one (lib/scanner-capabilities.js).
   { key: 'scan', href: '/setup', label: 'Scan', own: true, scanner: true },
+  // LinkedIn's feed, messaging, notifications and jobs, one at a time, in Sixgree's own
+  // browser (app/linkedin/page.js): with the LinkedIn browser plugin, in the desktop app only.
+  { key: 'linkedin', href: '/linkedin', label: 'LinkedIn', own: true, browser: true },
 ];
 
 /**
@@ -37,6 +43,9 @@ const PAGES = [
  */
 export default function AppTabs({ active, isMobile = false, csvMode = false, onMode, children, after }) {
   const scanner = useScanShows().scan;
+  const browserOn = useFeature(LINKEDIN_BROWSER);
+  const panel = useLinkedInPanel();
+  const browser = browserOn && Boolean(panel?.available);
   const base = { padding: isMobile ? '6px 10px' : '8px 16px', fontSize: isMobile ? 11 : 13, textDecoration: 'none', display: 'flex', alignItems: 'center' };
   return (
     <div id="main-tabs" data-glass-panel="bar" style={{ display: 'flex', gap: isMobile ? 2 : 4, padding: isMobile ? 2 : 3, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
@@ -48,7 +57,7 @@ export default function AppTabs({ active, isMobile = false, csvMode = false, onM
           : <Link key={m.key} href={`/?mode=${m.key}`} className="sd-tab" aria-current={on ? 'page' : undefined} style={base}>{label}</Link>;
       })}
       {children}
-      {PAGES.filter((p) => (IS_DEMO ? false : p.own ? !csvMode && (scanner || !p.scanner) : true)).map((p) => (
+      {PAGES.filter((p) => (IS_DEMO ? false : p.own ? !csvMode && (scanner || !p.scanner) && (browser || !p.browser) : true)).map((p) => (
         <Link key={p.key} href={p.href} title={p.title} className="sd-tab" aria-current={active === p.key ? 'page' : undefined} style={base}>
           {p.label}{p.badge && <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>{p.badge}</span>}
         </Link>
