@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The scan light.** While a scan runs, a small light at the top right says what it needs from
+  you, without the chimes: green to click Next, yellow while it reads or waits for you to scroll,
+  red to wait for a page to load, go back, or because it has stopped. Each colour has its own
+  shape and words too. Click it for the instruction in large type with whose list and which
+  page; for a scan that runs by itself, a briefing of whose circle, page N of about M, people
+  found, their ring's fill, today's searches, about how long is left, and Stop.
+
+### Changed
+- **Scanning by hand says each change the moment it happens** (the scanner plugins, 1.0.1): on a
+  new page after Next, a page still loading, back on their list, and their Experience showing,
+  scrolled past or back, so the scan light follows you at once instead of seconds later.
+
 ## [2.0.0] - 2026-10-14
 
 Sixgree no longer includes a scanner. It maps the Connections.csv you export, and scanning, if you want it, comes from the Auto scan or Manual scan plugin in Settings → Plugins. Everything you've mapped stays.

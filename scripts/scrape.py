@@ -4595,6 +4595,7 @@ def _read_experience_by_hand(page, responses, name):
     best = None           # (dom, data, count): the fullest read so far
     foot_at = None        # when you first reached the foot of their profile, having scrolled
     foot_height = None    # how tall the page was then: still growing means still loading
+    shown = None          # their empty Experience: "on" screen, "past" it, or "up" (told to scroll back up to it)
     said = set()
     # Until it's found, MANUAL_DIG_WAIT; once found, it reads on as you scroll (MANUAL_DIG_READ_MAX).
     while found_at is not None or time.time() < deadline:
@@ -4653,10 +4654,24 @@ def _read_experience_by_hand(page, responses, name):
             # second, slower try read it). Said once, with time to go back up to it.
             rect = dom.get("rect") or {}
             empty_at = empty_at or now
+            above = rect.get("bottom") is not None and rect["bottom"] < 0
+            # Said the moment it changes, once each time (the app's scan light reads
+            # these; the notes below come seconds later): on screen with no jobs yet,
+            # back at it after being told to scroll up, or scrolled past it again.
+            if not above and shown != "on":
+                if shown in (None, "up"):
+                    where = f"back at {name}'s Experience" if shown == "up" else f"{name}'s Experience is showing"
+                    print(f"  ({where}; its jobs are still loading)", flush=True)
+                shown = "on"
+            elif above and shown == "on":
+                if "empty" in said:
+                    print(f"  ({name}'s Experience is above: scroll back up to it)", flush=True)
+                shown = "up" if "empty" in said else "past"
             if now - empty_at >= MANUAL_DIG_EMPTY and "empty" not in said:
                 said.add("empty")
                 deadline = max(deadline, now + MANUAL_DIG_EMPTY_WAIT)
-                if rect.get("bottom") is not None and rect["bottom"] < 0:
+                if above:
+                    shown = "up"
                     print(f"{NEEDS_YOU} {name}'s Experience hasn't loaded their jobs: LinkedIn loads them only "
                           f"while it's on screen. Scroll back up to Experience and stop there a moment.", flush=True)
                 else:
@@ -4895,6 +4910,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     said, waiting = set(), {}      # each "why it waits" said once, after MANUAL_SAY seconds of it
     streak = 0                     # pages read in a row: each read chime climbs one step (lib/chimes.js)
     tapped = {"at": None}          # when the last Next tap played
+    on_page = None                 # the page the window was last seen on: a change is said at once (note)
+    away = False                   # the window has been off their list since it was last on it
+    loading = set()                # the pages "is loading" was said for
 
     def tap():
         """The Next chime, once a click."""
@@ -4923,6 +4941,12 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
 
     def tell(what):
         print(f"{NEEDS_YOU} {what}", flush=True)
+
+    def note(what):
+        """Say a change the moment it happens, once (the app's scan light reads these,
+        lib/scan-light.js): the wait notes come only after MANUAL_SAY seconds, and
+        never say when a wait is over."""
+        print(f"  ({what})", flush=True)
 
     def wait_note(key, what):
         """Say why nothing is read yet, once, when it has been so for MANUAL_SAY seconds."""
@@ -4968,6 +4992,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 _pushed_back(page, reach, why)
                 status, how = "pushback", "pushback"
                 break
+            away = True
             wait_note(("away", url.split("?")[0]), f"the window isn't on {bridge_name}'s list. Go back to it to carry on.")
             continue
         # Which page this is: the page bar's highlighted number, as LinkedIn shows it.
@@ -4988,6 +5013,21 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             continue
         else:
             pg = _url_page(url)
+        # Where the window is, said the moment it changes: back on their list, or
+        # on another page (after Next, say). The page it opened at needs nothing
+        # said: the opening line says what to do there.
+        if away:
+            away, on_page = False, pg
+            note(f"back on their list, page {pg}")
+        elif on_page is None:
+            on_page = pg
+        elif pg != on_page:
+            on_page = pg
+            if pg not in done:
+                note(f"on page {pg}: scroll to its bottom and it's read")
+            elif pg == last_read or ("again", pg) in said:
+                # Read already, and "already read" below won't say it (again).
+                note(f"on page {pg}, which is read: click Next to page {pg + 1}")
         if pg not in counted:
             left, kind = searches_left()
             if left <= 0:
@@ -5022,6 +5062,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         if last_links is not None and links == last_links:
             # The page bar has moved on but the people haven't yet: reading now
             # would save the last page's people as this one's.
+            if pg not in loading:
+                loading.add(pg)
+                note(f"page {pg} is loading")
             wait_note(("same", pg), f"page {pg} still shows the last page's people. It's read once it changes.")
             continue
         try:
@@ -5045,6 +5088,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 print(f"  Page {pg}: LinkedIn hides the {hidden} people on it (\"LinkedIn Member\"), "
                       f"so there's no one to read there.")
             else:
+                if pg not in loading:
+                    loading.add(pg)
+                    note(f"page {pg} is loading")
                 wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if slug not in c.get("profileUrl", "")]

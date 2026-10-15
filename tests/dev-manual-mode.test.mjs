@@ -634,6 +634,57 @@ out.update({'people': len(people), 'status': status, 'last': reach['last'], 'rea
   }
 });
 
+// The app's own two patterns for a page read and what it found (app/api/scraper/route.js
+// PAGE_READ, PAGE_FOUND), taken from its source so a change there is checked here too.
+function routePattern(name) {
+  const route = readFileSync(new URL('../app/api/scraper/route.js', import.meta.url), 'utf8');
+  const m = route.match(new RegExp(`const ${name} = /(.+)/;`));
+  return new RegExp(m[1]);
+}
+
+test('manual mode says each change the moment it happens, once: on a new page, a page loading, back on their list', (t) => {
+  // For the scan light (lib/scan-light.js): the wait notes come only after MANUAL_SAY
+  // seconds and never say a wait is over, so after Next the light would still say
+  // "Click Next", and "go back" would stay red after you had.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}
+class Wander(ManualPage):
+    """Off their list (your feed) from 30 to 45 seconds."""
+    @property
+    def url(self):
+        u = ManualPage.url.fget(self)
+        return 'https://www.linkedin.com/feed/' if 30 <= clock.t - NOW < 45 else u
+page = Wander(4, [[3, 'foot'], [6, 'next'], [9, 'foot'], [50, 'next'], [53, 'foot'], [75, 'close']], lag=12)
+out.update(read_by_hand(page, total=40))`);
+    if (!r) return;
+    assert.equal(r.out.people, 30);
+    const count = (re) => (r.log.match(re) || []).length;
+    assert.equal(count(/^ {2}\(on page 2: scroll to its bottom and it's read\)$/gm), 1, 'after Next, at once and once');
+    assert.equal(count(/^ {2}\(on page 3: scroll to its bottom and it's read\)$/gm), 1);
+    assert.equal(count(/\(on page 1\b/g), 0, 'the page it opened at: the opening line said what to do');
+    assert.equal(count(/^ {2}\(page 2 is loading\)$/gm), 1, 'the old people still showing, said once');
+    assert.equal(count(/^ {2}\(back on their list, page 2\)$/gm), 1);
+    const at = (re) => r.log.search(re);
+    assert.ok(at(/\(on page 2: scroll/) < at(/\(page 2 is loading\)/), 'on the page, then loading');
+    assert.ok(at(/\(page 2 is loading\)/) < at(/Page 2\.\.\. 10 found/), 'loading, then read');
+    assert.ok(at(/\(waiting: the window isn't on Invented Bridge's list/) < at(/\(back on their list, page 2\)/), 'away, then back');
+    // The 8-second notes are still there, for people reading the log.
+    assert.match(r.log, /\(waiting: page 2 still shows the last page's people/);
+    // The app still counts the pages the same way: three read, ten people each.
+    const lines = r.log.split('\n').map((l) => l.replace(/\s+$/, '')).filter(Boolean);
+    const PAGE_READ = routePattern('PAGE_READ');
+    const PAGE_FOUND = routePattern('PAGE_FOUND');
+    assert.equal(lines.filter((l) => PAGE_READ.test(l)).length, 3, 'none of the new lines is taken for a page');
+    assert.deepEqual(lines.map((l) => l.match(PAGE_FOUND)?.[1]).filter(Boolean), ['10', '10', '10']);
+    assert.equal(needsYou(lines), null, 'and the read is over once it says so');
+    assert.match(needsYou(lines.slice(0, lines.findIndex((l) => l.includes('(page 2 is loading)')) + 1)), /^page 1 is read/,
+      'the new lines leave "LinkedIn needs you" as it was');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('manual mode: while the page bar is drawn again between pages, no page is guessed from the address', (t) => {
   // Blake's log, 2026-10-12: "scroll to the bottom of page 1" on the way from page 55 to 56,
   // with a search counted for a page 1 nobody opened.

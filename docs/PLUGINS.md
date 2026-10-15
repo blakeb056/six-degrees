@@ -326,7 +326,7 @@ kept, listed with why, and not used.
 ## Building the scanner's packages
 
 ```bash
-npm run build:plugins                       # → dist/plugins/auto-scan-1.0.0.sgplugin, manual-scan-1.0.0.sgplugin
+npm run build:plugins                       # → dist/plugins/auto-scan-1.0.1.sgplugin, manual-scan-1.0.1.sgplugin
 node scripts/build-plugin.mjs --version=1.0.1 --out=some/folder
 node scripts/build-plugin.mjs --catalog http://127.0.0.1:4848   # also dist/plugins/catalog.json, naming both there
 ```
