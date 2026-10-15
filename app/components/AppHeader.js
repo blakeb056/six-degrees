@@ -3,6 +3,7 @@
 // The header on every page that has the app's tabs: the name on the left, the
 // tabs in the exact middle of the window, and the same buttons on the right
 // everywhere — Settings, notifications, ↻ Check for new and your profile.
+// While a scan runs, the scan light comes first of them (ScanLight).
 // Blake, 2026-10-03: on Paths, Outlink and Scan "the profile settings and
 // refresh buttons aren't there, every section should have the same buttons",
 // and "align the button bar to the exact middle".
@@ -23,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import AppTabs from './AppTabs';
 import AutoScanButton from './AutoScanButton';
 import ScanTrail from './ScanTrail';
+import ScanLight from './ScanLight';
 import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
 import useScanner, { useScanShows, useCircleMode } from './useScanner';
@@ -71,7 +73,8 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
   const isMobile = mobileProp ?? mobileSeen;
   const own = !IS_DEMO && !csvMode;   // scanning and notifications are for your own network
   // Auto scan and Check for new come with the auto plugin, or the built-in scanner (lib/scanner-capabilities.js).
-  const auto = useScanShows().auto;
+  const shows = useScanShows();
+  const auto = shows.auto;
   // Auto scan only while circle scans run Automatic: By hand, it isn't offered at all (circleMode).
   const mode = useCircleMode();
   const autoScan = auto && mode !== 'manual';
@@ -97,6 +100,8 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
           <div style={{ alignSelf: 'end', position: 'relative', top: ROW_GAP + PAD_Y, zIndex: 2 }}>{tabs}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', justifySelf: 'end', gap: isMobile ? 4 : 8 }}>
+          {/* While a scan runs: what it needs from you, green, yellow or red (ScanLight). Nothing otherwise. */}
+          {own && shows.scan && <ScanLight isMobile={isMobile} />}
           {/* Settings: also in CSV or sample mode and on phones, so updates stay reachable */}
           {!IS_DEMO && <SettingsGear isMobile={isMobile} />}
           {own && <NotificationBell isMobile={isMobile} onOpen={onOpenNote} openId={openNoteId} />}

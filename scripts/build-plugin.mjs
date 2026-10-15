@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build the scanner's two plugin packages from the app's own scanner files:
 //
-//   node scripts/build-plugin.mjs [--version=1.0.0] [--out=dist/plugins] [--catalog <base-url>]
+//   node scripts/build-plugin.mjs [--version=1.0.1] [--out=dist/plugins] [--catalog <base-url>]
 //   (the version is lib/plugins-shipped.js SHIPPED_PLUGIN_VERSION unless given)
 //   npm run build:plugins
 //

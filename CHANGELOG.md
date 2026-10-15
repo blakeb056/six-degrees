@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The scan light.** While a scan runs, a small light at the top right says what it needs from
+  you, without the chimes: green to click Next, yellow while it reads or waits for you to scroll,
+  red to wait for a page to load, go back, or because it has stopped. Each colour has its own
+  shape and words too. Click it for the instruction in large type with whose list and which
+  page; for a scan that runs by itself, a briefing of whose circle, page N of about M, people
+  found, their ring's fill, today's searches, about how long is left, and Stop.
 - **Sixgree tells you when there's a new version.** Once a day, while it's open, it asks GitHub
   for the newest release's version number: one request, the same one *Check for updates* makes,
   with nothing about you in it (GitHub sees an ordinary request from your computer). When
@@ -16,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Nothing is ever downloaded until you choose to update. It's on to begin with: untick *Check
   for updates once a day* in Settings → Updates to turn it off, and it asks only when you press
   *Check for updates*. Offline, it says nothing and tries again the next day.
+
+### Changed
+- **Scanning by hand says each change the moment it happens** (the scanner plugins, 1.0.1): on a
+  new page after Next, a page still loading, back on their list, and their Experience showing,
+  scrolled past or back, so the scan light follows you at once instead of seconds later.
 
 ## [2.0.0] - 2026-10-14
 

@@ -573,6 +573,46 @@ out['never_waited'] = round(clock.t - start)`);
   }
 });
 
+test('manual Dig deeper says each change to their Experience the moment it happens, once', (t) => {
+  // For the scan light (lib/scan-light.js): showing with no jobs yet, scrolled past it
+  // after being told to stay, and back at it, each said at once and once.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${WINDOW}
+EMPTY_ON = {'found': True, 'how': 'heading', 'items': [], 'runs': [], 'rect': {'top': 100, 'bottom': 500, 'vh': 720}}
+EMPTY_UP = {'found': True, 'how': 'heading', 'items': [], 'runs': [], 'rect': {'top': -900, 'bottom': -400, 'vh': 720}}
+class Wobble(Window):
+    def evaluate(self, js, *a):
+        if js == ns['EXPERIENCE_JS'] and self.at == PROFILE:
+            # Not there, then on screen with no jobs, scrolled past it, back on it, then its jobs.
+            t = clock.t - NOW
+            if t < 10: return {'found': False}
+            if t < 20: return EMPTY_ON
+            if t < 30: return EMPTY_UP
+            if t < 40: return EMPTY_ON
+            return {'found': True, 'how': 'heading', 'items': ITEMS, 'rect': {'top': 100, 'bottom': 500, 'vh': 720}}
+        return super().evaluate(js, *a)
+w = Wobble()
+w.goto(PROFILE)
+result, note = ns['_read_experience_by_hand'](w, [], 'Invented Bridge')
+out['status'] = result['status']`);
+    if (!r) return;
+    assert.equal(r.out.status, 'read');
+    const count = (re) => (r.log.match(re) || []).length;
+    assert.equal(count(/^ {2}\(Invented Bridge's Experience is showing; its jobs are still loading\)$/gm), 1);
+    assert.equal(count(/^ {2}\(Invented Bridge's Experience is above: scroll back up to it\)$/gm), 1);
+    assert.equal(count(/^ {2}\(back at Invented Bridge's Experience; its jobs are still loading\)$/gm), 1);
+    const at = (re) => r.log.search(re);
+    assert.ok(at(/Experience is showing;/) < at(/Experience is above:/));
+    assert.ok(at(/Experience is above:/) < at(/back at Invented Bridge's Experience/));
+    assert.ok(at(/back at Invented Bridge's Experience/) < at(/LinkedIn needs you: their Experience is being read/));
+    // The note seconds later is still said, for people reading the log.
+    assert.match(r.log, /\(waiting: Invented Bridge's Experience is on screen and its jobs are still loading\)/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('their connection count is kept with where their list got to, and a later read without one keeps it', (t) => {
   const home = scratch();
   try {
