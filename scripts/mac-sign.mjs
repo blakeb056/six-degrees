@@ -533,15 +533,25 @@ export function stapleValid(file, { env = process.env } = {}) {
  */
 export function stapleCheck(file, { env = process.env, log = () => {}, attempts = 4, retrySeconds = 20 } = {}) {
   let last = '';
+  let unreachable = false;
   for (let i = 1; i <= attempts; i++) {
     const v = capture('xcrun', ['stapler', 'validate', file], { env });
     if (v.status === 0) return { ok: true, text: lastLines(v.stdout || v.stderr) };
     last = lastLines(v.stderr || v.stdout);
+    unreachable = APPLE_UNREACHABLE.test(last);
     log(`  checking ${path.basename(file)}'s stapled ticket didn't work yet (try ${i} of ${attempts}): ${last}`);
     if (i < attempts) pause(retrySeconds);
   }
-  return { ok: false, text: last };
+  return { ok: false, text: last, unreachable };
 }
+
+/**
+ * stapler's words when it couldn't reach Apple's ticket server at all (the
+ * connection dropped), as opposed to Apple answering that there is no ticket.
+ * 2.1.0's dry run hit this on every try for two minutes, after the same disk
+ * image had been stapled and validated by staple() a minute before.
+ */
+export const APPLE_UNREACHABLE = /NSURLErrorDomain|network connection was lost|timed out|could not connect|offline/i;
 
 /**
  * What Gatekeeper says about `file`: an app ('exec') or a disk image ('open',

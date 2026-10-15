@@ -934,7 +934,11 @@ function checkImage(image) {
     if (NOTARIZE && !problem) {
       const verdict = assess(inside, 'exec');
       const ticket = stapleCheck(inside, { log: console.log });
-      if (!ticket.ok) problem = `it has no valid stapled notarization ticket (stapler: ${ticket.text || 'no answer'})`;
+      // Apple's ticket server out of reach (not "no ticket"): staple() already validated this
+      // ticket with Apple, so Gatekeeper's own verdict on the app here is enough, said out loud.
+      const unreachableButAccepted = !ticket.ok && ticket.unreachable && verdict.ok;
+      if (unreachableButAccepted) console.log("  Apple's ticket server couldn't be reached to check again; Gatekeeper accepts the app as notarized, and staple() validated its ticket");
+      if (!ticket.ok && !unreachableButAccepted) problem = `it has no valid stapled notarization ticket (stapler: ${ticket.text || 'no answer'})`;
       else if (!verdict.ok && !verdict.disabled) problem = `Gatekeeper doesn't accept it as notarized (${oneLine(verdict.text)})`;
     }
     const escaping = execFileSync('find', [inside, '-type', 'l'])
@@ -957,7 +961,9 @@ function checkImage(image) {
   if (NOTARIZE) {
     const verdict = assess(image, 'open');
     const imageTicket = stapleCheck(image, { log: console.log });
-    if (!imageTicket.ok) fail(`${path.basename(image)} has no valid stapled notarization ticket (stapler: ${imageTicket.text || 'no answer'}).`);
+    const imageUnreachableButAccepted = !imageTicket.ok && imageTicket.unreachable && verdict.ok;
+    if (imageUnreachableButAccepted) console.log(`  Apple's ticket server couldn't be reached to check ${path.basename(image)} again; Gatekeeper accepts it as notarized, and staple() validated its ticket`);
+    if (!imageTicket.ok && !imageUnreachableButAccepted) fail(`${path.basename(image)} has no valid stapled notarization ticket (stapler: ${imageTicket.text || 'no answer'}).`);
     if (!verdict.ok && !verdict.disabled) fail(`Gatekeeper doesn't accept ${path.basename(image)} as notarized: ${oneLine(verdict.text)}`);
     if (verdict.disabled) console.log(gatekeeperOff());
   }

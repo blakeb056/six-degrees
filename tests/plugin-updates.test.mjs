@@ -352,9 +352,12 @@ test('the real turn asks the test servers it is given, for the app and the plugi
   pluginsOn(true);
   install(auto('1.0.1'));
   publish(auto('1.0.2'));
-  releases.setRelease({ version: '2.0.1', assets: [] });
+  // One release above this copy's version, whatever it is, so the test holds through every release.
+  const [maj, min, pat] = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version.split('.').map(Number);
+  const newer = `${maj}.${min}.${pat + 1}`;
+  releases.setRelease({ version: newer, assets: [] });
   const r = await checkForUpdateNow({ env: { SIX_DEGREES_TEST_RELEASES: releases.origin, ...LIST_ENV() }, now: T0 });
-  assert.equal(r.notified, true, 'the app: 2.0.1');
+  assert.equal(r.notified, true, `the app: ${newer}`);
   assert.deepEqual(r.plugins.notified, ['auto-scan']);
   assert.deepEqual(releases.requests, [`GET /repos/${SLUG}/releases/latest`]);
   assert.deepEqual(server.requests.map((q) => q.path), ['/catalog.json'], 'one GET of the list, no package');
