@@ -166,10 +166,17 @@ jobs:
             [ "$gatekeeper" = on ] || echo "::warning::Gatekeeper's assessments are off on this runner: checking the stapled tickets only"
             verdict="$(spctl -a -vvv -t open --context context:primary-signature "$dmg" 2>&1 || true)"; echo "$verdict"
             [ "$gatekeeper" = off ] || echo "$verdict" | grep -qx 'source=Notarized Developer ID' || { echo "::error::Gatekeeper doesn't accept the disk image as notarized"; exit 1; }
-            xcrun stapler validate "$dmg" || { echo "::error::The disk image has no stapled ticket"; exit 1; }
+            # stapler validate asks Apple's ticket server, which sometimes drops the connection
+            # (2.0.0's release and 2.1.0's dry run): ask up to 4 times, 20 s apart (as mac-sign.mjs stapleCheck).
+            # Apple's server out of reach (not "no ticket") with Gatekeeper on and accepting it as
+            # notarized just above: a warning, since the build's staple() validated the ticket.
+            staple_ok() { for i in 1 2 3 4; do out="$(xcrun stapler validate "$1" 2>&1)" && return 0; echo "$out" | tail -2; [ $i -lt 4 ] && sleep 20; done
+              if [ "$gatekeeper" = on ] && echo "$out" | grep -qiE 'NSURLErrorDomain|network connection was lost|timed out'; then echo "::warning::Apple's ticket server was out of reach; Gatekeeper accepts $1 as notarized"; return 0; fi
+              return 1; }
+            staple_ok "$dmg" || { echo "::error::The disk image has no stapled ticket"; exit 1; }
             verdict="$(spctl -a -vvv -t exec "$app" 2>&1 || true)"; echo "$verdict"
             [ "$gatekeeper" = off ] || echo "$verdict" | grep -qx 'source=Notarized Developer ID' || { echo "::error::Gatekeeper doesn't accept the installed app as notarized"; exit 1; }
-            xcrun stapler validate "$app" || { echo "::error::The installed app has no stapled ticket"; exit 1; }
+            staple_ok "$app" || { echo "::error::The installed app has no stapled ticket"; exit 1; }
             codesign -dv "$app" 2>&1 | grep -q 'flags=0x[0-9a-f]*(runtime)' || { echo "::error::The app isn't signed with the hardened runtime"; exit 1; }
             echo "Notarized and stapled: the disk image and the installed app."
           fi

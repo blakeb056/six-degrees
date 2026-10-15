@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **The Map tab: your network on a world map.** A new tab beside Network Circle, Degrees and
   Separation puts everyone on a map by where their profile says they are: one dot per place,
-  sized by how many people are there and coloured by the strongest tier among them, or by their
-  nearest degree. Zoom and pan; click a place for who's there (name, title, tier, degree) and a
+  sized by how many people are there and split, like a pie, by the mix of their tiers or their
+  degrees. Zoom and pan; click a place for who's there (name, title, tier, degree) and a
   person for their card. The Filters panel picks tiers and degrees, as on Network Circle. It reads
   "City, Region, Country", the usual metro forms ("Greater Seattle Area", "London Area, United
   Kingdom", "San Francisco Bay Area") and a country alone, which sits at the country's middle,
@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the list of places ship with the app (their sources and credits are in docs/PLACES.md), and
   nothing is looked up online. The sample network's invented people have invented places, so the
   tab shows something there too.
+
+## [2.1.0] - 2026-10-15
+
+A scan light that tells you what a scan needs, update notices for the app and its plugins, and scans by hand that remember every page they read.
+
+### Added
 - **The scan light.** While a scan runs, a small light at the top right says what it needs from
   you, without the chimes: green to click Next, yellow while it reads or waits for you to scroll,
   red to wait for a page to load, go back, or because it has stopped. Each colour has its own
