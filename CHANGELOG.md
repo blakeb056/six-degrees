@@ -14,10 +14,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connections when their cards show them. With *Dig deeper* on, the profile's own top card says
   where they are too. Only a line that reads as a place is kept, never the headline, the mutual
   line or the follower count, and a scan that shows none never clears one already read. The
-  person card shows where they are under their headline, and the network data
-  carries it. A follower count from a list counts in their score the way a profile's does, until *Dig
+  person card shows where they are under their headline, and the Map tab
+  places it. A follower count from a list counts in their score the way a profile's does, until *Dig
   deeper* reads their profile, whose count then wins. A network file can say where someone is
   (`location`); a Connections export has no locations, so an import of one leaves them empty.
+- **The Map tab: your network on a world map.** A new tab beside Network Circle, Degrees and
+  Separation puts everyone on a map by where their profile says they are: one dot per place,
+  sized by how many people are there and split, like a pie, by the mix of their tiers or their
+  degrees. Zoom and pan; click a place for who's there (name, title, tier, degree) and a
+  person for their card. The Filters panel picks tiers and degrees, as on Network Circle. It reads
+  "City, Region, Country", the usual metro forms ("Greater Seattle Area", "London Area, United
+  Kingdom", "San Francisco Bay Area") and a country alone, which sits at the country's middle,
+  marked approximate. Anything it can't place is counted and listed at the bottom left, never
+  guessed, beside how many people have no location yet. It all works offline: the world map and
+  the list of places ship with the app (their sources and credits are in docs/PLACES.md), and
+  nothing is looked up online. The sample network's invented people have invented places, so the
+  tab shows something there too.
 
 ## [2.1.0] - 2026-10-15
 

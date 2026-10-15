@@ -29,6 +29,7 @@ const DEGREE_IS = {
     4: 'ranked along a chain of scanned circles', 5: 'ranked along a chain of scanned circles', 6: 'ranked along a chain of scanned circles',
   },
   paths:{ 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
+  map: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
 };
 
 /**

@@ -10,8 +10,13 @@
  * only changes when this script does, and diffs stay reviewable.
  *
  *   node scripts/gen-synthetic.mjs [--seed 20260824] [--out public/demo-data.json]
+ *   node scripts/gen-synthetic.mjs --locations-only [--out public/demo-data.json]
+ *
+ * --locations-only gives the people already in the file their invented
+ * locations (SAMPLE_PLACES) and changes nothing else, so the Map tab has
+ * something to show without the rest of the sample being drawn again.
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { scoreNetwork, explainScore } from '../lib/scoring.js';
 
@@ -78,6 +83,55 @@ const TITLES = [
   'Marketing Intern','Research Assistant',
 ];
 
+// Where the sample's people are, for the Map tab: invented, plausible, and
+// written the ways profiles write them ("City, Region, Country", the platform's
+// "Greater X" and "X Area" forms, a country alone). Weighted like a network
+// that leans on a few hubs. About one in ten has no location, as a network
+// mid-scan does, and a couple of entries name no place at all, so the tab's
+// "no location yet" and "not recognised" lists have something in them.
+const SAMPLE_PLACES = [
+  ['San Francisco Bay Area', 9], ['San Francisco, California, United States', 4], ['New York City Metropolitan Area', 8],
+  ['New York, New York, United States', 4], ['Brooklyn, New York, United States', 2], ['Seattle, Washington, United States', 5],
+  ['Greater Seattle Area', 3], ['Greater Boston', 4], ['Austin, Texas, United States', 4], ['Dallas-Fort Worth Metroplex', 3],
+  ['Greater Chicago Area', 3], ['Chicago, Illinois, United States', 2], ['Los Angeles Metropolitan Area', 4],
+  ['Denver, Colorado, United States', 2], ['Greater Philadelphia', 2], ['Atlanta, Georgia, United States', 2],
+  ['Miami-Fort Lauderdale Area', 2], ['Washington DC-Baltimore Area', 3], ['Raleigh-Durham-Chapel Hill Area', 1],
+  ['Orlando, Florida, United States', 2], ['Nashville Metropolitan Area', 1], ['Portland, Oregon, United States', 1],
+  ['Minneapolis, Minnesota, United States', 1], ['Salt Lake City, Utah, United States', 1], ['United States', 2],
+  ['Toronto, Ontario, Canada', 2], ['Greater Toronto Area, Canada', 1], ['Vancouver, British Columbia, Canada', 1],
+  ['Montreal, Quebec, Canada', 1], ['London, England, United Kingdom', 4], ['London Area, United Kingdom', 2],
+  ['Manchester, England, United Kingdom', 1], ['Edinburgh, Scotland, United Kingdom', 1], ['Dublin, County Dublin, Ireland', 1],
+  ['Berlin, Berlin, Germany', 2], ['Munich, Bavaria, Germany', 1], ['Germany', 1], ['Amsterdam, North Holland, Netherlands', 2],
+  ['Paris, \u00cele-de-France, France', 2], ['Greater Paris Metropolitan Region', 1], ['Barcelona, Catalonia, Spain', 1],
+  ['Stockholm, Stockholm County, Sweden', 1], ['Zurich, Switzerland', 1], ['Tel Aviv-Yafo, Tel Aviv District, Israel', 1],
+  ['Dubai, United Arab Emirates', 1], ['Bengaluru, Karnataka, India', 2], ['Greater Bengaluru Area', 1],
+  ['Mumbai Metropolitan Region', 1], ['Singapore', 2], ['Tokyo, Japan', 1], ['Sydney, New South Wales, Australia', 1],
+  ['Greater Melbourne Area', 1], ['S\u00e3o Paulo, S\u00e3o Paulo, Brazil', 1], ['Mexico City, Mexico', 1],
+  ['Remote', 1], ['Planet Earth', 1], ['', 12],
+];
+
+/** A person's invented location, from their profile address alone, so it never moves the other draws. */
+function sampleLocation(profileUrl) {
+  let h = 0x811c9dc5;
+  for (const ch of String(profileUrl)) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193);
+  const total = SAMPLE_PLACES.reduce((s, [, w]) => s + w, 0);
+  let r = ((h >>> 0) / 4294967296) * total;
+  for (const [place, w] of SAMPLE_PLACES) if ((r -= w) < 0) return place || null;
+  return null;
+}
+
+/** A row with its location, placed after its role, as the generator writes it. */
+function withLocation(row) {
+  const out = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (k === 'location') continue;
+    out[k] = v;
+    if (k === 'role') out.location = sampleLocation(row.profile_url);
+  }
+  if (!('location' in out)) out.location = sampleLocation(row.profile_url);
+  return out;
+}
+
 // ── scoring: the app's own model (lib/scoring.js), nothing copied ──
 // Invented companies are unknown to its list of real ones, so they get scores
 // the way a user sets their own (the Scores tab), spread across the ladder so
@@ -126,6 +180,15 @@ function main() {
   const seed = Number(args[args.indexOf('--seed') + 1]) || 20260824;
   const outArg = args.indexOf('--out');
   const out = outArg > -1 ? args[outArg + 1] : 'public/demo-data.json';
+  if (args.includes('--locations-only')) {
+    const data = JSON.parse(readFileSync(out, 'utf8'));
+    data.degree1 = data.degree1.map(withLocation);
+    data.degree2 = data.degree2.map(withLocation);
+    writeFileSync(out, JSON.stringify(data));
+    const all = [...data.degree1, ...data.degree2];
+    console.log(`wrote ${out}: ${all.filter((r) => r.location).length} of ${all.length} rows have a location`);
+    return;
+  }
 
   const rand = rng(seed);
   const used = new Set();
@@ -150,6 +213,7 @@ function main() {
       headline: company ? `${title} at ${company}` : title,
       company,
       role: title,
+      location: sampleLocation(`https://www.linkedin.com/in/${slug}`),
       profile_url: `https://www.linkedin.com/in/${slug}`,
       profile_image_url: null,        // invented people have no photographs
       connected_date: null,

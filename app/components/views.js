@@ -17,9 +17,10 @@ import GridView from './GridView';
 import ListView from './ListView';
 import RingsView from './RingsView';
 import SeparationView from './SeparationView';
+import WorldMap from './WorldMap';
 
 /**
- * `modes` — which top-level tab the view belongs in ('network', 'degrees', 'separation').
+ * `modes` — which top-level tab the view belongs in ('network', 'degrees', 'separation', 'map').
  * `allDegree2` — give it every 2nd-degree row rather than the mode-filtered
  *   set. No view wants it now (Orbit did, before it became a Galaxy layout);
  *   declared here rather than hidden in a branch, because an exception you
@@ -40,6 +41,8 @@ export const VIEWS = {
   rings:    { component: RingsView,  modes: ['degrees'],            label: 'Pyramid',       icon: '🔺', desc: 'Tier hierarchy' },
   list:     { component: ListView,   modes: ['degrees'],            label: 'List',          icon: '☰', desc: 'Ranked power list' },
   grid:     { component: GridView,   modes: ['network', 'degrees'], label: 'Grid',          icon: '▦', desc: 'Cards' },
+  // Map is a tab of its own (Blake, 2026-10-14): everyone the filters show, by where they are.
+  worldmap: { component: WorldMap,   modes: ['map'],                label: 'World map',     icon: '🗺', desc: 'Your network on a world map, by location' },
 };
 
 /**
@@ -47,7 +50,7 @@ export const VIEWS = {
  * it is also where resolveView lands when the chosen view isn't a Degrees one
  * (Galaxy, say, carried over from Network Circle); then Separation.
  */
-const ORDER = ['galaxy', 'chain', 'unscanned', 'separation', 'rings', 'list'];
+const ORDER = ['galaxy', 'chain', 'unscanned', 'separation', 'rings', 'list', 'worldmap'];
 
 export function viewsForMode(mode) {
   return ORDER

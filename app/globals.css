@@ -758,3 +758,9 @@ html[data-theme="contrast"] .sd-auto-off button { outline: none; }
 /* On a light look the word is ink and the gold lives in its dots (Blake, 2026-10-05:
    "black text on white background and with the color dots"). */
 html[data-mode="light"] .sd-wordmark { color: var(--sd-fg-1, #111827); }
+
+/* The Map tab's dots (app/components/WorldMap.js): no box round a dot clicked
+   with the mouse; from the keyboard, a ring in the look's accent instead. */
+.sd-map-dot { outline: none; }
+.sd-map-dot .sd-map-focus { opacity: 0; }
+.sd-map-dot:focus-visible .sd-map-focus { opacity: 1; }
