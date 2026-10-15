@@ -4,6 +4,7 @@
 |---|---|
 | [`SIX-DEGREES-SPEC.md`](SIX-DEGREES-SPEC.md) | **The law.** Invariants, what "done" means, and what was rejected on purpose. |
 | [`SCRAPING.md`](SCRAPING.md) | User-facing: how to run the scanner, sign in, and what it costs you. |
+| [`PLACES.md`](PLACES.md) | The Map tab: how a location becomes a place on the map, offline, and the map data's credits. |
 | [`NETWORK-FILE.md`](NETWORK-FILE.md) | The network file, format 1.0: how any program hands Sixgree a network to import, and how an import merges. |
 | [`brain/00-START-HERE.md`](brain/00-START-HERE.md) | **Agents start here.** The router and the non-negotiables. |
 | [`brain/MAP.md`](brain/MAP.md) | Which file does what. |

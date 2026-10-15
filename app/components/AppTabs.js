@@ -2,13 +2,14 @@
 
 // The app's tabs, the same on every page (Blake, 2026-10-02: "for paths we
 // need a notch for it so the tabs are visible and continuity is there").
-// Network Circle, Degrees and Separation are views of the map page: there they
-// switch in place (onMode); anywhere else they are links back to it with the
-// tab named (/?mode=…). A page's own sub-tabs go in the notch under this row
+// Network Circle, Degrees, Separation and Map are views of the map page: there
+// they switch in place (onMode); anywhere else they are links back to it with
+// the tab named (/?mode=…). The list is lib/app-tabs.js. A page's own sub-tabs go in the notch under this row
 // (lib/island.js setNotchTabs), which looks for #main-tabs to hang from.
 
 import Link from 'next/link';
 import { IS_DEMO } from '../../lib/demo';
+import { MODES } from '../../lib/app-tabs';
 import { useScanShows } from './useScanner';
 
 // One calm style for every tab (Blake, 2026-10-05: the tabs looked like "gradient
@@ -16,11 +17,6 @@ import { useScanShows } from './useScanner';
 // brighter on hover, and the one you're on a solid pill with the primary words.
 // No gradients and no colour of its own per tab; app/globals.css .sd-tab draws
 // them, so every look, and frosted glass or soft, draws them its way.
-const MODES = [
-  { key: 'network', label: 'Network Circle', short: 'Circle' },
-  { key: 'degrees', label: 'Degrees' },
-  { key: 'separation', label: 'Separation' },
-];
 const PAGES = [
   { key: 'paths', href: '/paths', label: 'Paths', demo: true },
   // Insights isn't a tab: it's in your Profile, behind ✦ Insights (Blake, 2026-10-04:

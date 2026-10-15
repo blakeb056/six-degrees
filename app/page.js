@@ -9,7 +9,7 @@ import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
-import { NETWORK_GRID, DEGREES_GRID, shows, gridCounts, makeGrid, sameGrid, toggleDegree, showsDegree, GRID_DEGREES } from '../lib/tier-grid';
+import { NETWORK_GRID, DEGREES_GRID, MAP_GRID, shows, gridCounts, makeGrid, sameGrid, toggleDegree, showsDegree, GRID_DEGREES } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
@@ -25,6 +25,7 @@ import Link from 'next/link';
 import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
 import { TIER_COLORS } from '../lib/themes';   // the theme's dot colours, filled before anything draws
+import { MODE_KEYS, FIRST_VIEW } from '../lib/app-tabs';
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -84,8 +85,8 @@ function HomeInner() {
   const [degree3, setDegree3] = useState([]);
   // The Filters panel's grid, one for each tab: which tiers show, at which
   // degrees (lib/tier-grid.js). Network Circle starts with your connections
-  // alone; Degrees with everything it has.
-  const [grids, setGrids] = useState({ network: NETWORK_GRID, degrees: DEGREES_GRID });
+  // alone; Degrees with everything it has; Map with everyone, 1st to 3rd.
+  const [grids, setGrids] = useState({ network: NETWORK_GRID, degrees: DEGREES_GRID, map: MAP_GRID });
   const [selected, setSelected] = useState(null);
   const focusNodeRef = useRef(null);
   // A link to someone's circle in Bridge Chains, /?chain=<id> (the Scan page's
@@ -94,8 +95,8 @@ function HomeInner() {
   // changes after this page has rendered, and the map opened on the Galaxy.
   const params = useSearchParams();
   const linkedChain = params.get('chain');
-  // Another page's tab row links back here with the tab named: /?mode=separation (app/components/AppTabs.js).
-  const linkedMode = ['network', 'degrees', 'separation'].includes(params.get('mode')) ? params.get('mode') : null;
+  // Another page's tab row links back here with the tab named: /?mode=separation (app/components/AppTabs.js, lib/app-tabs.js).
+  const linkedMode = MODE_KEYS.includes(params.get('mode')) ? params.get('mode') : null;
   const [chainOpen, setChainOpen] = useState(linkedChain);
   // Whose circle is open in Bridge Chains right now: the right panel follows it.
   const [chainIn, setChainIn] = useState(null);
@@ -104,7 +105,7 @@ function HomeInner() {
   const [stats, setStats] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(true);
-  const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : linkedMode === 'degrees' ? 'chain' : linkedMode === 'separation' ? 'separation' : 'galaxy'));
+  const [visualMode, setVisualMode] = useState(() => (chainOpen ? 'chain' : FIRST_VIEW[linkedMode] || 'galaxy'));
   // A notification opened in the right panel (app/components/NoteDetail.js);
   // one picked on another page arrives as /?note=<id> (app/components/AppHeader.js).
   const [openNote, setOpenNote] = useState(null);
@@ -208,6 +209,9 @@ function HomeInner() {
 
   // Separation is its own tab, built on the same rows as Degrees: your bridges and their circles.
   const isDegreesMode = mode === 'degrees' || mode === 'separation';
+  // Map has a grid of its own, and draws whoever it shows at any degree, as Network Circle does.
+  const isMap = mode === 'map';
+  const gridKey = isDegreesMode ? 'degrees' : isMap ? 'map' : 'network';
   const connections = degree1;
 
   // What the views draw. Memoised because the graph views rebuild their whole
@@ -217,7 +221,7 @@ function HomeInner() {
   // Network Circle draws the degrees picked in the Filter panel, each person
   // once, at the nearest degree they're found (lib/degrees.js).
   const byDegree = useMemo(() => peopleByDegree(degree1, degree2, degree3), [degree1, degree2, degree3]);
-  const grid = isDegreesMode ? grids.degrees : grids.network;
+  const grid = grids[gridKey];
   // Degrees draws your connections (the bridges among them) and their circles;
   // Network Circle draws whoever the grid shows, at any degree.
   // Separation ranks the people past your connections, and every connection is a way
@@ -365,7 +369,7 @@ function HomeInner() {
         active={mode}
         isMobile={isMobile}
         csvMode={csvMode}
-        onMode={(m) => { setMode(m); setSelected(null); setVisualMode(m === 'network' ? 'galaxy' : m === 'degrees' ? 'chain' : 'separation'); }}
+        onMode={(m) => { setMode(m); setSelected(null); setVisualMode(FIRST_VIEW[m] || 'galaxy'); }}
         level={level}
         onOpenNote={openNoteHere}
         openNoteId={linkedNote}
@@ -412,11 +416,11 @@ function HomeInner() {
         <FilterPanel
           collapsed={filterPanelCollapsed}
           onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-          mode={isSeparation ? 'separation' : isDegreesMode ? 'degrees' : 'network'}
+          mode={isSeparation ? 'separation' : isDegreesMode ? 'degrees' : isMap ? 'map' : 'network'}
           visualMode={view.key}
           grid={grid}
           gridCounts={panelCounts}
-          onGridChange={(next) => setGrids((g) => ({ ...g, [isDegreesMode ? 'degrees' : 'network']: next }))}
+          onGridChange={(next) => setGrids((g) => ({ ...g, [gridKey]: next }))}
           // Network Circle's Galaxy: the Shape tab, and the Physics panel's Layout row, pick through here.
           shape={layout}
           onPickShape={pickGalaxyLayout}
