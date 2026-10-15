@@ -94,7 +94,8 @@ export default function SoundSection() {
           </label>
           <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5 }}>
             A tap the moment you click Next, and a chime when each page is read and it&rsquo;s your turn again. Each page in a
-            row chimes a step higher, up {READ_STEPS} steps, and a list you finish gets a flourish.
+            row chimes a step higher, up {READ_STEPS} steps, and a list you finish gets a flourish. Through a break
+            (Scanner settings &rarr; Breaks by hand), a quiet tick each second.
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, opacity: on ? 1 : 0.5 }}>
             <label htmlFor={`${id}-vol`} style={{ fontSize: 12.5, fontWeight: 650 }}>Volume</label>
@@ -110,6 +111,7 @@ export default function SoundSection() {
             <button type="button" style={SMALL} onClick={() => play('next')}>Next tap</button>
             <button type="button" style={SMALL} onClick={() => play(readChime(1))}>Page read</button>
             <button type="button" style={SMALL} onClick={() => play('done')}>List done</button>
+            <button type="button" style={SMALL} onClick={() => play('tick')}>Break tick</button>
             <button type="button" style={{ ...SMALL, color: 'var(--sd-gold, #FFD700)', borderColor: 'rgba(255,215,0,0.4)' }} onClick={playRun}>Play a run</button>
           </div>
           <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6, marginTop: 8 }}>

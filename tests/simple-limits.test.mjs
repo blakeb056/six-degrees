@@ -132,7 +132,7 @@ test('a number the app won\'t take keeps the saved one; there is no monthly or p
     assert.equal(d.limits.daily, 50, String(daily));
   }
   const d = await (await post({ action: 'set-limits', daily: 75, monthly: 0, profiles: 10 })).json();
-  assert.deepEqual(d.limits, { daily: 75, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6 });
+  assert.deepEqual(d.limits, { daily: 75, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: 20 });
 });
 
 test('lifting bypasses the daily limit and the cooldown, for this session only, and writes nothing', async () => {

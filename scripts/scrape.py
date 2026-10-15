@@ -3231,8 +3231,38 @@ def dig_deeper():
     return _scan_settings().get("digDeeper") is True
 
 
+# Breaks by hand (Blake, 2026-10-15: "let's make them wait every 10 pages so that's like
+# 1-10 and then 20 seconds with a ticking sound"). That day he read 70 pages of his own
+# connections by hand in 9.5 minutes, a median of 3.3 s between pages, and LinkedIn warned
+# him about going through a lot of data. 10/12: 305 pages a median of 4 s apart, and the
+# account was restricted. 10/3: 288 pages about 50 s apart, and nothing happened. So in
+# manual mode, after every BREAK_EVERY pages read, the next page waits BREAK_SECONDS
+# (_manual_break). Scanner settings change both ("breakEvery", "breakSeconds" in
+# scan-limits.json); lib/manual-breaks.js says the same numbers (tests/manual-breaks.test.mjs).
+# Auto mode keeps its own pace and is untouched.
+BREAK_EVERY = 10
+BREAK_SECONDS = 20
+BREAK_EVERY_RANGE = (1, 25)
+BREAK_SECONDS_RANGE = (10, 300)
+
+
+def manual_break():
+    """(every, seconds): a break of `seconds` after every `every` pages read by hand.
+    Read from the file each time, so a change reaches a scan under way. A number that
+    isn't a whole number in its range reads as the default, as the app reads it."""
+    data = _scan_settings()
+
+    def pick(key, default, span):
+        v = data.get(key)
+        ok = isinstance(v, int) and not isinstance(v, bool) and span[0] <= v <= span[1]
+        return v if ok else default
+
+    return pick("breakEvery", BREAK_EVERY, BREAK_EVERY_RANGE), pick("breakSeconds", BREAK_SECONDS, BREAK_SECONDS_RANGE)
+
+
 def _chime(name):
-    """Play one of manual mode's chimes (lib/chimes.js): read-1 … read-8, next, done.
+    """Play one of manual mode's chimes (lib/chimes.js): read-1 … read-8, next, done,
+    and tick (once a second through a break, _manual_break).
 
     Settings → Sound turns them off ("chimes": false) and sets how loud
     ("chimeVolume", 0 to 1). The app writes the sounds into the data folder
@@ -4403,12 +4433,17 @@ BRIDGE_RESULTS_JS = r"""
           for (const r of byHref.values()) {
             if (r.name) byName.set(r.name, byName.has(r.name) ? null : r);
           }
-          const nameAt = (l) => {
-            if (byName.has(l)) return byName.get(l);
-            for (const [name, r] of byName) {
-              if (l.startsWith(name) && /^\s*[\u2022\u00b7|,(]/.test(l.slice(name.length))) return r;
+          // The name a line starts a card with ("Ada Stone", "Ada Stone \u2022 2nd"), or undefined.
+          const nameIn = (l) => {
+            if (byName.has(l)) return l;
+            for (const name of byName.keys()) {
+              if (l.startsWith(name) && /^\s*[\u2022\u00b7|,(]/.test(l.slice(name.length))) return name;
             }
             return undefined;
+          };
+          const nameAt = (l) => {
+            const name = nameIn(l);
+            return name === undefined ? undefined : byName.get(name);
           };
           // The rest of a mutual line when the names are drawn above it, each on
           // a line of its own ("Maya Chen" / "and 23 other mutual connections").
@@ -4454,6 +4489,9 @@ BRIDGE_RESULTS_JS = r"""
             }
             const hit = nameAt(l);
             if (hit !== undefined) {
+              // A card of its own: someone this page lists (a name two share, all of them).
+              const name = nameIn(l);
+              for (const r of byHref.values()) if (r.name === name) r.listed = true;
               current = hit;
               shown = 0;
               open = true;
@@ -4474,10 +4512,13 @@ BRIDGE_RESULTS_JS = r"""
             open = false;
           }
 
-          const results = [...byHref.values()]
-            .filter((r) => r.name && r.name.length >= 2)
-            .map(({ named, ...r }) => r);
-          return results;
+          // Who the page lists, and who is only a name in someone's mutual line (Blake,
+          // 2026-10-15: "Page 3... 24 found" on a page of 10). Those names are kept: they
+          // are your own connections, saved by name. They're marked mutualOnly, and
+          // _listed counts the rest. A page whose cards weren't made out marks no one.
+          const results = [...byHref.values()].filter((r) => r.name && r.name.length >= 2);
+          const anyListed = results.some((r) => r.listed);
+          return results.map(({ named, listed, ...r }) => (anyListed && !listed ? { ...r, mutualOnly: true } : r));
         }
         """
 
@@ -4945,6 +4986,20 @@ def _back_to_start(page, start_page, had_bar):
     else:
         print(f"  After Previous it's on page {now_on}, not page {start_page}.")
     return False
+
+
+def _listed(found):
+    """How many people a results page lists (its cards), from what BRIDGE_RESULTS_JS read.
+
+    Each card's mutual line links its names to your own connections, so they're on the
+    page as people too: "Page 3... 24 found" for a page of 10 (Blake, 2026-10-15). The
+    reader marks those mutualOnly; they're still saved as ever, and the mark is taken
+    off here so it never reaches the app."""
+    n = 0
+    for c in found:
+        if not c.pop("mutualOnly", False):
+            n += 1
+    return n
 
 
 def _dedupe(connections):
@@ -5485,6 +5540,177 @@ def _manual_wait(page, seconds):
     time.sleep(seconds)
 
 
+# A break, held on the page itself (manual_break): you click Next in the window, so
+# asking you to wait isn't enough. Two holds, each of which works without the other:
+#
+#  1. A clear layer over the whole window (BREAK_SHOW_JS) that takes every click and
+#     Enter or Space before LinkedIn's page sees it, so Next and the page numbers can't
+#     be pressed, with the countdown written on it. No selector of LinkedIn's is
+#     needed, so a new layout can't slip past it (TRAPS §5). Written again each
+#     second, so a page that redraws gets it back, and it takes itself away
+#     BREAK_STALE_MS after its last update: a scanner that stops mid-break never
+#     leaves it behind (Sixgree's own panel outlives the scanner).
+#  2. The network (_BreakHold): Playwright routes every request for a search page or
+#     its people (_search_load) and answers none of them until the break ends, then
+#     lets them all through. A page opened some other way (the address bar, a key the
+#     layer missed) waits with a spinner and loads when the break is over, so it is
+#     never read early and never a search seconds after the last.
+#
+# Both go through the Playwright page object and nothing else, so they work the same in
+# the scanner's Chrome and in Sixgree's own panel (PanelPage hands both calls to the
+# panel's real page). Everything is taken away when the break ends, on Stop, and when
+# the window closes. Nothing here changes what LinkedIn sees of the browser.
+BREAK_STALE_MS = 5000
+BREAK_SHOW_JS = r"""
+(text) => {
+  const id = 'sixgree-break';
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.setAttribute('role', 'status');
+    el.style.cssText = 'position:fixed;inset:0;z-index:2147483647;cursor:wait;pointer-events:auto;'
+      + 'background:rgba(0,0,0,0.12);display:flex;align-items:flex-end;justify-content:center;';
+    const note = document.createElement('div');
+    note.style.cssText = 'margin-bottom:48px;padding:12px 20px;border-radius:12px;background:#1b1f23;color:#ffd84d;'
+      + 'font:600 16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 24px rgba(0,0,0,0.35);';
+    el.appendChild(note);
+    const swallow = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
+    for (const t of ['click', 'dblclick', 'auxclick', 'mousedown', 'mouseup', 'pointerdown', 'pointerup',
+      'touchstart', 'touchend', 'contextmenu']) {
+      el.addEventListener(t, swallow, true);
+    }
+    // Enter or Space on a focused Next or page number. The arrow keys still scroll.
+    el._keys = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') swallow(e); };
+    window.addEventListener('keydown', el._keys, true);
+    el._gone = () => { window.removeEventListener('keydown', el._keys, true); el.remove(); };
+    const focused = document.activeElement;
+    if (focused && focused !== document.body && typeof focused.blur === 'function') focused.blur();
+    document.documentElement.appendChild(el);
+  }
+  el.firstChild.textContent = text;
+  clearTimeout(el._stale);
+  el._stale = setTimeout(el._gone, STALE_MS);
+  return true;
+}
+""".replace("STALE_MS", str(BREAK_STALE_MS))
+BREAK_HIDE_JS = r"""
+() => {
+  const el = document.getElementById('sixgree-break');
+  if (el) { clearTimeout(el._stale); el._gone(); }
+  return true;
+}
+"""
+
+
+def _search_load(url):
+    """A request a break holds back: a LinkedIn search page, or its search API asked
+    for people (a click on Next or a page number, the same requests the Next tap
+    listens for in _read_by_hand)."""
+    u = str(url or "")
+    if not re.match(r"^https://([a-z0-9-]+\.)*linkedin\.com/", u):
+        return False
+    return "/search/results/" in u or ("/voyager/api/" in u and "search" in u.lower())
+
+
+class _BreakHold:
+    """The network half of a break: search requests wait, unanswered, until end()."""
+
+    def __init__(self, page):
+        self.page, self.held, self.routed, self.over = page, [], False, False
+        # A whole page held mid-navigation (the address bar): Playwright's evaluate waits
+        # for a navigation to commit, so while one is held nothing may evaluate on the page
+        # (it would wait for ever). The layer is left as it is; the new page replaces it.
+        self.navigating = False
+
+    def _hold(self, route, request=None):
+        req = request if request is not None else getattr(route, "request", None)
+        try:
+            if req is not None and (req.resource_type == "document" or req.is_navigation_request()):
+                self.navigating = not self.over
+        except Exception:
+            pass
+        if self.over:
+            # The break has ended and the route is on its way off: straight through.
+            try:
+                route.continue_()
+            except Exception:
+                pass
+            return
+        # Not answered here: the browser keeps the request waiting until end() lets it go.
+        self.held.append(route)
+
+    def start(self):
+        try:
+            self.page.route(_search_load, self._hold)
+            self.routed = True
+        except Exception:
+            self.routed = False   # a page that can't route still has the layer
+        return self.routed
+
+    def end(self):
+        """Let through what was held, oldest first, then stop routing. How many were held.
+        Answered before the unroute, so no handler is still waiting when the route
+        comes off (an unroute that waits for its handlers would wait for ever)."""
+        self.over = True
+        held, self.held = self.held, []
+        for route in held:
+            try:
+                route.continue_()
+            except Exception:
+                pass
+        if self.routed:
+            try:
+                self.page.unroute(_search_load, self._hold)
+            except Exception:
+                pass
+            self.routed = False
+        return len(held)
+
+
+def _manual_break(page, seconds, after, then_page):
+    """The break: `seconds` with the next page held back (the layer and _BreakHold),
+    a tick a second (_chime "tick", at the chimes' volume, silent with them off) and a
+    line a second the scan light counts down from: "(break after page 20: 14 s, then
+    page 21)". The app keeps only the newest of those lines in its log
+    (app/api/scraper/route.js push). Returns "done", "stopped" or "closed"."""
+    seconds = max(1, int(seconds))
+    hold = _BreakHold(page)
+    hold.start()
+    end = time.time() + seconds
+    how = "done"
+    try:
+        for left in range(seconds, 0, -1):
+            if stop_requested():
+                how = "stopped"
+                break
+            try:
+                closed = page.is_closed()
+            except Exception:
+                closed = True
+            if closed:
+                how = "closed"
+                break
+            print(f"  (break after page {after}: {left} s, then page {then_page})", flush=True)
+            if not hold.navigating:
+                try:
+                    page.evaluate(BREAK_SHOW_JS, f"Break: {left} s, then page {then_page}")
+                except Exception:
+                    pass
+            _chime("tick")
+            _manual_wait(page, max(0.0, end - (left - 1) - time.time()))
+    finally:
+        if how != "closed" and not hold.navigating:
+            try:
+                page.evaluate(BREAK_HIDE_JS)
+            except Exception:
+                pass
+        let_through = hold.end()
+    if let_through and how == "done":
+        print("  The page asked for during the break loads now.", flush=True)
+    return how
+
+
 def _their_search(url, urn):
     """The window shows their connections search, at any page of it."""
     try:
@@ -5528,6 +5754,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     read_before is the pages an earlier read got (record_bridge_progress's
     readPages): they count as read, so reading the page before them moves the
     bookmark on past them all, and they aren't read again.
+    After every so many pages read (manual_break: 10 unless Scanner settings say
+    otherwise), the next page waits out a break with the window held
+    (_manual_break), ticking once a second.
 
     Ends when their list does (LinkedIn's Next is disabled, or the count says
     so), at max_pages, on Stop, when you close the window (done with them: a
@@ -5563,6 +5792,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     on_page = None                 # the page the window was last seen on: a change is said at once (note)
     away = False                   # the window has been off their list since it was last on it
     loading = set()                # the pages "is loading" was said for
+    since_break = 0                # pages read since the last break (manual_break)
+    on_break = {"on": False}       # a break is on: a click that got through taps nothing
 
     def tap():
         """The Next chime, once a click."""
@@ -5578,8 +5809,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         # scanner's own opening of the list doesn't tap. Read off the network,
         # never off the page: nothing is added to LinkedIn's page.
         try:
-            if read_now and request.resource_type in ("xhr", "fetch") and "/voyager/api/" in request.url \
-                    and "search" in request.url.lower():
+            if read_now and not on_break["on"] and request.resource_type in ("xhr", "fetch") \
+                    and "/voyager/api/" in request.url and "search" in request.url.lower():
                 tap()
         except Exception:
             pass
@@ -5616,7 +5847,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
              f"Click Previous to page {start_page} and scroll to its bottom, then carry on with Next. "
              f"{done_with}")
     else:
-        tell(f"scroll to the bottom of each page of {whose} connections in the Chrome window, then click Next. "
+        tell(f"scroll to the bottom of each page of {whose} connections "
+             f"{'in the LinkedIn panel' if PANEL['on'] else 'in the Chrome window'}, then click Next. "
              + (done_with if own else "Close the window when you're done with them."))
     while True:
         if stop_requested():
@@ -5765,6 +5997,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if not slug or slug not in c.get("profileUrl", "")]
+        listed = _listed(found)   # the people on the page, not the names in their mutual lines
         done.add(pg)
         read_now.add(pg)
         last_links = links
@@ -5773,12 +6006,13 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         PACE_STATE["pages"] += 1
         chunk.extend(found)
         chunk_pages += 1
-        reach["found"] += len(found)
+        since_break += 1
+        reach["found"] += listed
         while contiguous + 1 in done:
             contiguous += 1
         reach["last"] = max(reach["last"], contiguous)
         # The same line an automatic read prints, so the app counts it the same way.
-        print(f"  Page {pg}... {len(found)} found (total: {reach['found']})", flush=True)
+        print(f"  Page {pg}... {listed} found (total: {reach['found']})", flush=True)
         try:
             nxt = page.evaluate(NEXT_STATE_JS)
         except Exception:
@@ -5804,16 +6038,36 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         if contiguous > pg:
             # The page that was missing: the pages after it were read before, so the
             # bookmark moves on past them, and the next page to read is after them.
-            tell(f"page {pg} is read ({len(found)} people), and pages {pg + 1}–{contiguous} were read before. "
-                 f"Go on to page {contiguous + 1}. {done_with}")
+            then = contiguous + 1
+            go_on = (f"page {pg} is read ({listed} people), and pages {pg + 1}–{contiguous} were read before. "
+                     f"Go on to page {then}. {done_with}")
         elif contiguous < pg - 1:
             # A page before this one isn't read: until it is, the next scan starts there again.
-            tell(f"page {pg} is read ({len(found)} people). Page {contiguous + 1} isn't read yet, so the next scan "
-                 f"starts there again: click back to it, or carry on with Next to page {pg + 1}. "
-                 f"{done_with}")
+            then = pg + 1
+            go_on = (f"page {pg} is read ({listed} people). Page {contiguous + 1} isn't read yet, so the next scan "
+                     f"starts there again: click back to it, or carry on with Next to page {then}. "
+                     f"{done_with}")
         else:
-            tell(f"page {pg} is read ({len(found)} people). Click Next, then scroll to the bottom of page {pg + 1}. "
-                 f"{done_with}")
+            then = pg + 1
+            go_on = (f"page {pg} is read ({listed} people). Click Next, then scroll to the bottom of page {then}. "
+                     f"{done_with}")
+        every, break_seconds = manual_break()
+        if since_break >= every:
+            # A break before the next page (manual_break): the window holds it back until it's over.
+            since_break = 0
+            print(f"  {every} page{'' if every == 1 else 's'} read: a {break_seconds}-second break before page {then}. "
+                  f"Pages read seconds apart are what LinkedIn notices.", flush=True)
+            tell(f"page {pg} is read ({listed} people). Break: wait {break_seconds} seconds, then go on to page "
+                 f"{then}. The page is held until the countdown ends. {done_with}")
+            on_break["on"] = True
+            try:
+                ended = _manual_break(page, break_seconds, pg, then)
+            finally:
+                on_break["on"] = False
+            last_seen = time.time()
+            if ended != "done":
+                continue   # Stop, or the window closed: the top of the loop says which
+        tell(go_on)
 
     try:
         page.remove_listener("request", on_request)
@@ -6252,6 +6506,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
 
         PACE_STATE["pages"] += 1
         page_results = [c for c in page_results if not slug or slug not in c.get("profileUrl", "")]
+        listed = _listed(page_results)   # the people on the page, not the names in their mutual lines
         if EXPERIMENT["on"]:
             page_results = _wire_merge(page, profile_url, page_results)
             EXPERIMENT["pages"] += 1
@@ -6261,8 +6516,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         # Read in order from start_page, so through pg; and on through any pages
         # right after it that an earlier read got (record_bridge_progress's readPages).
         reach["last"] = _read_through(read_before, pg)
-        reach["found"] += len(page_results)
-        print(f"{len(page_results)} found (total: {reach['found']})")
+        reach["found"] += listed
+        print(f"{listed} found (total: {reach['found']})")
 
         if pg >= LINKEDIN_MAX_PAGES:
             print(f"  That was page {pg}, as far as LinkedIn's search goes.")
