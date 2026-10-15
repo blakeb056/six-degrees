@@ -333,22 +333,30 @@ test('a working folder an install left behind is swept once it is an hour old', 
   assert.equal(existsSync(left), false);
 });
 
-test('scripts/build-plugin.mjs makes the two scanner packages, and both install', () => {
+test('scripts/build-plugin.mjs makes the two scanner packages and the LinkedIn browser’s, and all install', () => {
   const root = standInRoot(path.join(dir, `build-root-${n}`));
-  assert.deepEqual(PLUGINS.map((p) => [p.id, p.unlocks]), [['auto-scan', ['auto']], ['manual-scan', ['manual']]]);
+  // A feature plugin's README, from the real copy's (scripts/plugins/<id>/README.md).
+  mkdirSync(path.join(root, 'scripts', 'plugins', 'linkedin-browser'), { recursive: true });
+  writeFileSync(path.join(root, 'scripts', 'plugins', 'linkedin-browser', 'README.md'), '# An invented README\n');
+  assert.deepEqual(PLUGINS.map((p) => [p.id, p.unlocks]), [['auto-scan', ['auto']], ['manual-scan', ['manual']], ['linkedin-browser', ['linkedin-browser']]]);
   for (const plugin of PLUGINS) {
     const zip = buildPackage(plugin, { version: '1.0.0', appVersion: '1.2.8', root });
     assert.ok(zip.equals(buildPackage(plugin, { version: '1.0.0', appVersion: '1.2.8', root })), 'the same bytes every time');
     const { manifest, files } = readPackage(zip, APP);
     assert.equal(manifest.id, plugin.id);
     assert.equal(manifest.sixgree, '>=1.2.8');
-    assert.equal(manifest.kind, 'scanner');
     assert.ok(manifest.risk, 'each carries its risk');
-    assert.deepEqual([...files.keys()], ['scanner/scrape.py', 'scanner/image_store.py', 'scanner/requirements.txt']);
-    assert.equal(files.get('scanner/scrape.py').toString(), readFileSync(path.join(root, 'scripts', 'scrape.py'), 'utf8'));
+    if (plugin.kind === 'feature') {
+      assert.equal(manifest.kind, 'feature');
+      assert.deepEqual([...files.keys()], ['README.md'], 'a manifest and its README, no code');
+    } else {
+      assert.equal(manifest.kind, 'scanner');
+      assert.deepEqual([...files.keys()], ['scanner/scrape.py', 'scanner/image_store.py', 'scanner/requirements.txt']);
+      assert.equal(files.get('scanner/scrape.py').toString(), readFileSync(path.join(root, 'scripts', 'scrape.py'), 'utf8'));
+    }
     installPlugin(home, zip, { ...APP, sha256: sha256(zip) });
   }
-  assert.deepEqual(listPlugins(home, APP).map((p) => [p.id, p.state]), [['auto-scan', 'ready'], ['manual-scan', 'ready']]);
+  assert.deepEqual(listPlugins(home, APP).map((p) => [p.id, p.state]), [['auto-scan', 'ready'], ['linkedin-browser', 'ready'], ['manual-scan', 'ready']]);
   // Not for a Sixgree older than the one it was built with.
   refused(() => readPackage(buildPackage(PLUGINS[0], { version: '1.0.0', appVersion: '1.2.8', root }), { appVersion: '1.2.7' }),
     /made for Sixgree 1\.2\.8 or newer/, 409);

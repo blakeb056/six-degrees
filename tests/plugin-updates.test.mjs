@@ -134,7 +134,8 @@ test('an installed plugin older than the list shows Update; the same or newer sh
     { id: 'auto-scan', version: '90.0.1', state: 'ready' },
     { id: 'manual-scan', version: '90.0.2', state: 'ready' },
   ];
-  assert.deepEqual(cards.map((c) => catalogAction(c, installed)), ['update', 'installed']);
+  // The LinkedIn browser isn't installed here: Install.
+  assert.deepEqual(cards.map((c) => catalogAction(c, installed)), ['update', 'installed', 'install']);
   assert.equal(countUpdates(cards, installed), 1);
   // Before the live list, the shipped copy (older than both) shows no update.
   assert.equal(countUpdates(cardsFrom({ status: 'idle' }), installed), 0);

@@ -6,6 +6,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The LinkedIn browser plugin** (`linkedin-browser`, 1.0.0; the desktop app). A **LinkedIn**
+  button at the top right of the header, beside the bell and Settings, opens LinkedIn inside
+  Sixgree's own browser for your own browsing: scroll, click, search and message as you would
+  anywhere. Beside it on the right is Sixgree's people list: find people in your network by name,
+  company or place, with their card; open their profile in the panel in one click; and on anyone's
+  profile, see what Sixgree already knows about them (degree, tier, location, mutuals, who connects
+  you) or that they aren't in your network data. Browsing isn't a scan and isn't counted; a profile
+  opened from the list goes through Outlink, so it is one of the day's profile views and is written
+  down. The button shows only with the plugin installed and plugins on, never while a scan is using
+  the browser, and not outside the desktop app.
+- **A LinkedIn tab** (with the same plugin, in the desktop app): its buttons in the notch, Feed,
+  Messaging, Notifications and Jobs, open Sixgree's own browser straight on that part of LinkedIn,
+  live, under the header and the notch. Gone elsewhere from there, the bar offers *Back to Feed*
+  (or whichever it was). It is your own browsing, so nothing is read or counted. The whole website,
+  with the people list, stays the header's LinkedIn button.
+- **Feature plugins.** A new kind of plugin, `"feature"`, whose package is a manifest and a README
+  with no code: the feature is part of Sixgree and shows only while its plugin is installed, sound
+  and switched on, the way the scan screens show only with a scanner plugin. The LinkedIn browser is
+  the first. `npm run build:plugins` builds it beside the scanners, at its own version.
+
+### Changed
+- **Sixgree's own browser identifies as plain Chrome.** Its user agent is now the one Electron gives
+  it with the `Sixgree/x` and `Electron/x` tokens taken out, worked out from the real one at each
+  start, so the Chrome version is always the one running. Only the panel's session gets it; the
+  app's own pages keep the default. Nothing else is changed: no client hints, no
+  `navigator.webdriver`, no fingerprint.
+- **Nothing of Sixgree's is hidden under the LinkedIn panel.** The bell's list, the scan light's
+  briefing, the notch opened, Auto scan's panel and the notes under the header's buttons now open in
+  full over it: while one is open, the panel is swapped for a still picture of itself and comes back
+  when it closes. The panel starts below the whole header, its tabs and the notch at any window width
+  and zoom, measured again as they change; the thin LinkedIn bar keeps beside or under the notch,
+  never over a tab; and a banner along the bottom stays in sight. Choosing a page or a tab puts the
+  panel away, so the page you chose is what you see.
+- **Every profile link opens in Sixgree's own browser** where it can, not only Outlink's: the person
+  card's *View profile* and *Connect* (so connecting from Separation stays inside Sixgree), Paths'
+  *Add*, Insights' *Ask*, Outlink's lists and the Messages card. Each is one of the day's profile
+  views, recorded as Outlink's are; without the panel, or with a scanner plugin before 1.0.5, they
+  open your browser as before.
+- **Opening several profiles at once steps through them.** Outlink's *Open All*, *Open All S* and
+  *Open Top 10* open the first in Sixgree's own browser, then one at a time from *Next profile (N
+  left)* in its bar, each counted, instead of a burst of tabs. Without the panel they open the page
+  of links in your browser, as before.
+
 ## [2.4.0] - 2026-10-15
 
 LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree's own window instead of a separate Chrome.

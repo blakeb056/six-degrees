@@ -25,6 +25,7 @@ export default function StaleServerBanner() {
   return (
     <div
       role="status"
+      data-stale-banner=""
       style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
         background: 'linear-gradient(90deg, #FFD700, #FF6B35)', color: '#1a1200',

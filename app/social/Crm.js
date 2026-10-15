@@ -20,6 +20,7 @@ import { keyFor } from '../../lib/separation';
 import { Body, LINE } from '../components/ui';
 import Thread from './Thread';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import OpenProfile from '../components/OpenProfile';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const STAGE_COLOUR = { new: '#8b9a9a', contacted: '#3498DB', replied: '#00d4aa', meeting: '#ff9f43', won: '#FFD700', 'not-now': '#667' };
@@ -491,7 +492,7 @@ function Person({ c, nameOf, groups, keep, token, inviteNotes, onChange, onPickG
         {row?.unlocked_from_name && c.connection && <> You met through <b style={{ color: 'var(--sd-fg-1, #dfe8e8)' }}>{row.unlocked_from_name}</b>.</>}
       </div>
       <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap', fontSize: 12.5 }}>
-        {profile && <a href={profile} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Open profile ↗</a>}
+        {profile && <OpenProfile person={{ id: row?.id, name: c.name, profile_url: profile }} style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Open profile ↗</OpenProfile>}
         {thread && <a href={thread} target="_blank" rel="noreferrer" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none' }}>Open conversation ↗</a>}
       </div>
 

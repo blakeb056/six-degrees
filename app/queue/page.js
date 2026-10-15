@@ -20,6 +20,7 @@ import { reachIndex } from '../../lib/reach';
 import { loadScanNotes } from '../../lib/scraper-client';
 import { TIER_COLORS } from '../../lib/themes';
 import ConnectChoice, { secondaryLook } from '../components/AutoConnect';
+import OpenProfile, { openProfiles } from '../components/OpenProfile';
 
 // Add, standing second to Auto: LinkedIn's blue, as an outline.
 const BLUE_OUTLINE = { color: '#5aa9e6', line: 'rgba(0,119,181,0.75)' };
@@ -221,37 +222,13 @@ function QueueInner() {
     else setSelected(new Set(filtered.map(r => r.id)));
   }
 
+  // Several at once: stepped through one at a time in Sixgree's own browser,
+  // each one a profile view, with "Next profile" in its bar; without it, a
+  // page of their links in your browser, as before (OpenProfile.js openProfiles).
   function openSelected() {
     const toOpen = filtered.filter(r => selected.has(r.id));
     if (toOpen.length === 0) return;
-    if (toOpen.length === 1) {
-      window.open(toOpen[0].profile_url, '_blank');
-      return;
-    }
-    // Open a launcher page with all links as clickable buttons
-    const html = `<!DOCTYPE html><html><head><title>Outlink · ${toOpen.length} profiles</title>
-    <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px;margin:0}
-    h2{color:#FFD700;margin-bottom:4px}p{color:#888;font-size:13px;margin-bottom:16px}
-    .btn{display:block;padding:12px 16px;margin-bottom:6px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
-    border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:8px;color:#fff;text-decoration:none;
-    font-size:13px;transition:background 0.15s}.btn:hover{background:rgba(0,119,181,0.2)}
-    .name{font-weight:700}.tier{font-size:11px;margin-left:8px;font-weight:600}
-    .open-all{display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#FFD700,#FF6B35);
-    color:#000;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;border:none;margin-bottom:20px}</style></head>
-    <body><h2>Open ${toOpen.length} Profiles</h2>
-    <p>Click each link or use the button below to open all at once.</p>
-    <button class="open-all" onclick="document.querySelectorAll('.btn').forEach((a,i)=>setTimeout(()=>a.click(),i*300))">
-    Open All (${toOpen.length})</button>
-    ${toOpen.map(r => {
-      const tierColor = r.tier === 'S' ? '#FFD700' : r.tier === 'A' ? '#9B59B6' : '#3498DB';
-      return '<a class="btn" href="' + r.profile_url + '" target="_blank"><span class="name">' +
-        (r.name || '') + '</span><span class="tier" style="color:' + tierColor + '">' + r.tier +
-        ' · ' + parseFloat(r.power_score || 0).toFixed(1) + '</span><br><span style="color:#666;font-size:11px">' +
-        (r.headline || '').substring(0, 60) + '</span></a>';
-    }).join('')}
-    </body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    openProfiles(toOpen, { heading: `Open ${toOpen.length} Profiles` });
   }
 
   if (loading) {
@@ -412,10 +389,10 @@ function QueueInner() {
 
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        <a href={p.profile_url} target="_blank" rel="noopener noreferrer"
+                        <OpenProfile person={p}
                           style={{ padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none' }}>
                           View
-                        </a>
+                        </OpenProfile>
                         <button onClick={() => { undoRequest(p).catch(() => {}); }} style={{
                           padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 600,
                           background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', color: 'var(--sd-fg-4, #666)', border: 'none', cursor: 'pointer',
@@ -493,19 +470,7 @@ function QueueInner() {
                         }} />
                       </div>
                       <button onClick={() => {
-                        const urls = items.map(r => r.profile_url);
-                        if (urls.length === 1) { window.open(urls[0], '_blank'); return; }
-                        const bh = `<!DOCTYPE html><html><head><title>Top ${Math.min(10,urls.length)}</title>
-                        <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px}
-                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
-                        border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
-                        .btn:hover{background:rgba(0,119,181,0.2)}
-                        .oa{display:inline-block;padding:10px 20px;background:#0077B5;color:#fff;border-radius:6px;
-                        font-weight:700;font-size:13px;cursor:pointer;border:none;margin-bottom:16px}</style></head>
-                        <body><h3 style="color:#FF6B35">Top ${Math.min(10,urls.length)} to connect</h3>
-                        <button class="oa" onclick="document.querySelectorAll('.btn').forEach((a,i)=>setTimeout(()=>a.click(),i*300))">
-                        Open All</button>${urls.slice(0,10).map(u => '<a class="btn" href="' + u + '" target="_blank">' + u.split('/in/')[1]?.replace('/','') + '</a>').join('')}</body></html>`;
-                        window.open(URL.createObjectURL(new Blob([bh], {type:'text/html'})), '_blank');
+                        openProfiles(items.slice(0, 10), { heading: `Top ${Math.min(10, items.length)} to connect`, color: '#FF6B35' });
                       }} style={{
                         padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
                         background: '#0077B5', color: '#fff', fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap',
@@ -552,18 +517,7 @@ function QueueInner() {
                       <span style={{ fontSize: 9, fontWeight: 700, color: TIER_COLORS[tier] }}>{tier}-Tier</span>
                       <span style={{ fontSize: 8, color: 'var(--sd-fg-5, #555)' }}>{tierItems.length}</span>
                       <button onClick={() => {
-                        if (tierItems.length === 1) { window.open(tierItems[0].profile_url, '_blank'); return; }
-                        const h2 = `<!DOCTYPE html><html><head><title>${tier}-Tier · ${tierItems.length}</title>
-                        <style>body{background:#0a0a1a;color:#fff;font-family:-apple-system,sans-serif;padding:24px}
-                        .btn{display:block;padding:10px 14px;margin-bottom:4px;background:rgba(var(--sd-ink, 255, 255, 255), 0.06);
-                        border:1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1);border-radius:6px;color:#fff;text-decoration:none;font-size:12px}
-                        .btn:hover{background:rgba(0,119,181,0.2)}
-                        .oa{display:inline-block;padding:10px 20px;background:#0077B5;color:#fff;border-radius:6px;
-                        font-weight:700;font-size:13px;cursor:pointer;border:none;margin-bottom:16px}</style></head>
-                        <body><h3 style="color:${TIER_COLORS[tier]}">${tier}-Tier (${tierItems.length})</h3>
-                        <button class="oa" onclick="document.querySelectorAll('.btn').forEach((a,i)=>setTimeout(()=>a.click(),i*300))">
-                        Open All</button>${tierItems.map(r => '<a class="btn" href="' + r.profile_url + '" target="_blank">' + r.name + ' · ' + parseFloat(r.power_score||0).toFixed(1) + '</a>').join('')}</body></html>`;
-                        window.open(URL.createObjectURL(new Blob([h2], {type:'text/html'})), '_blank');
+                        openProfiles(tierItems, { heading: `${tier}-Tier (${tierItems.length})`, color: TIER_COLORS[tier] });
                       }} style={{
                         marginLeft: 'auto', padding: '2px 8px', borderRadius: 3, border: 'none', cursor: 'pointer',
                         background: '#0077B5', color: '#fff', fontSize: 8, fontWeight: 700,
@@ -604,13 +558,10 @@ function QueueInner() {
                         ) : (
                           // Auto first, then Add as an outline (components/AutoConnect.js).
                           <ConnectChoice person={r} canAuto={!IS_DEMO} size="row" connect={(second) => (
-                            <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
-                              }}
+                            <OpenProfile person={r} stopPropagation
+                              onOpen={() => { markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {}); }}
                               style={second ? { ...secondaryLook('row', BLUE_OUTLINE), padding: '3px 6px', fontSize: 8 }
-                                : { padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>Add</a>
+                                : { padding: '3px 6px', borderRadius: 3, fontSize: 8, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>Add</OpenProfile>
                           )} />
                         )}
                       </div>
@@ -678,18 +629,15 @@ function QueueInner() {
                   ) : (
                     // Auto first, the better pick; Add beside it as an outline (components/AutoConnect.js).
                     <ConnectChoice person={r} canAuto={!IS_DEMO} size="row" connect={(second) => (
-                      <a href={r.profile_url} target="_blank" rel="noopener noreferrer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Opens LinkedIn, and marks the request sent everywhere.
-                          markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {});
-                        }}
+                      <OpenProfile person={r} stopPropagation
+                        // Opens LinkedIn (Sixgree's own browser where it can), and marks the request sent everywhere.
+                        onOpen={() => { markRequested(r, { bridgeId: r.source_connection_id }).catch(() => {}); }}
                         style={second ? secondaryLook('row', BLUE_OUTLINE) : {
                           padding: '4px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
                           background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0,
                         }}>
                         Add
-                      </a>
+                      </OpenProfile>
                     )} />
                   )}
                 </div>

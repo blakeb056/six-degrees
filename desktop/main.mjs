@@ -47,7 +47,8 @@ import {
   routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
   userDataPath, isAppUrl, isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv,
-  LINKEDIN_PANEL_PARTITION,
+  LINKEDIN_PANEL_PARTITION, chromeUserAgent, browserPluginInstalled, browseHome, panelProfileSlug, createPanelCover,
+  sectionUrl, sectionOf,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -109,13 +110,16 @@ app.enableSandbox();
 // Windows groups the taskbar button and the Start Menu shortcut by this (scripts/windows/six-degrees.iss).
 if (process.platform === 'win32') app.setAppUserModelId('com.blakeburford.sixdegrees');
 
-// Sixgree's own browser (the LinkedIn panel, below): only with a scanner to
-// drive it, and SIX_DEGREES_PANEL=0 turns it off (the scanner then starts its
-// own Chrome, as before). Read once, here: Chromium's switches must be set
-// before the app is ready.
-const PANEL_WANTED = process.env.SIX_DEGREES_PANEL !== '0' && scannerInstalled({
+// Sixgree's own browser (the LinkedIn panel, below): with a scanner to drive
+// it, or the LinkedIn browser plugin to browse in it, and SIX_DEGREES_PANEL=0
+// turns it off (the scanner then starts its own Chrome, as before). The
+// debugging port the scanner attaches through opens only with a scanner. Read
+// once, here: Chromium's switches must be set before the app is ready.
+const PANEL_OFF = process.env.SIX_DEGREES_PANEL === '0';
+const SCANNER_HERE = !PANEL_OFF && scannerInstalled({
   dataDir: DATA_DIR, repo: REPO, packaged: app.isPackaged, exists: existsSync, list: (dir) => readdirSync(dir),
 });
+const PANEL_WANTED = !PANEL_OFF && (SCANNER_HERE || browserPluginInstalled({ dataDir: DATA_DIR, exists: existsSync }));
 // One more address the panel may show, for checking a checkout against a local
 // test page (lib.mjs panelRoute). Never in a download.
 const PANEL_TEST_ORIGIN = !app.isPackaged ? process.env.SIX_DEGREES_PANEL_TEST_ORIGIN || null : null;
@@ -125,7 +129,7 @@ if (!app.requestSingleInstanceLock()) {
   app.exit(0);
 } else {
   app.on('second-instance', showWindow);
-  if (PANEL_WANTED) openDebuggingPort();
+  if (SCANNER_HERE) openDebuggingPort();
   app.whenReady().then(start).catch((err) => fail('Sixgree could not start', err));
 }
 
@@ -325,8 +329,20 @@ function lockDown(ses) {
 //            page keeps working out of sight, as the scanner's Chrome did
 //   scanner  attaches over Chromium's debugging protocol and drives that one
 //            page (scripts/scrape.py attach_panel), told which by its target
-//            id (lib.mjs panelEnv). The user agent is Electron's own; nothing
-//            here changes or disguises it (no stealth, Blake's standing rule).
+//            id (lib.mjs panelEnv). Only with a scanner installed: with only
+//            the LinkedIn browser plugin, the panel is for browsing, and the
+//            debugging port stays shut
+//   agent    plain Chrome's: the session's user agent with the Sixgree/x and
+//            Electron/x tokens taken out (lib.mjs chromeUserAgent; Blake,
+//            2026-10-15, "the panel should identify as plain Chrome"). That
+//            and nothing more: no client hints, no navigator.webdriver, no
+//            fingerprint. The app's own pages keep Electron's default
+//   browse   the LinkedIn browser plugin's button opens it for your own
+//            browsing, with the people list beside it (the page's); nothing
+//            is read and nothing is counted, except a profile opened from
+//            that list, which goes through Outlink and is one profile view
+//   covered  anything the page opens over it (a menu, the notch, a note) is
+//            shown over a still picture of it instead (lib.mjs createPanelCover)
 //
 // The trade-off, said plainly: the debugging port listens on 127.0.0.1 only,
 // on a port the system picks at each start, and only while the app runs with a
@@ -343,6 +359,19 @@ let panelSession = null;   // its session (LINKEDIN_PANEL_PARTITION)
 let panelEnvVars = {};     // what the server is told about it (lib.mjs panelEnv)
 let panelVisible = false;  // asked for by the page
 let panelTop = null;       // where the page says it starts, in its CSS pixels
+let panelInsets = { right: 0, bottom: 0 };  // what the page keeps clear beside and under it, likewise
+let panelMode = null;      // 'browse' (the LinkedIn button), 'section' (the LinkedIn tab) or 'scan' (anything else that showed it), while shown
+let panelSection = null;   // in 'section' mode: the section its button opened (lib.mjs LINKEDIN_SECTIONS)
+// Over the panel: a still picture of it while the page has something open there.
+const panelCover = createPanelCover({
+  capture: async () => {
+    const image = await panel.webContents.capturePage();
+    return image.isEmpty() ? null : `data:image/jpeg;base64,${image.toJPEG(85).toString('base64')}`;
+  },
+  sendStill: (n, src) => { if (win && !win.isDestroyed()) win.webContents.send('linkedin-panel:still', { n, src }); },
+  apply: () => { placePanel(); sendPanelState(); },
+  shown: () => Boolean(panel && win && !win.isDestroyed() && panelVisible && panelTop !== null),
+});
 
 /** Chromium's debugging port on a port the system picks (0), before the app is ready. */
 function openDebuggingPort() {
@@ -357,6 +386,8 @@ async function createPanel() {
   try {
     panelSession = session.fromPartition(LINKEDIN_PANEL_PARTITION);
     lockDown(panelSession);
+    // Plain Chrome's user agent, derived from the real one (see "agent" above), before any page loads.
+    panelSession.setUserAgent(chromeUserAgent(panelSession.getUserAgent(), { appNames: [app.getName(), 'Sixgree'] }));
     panel = new WebContentsView({
       webPreferences: {
         partition: LINKEDIN_PANEL_PARTITION,
@@ -382,9 +413,12 @@ async function createPanel() {
       new Promise((resolve) => setTimeout(resolve, 2000)),
     ]);
     placePanel();
-    const [targetId, port] = await Promise.all([targetIdOf(contents), waitForDevToolsPort()]);
-    panelEnvVars = panelEnv({ port, targetId });
-    if (!Object.keys(panelEnvVars).length) throw new Error(`no ${port ? 'target id' : 'debugging port'}`);
+    // For the scanner only: with just the LinkedIn browser plugin, there is no port to name.
+    if (SCANNER_HERE) {
+      const [targetId, port] = await Promise.all([targetIdOf(contents), waitForDevToolsPort()]);
+      panelEnvVars = panelEnv({ port, targetId });
+      if (!Object.keys(panelEnvVars).length) throw new Error(`no ${port ? 'target id' : 'debugging port'}`);
+    }
   } catch (err) {
     // The scanner starts its own Chrome instead, as before the panel.
     console.error(`Sixgree's LinkedIn panel is off: ${err.message}`);
@@ -434,27 +468,69 @@ function placePanel() {
   const [width, height] = win.getContentSize();
   // Sized even while hidden, for when it next shows (a hidden page keeps the
   // size it last had in sight: createPanel).
-  const bounds = panelBounds({ width, height }, panelTop ?? 0, win.webContents.getZoomFactor());
+  const bounds = panelBounds({ width, height }, panelTop ?? 0, win.webContents.getZoomFactor(), panelInsets);
   if (bounds) panel.setBounds(bounds);
-  // In front only once the page has said where it starts.
-  panel.setVisible(panelVisible && panelTop !== null && Boolean(bounds));
+  // In front only once the page has said where it starts, and not while
+  // something the page opened is over it (its still picture is, instead).
+  panel.setVisible(panelVisible && panelTop !== null && Boolean(bounds) && !panelCover.frozen);
 }
 
-function setPanelVisible(on) {
-  if (!panel || panelVisible === Boolean(on)) return;
+function setPanelVisible(on, mode = 'scan') {
+  if (!panel) return;
+  if (on && (!panelMode || mode !== 'scan')) panelMode = mode;
+  if (on && panelMode !== 'section') panelSection = null;
+  if (!on) { panelMode = null; panelSection = null; }
+  if (panelVisible === Boolean(on)) {
+    sendPanelState();
+    return;
+  }
   panelVisible = Boolean(on);
   placePanel();
+  // Something already open over it: the still picture, at once.
+  panelCover.refresh();
   // The keyboard goes with what's in front.
-  if (win && !win.isDestroyed()) (panelVisible ? panel.webContents : win.webContents).focus();
+  if (win && !win.isDestroyed()) (panelVisible && !panelCover.frozen ? panel.webContents : win.webContents).focus();
   sendPanelState();
 }
 
+/** The LinkedIn browser plugin's button: shown for your own browsing, on LinkedIn's feed if nothing is open. */
+function browsePanel() {
+  if (!panel) return;
+  const url = panel.webContents.getURL();
+  const onLinkedIn = panelRoute(url, { testOrigin: PANEL_TEST_ORIGIN }) === 'panel' && url !== 'about:blank' && url !== '';
+  if (!onLinkedIn) panel.webContents.loadURL(browseHome({ testOrigin: PANEL_TEST_ORIGIN })).catch(() => {});
+  setPanelVisible(true, 'browse');
+}
+
+/** The LinkedIn tab's notch buttons: the panel straight on one section (lib.mjs sectionUrl). */
+function showSection(key) {
+  const url = panel ? sectionUrl(key, { testOrigin: PANEL_TEST_ORIGIN }) : null;
+  if (!url) return;
+  panelSection = key;
+  // Already there (a page under it, say), it stays; anywhere else, to the section.
+  if (sectionOf(panel.webContents.getURL(), { testOrigin: PANEL_TEST_ORIGIN }) !== key) panel.webContents.loadURL(url).catch(() => {});
+  setPanelVisible(true, 'section');
+}
+
 function panelState() {
+  const url = panel ? panel.webContents.getURL() : '';
   return {
     available: Boolean(panel),
     visible: Boolean(panel) && panelVisible,
     // Is a LinkedIn page open in it (so there is something to show)?
-    linkedin: Boolean(panel) && isLinkedInUrl(panel.webContents.getURL()),
+    linkedin: Boolean(panel) && (isLinkedInUrl(url) || Boolean(panelProfileSlug(url, { testOrigin: PANEL_TEST_ORIGIN }))),
+    // Who opened it: 'browse' (the LinkedIn button) or 'scan' (a scan, Outlink, Show LinkedIn).
+    mode: Boolean(panel) && panelVisible ? panelMode || 'scan' : null,
+    // The profile it is on (linkedin.com/in/<slug>), for the people list's "on screen".
+    profile: panel ? panelProfileSlug(url, { testOrigin: PANEL_TEST_ORIGIN }) : null,
+    // In 'section' mode: the section its button opened, and the one its page is in now
+    // (another, or null, once the user has gone elsewhere: the page offers the way back).
+    section: Boolean(panel) && panelVisible && panelMode === 'section' ? panelSection : null,
+    at: panel ? sectionOf(url, { testOrigin: PANEL_TEST_ORIGIN }) : null,
+    // Swapped for its still picture while something is open over it.
+    frozen: Boolean(panel) && panelCover.frozen,
+    // Whether a scanner can drive it (Outlink's profiles need one).
+    scanner: Boolean(panel) && Object.keys(panelEnvVars).length > 0,
   };
 }
 
@@ -470,12 +546,27 @@ function fromApp(event) {
 function setUpPanelMessages() {
   ipcMain.handle('linkedin-panel:state', (event) => (fromApp(event) ? panelState() : { available: false, visible: false, linkedin: false }));
   ipcMain.on('linkedin-panel:show', (event) => { if (fromApp(event)) setPanelVisible(true); });
+  ipcMain.on('linkedin-panel:browse', (event) => { if (fromApp(event)) browsePanel(); });
+  ipcMain.on('linkedin-panel:section', (event, key) => { if (fromApp(event) && typeof key === 'string') showSection(key); });
   ipcMain.on('linkedin-panel:hide', (event) => { if (fromApp(event)) setPanelVisible(false); });
   ipcMain.on('linkedin-panel:top', (event, px) => {
     if (!fromApp(event)) return;
     panelTop = Number.isFinite(px) ? px : null;
     placePanel();
+    panelCover.refresh();
   });
+  // Where it starts, and what the page keeps clear beside and under it, in one message.
+  ipcMain.on('linkedin-panel:place', (event, place) => {
+    if (!fromApp(event)) return;
+    const px = (v) => (Number.isFinite(v) && v >= 0 ? v : 0);
+    panelTop = Number.isFinite(place?.top) && place.top >= 0 ? place.top : null;
+    panelInsets = { right: px(place?.right), bottom: px(place?.bottom) };
+    placePanel();
+    panelCover.refresh();
+  });
+  // Something the page opened is over the panel (true), or nothing is (false).
+  ipcMain.on('linkedin-panel:cover', (event, on) => { if (fromApp(event)) panelCover.set(on === true); });
+  ipcMain.on('linkedin-panel:still-drawn', (event, n) => { if (fromApp(event) && Number.isInteger(n)) panelCover.drawn(n); });
 }
 
 /** LinkedIn's pages stay in the panel; any other link goes to the user's browser (lib.mjs panelRoute). */

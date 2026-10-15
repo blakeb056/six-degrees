@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { companyOf, getSeniority } from '../../lib/companies';
 import { localPhoto } from '../../lib/photos';
 import { TIER_COLORS } from '../../lib/themes';
+import OpenProfile from '../components/OpenProfile';
 
 // Map and Companies (Blake, 2026-10-02: companies are worth more than industries,
 // and an industry's detail opens from a company's card). Whether the map's bubbles
@@ -524,11 +525,11 @@ function PathPersonRow({ p, level, companyPeople, d1Urls, selectedCompany }) {
 
         {/* Add button */}
         {!p.connected && (
-          <a href={p.profile_url || p.profileUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+          <OpenProfile person={p} stopPropagation
             style={{
               padding: '3px 7px', borderRadius: 4, fontSize: 8, fontWeight: 700,
               background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0,
-            }}>Add</a>
+            }}>Add</OpenProfile>
         )}
       </div>
 

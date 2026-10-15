@@ -5,7 +5,8 @@ This page is the package format, version 1: what a `.sgplugin` file holds, what
 Sixgree checks before it installs one, and where an installed plugin lives. It is also
 the plugin list's format, version 1: the list Browse shows, with one-click Install.
 
-The first kind of plugin is a **scanner**. Other kinds come later.
+The first kind of plugin is a **scanner**. The second is a **feature**: a manifest and a README
+with no code, which switches on a feature built into Sixgree (see *Feature plugins*).
 
 ## Turning plugins on
 
@@ -117,8 +118,8 @@ A folder entry is allowed only for a folder that holds a listed file.
 | `sixgree` | The versions of Sixgree it is for: one to four comparisons, all of which must hold, separated by spaces. Each is `>=`, `>`, `<=`, `<` or `=` (or none, meaning `=`) before `MAJOR.MINOR.PATCH`. Examples: `">=1.2.8"`, `">=2.0.0 <3.0.0"`. |
 | `about` | What it does, shown before installing and in the list. Up to 400 characters. |
 | `risk` | Optional. Shown before installing, beside the yes. Up to 1000 characters. |
-| `kind` | `"scanner"`. |
-| `unlocks` | What it turns on in the app: `["auto"]`, `["manual"]` or both (see *What a scanner plugin unlocks*). |
+| `kind` | `"scanner"` or `"feature"`. |
+| `unlocks` | What it turns on in the app. A scanner: `["auto"]`, `["manual"]` or both (see *What a scanner plugin unlocks*). A feature: `["linkedin-browser"]`. |
 | `files` | Every file in the package except `manifest.json`, each with its SHA-256 as 64 lowercase hex digits. Up to 200. |
 
 Text fields are plain text: no control characters, and none of the characters that turn
@@ -158,6 +159,20 @@ Sixgree starts a scanner plugin exactly as it starts the built-in scanner:
 
 Install and *Set up the scanner* install the plugin's `scanner/requirements.txt` into the
 scanner's Python.
+
+### Feature plugins
+
+A plugin of `kind: "feature"` carries no code: its package is `manifest.json` and a
+`README.md` (any `scanner/` file is refused). Its feature is part of Sixgree, and shows only
+while the plugin is installed, every file still matches its checksum, and plugins are on
+(`lib/plugins.js featureUnlocked`, answered to the page by `GET /api/plugins/features`). Scans
+never run a feature plugin.
+
+The first is **LinkedIn browser** (`linkedin-browser`, unlocks `"linkedin-browser"`, its own
+version, 1.0.0): the header's LinkedIn button and the people list beside Sixgree's own browser,
+in the desktop app only. `scripts/build-plugin.mjs` builds it from
+`scripts/plugins/linkedin-browser/README.md` at its own version, whatever `--version` the
+scanners are built at.
 
 ### What a scanner plugin unlocks
 

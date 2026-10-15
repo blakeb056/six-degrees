@@ -23,6 +23,7 @@ import NoteDetail from './NoteDetail';
 import CirclePanel from './CirclePanel';
 import { localPhoto } from '../../lib/photos';
 import ConnectChoice, { secondaryLook } from './AutoConnect';
+import OpenProfile from './OpenProfile';
 
 export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote, circle = null }) {
   const isDegreesMode = mode === 'degrees';
@@ -165,9 +166,9 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
               <p data-person-location="" style={{ color: 'var(--sd-fg-3, #aaa)', fontSize: 11, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.location}</p>
             )}
             {selected.profile_url && (
-              <a href={selected.profile_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#0077B5', textDecoration: 'none', fontWeight: 600 }}>
+              <OpenProfile person={selected} style={{ fontSize: 10, color: '#0077B5', textDecoration: 'none', fontWeight: 600 }}>
                 View profile
-              </a>
+              </OpenProfile>
             )}
           </div>
         </div>
@@ -511,7 +512,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                 // Auto first, the better pick; Connect beside it as an outline
                 // (AutoConnect.js; Blake, 2026-10-03). Your own network only.
                 <ConnectChoice person={selected} canAuto={canScan} size="card" connect={(second) => (
-                  <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
+                  <OpenProfile person={selected}
                     title={second ? 'Opens their profile, to connect yourself' : undefined}
                     style={second ? { ...secondaryLook('card'), flex: 1 } : {
                       display: 'block', padding: '10px 16px',
@@ -519,15 +520,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                       color: '#000', borderRadius: 8, textDecoration: 'none',
                       fontWeight: 700, fontSize: 13,
                     }}
-                    onClick={() => {
-                      // Opens their profile to connect, and marks the request
+                    onOpen={() => {
+                      // Opens their profile to connect (in Sixgree's own browser
+                      // where it can, OpenProfile.js), and marks the request
                       // sent, through the bridge whose circle you found them in.
                       markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
                     }}
                   >
                     {/* Beside Auto there's room for one word (a 320 px panel). */}
                     {second ? 'Connect' : 'Connect to Unlock Path'}
-                  </a>
+                  </OpenProfile>
                 )} />
               )}
             </div>
@@ -542,13 +544,13 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         )}
 
         {selected.profile_url && (
-          <a href={selected.profile_url} target="_blank" rel="noopener noreferrer"
+          <OpenProfile person={selected}
             style={{
               display: 'block', textAlign: 'center', padding: 10, marginTop: 16,
               background: '#0077B5', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13,
             }}>
             View profile
-          </a>
+          </OpenProfile>
         )}
       </SidebarWrapper>
     );

@@ -16,6 +16,7 @@ import { roleLine } from '../../../lib/insights-board';
 import { markRequested } from '../../../lib/requests-client';
 import ConnectChoice, { secondaryLook } from '../AutoConnect';
 import { useScanShows } from '../useScanner';
+import OpenProfile from '../OpenProfile';
 
 export const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 export const one = (x) => (Math.round(Number(x || 0) * 10) / 10).toFixed(1);
@@ -215,14 +216,14 @@ export function AskButton({ row, bridgeId, asked, compact, canAuto = false }) {
   if (!row?.profile_url) return null;
   const size = compact ? { padding: '4px 9px', fontSize: 11 } : null;
   const ask = (second) => (
-    <a href={row.profile_url} target="_blank" rel="noopener noreferrer"
+    <OpenProfile person={row}
       title="Opens their profile in a new tab to send the request there, and marks it sent here"
-      onClick={() => { markRequested(row, { bridgeId }).catch(() => {}); }}
+      onOpen={() => { markRequested(row, { bridgeId }).catch(() => {}); }}
       style={second
         ? { ...ACT, ...secondaryLook(compact ? 'row' : 'table'), ...size }
         : { ...ACT, color: '#000', border: 'none', background: 'linear-gradient(135deg, #FF6B35, #FFD700)', ...size }}>
       Ask
-    </a>
+    </OpenProfile>
   );
   return <ConnectChoice person={row} canAuto={canAuto} size={compact ? 'row' : 'table'} connect={ask} />;
 }

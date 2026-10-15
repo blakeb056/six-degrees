@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import useScanner from './useScanner';
+import usePanelCover from './usePanelCover';
 import { stopScrape } from '../../lib/scraper-client';
 import { stopAutoScan } from '../../lib/experimental-client';
 import { scanLight, endedLight, lightLabel, timeLeftText, whoseConnections, LIGHT_LINGER_MS, LIGHT_WORDS } from '../../lib/scan-light';
@@ -154,6 +155,8 @@ export default function ScanLight({ isMobile = false }) {
   const color = light?.color || null;
   // Gone with the scan: nothing left to open.
   const open = opened && Boolean(color);
+  // Over Sixgree's own browser when it shows: it steps aside while this is open (usePanelCover).
+  usePanelCover(open);
   const resting = !job.running && job.auto?.on === true;
   const stopping = stopFor != null && (resting ? stopFor === 'auto' : job.running && stopFor === job.startedAt);
 

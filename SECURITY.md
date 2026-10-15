@@ -143,6 +143,15 @@ This app is designed to run **on your own machine, against your own network**.
   with `SIX_DEGREES_PANEL=0` to keep the port shut; the scanner then opens its own Chrome as
   before. The panel shows linkedin.com pages only (any other link opens in your own browser),
   with its own storage, and gets no access to Electron or the app (`desktop/main.mjs`).
+  With only the LinkedIn browser plugin installed (no scanner), the panel is there for your
+  own browsing and the debugging port stays shut.
+- **Sixgree's own browser identifies as plain Chrome.** The panel's session sends the user agent
+  Electron gives it with the `Sixgree/x` and `Electron/x` tokens taken out (worked out from the
+  real one at each start), so LinkedIn sees the Chrome it is built on. That is the only change:
+  client hints, `navigator.webdriver` and everything else a site can read are left as Electron
+  has them, and the app's own pages keep Electron's default user agent. All the shell tells the
+  app's page about the panel is whether it shows and which `linkedin.com/in/<slug>` it is on, so
+  the LinkedIn browser's people list can match it against your network on this computer.
 
 ## Your data
 

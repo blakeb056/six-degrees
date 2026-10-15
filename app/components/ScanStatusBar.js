@@ -47,6 +47,7 @@ import {
   watchActivities, activitiesNow, noActivities, watchNotchTabs, notchTabsNow, noNotchTabs, setNotchShown, isCurrentTab, notchGroups,
   watchNotchTucked, notchTuckedNow, notTucked, setNotchTucked, isTuckKey, comesBackDown,
 } from '../../lib/island';
+import usePanelCover from './usePanelCover';
 
 // The thin line between the page's buttons and what's running, and between two rows of choice.
 const DIVIDER = { width: 1, alignSelf: 'stretch', margin: '3px 4px', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)' };
@@ -188,6 +189,11 @@ export default function ScanStatusBar() {
   const status = running || other || (allDay && shows.auto) || queued.length > 0 || limitHeld || lifted;
   // Pages with a heading at the top leave room for the notch while it's showing.
   const showing = Boolean(status || tabs);
+  // Opened, it hangs over Sixgree's own browser when that shows: the browser
+  // steps aside meanwhile (usePanelCover), and keeps to the notch at rest
+  // (data-notch-open, LinkedInPanel.js).
+  const opened = Boolean((open || pinned) && status && !tucked);
+  usePanelCover(opened);
   useEffect(() => {
     setNotchShown(showing);
     return () => setNotchShown(false);
@@ -298,6 +304,7 @@ export default function ScanStatusBar() {
         data-glass-panel="bar"
         data-notch=""
         data-tucked={tucked ? '' : undefined}
+        data-notch-open={opened ? '' : undefined}
         inert={tucked}
         className="notch-in"
         onMouseLeave={() => setOpen(false)}

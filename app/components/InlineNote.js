@@ -8,6 +8,7 @@
 // It fades by itself; nothing to press to get rid of it.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import usePanelCover from './usePanelCover';
 
 /**
  * [note, say]: say(text) shows `text` for `ms` and then lets it fade;
@@ -43,6 +44,8 @@ const CSS = `
  * `tone`: 'bad' (red, the default) or 'info'.
  */
 export default function InlineNote({ note, tone = 'bad', float = false, align = 'right', style }) {
+  // Floating under a header button, it can hang over Sixgree's own browser: the browser steps aside meanwhile.
+  usePanelCover(Boolean(note && float));
   if (!note) return null;
   const bad = tone === 'bad';
   return (

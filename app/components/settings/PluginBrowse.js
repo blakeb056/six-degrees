@@ -223,9 +223,10 @@ function WorkBar({ label, kind }) {
  * (cardState). `quiet` keeps the buttons plain, where something else on the
  * screen is the main way in (the guided setup's CSV).
  */
-export function PluginCards({ install, installed, quiet = false, columns = 'repeat(auto-fill, minmax(250px, 1fr))' }) {
+export function PluginCards({ install, installed, quiet = false, kinds = null, columns = 'repeat(auto-fill, minmax(250px, 1fr))' }) {
   const { catalog } = install;
-  const plugins = cardsFrom(catalog);
+  // `kinds`: only plugins of these kinds (the guided setup's ways to bring in a network: scanners).
+  const plugins = cardsFrom(catalog).filter((p) => !kinds || kinds.includes(p.kind));
   const anyBusy = Boolean(install.busy);
   return (
     <div data-catalog={Array.isArray(catalog.plugins) ? 'live' : 'shipped'}>

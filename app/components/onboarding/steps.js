@@ -32,6 +32,9 @@ import SectorPicker from '../settings/SectorPicker';
 import { DailyLimitInput } from '../LinkedInLimits';
 import ClusterSpinner from '../ClusterSpinner';
 import { usePluginInstall, PluginCards } from '../settings/PluginBrowse';
+
+// The ways to bring in a network are the scanners; a feature plugin (the LinkedIn browser) is Settings → Plugins'.
+const SCANNER_KINDS = ['scanner'];
 import { fetchPlugins } from '../../../lib/plugins-client';
 import { Ico, Galaxy, MacSettings, ChecksArt, ConnectArt, PaceArt } from './art';
 
@@ -1135,7 +1138,7 @@ function OtherWays({ onChanged, focus = false, onFocused }) {
       <p className="ob-plugins-d">
         Plugins add who your connections know, scanned with your own account. Install fetches one, and shows you what it is before anything installs.
       </p>
-      <PluginCards install={install} installed={view?.plugins || []} quiet columns="1fr" />
+      <PluginCards install={install} installed={view?.plugins || []} quiet kinds={SCANNER_KINDS} columns="1fr" />
     </section>
   );
 }
