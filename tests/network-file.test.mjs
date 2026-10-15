@@ -311,6 +311,13 @@ test('each line is one JSON object, UTF-8, under the size cap, and the file ends
   refused(latin, /isn't UTF-8/);
 });
 
+test('a person may say where they are (location), and one that doesn\'t has none', () => {
+  const model = readNetworkFolder(folder('location', { people: [{ ...ada, location: 'Seattle, Washington, United States' }, grace] }));
+  assert.equal(model.people[0].location, 'Seattle, Washington, United States');
+  assert.equal(model.people[1].location, null);
+  assert.deepEqual(model.ignored.fields, {}, 'a known field, never set aside as unknown');
+});
+
 test('fields are checked by type, and a bad one is named with its file and line', () => {
   const cases = [
     ['people.jsonl', lines(ada, { ...grace, name: '' }), /people\.jsonl, line 2: "name" is empty/],
@@ -318,6 +325,8 @@ test('fields are checked by type, and a bad one is named with its file and line'
     ['people.jsonl', lines(ada, { ...grace, key: 'grace' }), /"key" isn't a profile link/],
     ['people.jsonl', lines(ada, { ...grace, headline: 'x'.repeat(LIMITS.text + 1) }), /"headline" is longer than 1000/],
     ['people.jsonl', lines(ada, { ...grace, mutual_count: -1 }), /"mutual_count" must be a whole number/],
+    ['people.jsonl', lines(ada, { ...grace, location: 7 }), /"location" must be text/],
+    ['people.jsonl', lines(ada, { ...grace, location: 'x'.repeat(101) }), /"location" is longer than 100/],
     ['people.jsonl', lines(ada, { ...grace, photo: 'face.webp' }), /"photo" must name a photo by its SHA-256/],
     ['connections.jsonl', lines(conn(ada), conn(grace, { source: 'guess' })), /connections\.jsonl, line 2: "source" must be one of export, scan, manual/],
     ['connections.jsonl', lines(conn(ada), conn(grace, { source: undefined })), /"source" is missing/],

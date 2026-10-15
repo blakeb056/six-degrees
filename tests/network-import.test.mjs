@@ -183,6 +183,22 @@ test('a scan or a hand edit overwrites, and a missing role or company is read fr
   assert.deepEqual([ada.headline, ada.role, ada.company], ['Director at Analytical Engines | Mentor', 'Director', 'Analytical Engines']);
 });
 
+test('where someone is comes in from a file that says it, and a file without it (a Connections export) never blanks it', async () => {
+  const me = user('where');
+  row(me, { profile_url: url('ada-where'), name: 'Ada Where', headline: 'Founder at X', role: 'Founder', company: 'X', location: 'Lisbon, Portugal' });
+  // A Connections export carries no location: the one a scan read stays, and a new person has none.
+  await apply(fileFrom([exported('ada-where', 'Ada Where', 'Founder', 'X'), exported('bo-where', 'Bo Where', 'Engineer', 'Y')]), { userId: me });
+  assert.equal(mine(me, url('ada-where'))[0].location, 'Lisbon, Portugal');
+  assert.equal(mine(me, url('bo-where'))[0].location, null);
+  // A scan's file that says where they are writes it, on an add and an update alike.
+  await apply(fileOf({
+    people: [{ key: exportLink('ada-where'), name: 'Ada Where', location: 'Porto, Portugal' }, { key: exportLink('cy-where'), name: 'Cy Where', location: 'Madrid, Spain' }],
+    connections: [{ person: exportLink('ada-where'), source: 'scan' }, { person: exportLink('cy-where'), source: 'scan' }],
+  }), { userId: me });
+  assert.equal(mine(me, url('ada-where'))[0].location, 'Porto, Portugal');
+  assert.equal(mine(me, url('cy-where'))[0].location, 'Madrid, Spain');
+});
+
 // ── promotion ────────────────────────────────────────────────────────────────
 
 test('someone met through a bridge who is now a connection is promoted, keeping who introduced them', async () => {

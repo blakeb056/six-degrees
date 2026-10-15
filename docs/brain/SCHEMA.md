@@ -42,6 +42,16 @@ installed rather than run from a checkout. TRAPS §4.
   mutual connections": 24). One fact about the two of you, so every copy of the person
   carries the newest count read; NULL until a scan reads one (or when LinkedIn's wording
   isn't English). Rarity uses it (`lib/rarity.js`); never a score.
+- `location`: where they are, as a scan read it ("Seattle, Washington, United States"): the
+  line under the headline on their card in any list (a circle, a company, your connections),
+  or the line their profile's top card shows by *Contact info* (Dig deeper). Filled in or
+  brought up to date like `headline`, never cleared by a read that showed none; in a circle
+  or a company scan every copy of them at that degree gets the newest. NULL until a scan
+  reads one; a Connections export has none. `/api/network` returns it, for the Map.
+- `followers`: their follower count as a list's card showed it ("· 3,766 followers"), kept
+  the same way as `location`. A profile's top card (`experience`'s `card`) wins over it in
+  scoring (`lib/scoring.js followersOf`); this is the count for everyone Dig deeper hasn't
+  opened.
 
 **Two fields are easy to conflate and must not be:**
 
@@ -85,7 +95,7 @@ rule the original Postgres schema enforced.
 `CREATE TABLE IF NOT EXISTS` never adds a column to a table that already exists, so a
 new column on an existing table also goes in `ADDED_COLUMNS` in `lib/db-client.js`,
 which runs `ALTER TABLE … ADD COLUMN` once on older databases (first used for `score_why`,
-then `mutual_count`, then `experience`).
+then `mutual_count`, then `experience`, then `location` and `followers`).
 New tables need nothing extra.
 
 ## Conventions

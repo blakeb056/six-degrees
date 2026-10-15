@@ -1,10 +1,10 @@
 import { db as supabase } from '../../../lib/db';
-import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf, parseHeadline } from '../../../lib/ingest';
+import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf, parseHeadline, locationOf, followersCountOf } from '../../../lib/ingest';
 import { tiePairs } from '../../../lib/ties';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
-import { cleanExperience, readExperience } from '../../../lib/experience';
+import { cleanExperience, readExperience, cleanCard } from '../../../lib/experience';
 
 /**
  * Read profiles' answer (scripts/scrape.py push_experience): for each person,
@@ -12,6 +12,11 @@ import { cleanExperience, readExperience } from '../../../lib/experience';
  * their 1st-degree row (lib/experience.js cleanExperience: never an empty list
  * stored as "no experience", TRAPS §7), then everyone is rescored, since a
  * role read can change a score and a company's headcount.
+ *
+ * Where the profile's top card says they are (`location`, Dig deeper) goes on
+ * the same row, its `location`; one with no place leaves the one there. A top
+ * card that showed a place and no numbers (status "card", no card) stores the
+ * place alone: there is no card to keep.
  */
 async function saveExperience({ people, userId }) {
   if (!Array.isArray(people) || people.length === 0 || people.length > 50) {
@@ -23,23 +28,28 @@ async function saveExperience({ people, userId }) {
   for (const p of people) {
     const url = typeof p?.profileUrl === 'string' ? p.profileUrl.trim() : '';
     if (!url) { notFound += 1; continue; }
-    let stored = cleanExperience(p);
+    const location = locationOf(p?.location);
+    let stored = p?.status === 'card' && !cleanCard(p?.card) && location ? null : cleanExperience(p);
     let q = supabase.from('linkedin_connections').select('id, experience').eq('profile_url', url).eq('degree', 1);
     if (userId) q = q.eq('user_id', userId);
     const { data: rows } = await q;
     if (!rows?.length) { notFound += 1; continue; }
     // A top card on its own (lib/experience.js status 'card') never replaces a read of
     // their experience: it's added to the one already there, newer numbers winning.
-    if (stored.status === 'card') {
+    if (stored?.status === 'card') {
       const had = readExperience(rows[0]);
       if (had && had.status !== 'card') stored = { ...had, card: stored.card };
     }
-    let u = supabase.from('linkedin_connections').update({ experience: JSON.stringify(stored) }).eq('profile_url', url).eq('degree', 1);
+    const changes = {
+      ...(stored ? { experience: JSON.stringify(stored) } : {}),
+      ...(location ? { location } : {}),
+    };
+    let u = supabase.from('linkedin_connections').update(changes).eq('profile_url', url).eq('degree', 1);
     if (userId) u = u.eq('user_id', userId);
     const { error } = await u;
     if (error) return Response.json({ error: error.message }, { status: 500 });
-    if (stored.status === 'read') saved += 1;
-    else if (stored.status === 'unreadable') unreadable += 1;
+    if (stored?.status === 'read') saved += 1;
+    else if (stored?.status === 'unreadable') unreadable += 1;
   }
   try { await supabase.rpc('score_new_connections'); } catch { /* scoring is best-effort, as for every ingest */ }
   return Response.json({ ok: true, saved, unreadable, notFound });
@@ -75,6 +85,11 @@ export async function POST(request) {
         connected_date: toIsoDate(c.connectedDate),
         // LinkedIn's own count, read off a circle's result card; nothing else sends one.
         mutual_count: degree === 2 ? mutualCountOf(c.mutualCount) : null,
+        // Where they are and their followers, when their card in the list showed
+        // them (scripts/scrape.py placeOf, followersOf). Null when it didn't: an
+        // update below never clears what an earlier scan read.
+        location: locationOf(c.location) || null,
+        followers: followersCountOf(c.followers),
       };
       if (degree === 2 && bridgeId) {
         rec.source_connection_id = bridgeId;
@@ -180,6 +195,8 @@ export async function POST(request) {
             company: rec.company,
             role: rec.role,
             ...(rec.profile_image_url ? { profile_image_url: rec.profile_image_url } : {}),
+            ...(rec.location ? { location: rec.location } : {}),
+            ...(rec.followers != null ? { followers: rec.followers } : {}),
           },
         });
         if (res.promoted) { promoted += 1; addedBack.push(res); }
@@ -207,6 +224,9 @@ export async function POST(request) {
         // Fills in the date for people saved before it was captured, so one full
         // scan dates everyone and "newest first" can go by it.
         if (rec.connected_date) updates.connected_date = rec.connected_date;
+        // Filled in or brought up to date like the headline; a card that showed none leaves them.
+        if (rec.location) updates.location = rec.location;
+        if (rec.followers != null) updates.followers = rec.followers;
         if (Object.keys(updates).length > 0) {
           await supabase
             .from('linkedin_connections')
@@ -231,6 +251,24 @@ export async function POST(request) {
         if (rec.mutual_count == null) continue;
         let q = supabase.from('linkedin_connections').update({ mutual_count: rec.mutual_count })
           .eq('profile_url', rec.profile_url).eq('degree', 2);
+        if (userId) q = q.eq('user_id', userId);
+        await q;
+      }
+    }
+
+    // Where someone is and their followers are facts about them too: in a
+    // circle or a company scan, every copy of them at that degree gets the
+    // newest read (a re-scan fills in people saved before these were kept),
+    // and a card that showed none leaves what's there.
+    if (degree > 1) {
+      for (const rec of records) {
+        const facts = {
+          ...(rec.location ? { location: rec.location } : {}),
+          ...(rec.followers != null ? { followers: rec.followers } : {}),
+        };
+        if (!Object.keys(facts).length) continue;
+        let q = supabase.from('linkedin_connections').update(facts)
+          .eq('profile_url', rec.profile_url).eq('degree', degree);
         if (userId) q = q.eq('user_id', userId);
         await q;
       }
