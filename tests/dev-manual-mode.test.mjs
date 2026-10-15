@@ -1001,7 +1001,9 @@ test('Blake\'s two runs: pages 2 to 14 read past page 1 are kept, and reading pa
       at += 6;
     }
     plan1.push(`[${at + 2}, 'close']`);
+    // His pages as they went that day, with no break after page 10 (tests/manual-breaks.test.mjs has those).
     const r = scanner(t, home, `${MANUAL_PAGE}${OPENS_AHEAD}
+(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'breakEvery': 25}))
 out['first'] = by_hand(OpensAhead(40, [${plan1.join(', ')}], url_follows=False))
 # Run 2: Resume (it carries on, from page 1). The window opens on page 2 again. He tries
 # page 3, goes back to page 1 and reads it, clicks Next, then tries page 4.

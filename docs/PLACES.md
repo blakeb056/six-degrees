@@ -42,6 +42,38 @@ Each location is split at its commas and read from the end.
 Names are compared without case, accents or punctuation, and `Saint` reads as
 `St`. Each distinct text is worked out once.
 
+## Lines, filters and the finder
+
+Once people have places, the Map tab answers a few questions about them
+(`lib/map-lines.js`, drawn by `app/components/WorldMap.js`). Lines are drawn
+only for what you pick, never for everyone, so the map stays smooth with
+thousands of people; each follows the great circle between two places (d3's
+`geoInterpolate`), bows a little so lines that share an end fan out, and draws
+in, unless the system asks for less motion.
+
+| You pick | Lines | It answers |
+|---|---|---|
+| A place | From the connections who reach the 2nd-degree people there, as thick as how many each reaches. The place's list says who they are, each with *Ask for an intro* (Outlink, filtered to that connection's circle). | Who can introduce me to people in Austin? |
+| A connection with a scanned circle (*Reach* in a place's list, the finder, or the button that appears while their card is open) | From where they are to every place their circle lives. Clicking a line or its end opens who's there. A connection with no location has no lines; the places are ringed. | How far does Jane's network reach, and where? |
+| *From you* (off to start) | Faint lines from home to your connections' places, at most 40. Home is a place you pick (*Make this home* in its list, kept in this browser), or where most of your connections are, marked as a guess: Sixgree doesn't know where you are. | How spread out is my own network? |
+
+A person in two circles counts under both connections, since either can
+introduce you, and once in the totals.
+
+The filters narrow the map and show as chips you clear one at a time:
+
+- **A company** (from the finder): people whose company contains it.
+- **Words** (type and press Enter): people with every word in their name,
+  company, title or headline, so *founder* shows where the founders you know are.
+- **Places with at least N people**, and **at least N of tier S or A**: declutter,
+  or find where your strongest people gather. A place a line starts or ends at
+  is always drawn.
+- The Filters panel's tier and degree grid, as before.
+
+The count at the top says how many of everyone shown have a place
+(*676 of 748 located*). The densest places glow softly, and *Heat* shades
+where the network is thickest, merging the towns of one metro into one patch.
+
 ## The data, and its credits
 
 | File | What | Source | Licence |

@@ -22,6 +22,7 @@ import useScanStatus from '../components/useScanStatus';
 import { useScanShows } from '../components/useScanner';
 import { AUTO_NEEDS_AUTOMATIC, modeChoices, modeSetting, pluginTooOld } from '../../lib/scanner-capabilities';
 import UsageSection from '../components/settings/UsageSection';
+import ManualBreaksSetting from '../components/ManualBreaksSetting';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -591,6 +592,13 @@ function SetupInner() {
                     and a chime each page read, a step higher for every page in a row: Settings &rarr; Sound.
                   </div>
                 </details>
+              )}
+              {/* Blake, 2026-10-15: a break every 10 pages, 20 seconds, ticking (lib/manual-breaks.js).
+                  The scanner reads it at each break (scrape.py manual_break), so it's never greyed out by a scan. */}
+              {shows.manual && (
+                <div style={{ ...rowStyle, marginTop: 12 }}>
+                  <ManualBreaksSetting limits={li?.limits} disabled={busy} onSave={(change) => run('set-limits', change)} />
+                </div>
               )}
             </Group>
 

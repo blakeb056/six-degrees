@@ -26,6 +26,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with no code: the feature is part of Sixgree and shows only while its plugin is installed, sound
   and switched on, the way the scan screens show only with a scanner plugin. The LinkedIn browser is
   the first. `npm run build:plugins` builds it beside the scanners, at its own version.
+- **Breaks by hand** (manual mode; the scanner plugins, 1.0.6). After every 10 pages you read
+  by hand, the next page waits 20 seconds. The window holds it: a clear layer over LinkedIn's
+  page takes the clicks on Next and the page numbers, with the countdown on it, and a page asked
+  for any other way waits until the break is over. A quiet tick plays each second, at the
+  chimes' volume (off with them), and the scan light shows the break in yellow, counting down
+  ("Break: 14 s, then page 21"). Both numbers are in Scanner settings, under How circle scans
+  run: every 1 to 25 pages, for 10 to 300 seconds. Pages read seconds apart are what LinkedIn
+  notices. Automatic scans keep their own pace, unchanged.
+- **Map: lines, filters and a finder** (Blake, 2026-10-15). Pick a place and lines run back to the
+  connections who reach the 2nd-degree people there, as thick as how many each reaches; its list
+  names them, each with *Ask for an intro* (Outlink, filtered to their circle). Pick one of your
+  connections (*Reach* in a place's list, the new finder, or the button that shows while their card
+  is open) and lines run from where they are to everywhere their circle lives; a line's end lists
+  who's there. *From you*, off to start, draws faint lines from home to your connections' places.
+  Lines follow great circles and draw in, unless the system asks for less motion, and only for
+  what's picked. The finder takes a person, a company or a place; Enter keeps the words as a filter
+  on names, companies and headlines. Filters show as chips you clear one by one, with *Clear all*.
+  *Declutter* hides places with fewer than N people, or fewer than N of tier S or A. The top of the
+  map counts who is located (*676 of 748 located*), the densest places glow, and *Heat* shades
+  where the network is thickest. All offline, in both dark and light looks. Docs: `docs/PLACES.md`.
 
 ### Changed
 - **Sixgree's own browser identifies as plain Chrome.** Its user agent is now the one Electron gives
@@ -49,7 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Open Top 10* open the first in Sixgree's own browser, then one at a time from *Next profile (N
   left)* in its bar, each counted, instead of a burst of tabs. Without the panel they open the page
   of links in your browser, as before.
-
+- **The scanner plugins are 1.0.6**: the breaks by hand, and a page's "found" count is the
+  people it lists, by hand or automatic. A page of 10 people used to say "24 found", counting
+  the names in their mutual lines; those names are still saved, as before. Driving Sixgree's own
+  panel, manual mode's first line says "in the LinkedIn panel" instead of the Chrome window.
 ## [2.4.0] - 2026-10-15
 
 LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree's own window instead of a separate Chrome.

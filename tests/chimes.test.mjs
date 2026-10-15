@@ -41,7 +41,7 @@ function crossings(samples, seconds = 0.05) {
 // ── the sounds ──────────────────────────────────────────────────────────────
 
 test('every chime is a 16-bit mono WAV at 44.1 kHz, never clipped, and the same bytes every time', () => {
-  assert.equal(CHIME_NAMES.length, READ_STEPS + 2);
+  assert.equal(CHIME_NAMES.length, READ_STEPS + 3, 'the read steps, next, done and the break tick');
   for (const name of CHIME_NAMES) {
     const wav = chimeWav(name);
     const dv = new DataView(wav.buffer);
@@ -222,7 +222,9 @@ test('the read chimes climb with a long run and stay at the top of the ladder', 
   try {
     const plan = [];
     for (let i = 0; i < 11; i++) plan.push([3 + i * 6, 'foot'], [6 + i * 6, 'next']);
+    // No break after page 10 here (tests/manual-breaks.test.mjs has those): the most pages between breaks.
     const r = scanner(t, home, `${PAGE}
+(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'breakEvery': 25}))
 out['chimes'] = read_by_hand(Page(12, ${JSON.stringify(plan)} + [[80, 'close']]), 120)`);
     if (!r) return;
     const reads = r.out.chimes.map(([n]) => n).filter((n) => n.startsWith('read-'));
