@@ -501,9 +501,14 @@ export function notarize(file, notary, {
  * validate it. Right after a submission is accepted, Apple's ticket can take a
  * moment to be served ("Record not found"), so it is tried a few times.
  */
-export function staple(file, { env = process.env, log = console.log, attempts = 5, retrySeconds = 20 } = {}) {
+export function staple(file, { env = process.env, log = console.log, attempts = 5, retrySeconds = 20, unreachableAttempts = 12, unreachableSeconds = 60 } = {}) {
   let last = '';
-  for (let i = 1; i <= attempts; i++) {
+  // A dropped connection to Apple's ticket server (not Apple answering "no
+  // ticket yet") gets more, slower tries: from GitHub's Mac runners it has
+  // lasted past five tries 20 s apart on three runs in a row (10/15), while
+  // the same server answered at once from a Mac elsewhere.
+  let limit = attempts;
+  for (let i = 1; i <= limit; i++) {
     const r = capture('xcrun', ['stapler', 'staple', file], { env });
     if (r.status === 0) {
       const v = capture('xcrun', ['stapler', 'validate', file], { env });
@@ -512,8 +517,10 @@ export function staple(file, { env = process.env, log = console.log, attempts = 
     } else {
       last = lastLines(r.stderr || r.stdout);
     }
-    log(`  stapling ${path.basename(file)} didn't work yet (try ${i} of ${attempts}): ${last}`);
-    if (i < attempts) pause(retrySeconds);
+    const unreachable = APPLE_UNREACHABLE.test(last);
+    if (unreachable) limit = Math.max(limit, unreachableAttempts);
+    log(`  stapling ${path.basename(file)} didn't work yet (try ${i} of ${limit}): ${last}`);
+    if (i < limit) pause(unreachable ? unreachableSeconds : retrySeconds);
   }
   throw new SigningError(`Couldn't staple the notarization ticket to ${path.basename(file)}: ${last}`);
 }
