@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one already read, and anyone not saved yet is added. LinkedIn's search shows 1,000 people at most;
   a larger network is read that far. An older scanner plugin is asked to update first.
 
+### Changed
+- **The Map knows about 34,000 cities, not 300.** Its list of places now comes from GeoNames
+  (every city of 15,000 people or more, with its region and country), so far more people land on
+  their own city instead of their region's middle. It still works entirely on your computer. The
+  Map credits GeoNames at its bottom right.
+
 ## [2.2.0] - 2026-10-15
 
 The Map tab shows where your network is, and every scan now keeps where people are and their follower counts.

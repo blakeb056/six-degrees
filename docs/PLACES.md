@@ -60,10 +60,12 @@ Guiana), or its largest city when it's too small for the 1:110m outlines
 node scripts/build-places.mjs --world ne_110m_admin_0_countries.geojson --geonames <folder with the three GeoNames files>
 ```
 
-Until the GeoNames files are fetched, `places.json` is a **stand-in** built with
-`--ne-places ne_110m_populated_places_simple.geojson`: Natural Earth's 243
-populated places (public domain) and a few dozen more cities typed into the
-script. Its `source` field says which it is.
+`places.json` is built from GeoNames' `cities15000` (every city of 15,000
+people or more, about 34,000) since 2.3.0, and the Map credits GeoNames at its
+bottom right, as CC BY 4.0 asks. Without the GeoNames files the script can
+still build a **stand-in** with `--ne-places ne_110m_populated_places_simple.geojson`:
+Natural Earth's 243 populated places (public domain) and a few dozen more
+cities typed into the script. Its `source` field says which it is.
 
 ## The sample network
 
