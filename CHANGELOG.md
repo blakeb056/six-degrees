@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-15
+
+LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree's own window instead of a separate Chrome.
+
 ### Added
 - **Sixgree's own browser: LinkedIn inside Sixgree's window** (the desktop app, with a scanner
   plugin installed; the scanner plugins, 1.0.5). LinkedIn shows in a panel under the app's top
