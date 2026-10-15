@@ -426,6 +426,62 @@ when the page bar moves. Events only arrive while Playwright runs, so the loop w
 `page.wait_for_timeout` (`_manual_wait`), never `time.sleep`, which would hold the tap until
 the next look. `_chime` never waits for the sound and never raises.
 
+**Breaks by hand (2026-10-15).** Blake read 70 pages of his own connections by hand in 9.5
+minutes (a median of 3.3 s between pages) and LinkedIn warned him about going through a lot
+of data; 10/12 had 305 pages a median of 4 s apart and a restriction; 10/3 had 288 pages about
+50 s apart and nothing. His ask: "make them wait every 10 pages … 20 seconds with a ticking
+sound". `_read_by_hand` counts pages read since the last break (`since_break`, this run's
+reads, not pages read before or hidden pages); once it reaches `manual_break()`'s `every`, and
+the list isn't over, it prints a status line ("10 pages read: a 20-second break before page
+11. …"), a `LinkedIn needs you: page 10 is read (10 people). Break: wait 20 seconds, then go
+on to page 11. …` line, and runs `_manual_break`, then the usual "Click Next" line.
+`manual_break()` reads `breakEvery` (1 to 25, default `BREAK_EVERY` 10) and `breakSeconds`
+(10 to 300, default `BREAK_SECONDS` 20) from `scan-limits.json` at each break, so a change
+reaches a scan under way; anything else reads as the default (`lib/manual-breaks.js` says the
+same numbers; Scanner settings → *Breaks by hand*, `app/components/ManualBreaksSetting.js`).
+
+The break is enforced, not asked for, two ways, each working without the other, both through
+the Playwright page object only (so the same in Chrome and in the panel: `PanelPage` hands
+`evaluate`, `route` and `unroute` to the panel's real page):
+- **The layer** (`BREAK_SHOW_JS`): a clear, full-window element at the top z-index that
+  swallows clicks, pointer and touch events and Enter/Space (arrow keys still scroll), with
+  "Break: 14 s, then page 21" on it. Written again each second, so a redraw gets it back; it
+  removes itself `BREAK_STALE_MS` (5 s) after its last update, so a scanner that dies
+  mid-break never leaves it on the panel (which outlives the scanner). `BREAK_HIDE_JS` takes it
+  off at the end. It needs no LinkedIn selector, so a new layout can't slip past it.
+- **The hold** (`_BreakHold`): `page.route(_search_load, …)` for LinkedIn's search pages and
+  its voyager search API (the same requests the Next tap listens for), answering none until
+  the break ends; then `unroute` and `continue_()` each held request ("The page asked for
+  during the break loads now."). Catches what the layer can't: the address bar, a key it
+  missed. Playwright supports a handler that answers later; the held requests are answered
+  before the `unroute`, so no handler is in flight when the route comes off. Routing is on
+  only during the break (it turns off the HTTP cache while on). A page that can't route still
+  gets the layer. **Trap:** Playwright's `evaluate` waits for a navigation to commit, so with a
+  whole page held (`_BreakHold.navigating`, a document or navigation request) nothing may
+  evaluate on the page or the break never ends: the layer is no longer written, and the new
+  page replaces it. Checked in a real Chrome (Playwright 1.60) against a local page: a mouse
+  click and Enter/Space on Next did nothing, a fetch and an address-bar load were held and went
+  through as the break ended, and the layer took itself away 5 s after its last update.
+
+Once a second it prints `  (break after page 10: 14 s, then page 11)` and plays
+`_chime("tick")` (`lib/chimes.js` `tick`, `CHIME_VERSION` 2, so the data folder's sounds are
+written again; chimes off or volume 0: silent). The app keeps only the newest of those lines
+(`route.js` `BREAK_TICK` in `push`), so a five-minute break doesn't push the log out; the
+scan light reads it as yellow "Break: 14 s, then page 11" (`lib/scan-light.js` `manualNote`,
+and `manualNeed` for the opening line). The Next tap is off during a break. Stop and a closed
+window end it within a second, with everything taken off. Auto mode never breaks this way.
+
+**The "found" count** (same day): each card's mutual line links its names to your own
+connections, so `BRIDGE_RESULTS_JS` returned them as people too ("Page 3... 24 found" on a
+page of 10). The reader now notes which records start a card of their own in its line walk
+(`nameIn`; a name two share marks all of them) and marks the rest `mutualOnly`, unless it made
+out no card at all (then nothing is marked, the count as before). `_listed()` counts the
+unmarked and strips the mark; both readers (by hand and automatic) print that count and add it
+to `reach["found"]`. The mutual names are still saved, as before.
+
+In panel mode, the opening manual line says "in the LinkedIn panel" (`PANEL["on"]`), not "in
+the Chrome window". Tests: `tests/manual-breaks.test.mjs`.
+
 Tests: `tests/dev-manual-mode.test.mjs` drives `_read_by_hand` with a stand-in window and
 clock: a person scrolling and clicking Next. `tests/chimes.test.mjs` checks the sounds, the
 files, the settings, the player and when each chime plays.

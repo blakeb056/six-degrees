@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Breaks by hand** (manual mode; the scanner plugins, 1.0.6). After every 10 pages you read
+  by hand, the next page waits 20 seconds. The window holds it: a clear layer over LinkedIn's
+  page takes the clicks on Next and the page numbers, with the countdown on it, and a page asked
+  for any other way waits until the break is over. A quiet tick plays each second, at the
+  chimes' volume (off with them), and the scan light shows the break in yellow, counting down
+  ("Break: 14 s, then page 21"). Both numbers are in Scanner settings, under How circle scans
+  run: every 1 to 25 pages, for 10 to 300 seconds. Pages read seconds apart are what LinkedIn
+  notices. Automatic scans keep their own pace, unchanged.
 - **Map: lines, filters and a finder** (Blake, 2026-10-15). Pick a place and lines run back to the
   connections who reach the 2nd-degree people there, as thick as how many each reaches; its list
   names them, each with *Ask for an intro* (Outlink, filtered to their circle). Pick one of your
@@ -19,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   map counts who is located (*676 of 748 located*), the densest places glow, and *Heat* shades
   where the network is thickest. All offline, in both dark and light looks. Docs: `docs/PLACES.md`.
 
+### Changed
+- **The scanner plugins are 1.0.6**: the breaks by hand, and a page's "found" count is the
+  people it lists, by hand or automatic. A page of 10 people used to say "24 found", counting
+  the names in their mutual lines; those names are still saved, as before. Driving Sixgree's own
+  panel, manual mode's first line says "in the LinkedIn panel" instead of the Chrome window.
 ## [2.4.0] - 2026-10-15
 
 LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree's own window instead of a separate Chrome.

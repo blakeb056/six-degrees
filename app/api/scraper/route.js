@@ -233,6 +233,10 @@ const PAGE_READ = /^\s*Page \d+\.\.\.|\d+\s*\/\s*\d+\s+collected/;
 // "10 found (total: 30)" in a circle, "7 found (2 with images)" for a company.
 const PAGE_FOUND = /(\d+) found \((?:total: \d+|\d+ with images)\)/;
 const MAX_PAGES_KEPT = 400;
+// A break by hand's countdown, a line a second (scrape.py _manual_break): only the
+// newest is kept, so a five-minute break doesn't push the rest of the log out. The
+// scan light reads the newest line (lib/scan-light.js).
+const BREAK_TICK = /^\s*\(break after page \d+: \d+ s, then page \d+\)$/;
 // What the scanner says when the daily limit stops a scan (scrape.py budget_message)
 // is read in lib/scan-exit.js now, only for a scanner from before its exit codes.
 
@@ -286,6 +290,10 @@ function push(line) {
   for (const part of String(line).split('\n')) {
     const t = part.replace(/\s+$/, '');
     if (!t) continue;
+    if (BREAK_TICK.test(t) && BREAK_TICK.test(state.log[state.log.length - 1] || '')) {
+      state.log[state.log.length - 1] = t;
+      continue;
+    }
     state.log.push(t);
     if (PAGE_READ.test(t)) {
       state.pages += 1;
@@ -1180,6 +1188,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       dev: body.dev, manual: body.manual, digDeeper: body.digDeeper,
       // Settings → Sound: manual mode's chimes and how loud (lib/chimes.js).
       chimes: body.chimes, chimeVolume: body.chimeVolume,
+      // Scanner settings → Breaks by hand (lib/manual-breaks.js): read by the scanner at each break.
+      breakEvery: body.breakEvery, breakSeconds: body.breakSeconds,
     });
     if (body.dev === false) state.limitHit = null;
     // Manual mode on while Auto scan waits between sittings: it stops now, with why.
