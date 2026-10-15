@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scrolled past or back, so the scan light follows you at once instead of seconds later.
 
 ### Fixed
+- **A circle scan that opens a page ahead no longer loses the pages you read** (the scanner
+  plugins, 1.0.2). Started from page 1, the platform could open someone's list on page 2; by hand,
+  every page after it was read but page 1 never was, so the card and the ring round their dot
+  still said page 1, with nothing read. Now a scan from page 1 that opens on page 2 says to click
+  Previous back to page 1 first (and the scan light turns red: *Go back to page 1*), and one that
+  runs by itself goes back a page on its own, as a resumed scan already did. Every page read is
+  remembered, not only the ones read in order from the start: read page 1 later and the scan
+  carries on from page 15, not page 2. The card says what is read ("Pages 2–14 read; page 1 still
+  to read"), and the ring counts every page read. *Scan* and *Rescan from the start* still read
+  every page again, to find anyone new.
 - **A newer plugin shows its Update button.** Settings → Plugins could keep showing an installed
   plugin as *Installed* after a newer version was out, with no way to look again but leaving
   the page. With plugins on, Browse reads the plugin list when it comes into view and on the new

@@ -139,6 +139,33 @@ test('by hand, red: go back, to an earlier page or to their list', () => {
   assert.equal(away.headline, "Go back to Invented Bridge's list");
 });
 
+test('by hand, red: a fresh start opened on page 2 says go back to page 1 (2026-10-14)', () => {
+  const l = manual([OPEN[0], '  Opening their connections...', '  Search results loaded!',
+    "  LinkedIn's page bar shows page 2, not page 1.",
+    "  Manual mode: you page through Invented Bridge's list, and each page is read when you reach its foot.",
+    "LinkedIn needs you: LinkedIn's page bar shows page 2, and page 1 isn't read yet. Click Previous to page 1 and scroll to its bottom, then carry on with Next. Close the window when you're done with Invented Bridge."]);
+  assert.equal(l.color, 'red');
+  assert.equal(l.headline, 'Go back to page 1');
+  assert.equal(l.stats.page, 2, 'the window is on page 2');
+});
+
+test('pages read before: back to the page still to read (red), or on past them (green)', () => {
+  const back = manual([...OPEN,
+    "LinkedIn needs you: page 3 is already read, and page 1 isn't read yet. Go back to page 1 and scroll to its bottom. Close the window when you're done with Invented Bridge."]);
+  assert.deepEqual([back.color, back.headline, back.stats.page], ['red', 'Go back to page 1', 3]);
+  const filled = manual([...OPEN, '  Page 1... 10 found (total: 10)',
+    "LinkedIn needs you: page 1 is read (10 people), and pages 2–14 were read before. Go on to page 15. Close the window when you're done with Invented Bridge."]);
+  assert.deepEqual([filled.color, filled.headline], ['green', 'Go on to page 15']);
+  const past = manual([...OPEN,
+    "LinkedIn needs you: page 4 is already read, and so is every page to 14. Go on to page 15. Close the window when you're done with Invented Bridge."]);
+  assert.deepEqual([past.color, past.headline], ['green', 'Go on to page 15']);
+  // The same, said as the window moves.
+  assert.deepEqual(['color', 'headline'].map((k) => manual([...OPEN, '  (on page 5, which is read: go back to page 1)'])[k]), ['red', 'Go back to page 1']);
+  assert.deepEqual(['color', 'headline'].map((k) => manual([...OPEN, '  (on page 2, which is read: go on to page 15)'])[k]), ['green', 'Go on to page 15']);
+  // Each is a run by hand, whatever mode the job was started in.
+  assert.equal(isManualRun({ log: ["LinkedIn needs you: page 4 is already read, and so is every page to 14. Go on to page 15."] }), true);
+});
+
 test('by hand, red: their Experience hasn\'t loaded, scroll back up; or its jobs are still loading', () => {
   const up = manual(["LinkedIn needs you: Invented Bridge's Experience hasn't loaded their jobs: LinkedIn loads them only while it's on screen. Scroll back up to Experience and stop there a moment."]);
   assert.equal(up.color, 'red');

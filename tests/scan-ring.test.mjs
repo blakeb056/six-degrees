@@ -166,6 +166,23 @@ test('read + unknown is never above 1, and nothing goes down as pages are read',
   }
 });
 
+test('the ring counts every page read, past a gap too, not only through the bookmark', () => {
+  // Blake, 2026-10-14: pages 2 to 14 read, page 1 not. The bookmark is 0; 13 pages are read.
+  const gap = fillFor({ pages: 0, more: true, total: 300, readPages: [[2, 14]] });
+  assert.equal(gap.pages, 13);
+  assert.equal(gap.seen, 130);
+  assert.ok(near(gap.read, 130 / 300));
+  assert.equal(scanFillWords(gap), 'about 130 of 300 scanned, about 170 to go');
+  // The same pages read in order: the same ring.
+  const inOrder = fillFor({ pages: 13, more: true, total: 300 });
+  assert.ok(near(gap.read, inOrder.read));
+  // No readPages: pages through the bookmark, as before.
+  assert.equal(fillFor({ pages: 7, more: true, total: 300 }).pages, 7);
+  const p = person('ada-quill');
+  const reach = reachIndex([p], [], { read: [p.profile_url], lists: { [p.profile_url]: { pages: 0, more: true, total: 300, readPages: [[2, 14]] } } });
+  assert.equal(scanBars(p, reach), 2, 'the bars count them too: 130 of 300');
+});
+
 test('scanBars is as it was', () => {
   const p = person('bo-larsen');
   const reach = reachIndex([p], [], { read: [p.profile_url], lists: { [p.profile_url]: { pages: 15, more: true, total: 300 } } });

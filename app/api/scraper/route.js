@@ -362,7 +362,9 @@ function scanNotes() {
       for (const [url, e] of Object.entries(progress)) {
         const connections = Number.isInteger(e?.connections) && e.connections >= 0 ? e.connections : null;
         lists[url] = { pages: Number(e?.pages) || 0, more: !!e?.more, total: Number(e?.total) || null,
-          connections, connectionsPlus: connections != null && e?.connectionsPlus === true };
+          connections, connectionsPlus: connections != null && e?.connectionsPlus === true,
+          // Pages read past a gap (scrape.py readPages): the ring counts them too.
+          ...(Array.isArray(e?.readPages) ? { readPages: e.readPages } : {}) };
       }
     }
   } catch {}
@@ -768,7 +770,7 @@ function tellScanner(line) {
 
 /**
  * Where Resume would carry on with one of your connections, for their profile
- * card: { nextPage, pagesRead, legacy }, or null when there is nothing to carry
+ * card: { nextPage, pagesRead, legacy, readPages? }, or null when there is nothing to carry
  * on with (never mapped, read to the end, hidden). The Paused list's own rules
  * (lib/paused.js), so the card and the Scan page can't disagree.
  */
@@ -786,7 +788,7 @@ function resumePoint(id) {
       'SELECT 1 FROM linkedin_connections WHERE user_id = ? AND degree = 2 AND source_connection_id = ? LIMIT 1',
     ).get(me.id, row.id);
     const [p] = pausedList([row], new Set(mapped ? [row.id] : []), readProgress(dataDir(), me.id), readUnclear(dataDir()));
-    return p ? { nextPage: p.nextPage, pagesRead: p.pagesRead, legacy: p.legacy } : null;
+    return p ? { nextPage: p.nextPage, pagesRead: p.pagesRead, legacy: p.legacy, ...(p.readPages ? { readPages: p.readPages } : {}) } : null;
   } catch {
     return null;
   }

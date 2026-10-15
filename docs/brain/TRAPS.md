@@ -746,6 +746,13 @@ more, and "finish people already mapped" carries on from it (people mapped befor
 count as read to page 10). A shorter read never winds the record back. The search limit
 stops the batch after saving. `tests/bridge-progress.test.mjs` covers the record.
 
+**2026-10-14, pages read past a gap.** The record's `pages` only moves through pages read in
+order from page 1, so a read that skipped one forgot every page after it: a list opened on
+page 2, pages 2–14 were read by hand, and the note said "through page 0". `readPages` now
+keeps every page read (as runs, only when some are past a gap); a carried-on read counts them
+as read, so reading page 1 moves `pages` straight to 14. Only pages actually read go in it.
+A read from the start (Scan, Rescan) reads them all again; deleting the circle forgets them.
+
 ---
 
 ## 35. Reading fast got search blocked, and a block looked like ordinary answers

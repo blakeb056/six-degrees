@@ -127,15 +127,16 @@ test('the cards: the live list merged over the shipped copy, entry by entry, and
 });
 
 test('an installed plugin older than the list shows Update; the same or newer shows Installed', () => {
-  const live = SHIPPED_PLUGINS.map((p) => ({ ...p, version: '1.0.2', host: '127.0.0.1:4848', size: 1, problem: null }));
+  // Versions above whatever ships in the app, so the test holds as the shipped copy moves on.
+  const live = SHIPPED_PLUGINS.map((p) => ({ ...p, version: '90.0.2', host: '127.0.0.1:4848', size: 1, problem: null }));
   const cards = cardsFrom({ status: 'ready', plugins: live });
   const installed = [
-    { id: 'auto-scan', version: '1.0.1', state: 'ready' },
-    { id: 'manual-scan', version: '1.0.2', state: 'ready' },
+    { id: 'auto-scan', version: '90.0.1', state: 'ready' },
+    { id: 'manual-scan', version: '90.0.2', state: 'ready' },
   ];
   assert.deepEqual(cards.map((c) => catalogAction(c, installed)), ['update', 'installed']);
   assert.equal(countUpdates(cards, installed), 1);
-  // Before the live list, the shipped copy (1.0.1 here) can't know about 1.0.2.
+  // Before the live list, the shipped copy (older than both) shows no update.
   assert.equal(countUpdates(cardsFrom({ status: 'idle' }), installed), 0);
   // Not for this Sixgree, or broken here: not an update.
   assert.equal(catalogAction({ ...live[0], problem: 'It is for a later Sixgree.' }, installed), null);

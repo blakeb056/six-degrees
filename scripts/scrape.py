@@ -3060,8 +3060,16 @@ def clear_bridge_skips():
 #       "name": ..., "pages": 25,  # read through page 25
 #       "more": true,              # LinkedIn had a page 26
 #       "urn": ...,                # the id their connections are searched by
+#       "readPages": [[1, 25], [28, 40]],  # every page read, as runs, only when
+#                                  # some are past a gap (pages 26 and 27 here)
 #       "hidden": true,            # only when their list had gone private
 #       "at": ...}}}
+#
+# "pages" only moves through pages read one after another from page 1 (TRAPS §34),
+# so a read that skipped a page used to forget every page after it (Blake,
+# 2026-10-14: pages 2 to 14 read, page 1 not, and the note said "through page 0").
+# "readPages" keeps them: a later read seeds what it knows is read from it, and
+# reading the missing page moves "pages" straight past them all.
 def _progress_path():
     base = Path(os.environ.get("SIX_DEGREES_HOME") or (Path.home() / ".six-degrees"))
     base.mkdir(parents=True, exist_ok=True)
@@ -3110,6 +3118,44 @@ _LIST_TOTALS = {}
 # where their list got to: { profile_url: {"connections": n, "connectionsPlus": bool} }.
 # The ring round their dot reads it (lib/reach.js) when LinkedIn gives no "About N results".
 _LIST_CARDS = {}
+# The pages read of each list in this run, page by page (both readers add to it as
+# they read), kept until the read's progress is written: { profile_url: {pages} }.
+_PAGES_READ = {}
+
+
+def _page_runs(pages):
+    """Pages as sorted runs: {2, 3, 4, 9} -> [[2, 4], [9, 9]]."""
+    runs = []
+    for pg in sorted(pages):
+        if runs and pg == runs[-1][1] + 1:
+            runs[-1][1] = pg
+        else:
+            runs.append([pg, pg])
+    return runs
+
+
+def pages_known_read(entry):
+    """Every page of someone's list known to be read, from their progress note: page 1
+    through "pages", and any "readPages" past a gap. A note without "readPages" (every
+    one before 2026-10-14) is pages 1 through "pages", as before. Never past page 100."""
+    if not entry:
+        return set()
+    known = set(range(1, min(int(entry.get("pages") or 0), LINKEDIN_MAX_PAGES) + 1))
+    for run in entry.get("readPages") or []:
+        try:
+            first, last = (run, run) if isinstance(run, int) else (int(run[0]), int(run[1]))
+        except (TypeError, ValueError, IndexError):
+            continue
+        known.update(range(max(1, first), min(last, LINKEDIN_MAX_PAGES) + 1))
+    return known
+
+
+def _read_through(pages, start=0):
+    """The last page of the run of read pages straight on from `start`."""
+    last = start
+    while last + 1 in pages:
+        last += 1
+    return last
 
 
 def record_bridge_progress(profile_url, name, pages, more, urn=None):
@@ -3118,14 +3164,27 @@ def record_bridge_progress(profile_url, name, pages, more, urn=None):
     It never winds the note back. A read from page 1 that stops short of an
     earlier, deeper one leaves the deeper one standing: those pages are still
     saved. forget_bridge_progress() is for when they are not.
+
+    Every page this run read (_PAGES_READ) joins the pages read before
+    ("readPages"), and the bookmark is the run of read pages from page 1: page 1
+    read after pages 2 to 14 moves it to 14. A page never read is never in it.
     """
     def change(mine):
         old = mine.get(profile_url) or {}
         read, left = int(pages), bool(more)
         if int(old.get("pages") or 0) > read:
             read, left = int(old["pages"]), bool(old.get("more"))
+        known = (pages_known_read(old) | set(range(1, min(read, LINKEDIN_MAX_PAGES) + 1))
+                 | {pg for pg in _PAGES_READ.get(profile_url, ()) if 1 <= pg <= LINKEDIN_MAX_PAGES})
+        through = _read_through(known)
+        if through > read:
+            # Past the bookmark this read ended at: whether the list goes on after
+            # them isn't known, so it's taken that it does.
+            read, left = through, True
         entry = {"name": name, "pages": read, "more": left,
                  "at": datetime.now().isoformat(timespec="seconds")}
+        if any(pg > read for pg in known):
+            entry["readPages"] = _page_runs(known)
         if urn or old.get("urn"):
             entry["urn"] = urn or old.get("urn")
         total = _LIST_TOTALS.get(profile_url) or old.get("total")
@@ -4359,8 +4418,8 @@ def _advance(page, pg, back=False):
 
 
 def _back_to_start(page, start_page, had_bar):
-    """LinkedIn opened start_page + 1 for a list carried on at start_page: click
-    Previous once, with _advance's careful click and wait (a search, like any page
+    """LinkedIn opened start_page + 1 for a list read from start_page (page 1
+    included): click Previous once, with _advance's careful click and wait (a search, like any page
     load), then check the page bar. True only once the bar shows start_page; with
     no bar on the page before the click either, the address must. Anything else,
     or no Previous, is False, and the read stops as it always has."""
@@ -4879,7 +4938,8 @@ def _their_search(url, urn):
     return bool(urn) and "/search/results/people" in u and urn in u
 
 
-def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None):
+def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None,
+                  read_before=()):
     """Manual mode, from the moment their list is open at start_page in a window
     in front of you. Returns what _scrape_one_bridge returns.
 
@@ -4889,6 +4949,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     mode). LinkedIn pushing back stops it, as ever. `reach["last"]` only moves
     through pages read one after another from start_page, so a page you skip
     is never noted as read (TRAPS §34); the people on it are kept all the same.
+    read_before is the pages an earlier read got (record_bridge_progress's
+    readPages): they count as read, so reading the page before them moves the
+    bookmark on past them all, and they aren't read again.
 
     Ends when their list does (LinkedIn's Next is disabled, or the count says
     so), at max_pages, on Stop, when you close the window (done with them: a
@@ -4899,9 +4962,14 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     global _stop_requested
     urn = reach["urn"]
     pages = -(-int(total) // 10) if total else None
-    done, counted = set(), {start_page}
+    # done: every page known to be read, this run's and an earlier read's (read_before);
+    # read_now: this run's own, which the note (_PAGES_READ) and "Manual read done" count.
+    read_now = reach.get("read")
+    if read_now is None:
+        read_now = reach["read"] = _PAGES_READ[profile_url] = set()
+    done, counted = set(read_before) | read_now, {start_page}
     chunk, chunk_pages = [], 0
-    contiguous = start_page - 1
+    contiguous = _read_through(done, start_page - 1)
     last_seen = time.time()
     status, how = "success", None
     last_links = None              # who the last page read showed: a page still showing them isn't the next one
@@ -4928,7 +4996,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         # scanner's own opening of the list doesn't tap. Read off the network,
         # never off the page: nothing is added to LinkedIn's page.
         try:
-            if done and request.resource_type in ("xhr", "fetch") and "/voyager/api/" in request.url \
+            if read_now and request.resource_type in ("xhr", "fetch") and "/voyager/api/" in request.url \
                     and "search" in request.url.lower():
                 tap()
         except Exception:
@@ -4948,6 +5016,10 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         never say when a wait is over."""
         print(f"  ({what})", flush=True)
 
+    def unread_after(pg):
+        """The first page after pg that isn't read."""
+        return _read_through(done, pg) + 1
+
     def wait_note(key, what):
         """Say why nothing is read yet, once, when it has been so for MANUAL_SAY seconds."""
         since = waiting.setdefault(key, time.time())
@@ -4957,6 +5029,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
 
     print(f"  Manual mode: you page through {bridge_name}'s list, and each page is read when you reach its foot.")
     if reach.get("opened_ahead"):
+        said.add(("again", reach["opened_ahead"]))   # this says it: not "already read" on top
         tell(f"LinkedIn's page bar shows page {reach['opened_ahead']}, and page {start_page} isn't read yet. "
              f"Click Previous to page {start_page} and scroll to its bottom, then carry on with Next. "
              f"Close the window when you're done with {bridge_name}.")
@@ -5027,7 +5100,12 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 note(f"on page {pg}: scroll to its bottom and it's read")
             elif pg == last_read or ("again", pg) in said:
                 # Read already, and "already read" below won't say it (again).
-                note(f"on page {pg}, which is read: click Next to page {pg + 1}")
+                if contiguous + 1 < pg:
+                    note(f"on page {pg}, which is read: go back to page {contiguous + 1}")
+                elif unread_after(pg) > pg + 1:
+                    note(f"on page {pg}, which is read: go on to page {unread_after(pg)}")
+                else:
+                    note(f"on page {pg}, which is read: click Next to page {pg + 1}")
         if pg not in counted:
             left, kind = searches_left()
             if left <= 0:
@@ -5038,13 +5116,23 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             charge_linkedin("searches")   # a page you opened is a search like any other
             counted.add(pg)
             last_seen = time.time()
-            if done:
+            if read_now:
                 tap()   # in case the click's request went by unseen; once a click either way
         if pg in done:
             if pg != last_read and ("again", pg) not in said:
                 said.add(("again", pg))
-                tell(f"page {pg} is already read. Click Next to page {pg + 1}. "
-                     f"Close the window when you're done with {bridge_name}.")
+                if contiguous + 1 < pg:
+                    # Read before, with a page before it that isn't (Blake, 2026-10-14: pages
+                    # 2 to 14 read, page 1 not): that page is the one the bookmark waits on.
+                    tell(f"page {pg} is already read, and page {contiguous + 1} isn't read yet. "
+                         f"Go back to page {contiguous + 1} and scroll to its bottom. "
+                         f"Close the window when you're done with {bridge_name}.")
+                elif unread_after(pg) > pg + 1:
+                    tell(f"page {pg} is already read, and so is every page to {unread_after(pg) - 1}. "
+                         f"Go on to page {unread_after(pg)}. Close the window when you're done with {bridge_name}.")
+                else:
+                    tell(f"page {pg} is already read. Click Next to page {pg + 1}. "
+                         f"Close the window when you're done with {bridge_name}.")
             continue
         why = _pushback(page)
         if why:
@@ -5085,6 +5173,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             hidden = _hidden_members(page)
             if hidden:
                 done.add(pg)
+                read_now.add(pg)
                 print(f"  Page {pg}: LinkedIn hides the {hidden} people on it (\"LinkedIn Member\"), "
                       f"so there's no one to read there.")
             else:
@@ -5095,6 +5184,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if slug not in c.get("profileUrl", "")]
         done.add(pg)
+        read_now.add(pg)
         last_links = links
         last_read = pg
         last_seen = time.time()
@@ -5112,6 +5202,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         except Exception:
             nxt = None
         at_end = pg >= LINKEDIN_MAX_PAGES or nxt == "off" or (pages is not None and pg >= pages)
+        # Or the page that was missing is read, and the pages read before it reach the end.
+        at_end = at_end or contiguous >= LINKEDIN_MAX_PAGES or (pages is not None and contiguous >= pages)
         streak += 1
         if at_end and contiguous >= pg:
             print("  That's the end of their list." if pg < LINKEDIN_MAX_PAGES
@@ -5127,7 +5219,12 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         if on_save and chunk_pages >= SAVE_EVERY_PAGES:
             on_save(_dedupe(chunk), reach["last"], True, urn)
             chunk, chunk_pages = [], 0
-        if contiguous < pg - 1:
+        if contiguous > pg:
+            # The page that was missing: the pages after it were read before, so the
+            # bookmark moves on past them, and the next page to read is after them.
+            tell(f"page {pg} is read ({len(found)} people), and pages {pg + 1}–{contiguous} were read before. "
+                 f"Go on to page {contiguous + 1}. Close the window when you're done with {bridge_name}.")
+        elif contiguous < pg - 1:
             # A page before this one isn't read: until it is, the next scan starts there again.
             tell(f"page {pg} is read ({len(found)} people). Page {contiguous + 1} isn't read yet, so the next scan "
                  f"starts there again: click back to it, or carry on with Next to page {pg + 1}. "
@@ -5145,18 +5242,18 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         print(f"  The window was closed: done with {bridge_name}, and what was read is kept.")
     elif how == "idle":
         print(f"  No new page for {MANUAL_IDLE // 60} minutes, so the read of {bridge_name} ends here.")
-        if not done:
+        if not read_now:
             # Nobody's there: a round would open the next person's window only to wait again.
             _stop_requested = True
             status = "stopped"
             print("  Nothing was read, so the scan stops.")
-    n = len(done)
+    n = len(read_now)
     print(f"Manual read done: {n} page{'' if n == 1 else 's'} of {bridge_name}'s list.", flush=True)
     return _dedupe(chunk), status, reach
 
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
-                       start_page=1, urn=None, on_save=None, manual=False, dig=False):
+                       start_page=1, urn=None, on_save=None, manual=False, dig=False, from_start=False):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -5175,6 +5272,10 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     dig:    Dig deeper: read their profile while it's open (_dig_into_profile);
             with their search id known already, their profile is opened for it
             once (a profile view).
+    from_start: Scan or Rescan from the start: every page is read again, to find
+            anyone new (their list isn't in date order), so the pages an earlier
+            read got aren't counted as read here. Their note keeps them all the
+            same (record_bridge_progress never winds back): those people are saved.
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -5185,6 +5286,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     slug = profile_url.split("/in/")[1].rstrip("/")
     reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
              "pushed_back": False}
+    # The pages of their list read before (record_bridge_progress's "readPages"), so
+    # the bookmark can move past them once the page before them is read; and the
+    # pages this run reads, for the note.
+    read_before = set() if from_start else pages_known_read(load_bridge_progress().get(profile_url))
+    reach["read"] = _PAGES_READ[profile_url] = set()
 
     known_urn = urn
     if urn and not dig:
@@ -5409,63 +5515,65 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         _pushed_back(page, reach, "a search that would not open")
         return [], "pushback", reach
 
-    if start_page > 1:
-        # Carrying on only works if LinkedIn really opened that page. If it
-        # quietly showed page 1 instead, reading on would note pages as read
-        # that never were.
-        shown = None
-        try:
-            shown = page.evaluate(CURRENT_PAGE_JS)
-        except Exception:
-            pass
-        at = _url_page(page.url)
-        if (shown is not None and shown != at) or at != start_page:
-            _keep_page_bar_evidence(page, start_page, shown, at)
-        if manual and (at != start_page or (shown is not None and shown != start_page)):
-            # You can see the window in manual mode. _read_by_hand reads whichever page
-            # you're on, and never notes a page as read that wasn't (it only moves
-            # "last" through pages read in order), so the page it opened for has to be
-            # read before the bookmark moves on (Blake, 2026-10-12: opened at page 51,
-            # the page bar said 52, and every page after it was read but 51 never was,
-            # so the next scan started at 51 again).
-            ahead = shown or at
-            if ahead > start_page:
-                reach["opened_ahead"] = ahead     # _read_by_hand's first words: go back to start_page
-                print(f"  LinkedIn's page bar shows page {ahead}, not page {start_page}.")
-            else:
-                print(f"  The window is on page {ahead} already; you carry on from there.")
-        elif at != start_page or (shown is not None and shown != start_page):
-            opened = shown or at
-            # Asked for page N, LinkedIn opens page N + 1: seen four times by 2026-10-14
-            # (9 to 10, 30 to 31, 51 to 52, 64 to 65), with the address and the page bar
-            # both saying N + 1. Stopping there meant no automatic read could ever carry
-            # a list on. Exactly one page ahead, it goes back one with Previous, paced
-            # and counted like any page, and reads on only once the bar shows N. Any
-            # other page, or a Previous that doesn't land on N, stops as before.
-            back = False
-            if opened == start_page + 1 and at in (start_page, start_page + 1):
-                print(f"  LinkedIn opened page {opened}, not page {start_page}: going back a page with Previous.")
-                # A page load like any other: the budget first, then the pause before it.
-                left, kind = searches_left()
-                if left <= 0 and not (EXPERIMENT["on"] and kind == "daily"):
-                    reach["budget"] = kind
-                    reach["more"] = True
-                    print("  " + budget_message(kind))
-                    return [], "budget", reach
-                if not interruptible_sleep(PAGE_PAUSE) or not rest(gentle_extra(PAGE_PAUSE), page=page) \
-                        or _window_closed(page) or (EXPERIMENT["on"] and not _drip_before_search()):
-                    reach["more"] = True
-                    print(f"  Stopped before going back to page {start_page}; the next run carries on from there.")
-                    return [], "stopped", reach
-                back = _back_to_start(page, start_page, had_bar=shown is not None)
-                if not back and (stop_requested() or _window_closed(page)):
-                    reach["more"] = True
-                    return [], "stopped", reach
-            if not back:
-                print(f"  LinkedIn opened page {opened}, not page {start_page}. "
-                      "Stopping so no page is noted as read that wasn't.")
+    # Reading on only works from the page LinkedIn really opened. If it quietly
+    # showed another one, reading on would note pages as read that never were.
+    # A fresh start (no page in the address) too: it opened on page 2, the page
+    # bar said 2, and page 1 was never read (Blake, 2026-10-14).
+    shown = None
+    try:
+        shown = page.evaluate(CURRENT_PAGE_JS)
+    except Exception:
+        pass
+    at = _url_page(page.url)
+    if (shown is not None and shown != at) or at != start_page:
+        _keep_page_bar_evidence(page, start_page, shown, at)
+    if manual and (at != start_page or (shown is not None and shown != start_page)):
+        # You can see the window in manual mode. _read_by_hand reads whichever page
+        # you're on, and never notes a page as read that wasn't (it only moves
+        # "last" through pages read in order), so the page it opened for has to be
+        # read before the bookmark moves on (Blake, 2026-10-12: opened at page 51,
+        # the page bar said 52, and every page after it was read but 51 never was,
+        # so the next scan started at 51 again; 2026-10-14, the same from page 1).
+        ahead = shown or at
+        if ahead > start_page:
+            reach["opened_ahead"] = ahead     # _read_by_hand's first words: go back to start_page
+            print(f"  LinkedIn's page bar shows page {ahead}, not page {start_page}.")
+        else:
+            print(f"  The window is on page {ahead} already; you carry on from there.")
+    elif at != start_page or (shown is not None and shown != start_page):
+        opened = shown or at
+        # Asked for page N, LinkedIn opens page N + 1: seen four times by 2026-10-14
+        # (9 to 10, 30 to 31, 51 to 52, 64 to 65), with the address and the page bar
+        # both saying N + 1. Stopping there meant no automatic read could ever carry
+        # a list on. Exactly one page ahead, it goes back one with Previous, paced
+        # and counted like any page, and reads on only once the bar shows N. Any
+        # other page, or a Previous that doesn't land on N, stops as before. A fresh
+        # start (page 1, no page in the address) that opens on page 2 goes back the
+        # same way (2026-10-14); it used to read page 2 as page 1.
+        back = False
+        if opened == start_page + 1 and at in (start_page, start_page + 1):
+            print(f"  LinkedIn opened page {opened}, not page {start_page}: going back a page with Previous.")
+            # A page load like any other: the budget first, then the pause before it.
+            left, kind = searches_left()
+            if left <= 0 and not (EXPERIMENT["on"] and kind == "daily"):
+                reach["budget"] = kind
                 reach["more"] = True
-                return [], "error", reach
+                print("  " + budget_message(kind))
+                return [], "budget", reach
+            if not interruptible_sleep(PAGE_PAUSE) or not rest(gentle_extra(PAGE_PAUSE), page=page) \
+                    or _window_closed(page) or (EXPERIMENT["on"] and not _drip_before_search()):
+                reach["more"] = True
+                print(f"  Stopped before going back to page {start_page}; the next run carries on from there.")
+                return [], "stopped", reach
+            back = _back_to_start(page, start_page, had_bar=shown is not None)
+            if not back and (stop_requested() or _window_closed(page)):
+                reach["more"] = True
+                return [], "stopped", reach
+        if not back:
+            print(f"  LinkedIn opened page {opened}, not page {start_page}. "
+                  "Stopping so no page is noted as read that wasn't.")
+            reach["more"] = True
+            return [], "error", reach
 
     try:
         total = page.evaluate(RESULT_COUNT_JS)
@@ -5477,7 +5585,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         print(f"  About {total:,} results in their list: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
     if manual:
-        return _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total)
+        return _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total,
+                             read_before=read_before)
 
     until = "until their list ends" if max_pages >= LINKEDIN_MAX_PAGES else f"up to page {max_pages}"
     print(f"  Reading from page {start_page} {until}, saving every {SAVE_EVERY_PAGES} pages.")
@@ -5553,7 +5662,10 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             EXPERIMENT["pages"] += 1
         chunk.extend(page_results)
         chunk_pages += 1
-        reach["last"] = pg
+        reach["read"].add(pg)
+        # Read in order from start_page, so through pg; and on through any pages
+        # right after it that an earlier read got (record_bridge_progress's readPages).
+        reach["last"] = _read_through(read_before, pg)
         reach["found"] += len(page_results)
         print(f"{len(page_results)} found (total: {reach['found']})")
 
@@ -5564,7 +5676,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             reach["more"] = _find_next(page) is not None or _window_closed(page)
             if reach["more"]:
                 print(f"  Stopped at the {max_pages}-page limit, and LinkedIn has more. "
-                      + _page_limit_hint(pg + 1))
+                      + _page_limit_hint(reach["last"] + 1))
             else:
                 print("  No more pages — that's all of their list.")
             break
@@ -5623,8 +5735,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     # profile once: the same person can turn up on more than one page, and a
     # mutual connection repeats under many results.
     chunk = _dedupe(chunk)
-    print(f"  Read {reach['found']} in all, pages {start_page}–{reach['last']}"
-          if reach["last"] >= start_page else "  Nothing read.")
+    print(f"  Read {reach['found']} in all, pages {start_page}–{max(reach['read'])}"
+          if reach["read"] else "  Nothing read.")
+    if reach["last"] > max(reach["read"], default=reach["last"]):
+        print(f"  Pages {max(reach['read']) + 1}–{reach['last']} were read before, so the list is read "
+              f"through page {reach['last']}.")
 
     return chunk, "success", reach
 
@@ -5750,7 +5865,7 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
                                              max_pages=max_pages, start_page=start_page, urn=urn,
-                                             on_save=save, manual=manual, dig=dig)
+                                             on_save=save, manual=manual, dig=dig, from_start=not deeper)
             finally:
                 try:
                     browser.close()
@@ -5773,9 +5888,10 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
     if connections:
         print(f"\nSaving {len(connections)} connections to the app...")
         save(connections, reach["last"], reach["more"], reach["urn"])
-    elif status == "success" and (start_page > 1 or reach["last"] >= 1):
+    elif status == "success" and (start_page > 1 or reach["last"] >= 1 or reach.get("read")):
         # Nothing unsaved, but where the read ended is still worth noting — for a
-        # read carried on from page 11 that found nothing, it means "finished".
+        # read carried on from page 11 that found nothing, it means "finished";
+        # for pages read past one that wasn't, which they were (readPages).
         record_bridge_progress(profile_url, bridge_name, reach["last"], reach["more"], reach["urn"])
     elif status == "private" and start_page > 1:
         # Only reached when their profile clearly rendered without a connections

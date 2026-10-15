@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
-import { scanBoxTitle, stoppedLine } from '../../lib/in-progress';
+import { scanBoxTitle, stoppedLine, pagesReadText } from '../../lib/in-progress';
 import useScanner, { useScanShows } from './useScanner';
 import useRequests from './useRequests';
 import InlineNote, { useFadingNote } from './InlineNote';
@@ -1277,7 +1277,7 @@ function CreateClusterCard({ selected, degree2, resume }) {
           </div>
           {resume && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              Read to page {resume.pagesRead} so far. Resume carries on from page {resume.nextPage}. Their
+              {pagesReadText(resume)} so far. Resume carries on from page {resume.nextPage}. Their
               list isn&rsquo;t in date order, so Rescan reads them all again from page 1.
             </div>
           )}

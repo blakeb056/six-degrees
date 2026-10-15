@@ -26,8 +26,9 @@ from urllib.parse import parse_qs, urlparse
 tree = ast.parse(open(sys.argv[1]).read())
 names = {'_progress_path', '_progress_owner', '_read_progress_file', 'load_bridge_progress',
          '_change_progress', 'record_bridge_progress', 'mark_bridge_hidden',
-         'forget_bridge_progress', 'next_page_to_read', '_url_page'}
-consts = {'LINKEDIN_MAX_PAGES', 'LEGACY_PAGES_READ', '_LIST_TOTALS', '_LIST_CARDS'}
+         'forget_bridge_progress', 'next_page_to_read', '_url_page',
+         '_page_runs', 'pages_known_read', '_read_through'}
+consts = {'LINKEDIN_MAX_PAGES', 'LEGACY_PAGES_READ', '_LIST_TOTALS', '_LIST_CARDS', '_PAGES_READ'}
 body = [n for n in tree.body
         if (isinstance(n, ast.FunctionDef) and n.name in names)
         or (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in consts for t in n.targets))]
@@ -145,4 +146,77 @@ test('the page number is read from a search URL', (t) => {
   _url_page('https://www.linkedin.com/search/results/people/?connectionOf=%5B%22X%22%5D'),
   _url_page('https://www.linkedin.com/search/results/people/?page=abc')]))`);
   if (out) assert.deepEqual(out.value, [12, 1, 1]);
+});
+
+// ── Every page read, not only the bookmark (readPages, 2026-10-14) ───────────
+// Blake read pages 2 to 14 of someone's list and never page 1 (the list had opened on
+// page 2). The bookmark only moves through pages read in order from page 1, so it said
+// "through page 0", and the 13 pages were forgotten. readPages keeps them; reading page
+// 1 later moves the bookmark straight to 14. A page never read is never in it.
+
+test('pages read past a gap are kept, as runs, and the bookmark stays before the gap', (t) => {
+  const out = results(t, `
+_PAGES_READ['${A}'] = set(range(2, 15))
+record_bridge_progress('${A}', 'Someone', 0, True, 'URN1')
+e = load_bridge_progress()['${A}']
+print(json.dumps([e['pages'], e['more'], e.get('readPages'), next_page_to_read(e)]))`);
+  if (out) assert.deepEqual(out.value, [0, true, [[2, 14]], 1]);
+});
+
+test('reading page 1 after pages 2 to 14 moves the bookmark to 14, and the note is plain again', (t) => {
+  const out = results(t, `
+_PAGES_READ['${A}'] = set(range(2, 15))
+record_bridge_progress('${A}', 'Someone', 0, True, 'URN1')
+_PAGES_READ['${A}'] = {1}
+record_bridge_progress('${A}', 'Someone', 1, True)
+e = load_bridge_progress()['${A}']
+print(json.dumps([e['pages'], e['more'], 'readPages' in e, next_page_to_read(e)]))`);
+  if (out) assert.deepEqual(out.value, [14, true, false, 15]);
+});
+
+test('more than one gap: each run is kept, and filling one moves the bookmark to the next gap', (t) => {
+  const out = results(t, `
+_PAGES_READ['${A}'] = {1, 2, 4, 5, 8}
+record_bridge_progress('${A}', 'Someone', 2, True)
+first = load_bridge_progress()['${A}']
+_PAGES_READ['${A}'] = {3}
+record_bridge_progress('${A}', 'Someone', 0, True)
+second = load_bridge_progress()['${A}']
+print(json.dumps([first['pages'], first['readPages'], second['pages'], second['readPages']]))`);
+  if (out) assert.deepEqual(out.value, [2, [[1, 2], [4, 5], [8, 8]], 5, [[1, 5], [8, 8]]]);
+});
+
+test('a note from before readPages reads as pages 1 through its bookmark, as before', (t) => {
+  const out = results(t, `
+p = _progress_path()
+p.write_text(json.dumps({'me': {'${A}': {'name': 'Someone', 'pages': 6, 'more': True, 'urn': 'URN1'}}}))
+e = load_bridge_progress()['${A}']
+known = sorted(pages_known_read(e))
+_PAGES_READ['${A}'] = {7, 8}
+record_bridge_progress('${A}', 'Someone', 8, True)
+after = load_bridge_progress()['${A}']
+print(json.dumps([known, next_page_to_read(e), after['pages'], 'readPages' in after, sorted(pages_known_read(None))]))`);
+  if (out) assert.deepEqual(out.value, [[1, 2, 3, 4, 5, 6], 7, 8, false, []]);
+});
+
+test('deleting their circle forgets the pages read too', (t) => {
+  const out = results(t, `
+_PAGES_READ['${A}'] = set(range(2, 15))
+record_bridge_progress('${A}', 'Someone', 0, True)
+forget_bridge_progress('${A}')
+_PAGES_READ.clear()
+record_bridge_progress('${A}', 'Someone', 1, True)
+e = load_bridge_progress()['${A}']
+print(json.dumps([e['pages'], 'readPages' in e]))`);
+  if (out) assert.deepEqual(out.value, [1, false]);
+});
+
+test('readPages stays within the 100 pages LinkedIn shows, and a damaged one is read as far as it makes sense', (t) => {
+  const out = results(t, `
+_PAGES_READ['${A}'] = {0, 3, 99, 100, 101, 250}
+record_bridge_progress('${A}', 'Someone', 0, True)
+e = load_bridge_progress()['${A}']
+odd = {'pages': 2, 'readPages': [[5, 6], 9, 'x', [None, 3], [98, 400]]}
+print(json.dumps([e.get('readPages'), sorted(pages_known_read(odd))]))`);
+  if (out) assert.deepEqual(out.value, [[[3, 3], [99, 100]], [1, 2, 5, 6, 9, 98, 99, 100]]);
 });

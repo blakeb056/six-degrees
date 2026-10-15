@@ -25,6 +25,7 @@ import { inviteRefusal, INVITE_CAPS } from '../lib/auto-connect.js';
 import { autoPlan, MANUAL_STOPS_AUTO } from '../lib/auto-scan.js';
 import { enqueue, emptyQueue, queueView, QUEUE_CAP, DEV_QUEUE_CAP } from '../lib/scan-queue.js';
 import { needsYou } from '../lib/scan-progress.js';
+import { scanLight } from '../lib/scan-light.js';
 import { PYTHON, noPython } from './python.mjs';
 import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 
@@ -912,6 +913,240 @@ out.update(carry_on(Ahead(pages=12, off_by=0)))`);
     assert.equal(r.out.last, 12);
     assert.equal(r.out.status, 'success');
     assert.equal(r.out.searches, 4, 'the list, then Next three times');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+// ── A fresh start that opens a page ahead, and pages read past a gap (2026-10-14) ──
+// Blake: "when I manually scan someone the resume page on the profile card … says page
+// one". A fresh read of a list (page 1, no page in the address) opened on page 2, the page
+// bar said 2, and he read pages 2 to 14. Page 1 never was, so the note said "through page
+// 0" and the card page 1, with 14 pages read. Now the page-1 start gets the go-back
+// instruction, and every page read is kept (readPages), so reading page 1 later moves the
+// bookmark straight to 14.
+
+const BRIDGE_URL = 'https://www.linkedin.com/in/invented-bridge/';
+
+// A window that opens a page past the one asked for: the page bar says it, the address
+// doesn't (a fresh start has no page in it). As on 2026-10-12 and 2026-10-14.
+const OPENS_AHEAD = `
+class OpensAhead(ManualPage):
+    def goto(self, url, **k):
+        out = super().goto(url, **k)
+        self.pg = self.url_pg + 1
+        return out
+def note_of():
+    return ns['load_bridge_progress']().get('${BRIDGE_URL}')
+def save_note(reach):
+    # What scrape_bridge's save does once the people are saved.
+    ns['record_bridge_progress']('${BRIDGE_URL}', 'Invented Bridge', reach['last'], reach['more'], URN)
+def by_hand(page, **kw):
+    people, status, reach = ns['_scrape_one_bridge'](page, 'Invented Bridge', 'b1', '${BRIDGE_URL}',
+                                                    urn=URN, manual=True, **kw)
+    save_note(reach)
+    return {'people': len(people), 'status': status, 'last': reach['last'], 'more': reach['more'],
+            'read': [x[0] for x in page.read_at], 'note': note_of()}
+`;
+
+/** The lines a run printed, as the app's job log holds them, up to and including the first matching `upTo`. */
+function linesTo(log, upTo) {
+  const lines = log.split('\n');
+  const i = lines.findIndex((l) => upTo.test(l));
+  return i < 0 ? lines : lines.slice(0, i + 1);
+}
+
+/** The scan light for a manual circle scan with these lines. */
+function lightFor(log) {
+  return scanLight({ known: true, running: true, pending: false, action: 'bridge', target: { id: 'b1', name: 'Invented Bridge' },
+    startedAt: NOW, mode: 'manual', pages: 0, found: [], log }, { now: NOW });
+}
+
+test('a manual fresh start whose window opens on page 2 says to go back to page 1, and keeps the page bar for later', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}${OPENS_AHEAD}
+page = OpensAhead(12, [[14, ['go', 1]], [18, 'foot'], [22, 'next'], [28, 'foot'], [34, 'close']], url_follows=False)
+out.update(by_hand(page))
+out['evidence'] = [json.loads(f.read_text()) for f in sorted((ns['_home']() / 'debug').glob('page-bar-*.json'))]`);
+    if (!r) return;
+    assert.match(r.log, /^ {2}Opening their connections\.\.\.$/m, 'a fresh start: no page asked for');
+    assert.match(r.log, /LinkedIn's page bar shows page 2, not page 1\./);
+    assert.match(r.log, /LinkedIn needs you: LinkedIn's page bar shows page 2, and page 1 isn't read yet\. Click Previous to page 1 and scroll to its bottom, then carry on with Next\./);
+    assert.deepEqual(r.out.read, [1, 2], 'page 1 first, then on');
+    assert.equal(r.out.last, 2);
+    assert.equal(r.out.note.pages, 2);
+    assert.equal(r.out.note.readPages, undefined, 'no gap, so nothing past the bookmark to keep');
+    assert.equal(r.out.evidence.length, 1, 'the page bar is kept for a page-1 start too');
+    assert.deepEqual([r.out.evidence[0].opened, r.out.evidence[0].bar, r.out.evidence[0].address], [1, 2, 1]);
+    // The scan light turns red: go back to page 1 (lib/scan-light.js).
+    const light = lightFor(linesTo(r.log, /Click Previous to page 1/));
+    assert.equal(light.color, 'red');
+    assert.equal(light.headline, 'Go back to page 1');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('Blake\'s two runs: pages 2 to 14 read past page 1 are kept, and reading page 1 moves the bookmark to 14', (t) => {
+  const home = scratch();
+  try {
+    const plan1 = [];
+    // Run 1: a fresh start opened on page 2; he reads it and on to 14, never page 1, then closes.
+    // (The list takes some seconds to open: nothing is done in the window before then.)
+    let at = 20;
+    for (let pg = 2; pg <= 14; pg++) {
+      plan1.push(`[${at}, 'foot']`);
+      if (pg < 14) plan1.push(`[${at + 3}, 'next']`);
+      at += 6;
+    }
+    plan1.push(`[${at + 2}, 'close']`);
+    const r = scanner(t, home, `${MANUAL_PAGE}${OPENS_AHEAD}
+out['first'] = by_hand(OpensAhead(40, [${plan1.join(', ')}], url_follows=False))
+# Run 2: Resume (it carries on, from page 1). The window opens on page 2 again. He tries
+# page 3, goes back to page 1 and reads it, clicks Next, then tries page 4.
+b = clock.t - NOW + 600     # later: its plan is timed from now
+clock.t += 600
+page = OpensAhead(40, [[b + 20, ['go', 3]], [b + 26, ['go', 1]], [b + 30, 'foot'], [b + 36, 'next'], [b + 42, ['go', 4]],
+                        [b + 50, 'close']],
+                  url_follows=False)
+out['second'] = by_hand(page, start_page=ns['next_page_to_read'](note_of()))`);
+    if (!r) return;
+    const { first, second } = r.out;
+    assert.deepEqual(first.read, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    assert.equal(first.last, 0, 'page 1 was never read, so the bookmark stays before it (TRAPS §34)');
+    assert.deepEqual([first.note.pages, first.note.more, first.note.readPages], [0, true, [[2, 14]]],
+      'every page read is kept, past the gap');
+    assert.match(r.log, /page 2 is read \(10 people\)\. Page 1 isn't read yet, so the next scan starts there again/);
+
+    // The second run knows pages 2 to 14: none is read again, and each says where to go.
+    const second_ = r.log.split('Manual read done: 13 pages')[1];
+    assert.match(second_, /LinkedIn needs you: LinkedIn's page bar shows page 2, and page 1 isn't read yet\. Click Previous to page 1/);
+    assert.doesNotMatch(second_, /page 2 is already read, and page 1/, 'the opening line says it, once');
+    assert.match(second_, /LinkedIn needs you: page 3 is already read, and page 1 isn't read yet\. Go back to page 1 and scroll to its bottom\./);
+    assert.deepEqual(second.read, [1], 'only page 1 is read: 2 to 14 were read before');
+    assert.match(second_, /LinkedIn needs you: page 1 is read \(10 people\), and pages 2–14 were read before\. Go on to page 15\./);
+    assert.match(second_, /^ {2}\(on page 2, which is read: go on to page 15\)$/m);
+    assert.match(second_, /LinkedIn needs you: page 4 is already read, and so is every page to 14\. Go on to page 15\./);
+    assert.equal(second.last, 14, 'page 1 filled the gap: the bookmark jumps to 14');
+    assert.deepEqual([second.note.pages, second.note.more, second.note.readPages], [14, true, undefined]);
+    assert.match(r.log, /^Manual read done: 1 page of Invented Bridge's list\.$/m, 'this run read one page');
+    // The light for each: red to go back, then green on to page 15.
+    const back = lightFor(linesTo(r.log, /page 3 is already read, and page 1 isn't read yet/));
+    assert.deepEqual([back.color, back.headline], ['red', 'Go back to page 1']);
+    const on = lightFor(linesTo(r.log, /were read before\. Go on to page 15/));
+    assert.deepEqual([on.color, on.headline], ['green', 'Go on to page 15']);
+    const note = lightFor(linesTo(r.log, /on page 2, which is read: go on to page 15/));
+    assert.deepEqual([note.color, note.headline], ['green', 'Go on to page 15']);
+    const past = lightFor(linesTo(r.log, /so is every page to 14/));
+    assert.deepEqual([past.color, past.headline], ['green', 'Go on to page 15']);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('with the pages after it read before, reading the missing page can finish the list', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}${OPENS_AHEAD}
+ns['_PAGES_READ']['${BRIDGE_URL}'] = set(range(2, 6))
+ns['record_bridge_progress']('${BRIDGE_URL}', 'Invented Bridge', 0, True, URN)
+page = ManualPage(5, [[20, 'foot'], [60, 'close']])
+out.update(by_hand(page))`);
+    if (!r) return;
+    assert.deepEqual(r.out.read, [1]);
+    assert.equal(r.out.last, 5);
+    assert.equal(r.out.more, false, 'pages 1 to 5 of a 5-page list: the whole list');
+    assert.match(r.log, /That's the end of their list\./);
+    assert.deepEqual([r.out.note.pages, r.out.note.more], [5, false]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('Scan or Rescan from the start reads every page again, and the note still keeps the pages read before', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${MANUAL_PAGE}${OPENS_AHEAD}
+ns['_PAGES_READ']['${BRIDGE_URL}'] = set(range(2, 15))
+ns['record_bridge_progress']('${BRIDGE_URL}', 'Invented Bridge', 0, True, URN)
+out['before'] = note_of()
+page = ManualPage(40, [[20, 'foot'], [23, 'next'], [26, 'foot'], [40, 'close']])
+out.update(by_hand(page, from_start=True))
+# Deleting their circle (Rescan's delete, scrape_bridge fresh=True) forgets the note, pages read and all.
+ns['forget_bridge_progress']('${BRIDGE_URL}')
+ns['_PAGES_READ'].clear()
+ns['record_bridge_progress']('${BRIDGE_URL}', 'Invented Bridge', 1, True, URN)
+out['forgotten'] = note_of()`);
+    if (!r) return;
+    assert.deepEqual(r.out.before.readPages, [[2, 14]]);
+    assert.deepEqual(r.out.read, [1, 2], 'page 2 is read again: from the start reads every page, to find anyone new');
+    assert.doesNotMatch(r.log, /already read/);
+    assert.equal(r.out.last, 2, 'this run read 1 and 2');
+    assert.deepEqual([r.out.note.pages, r.out.note.readPages], [14, undefined],
+      'the note never winds back: pages 3 to 14 were read before, and their people are saved');
+    assert.deepEqual([r.out.forgotten.pages, r.out.forgotten.readPages], [1, undefined], 'a deleted circle starts again');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic fresh start that LinkedIn opens on page 2 goes back with Previous, then reads from page 1', (t) => {
+  // 2026-10-14: a fresh start (no page in the address) opened on page 2 too. It used to be
+  // read as page 1, so page 1 was noted as read and never was.
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out.update(carry_on(Ahead(pages=5, off_by=1), start_page=1))
+out['evidence'] = [json.loads(f.read_text()) for f in sorted((ns['_home']() / 'debug').glob('page-bar-*.json'))]`);
+    if (!r) return;
+    assert.match(r.log, /^ {2}Opening their connections\.\.\.$/m);
+    assert.match(r.log, /LinkedIn opened page 2, not page 1: going back a page with Previous\./);
+    assert.match(r.log, /Back on page 1\./);
+    assert.equal(r.out.prev_clicks, 1);
+    assert.deepEqual(r.out.reads, [1, 2, 3, 4, 5], 'page 1 first, then on in order');
+    assert.equal(r.out.last, 5);
+    assert.equal(r.out.status, 'success');
+    assert.equal(r.out.evidence.length, 1, 'the page bar is kept for a page-1 start too');
+    assert.deepEqual([r.out.evidence[0].opened, r.out.evidence[0].bar, r.out.evidence[0].address], [1, 2, 2]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic fresh start opened two pages ahead stops, so page 1 is never noted as read', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `${AHEAD_PAGE}
+out.update(carry_on(Ahead(pages=5, off_by=2), start_page=1))`);
+    if (!r) return;
+    assert.match(r.log, /LinkedIn opened page 3, not page 1\. Stopping so no page is noted as read that wasn't\./);
+    assert.deepEqual(r.out.reads, []);
+    assert.equal(r.out.last, 0);
+    assert.equal(r.out.status, 'error');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an automatic read seeded with pages read before moves the bookmark past them; from the start it does not', (t) => {
+  const home = scratch();
+  try {
+    const r = scanner(t, home, `
+ns['GENTLE']['on'] = False
+URL = 'https://www.linkedin.com/in/invented-bridge/'
+ns['_PAGES_READ'][URL] = set(range(2, 9))
+ns['record_bridge_progress'](URL, 'Invented Bridge', 0, True)
+out['note'] = ns['load_bridge_progress']()[URL]
+urls, status, reach = read(ResultsPage(pages=12), max_pages=1)
+out['carry'] = {'last': reach['last'], 'more': reach['more'], 'read': sorted(reach['read'])}
+urls, status, reach = read(ResultsPage(pages=12), max_pages=1, from_start=True)
+out['fresh'] = {'last': reach['last'], 'read': sorted(reach['read'])}`);
+    if (!r) return;
+    assert.deepEqual(r.out.note.readPages, [[2, 8]]);
+    assert.deepEqual(r.out.carry, { last: 8, more: true, read: [1] }, 'page 1 read, and 2 to 8 were read before');
+    assert.match(r.log, /Pages 2–8 were read before, so the list is read through page 8\./);
+    assert.deepEqual(r.out.fresh, { last: 1, read: [1] });
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

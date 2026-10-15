@@ -114,4 +114,11 @@ test('?resume=<id> is where Resume carries on: the Paused list\'s rules, for one
   assert.deepEqual(await ask('?resume=nobody'), { resume: null });
   // Only your own 1st degree: a 2nd-degree row has no list of yours to carry on with.
   assert.deepEqual(await ask('?resume=d2-1'), { resume: null });
+  // Pages read past one still to read (readPages, 2026-10-14) come with it, for the card's words.
+  writeFileSync(path.join(dir, 'bridge-progress.json'), JSON.stringify({ me: {
+    'https://www.linkedin.com/in/ada-park': { pages: 0, more: true, readPages: [[2, 4]] },
+  } }));
+  assert.deepEqual(await ask('?resume=p-ada'), { resume: { nextPage: 1, pagesRead: 0, legacy: false, readPages: [2, 3, 4] } });
+  const notes = await ask('?reach=1');
+  assert.deepEqual(notes.lists['https://www.linkedin.com/in/ada-park'].readPages, [[2, 4]], 'and for the ring');
 });
