@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-15
+
+A scan light that tells you what a scan needs, update notices for the app and its plugins, and scans by hand that remember every page they read.
+
 ### Added
 - **Where people are, and their follower counts, from every scan** (the scanner plugins, 1.0.3).
   Each card in a list shows where someone is ("Seattle, Washington, United States") and often
