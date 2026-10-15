@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-15
+
+Browse LinkedIn inside Sixgree with your network beside it, breaks every 10 pages by hand, and lines on the Map.
+
 ### Added
 - **The LinkedIn browser plugin** (`linkedin-browser`, 1.0.0; the desktop app). A **LinkedIn**
   button at the top right of the header, beside the bell and Settings, opens LinkedIn inside
