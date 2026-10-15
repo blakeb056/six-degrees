@@ -187,6 +187,26 @@ at `/in/`. The previous approach — matching a name to a URL by comparing the f
 letters of the name against the URL slug, over only those links containing a photo —
 skipped everyone without a profile picture and mismatched custom slugs.
 
+**Where they are and their followers (2026-10-14).** Every list reader keeps each card's
+location and follower count when the card shows them, and the app keeps them on the row
+(`location`, `followers`; SCHEMA.md): `BRIDGE_RESULTS_JS` (a circle's list, auto and manual),
+`CONNECTIONS_EXTRACT_JS` (your connections; its cards have shown neither so far, so it
+usually finds none), and `SEARCH_RESULTS_JS` (company scans and `--search`, which used to
+carry two copies of it inline). LinkedIn's own search data fills a blank the page text left
+(`voyager_people`: `secondarySubtitle` is the place). The rules, so nothing else is taken
+for a place:
+
+- The place is the line straight after the headline, before any button or mutual line, and
+  only if `placeOf` reads it as one: letters, spaces and `. , ' - ( )`, each word capitalized
+  but for joining words ("Rio de Janeiro"), at most four parts. A headline, a mutual line,
+  "3,766 followers", "Connected on …" and the buttons never are. In a circle's list the first
+  line after the name must be the headline read for that card, or no place is taken.
+- A follower count is its own line ("· 3,766 followers", "3K followers", "1.2M followers"),
+  given to the card above it, as the mutual count is. A name two results share takes none.
+- The helpers are one block (`// card lines: begin` … `end`) copied into each reader, since
+  a snippet can't import; `scrape.py place_text` and `followers_text` read the same for
+  LinkedIn's own data. `tests/scanner-location.test.mjs` keeps the copies identical.
+
 **The JS lives in a raw Python string (`r"""`).** In a normal string, `'\n'` inside
 `.split('\n')` becomes a real newline at import time, producing a JavaScript string
 literal broken across two lines: valid on disk, a `SyntaxError` by the time Playwright
@@ -442,6 +462,11 @@ settings → *Dig deeper: read their profile* (`"digDeeper": true` in `scan-limi
   and the connection count ("500+ connections" is `{connections: 500, connectionsPlus: true}`)
   from the section holding their name, the `connectionOf` link, and the Activity heading.
   - It never reads the rest of the page: Interests shows companies' followers.
+  - Where they are (2026-10-14, `read_top_card_all`): only the line their *Contact info* link
+    sits on or under. The top card also names their company and school, which read like
+    places, so without that anchor nothing is taken. It goes with whatever is sent to their
+    row (`location`), or alone (`{status: "card"}` with no card) when the card showed no
+    numbers.
   - The count goes to `_LIST_CARDS` and from there into bridge progress (`connections`,
     `connectionsPlus`; kept when a later read has none), for the ring round their dot
     (`lib/reach.js`).

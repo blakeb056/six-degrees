@@ -34,6 +34,7 @@ import re
 import signal
 import sys
 import time
+import unicodedata
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -1447,12 +1448,18 @@ def push_company(people, company_name):
     Uses the same Vercel API route but with type='company'."""
     connections = []
     for p in people:
-        connections.append({
+        c = {
             "name": p.get("name", "").strip(),
             "headline": p.get("headline", "").strip(),
             "profileUrl": p.get("profileUrl", "").strip(),
             "imageUrl": p.get("imageUrl", ""),
-        })
+        }
+        # Where they are and their followers, when their card showed them (SEARCH_RESULTS_JS).
+        if p.get("location"):
+            c["location"] = p["location"]
+        if p.get("followers") is not None:
+            c["followers"] = p["followers"]
+        connections.append(c)
 
     connections = [c for c in connections if c.get("name") and c.get("profileUrl")]
     if not connections:
@@ -1586,6 +1593,109 @@ def save_waiting_photos(say_none=False):
     return done
 
 
+# One page of a people search (a company's people, --search's own connections):
+# each result's name, headline and photo, and, when its card shows them, where
+# they are and their followers. Read from the page's text in order, each
+# person's lines starting at their name's link text. A raw string, as every
+# snippet here must be (TRAPS §31). The place is the line straight after the
+# headline, before any button or mutual line, and only if it reads as one.
+SEARCH_RESULTS_JS = r"""
+() => {
+  // card lines: begin
+  // Where someone is, from their card's location line ("Seattle,
+  // Washington, United States", "Greater London", "Rio de Janeiro,
+  // Brazil"), or '' for any other line a card holds: a headline, a mutual
+  // line, "3,766 followers", a button. Letters, spaces and . , ' - ( )
+  // only, each word capitalized but for joining words, in at most four
+  // parts. English only: a line it isn't sure of is no place, never a
+  // wrong one. scrape.py place_text reads the same.
+  const placeOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    if (l.length < 2 || l.length > 80) return '';
+    if (!/^\p{L}[\p{L}\p{M} .,'\u2019()-]*$/u.test(l)) return '';
+    if (/^(Connect|Follow|Following|Message|Invite|Pending|More|Contact info|Open to work|Hiring|LinkedIn Member)$/i.test(l)) return '';
+    const parts = l.split(',').map((p) => p.trim());
+    if (parts.length > 4 || parts.some((p) => !p)) return '';
+    const joining = /^(de|del|der|di|da|do|dos|das|du|des|la|le|les|el|al|am|an|im|in|on|upon|of|the|and|und|et|y|e|en|sur|aan|van|von|zu)$/;
+    const capital = (w) => joining.test(w) || /^[\p{Lu}\p{Lt}\p{Lo}]/u.test(w) || /^[a-z]{1,2}['\u2019]\p{Lu}/u.test(w);
+    return l.split(/[\s,()]+/).filter(Boolean).every(capital) ? l : '';
+  };
+  // A follower count from its line ("3,766 followers", "\u00b7 3K
+  // followers", "1.2M followers"), or null. scrape.py followers_text
+  // reads the same.
+  const followersOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    const m = l.match(/(?:^|[\u00b7\u2022|]\s*)(\d[\d,.]*)\s*([KkMm])?\+? followers?$/i);
+    if (!m) return null;
+    const unit = m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1;
+    if (unit === 1 && !/^(\d{1,3}(,\d{3})*|\d+)$/.test(m[1])) return null;
+    if (unit !== 1 && !/^\d+(\.\d+)?$/.test(m[1])) return null;
+    const n = Math.round(Number(m[1].replace(/,/g, '')) * unit);
+    return Number.isInteger(n) && n >= 0 && n <= 1e9 ? n : null;
+  };
+  // card lines: end
+  const urlMap = {};
+  const imgMap = {};
+  document.querySelectorAll('img').forEach(img => {
+    if (!img.src || !img.src.includes('media.licdn.com')) return;
+    const link = img.closest('a');
+    if (link) {
+      const h = link.getAttribute('href') || '';
+      if (h.includes('/in/')) {
+        const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
+        imgMap[url] = img.src;
+      }
+    }
+  });
+  document.querySelectorAll('a').forEach(a => {
+    const h = a.getAttribute('href') || '';
+    if (!h.includes('/in/')) return;
+    const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
+    const img = a.querySelector('img');
+    if (img && img.src && img.src.includes('media.licdn.com')) { imgMap[url] = img.src; return; }
+    const text = a.textContent.trim();
+    if (!text || text.length > 60 || text.includes('mutual') || text.includes('Connect')) return;
+    if (!urlMap[text]) urlMap[text] = url;
+  });
+  const main = document.querySelector('[role="main"], main');
+  const pageText = main ? main.innerText : '';
+  const lines = pageText.split('\n').map(l => l.trim());
+  const results = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (urlMap[lines[i]]) {
+      const name = lines[i], url = urlMap[name];
+      let headline = '';
+      let location = '';
+      let followers = null;
+      let open = true;
+      let j = i + 1;
+      while (j < lines.length && j < i + 10 && !urlMap[lines[j]]) {
+        const l = lines[j].trim();
+        const before = j < i + 8;
+        j++;
+        if (!l || l.match(/^•\s*(1st|2nd|3rd)/) || l === name) continue;
+        const f = followersOf(l);
+        if (f != null) { if (followers == null) followers = f; open = false; continue; }
+        if (l === 'Connect' || l === 'Follow' || l === 'Message' || l.includes('mutual connection')) { open = false; continue; }
+        if (!open) continue;
+        if (!headline) { if (before) headline = l; else open = false; continue; }
+        const place = placeOf(l);
+        if (place && place !== headline) location = place;
+        open = false;
+      }
+      const person = { name, headline, profileUrl: url, imageUrl: imgMap[url] || '' };
+      if (location) person.location = location;
+      if (followers != null) person.followers = followers;
+      results.push(person);
+    }
+    i++;
+  }
+  return results;
+}
+"""
+
+
 def scrape_full(headless=False):
     """Full first-time scrape: uses search page to get ALL connections with images.
     Paginates through /search/results/people/?network=["F"] (10 results per page).
@@ -1637,47 +1747,7 @@ def scrape_full(headless=False):
             time.sleep(3)
 
             # Extract connections + images from current page
-            page_data = page.evaluate("""
-            () => {
-              const urlMap = {};
-              const imgMap = {};
-              document.querySelectorAll('a').forEach(a => {
-                const h = a.getAttribute('href') || '';
-                if (!h.includes('/in/')) return;
-                const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
-                const img = a.querySelector('img');
-                if (img && img.src && img.src.includes('media.licdn.com')) {
-                  imgMap[url] = img.src;
-                  return;
-                }
-                const text = a.textContent.trim();
-                if (!text || text.length > 60 || text.includes('mutual') || text.includes('Connect')) return;
-                if (!urlMap[text]) urlMap[text] = url;
-              });
-              const main = document.querySelector('[role="main"], main');
-              const pageText = main ? main.innerText : '';
-              const lines = pageText.split('\\n').map(l => l.trim());
-              const results = [];
-              let i = 0;
-              while (i < lines.length) {
-                if (urlMap[lines[i]]) {
-                  const name = lines[i], url = urlMap[name];
-                  let headline = '';
-                  let j = i + 1;
-                  while (j < lines.length && j < i + 8) {
-                    const l = lines[j].trim();
-                    if (!l || l.match(/^\\u2022\\s*(1st|2nd|3rd)/) || l === name) { j++; continue; }
-                    if (l === 'Connect' || l === 'Follow' || l === 'Message' || l.includes('mutual connection')) break;
-                    if (!headline) { headline = l; j++; continue; }
-                    j++;
-                  }
-                  results.push({ name, headline, profileUrl: url, imageUrl: imgMap[url] || '' });
-                }
-                i++;
-              }
-              return results;
-            }
-            """)
+            page_data = page.evaluate(SEARCH_RESULTS_JS)
 
             new_count = len(page_data)
             all_connections.extend(page_data)
@@ -1742,6 +1812,39 @@ CONNECTIONS_EXTRACT_JS = r"""
 () => {
   const root = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
   const clean = s => (s || '').replace(/[’']s profile picture$/i, '').trim();
+  // card lines: begin
+  // Where someone is, from their card's location line ("Seattle,
+  // Washington, United States", "Greater London", "Rio de Janeiro,
+  // Brazil"), or '' for any other line a card holds: a headline, a mutual
+  // line, "3,766 followers", a button. Letters, spaces and . , ' - ( )
+  // only, each word capitalized but for joining words, in at most four
+  // parts. English only: a line it isn't sure of is no place, never a
+  // wrong one. scrape.py place_text reads the same.
+  const placeOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    if (l.length < 2 || l.length > 80) return '';
+    if (!/^\p{L}[\p{L}\p{M} .,'\u2019()-]*$/u.test(l)) return '';
+    if (/^(Connect|Follow|Following|Message|Invite|Pending|More|Contact info|Open to work|Hiring|LinkedIn Member)$/i.test(l)) return '';
+    const parts = l.split(',').map((p) => p.trim());
+    if (parts.length > 4 || parts.some((p) => !p)) return '';
+    const joining = /^(de|del|der|di|da|do|dos|das|du|des|la|le|les|el|al|am|an|im|in|on|upon|of|the|and|und|et|y|e|en|sur|aan|van|von|zu)$/;
+    const capital = (w) => joining.test(w) || /^[\p{Lu}\p{Lt}\p{Lo}]/u.test(w) || /^[a-z]{1,2}['\u2019]\p{Lu}/u.test(w);
+    return l.split(/[\s,()]+/).filter(Boolean).every(capital) ? l : '';
+  };
+  // A follower count from its line ("3,766 followers", "\u00b7 3K
+  // followers", "1.2M followers"), or null. scrape.py followers_text
+  // reads the same.
+  const followersOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    const m = l.match(/(?:^|[\u00b7\u2022|]\s*)(\d[\d,.]*)\s*([KkMm])?\+? followers?$/i);
+    if (!m) return null;
+    const unit = m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1;
+    if (unit === 1 && !/^(\d{1,3}(,\d{3})*|\d+)$/.test(m[1])) return null;
+    if (unit !== 1 && !/^\d+(\.\d+)?$/.test(m[1])) return null;
+    const n = Math.round(Number(m[1].replace(/,/g, '')) * unit);
+    return Number.isInteger(n) && n >= 0 && n <= 1e9 ? n : null;
+  };
+  // card lines: end
   const byHref = new Map();
   root.querySelectorAll('a[href*="/in/"]').forEach(a => {
     if (a.closest('nav, header, footer')) return;
@@ -1773,12 +1876,31 @@ CONNECTIONS_EXTRACT_JS = r"""
         el = el.parentElement;
         const hits = (el.innerText || '').match(/Connected on [A-Za-z]+\.? \d{1,2}, \d{4}/g);
         if (!hits) continue;
-        if (hits.length === 1) rec.connectedDate = hits[0].replace(/^Connected on /, '');
+        if (hits.length === 1) { rec.connectedDate = hits[0].replace(/^Connected on /, ''); rec._card = el; }
         break;
       }
     }
   });
-  return [...byHref.values()].filter(r => r.name && r.name.length >= 2).map(({ _named, ...r }) => r);
+  // Where they are and their followers, if their card shows them (this page's
+  // cards have shown neither so far): the line straight after the headline,
+  // before "Connected on" or a button, and only if it reads as a place; a
+  // follower count's own line anywhere on the card. In the card found above,
+  // the one block holding only their "Connected on".
+  for (const rec of byHref.values()) {
+    if (!rec._card) continue;
+    const lines = (rec._card.innerText || '').split('\n').map(clean).filter(Boolean);
+    for (const l of lines) {
+      const f = followersOf(l);
+      if (f != null && rec.followers == null) rec.followers = f;
+    }
+    const at = lines.findIndex(l => l === rec.name);
+    if (at < 0 || !rec.headline || lines[at + 1] !== rec.headline) continue;
+    const next = lines[at + 2] || '';
+    if (/^Connected on/i.test(next) || followersOf(next) != null) continue;
+    const place = placeOf(next);
+    if (place && place !== rec.headline) rec.location = place;
+  }
+  return [...byHref.values()].filter(r => r.name && r.name.length >= 2).map(({ _named, _card, ...r }) => r);
 }
 """
 
@@ -3301,6 +3423,56 @@ def mutual_count_text(text):
     return names(m.group(1)) if m else None
 
 
+# A card's location line, as the page readers' placeOf reads it (BRIDGE_RESULTS_JS
+# and the others, "card lines"): "Seattle, Washington, United States", "Greater
+# London", "Rio de Janeiro, Brazil". Letters, spaces and . , ' - ( ) only, each
+# word capitalized but for joining words, in at most four parts. Anything else a
+# card holds (a headline, a mutual line, "3,766 followers", a button) is no place.
+# English only: a line it isn't sure of is no place, never a wrong one.
+_PLACE_JOINING = {"de", "del", "der", "di", "da", "do", "dos", "das", "du", "des", "la", "le", "les", "el", "al",
+                  "am", "an", "im", "in", "on", "upon", "of", "the", "and", "und", "et", "y", "e", "en", "sur",
+                  "aan", "van", "von", "zu"}
+_PLACE_NOT = re.compile(r"^(Connect|Follow|Following|Message|Invite|Pending|More|Contact info|Open to work|Hiring|LinkedIn Member)$", re.I)
+
+
+def place_text(text):
+    """A card's location line, as the page readers' placeOf reads it; "" otherwise."""
+    line = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(line) < 2 or len(line) > 80:
+        return ""
+    if not line[0].isalpha() or not all(ch.isalpha() or ch in " .,'\u2019()-" or unicodedata.category(ch).startswith("M")
+                                        for ch in line):
+        return ""
+    if _PLACE_NOT.match(line):
+        return ""
+    parts = [p.strip() for p in line.split(",")]
+    if len(parts) > 4 or any(not p for p in parts):
+        return ""
+
+    def capital(w):
+        if w in _PLACE_JOINING or unicodedata.category(w[0]) in ("Lu", "Lt", "Lo"):
+            return True
+        m = re.match(r"^[a-z]{1,2}['\u2019](.)", w)
+        return bool(m) and unicodedata.category(m.group(1)) == "Lu"
+    return line if all(capital(w) for w in re.split(r"[\s,()]+", line) if w) else ""
+
+
+def followers_text(text):
+    """A card's follower count ("3,766 followers", "· 3K followers", "1.2M followers"),
+    as the page readers' followersOf reads it; None otherwise."""
+    line = re.sub(r"\s+", " ", str(text or "")).strip()
+    m = re.search(r"(?:^|[\u00b7\u2022|]\s*)(\d[\d,.]*)\s*([KkMm])?\+? followers?$", line, re.I)
+    if not m:
+        return None
+    unit = (1000 if m.group(2).lower() == "k" else 1000000) if m.group(2) else 1
+    if unit == 1 and not re.fullmatch(r"\d{1,3}(,\d{3})*|\d+", m.group(1)):
+        return None
+    if unit != 1 and not re.fullmatch(r"\d+(\.\d+)?", m.group(1)):
+        return None
+    n = round(float(m.group(1).replace(",", "")) * unit)
+    return n if 0 <= n <= 10 ** 9 else None
+
+
 def voyager_people(payload):
     """Everyone in a LinkedIn API response who looks like a search result: anything with a
     title and a link to a profile, wherever it sits in the response."""
@@ -3326,13 +3498,20 @@ def voyager_people(payload):
                 name = text(x.get("title")).strip()
                 if name and name != "LinkedIn Member" and url not in seen:
                     seen.add(url)
-                    mutual = None
+                    mutual = followers = None
                     for ins in x.get("insightsResolutionResults") or []:
-                        mutual = mutual_count_text(text(((ins or {}).get("simpleInsight") or {}).get("title")))
-                        if mutual:
-                            break
-                    out.append({"name": name, "headline": text(x.get("primarySubtitle")).strip(),
-                                "profileUrl": url, "imageUrl": photo(x), "mutualCount": mutual})
+                        line = text(((ins or {}).get("simpleInsight") or {}).get("title"))
+                        mutual = mutual or mutual_count_text(line)
+                        followers = followers if followers is not None else followers_text(line)
+                    found = {"name": name, "headline": text(x.get("primarySubtitle")).strip(),
+                             "profileUrl": url, "imageUrl": photo(x), "mutualCount": mutual}
+                    # The line under the headline is where they are ("secondarySubtitle").
+                    place = place_text(text(x.get("secondarySubtitle")))
+                    if place:
+                        found["location"] = place
+                    if followers is not None:
+                        found["followers"] = followers
+                    out.append(found)
             for v in x.values():
                 walk(v)
         elif isinstance(x, list):
@@ -3412,11 +3591,12 @@ def _wire_merge(page, profile_url, page_results):
         if c is None:
             only_wire += 1
             continue
-        for k in ("name", "headline", "imageUrl"):
+        for k in ("name", "headline", "imageUrl", "location"):
             if not c.get(k) and w.get(k):
                 c[k] = w[k]
-        if c.get("mutualCount") is None and w.get("mutualCount") is not None:
-            c["mutualCount"] = w["mutualCount"]
+        for k in ("mutualCount", "followers"):
+            if c.get(k) is None and w.get(k) is not None:
+                c[k] = w[k]
     print(f"    LinkedIn's own data: {len(people)} people, {only_wire} not in the page text"
           + (f", list of about {total:,}" if total else ""), flush=True)
     return page_results
@@ -3859,6 +4039,50 @@ BRIDGE_RESULTS_JS = r"""
           const clean = (t) => (t || '').replace(/[\u2019']s profile picture$/i, '').trim();
           const byHref = new Map();
           const root = document.querySelector('[role="main"], main') || document.body;
+          // card lines: begin
+          // Where someone is, from their card's location line ("Seattle,
+          // Washington, United States", "Greater London", "Rio de Janeiro,
+          // Brazil"), or '' for any other line a card holds: a headline, a mutual
+          // line, "3,766 followers", a button. Letters, spaces and . , ' - ( )
+          // only, each word capitalized but for joining words, in at most four
+          // parts. English only: a line it isn't sure of is no place, never a
+          // wrong one. scrape.py place_text reads the same.
+          const placeOf = (text) => {
+            const l = String(text || '').replace(/\s+/g, ' ').trim();
+            if (l.length < 2 || l.length > 80) return '';
+            if (!/^\p{L}[\p{L}\p{M} .,'\u2019()-]*$/u.test(l)) return '';
+            if (/^(Connect|Follow|Following|Message|Invite|Pending|More|Contact info|Open to work|Hiring|LinkedIn Member)$/i.test(l)) return '';
+            const parts = l.split(',').map((p) => p.trim());
+            if (parts.length > 4 || parts.some((p) => !p)) return '';
+            const joining = /^(de|del|der|di|da|do|dos|das|du|des|la|le|les|el|al|am|an|im|in|on|upon|of|the|and|und|et|y|e|en|sur|aan|van|von|zu)$/;
+            const capital = (w) => joining.test(w) || /^[\p{Lu}\p{Lt}\p{Lo}]/u.test(w) || /^[a-z]{1,2}['\u2019]\p{Lu}/u.test(w);
+            return l.split(/[\s,()]+/).filter(Boolean).every(capital) ? l : '';
+          };
+          // A follower count from its line ("3,766 followers", "\u00b7 3K
+          // followers", "1.2M followers"), or null. scrape.py followers_text
+          // reads the same.
+          const followersOf = (text) => {
+            const l = String(text || '').replace(/\s+/g, ' ').trim();
+            const m = l.match(/(?:^|[\u00b7\u2022|]\s*)(\d[\d,.]*)\s*([KkMm])?\+? followers?$/i);
+            if (!m) return null;
+            const unit = m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1;
+            if (unit === 1 && !/^(\d{1,3}(,\d{3})*|\d+)$/.test(m[1])) return null;
+            if (unit !== 1 && !/^\d+(\.\d+)?$/.test(m[1])) return null;
+            const n = Math.round(Number(m[1].replace(/,/g, '')) * unit);
+            return Number.isInteger(n) && n >= 0 && n <= 1e9 ? n : null;
+          };
+          // card lines: end
+          // Lines on a card that are never its headline or its place.
+          const chrome = (l) => /^View\b.*profile$/i.test(l)
+            || /^(Connect|Follow|Message|Invite|Pending)$/i.test(l)
+            || /mutual connection/i.test(l)
+            || /followers$/i.test(l)
+            || /degree connection/i.test(l)
+            || /^(1st|2nd|3rd\+?)$/i.test(l)
+            || /^\u2022/.test(l);
+          // Their name's line, alone or with its degree beside it ("Ada Stone \u2022 2nd").
+          const nameLine = (l, name) => clean(l) === name
+            || (Boolean(name) && l.startsWith(name) && /^\s*[\u2022\u00b7|]/.test(l.slice(name.length)));
 
           root.querySelectorAll('a[href*="/in/"]').forEach((a) => {
             if (a.closest('nav, header, footer')) return;
@@ -3890,19 +4114,12 @@ BRIDGE_RESULTS_JS = r"""
             // the name. Not simply the next line: LinkedIn puts a screen-reader
             // line ("View Jane Doe's profile") straight after the name, and taking
             // that saved it as everybody's headline. Skip lines that are chrome.
-            const chrome = (l) => /^View\b.*profile$/i.test(l)
-              || /^(Connect|Follow|Message|Invite|Pending)$/i.test(l)
-              || /mutual connection/i.test(l)
-              || /followers$/i.test(l)
-              || /degree connection/i.test(l)
-              || /^(1st|2nd|3rd\+?)$/i.test(l)
-              || /^\u2022/.test(l);
             if (!rec.headline) {
               let card = a;
               for (let k = 0; k < 6 && card.parentElement; k++) {
                 card = card.parentElement;
                 const cardLines = (card.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
-                const idx = cardLines.findIndex((l) => clean(l) === rec.name);
+                const idx = cardLines.findIndex((l) => nameLine(l, rec.name));
                 if (idx >= 0) {
                   const cand = cardLines.slice(idx + 1, idx + 5).find((l) => !chrome(l) && clean(l) !== rec.name);
                   if (cand) rec.headline = cand;
@@ -3953,6 +4170,15 @@ BRIDGE_RESULTS_JS = r"""
           const give = (n) => {
             if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
           };
+          // Where they are and their followers, from the same reading of the
+          // card ("Ada Stone \u2022 2nd" / "VP Sales at Northwind Labs" /
+          // "Seattle, Washington, United States" / "Follow" / the mutual line /
+          // "\u00b7 3,766 followers"). The place is the line straight after the
+          // headline, before any button or mutual line, and only if it reads as
+          // one; never the headline itself. A name two results share has no
+          // card here (current is null): nothing is better than someone else's.
+          let shown = 0;
+          let open = false;
           const lines = (root.innerText || '').split('\n').map(clean).filter(Boolean);
           for (let i = 0; i < lines.length; i++) {
             const l = lines[i];
@@ -3963,16 +4189,42 @@ BRIDGE_RESULTS_JS = r"""
             while (j < lines.length && j - i < 3 && !tailOf(lines[j]) && nameAt(lines[j]) !== undefined) j++;
             if (j > i && j < lines.length && tailOf(lines[j])) {
               give(mutualCount(`${lines.slice(i, j).join(', ')} ${lines[j]}`));
+              open = false;
               i = j;
               continue;
             }
             const n = mutualCount(l);
             if (n != null) {
               give(n);
+              open = false;
+              continue;
+            }
+            const f = followersOf(l);
+            if (f != null) {
+              if (current && current.followers == null) current.followers = f;
+              open = false;
               continue;
             }
             const hit = nameAt(l);
-            if (hit !== undefined) current = hit;
+            if (hit !== undefined) {
+              current = hit;
+              shown = 0;
+              open = true;
+              continue;
+            }
+            if (!current || !open) continue;
+            if (/^(Connect|Follow|Following|Message|Invite|Pending)$/i.test(l)) { open = false; continue; }
+            if (chrome(l)) continue;
+            shown += 1;
+            // The headline's line: if it isn't the headline read above, this
+            // isn't the card it seems to be, and no place is taken from it.
+            if (shown === 1) {
+              if (current.headline && l !== current.headline) open = false;
+              continue;
+            }
+            const place = placeOf(l);
+            if (place && place !== current.headline && !current.location) current.location = place;
+            open = false;
           }
 
           const results = [...byHref.values()]
@@ -4528,6 +4780,39 @@ PAGE_FOOT_JS = ("() => ({ foot: (window.scrollY + window.innerHeight) >= (docume
 # companies' followers.
 TOP_CARD_JS = r"""
 () => {
+  // card lines: begin
+  // Where someone is, from their card's location line ("Seattle,
+  // Washington, United States", "Greater London", "Rio de Janeiro,
+  // Brazil"), or '' for any other line a card holds: a headline, a mutual
+  // line, "3,766 followers", a button. Letters, spaces and . , ' - ( )
+  // only, each word capitalized but for joining words, in at most four
+  // parts. English only: a line it isn't sure of is no place, never a
+  // wrong one. scrape.py place_text reads the same.
+  const placeOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    if (l.length < 2 || l.length > 80) return '';
+    if (!/^\p{L}[\p{L}\p{M} .,'\u2019()-]*$/u.test(l)) return '';
+    if (/^(Connect|Follow|Following|Message|Invite|Pending|More|Contact info|Open to work|Hiring|LinkedIn Member)$/i.test(l)) return '';
+    const parts = l.split(',').map((p) => p.trim());
+    if (parts.length > 4 || parts.some((p) => !p)) return '';
+    const joining = /^(de|del|der|di|da|do|dos|das|du|des|la|le|les|el|al|am|an|im|in|on|upon|of|the|and|und|et|y|e|en|sur|aan|van|von|zu)$/;
+    const capital = (w) => joining.test(w) || /^[\p{Lu}\p{Lt}\p{Lo}]/u.test(w) || /^[a-z]{1,2}['\u2019]\p{Lu}/u.test(w);
+    return l.split(/[\s,()]+/).filter(Boolean).every(capital) ? l : '';
+  };
+  // A follower count from its line ("3,766 followers", "\u00b7 3K
+  // followers", "1.2M followers"), or null. scrape.py followers_text
+  // reads the same.
+  const followersOf = (text) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    const m = l.match(/(?:^|[\u00b7\u2022|]\s*)(\d[\d,.]*)\s*([KkMm])?\+? followers?$/i);
+    if (!m) return null;
+    const unit = m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1;
+    if (unit === 1 && !/^(\d{1,3}(,\d{3})*|\d+)$/.test(m[1])) return null;
+    if (unit !== 1 && !/^\d+(\.\d+)?$/.test(m[1])) return null;
+    const n = Math.round(Number(m[1].replace(/,/g, '')) * unit);
+    return Number.isInteger(n) && n >= 0 && n <= 1e9 ? n : null;
+  };
+  // card lines: end
   const count = (s) => {
     const m = String(s || '').replace(/,/g, '').replace(/\s+/g, '').match(/^(\d+(?:\.\d+)?)([KkMm])?(\+)?$/);
     if (!m) return null;
@@ -4555,6 +4840,18 @@ TOP_CARD_JS = r"""
   const h1 = document.querySelector('main h1');
   const card = h1 && (h1.closest('section') || h1.parentElement);
   if (card) read(card.innerText, true, true);
+  // Where they are: the line their "Contact info" link sits on or under
+  // ("Seattle, Washington, United States \u00b7 Contact info"). Only there: the
+  // top card also names their company and school, which read like places.
+  if (card) {
+    const ls = String(card.innerText || '').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const at = ls.findIndex((l) => /(^|[\u00b7\u2022]\s*)Contact info$/i.test(l));
+    if (at >= 0) {
+      const same = ls[at].replace(/\s*[\u00b7\u2022]?\s*Contact info$/i, '').trim();
+      const place = placeOf(same || (at > 0 ? ls[at - 1] : ''));
+      if (place) out.location = place;
+    }
+  }
   // The company the top card names (their current one), with its number: the
   // number is how Experience entries point at a company they don't name.
   out.companies = [];
@@ -4586,12 +4883,18 @@ def read_top_card(page):
 def read_top_card_full(page):
     """(card, companies): read_top_card's card, and the companies the top card names
     with their numbers ([{"id", "name"}], their current company), for company_names."""
+    return read_top_card_all(page)[:2]
+
+
+def read_top_card_all(page):
+    """(card, companies, location): read_top_card_full's two, and where the top card
+    says they are ("Seattle, Washington, United States"), or "" when it doesn't say."""
     try:
         got = page.evaluate(TOP_CARD_JS) or {}
     except Exception:
-        return None, []
+        return None, [], ""
     companies = [c for c in (got.get("companies") or []) if isinstance(c, dict) and c.get("id") and c.get("name")]
-    return _card_from(got), companies
+    return _card_from(got), companies, place_text(got.get("location"))
 
 
 def _card_from(got):
@@ -4774,26 +5077,32 @@ def _dig_into_profile(page, name, profile_url, responses, dig, manual=False):
     """On their open profile: the top card always (for the ring), and with Dig
     deeper their experience too, sent with the card to their row. (how, why):
     ("pushback", reason), ("stopped", why), or (None, None) to carry on to their list."""
-    card, companies = read_top_card_full(page)
+    card, companies, location = read_top_card_all(page)
     if card:
         _LIST_CARDS[profile_url] = card
-        print(f"  Their profile: {_card_words(card)}.", flush=True)
+    if card or location:
+        print(f"  Their profile: {', '.join(w for w in (_card_words(card or {}), location) if w)}.", flush=True)
     # The company their top card names, by its number: names that number in anyone's Experience.
     for c in companies:
         remember_company(c["id"], c["name"], "card")
 
     def save(result):
         # To the app on this computer, never to LinkedIn: a refusal is said and the scan goes on.
+        # Where they are goes with whatever is sent: the app keeps it on their row.
         try:
-            push_experience({"profile_url": profile_url}, result)
+            push_experience({"profile_url": profile_url}, {**result, **({"location": location} if location else {})})
         except Exception as exc:
             print(f"  (their profile couldn't be saved to the app: {str(exc)[:120]})", flush=True)
 
     def card_only():
         # The top card on its own, for their card and their score (lib/experience.js
         # status "card"; the app adds it to a read already on file, never in its place).
+        # A top card with a place and no numbers sends the place alone: the app keeps
+        # it and stores no card.
         if card:
             save({"status": "card", "card": card})
+        elif location:
+            save({"status": "card"})
 
     if not dig:
         card_only()
@@ -6205,55 +6514,7 @@ def scrape_company(company_name, headless=False, log_fn=None):
             log(f"  Page {page_num}...")
             time.sleep(3)
 
-            page_data = page.evaluate("""
-            () => {
-              const urlMap = {};
-              const imgMap = {};
-              document.querySelectorAll('img').forEach(img => {
-                if (!img.src || !img.src.includes('media.licdn.com')) return;
-                const link = img.closest('a');
-                if (link) {
-                  const h = link.getAttribute('href') || '';
-                  if (h.includes('/in/')) {
-                    const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
-                    imgMap[url] = img.src;
-                  }
-                }
-              });
-              document.querySelectorAll('a').forEach(a => {
-                const h = a.getAttribute('href') || '';
-                if (!h.includes('/in/')) return;
-                const url = h.startsWith('http') ? h.split('?')[0] : 'https://www.linkedin.com' + h.split('?')[0];
-                const img = a.querySelector('img');
-                if (img && img.src && img.src.includes('media.licdn.com')) { imgMap[url] = img.src; return; }
-                const text = a.textContent.trim();
-                if (!text || text.length > 60 || text.includes('mutual') || text.includes('Connect')) return;
-                if (!urlMap[text]) urlMap[text] = url;
-              });
-              const main = document.querySelector('[role="main"], main');
-              const pageText = main ? main.innerText : '';
-              const lines = pageText.split('\\n').map(l => l.trim());
-              const results = [];
-              let i = 0;
-              while (i < lines.length) {
-                if (urlMap[lines[i]]) {
-                  const name = lines[i], url = urlMap[name];
-                  let headline = '';
-                  let j = i + 1;
-                  while (j < lines.length && j < i + 8) {
-                    const l = lines[j].trim();
-                    if (!l || l.match(/^\\u2022\\s*(1st|2nd|3rd)/) || l === name) { j++; continue; }
-                    if (l === 'Connect' || l === 'Follow' || l === 'Message' || l.includes('mutual connection')) break;
-                    if (!headline) { headline = l; j++; continue; }
-                    j++;
-                  }
-                  results.push({ name, headline, profileUrl: url, imageUrl: imgMap[url] || '' });
-                }
-                i++;
-              }
-              return results;
-            }
-            """)
+            page_data = page.evaluate(SEARCH_RESULTS_JS)
 
             new_on_page = 0
             for p in page_data:

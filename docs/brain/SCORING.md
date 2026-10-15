@@ -235,6 +235,10 @@ what "Storyteller | 2.5M+ followers" does (5.8). It can only add:
 - **followers only:** the card's connection count, and mutual connections, never count;
 - **under 100K adds nothing**, nor does a count that isn't a whole number from 0 to a
   billion (as `lib/experience.js` keeps it).
+- **from a list too** (2026-10-14): with no top card read, the "· 3,766 followers" a list's card
+  showed (the row's `followers` column) counts the same way. A profile read wins whenever
+  there is one: it's exact, where a list may round ("3K followers"). `followersOf` reads
+  either, and is in `RULE_TABLES.readers`, so stored scores were rescored once for it.
 
 The bonus is halved at a company we don't know, as a stated audience's is: the count counts
 like the claim, no more.

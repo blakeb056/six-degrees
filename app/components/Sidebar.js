@@ -160,6 +160,10 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           <div style={{ minWidth: 0 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{selected.name}</h2>
             <p style={{ color: 'var(--sd-fg-3, #aaa)', fontSize: 11, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.headline?.substring(0, 60)}</p>
+            {/* Where they are, as a scan read it off their card or their profile (app/api/ingest). */}
+            {selected.location && (
+              <p data-person-location="" style={{ color: 'var(--sd-fg-3, #aaa)', fontSize: 11, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.location}</p>
+            )}
             {selected.profile_url && (
               <a href={selected.profile_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#0077B5', textDecoration: 'none', fontWeight: 600 }}>
                 View profile

@@ -140,6 +140,7 @@ One line per person the file mentions, whatever their degree. Each person appear
 | `headline` | optional | the line under their name, as they wrote it |
 | `role` | optional | their current role; read from the headline when missing |
 | `company` | optional | their current company; read from the headline when missing |
+| `location` | optional | where they are ("Seattle, Washington, United States"), up to 100 characters. A connections export has none |
 | `photo` | optional | a picture in `photos/`, by its SHA-256 |
 | `experience` | optional | their roles, read from their page ([Experience](#experience)) |
 | `mutual_count` | optional | how many connections you and they share: a fact about the two of you, so it's on the person, not on an edge |
