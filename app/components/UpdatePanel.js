@@ -1,13 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { Section, Body, Mono, Status, Btn, LINE } from './ui';
+import { saveSettings } from '../../lib/settings-client';
+import { CHECK_UPDATES_EVENT, UPDATE_NOTES_SEEN_EVENT } from '../../lib/update-notice';
 
-// Nothing here runs on its own. The spec forbids a silent update check, and
-// this respects that: the first network call happens when someone presses
-// "Check for updates", here or in the Mac app's menu (which opens this page at
-// /settings?check=updates — the same click, made from the menu). Loading the
-// panel only reads the local state.
+// Loading the panel only reads the local state. The panel itself goes online
+// when someone presses "Check for updates", here or in the Mac app's menu
+// (which opens this page at /settings?check=updates, the same click made from
+// the menu), or opens the daily check's notification (the bell, or the gear's
+// dot), which lands here the same way.
+//
+// An installed copy also checks once a day by itself, on the server
+// (lib/update-check.js): the same one request for the newest version number,
+// which only ever leaves a notification. The switch here turns it off.
 //
 // In the Mac app, installing is a second, separate click ("Install and
 // restart"). Nothing is downloaded before it.
@@ -124,8 +130,8 @@ function GitUpdates({ local }) {
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
       <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 12 }}>
-        Nothing is checked automatically and nothing about you is sent: this runs the
-        same <Mono>git fetch</Mono> and <Mono>git pull</Mono> you would type yourself.
+        A copy run from the source code is never checked automatically, and nothing about you is sent:
+        this runs the same <Mono>git fetch</Mono> and <Mono>git pull</Mono> you would type yourself.
       </Body>
     </Section>
   );
@@ -133,8 +139,9 @@ function GitUpdates({ local }) {
 
 // ── an installed copy ─────────────────────────────────────────────────────────
 // The Mac app and the npm package update by installing the newer release over
-// the top. "Check for updates" asks GitHub for the newest version number, on a
-// click only. The Mac app can then install it itself, on a second click; when
+// the top. "Check for updates" asks GitHub for the newest version number, as
+// the daily check does (Check for updates once a day, below). The Mac app can
+// then install it itself, on a second click; when
 // it can't (or for npm), this hands over the exact line to run instead, saying
 // what that line would do for this copy. Where it would do harm (a network
 // kept inside the app, which the line deletes with it), it isn't offered.
@@ -171,6 +178,23 @@ function InstalledUpdates({ local }) {
     panel()?.scrollIntoView({ block: 'center' });
     check().then(() => panel()?.scrollIntoView({ block: 'end', behavior: 'smooth' }));
   }, [local.job]);
+
+  // The bell or the gear, on this page already: the same as arriving at
+  // ?check=updates (lib/update-notice.js openUpdates). Read through a ref, so
+  // the listener sees the install's latest state.
+  const asked = useRef(null);
+  useEffect(() => {
+    asked.current = () => {
+      const panel = document.getElementById('updates');
+      panel?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (!active && !busy) check();
+    };
+  });
+  useEffect(() => {
+    const onAsk = () => asked.current?.();
+    window.addEventListener(CHECK_UPDATES_EVENT, onAsk);
+    return () => window.removeEventListener(CHECK_UPDATES_EVENT, onAsk);
+  }, []);
 
   // Follow an install. Once it restarts, this server goes away. The next one to
   // answer is the new version, or the old one put back; reloading shows which.
@@ -219,7 +243,12 @@ function InstalledUpdates({ local }) {
     try {
       const { ok, d } = await post({ action: 'check-release' });
       if (!ok) setError(d.error || 'Could not check.');
-      else { setResult(d); setCheckedAt(new Date()); }
+      else {
+        setResult(d);
+        setCheckedAt(new Date());
+        // The server counted the update notifications as read: the bell and the gear follow.
+        window.dispatchEvent(new Event(UPDATE_NOTES_SEEN_EVENT));
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -378,9 +407,11 @@ function InstalledUpdates({ local }) {
 
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
+      <DailyCheckSwitch />
+
       <Body style={{ fontSize: 12, color: 'var(--sd-fg-4, #667)', marginTop: 12 }}>
-        Nothing is checked automatically. The button asks GitHub for the newest version
-        number, and nothing about you is sent.
+        The button and the daily check ask GitHub for the newest version number and nothing else. Nothing
+        about you is sent: GitHub sees an ordinary request from your computer.
         {mac && ' Only a second click, Install and restart, downloads the new version.'}
       </Body>
       {local.testReleases && (
@@ -393,6 +424,48 @@ function InstalledUpdates({ local }) {
 }
 
 const megabytes = (bytes) => Math.max(1, Math.round(bytes / 1e6));
+
+// Settings → Updates → Check for updates once a day (lib/update-notice.js,
+// setting updateCheck): on until it's turned off. Saved with the network, like
+// every setting, and read by the server's daily check before each look.
+function DailyCheckSwitch() {
+  const id = useId();
+  const [on, setOn] = useState(null);          // null until the saved choice is in
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/settings').then((r) => r.json())
+      .then((d) => setOn(d.settings ? d.settings.updateCheck !== false : null))
+      .catch(() => setError('Could not read this setting. Reload the page to try again.'));
+  }, []);
+
+  async function toggle(next) {
+    setSaving(true);
+    setError(null);
+    const { settings, error: failed } = await saveSettings({ updateCheck: next });
+    if (failed) setError(failed);
+    else if (settings) setOn(settings.updateCheck);
+    setSaving(false);
+  }
+
+  return (
+    <div data-update-check-switch="" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 18 }}>
+      <input id={id} type="checkbox" checked={Boolean(on)} disabled={on === null || saving} onChange={(e) => toggle(e.target.checked)}
+        style={{ marginTop: 3, width: 16, height: 16, accentColor: '#00c870', cursor: 'pointer' }} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <label htmlFor={id} style={{ display: 'block', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+          Check for updates once a day
+        </label>
+        <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5 }}>
+          While Sixgree is open, it asks GitHub once a day whether there&rsquo;s a newer version, and tells you in the
+          notifications if there is. It never downloads anything by itself.{on === false ? ' Off: it asks only when you press Check for updates.' : ''}
+        </div>
+        {error && <div style={{ fontSize: 12.5, color: 'var(--sd-red, #ff7676)', marginTop: 4 }}>{error}</div>}
+      </div>
+    </div>
+  );
+}
 
 // What the Terminal line does, for this copy. For the Mac app that depends on
 // where it is (lib/updater.js terminalFallback): install.sh replaces the app in

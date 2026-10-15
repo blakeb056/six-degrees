@@ -145,6 +145,14 @@ Everything stays local:
   The app shows photos only from those files, so looking at your network never
   contacts the platform.
 - There is no telemetry, no analytics, and no crash reporting.
+- Once a day while it runs, an installed copy asks GitHub for the newest release's
+  version number (`lib/update-check.js`): one GET to
+  `api.github.com/repos/blakeb056/six-degrees/releases/latest`, the same request as
+  *Check for updates*, with no cookies and nothing about you. GitHub sees an ordinary
+  request from your computer. A newer version only leaves a notification, one per
+  version; nothing is downloaded until you press *Install and restart*. Untick
+  *Check for updates once a day* in Settings → Updates to turn it off (or start the app
+  with `SIX_DEGREES_NO_UPDATE_CHECK=1`). A git checkout is never checked automatically.
 
 If you run the scanner, `chrome-profile/` in the data directory holds a live
 logged-in session for your account on the platform. Never copy, sync, or commit

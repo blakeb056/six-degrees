@@ -13,16 +13,18 @@ import {
   othersRunningApp, readStatusFile, rememberCheck, startUpdate, updateActive, updatePaths,
 } from '../../../lib/updater-job';
 import { busyRefusal, scannerJob } from '../../../lib/scan-state';
+import { latestRelease, settleUpdateNotes } from '../../../lib/update-check';
+import { getDb } from '../../../lib/db-client';
 import pkg from '../../../package.json';
 
 // Updating, when the app is a git checkout.
 //
-// The spec forbids an update *check* — meaning a silent one that runs on its
-// own and phones home every launch. This is the opposite of that: nothing
-// happens until someone presses a button, nothing about the user is sent, and
-// the whole thing is `git fetch` and `git pull` against the remote the checkout
-// already has. It exists because "run git pull first" is a step people forget,
-// and then they hit bugs that were fixed weeks ago.
+// A git checkout is never checked automatically (the daily check in
+// lib/update-check.js is for installed copies only): nothing happens until
+// someone presses a button, nothing about the user is sent, and the whole thing
+// is `git fetch` and `git pull` against the remote the checkout already has. It
+// exists because "run git pull first" is a step people forget, and then they
+// hit bugs that were fixed weeks ago.
 //
 // The Mac app can also install a release itself, on a second click
 // (installedPost below, lib/updater-job.js).
@@ -96,14 +98,16 @@ async function localState(root) {
   return { sha: sha.out, subject: subject.out, branch: branch.out, dirty, onlyLockfile };
 }
 
-// An installed copy — the Mac app or the npm package — has no checkout to pull.
-// Its button asks GitHub for the newest release's version number instead and
-// compares it with the one baked into this build. One GET to GitHub, only when
-// the button is pressed, carrying nothing about the user: the spec's invariant 2
-// names exactly this as permitted. Never call it from anything that runs on its own.
-// In the Mac app a second, separate press ("Install and restart") may then
-// download that release's disk image and SHA256SUMS and install it (invariant 2
-// again). Nothing is downloaded before that press.
+// An installed copy (the Mac, Windows or Linux app, or the npm package) has no
+// checkout to pull. Its button asks GitHub for the newest release's version
+// number instead and compares it with the one baked into this build: one GET,
+// carrying nothing about the user (lib/update-check.js latestRelease). The same
+// GET runs once a day by itself, unless Settings → Updates turns that off
+// (lib/update-check.js): the one automatic request spec invariant 2 allows, and
+// it only ever leaves a notification. In the Mac app a second, separate press
+// ("Install and restart") may then download that release's disk image and
+// SHA256SUMS and install it (invariant 2 again). Nothing is downloaded before
+// that press.
 
 // The folder this copy keeps its network in, when it isn't the default one.
 function customDataDir() {
@@ -137,22 +141,6 @@ function installedInfo(root) {
   const source = releaseSource(process.env);
   if (source.test) info.testReleases = source.apiBase;
   return info;
-}
-
-async function latestRelease(slug, apiBase) {
-  const res = await fetch(`${apiBase}/repos/${slug}/releases/latest`, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'six-degrees-update-check' },
-    signal: AbortSignal.timeout(10000),
-    cache: 'no-store',
-  });
-  if (res.status === 404) return null;           // nothing published yet
-  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
-  const d = await res.json();
-  return {
-    version: String(d.tag_name || '').replace(/^v/i, ''),
-    url: d.html_url || null,
-    release: d,                                  // for the Mac app's install check; not sent to the page
-  };
 }
 
 // The Mac app's update helper, shipped inside the app (scripts/build-app.mjs).
@@ -239,6 +227,9 @@ async function installedPost(action, root) {
       // Install installs the version this check offered and no other
       // (lib/updater-job.js rememberCheck); none, when it offered none.
       if (mac) rememberCheck(newer ? latest.version : null);
+      // Someone has checked, so the daily check's notification has done its
+      // job: its dot goes (lib/update-check.js settleUpdateNotes).
+      try { settleUpdateNotes(getDb(), { all: true }); } catch { /* the dot stays until the next look */ }
       // Windows and Linux: the newer release's page, where its installer is. Only
       // ever this project's own releases on GitHub (the page opens it in the browser).
       const releasePage = `https://github.com/${info.slug}/releases/`;

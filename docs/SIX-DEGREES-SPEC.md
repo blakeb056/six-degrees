@@ -18,11 +18,22 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
 1. **Local-first, permanently.** The database is a SQLite file on the user's own
    machine. No account, no API key, no hosted service that can bill them, rate-limit
    them, or disappear. A build that requires a network call to function is wrong.
-2. **No telemetry. No analytics. No automatic update check. Ever.** Not opt-out —
-   absent. This tool reads a person's professional network; it must never be able to
-   report on it, and it must never make a request nobody asked for.
-   The one permitted exception is narrow and worth stating precisely: a **button the
-   user presses** may ask whether something newer exists (`/api/update`). For a git
+2. **No telemetry. No analytics. Ever. One update check a day, and no other request by
+   itself.** Telemetry and analytics are not opt-out: they are absent. This tool reads a
+   person's professional network; it must never be able to report on it, and it must
+   never make a request that carries anything about the user.
+   The one request it makes by itself is narrow and worth stating precisely: once a day,
+   while it runs, an **installed** copy (the Mac, Windows or Linux app, or the npm package)
+   asks GitHub for the newest release's version number. It is one GET to
+   `releases/latest`, the very request the button below makes (`lib/update-check.js`),
+   carrying nothing about the user: GitHub sees an ordinary request from the computer. It
+   is on by default and **Settings → Updates → Check for updates once a day** turns it off.
+   A newer version leaves one notification, never a second for the same version, and
+   nothing is downloaded. A git checkout is never checked automatically, and tests never
+   check. *(Added on 2026-10-14. Blake: "a notification if there's a new update for the
+   user to update if possible", on by default with a switch to turn it off.)*
+   Otherwise a **button the user presses** may ask whether something newer exists
+   (`/api/update`). For a git
    checkout that is `git fetch` / `git pull` against the remote it already has; for an
    installed copy (the Mac app or the npm package) it is one GET for the newest GitHub
    release's version number. In the Mac app, a **second, separate press** ("Install and
@@ -33,9 +44,10 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    asked for. Never a pre-release, never a version the page names, never the data folder,
    and nothing is downloaded before the press.
    Otherwise the user runs the update themselves. Either way it sends nothing about them
-   beyond the requests, runs only on a click, and is what they would do by hand. Anything
-   that checks, downloads or installs on a timer, on launch, or in the background is the
-   forbidden thing. *(The second press was added on 2026-09-25, for the Mac app only.)*
+   beyond the requests, downloads and installs only on a click, and is what they would do
+   by hand. Anything that downloads or installs on a timer, on launch, or in the
+   background is the forbidden thing, and so is any other check: the daily one above is
+   the only one. *(The second press was added on 2026-09-25, for the Mac app only.)*
 3. **Never commit real network data.** Not a CSV, not an avatar, not a snapshot. CI
    fails the build if any appears. The sample network is generated and every person in
    it is invented.
@@ -102,6 +114,6 @@ Written down so the same idea does not arrive every few months looking fresh.
 | Voyager (LinkedIn's internal HTTP API) | Requires forging an authenticated internal client. More fragile than the DOM and unambiguously adversarial. |
 | Defeating Google's OAuth block | Google blocks its sign-in flow inside automation-controlled browsers deliberately. Working around an anti-automation control is out of scope; the tool tells the user to use email and password instead. |
 | A login gate on the local app | It runs on `127.0.0.1`. A password on a loopback service is theatre that costs real usability. |
-| Auto-updating, or checking for or downloading updates on launch | Invariant 2. A request nobody asked for is a request that can be counted. Checking is a press; in the Mac app, installing is a second press. Neither ever happens by itself, and nothing is downloaded ahead of time. |
+| Auto-updating, or downloading updates on launch or in the background | Invariant 2. A download nobody asked for is a change nobody chose. The daily check (invariant 2) only reads a version number and leaves a notification, and Settings → Updates turns it off. Installing is a press (in the Mac app, a second press after a check that offered that version), and nothing is downloaded ahead of time. |
 | A monthly budget, per-speed caps, or a lift that survives a restart | Blake, 2026-10-05: one daily limit and a lift for the session. More limits were what made it "constrained too much"; a lift kept on disk would outlive the session it was asked for. |
 | Discarding a user's local changes to force an update | The update refuses on a dirty tree and says which files. The single exception is `package-lock.json`, which npm regenerates and nobody edits on purpose. |
