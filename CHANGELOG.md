@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-15
+
+Your own connections get their locations and mutual counts, and the Map knows about 34,000 cities.
+
 ### Added
 - **Locations and mutuals for your own connections** (the scanner plugins, 1.0.4). Your
   connections list never shows where anyone is, but LinkedIn's search of them (*Search with
