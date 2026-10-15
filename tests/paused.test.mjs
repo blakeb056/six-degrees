@@ -27,6 +27,19 @@ test('a read cut short carries on from the next page; finished, hidden and page 
   assert.deepEqual(list.map((x) => [x.id, x.nextPage]), [['a', 28]]);
 });
 
+test('pages read past the one Resume starts at come with it, for the card; none, and nothing is added', () => {
+  const people = [p('a', '/in/a'), p('b', '/in/b')];
+  const progress = {
+    '/in/a': { pages: 0, more: true, readPages: [[2, 14]] },
+    '/in/b': { pages: 6, more: true },
+  };
+  const list = pausedList(people, new Set(['a', 'b']), progress);
+  const a = list.find((x) => x.id === 'a');
+  const b = list.find((x) => x.id === 'b');
+  assert.deepEqual([a.pagesRead, a.nextPage, a.readPages], [0, 1, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]);
+  assert.deepEqual([b.pagesRead, b.nextPage, 'readPages' in b], [6, 7, false]);
+});
+
 test('someone with a note but no saved circle still counts as mapped', () => {
   // Every result on their pages was already your own connection, so nothing
   // was saved — they must not be read again from page 1.

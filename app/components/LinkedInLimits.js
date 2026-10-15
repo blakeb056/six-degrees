@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
-import { inProgressSummary } from '../../lib/in-progress';
+import { inProgressSummary, pagesReadText } from '../../lib/in-progress';
 import { LIFT_LINE, DEV_LINE } from '../../lib/limits-lift';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
@@ -223,7 +223,7 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
                 }}>{p.name}</Link>
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
-                Read to page {p.pagesRead} · carries on at {p.nextPage}
+                {pagesReadText(p)} · carries on at {p.nextPage}
                 {/* Kept whole: on a phone "Oct" and "3" landed on two lines. */}
                 {p.at ? <> <span style={{ whiteSpace: 'nowrap' }}>· {day(p.at)}</span></> : ''}
                 {p.unclear >= 2 ? ' · came back unclear twice, so it waits at the back of Resume all' : ''}
