@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   scanned_company         TEXT,
   score_why               TEXT,
   experience              TEXT,               -- JSON: roles read from their profile by Read profiles (lib/experience.js)
+  location                TEXT,               -- where they are, as a scan read it off their card or profile ("Seattle, Washington, United States")
+  followers               INTEGER,            -- their follower count as a list's card showed it; a profile's top card (experience) wins
   user_id                 TEXT,
   image_refreshed_at      TEXT,
   created_at              TEXT DEFAULT (datetime('now')),

@@ -377,7 +377,7 @@ const readCard = (doc) => JSON.parse(JSON.stringify(vm.runInNewContext(`(${topCa
 test('the top card: "500+ connections", followers in K and M, and an exact count under 500', (t) => {
   if (noScanner(t)) return;
   assert.deepEqual(readCard(profile({ card: 'Jamie Invented\nFounder at Invented Sports Media\nNew York · Contact info\n27K followers · 500+ connections' })),
-    { followers: 27000, connections: 500, connectionsPlus: true, companies: [] });
+    { followers: 27000, connections: 500, connectionsPlus: true, location: 'New York', companies: [] });
   assert.deepEqual(readCard(profile({ card: 'Riley Invented\nProfessor\n1.2M followers\n312 connections' })),
     { followers: 1200000, connections: 312, connectionsPlus: false, companies: [] });
   assert.deepEqual(readCard(profile({ card: 'Sam Invented\nAnalyst', link: '500+ connections' })),

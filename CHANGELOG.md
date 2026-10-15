@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Where people are, and their follower counts, from every scan** (the scanner plugins, 1.0.3).
+  Each card in a list shows where someone is ("Seattle, Washington, United States") and often
+  their followers ("3,766 followers"), and a scan now keeps both instead of throwing them away:
+  in a circle's list, scanning by hand or by itself, in a company's people, and in your own
+  connections when their cards show them. With *Dig deeper* on, the profile's own top card says
+  where they are too. Only a line that reads as a place is kept, never the headline, the mutual
+  line or the follower count, and a scan that shows none never clears one already read. The
+  person card shows where they are under their headline, and the Map tab
+  places it. A follower count from a list counts in their score the way a profile's does, until *Dig
+  deeper* reads their profile, whose count then wins. A network file can say where someone is
+  (`location`); a Connections export has no locations, so an import of one leaves them empty.
 - **The Map tab: your network on a world map.** A new tab beside Network Circle, Degrees and
   Separation puts everyone on a map by where their profile says they are: one dot per place,
   sized by how many people are there and split, like a pie, by the mix of their tiers or their
