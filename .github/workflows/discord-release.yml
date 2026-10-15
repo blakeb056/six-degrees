@@ -1,0 +1,29 @@
+# Posts each published release to the Sixgree Discord's #releases channel.
+# The webhook URL is the repo secret DISCORD_RELEASES_WEBHOOK; it is never in the repo.
+name: Discord release post
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.release.prerelease && !github.event.release.draft }}
+    steps:
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+          TAG: ${{ github.event.release.tag_name }}
+          NAME: ${{ github.event.release.name }}
+          URL: ${{ github.event.release.html_url }}
+          BODY: ${{ github.event.release.body }}
+        run: |
+          [ -n "$WEBHOOK" ] || { echo "no webhook secret; skipping"; exit 0; }
+          desc="$(printf '%s' "$BODY" | head -c 1500)"
+          jq -n --arg title "Sixgree ${TAG}" --arg url "$URL" --arg desc "$desc" \
+            '{username:"Sixgree Releases", embeds:[{title:$title, url:$url, description:$desc, color:16766720,
+              footer:{text:"Download at sixgree.com"}}]}' \
+            | curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
