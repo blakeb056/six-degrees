@@ -366,7 +366,7 @@ test('the header shows the light only for your own network with a scanner, and t
   assert.match(header, /import ScanLight from '\.\/ScanLight';/);
   assert.match(header, /\{own && shows\.scan && <ScanLight isMobile=\{isMobile\} \/>\}/);
   // Top right: before Settings, in the buttons on the right.
-  assert.ok(header.indexOf('<ScanLight') < header.indexOf('href="/settings"'));
+  assert.ok(header.indexOf('<ScanLight') > -1 && header.indexOf('<ScanLight') < header.indexOf('<SettingsGear'));
   const light = read('../app/components/ScanLight.js');
   // Nothing drawn without a colour: no scan, and the moment after one has gone.
   assert.match(light, /if \(!color\) return null;/);
