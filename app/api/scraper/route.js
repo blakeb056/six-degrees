@@ -8,7 +8,7 @@ import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode, applyLockedModes } from '../../../lib/linkedin-limits';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
-import { pausedList, readProgress, readUnclear } from '../../../lib/paused';
+import { pausedList, readProgress, readUnclear, yourListNote } from '../../../lib/paused';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
 import { scanDoneNotification } from '../../../lib/notifications';
@@ -17,7 +17,7 @@ import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { pluginsEnabled, scannerCapabilitiesNow } from '../../../lib/plugins-view';
-import { capabilityRefusal, settingRefusal, lockedModes, circleMode, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
+import { capabilityRefusal, settingRefusal, lockedModes, circleMode, pluginTooOld, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState, cleanProfileUrl } from '../../../lib/reach';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
@@ -618,6 +618,8 @@ async function status() {
     skips: bridgeSkips(),
     linkedin: linkedinState(dataDir()),
     paused: paused(me?.id),
+    // How far the read of your connections through LinkedIn's search got (lib/paused.js yourListNote).
+    yourList: me ? yourListNote(readProgress(dataDir(), me.id)) : null,
   };
 }
 
@@ -850,6 +852,10 @@ const ACTIONS = {
   resume:        { flag: '--bridge-url', needsId: true, label: 'Carrying on with', searches: true },
   // Carry on with everyone whose read was cut short, and nobody new.
   'resume-all':  { flag: '--auto-bridge --only-unfinished', label: 'Carrying on with every paused list', searches: true },
+  // Your connections through LinkedIn's people search, for where each one is and the
+  // mutuals you share (scrape.py scan_your_connections). Read like a circle: by itself
+  // or by hand, whichever circle scans run in, so either plugin runs it.
+  'your-connections': { flag: '--your-connections', label: 'Adding locations and mutuals to your connections', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
   // Photos an older version kept as links to LinkedIn: saved here, once each.
@@ -1190,6 +1196,9 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   }
   const locked = capabilityRefusal(caps, sitting ? 'auto-start' : action);
   if (locked) return Response.json({ error: locked, needsPlugin: 'auto' }, { status: 409 });
+  // A scanner plugin from before an action was added doesn't know its flag: said here, not by its error.
+  const tooOld = pluginTooOld(scanner, action);
+  if (tooOld) return Response.json({ error: tooOld, needsPluginUpdate: true }, { status: 409 });
   // Auto: who, by id, and whether a request can go to them at all, before
   // anything else is asked. Then its own one-time yes (the page asks it).
   let invitee = null;
@@ -1295,7 +1304,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // before every search too). Auto scan's sittings are planned against the same
   // limit (autoPlan ends Auto scan at it, in its own words), so they aren't
   // counted as a press held back.
-  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company'].includes(action);
+  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections'].includes(action);
   if (readsLists && li.limitReached && !sitting) {
     state.limitHit = Date.now();
     return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });

@@ -32,7 +32,7 @@ import Link from 'next/link';
 import useScanner from './useScanner';
 import { stopScrape } from '../../lib/scraper-client';
 import { stopAutoScan } from '../../lib/experimental-client';
-import { scanLight, endedLight, lightLabel, timeLeftText, LIGHT_LINGER_MS, LIGHT_WORDS } from '../../lib/scan-light';
+import { scanLight, endedLight, lightLabel, timeLeftText, whoseConnections, LIGHT_LINGER_MS, LIGHT_WORDS } from '../../lib/scan-light';
 
 // The light's colours, the theme's own where it has them (Daylight's are deeper, to read on white).
 const COLOR = {
@@ -263,7 +263,7 @@ export default function ScanLight({ isMobile = false }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {s.who && <Row label={manual ? 'List' : 'Circle'}>{`${s.who}'s connections`}{s.batch?.total ? ` · ${s.batch.current} of ${s.batch.total}` : ''}</Row>}
+            {s.who && <Row label={manual ? 'List' : 'Circle'}>{whoseConnections(s.who)}{s.batch?.total ? ` · ${s.batch.current} of ${s.batch.total}` : ''}</Row>}
             {s.page != null && (
               <Row label="Page">
                 {s.page}{!manual && s.pages ? ` of about ${s.pages}` : ''}

@@ -86,10 +86,24 @@ test('a circle scan keeps LinkedIn\'s mutual count, and every copy of the person
   assert.deepEqual(counts('ben'), [['bridge-maya', null]]);
 });
 
-test('only a circle scan brings a mutual count: your own connections never get one', async () => {
-  await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 12 }]);
-  const row = getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-900');
-  assert.equal(row.mutual_count, null);
+test('your own connections keep the mutual count the search of them reads, and a read without one leaves it', async () => {
+  // The connections walk sends none; the search of your connections (scrape.py scan_your_connections) does.
+  const mutuals = () => getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?')
+    .get('https://www.linkedin.com/in/person-900').mutual_count;
+  await send([person(900, 'VP Sales at Hooli')]);
+  assert.equal(mutuals(), null);
+  await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 105 }]);
+  assert.equal(mutuals(), 105, 'filled in on the row already there');
+  await send([person(900, 'VP Sales at Hooli')]);
+  assert.equal(mutuals(), 105, 'a walk of your connections never clears it');
+  await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 'lots' }]);
+  assert.equal(mutuals(), 105, 'a misread is dropped');
+  // A company scan still brings none.
+  await POST(new Request('http://127.0.0.1/api/ingest', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ connections: [{ ...person(901, 'Engineer at Initech'), mutualCount: 7 }], type: 'company', companyName: 'Initech', userId: 'me' }),
+  }));
+  assert.equal(getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-901').mutual_count, null);
 });
 
 // ── your field, asked before the first scan ─────────────────────────────────
