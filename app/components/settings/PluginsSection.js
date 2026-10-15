@@ -16,8 +16,14 @@
 // The plugin list is the one thing here that goes online: when a card's
 // Install is pressed, and with plugins on, the first time Browse comes into
 // view (scrolled to, picked in the notch, or just switched on), so a newer
-// version shows as Update; then again only on Try again. Settings is one long
-// page, so opening it for anything else never fetches the list.
+// version shows as Update in its card; then again only on Check for plugin
+// updates, Try again, or a plugin's "is out" notification opened while this
+// page is open (lib/update-notice.js openPlugins). Opening Browse is the
+// person asking, which the app's network rule allows. Settings is one long
+// page, so opening it for anything else never fetches the list. With plugins
+// off, the cards stay the shipped copy and nothing is fetched until Install.
+// The daily update check reads the same list once a day while plugins are on
+// (lib/update-check.js), and leaves a notification for a newer version.
 //
 // Nothing installs without a yes: a package, from the list, a link or a file,
 // is checked through first, and its name, version, what it does and its risk
@@ -29,7 +35,11 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Section, Body, Status, Btn, LINE } from '../ui';
-import { fetchPlugins, savePluginsEnabled, removePlugin, MAX_PLUGIN_BYTES } from '../../../lib/plugins-client';
+import {
+  fetchPlugins, savePluginsEnabled, removePlugin, countUpdates, checkedLine, MAX_PLUGIN_BYTES,
+} from '../../../lib/plugins-client';
+import { cardsFrom } from '../../../lib/plugins-shipped';
+import { CHECK_PLUGINS_EVENT } from '../../../lib/update-notice';
 import { usePluginInstall, PluginCards, PluginOfferAt, size } from './PluginBrowse';
 import { askScannerAgain } from '../../../lib/scraper-client';
 
@@ -101,6 +111,29 @@ export default function PluginsSection() {
     return () => watch.disconnect();
   }, [on, load]);
 
+  // A plugin's "is out" notification, opened while this page is open: here,
+  // and the list again (lib/update-notice.js openPlugins).
+  useEffect(() => {
+    const again = () => {
+      document.getElementById('plugins')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!on) return;
+      asked.current = true;
+      load();
+    };
+    window.addEventListener(CHECK_PLUGINS_EVENT, again);
+    return () => window.removeEventListener(CHECK_PLUGINS_EVENT, again);
+  }, [on, load]);
+
+  // "Checked just now" stays true: a tick every half minute while it's shown.
+  // Until the first, `now` may be from before the check, which reads "just now".
+  const checkedAt = install.catalog.status === 'ready' ? install.catalog.at : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!checkedAt) return undefined;
+    const tick = setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => clearInterval(tick);
+  }, [checkedAt]);
+
   async function toggle(next) {
     setToggling(true);
     setError(null);
@@ -169,6 +202,18 @@ export default function PluginsSection() {
               The plugins on the official list. Install downloads one and shows you what it is, in its card, before
               anything is installed.{on ? '' : ' With plugins off, Install turns them on.'}
             </Body>
+            {on && (
+              <div data-plugin-updates="" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+                <Btn onClick={() => { asked.current = true; load(); }} disabled={!!busy || install.catalog.status === 'loading'}>
+                  {install.catalog.status === 'loading' ? 'Checking…' : 'Check for plugin updates'}
+                </Btn>
+                {checkedAt && (
+                  <span data-plugin-checked="" role="status" style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
+                    {checkedLine(checkedAt, countUpdates(cardsFrom(install.catalog), plugins), now)}
+                  </span>
+                )}
+              </div>
+            )}
             <PluginCards install={install} installed={plugins} />
           </div>
         </>

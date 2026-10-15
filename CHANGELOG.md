@@ -19,14 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there's a newer version, a notification says so, once per version, and the ⚙ button gets a
   small dot. Opening either takes you to Settings → Updates and checks, where *Install and
   restart* updates the app, or, where it can't update itself, it says what to do instead.
-  Nothing is ever downloaded until you choose to update. It's on to begin with: untick *Check
-  for updates once a day* in Settings → Updates to turn it off, and it asks only when you press
-  *Check for updates*. Offline, it says nothing and tries again the next day.
+  Nothing is ever downloaded until you choose to update. With plugins on and one installed, the
+  same daily check also reads the plugin list, and a newer version of an installed plugin gets a
+  notification of its own ("Auto scan 1.0.1 is out"), once per version, which opens Settings →
+  Plugins. It's on to begin with: untick *Check for updates once a day* in Settings → Updates to
+  turn it off, and it asks only when you press *Check for updates*. Offline, it says nothing and
+  tries again the next day.
 
 ### Changed
 - **Scanning by hand says each change the moment it happens** (the scanner plugins, 1.0.1): on a
   new page after Next, a page still loading, back on their list, and their Experience showing,
   scrolled past or back, so the scan light follows you at once instead of seconds later.
+
+### Fixed
+- **A newer plugin shows its Update button.** Settings → Plugins could keep showing an installed
+  plugin as *Installed* after a newer version was out, with no way to look again but leaving
+  the page. With plugins on, Browse reads the plugin list when it comes into view and on the new
+  *Check for plugin updates* button ("Checked just now; all up to date", or how many updates);
+  an older installed plugin shows *Update* in its card, which asks from which version to which
+  before anything installs, then says "Updated to 1.0.1 ✓".
 
 ## [2.0.0] - 2026-10-14
 

@@ -34,7 +34,7 @@ import { startHere, busyReason } from '../../lib/scraper-client';
 import { loadNetwork } from '../../lib/network';
 import { networkLevel, rememberLevel, levelNow, watchLevel } from '../../lib/level';
 import { IS_DEMO } from '../../lib/demo';
-import { UPDATE_NOTE_TYPE, UPDATE_NOTES_SEEN_EVENT, UPDATES_HREF, openUpdates } from '../../lib/update-notice';
+import { UPDATE_NOTE_TYPE, PLUGIN_NOTE_TYPE, UPDATE_NOTES_SEEN_EVENT, UPDATES_HREF, openUpdates, openPlugins } from '../../lib/update-notice';
 
 // A phone by the window's own width (a media query), not innerWidth: on a phone
 // innerWidth grows with anything wider than the screen, so the header's first,
@@ -199,6 +199,8 @@ function NotificationBell({ isMobile, onOpen, openId }) {
     setOpen(false);
     // A newer version: Settings → Updates, where its check offers Install and restart (or what to do instead).
     if (n.type === UPDATE_NOTE_TYPE) openUpdates(router);
+    // A newer version of a plugin: Settings → Plugins, where its card offers Update.
+    else if (n.type === PLUGIN_NOTE_TYPE) openPlugins(router);
     else if (onOpen) onOpen(n);
     else router.push(`/?note=${encodeURIComponent(n.id)}`);
   };
