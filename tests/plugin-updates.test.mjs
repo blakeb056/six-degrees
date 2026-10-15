@@ -434,6 +434,8 @@ test('the changelog: a Fixed line for the Update button, and plugins in the upda
   assert.ok(unreleased.includes('### Fixed'), 'a Fixed section');
   assert.match(fixed, /A newer plugin shows its Update button/);
   assert.match(fixed, /Check for plugin updates/);
-  const added = unreleased.slice(unreleased.indexOf('**Sixgree tells you when there\'s a new version.**'), unreleased.indexOf('### Changed'));
+  // From that entry to the next Changed heading after it (a newer release's notes come first).
+  const from = unreleased.indexOf('**Sixgree tells you when there\'s a new version.**');
+  const added = unreleased.slice(from, unreleased.indexOf('### Changed', from));
   assert.match(added.replace(/\s+/g, ' '), /With plugins on and one installed, the same daily check also reads the plugin list/);
 });

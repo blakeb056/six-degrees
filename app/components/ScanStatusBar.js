@@ -67,6 +67,7 @@ const WHAT = {
   messages: 'Reading your messages list',
   'messages-full': 'Reading your whole messages history',
   connect: 'Sending a connection request',
+  outlink: 'Opening a profile',
   'read-profiles': 'Reading full profiles',
 };
 

@@ -20,6 +20,8 @@ import { pluginsEnabled, scannerCapabilitiesNow } from '../../../lib/plugins-vie
 import { capabilityRefusal, settingRefusal, lockedModes, circleMode, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState, cleanProfileUrl } from '../../../lib/reach';
+import { scannerEnvWithPanel, hasPanel, outlinkSupported, outlinkResultIn } from '../../../lib/linkedin-panel';
+import { recordOutlinkOpened } from '../../../lib/outlink-opened';
 import { chromeInstalled, signedInFrom, macosVersion, SIGNED_IN_FILE, CHROME_REFUSAL } from '../../../lib/scanner-setup';
 import { checkAppManagement } from '../../../lib/app-management';
 import { FIRST_SCAN_PAGES } from '../../../lib/onboarding';
@@ -68,6 +70,7 @@ const state = registerScanState({
   pages: 0,        // pages the running scan has read: the dots along the header's line (app/components/ScanTrail.js)
   found: [],       // how many people each of those pages found: the Scan page's cluster (app/components/ScanRadar.js)
   invitee: null,   // Auto's person: { id, name, profileUrl, userId, bridgeId }, looked up here (connectTarget)
+  outlink: null,   // Outlink's person: { id, name, profileUrl } (outlinkTarget)
   outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
   port: null,      // the port this app was last asked on, for the job the queue starts by itself
   limitHit: null,  // when the daily limit last held a scan back (a press refused, or a scan that stopped at it), ms
@@ -295,6 +298,9 @@ function push(line) {
     // Auto's one line saying how the request went (scrape.py main, --connect).
     const result = state.action === 'connect' && connectResultIn(t);
     if (result) state.outcome = result;
+    // Outlink's, likewise (scrape.py main, --outlink).
+    const opened = state.action === 'outlink' && outlinkResultIn(t);
+    if (opened) state.outcome = opened;
   }
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
 }
@@ -870,6 +876,10 @@ const ACTIONS = {
   // power first, each a profile view. Its own action, never added to another
   // scan's views (scrape.py read_profiles).
   'read-profiles': { flag: '--read-profiles', label: 'Reading full profiles', searches: true },
+  // Outlink (lib/linkedin-panel.js): one profile, opened in Sixgree's own
+  // browser for you to act on, by id like Auto. The scanner only opens it and
+  // clicks nothing; it is one of the day's profile views.
+  outlink:       { flag: '--outlink', label: 'Opening the profile of', searches: true },
 };
 /** The rounds Read profiles offers (scrape.py PROFILE_READ_BATCHES). */
 const PROFILE_READ_BATCHES = [5, 10, 25];
@@ -903,6 +913,24 @@ function connectTarget(id) {
   } catch {
     return personRefusal(null);
   }
+}
+
+/**
+ * Outlink's person, by id: { person: { id, name, profileUrl } }, or why not:
+ * { error, status }. Anyone in your network on this computer with a LinkedIn
+ * profile; the URL comes from the database, never the page, and is checked
+ * like every other that reaches a command line.
+ */
+function outlinkTarget(id) {
+  try {
+    const me = resolveProfile({ create: false });
+    const row = me && getDb().prepare(
+      'SELECT id, name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ?',
+    ).get(String(id ?? ''), me.id);
+    const profileUrl = row?.profile_url && cleanProfileUrl(row.profile_url);
+    if (profileUrl) return { person: { id: row.id, name: cleanName(row.name) || null, profileUrl } };
+  } catch { /* said below */ }
+  return { status: 400, error: 'That person’s LinkedIn profile couldn’t be found here.' };
 }
 
 /** Auto's one-time yes (lib/auto-connect.js), given on the page that first offers it. */
@@ -1199,6 +1227,19 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     invitee = found.person;
     if (!autoAccepted()) return Response.json({ error: AUTO_REFUSAL, needsAutoAcceptance: true }, { status: 409 });
   }
+  // Outlink in Sixgree's own browser: only in the desktop app, with a scanner
+  // that knows its panel, once scanning's risk is accepted. Otherwise
+  // `fallback` tells the page to open the profile in your own browser, as
+  // Outlink always did.
+  let outlinkPerson = null;
+  if (action === 'outlink') {
+    if (!hasPanel(process.env) || !outlinkSupported(scanner) || !scanRisk()) {
+      return Response.json({ error: 'Sixgree’s own browser can’t open it here.', fallback: true }, { status: 409 });
+    }
+    const found = outlinkTarget(body.id);
+    if (found.error) return Response.json({ error: found.error }, { status: found.status });
+    outlinkPerson = found.person;
+  }
   // Nothing opens LinkedIn before the one-time "I understand" on the Scan page,
   // whichever button asked (lib/scan-risk.js).
   if (touchesLinkedIn(action) && !scanRisk()) {
@@ -1207,7 +1248,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // Nor without Google Chrome, which the scanner drives: the Scan page's step 1
   // says so in the same words, and every other button is told here, before
   // anything starts, rather than by a Playwright error at the end of a log.
-  if (touchesLinkedIn(action) && !chromeHere()) {
+  // (Outlink opens in Sixgree's own browser: no Chrome needed.)
+  if (touchesLinkedIn(action) && action !== 'outlink' && !chromeHere()) {
     return Response.json({ error: CHROME_REFUSAL, needsChrome: true }, { status: 409 });
   }
 
@@ -1271,6 +1313,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // and anything not shaped like one of our ids is dropped.
   const hintId = typeof body.id === 'string' && /^[\w-]{1,64}$/.test(body.id) ? body.id : null;
   const target = invitee ? { id: invitee.id, name: invitee.name }
+    : outlinkPerson ? { id: outlinkPerson.id, name: outlinkPerson.name }
     : name || profileUrl ? { id: hintId, name: name || person?.name || null } : null;
   // Nothing that searches LinkedIn starts during a cooldown; the scanner checks
   // too, this just says so before a process is spawned.
@@ -1309,6 +1352,11 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       return Response.json({ error: capped, ...(li.profilesLeftToday === 0 ? { limitReached: true } : {}) }, { status: 409 });
     }
   }
+  // Outlink's profile is one of the day's views: none left, nothing opens.
+  if (outlinkPerson && li.profilesLeftToday === 0) {
+    state.limitHit = Date.now();
+    return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
+  }
   if (state.running) {
     // One thing at a time. Auto, and a scan of one person's circle, picked by
     // id, wait their turn in the queue (lib/scan-queue.js); anything else is
@@ -1316,6 +1364,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     const kind = queueKind(action);
     if (kind && !queued && target?.id) return queueUp(body, action, target);
     if (invitee) return Response.json({ error: `${runningNow(state.action)}. Press Auto again once it has finished.`, action: state.action }, { status: 409 });
+    if (outlinkPerson) return Response.json({ error: `${runningNow(state.action)}. Open the profile again once it has finished.`, action: state.action }, { status: 409 });
     return Response.json({ error: 'Something is already running.', action: state.action }, { status: 409 });
   }
 
@@ -1348,6 +1397,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // id is --bridge-url, which carries on where their last read stopped
       // unless told to start at page 1.
       ...(invitee ? [`--connect=${invitee.profileUrl}`, ...(invitee.name ? [`--connect-name=${invitee.name}`] : [])]
+        : outlinkPerson ? [`--outlink=${outlinkPerson.profileUrl}`, ...(outlinkPerson.name ? [`--outlink-name=${outlinkPerson.name}`] : [])]
         : profileBatch ? [`--read-profiles=${profileBatch}`]
         : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
       ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
@@ -1391,6 +1441,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.failure = null;
   state.limitHit = null;
   state.invitee = invitee;
+  state.outlink = outlinkPerson;
   state.outcome = null;
   state.autoSitting = Boolean(sitting);
   if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
@@ -1405,7 +1456,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   try { profileId = resolveProfile().id; } catch {}
 
   const childEnv = {
-    ...process.env,
+    // With Sixgree's own browser named only when it's sound (lib/linkedin-panel.js).
+    ...scannerEnvWithPanel(process.env),
     SIX_DEGREES_USER_ID: profileId,
     APP_URL: `http://127.0.0.1:${port}`,
     PYTHONUNBUFFERED: '1',
@@ -1440,8 +1492,17 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     }
   }
 
+  /** Outlink's profile, once the scanner says it opened: written down (lib/outlink-opened.js). */
+  function noteOutlink() {
+    const who = state.outlink;
+    if (state.action !== 'outlink' || !who || who.noted || state.outcome !== 'opened') return;
+    who.noted = true;
+    recordOutlinkOpened(dataDir(), { id: who.id, name: who.name, url: who.profileUrl });
+  }
+
   function finish(code) {
     markAutoSent();
+    noteOutlink();
     // What the exit code says (lib/scan-exit.js, scrape.py EXIT_CODES): a calm
     // end (finished, today's limit, a cooldown) is `effective` 0, as the rest of
     // the app has always read it; a stop with a reason keeps its code. A scanner

@@ -372,14 +372,14 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     # The NEEDS_YOU line is what the app shows meanwhile (lib/scan-progress.js).
     bring_forward(page)
     if had_session and wall == "checkpoint":
-        print(f"{NEEDS_YOU} finish its security check in the Chrome window in front.", flush=True)
+        print(f"{NEEDS_YOU} finish its security check {_where_linkedin()}.", flush=True)
         print()
         print("  LinkedIn wants a security check. Finish it in the Chrome window;")
         print("  this carries on by itself once it's done. Then leave scanning for a day.")
         print()
         say("Waiting for you to finish LinkedIn's security check...")
     else:
-        print(f"{NEEDS_YOU} sign in to LinkedIn in the Chrome window in front.", flush=True)
+        print(f"{NEEDS_YOU} sign in to LinkedIn {_where_linkedin()}.", flush=True)
         _print_sign_in_banner(say)
     ok = _wait_for_sign_in(page, context, timeout_s, say)
     if ok:
@@ -390,6 +390,12 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
 
 
 def _print_sign_in_banner(say):
+    if PANEL["on"]:
+        say("Waiting for you to sign into LinkedIn in Sixgree's own browser...")
+        print("\n  Sign into LinkedIn in Sixgree's own browser, the LinkedIn panel in Sixgree's")
+        print("  window. Nothing is scanned until you are, and the scan starts by itself")
+        print("  the moment you are. Take as long as you need; Stop cancels.\n")
+        return
     say("Waiting for you to sign into LinkedIn in the Chrome window...")
     print()
     print("  ==================================================================")
@@ -1015,8 +1021,30 @@ def _appkit():
 
 def launch_chrome(p, headless=False, sign_in=False):
     """The scanner's Chrome, for every mode: quiet settings first, then the
-    window where chrome_window_mode puts it. `p` is sync_playwright()'s object."""
+    window where chrome_window_mode puts it. `p` is sync_playwright()'s object.
+
+    In the desktop app, Sixgree's own browser instead, when the app names it
+    (panel_settings): its LinkedIn panel, attached to rather than launched
+    (attach_panel). One that can't be reached is said in one line, and Chrome
+    starts as before."""
     mode = chrome_window_mode(headless=headless, show=CHROME_WINDOW["show"], sign_in=sign_in)
+    PANEL["on"] = False
+    settings = panel_settings()
+    if settings and mode != "headless":
+        try:
+            context = attach_panel(p, settings)
+        except Exception as exc:
+            print(f"  Sixgree's own browser couldn't be reached ({_short_reason(exc)}), "
+                  "so this uses a Chrome window instead.", flush=True)
+        else:
+            PANEL["on"] = True
+            CHROME_WINDOW["mode"] = "panel"
+            print("Using Sixgree's own browser: LinkedIn opens in its panel, not in a Chrome window.", flush=True)
+            if mode == "front":
+                # Signing in, a manual read, or "Show the scanner's Chrome
+                # window": the app brings the panel forward (lib/linkedin-panel.js).
+                print(PANEL_FRONT, flush=True)
+            return context
     profile = get_scraper_profile_path()
     displays = screen_layout() if mode != "headless" else []
     # Where Chrome remembers its window: the main display, never the second
@@ -1094,7 +1122,12 @@ def _place_on_screen(page, displays=None):
 def bring_forward(page):
     """LinkedIn needs you (signing in, a security check): a background window
     comes onto the main display, centred, in front. A window already in front
-    stays as it is; headless has none to show."""
+    stays as it is; headless has none to show. Sixgree's own browser has no
+    window to move: the app is told, and brings its panel forward."""
+    if CHROME_WINDOW["mode"] == "panel":
+        print(PANEL_FRONT, flush=True)
+        CHROME_WINDOW["mode"] = "panel-forward"
+        return True
     if CHROME_WINDOW["mode"] != "background":
         return False
     mac = CHROME_WINDOW["mac"]
@@ -1111,7 +1144,12 @@ def bring_forward(page):
 
 def back_out_of_the_way(page):
     """You're through (signed in, the check done): a window that came forward
-    for it goes back out of sight, and the focus back to where you were."""
+    for it goes back out of sight, and the focus back to where you were.
+    Sixgree's own browser: the app is told, and puts its panel away."""
+    if CHROME_WINDOW["mode"] == "panel-forward":
+        print(PANEL_AWAY, flush=True)
+        CHROME_WINDOW["mode"] = "panel"
+        return True
     if CHROME_WINDOW["mode"] != "forward":
         return False
     CHROME_WINDOW["mode"] = "background"
@@ -1123,6 +1161,215 @@ def back_out_of_the_way(page):
     if sys.platform == "darwin":
         return _set_window(page, {"windowState": "minimized"})
     return _set_window(page, {"windowState": "normal"}, off_screen_bounds(screen_layout()))
+
+
+# --- Sixgree's own browser: the LinkedIn panel in the desktop app -------------
+#
+# Blake, 2026-10-15: "why not have the actual chrome playwright instead of open
+# up a new window, basically somehow takes over the screen of sixgree so it's
+# all in house and doesn't make the user click away". In the desktop app,
+# LinkedIn can show in a panel inside Sixgree's own window (desktop/main.mjs):
+# Electron's Chromium, with a sign-in of its own. When there is one, the app
+# names it in two variables as it starts the scanner (lib/linkedin-panel.js):
+#   SIX_DEGREES_PANEL_CDP     http://127.0.0.1:<port>, Chromium's debugging port
+#   SIX_DEGREES_PANEL_TARGET  the panel page's DevTools target id
+# and every mode attaches to that one page instead of starting Chrome
+# (launch_chrome, attach_panel). The app's own page is in the same browser and
+# is never used: only the page with that target id is. Closing ends the
+# connection and nothing else; the panel, the window and the app carry on.
+# Without the two, or with a panel that can't be reached, Chrome as before.
+#
+# The pacing, the budgets, the caps and the cooldowns are the same either way:
+# only where the page lives changes. Nothing here changes the user agent or
+# hides anything about the browser (no stealth: Blake's standing rule).
+
+PANEL = {"on": False}
+# What the app reads to bring the panel forward or put it away, where a Chrome
+# window would come forward or go back (lib/linkedin-panel.js: keep in step).
+PANEL_FRONT = "Sixgree's browser: in front"
+PANEL_AWAY = "Sixgree's browser: out of sight"
+
+
+def panel_settings(env=None):
+    """{"endpoint", "target"} when the app names Sixgree's own browser, else None.
+
+    Only a port on 127.0.0.1 and a target id shaped like one: anything else is
+    not what the app writes, and is ignored (Chrome, as before)."""
+    env = os.environ if env is None else env
+    endpoint = str(env.get("SIX_DEGREES_PANEL_CDP") or "").strip()
+    target = str(env.get("SIX_DEGREES_PANEL_TARGET") or "").strip()
+    m = re.match(r"^http://127\.0\.0\.1:(\d{1,5})$", endpoint)
+    if not m or not 0 < int(m.group(1)) < 65536 or not re.match(r"^[0-9A-Fa-f]{16,64}$", target):
+        return None
+    return {"endpoint": endpoint, "target": target}
+
+
+def _where_linkedin():
+    """Where you find LinkedIn's page right now, for the NEEDS_YOU lines."""
+    return "in Sixgree's own browser" if PANEL["on"] else "in the Chrome window in front"
+
+
+def _short_reason(exc):
+    text = re.sub(r"\s+", " ", str(exc) or type(exc).__name__).strip()
+    return text[:140] + ("..." if len(text) > 140 else "")
+
+
+class PanelPage:
+    """The panel's page, as the scanner's code uses a page: everything is the
+    real Playwright page's, except .context (the panel's own, PanelContext,
+    whose cookies are the panel's) and close() (the panel is the app's: never
+    closed from here)."""
+
+    def __init__(self, page, panel):
+        object.__setattr__(self, "_page", page)
+        object.__setattr__(self, "_panel", panel)
+
+    def __getattr__(self, name):
+        return getattr(self._page, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._page, name, value)
+
+    @property
+    def context(self):
+        return self._panel
+
+    def close(self, *args, **kwargs):
+        return None
+
+
+class PanelContext:
+    """What launch_chrome returns in Sixgree's own browser: the one page, as a
+    persistent context's callers use it (.pages, .new_page(), .cookies(),
+    .new_cdp_session(), .close()).
+
+    Playwright puts every page of the browser it attached to in one context,
+    the app's own page among them, and that context's cookies() reads the app's
+    session, not the panel's. So nothing goes through it but the panel page:
+    .pages is that page alone, new_page() is that page again (Electron's pages
+    aren't the scanner's to make), and cookies are asked of the page itself."""
+
+    embedded = True
+
+    def __init__(self, browser, page):
+        self._browser = browser
+        self._real = page
+        self.page = PanelPage(page, self)
+        self.closed = False
+
+    def _gone(self):
+        try:
+            return self.closed or self._real.is_closed()
+        except Exception:
+            return True
+
+    @property
+    def pages(self):
+        return [] if self._gone() else [self.page]
+
+    def new_page(self):
+        if self._gone():
+            raise RuntimeError("Sixgree's LinkedIn panel has gone")
+        return self.page
+
+    def new_cdp_session(self, page):
+        return self._real.context.new_cdp_session(getattr(page, "_page", page))
+
+    def cookies(self, urls=None):
+        """The panel's cookies (for `urls`, a URL or a list), in Playwright's shape."""
+        session = self.new_cdp_session(self._real)
+        try:
+            params = {"urls": [urls] if isinstance(urls, str) else list(urls)} if urls else {}
+            got = session.send("Network.getCookies", params).get("cookies", [])
+        finally:
+            try:
+                session.detach()
+            except Exception:
+                pass
+        keys = ("name", "value", "domain", "path", "expires", "httpOnly", "secure", "sameSite")
+        return [{k: c.get(k) for k in keys if k in c} for c in got]
+
+    def close(self):
+        """Disconnect, and only that: the panel, the window and the app carry on."""
+        if self.closed:
+            return
+        self.closed = True
+        try:
+            self._browser.close()
+        except Exception:
+            pass
+
+
+def attach_panel(p, settings=None, fetch=None):
+    """Attach to Sixgree's own browser and take its LinkedIn panel: a
+    PanelContext. Raises with why when it can't (not listening, no such page)."""
+    settings = settings or panel_settings()
+    if not settings:
+        raise LookupError("the app named no panel")
+    browser = p.chromium.connect_over_cdp(settings["endpoint"], timeout=15000)
+    try:
+        page = _panel_page(browser, settings, fetch=fetch)
+    except Exception:
+        _close_quietly(browser)
+        raise
+    if page is None:
+        _close_quietly(browser)
+        raise LookupError("its LinkedIn panel wasn't among its pages")
+    return PanelContext(browser, page)
+
+
+def _close_quietly(browser):
+    try:
+        browser.close()
+    except Exception:
+        pass
+
+
+def _panel_page(browser, settings, fetch=None):
+    """The page whose DevTools target id is the panel's, or None. The browser's
+    own list says which address the panel is at, so only pages there are asked
+    their id: the app's own page isn't even asked, unless the list can't be read."""
+    url = _panel_url(settings, fetch=fetch)
+    for only_at in ([url, None] if url is not None else [None]):
+        for context in browser.contexts:
+            for page in context.pages:
+                if only_at is not None and page.url != only_at:
+                    continue
+                if _target_id(context, page) == settings["target"]:
+                    return page
+    return None
+
+
+def _panel_url(settings, fetch=None):
+    """The panel's address from the browser's /json/list, or None when it can't be read."""
+    import urllib.request
+
+    def read(url):
+        with urllib.request.urlopen(url, timeout=5) as r:   # 127.0.0.1 only (panel_settings)
+            return json.loads(r.read().decode("utf-8"))
+    try:
+        for t in (fetch or read)(settings["endpoint"] + "/json/list"):
+            if t.get("id") == settings["target"]:
+                return t.get("url")
+    except Exception:
+        pass
+    return None
+
+
+def _target_id(context, page):
+    try:
+        session = context.new_cdp_session(page)
+    except Exception:
+        return None
+    try:
+        return (session.send("Target.getTargetInfo") or {}).get("targetInfo", {}).get("targetId")
+    except Exception:
+        return None
+    finally:
+        try:
+            session.detach()
+        except Exception:
+            pass
 
 
 def resolve_active_user():
@@ -8266,6 +8513,77 @@ def connect_person(profile_url, name=None, headless=False):
     return result
 
 
+# Outlink in Sixgree's own browser (lib/linkedin-panel.js; Blake, 2026-10-15:
+# "yes on the outlink"). The profile opens in the panel for you to act on, and
+# the scanner only takes it there: it clicks nothing on it, and lets go once
+# it's open. It is one of the day's profile views, taken before it opens like
+# any other (take_profile_view), so the daily limit counts it. The app writes
+# down which profile and when (lib/outlink-opened.js).
+OUTLINK_RESULTS = ("opened", "no-panel", "cooldown", "profiles", "not-signed-in", "pushback", "stopped")
+
+
+def open_outlink(profile_url, name=None):
+    """Open one profile in Sixgree's own browser for Outlink. Returns one of
+    OUTLINK_RESULTS; main() prints it as "Outlink result: ...". Only ever in the
+    panel: without one, nothing opens (the app opens it in your own browser)."""
+    from playwright.sync_api import sync_playwright
+
+    settings = panel_settings()
+    if not settings:
+        print("  Sixgree's own browser isn't open here, so nothing was opened.")
+        return "no-panel"
+    cd = read_cooldown()
+    if cd:
+        print(cooldown_message(cd))
+        return "cooldown"
+    if profiles_left() <= 0:
+        print(budget_message("profiles"))
+        return "profiles"
+
+    who = name or "their profile"
+    result = None
+    try:
+        with sync_playwright() as p:
+            try:
+                browser = attach_panel(p, settings)
+            except Exception as exc:
+                print(f"  Sixgree's own browser couldn't be reached ({_short_reason(exc)}), so nothing was opened.")
+                return "no-panel"
+            PANEL["on"] = True
+            CHROME_WINDOW["mode"] = "panel"
+            try:
+                page = browser.pages[0]
+                page.set_default_timeout(120000)
+                page.set_default_navigation_timeout(120000)
+                # Signed in and clear, as before any profile view; a security
+                # check here is LinkedIn pushing back, as for Auto.
+                if not ensure_logged_in(page, stop_on_checkpoint=True):
+                    result = "stopped" if stop_requested() else "not-signed-in"
+                else:
+                    waited = _wait_for_profile_view(page)
+                    if waited == "budget":
+                        print(budget_message("profiles"))
+                        result = "profiles"
+                    elif waited == "stopped":
+                        result = "stopped"
+                    else:
+                        print(f"  Opening {who} in Sixgree's own browser. Nothing on it is clicked: it's yours.")
+                        page.goto(profile_url, wait_until="domcontentloaded")
+                        result = "opened"
+            finally:
+                browser.close()
+    except LinkedInPushedBack as exc:
+        print(f"  LinkedIn pushed back ({exc.reason}). Nothing was opened.")
+        result = "pushback"
+    except Exception:
+        if result is None:
+            if stop_requested():
+                result = "stopped"
+            else:
+                raise
+    return result
+
+
 def run_server(port=5555):
     """
     Run a local HTTP server that the website's Setup page can talk to.
@@ -8544,6 +8862,11 @@ Examples:
                              f"{INVITE_WEEK_CAP} in any 7 days")
     parser.add_argument("--connect-name", type=str, default="",
                         help="With --connect: their name as the app has it (else it is looked up in the app)")
+    parser.add_argument("--outlink", type=str,
+                        help="Outlink: open the profile at this LinkedIn URL in Sixgree's own browser for you to act "
+                             "on (desktop app only). Clicks nothing; one of the day's profile views")
+    parser.add_argument("--outlink-name", type=str, default="",
+                        help="With --outlink: their name as the app has it")
     parser.add_argument("--save-photos", action="store_true",
                         help="Save the profile photos still kept as links to LinkedIn, then exit "
                              "(every scan also does this at its end)")
@@ -8567,7 +8890,7 @@ Examples:
     args.max_pages = max(1, min(LINKEDIN_MAX_PAGES, args.max_pages))
     # The Scan page's speed. Signing in searches nothing, so it isn't said there.
     _pace = apply_pace()
-    if args.connect or args.read_profiles:
+    if args.connect or args.read_profiles or args.outlink:
         # Auto and Read profiles read no results pages: only the gap between profiles applies.
         print(f"Speed: {_pace.capitalize()}. Profiles at least {PROFILE_GAP}s apart.")
     elif not args.login:
@@ -8659,6 +8982,24 @@ Examples:
                 print("\n  LinkedIn isn't signed in, so nothing was sent. Sign in with --login (or the Scan page), "
                       "then try again.\n", file=sys.stderr)
                 raise SystemExit(EXIT_CODES["signed-out"])
+            raise SystemExit(0)
+        if args.outlink:
+            # Outlink (lib/linkedin-panel.js): one profile, opened in Sixgree's own
+            # browser, then out. Its last line is the result the app reads.
+            if not re.match(r"^https?://([a-z]{2,3}\.|www\.)?linkedin\.com/in/[^/?#\s]+/?$", args.outlink, re.I):
+                print("  --outlink takes a LinkedIn profile URL (https://www.linkedin.com/in/...).", file=sys.stderr)
+                raise SystemExit(2)
+            result = open_outlink(args.outlink, name=args.outlink_name.strip() or None)
+            print(f"Outlink result: {result}", flush=True)
+            if result == "pushback":
+                print(f"\n  LinkedIn pushed back, so nothing more opens. {_pushback_advice('')}\n", file=sys.stderr)
+                raise SystemExit(EXIT_CODES["pushback"])
+            if result == "not-signed-in":
+                print("\n  LinkedIn isn't signed in in Sixgree's own browser, so nothing was opened.\n", file=sys.stderr)
+                raise SystemExit(EXIT_CODES["signed-out"])
+            if result == "no-panel":
+                print("\n  Sixgree's own browser isn't available, so nothing was opened.\n", file=sys.stderr)
+                raise SystemExit(1)
             raise SystemExit(0)
         if args.read_profiles:
             # Read profiles (the Scan page's Scanner settings, off by default): its

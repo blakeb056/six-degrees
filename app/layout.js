@@ -24,6 +24,7 @@ import SocialAutoSync from './components/SocialAutoSync';
 import ThemeLoader from './components/ThemeLoader';
 import LiquidGlass from './components/LiquidGlass';
 import ThemeDefs from './components/ThemeDefs';
+import LinkedInPanel from './components/LinkedInPanel';
 
 const THEME_FIRST = `try{var t=JSON.parse(localStorage.getItem('six-degrees-theme-vars')||'null');if(t&&t.vars){var r=document.documentElement;for(var k in t.vars){var v=String(t.vars[k]);if(/^--sd-[a-z0-9-]+$/.test(k)&&!/[;{}<>]/.test(v))r.style.setProperty(k,v)}var a=t.attrs||{};['theme','backdrop','mode','buttons','dots'].forEach(function(n){if(/^[a-z]+$/.test(a[n]||'')&&(n!=='buttons'||a[n]==='soft'))r.dataset[n]=a[n]});r.style.colorScheme=a.mode==='light'?'light':'dark'}}catch(e){}`;
 
@@ -47,6 +48,8 @@ export default function RootLayout({ children }) {
           <StaleServerBanner />
           {/* While a scan runs: what it's doing and today's budget, with Stop. */}
           <ScanStatusBar />
+          {/* The desktop app's LinkedIn panel: its bar, and when it comes forward. Nothing elsewhere. */}
+          <LinkedInPanel />
           {/* The Social tab's once-a-day messages sync, when switched on. */}
           <SocialAutoSync />
         </UserProvider>

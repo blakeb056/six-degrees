@@ -53,10 +53,17 @@ wrong, however good it looks.
 6. **CI proves every artifact starts.** On GitHub's machines it opens the built app,
    reaches its server, quits it, and checks that nothing is left running: no server, no
    scanner, no Chrome.
-7. **LinkedIn never opens inside the app window.** Every LinkedIn link goes to the user's
-   own browser, and scanning still drives the user's own Chrome. LinkedIn loaded in
-   Electron's built-in Chromium would be a second, signed-out browser and one more thing
-   LinkedIn can notice.
+7. **LinkedIn opens only in Sixgree's own browser, never in the app's page** (changed
+   2026-10-15). Until then LinkedIn never opened in the app at all: every link went to the
+   user's browser, and scanning drove its own Chrome, because Electron's Chromium would be a
+   second, signed-out browser and one more thing LinkedIn can notice. Blake chose to take
+   exactly that on: "I want it embedded in the sixgree screen with maybe the top ui tab
+   visible with the notch", accepting a second sign-in inside Sixgree and LinkedIn seeing
+   Sixgree's browser rather than Chrome. So LinkedIn now shows in a panel of the window, its
+   own `WebContentsView` with its own storage (`persist:linkedin`), under the header; the
+   scanner drives that panel, and Outlink opens profiles there (see *Sixgree's own browser*
+   below). The app's own page still sends every LinkedIn link to the user's browser.
+   Without a scanner installed, or with `SIX_DEGREES_PANEL=0`, everything is as before.
 8. **Say "scanner" and "scanning"** in anything a user reads. The file names (`scrape.py`,
    `/api/scraper`) are legacy. Rename them only when that code is rewritten anyway, not as
    churn.
@@ -86,6 +93,50 @@ wrong, however good it looks.
       `docs/img/download-*.png`.
 - [x] Mark tags with a hyphen (`v0.2.0-beta.1`) as pre-releases in `release.yml`, with
       install-to-a-separate-folder notes; npm gets them under `next`, never `latest`
+
+### Sixgree's own browser (2026-10-15)
+
+LinkedIn in a panel inside the window, driven by the scanner. Blake: "why not have the
+actual chrome playwright instead of open up a new window, basically somehow takes over the
+screen of sixgree so it's all in house". Built on branch `embedded-browser`.
+
+- **Main** (`desktop/main.mjs`, the pure parts in `desktop/lib.mjs`, tested in
+  `tests/linkedin-panel.test.mjs`): with a scanner installed (`scannerInstalled`: a plugin's
+  `scanner/scrape.py`, or a checkout's `scripts/scrape.py`), Chromium's debugging port opens
+  on 127.0.0.1, port 0 (the system picks; read from `DevToolsActivePort` in the app's own
+  folder). One `WebContentsView` for the whole run, sandboxed, no preload, its own
+  partition, `backgroundThrottling: false`, the same two permissions as the app. It is
+  shown for one frame at start and then hidden: a page that was never shown has no size,
+  and nothing in it can be clicked (found in the real check). Once shown it keeps drawing
+  while hidden, minimised or with the window closed, and it is moved into the next window.
+- **What the scanner is told**: `SIX_DEGREES_PANEL_CDP` (the port) and
+  `SIX_DEGREES_PANEL_TARGET` (the panel page's DevTools target id, read through
+  `webContents.debugger`), in the server's environment and, checked again
+  (`lib/linkedin-panel.js scannerEnvWithPanel`), every scanner's.
+- **Links in the panel** (`panelRoute`): linkedin.com over https and about:blank stay;
+  other web pages go to the user's browser; anything else is blocked. Only top-level
+  navigations and redirects are checked, since LinkedIn's frames (its security check among
+  them) load from other hosts. `SIX_DEGREES_PANEL_TEST_ORIGIN` lets one more origin in, for
+  a checkout only.
+- **The page** (`app/components/LinkedInPanel.js`, through `desktop/preload.cjs`, answered
+  only for the app's own address): it says where the panel starts (under the header, a
+  40-pixel bar and the notch, times the page's zoom) and when it shows. It brings the panel
+  forward when the job wants it (`panelWanted`: LinkedIn needs you, signing in, Outlink, or
+  the scanner's `Sixgree's browser: in front` line) and puts it back when that's through,
+  except after Outlink. *Back to Sixgree* hides it; *Show LinkedIn* brings it back while a
+  scan runs or on Outlink. Hiding never stops a scan.
+- **The user agent** is Electron's default, untouched (no stealth):
+  `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)
+  Sixgree/<version> Chrome/152.0.7977.130 Electron/44.4.5 Safari/537.36` (checked in a
+  checkout, where the version is 0.0.0). It names Sixgree and Electron. Blake decides after
+  a real test.
+- **The trade-off**: SECURITY.md, "Sixgree's own browser opens a local debugging port".
+- [ ] Signed in to LinkedIn in the panel and run a real scan and an Outlink open (Blake).
+      Checked only against a local test page: the scanner's own `launch_chrome` attached to
+      the panel by its target id (never the app's page), clicked and scrolled while it was
+      hidden, read the panel's cookies (the app session's had none), was refused a `file:`
+      link, and closing only disconnected. The route answered an Outlink request through to
+      looking the person up, so the server had the panel's address.
 
 ### D1 — Electron app for the Mac (Blake's priority: he uses a Mac)
 
