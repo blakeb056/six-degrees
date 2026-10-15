@@ -13,7 +13,9 @@ import { CHECK_UPDATES_EVENT, UPDATE_NOTES_SEEN_EVENT } from '../../lib/update-n
 //
 // An installed copy also checks once a day by itself, on the server
 // (lib/update-check.js): the same one request for the newest version number,
-// which only ever leaves a notification. The switch here turns it off.
+// which only ever leaves a notification, and, with plugins on and one
+// installed, a read of the plugin list for newer plugin versions. The switch
+// here turns both off.
 //
 // In the Mac app, installing is a second, separate click ("Install and
 // restart"). Nothing is downloaded before it.
@@ -459,7 +461,8 @@ function DailyCheckSwitch() {
         </label>
         <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.5 }}>
           While Sixgree is open, it asks GitHub once a day whether there&rsquo;s a newer version, and tells you in the
-          notifications if there is. It never downloads anything by itself.{on === false ? ' Off: it asks only when you press Check for updates.' : ''}
+          notifications if there is. With plugins on, it reads the plugin list then too, for newer versions of the
+          plugins you installed. It never downloads anything by itself.{on === false ? ' Off: it asks only when you press Check for updates.' : ''}
         </div>
         {error && <div style={{ fontSize: 12.5, color: 'var(--sd-red, #ff7676)', marginTop: 4 }}>{error}</div>}
       </div>

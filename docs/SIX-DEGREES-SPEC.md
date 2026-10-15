@@ -32,6 +32,12 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    nothing is downloaded. A git checkout is never checked automatically, and tests never
    check. *(Added on 2026-10-14. Blake: "a notification if there's a new update for the
    user to update if possible", on by default with a switch to turn it off.)*
+   With plugins on and one installed, the same daily turn, under the same switch, also
+   reads the plugin list (one capped GET, `lib/plugin-catalog.js` readCatalog, the request
+   Settings → Plugins makes when you open it) and leaves one notification per newer plugin
+   version. It downloads nothing; *Update* in the plugin's card does. *(Added on
+   2026-10-14. Blake: "there hasn't been a update button added yet for the plugins so make
+   sure that is done".)*
    Otherwise a **button the user presses** may ask whether something newer exists
    (`/api/update`). For a git
    checkout that is `git fetch` / `git pull` against the remote it already has; for an

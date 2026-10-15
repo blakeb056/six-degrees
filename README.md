@@ -101,7 +101,9 @@ published here, puts **Sixgree** in Applications and opens it.
 **Updating.** Once a day, while it's open, Sixgree asks GitHub for the newest version
 number and, if there's a newer one, tells you in its notifications (and with a dot on the ⚙
 button). That one request carries nothing about you: GitHub sees an ordinary request from
-your computer. Nothing is downloaded until you choose to update. To turn the daily check off,
+your computer. With plugins on, the same daily check also reads the plugin list and tells you
+when an installed plugin has a newer version (its *Update* is in **Settings → Plugins**).
+Nothing is downloaded until you choose to update. To turn the daily check off,
 untick *Check for updates once a day* in **Settings → Updates**. To check now, choose
 *Sixgree → Check for Updates…* (or open **Settings** with the ⚙ button or ⌘,): it opens the
 Updates section and checks. If there's a newer version, click **Install and restart**: the app downloads it
@@ -424,7 +426,9 @@ It estimates **network position**, not what anyone is worth as a person.
     for a copy of Python when you click *Set up the scanner*. Every file is checked
     against a checksum built into Sixgree.
   - **GitHub**, once a day while the app is open, and when you click *Check for updates*,
-    to read the newest version number. A newer version leaves one notification; untick
+    to read the newest version number, and, with plugins on and one installed, the plugin
+    list (also read when you open Settings → Plugins with plugins on). A newer version of
+    the app or of a plugin leaves one notification; untick
     *Check for updates once a day* in **Settings → Updates** and it asks only when you
     click. In the Mac app, also when you then click *Install and restart*, to download
     that version and the file of checksums that proves it's the one published.

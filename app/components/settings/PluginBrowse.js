@@ -8,7 +8,11 @@
 //
 // The cards are there at once, plugins on or off, from the copy of the
 // official list that ships with the app (lib/plugins-shipped.js); nothing goes
-// online for them. Pressing a card's Install is the click that does: with
+// online for them, until Settings → Plugins, with plugins on, reads the live
+// list when Browse comes into view, or on Check for plugin updates
+// (PluginsSection.js); then the live list is merged over the shipped copy and
+// wins, so a newer version shows as Update. Pressing a card's Install is the
+// click that always goes online: with
 // plugins off it turns them on first (Install is the yes, and the card says
 // so), fetches the real list, which wins over the shipped copy, checks the
 // entry, then downloads and checks the package (app/api/plugins/catalog and
@@ -27,8 +31,9 @@ import { useCallback, useRef, useState } from 'react';
 import { Body, Status, Btn, LINE } from '../ui';
 import {
   fetchCatalog, downloadPlugin, installDownloaded, checkPackage, installPackage, catalogAction, savePluginsEnabled, cardInstall, cardState,
-  PLUGIN_TRUST_LINE, LINK_CHECK_LINE, LIST_CHECK_LINE, CATALOG_UNLOADED,
+  updatedTo, PLUGIN_TRUST_LINE, LINK_CHECK_LINE, LIST_CHECK_LINE, CATALOG_UNLOADED,
 } from '../../../lib/plugins-client';
+import { compareVersions } from '../../../lib/release';
 import { cardsFrom } from '../../../lib/plugins-shipped';
 
 const row = { display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' };
@@ -56,7 +61,8 @@ export function size(bytes) {
  * or 'file'.
  */
 export function usePluginInstall({ onView, enabled = true } = {}) {
-  // idle (never asked) | loading | ready | failed
+  // idle (never asked) | loading | ready | failed. `plugins` is the last live
+  // list had, kept while it is asked again and if that fails; `at` is when it came.
   const [catalog, setCatalog] = useState({ status: 'idle' });
   const [offer, setOffer] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -73,13 +79,15 @@ export function usePluginInstall({ onView, enabled = true } = {}) {
     setCatalog((c) => ({ ...c, status: 'loading' }));
     try {
       const got = await fetchCatalog();
-      setCatalog({ status: 'ready', source: got.source, plugins: got.plugins, dropped: got.dropped });
+      setCatalog({ status: 'ready', source: got.source, plugins: got.plugins, dropped: got.dropped, at: Date.now() });
     } catch (e) {
-      setCatalog({
+      setCatalog((c) => ({
         status: 'failed',
         detail: e.data?.detail || (e.message !== CATALOG_UNLOADED ? e.message : null),
         source: e.data?.source || null,
-      });
+        plugins: c.plugins,
+        dropped: c.dropped,
+      }));
     } finally {
       loading.current = false;
     }
@@ -106,7 +114,7 @@ export function usePluginInstall({ onView, enabled = true } = {}) {
       const got = await cardInstall(entry, { enabled });
       if (got.view) onView?.(got.view);
       turnedOn.current = got.turnedOn;
-      setCatalog({ status: 'ready', source: got.list.source, plugins: got.list.plugins, dropped: got.list.dropped });
+      setCatalog({ status: 'ready', source: got.list.source, plugins: got.list.plugins, dropped: got.list.dropped, at: Date.now() });
       setOffer({ at: 'browse', id, turnsOn: got.turnedOn, ...got.offer });
     } catch (e) {
       if (e.view) onView?.(e.view);
@@ -144,6 +152,8 @@ export function usePluginInstall({ onView, enabled = true } = {}) {
         at, id,
         tone: 'ok',
         text: `Installed ${done.installed.name} ${done.installed.version}${done.replaced?.version ? `, in place of ${done.replaced.version}` : ''}.`,
+        // An Update: its card says "Updated to 1.0.1 ✓" (cardState).
+        updated: updatedTo(done),
       });
       setOffer(null);
     } catch (e) {
@@ -206,8 +216,8 @@ function WorkBar({ label, kind }) {
 }
 
 /**
- * The plugin list as cards: the live list once it has been fetched, the
- * shipped copy until then (lib/plugins-shipped.js cardsFrom). `installed` is
+ * The plugin list as cards: the shipped copy until the live list has been
+ * fetched, then the live list merged over it (lib/plugins-shipped.js cardsFrom). `installed` is
  * GET /api/plugins's `plugins`, for Install, Installed or Update. `install`
  * is usePluginInstall's, whose state each card shows inside itself
  * (cardState). `quiet` keeps the buttons plain, where something else on the
@@ -218,7 +228,7 @@ export function PluginCards({ install, installed, quiet = false, columns = 'repe
   const plugins = cardsFrom(catalog);
   const anyBusy = Boolean(install.busy);
   return (
-    <div data-catalog={catalog.status === 'ready' ? 'live' : 'shipped'}>
+    <div data-catalog={Array.isArray(catalog.plugins) ? 'live' : 'shipped'}>
       <style>{BAR_CSS}</style>
       {catalog.status === 'failed' && (
         <Status tone="bad">
@@ -233,7 +243,7 @@ export function PluginCards({ install, installed, quiet = false, columns = 'repe
       {plugins.length === 0 && <Body>The plugin list has no plugins in it yet.</Body>}
       <div style={{ display: 'grid', gridTemplateColumns: columns, gap: 10, marginTop: 8 }}>
         {plugins.map((p) => {
-          const { state, error } = cardState(install, p.id);
+          const { state, error, done } = cardState(install, p.id);
           const offer = state === 'confirm' || state === 'installing' ? install.offer : null;
           // The yes shows the package's own words, which the live list and the package settle.
           const shown = offer ? { ...p, ...offer.plugin } : p;
@@ -258,11 +268,13 @@ export function PluginCards({ install, installed, quiet = false, columns = 'repe
               )}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 'auto', paddingTop: 8 }}>
                 {state === 'downloading' && <WorkBar kind="downloading" label="Getting the plugin list and the package, and checking them…" />}
-                {state === 'installing' && <WorkBar kind="installing" label={`Installing ${shown.name}…`} />}
+                {state === 'installing' && (
+                  <WorkBar kind="installing" label={`${isUpdate(offer) ? 'Updating' : 'Installing'} ${shown.name}…`} />
+                )}
                 {state === 'confirm' && <CardYes offer={offer} busy={install.busy} onInstall={install.install} onCancel={install.cancel} />}
                 {state === 'idle' && <>
                   {action === 'installed' && (
-                    <span data-card-installed="" style={{ color: GREEN, fontSize: 13, fontWeight: 650 }}>Installed ✓</span>
+                    <span data-card-installed={done ? 'updated' : ''} style={{ color: GREEN, fontSize: 13, fontWeight: 650 }}>{done || 'Installed ✓'}</span>
                   )}
                   {ACTION_LABEL[action] && (
                     <Btn primary={!quiet && action !== 'reinstall'} onClick={() => install.get(p)} disabled={anyBusy}>{ACTION_LABEL[action]}</Btn>
@@ -283,18 +295,27 @@ export function PluginCards({ install, installed, quiet = false, columns = 'repe
   );
 }
 
+/** Is this offer a newer version of a plugin installed here: an Update? */
+function isUpdate(offer) {
+  return Boolean(offer?.replaces?.version && compareVersions(offer.plugin.version, offer.replaces.version) > 0);
+}
+
 /**
  * The yes, inside the card: the card above it already shows the package's
  * name, version, what it does and its risk; this adds that a plugin runs its
  * own code here, where it came from and what vouches for it, what it
- * replaces, and that it turns plugins on when they were off. Nothing installs
- * without Install here.
+ * replaces, and that it turns plugins on when they were off. For an Update it
+ * asks from which version to which. Nothing installs without Install (or
+ * Update) here.
  */
 function CardYes({ offer, busy, onInstall, onCancel }) {
   const { plugin, from, replaces, turnsOn } = offer;
+  const update = isUpdate(offer);
   return (
-    <div data-card-yes="" style={{ width: '100%', borderTop: LINE, paddingTop: 10, fontSize: 13, color: FG3, lineHeight: 1.55 }}>
-      <div style={{ color: FG1, fontWeight: 650 }}>Install {plugin.name} {plugin.version}?</div>
+    <div data-card-yes={update ? 'update' : 'install'} style={{ width: '100%', borderTop: LINE, paddingTop: 10, fontSize: 13, color: FG3, lineHeight: 1.55 }}>
+      <div style={{ color: FG1, fontWeight: 650 }}>
+        {update ? `Update ${plugin.name} from ${replaces.version} to ${plugin.version}?` : `Install ${plugin.name} ${plugin.version}?`}
+      </div>
       <div style={{ marginTop: 4 }}>{PLUGIN_TRUST_LINE}</div>
       {from && (
         <div data-plugin-from={from.kind} style={{ marginTop: 4 }}>
@@ -304,7 +325,7 @@ function CardYes({ offer, busy, onInstall, onCancel }) {
       {replaces && <div style={{ marginTop: 4 }}>It replaces {replaces.version ? `version ${replaces.version}` : 'the copy'}, which is installed now.</div>}
       {turnsOn && <div data-turns-on="" style={{ marginTop: 4 }}>{TURNS_ON_LINE}</div>}
       <div style={{ ...row, marginTop: 10 }}>
-        <Btn primary onClick={onInstall} disabled={!!busy}>Install</Btn>
+        <Btn primary onClick={onInstall} disabled={!!busy}>{update ? 'Update' : 'Install'}</Btn>
         <Btn onClick={onCancel} disabled={!!busy}>Cancel</Btn>
       </div>
     </div>
