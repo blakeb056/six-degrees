@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Locations and mutuals for your own connections** (the scanner plugins, 1.0.4). Your
+  connections list never shows where anyone is, but LinkedIn's search of them (*Search with
+  filters* on the connections page) does, along with how many mutual connections you share. The
+  Scan page's *Your connections* has *Add locations and mutuals*, which reads that search the way a
+  circle scan reads someone's list: by itself or by hand, as chosen in Scanner settings, with the
+  same chimes and scan light by hand. Each page is a search counted in your daily limit, so about
+  100 pages for 1,000 connections spreads over days; it saves as it goes and carries on where it
+  stopped. Everyone already saved gets their location and mutual count filled in, never clearing
+  one already read, and anyone not saved yet is added. LinkedIn's search shows 1,000 people at most;
+  a larger network is read that far. An older scanner plugin is asked to update first.
+
 ## [2.2.0] - 2026-10-15
 
 The Map tab shows where your network is, and every scan now keeps where people are and their follower counts.

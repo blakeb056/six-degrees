@@ -20,7 +20,7 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
 import useScanStatus from '../components/useScanStatus';
 import { useScanShows } from '../components/useScanner';
-import { AUTO_NEEDS_AUTOMATIC, modeChoices, modeSetting } from '../../lib/scanner-capabilities';
+import { AUTO_NEEDS_AUTOMATIC, modeChoices, modeSetting, pluginTooOld } from '../../lib/scanner-capabilities';
 import UsageSection from '../components/settings/UsageSection';
 
 // Everything here runs through /api/scraper. There is deliberately no second
@@ -41,6 +41,7 @@ const ACTION_LABELS = {
   'auto-bridge-retry': 'Mapping 2nd degree, hidden ones included',
   resume: 'Carrying on with one paused list',
   'resume-all': 'Carrying on with every paused list',
+  'your-connections': 'Adding locations and mutuals to your connections',
   connect: 'Sending a connection request (Auto)',
   'read-profiles': 'Reading full profiles',
 };
@@ -410,11 +411,14 @@ function SetupInner() {
                 </Box>
               )}
 
-              {/* ---- Your connections: the first scan, then Check for new (the auto plugin's) ---- */}
-              {shows.auto && <Part title="Your connections" hint={mapped > 0
+              {/* ---- Your connections: the first scan, then Check for new (the auto plugin's), and with
+                   either plugin, locations and mutuals through LinkedIn's search (YourConnectionsSearch) ---- */}
+              {shows.scan && <Part title="Your connections" hint={!shows.auto
+                ? 'Read through LinkedIn’s search, page by page: everyone is saved here with where they are and the mutuals you share.'
+                : mapped > 0
                 ? 'Check for new picks up anyone you’ve added since. Scan it all again reads the whole list.'
                 : 'Reads your connections list and saves everyone here. About a minute and a half for 750 people.'}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                {shows.auto && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   {mapped > 0 ? <>
                     <Btn onClick={() => run('refresh')} disabled={!canScanList} primary cluster active={Boolean(running && s.action === 'refresh')}>
                       <ClusterSpinner size={13} live={Boolean(running && s.action === 'refresh')} />
@@ -428,7 +432,11 @@ function SetupInner() {
                       {running && s.action === 'full' ? 'Scanning…' : 'Scan my network'}
                     </Launch>
                   )}
-                </div>
+                </div>}
+                <YourConnectionsSearch
+                  s={s} mode={modes.mode} running={running} disabled={!canScanList}
+                  tooOld={pluginTooOld(c.scanner, 'your-connections')} onScan={() => run('your-connections')}
+                />
                 {why && <Why>{why}</Why>}
               </Part>}
 
@@ -964,6 +972,40 @@ function Part({ title, hint, children }) {
       <div style={{ fontSize: 15, fontWeight: 800 }}>{title}</div>
       <div style={{ fontSize: 13, color: 'var(--sd-fg-3, #9fb0bb)', lineHeight: 1.6, margin: '2px 0 12px', maxWidth: 640 }}>{hint}</div>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Your connections through LinkedIn's search (Blake, 2026-10-15: the connections page
+ * shows no locations; "Search with filters" shows them, like scanning someone's
+ * profile). Read like a circle, Automatic or By hand as Scanner settings say, and
+ * carried on where it stopped (route.js status, yourList). `tooOld` is why a scanner
+ * plugin from before it can't (lib/scanner-capabilities.js pluginTooOld).
+ */
+function YourConnectionsSearch({ s, mode, running, disabled, tooOld, onScan }) {
+  const on = Boolean(running && s.action === 'your-connections');
+  const note = s.yourList;
+  return (
+    <div data-your-connections="" style={{ marginTop: 14 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn onClick={onScan} disabled={disabled || Boolean(tooOld)} active={on}>
+          {on ? 'Adding…' : note?.more ? `Carry on from page ${note.pages + 1}` : 'Add locations and mutuals'}
+        </Btn>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--sd-fg-2, #aab7c4)' }}>
+          {mode === 'manual' ? 'By hand' : mode === 'auto' ? 'Automatic' : ''}
+        </span>
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 6, maxWidth: 640 }}>
+        Reads your connections through LinkedIn&rsquo;s search, which shows where each one is and the mutual
+        connections you share. About 100 pages for 1,000 connections, each page a search counted in your daily
+        limit, so it spreads over days and carries on where it stopped. It runs the way circle scans do, as
+        chosen in Scanner settings. LinkedIn&rsquo;s search shows 1,000 people at most.
+        {note?.pages > 0 && (note.more
+          ? ` Read to page ${note.pages} so far.`
+          : ` All ${note.pages} pages read: the next scan reads them again from page 1.`)}
+      </div>
+      {tooOld && <Why>{tooOld}</Why>}
     </div>
   );
 }

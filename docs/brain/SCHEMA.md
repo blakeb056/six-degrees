@@ -41,7 +41,10 @@ installed rather than run from a checkout. TRAPS §4.
   2nd-degree person, read off their result card by a circle scan ("Maya Chen and 23 other
   mutual connections": 24). One fact about the two of you, so every copy of the person
   carries the newest count read; NULL until a scan reads one (or when LinkedIn's wording
-  isn't English). Rarity uses it (`lib/rarity.js`); never a score.
+  isn't English). Rarity uses it (`lib/rarity.js`); never a score. Your own connections get
+  one too, from the scan of them through LinkedIn's search (`scrape.py scan_your_connections`,
+  "Ada Stone, Ben Ito & 103 other mutual connections": 105), brought up to date the same
+  way and never cleared by a read without one; the connections walk reads none.
 - `location`: where they are, as a scan read it ("Seattle, Washington, United States"): the
   line under the headline on their card in any list (a circle, a company, your connections),
   or the line their profile's top card shows by *Contact info* (Dig deeper). Filled in or

@@ -20,6 +20,7 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | *(bare)* | `--full` on an empty database, `--refresh` otherwise. |
 | `--login` | Signs in, confirms the session saved, exits. |
 | `--search` | Legacy: collects via the people-search pages instead. |
+| `--your-connections` | Your connections through LinkedIn's people search (`network=["F"]`, where *Search with filters* on the connections page leads), read like a circle: by itself, or by hand in manual mode. Adds where each person is and the mutuals you share. See *Your connections through the search* below. |
 | `--bridge "Name"` / `--rescrape "Name"` | 2nd-degree circle behind one person. |
 | `--bridge-url URL` | The same, for the person with that profile URL: two connections can share a name, and by name the first one saved is read. Carries on where their last read stopped (Resume); with `--from-start`, from page 1 (every Scan button in the app). |
 | `--company "Name"` | Everyone visible at one company. |
@@ -32,6 +33,40 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 | `--show-window` | A normal Chrome window in front, to watch it work (the Scan page's *Show the scanner's Chrome window*). Without it the window stays out of sight; see *The window* below. |
 | `--read-profiles=N` | **Read profiles**: up to N (at most 25) of your connections' profiles, highest power first, for their roles. See *Read profiles* below. |
 | `--headless` | Command line only: works on every mode once signed in, but headless Chrome is **more** detectable, not less, and a check LinkedIn asks for can't be seen. |
+
+## Your connections through the search (2026-10-15)
+
+> "our actual connection list doesn't supply locations in the regular view … if I click in the
+> top right that says search with filters it will show all my connections like if I was scanning
+> someone's profile and gives more data like location" (Blake, 2026-10-15)
+
+`--your-connections` (`scan_your_connections`; the Scan page's *Add locations and mutuals*,
+action `your-connections`) reads `YOUR_SEARCH_URL`, the people search filtered to your 1st
+degree, with the circle scan's own reader: `_scrape_one_bridge(..., own=True)`, so it gets
+`BRIDGE_RESULTS_JS` (place, followers, mutual count), the page-1/Previous fix, a search
+charged per page, push-back, the 250-page Dev ceiling and the daily limit, saving every
+`SAVE_EVERY_PAGES` pages, and Stop. `own` only skips the profile (there is none to open:
+straight to the search), drops the bridge-slug filter, and says "your" where a circle says
+"their" ("Opening your connections...", "About N results in your list"). By hand it is
+`_read_by_hand` with `_your_search` in place of `_their_search` (the window must be on a
+`network=["F"]` search with no `connectionOf`), the same chimes and scan light lines, worded
+"your list" (`lib/scan-light.js` reads both).
+
+- **Progress** is noted in `bridge-progress.json` under `YOUR_LIST` (`"your-connections"`), a
+  key no profile URL can be, so `pausedList` and the rings never see it. `your_list_start`:
+  no note, page 1; pages left, the first of them; all read (or page 100 reached), the note is
+  forgotten and it reads again from page 1, so a second pass can stop and carry on too.
+- **Saved** as degree 1 (`push_connections(..., degree=1)`): the ingest route fills in
+  `location`, `followers` and `mutual_count` on the rows it has (by profile URL, never
+  clearing one already read) and adds anyone not there yet, as the connections walk would.
+  1st-degree rows keep a mutual count since this; nothing scores on it (`lib/rarity.js` only
+  ranks the 2nd degree).
+- **The 100-page cap.** LinkedIn's search shows 100 pages (1,000 people). A network larger
+  than that is read that far and the log says so; the rest can come from Dig deeper later.
+  No filter-slicing.
+- **Plugins.** It ships in the scanner plugins 1.0.4. The route refuses it for an older plugin
+  (`pluginTooOld`, `lib/scanner-capabilities.js PLUGIN_SINCE`), which would not know the flag.
+  Either plugin runs it, Automatic or By hand as circle scans do.
 
 ## The window, and no pop-ups (rule changed 2026-10-04)
 
@@ -266,7 +301,7 @@ already in it).
 
 **Where it's enforced.** The scanner, before every search and profile view, as before
 (`searches_left`, `profiles_left`, `take_profile_view`). The route also refuses a press
-that reads lists (`bridge`, `rescrape`, `resume`, `resume-all`, `company`, a manual
+that reads lists (`bridge`, `rescrape`, `resume`, `resume-all`, `company`, `your-connections`, a manual
 Auto-Bridge round) with 409 `limitReached` before anything starts, and remembers it
 (`state.limitHit`; also when a scan ends on the scanner's *Today's limit of N … is used*
 line, `DAILY_LIMIT_USED`). `GET ?job=1` carries `limits: { lifted, reached, searches, daily }`
