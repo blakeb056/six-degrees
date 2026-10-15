@@ -40,3 +40,16 @@ if (existsSync(docs)) {
   rmSync(docs, { recursive: true, force: true });
   console.log('  dropped docs/ from the standalone build');
 }
+
+// The scanner comes only as a plugin (lib/scanner-files.js), and its test
+// harness never ships. next.config.mjs keeps them out of the trace, but since
+// 2.1.0 the startup hook (instrumentation.js loading lib/update-check.js) is
+// traced past those excludes, which stopped 2.1.0's npm package at its check.
+// The desktop builds drop them the same way (build-desktop.mjs, build-app.mjs).
+const { SCANNER_FILES } = await import('../lib/scanner-files.js');
+for (const rel of [...SCANNER_FILES, 'tests', '.git']) {
+  const file = path.join(STANDALONE, rel);
+  if (!existsSync(file)) continue;
+  rmSync(file, { recursive: true, force: true });
+  console.log(`  dropped ${rel} from the standalone build`);
+}
