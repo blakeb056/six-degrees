@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sixgree tells you when there's a new version.** Once a day, while it's open, it asks GitHub
+  for the newest release's version number: one request, the same one *Check for updates* makes,
+  with nothing about you in it (GitHub sees an ordinary request from your computer). When
+  there's a newer version, a notification says so, once per version, and the ⚙ button gets a
+  small dot. Opening either takes you to Settings → Updates and checks, where *Install and
+  restart* updates the app, or, where it can't update itself, it says what to do instead.
+  Nothing is ever downloaded until you choose to update. It's on to begin with: untick *Check
+  for updates once a day* in Settings → Updates to turn it off, and it asks only when you press
+  *Check for updates*. Offline, it says nothing and tries again the next day.
+
 ## [2.0.0] - 2026-10-14
 
 Sixgree no longer includes a scanner. It maps the Connections.csv you export, and scanning, if you want it, comes from the Auto scan or Manual scan plugin in Settings → Plugins. Everything you've mapped stays.

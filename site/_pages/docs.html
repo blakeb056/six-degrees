@@ -100,12 +100,16 @@ updated: 2026-10-14
           CSV, until you remove it) in the hidden <code>.six-degrees</code> folder, and the app window's own storage in
           <code>~/Library/Application Support/Six Degrees</code>.</li>
         <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
-        <li><strong>It only goes online when you act:</strong> the platform when you scan or press Auto (profile photos are saved on your
+        <li><strong>Otherwise it only goes online when you act:</strong> the platform when you scan or press Auto (profile photos are saved on your
           computer as they're read, and shown only from there), and GitHub when you check for updates (and to download
           one, if you click Install). Scanning comes as a plugin: GitHub is asked for the plugin list only when you
           open Settings → Plugins with plugins on or tick Allow plugins in the setup, and a plugin, with what it needs to
           run, is downloaded only when you install it.</li>
-        <li><strong>One thing that runs on a timer, if you turn it on:</strong> the experimental daily
+        <li><strong>One request on a timer, on until you turn it off:</strong> once a day, while it's open, Sixgree asks
+          GitHub for the newest version number and, if there's a newer one, tells you in its notifications. Nothing about
+          you is sent (GitHub sees an ordinary request from your computer), and nothing is downloaded until you choose to
+          update. Untick <em>Check for updates once a day</em> in Settings → Updates to turn it off.</li>
+        <li><strong>One more thing on a timer, if you turn it on:</strong> the experimental daily
           messages sync (Outlink → Messages &amp; follow-ups) opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.</li>
         <li><strong>Open source.</strong> Every line is on <a href="https://github.com/blakeb056/six-degrees">GitHub</a>,
           under the MIT licence, and <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>
@@ -125,7 +129,7 @@ updated: 2026-10-14
         </div>
         <div>
           <dt>Does it upload my network data anywhere?</dt>
-          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It only goes online when you act: the platform when you scan or press Auto, and GitHub when you check for an update or browse plugins.</dd>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It goes online when you act (the platform when you scan or press Auto, GitHub when you check for an update or browse plugins), and once a day to ask GitHub for the newest version number, which Settings → Updates turns off.</dd>
         </div>
         <div>
           <dt>Does it work on Windows?</dt>
