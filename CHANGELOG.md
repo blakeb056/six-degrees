@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.2] - 2026-10-15
+
+Every degree chains in Network Circle, and breaks by hand follow your pace.
+
 ### Changed
 - **Breaks by hand follow the scan speed.** The break after every 10 pages read by hand is
   now as long as the Scan page's speed says: 30 seconds at Slow, 10 at Medium (and when no
