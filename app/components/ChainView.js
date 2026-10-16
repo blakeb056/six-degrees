@@ -25,9 +25,14 @@
 //   Anyone you met through this circle whose own circle has been scanned sits
 //   outside the tier bands with their cluster round them and a line from the
 //   person in the middle; anyone met through *their* circle sits a step beyond,
-//   and so on (lib/chain-layout.js chainTree). They aren't bridges on the
-//   overview: that shows the people you connected with yourself, and says how
-//   many chains lead on from each.
+//   and so on (lib/chain-layout.js chainTree).
+// - On the overview, a ring for each degree (Blake, 2026-10-15: "have degree 2
+//   clusters that are now scanned … just be on the 2nd layer of the outer ring
+//   and so forth for each degree 3 4 5 6"): your own bridges on the first ring,
+//   as always; a circle scanned from someone you met through one of them on the
+//   next ring out, at its parent's angle with a faint line back to it; theirs
+//   one further; and so on (lib/chain-layout.js clusterRings, outerClusterLayout).
+//   Hover any of them for the preview, click to open the circle in place.
 
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
@@ -35,7 +40,7 @@ import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, readyByCircle, circleScanCost, scanFill, scanFillWords } from '../../lib/reach';
 import { stoppedLine } from '../../lib/in-progress';
 import { fillArcs, RING } from '../../lib/dot-rings';
-import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity } from '../../lib/chain-layout';
+import { ringLayout, chainTree, dotRadius, previewBand, tierBandLayout, circleActivity, clusterRings, outerClusterLayout } from '../../lib/chain-layout';
 import { noteCircle } from '../../lib/notifications';
 import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
@@ -47,6 +52,7 @@ import useRequests from './useRequests';
 import { TIER_COLORS } from '../../lib/themes';
 
 const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 5: '#00ff88', 6: '#ff5050' };
+const TAU = Math.PI * 2;
 const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 const GREEN = '#00ff88';
 const HIDDEN = '#5a5a66';
@@ -116,13 +122,16 @@ function chainsFrom(person, index, skip = [], maxStep = MAX_DEGREE) {
   return out;
 }
 
-/** The trail to open for a link: the circle they came from, then them. */
+/** The trail to open for a link: the circles along the chain they came from, first to last, then them. */
 function trailTo(id, rows) {
   if (!id) return [];
-  const row = rows.find((r) => r.id === id);
-  if (!row) return [];
-  const from = row.unlocked_from_bridge_id;
-  return from != null && rows.some((r) => r.id === from) ? [from, id] : [id];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  if (!byId.has(id)) return [];
+  const trail = [id];
+  for (let from = byId.get(id).unlocked_from_bridge_id; from != null && byId.has(from) && !trail.includes(from); from = byId.get(from).unlocked_from_bridge_id) {
+    trail.unshift(from);
+  }
+  return trail;
 }
 
 export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened, onCircle }) {
@@ -234,49 +243,77 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const cy = dims.h / 2;
   const maxR = Math.min(cx, cy) - 30;
 
-  // Someone met through another bridge's circle isn't a bridge of their own
-  // here: they're a link in that bridge's chain, shown inside its circle.
+  // Who introduced whom, over everyone on file whatever the filters, so the
+  // ring a cluster sits on is how far along its chain it is (clusterRings).
+  const introducedBy = useMemo(() => {
+    const on = new Set(all1.map((r) => r.id));
+    const m = new Map();
+    for (const r of all1) {
+      const from = r.unlocked_from_bridge_id;
+      if (from != null && from !== r.id && on.has(from)) m.set(r.id, from);
+    }
+    return m;
+  }, [all1]);
   const withCircle = new Set(bridges.map((b) => b.id));
+  // How many clusters have formed one step on from each: the inner ring's order, and its tooltip.
   const chained = new Map();
   for (const b of bridges) {
     if (withCircle.has(b.unlocked_from_bridge_id)) chained.set(b.unlocked_from_bridge_id, (chained.get(b.unlocked_from_bridge_id) || 0) + 1);
   }
-  // (A loop in who-introduced-whom shouldn't happen; if one does, they all stay here.)
-  const bridgeById = new Map(bridges.map((b) => [b.id, b]));
-  const linked = (b) => {
-    const seen = new Set([b.id]);
-    for (let from = b.unlocked_from_bridge_id; withCircle.has(from); from = bridgeById.get(from).unlocked_from_bridge_id) {
-      if (seen.has(from)) return false;
-      seen.add(from);
-    }
-    return withCircle.has(b.unlocked_from_bridge_id);
-  };
+  const ringOf = clusterRings(bridges.map((b) => b.id), introducedBy, { maxRing: MAX_DEGREE - 1 });
   // The inner ring holds the circles with the most going on (lib/chain-layout.js
   // circleActivity): notifications about them, people in them ready to scan,
   // clusters formed from them since. The biggest first among the rest.
   const activity = circleActivity(bridges, { notes, ready: readyCount, chained });
-  const roots = bridges.filter((b) => !linked(b))
+  const roots = bridges.filter((b) => ringOf.get(b.id).ring === 1)
     .sort((a, b) => activity.get(b.id).score - activity.get(a.id).score);
   // Bridges round you: one ring while they fit, more once there are many, each
   // ring far enough from the last for the names under it.
   const bridgeLayout = ringLayout(roots.length, {
     inner: maxR * 0.55, innerMin: maxR * 0.4, outer: maxR * 0.62, spacing: 46, minSpacing: 20, ringGap: 62,
   });
-  const bridgePos = roots.map((b, i) => {
+  const rootPos = roots.map((b, i) => {
     const p = bridgeLayout.points[i];
-    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0, activity: activity.get(b.id) };
+    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, ring: 1, anchor: null, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0, activity: activity.get(b.id) };
   });
+  // The clusters further along a chain, a ring out for each step, each beside the one it came from.
+  const outerLayout = outerClusterLayout(
+    bridges.filter((b) => ringOf.get(b.id).ring > 1)
+      .sort((a, b) => (bridgeMap[b.id]?.length || 0) - (bridgeMap[a.id]?.length || 0) || String(a.name || '').localeCompare(String(b.name || '')))
+      .map((b) => ({ id: b.id, ring: ringOf.get(b.id).ring, anchor: ringOf.get(b.id).anchor })),
+    new Map(rootPos.map((b) => [b.id, b.angle])),
+    { edge: Math.max(maxR * 0.55, ...bridgeLayout.rings.map((r) => r.radius)), hop: 62, spacing: 46 },
+  );
+  const outerPos = bridges.filter((b) => outerLayout.points.has(b.id)).map((b) => {
+    const p = outerLayout.points.get(b.id);
+    return { ...b, x: cx + p.x, y: cy + p.y, angle: p.angle, ring: p.ring, anchor: p.anchor, clusterSize: (bridgeMap[b.id] || []).length, chains: chained.get(b.id) || 0, activity: activity.get(b.id) };
+  });
+  const bridgePos = [...rootPos, ...outerPos];
+  // Each outer ring's name, in the widest gap between its clusters, so it never sits under one.
+  const ringLabelAt = (ring) => {
+    const at = outerPos.filter((b) => b.ring === ring).map((b) => ((b.angle % TAU) + TAU) % TAU).sort((a, b) => a - b);
+    if (at.length < 2) return (at[0] ?? 0) + Math.PI;
+    let best = 0;
+    let mid = 0;
+    at.forEach((a, i) => {
+      const next = i + 1 < at.length ? at[i + 1] : at[0] + TAU;
+      if (next - a > best) { best = next - a; mid = a + (next - a) / 2; }
+    });
+    return mid;
+  };
+  const posById = new Map(bridgePos.map((b) => [b.id, b]));
   // More than one ring: the counts under each name wait for a hover.
   const crowded = bridgeLayout.rings.length > 1;
-  // Where a hovered circle is previewed, and the zoom at which that still fits the window.
-  const band = previewBand(maxR, bridgeLayout.rings);
-  const homeZoom = Math.max(0.6, Math.min(1.3, Math.min(cx, cy) / (band.outer + 8)));
+  // Where a hovered circle is previewed, beyond every ring, and the zoom at
+  // which that still fits the window: further out with rings past the first.
+  const band = previewBand(maxR, [...bridgeLayout.rings, ...outerLayout.rings]);
+  const homeZoom = Math.max(outerLayout.rings.length ? 0.3 : 0.6, Math.min(1.3, Math.min(cx, cy) / (band.outer + 8)));
   const zoom = zoomSet ?? homeZoom;
 
   // Touch rotary dial on the overview: drag a finger round the circle to pick a bridge.
   const bridgeAnglesRef = useRef([]);
   useEffect(() => {
-    bridgeAnglesRef.current = bridgePos.map((b) => ({ id: b.id, angle: b.angle }));
+    bridgeAnglesRef.current = bridgePos.map((b) => ({ id: b.id, angle: b.angle, r: Math.hypot(b.x - cx, b.y - cy), outer: b.ring > 1 }));
   });
   const lastTouchRef = useRef(0);
 
@@ -289,9 +326,17 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       const tx = touchX - rect.left;
       const ty = touchY - rect.top;
       const touchAngle = Math.atan2(ty - dims.h / 2, tx - dims.w / 2);
+      // With rings past the first, the ring nearest the finger first, then round it.
+      const all = bridgeAnglesRef.current;
+      let pool = all;
+      if (all.some((b) => b.outer)) {
+        const tr = Math.hypot(tx - dims.w / 2, ty - dims.h / 2) / (zoom || 1);
+        const best = Math.min(...all.map((b) => Math.abs(b.r - tr)));
+        pool = all.filter((b) => Math.abs(b.r - tr) <= best + 1);
+      }
       let nearest = null;
       let nearestDist = Infinity;
-      bridgeAnglesRef.current.forEach(b => {
+      pool.forEach(b => {
         let diff = Math.abs(touchAngle - b.angle) % (Math.PI * 2);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < nearestDist) { nearestDist = diff; nearest = b.id; }
@@ -340,6 +385,10 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
 
   // === OVERVIEW: all bridges, click to open one ===
   const totalD2 = degree2.length;
+  // The people in the clusters on each ring past the first, by their degree: a ring-2 cluster holds the 3rd.
+  const peopleAt = new Map();
+  for (const b of outerPos) peopleAt.set(b.ring + 1, (peopleAt.get(b.ring + 1) || 0) + b.clusterSize);
+  const deeper = [...peopleAt.values()].reduce((a, b) => a + b, 0);
   const d2S = degree2.filter(d => d.tier === 'S').length;
   const d2A = degree2.filter(d => d.tier === 'A').length;
   const hovBridge = hovered ? bridgePos.find(b => b.id === hovered) : null;
@@ -352,6 +401,25 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         {bridgeLayout.rings.map((ring) => (
           <circle key={'ring-' + ring.radius} cx={cx} cy={cy} r={ring.radius} fill="none" stroke={`${DEGREE_COLORS[1]}10`} strokeWidth={1} />
         ))}
+        {/* A ring for each step further along a chain, named for the degree of the people in its clusters */}
+        {outerLayout.rings.map((ring) => (
+          <g key={'outer-' + ring.ring} pointerEvents="none">
+            <circle cx={cx} cy={cy} r={ring.radius} fill="none" stroke={`${DEGREE_COLORS[ring.ring] || '#8899aa'}26`} strokeWidth={1} strokeDasharray="2 5" />
+            <text x={cx + (ring.radius + 8) * Math.cos(ringLabelAt(ring.ring))} y={cy + (ring.radius + 8) * Math.sin(ringLabelAt(ring.ring)) + 3} textAnchor="middle" fill={DEGREE_COLORS[ring.ring] || '#8899aa'} fillOpacity={0.6} fontSize={8} fontWeight={700}>
+              {ordinal(ring.ring + 1)} degree clusters
+            </text>
+          </g>
+        ))}
+        {/* A faint line from each of those back to the cluster it came from */}
+        {outerPos.map((b) => {
+          const from = posById.get(b.anchor);
+          if (!from) return null;
+          const lit = hovered === b.id || hovered === from.id;
+          return (
+            <line key={'chain-' + b.id} x1={from.x} y1={from.y} x2={b.x} y2={b.y} pointerEvents="none"
+              stroke={DEGREE_COLORS[b.ring] || '#8899aa'} strokeWidth={lit ? 1.4 : 1} strokeOpacity={lit ? 0.7 : 0.35} />
+          );
+        })}
 
         {/* Their circle, previewed on hover, in a wedge that grows rows as it fills */}
         {hovBridge && (
@@ -369,7 +437,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
           const arcs = fillArcs((isHov ? 13 : 11) + 3.6, fill);
           return (
             <g key={'b-' + b.id}
-              onClick={() => { setHovered(null); setPath([b.id]); }}
+              onClick={() => { setHovered(null); setPath(ringOf.get(b.id)?.trail || [b.id]); }}
               onMouseEnter={() => setHovered(b.id)}
               onMouseLeave={() => setHovered(null)}
               style={{ cursor: 'pointer' }}>
@@ -448,10 +516,11 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
         ].filter(Boolean).join('\n')}
         style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
         {[1, 2, 3, 4, 5, 6].map((d) => {
-          const lit = d <= 2;
-          const n = d === 1 ? connections.length : d === 2 ? totalD2 : null;
+          // Past the 2nd, the people in the clusters on the rings further out.
+          const n = d === 1 ? connections.length : d === 2 ? totalD2 - deeper : peopleAt.get(d) || 0;
+          const lit = d <= 2 || n > 0;
           return (
-            <div key={d} title={lit ? `${d === 1 ? '1st degree: your bridges' : '2nd degree: the people in their circles'} (${n.toLocaleString('en-US')})` : `${d}th degree: further along a chain, as your scans reach it`}
+            <div key={d} title={lit ? `${d === 1 ? '1st degree: your bridges' : d === 2 ? '2nd degree: the people in their circles' : `${ordinal(d)} degree: the people in the clusters on the ring for it`} (${n.toLocaleString('en-US')})` : `${ordinal(d)} degree: further along a chain, as your scans reach it`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <span className={lit ? 'sd-dot-html' : undefined} style={{
                 width: 11, height: 11, borderRadius: '50%',

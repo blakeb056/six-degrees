@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
-import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, toggleTiers, showAllTiers } from '../../lib/tier-grid';
+import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, toggleTiers, showAllTiers, degreeOn } from '../../lib/tier-grid';
 import { TIER_COLORS } from '../../lib/themes';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import { LAB_DEFAULTS, LAYOUTS, drawsByDegree, labNow, setLab, watchLab } from '../../lib/galaxy-lab';
@@ -86,7 +86,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
         {!tiersOff && <div style={{ display: 'flex', gap: 3 }}>
           {GRID_DEGREES.map((d) => {
             const any = anyAt(d);
-            const on = any && TIERS.every((t) => grid.hidden.includes(t) || !(counts[t]?.[d] > 0) || grid.degrees[t].includes(d));
+            const on = any && degreeOn(grid, d, counts);   // the rule a tap follows, so a lit one always goes off
             return (
               <button key={d} type="button" disabled={!any} aria-pressed={on}
                 title={any ? `${DEGREE_NAMES[d]} degree${what(d) ? `: ${what(d)}` : ''}. Tap to ${on ? 'hide' : 'show'} it for every tier` : emptyTitle(d)}
@@ -378,6 +378,13 @@ function PanelTabs({ tab, onTab }) {
   );
 }
 
+/**
+ * Filters, a popover beside its round button at the map's left edge (Blake,
+ * 2026-10-15: "the filter thing we click onto is bad, that takes over the side
+ * panel"). It was a panel the height of the window that pushed the map over;
+ * now it floats over the map's corner, never moves the map or the Details panel
+ * on the right, and closes on a click anywhere else or on Esc.
+ */
 export default function FilterPanel({ collapsed, onToggle, mode, visualMode, grid, gridCounts = {}, onGridChange, shape = null, onPickShape = null }) {
   const isMobile = useIsMobile();
   const isDegreesMode = mode === 'degrees' || mode === 'separation';
@@ -385,31 +392,52 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
   const hasShapes = !isDegreesMode && visualMode === 'galaxy' && Boolean(onPickShape);
   const [tab, setTab] = useState('filters');
   const panelTab = hasShapes ? tab : 'filters';
-  // Open or closed, the round Filters button at the left edge (EdgeToggle): it
-  // docks on the open panel's edge and closes it, so the panel has no Close row.
   const { shown, closing } = useEdgePanel(!collapsed);
-  const edge = (
-    <EdgeToggle side="left" label="Filters" open={!collapsed} onToggle={onToggle}
-      panelId={PANEL_ID} width="320px" phoneWidth="min(80vw, 300px)" />
-  );
-  // One shape, open or not, so React keeps the same button and it can travel.
+  const popRef = useRef(null);
+  const open = !collapsed;
+
+  // A click anywhere but the popover or its button closes it, and so does Esc
+  // wherever the focus is (EdgeToggle closes it from inside; this, from the map).
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => {
+      const t = e.target;
+      if (popRef.current?.contains(t) || t?.closest?.('.sd-edge-left')) return;
+      onToggle();
+    };
+    const esc = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onToggle();
+    };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc, true);
+    return () => {
+      document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', esc, true);
+    };
+  }, [open, onToggle]);
+
   return (
     <>
-      {edge}
-      {shown && <div style={isMobile ? {
-        position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
-        width: '100vw', pointerEvents: closing ? 'none' : 'auto',
-      } : { flexShrink: 0, height: '100%' }}>
-        {isMobile && <div className={`sd-edge-scrim${closing ? ' is-closing' : ''}`} onClick={onToggle} style={{ position: 'absolute', inset: 0, background: 'rgba(var(--sd-shade, 0, 0, 0), 0.5)' }} />}
-        <div id={PANEL_ID} className={`sd-edge-panel sd-edge-panel-left${closing ? ' is-closing' : ''}`} data-glass-panel={isMobile ? undefined : 'side'} style={{
-          width: isMobile ? '80vw' : 320, minWidth: isMobile ? 0 : 320, maxWidth: isMobile ? 300 : 320, height: '100%',
-          borderRight: '1px solid rgba(52,152,219,0.15)',
-          padding: isMobile ? '12px 10px' : '16px 14px',
-          overflowY: 'auto', overflowX: 'hidden',
-          background: isMobile ? 'var(--sd-surface, rgba(10,15,30,0.98))' : 'var(--sd-panel)', fontSize: 13,
-          backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
-          boxShadow: 'inset 0 0 60px rgba(52,152,219,0.04), 4px 0 24px rgba(0,0,0,0.3)',
-        }}>
+      <EdgeToggle side="left" label="Filters" open={open} onToggle={onToggle} panelId={PANEL_ID} width="320px" docked={false} />
+      {shown && (
+        <div ref={popRef} id={PANEL_ID} role="dialog" aria-label="Filters" data-glass-panel="side"
+          className={`sd-filter-pop${closing ? ' is-closing' : ''}`}
+          style={{
+            position: 'fixed', top: isMobile ? 184 : 128, left: isMobile ? 12 : 64, zIndex: 100,
+            width: isMobile ? 'calc(100vw - 24px)' : 320, maxWidth: 340,
+            maxHeight: isMobile ? 'calc(100vh - 200px)' : 'calc(100vh - 148px)',
+            padding: isMobile ? '12px 10px' : '14px 14px', boxSizing: 'border-box',
+            overflowY: 'auto', overflowX: 'hidden', borderRadius: 14,
+            pointerEvents: closing ? 'none' : 'auto',
+            border: '1px solid rgba(52,152,219,0.22)',
+            background: isMobile ? 'var(--sd-surface, rgba(10,15,30,0.98))' : 'var(--sd-panel)', fontSize: 13,
+            backdropFilter: 'var(--sd-panel-blur)', WebkitBackdropFilter: 'var(--sd-panel-blur)',
+            boxShadow: '0 18px 48px -12px rgba(0,0,0,0.55), inset 0 0 40px rgba(52,152,219,0.04)',
+          }}>
           {hasShapes && <PanelTabs tab={panelTab} onTab={setTab} />}
 
           <div role={hasShapes ? 'tabpanel' : undefined} id={hasShapes ? `${tabId(panelTab)}-panel` : undefined}
@@ -426,7 +454,7 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
           </>}
           </div>
         </div>
-      </div>}
+      )}
     </>
   );
 }

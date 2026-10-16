@@ -6,6 +6,8 @@ tags: [desktop, browsing, privacy, plugins]
 image: /img/app/outlink.jpg
 ---
 
+> **Update, 2.5.1:** the header button and the people list described below are gone. The browser plugin is now the LinkedIn tab (Feed, Messaging, Notifications, Jobs), with Back and Forward, and every profile opens straight in the panel. See the [release notes](/releases/#v2.5.1).
+
 Sixgree tells you who connects you to someone. Until now, though, it lived in one window and the platform in another, and you switched between them to remember who could introduce you.
 
 Since [2.5.0](/releases/#v2.5.0), the desktop app can put the two side by side. This post covers what that looks like, what Sixgree does and doesn't do while you browse, and the trade-offs, which are real.

@@ -138,3 +138,52 @@ test('Degrees and the Wi-Fi fan start with every degree and the tiers off', () =
   assert.equal(sameGrid(g, makeGrid([1, 2, 3], { tiersOff: true })), true);
   assert.equal(sameGrid(g, makeGrid([1, 2, 3])), false);
 });
+
+import { degreeOn, bandChips, toggleBand } from '../lib/tier-grid.js';
+
+// Blake, 2026-10-15: "the tier and degree filter doesn't respond". The chips under the map
+// lit a degree when any tier showed it (showsDegree), and a tap with no counts turned it on
+// for every tier: with one tier off at the 2nd, tapping a lit 2nd put more people on.
+test('REGRESSION: a lit degree chip under the map goes off when tapped, whatever the tiers show', () => {
+  const partly = toggleDegree(toggleCell(NETWORK_GRID, 'S', 2, counts), 2, counts);   // every tier with people at 2nd
+  const bOff = toggleCell(partly, 'A', 2, counts);                                      // A's 2nd off again: only S shows it
+  assert.equal(showsDegree(bOff, 2), true);              // what the old chip lit
+  assert.equal(degreeOn(bOff, 2, counts), false);        // the rule a tap follows: not every tier shows it
+  for (const grid of [partly, toggleTiers(partly)]) {
+    assert.equal(degreeOn(grid, 2, counts), true);
+    const tapped = toggleBand(grid, { kind: 'degree', key: 2 }, counts);
+    assert.equal(degreeOn(tapped, 2, counts), false);
+    assert.ok(showing(tapped, counts) < showing(grid, counts), 'a lit chip tapped takes people off');
+  }
+});
+
+test('degreeOn ignores tiers with nobody at that degree, and lights nothing nobody is at', () => {
+  const two = toggleDegree(NETWORK_GRID, 2, counts);     // on for S and A, the tiers with people there
+  assert.equal(degreeOn(two, 2, counts), true);
+  assert.equal(degreeOn(two, 4, counts), false);
+  assert.equal(degreeOn(toggleTier(two, 'A', counts), 2, counts), true);   // a hidden tier doesn't count
+});
+
+test('the chips under the map: tiers while Tiers is on, degrees while it is off, one tap each', () => {
+  const grid = makeGrid([1, 2, 3]);
+  const tiers = bandChips(grid, counts);
+  assert.equal(tiers.by, 'tier');
+  assert.deepEqual(tiers.chips.map((c) => [c.label, c.count, c.on]), [['S', 110, true], ['A', 225, true], ['B', 30, true], ['C', 40, true], ['D', 50, true]]);
+  const noA = toggleBand(grid, tiers.chips[1], counts);
+  assert.equal(shows(noA, 'A', 1), false);
+  assert.equal(bandChips(noA, counts).chips[1].on, false);
+  assert.deepEqual(toggleBand(noA, bandChips(noA, counts).chips[1], counts).hidden, []);
+
+  const off = toggleTiers(grid);
+  const degrees = bandChips(off, counts);
+  assert.equal(degrees.by, 'degree');
+  // The 1st to the 3rd always, and further only when someone is there; a degree with nobody is never lit.
+  assert.deepEqual(degrees.chips.map((c) => [c.label, c.count, c.on]), [['1st', 150, true], ['2nd', 300, true], ['3rd', 5, true]]);
+  assert.equal(bandChips(toggleTiers(makeGrid([1, 2, 3, 4])), { ...counts, B: { 1: 30, 4: 2 } }).chips.length, 4);
+  assert.equal(bandChips(toggleTiers(grid), { S: { 1: 1 } }).chips[2].on, false);
+  const no2 = toggleBand(off, degrees.chips[1], counts);
+  assert.deepEqual(no2.flat, [1, 3]);
+  // The last people on screen stay, from a chip as from the grid.
+  const only1 = toggleBand(toggleBand(no2, { kind: 'degree', key: 3 }, counts), { kind: 'degree', key: 1 }, counts);
+  assert.deepEqual(only1.flat, [1]);
+});

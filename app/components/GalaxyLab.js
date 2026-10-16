@@ -192,15 +192,17 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
           <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['links', 'Links'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Colour by</div>
           <Choice
-            value={lab.colourBy}
-            options={[['tier', 'Tier'], ['heat', 'Heat'], ['degree', 'Degree'], ['company', 'Company'], ['warmth', 'Warmth']]}
+            value={lab.colourBy === 'degree' ? 'tier' : lab.colourBy}
+            // Degree is Filters → Tiers off now, one switch for tier or degree (lib/galaxy-lab.js colourModeOf).
+            options={[['tier', 'Tier or degree'], ['heat', 'Heat'], ['company', 'Company'], ['warmth', 'Warmth']]}
             onPick={(v) => setLab({ colourBy: v })}
           />
-          {drawsByDegree(lab) && (
-            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
-              Degrees and the Wi-Fi fan colour and size everyone by degree, and their lines pull no one: Size by, Colour by and Link force are for the other shapes.
-            </div>
-          )}
+          <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+            {drawsByDegree(lab)
+              ? 'Degrees and the Wi-Fi fan size everyone by their bar, and their lines pull no one: Size by and Link force are for the other shapes. '
+              : ''}
+            Tier or degree follows the Tiers switch: by tier while it&rsquo;s on, by degree while it&rsquo;s off.
+          </div>
           {lab.colourBy === 'heat' && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
               Power as a thermal map: the higher someone&rsquo;s score among the people showing, the hotter, and the hottest glow. Where the glow pools, powerful people cluster.

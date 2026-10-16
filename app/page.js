@@ -9,7 +9,7 @@ import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
-import { NETWORK_GRID, DEGREES_GRID, MAP_GRID, shows, gridCounts, makeGrid, sameGrid, toggleDegree, showsDegree, GRID_DEGREES } from '../lib/tier-grid';
+import { NETWORK_GRID, DEGREES_GRID, MAP_GRID, shows, gridCounts, makeGrid, sameGrid, toggleTiers, bandChips, toggleBand } from '../lib/tier-grid';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
@@ -304,7 +304,10 @@ function HomeInner() {
       const entering = !gridBeforeDegrees.current;
       setGrids((g) => {
         if (entering) gridBeforeDegrees.current = g.network;
-        const next = makeGrid([1, 2, 3], { tiersOff: entering || Boolean(g.network.tiersOff) });
+        // Degrees is by degree, so coming to it turns the tiers off; the fan
+        // keeps the Tiers switch as it is, and draws a bar for each tier while
+        // it's on (Blake, 2026-10-15: "use the wifi fan for both tiers and also degrees").
+        const next = makeGrid([1, 2, 3], { tiersOff: (entering && key === 'degrees') || Boolean(g.network.tiersOff) });
         // The same picks keep the same grid, so the map isn't drawn again for nothing.
         return sameGrid(g.network, next) ? g : { ...g, network: next };
       });
@@ -325,16 +328,16 @@ function HomeInner() {
     setGrids((g) => {
       if (g.network !== NETWORK_GRID) return g;
       gridBeforeDegrees.current = g.network;
-      return { ...g, network: makeGrid([1, 2, 3], { tiersOff: true }) };
+      return { ...g, network: makeGrid([1, 2, 3], { tiersOff: layout === 'degrees' }) };
     });
   }, [layout]);
-  // The legend under the map, in Degrees and the fan: each degree with how many
-  // are in it, tapped to show or hide it, for every tier at once (lib/tier-grid.js toggleDegree).
-  const degreeLegend = useMemo(() => {
-    if (mode !== 'network' || !showsEveryDegree(layout)) return null;
-    return GRID_DEGREES.filter((d) => d <= 3).map((d) => ({ degree: d, count: (byDegree[d] || []).length, shown: showsDegree(grids.network, d) }));
-  }, [mode, layout, grids.network, byDegree]);
-  const toggleLegendDegree = useCallback((d) => setGrids((g) => ({ ...g, network: toggleDegree(g.network, d) })), []);
+  // The chips under Network Circle's map, in every shape: one control for tiers
+  // and degrees (lib/tier-grid.js bandChips). With the Tiers switch on, a chip
+  // per tier; off, a chip per degree. The same grid as the Filters panel, and
+  // tapped with the counts, so a lit chip always goes off (degreeOn).
+  const bandLegend = useMemo(() => (mode === 'network' ? bandChips(grids.network, panelCounts) : null), [mode, grids.network, panelCounts]);
+  const toggleLegendBand = useCallback((chip) => setGrids((g) => ({ ...g, network: toggleBand(g.network, chip, panelCounts) })), [panelCounts]);
+  const toggleLegendTiers = useCallback(() => setGrids((g) => ({ ...g, network: toggleTiers(g.network) })), []);
   const notchTabs = useMemo(() => {
     if (!hasNetwork || setupOpen) return null; // none over the setup, which a network can be under (setupOpen)
     return {
@@ -494,9 +497,11 @@ function HomeInner() {
             onOpenCircle: openCircle,
             onCircle: setChainIn,
             preset: separationPreset,
-            // Degrees' legend: tap a degree to show or hide it (Network Circle only).
-            degreeLegend,
-            onToggleDegree: toggleLegendDegree,
+            // Network Circle: the chips under the map, and whether the map goes by tier or by degree (Filters → Tiers).
+            bandLegend,
+            onToggleBand: toggleLegendBand,
+            onToggleTiers: toggleLegendTiers,
+            bandBy: grids.network.tiersOff ? 'degree' : 'tier',
           };
           return <View {...viewProps} />;
         })()}

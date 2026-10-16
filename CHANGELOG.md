@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-15
+
+Rings by degree in Bridge Chains, one Tiers switch, instant profile opens, and Back and Forward in Sixgree's own browser.
+
 ### Added
 - **Back and Forward in Sixgree's own browser.** The bar over LinkedIn in the desktop app now
   starts with Back and Forward: the map's round blue and yellow buttons (Filters' blue for Back,
@@ -14,6 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on Windows and Linux) do the same.
 
 ### Changed
+- **Bridge Chains: a ring for each degree.** A circle scanned from someone you met through
+  another circle used to be drawn only inside that circle, once opened. Now the overview keeps
+  your own bridges on the first ring, as before, and puts each cluster further along a chain on
+  the next ring out: a circle scanned from a 2nd-degree person (3rd-degree people) on ring 2,
+  theirs on ring 3, and so on to the 6th degree. Each sits at its parent's angle, just outside
+  it, siblings fanned either side, with a faint line back to the cluster it came from and the
+  ring named for its degree. Hover any of them for the preview, click to open the circle with
+  its whole chain in the trail, and the degree dots at the bottom count the people on each ring.
+  With no chained scans the overview looks as it always has.
+- **Network Circle: one switch for tiers or degrees.** The chips under the map are the filter in
+  every shape: with Tiers on, a chip for each tier, S to D, in the tiers' colours; with Tiers off,
+  a chip for each degree, coloured by degree, and the whole map goes by degree. The Wi-Fi fan
+  and Degrees draw a bar for each tier, or each degree with Tiers off. Colour by Degree is gone
+  from the Physics panel, since the Tiers switch says it.
+- **Filters is a popover** beside its button, over the map's corner. It no longer pushes the map
+  over like a side panel, and a click anywhere else or Esc closes it.
 - **Connect opens the profile at once**, exactly like View profile. In 2.5.0, Connect on a person
   card (Separation, the map, Outlink) started a scanner job that checked your sign-in on the feed
   and waited out the gap between profile views, so it could take two or three minutes and showed
@@ -28,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and README say so.
 
 ### Fixed
+- **The degree chips under the map did the opposite of what they showed.** A chip lit whenever
+  any tier showed that degree, but a tap turned it on for every tier, so tapping a lit 2nd with
+  one tier off at the 2nd put more people on the map instead of taking them off. Chips and the
+  grid now share one rule (`lib/tier-grid.js` `degreeOn`), and a degree with nobody at it is
+  never lit.
 - **Settings → Plugins → Browse no longer flickers to older versions.** It showed the plugins as
   shipped, then replaced them with the online list even when that list was older (a cache served
   the list from before a release for minutes after it). Now each plugin shows the newer version of

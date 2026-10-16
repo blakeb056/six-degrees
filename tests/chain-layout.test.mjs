@@ -269,3 +269,72 @@ test('the busiest circles first: notifications (unread twice), people ready to s
   const order = [...circles].sort((a, b) => act.get(b.id).score - act.get(a.id).score).map((c) => c.id);
   assert.deepEqual(order, ['noted', 'ready', 'grown', 'quiet']);
 });
+
+// Bridge Chains' rings by degree (Blake, 2026-10-15: "have degree 2 clusters that are now
+// scanned ... just be on the 2nd layer of the outer ring and so forth for each degree 3 4 5 6").
+import { clusterRings, outerClusterLayout } from '../lib/chain-layout.js';
+
+// a and b are your own bridges; a1, a2 met through a's circle; a1x through a1's; and so on.
+const INTRODUCED = new Map([['a1', 'a'], ['a2', 'a'], ['b1', 'b'], ['a1x', 'a1'], ['a1xy', 'a1x'], ['deep6', 'a1xy'], ['deep7', 'deep6']]);
+const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} is not ${b}`);
+const angleBetween = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q)));
+
+test('each cluster sits on the ring for how far along its chain it is: 1 for your own bridges, then one more each step', () => {
+  const ids = ['a', 'b', 'a1', 'a2', 'b1', 'a1x', 'a1xy', 'deep6', 'deep7'];
+  const rings = clusterRings(ids, INTRODUCED);
+  assert.deepEqual(ids.map((id) => rings.get(id).ring), [1, 1, 2, 2, 2, 3, 4, 5, 5]);   // past the 5th ring (the 6th degree), the last ring
+  assert.deepEqual(rings.get('a1xy').trail, ['a', 'a1', 'a1x', 'a1xy']);                // opened in place along its whole chain
+  assert.equal(rings.get('a1x').anchor, 'a1');
+  assert.equal(rings.get('a').anchor, null);
+  // With no chained scans, everyone is on the first ring, as the overview always was.
+  const plain = clusterRings(['p', 'q', 'r'], new Map());
+  assert.deepEqual([...plain.values()].map((r) => r.ring), [1, 1, 1]);
+});
+
+test('a ring is a fact about the chain, not the filter: one whose parent is hidden keeps its ring, its line to the nearest one drawn', () => {
+  const rings = clusterRings(['a', 'a1x'], INTRODUCED);     // a1 is filtered out
+  assert.equal(rings.get('a1x').ring, 3);
+  assert.equal(rings.get('a1x').anchor, 'a');
+  assert.deepEqual(rings.get('a1x').trail, ['a', 'a1', 'a1x']);
+  assert.equal(clusterRings(['a1x'], INTRODUCED).get('a1x').anchor, null);
+  // A loop in who introduced whom is cut, never followed forever.
+  const loop = clusterRings(['x', 'y'], new Map([['x', 'y'], ['y', 'x']]));
+  assert.ok([...loop.values()].every((r) => r.ring >= 1 && r.ring <= 2));
+});
+
+test('outer clusters sit at their parent\'s angle, a ring further out each step, siblings fanned either side', () => {
+  const angleOf = new Map([['a', -Math.PI / 2], ['b', 0]]);
+  const placed = [
+    { id: 'a1', ring: 2, anchor: 'a' }, { id: 'a2', ring: 2, anchor: 'a' }, { id: 'b1', ring: 2, anchor: 'b' },
+    { id: 'a1x', ring: 3, anchor: 'a1' }, { id: 'lost', ring: 3, anchor: null },
+  ];
+  const { rings, points } = outerClusterLayout(placed, angleOf, { edge: 200, hop: 62, spacing: 46 });
+  assert.deepEqual(rings.map((r) => [r.ring, r.radius, r.count]), [[2, 262, 3], [3, 324, 2]]);
+  for (const p of placed) {
+    const at = points.get(p.id);
+    near(Math.hypot(at.x, at.y), at.radius);
+    assert.equal(at.radius, 200 + (p.ring - 1) * 62);
+  }
+  // b1 alone straight out from b; a1 and a2 either side of a, the same distance apart from it.
+  near(angleBetween(points.get('b1').angle, 0), 0);
+  const da1 = angleBetween(points.get('a1').angle, -Math.PI / 2);
+  const da2 = angleBetween(points.get('a2').angle, -Math.PI / 2);
+  near(da1, da2);
+  assert.ok(Math.hypot(points.get('a1').x - points.get('a2').x, points.get('a1').y - points.get('a2').y) >= 45.5, 'siblings keep their distance (46 along the ring)');
+  // A step further follows the cluster it came from, not the first ring.
+  near(angleBetween(points.get('a1x').angle, points.get('a1').angle), 0, 1e-6);
+  assert.ok(Number.isFinite(points.get('lost').angle));
+  // Nothing past the first ring: nothing to place, and the overview is as it was.
+  assert.deepEqual(outerClusterLayout([], angleOf, { edge: 200 }).rings, []);
+});
+
+test('thousands of clusters along chains lay out at once', () => {
+  const n = 3000;
+  const placed = Array.from({ length: n }, (_, i) => ({ id: `c${i}`, ring: 2 + (i % 4), anchor: i < 4 ? 'root' : `c${i - 4}` }));
+  const t = performance.now();
+  const { points } = outerClusterLayout(placed, new Map([['root', 0]]), { edge: 300 });
+  const ringsOf = clusterRings(placed.map((p) => p.id), new Map(placed.filter((p) => p.anchor !== 'root').map((p) => [p.id, p.anchor])));
+  assert.equal(points.size, n);
+  assert.equal(ringsOf.size, n);
+  assert.ok(performance.now() - t < 1500, 'fast enough for a big network');
+});

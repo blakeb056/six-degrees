@@ -67,8 +67,10 @@ export function useEdgePanel(open) {
  * @param {{ side: 'left' | 'right', label: string, open: boolean, onToggle: () => void,
  *   panelId: string, width: string, phoneWidth?: string }} props
  *   width: the open panel's width (a CSS length); phoneWidth: on a phone, if different.
+ *   docked: false for a popover beside the puck (Network Circle's Filters): it
+ *   stays where it is, no edge lit, and the popover opens beside it.
  */
-export default function EdgeToggle({ side, label, open, onToggle, panelId, width, phoneWidth }) {
+export default function EdgeToggle({ side, label, open, onToggle, panelId, width, phoneWidth, docked = true }) {
   const ref = useRef(null);
   // Closing: the dots gather back round it once, then the class goes, so a
   // hover afterwards builds them afresh.
@@ -110,7 +112,7 @@ export default function EdgeToggle({ side, label, open, onToggle, panelId, width
     <button
       ref={ref}
       type="button"
-      className={`sd-edge sd-edge-${side}${open ? ' is-open' : ''}${closing ? ' is-closing' : ''}`}
+      className={`sd-edge sd-edge-${side}${docked ? '' : ' sd-edge-pop'}${open ? ' is-open' : ''}${closing ? ' is-closing' : ''}`}
       aria-expanded={open}
       aria-controls={open ? panelId : undefined}
       aria-label={open ? `Close ${name}` : `Open ${name}`}

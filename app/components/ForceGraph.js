@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
-import { reframe, settle, seedAngles, FULL_CIRCLE, FAN_HALF, fanSpan, fromFan, forceFan, fanDrop, ringPath, bandPath, degreeLayout, degreeDot, degreeName, linkPull, ownLines } from '../../lib/galaxy';
+import { reframe, settle, seedAngles, FULL_CIRCLE, FAN_HALF, fanSpan, fromFan, forceFan, fanDrop, ringPath, bandPath, bandLayout, bandSteps, degreeName, linkPull, ownLines } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
 import { fillArcs, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
@@ -91,7 +91,7 @@ const RING_CSS = `
 .galaxy-ring.still .galaxy-ring-pulse { animation: none; opacity: 0.8; }
 svg.still text { transition: none; }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, degreeLegend = null, onToggleDegree }) {
+export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier' }) {
   // The ring round a connection's dot (design C): how much of their circle is
   // scanned, and how many in it are ready to scan (lib/reach.js).
   const marks = useMemo(() => {
@@ -126,9 +126,14 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   // and the replay's clock hides whoever wasn't there yet. Neither rebuilds.
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
   const labRef = useRef(lab);
+  // Filters → Tiers: the map by tier ('tier') or by degree ('degree'), its
+  // colours and, in Degrees and the fan, its bands. A change of it changes who
+  // is drawn too, so the scene is rebuilt for it (below), never moved in place.
+  const bandRef = useRef(bandBy);
+  useEffect(() => { bandRef.current = bandBy; }, [bandBy]);
   useEffect(() => {
     labRef.current = lab;
-    sceneRef.current?.setLab(effectiveLab(lab));
+    sceneRef.current?.setLab({ ...effectiveLab(lab), bandBy: bandRef.current });
     const c = clockNow();
     sceneRef.current?.setFind(c.find, c.fly);
     if (lab.on) loadSocial();
@@ -141,11 +146,11 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   }), []);
   useEffect(() => () => stopReplay(), []);
 
-  // The dots' colours (Colour by, in the lab): tier as always, or degree,
-  // company or warmth; always by degree in Degrees and the fan (colourModeOf).
+  // The dots' colours (Colour by, in the lab): tier, or degree with Filters →
+  // Tiers off, or heat, company or warmth (colourModeOf).
   // A new scheme recolours in place.
   const social = useSyncExternalStore(watchClock, () => clockNow().social, () => undefined);
-  const colourBy = colourModeOf(effectiveLab(lab));
+  const colourBy = colourModeOf({ ...effectiveLab(lab), bandBy });
   const scheme = useMemo(() => colourScheme(colourBy, connections, tierColors, social), [colourBy, connections, tierColors, social]);
   const schemeRef = useRef(scheme);
   useEffect(() => {
@@ -218,7 +223,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? reframe(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, effectiveLab(labRef.current), stampRef.current, schemeRef.current, routes);
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, { ...effectiveLab(labRef.current), bandBy: bandRef.current }, stampRef.current, schemeRef.current, routes);
     sceneRef.current = scene;
     if (fitOwedRef.current) { fitOwedRef.current = false; scene.fitWhenSettled(); }
     scene.select(selectedIdRef.current);
@@ -253,7 +258,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     // why onSelect is not a dependency. The size is read through sizeRef: a new
     // size re-fits the view rather than rebuilding.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connections, tierColors, measured, marks, routes]);
+  }, [connections, tierColors, measured, marks, routes, bandBy]);
 
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -277,40 +282,77 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
         padding: '6px 14px', borderRadius: 16, background: 'var(--sd-surface, rgba(10,15,30,0.8))', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
         color: 'var(--sd-fg-1, #e6edf5)', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
       }} />
-      {/* Degrees: the legend is the degree filter, each with how many are in it (app/page.js degreeLegend). */}
-      {degreeLegend && onToggleDegree ? (
-        <div data-degree-legend="" style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
-          {degreeLegend.map(({ degree, count, shown }) => (
-            <button key={degree} type="button" onClick={() => onToggleDegree(degree)} disabled={!count}
-              title={shown ? `Hide the ${DEGREE_WORDS[degree]} degree` : `Show the ${DEGREE_WORDS[degree]} degree`}
-              aria-pressed={shown}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 12,
-                cursor: count ? 'pointer' : 'default', opacity: count ? (shown ? 1 : 0.45) : 0.3,
-                color: 'var(--sd-fg-1, #e6edf5)', background: 'var(--sd-surface, rgba(10,15,30,0.8))',
-                border: `1px solid ${shown ? DEGREE_COLOURS[degree] : 'rgba(var(--sd-ink, 255, 255, 255), 0.15)'}`,
-              }}>
-              <span className="sd-dot-html" style={{ width: 9, height: 9, borderRadius: '50%', background: DEGREE_COLOURS[degree], display: 'inline-block' }} />
-              <b style={{ fontWeight: 650 }}>{DEGREE_WORDS[degree]}</b>
-              <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontVariantNumeric: 'tabular-nums' }}>{count.toLocaleString('en-US')}</span>
-            </button>
-          ))}
+      {/* Network Circle: the chips under the map are the filter, tiers or degrees by the Tiers switch (app/page.js bandLegend). */}
+      {bandLegend && onToggleBand ? (
+        <div style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
+          {colourBy !== 'tier' && colourBy !== 'degree' && <SchemeLegend legend={scheme.legend} />}
+          <BandChips legend={bandLegend} tierColors={tierColors} onToggle={onToggleBand} onTiers={onToggleTiers} />
         </div>
       ) : (
-      <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
-        {scheme.legend.map(([label, color]) => (
-          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-            <span className="sd-dot-html" style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
-            {label}
-          </span>
-        ))}
-      </div>
+        <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, pointerEvents: 'none' }}>
+          <SchemeLegend legend={scheme.legend} />
+        </div>
       )}
     </div>
   );
 }
 
-const DEGREE_WORDS = { 1: '1st', 2: '2nd', 3: '3rd' };
+/** What the colours mean, when they're heat, company or warmth: words only, nothing to tap. */
+function SchemeLegend({ legend }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>
+      {legend.map(([label, color]) => (
+        <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+          <span className="sd-dot-html" style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The chips under Network Circle's map (Blake, 2026-10-15: "use the wifi fan
+ * for both tiers and also degrees instead of it being one way"): the Tiers
+ * switch, then a chip for each tier while it's on, in the tiers' colours, or
+ * for each degree while it's off, in the degrees'. Tap a chip to hide or show
+ * it; the same grid as Filters, so the two always agree (lib/tier-grid.js bandChips).
+ */
+function BandChips({ legend, tierColors, onToggle, onTiers }) {
+  const byTier = legend.by === 'tier';
+  const chip = (on, colour, live) => ({
+    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 12,
+    cursor: live ? 'pointer' : 'default', opacity: live ? (on ? 1 : 0.45) : 0.3, pointerEvents: 'auto',
+    color: 'var(--sd-fg-1, #e6edf5)', background: 'var(--sd-surface, rgba(10,15,30,0.8))',
+    border: `1px solid ${on ? colour : 'rgba(var(--sd-ink, 255, 255, 255), 0.15)'}`,
+  });
+  return (
+    <div role="group" aria-label={byTier ? 'Tiers on the map' : 'Degrees on the map'} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+      {onTiers && (
+        <button type="button" aria-pressed={byTier} onClick={onTiers}
+          title={byTier ? 'Tiers are on: the map goes by tier. Turn them off to go by degree alone' : 'Tiers are off: the map goes by degree. Turn them on to go by tier'}
+          style={{ ...chip(true, 'var(--sd-accent, #3498DB)', true), fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>
+          <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block', width: 22, height: 12, borderRadius: 6, flexShrink: 0, background: byTier ? 'var(--sd-accent, #3498DB)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.16)' }}>
+            <span style={{ position: 'absolute', top: 2, left: byTier ? 12 : 2, width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />
+          </span>
+          Tiers{byTier ? '' : ' off'}
+        </button>
+      )}
+      {legend.chips.map((c) => {
+        const colour = (c.kind === 'tier' ? tierColors[c.key] : DEGREE_COLOURS[c.key]) || '#8899aa';
+        const name = c.kind === 'tier' ? `${c.key}-Tier` : `${c.label} degree`;
+        return (
+          <button key={c.key} type="button" onClick={() => onToggle(c)} disabled={!c.count} aria-pressed={c.on}
+            title={c.count ? `${c.on ? 'Hide' : 'Show'} ${name}` : `No one at ${name} yet`} style={chip(c.on, colour, c.count > 0)}>
+            <span className="sd-dot-html" style={{ width: 9, height: 9, borderRadius: '50%', background: colour, display: 'inline-block' }} />
+            <b style={{ fontWeight: 650 }}>{c.label}</b>
+            <span style={{ color: 'var(--sd-fg-3, #8b9a9a)', fontVariantNumeric: 'tabular-nums' }}>{c.count.toLocaleString('en-US')}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // Tooltips are fixed to the window, never part of the page's layout.
 //
@@ -454,7 +496,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   // The physics lab's settings (lib/galaxy-lab.js); today's layout when it's
   // off, and always on a phone, whose layout has no physics.
-  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels, tierLines: lab.tierLines, shape: lab.shape } : lab;
+  let L = isMobileGraph ? { ...LAB_DEFAULTS, labels: lab.labels, tierLines: lab.tierLines, shape: lab.shape, bandBy: lab.bandBy } : lab;
   // Physics off: nothing on the map moves by itself. The layout is worked out
   // without drawing it and drawn once where it settles (lib/galaxy.js settle);
   // no orbit, no easing, no pulsing ring, and it redraws only when something
@@ -476,10 +518,16 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const isFan = () => L.shape === 'fan';
   const byDegree = () => drawsByDegree(L);
   let degreeBands = [];   // the six bands, from you outward, while drawn by degree
+  // The bands are the tiers, S nearest, or with Filters → Tiers off the
+  // degrees, 1st nearest (Blake, 2026-10-15: "use the wifi fan for both tiers
+  // and also degrees"): lib/galaxy.js bandSteps.
+  const steps = () => bandSteps(L.bandBy);
   const placeDegrees = () => {
     const people = nodes.filter((n) => n.id !== CENTER_ID);
-    const laid = degreeLayout(people, parentOf, {
-      cellOf: (step) => 2 * degreeDot(step) * L.dotSize + 5,   // a dot, the collision's 2 either side, and a hair more
+    const { keys, keyOf, dot } = steps();
+    const laid = bandLayout(people, parentOf, {
+      keys, keyOf,
+      cellOf: (key) => 2 * dot(L.bandBy === 'degree' ? { degree: key } : { tier: key }) * L.dotSize + 5,   // a dot, the collision's 2 either side, and a hair more
       span: isFan() ? fanSpan() : FULL_CIRCLE,
     });
     degreeBands = laid.bands;
@@ -501,8 +549,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
 
   const nodeRadius = (d) => {
     if (d.id === CENTER_ID) return L.sizeBy === 'links' && !byDegree() ? 24 : 18;
-    // By degree: one size for everyone at a degree, a little smaller each step out, whatever Size by says.
-    if (byDegree()) return degreeDot(d.degree) * L.dotSize;
+    // In bands: one size for everyone in a band, a little smaller each step out, whatever Size by says.
+    if (byDegree()) return steps().dot(d) * L.dotSize;
     // Sized by links, a dot grows with the lines that meet at it: a connection
     // with a scanned circle is a big hub, someone in three circles a little
     // bigger than someone in one.
@@ -537,13 +585,14 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (byDegree()) {
       guidesG.attr('class', 'degree-guides');
       const half = isFan() ? FAN_HALF : Math.PI;
+      const { name } = steps();
       for (const b of degreeBands) {
-        const colour = DEGREE_COLOURS[b.degree] || '#8899aa';
+        const colour = (L.bandBy === 'degree' ? DEGREE_COLOURS[b.key] : tierColors[b.key]) || '#8899aa';
         guidesG.append('path').attr('d', bandPath(b.inner, b.outer, { half })).attr('fill-rule', 'evenodd')
           .attr('fill', colour).attr('fill-opacity', b.n ? 0.05 : 0.09);
         guidesG.append('path').attr('d', ringPath((b.inner + b.outer) / 2, { half })).attr('fill', 'none').attr('stroke', '#8899aa')
           .attr('stroke-opacity', b.n ? 0.12 : 0.22).attr('stroke-width', 1).attr('stroke-dasharray', '2 4');
-        label(-b.outer - 7, degreeName(b.degree), '#8899aa', b.n ? 0.65 : 0.35);
+        label(-b.outer - 7, name(b.key), '#8899aa', b.n ? 0.65 : 0.35);
       }
     } else if (layered) {
       guidesG.attr('class', 'degree-guides');
@@ -1180,8 +1229,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (isMobileGraph) {
       if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); showBorn(); }
       if (next.tierLines !== L.tierLines) { L = { ...L, tierLines: next.tierLines }; applyLines({ tiers: true }); }
-      if (next.shape !== L.shape) {
-        L = { ...L, shape: next.shape };
+      if (next.shape !== L.shape || next.bandBy !== L.bandBy) {
+        L = { ...L, shape: next.shape, bandBy: next.bandBy };
         if (byDegree()) placeDegrees();
         placePhone();
         resizeDots();
@@ -1195,7 +1244,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     const prev = L;
     L = next;
     if (prev.physics !== L.physics) setPhysics();
-    const shaped = prev.shape !== L.shape || (byDegree() && prev.dotSize !== L.dotSize);
+    const shaped = prev.shape !== L.shape || (byDegree() && (prev.dotSize !== L.dotSize || prev.bandBy !== L.bandBy));
     if (shaped) setShape(prev);
     const sized = shaped || prev.dotSize !== L.dotSize || prev.sizeBy !== L.sizeBy;
     if (sized) resizeDots();
