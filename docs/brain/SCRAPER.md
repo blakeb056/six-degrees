@@ -432,13 +432,16 @@ of data; 10/12 had 305 pages a median of 4 s apart and a restriction; 10/3 had 2
 50 s apart and nothing. His ask: "make them wait every 10 pages … 20 seconds with a ticking
 sound". `_read_by_hand` counts pages read since the last break (`since_break`, this run's
 reads, not pages read before or hidden pages); once it reaches `manual_break()`'s `every`, and
-the list isn't over, it prints a status line ("10 pages read: a 20-second break before page
-11. …"), a `LinkedIn needs you: page 10 is read (10 people). Break: wait 20 seconds, then go
+the list isn't over, it prints a status line ("10 pages read: a 10-second break before page
+11. …"), a `LinkedIn needs you: page 10 is read (10 people). Break: wait 10 seconds, then go
 on to page 11. …` line, and runs `_manual_break`, then the usual "Click Next" line.
-`manual_break()` reads `breakEvery` (1 to 25, default `BREAK_EVERY` 10) and `breakSeconds`
-(10 to 300, default `BREAK_SECONDS` 20) from `scan-limits.json` at each break, so a change
-reaches a scan under way; anything else reads as the default (`lib/manual-breaks.js` says the
-same numbers; Scanner settings → *Breaks by hand*, `app/components/ManualBreaksSetting.js`).
+`manual_break()` reads `breakEvery` (1 to 25, default `BREAK_EVERY` 10) and the scan speed
+(`pace`) from `scan-limits.json` at each break, so a change reaches a scan under way. How long
+follows the speed (`BREAK_PACE_SECONDS`): 30 s Slow, 10 s Medium, 5 s Fast, and Medium's 10 s
+for a missing or unknown speed. `breakSeconds` (10 to 300, default `BREAK_SECONDS` 20) is kept,
+saved and checked, for an adjuster to come that sets the length over the speed's; its slider is
+hidden and nothing reads it for a break yet (`lib/manual-breaks.js` says the same numbers;
+Scanner settings → *Breaks by hand*, `app/components/ManualBreaksSetting.js`).
 
 The break is enforced, not asked for, two ways, each working without the other, both through
 the Playwright page object only (so the same in Chrome and in the panel: `PanelPage` hands

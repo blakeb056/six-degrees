@@ -1,16 +1,18 @@
 'use client';
 
 // Scanner settings → Breaks by hand (Blake, 2026-10-15: "let's make them wait every
-// 10 pages so that's like 1-10 and then 20 seconds with a ticking sound"). Two
-// sliders in the volume slider's style (settings/SoundSection.js): how many pages
-// between breaks, and how long each break is. Saved with the scanner's settings
-// (scan-limits.json, lib/linkedin-limits.js) when a slider is let go; the scanner
-// reads them at each break (scripts/scrape.py manual_break), so a change reaches a
-// scan under way. The numbers and their ranges: lib/manual-breaks.js.
+// 10 pages so that's like 1-10 and then 20 seconds with a ticking sound"). A slider in
+// the volume slider's style (settings/SoundSection.js) for how many pages between
+// breaks, saved with the scanner's settings (scan-limits.json, lib/linkedin-limits.js)
+// when it's let go; the scanner reads it at each break (scripts/scrape.py
+// manual_break), so a change reaches a scan under way. How long a break is follows the
+// scan speed (lib/manual-breaks.js breakSecondsFor). Its own slider is hidden until an
+// adjuster comes to set it over the speed's; breakSeconds and BREAK_SECONDS_RANGE are
+// kept for it.
 
 import { useId, useState } from 'react';
 import {
-  BREAK_DEFAULTS, BREAK_EVERY_RANGE, BREAK_SECONDS_RANGE, BREAK_WHY, breakText, validBreakEvery, validBreakSeconds,
+  BREAK_DEFAULTS, BREAK_EVERY_RANGE, BREAK_PACE_TEXT, BREAK_WHY, breakSecondsFor, breakText, validBreakEvery,
 } from '../../lib/manual-breaks';
 
 const label = { fontSize: 12.5, fontWeight: 650, minWidth: 92 };
@@ -22,11 +24,10 @@ export default function ManualBreaksSetting({ limits, disabled, onSave }) {
   const id = useId();
   const saved = {
     breakEvery: validBreakEvery(limits?.breakEvery) ? limits.breakEvery : BREAK_DEFAULTS.breakEvery,
-    breakSeconds: validBreakSeconds(limits?.breakSeconds) ? limits.breakSeconds : BREAK_DEFAULTS.breakSeconds,
   };
   // A slider being moved shows where it is; let go, it's saved and shows the saved number.
   const [drag, setDrag] = useState({});
-  const s = { breakEvery: drag.breakEvery ?? saved.breakEvery, breakSeconds: drag.breakSeconds ?? saved.breakSeconds };
+  const s = { breakEvery: drag.breakEvery ?? saved.breakEvery, breakSeconds: breakSecondsFor(limits?.pace) };
 
   const keep = (key, n) => {
     setDrag((cur) => ({ ...cur, [key]: undefined }));
@@ -52,13 +53,8 @@ export default function ManualBreaksSetting({ limits, disabled, onSave }) {
           value={s.breakEvery} disabled={disabled} style={slider} {...handlers('breakEvery')} />
         <span style={value}>{s.breakEvery === 1 ? '1 page' : `${s.breakEvery} pages`}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
-        <label htmlFor={`${id}-seconds`} style={label}>Break for</label>
-        <input id={`${id}-seconds`} type="range" min={BREAK_SECONDS_RANGE.min} max={BREAK_SECONDS_RANGE.max} step={5}
-          value={s.breakSeconds} disabled={disabled} style={slider} {...handlers('breakSeconds')} />
-        <span style={value}>{s.breakSeconds} seconds</span>
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6, marginTop: 8 }}>{BREAK_WHY}</div>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6, marginTop: 8 }}>{BREAK_PACE_TEXT}</div>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)', lineHeight: 1.6 }}>{BREAK_WHY}</div>
     </div>
   );
 }

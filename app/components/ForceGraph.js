@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
-import { reframe, settle, seedAngles, FULL_CIRCLE, FAN_HALF, fanSpan, fromFan, forceFan, fanDrop, ringPath, bandPath, bandLayout, bandSteps, degreeName, linkPull, ownLines } from '../../lib/galaxy';
+import { reframe, settle, seedAngles, galaxyChain, FULL_CIRCLE, FAN_HALF, fanSpan, fromFan, forceFan, fanDrop, ringPath, bandPath, bandLayout, bandSteps, degreeName, linkPull, ownLines } from '../../lib/galaxy';
 import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
 import { fillArcs, RING } from '../../lib/dot-rings';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
@@ -110,6 +110,9 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   // the Galaxy links them to each of those connections, not only the one their
   // row came through, so a shared person sits between the hubs they join.
   const routes = useMemo(() => routeIndex(fullDegree2 || []), [fullDegree2]);
+  // Who each person came through and how far along the chain, resolved over
+  // everyone on file so a hidden or re-filed bridge still chains (lib/galaxy.js galaxyChain).
+  const chain = useMemo(() => galaxyChain(connections, { all: [...(fullDegree1 || []), ...(fullDegree2 || [])] }), [connections, fullDegree1, fullDegree2]);
   const svgRef = useRef(null);
   const ringRef = useRef(null);
   const sceneRef = useRef(null);  // The scene on screen: { resize, select }
@@ -223,7 +226,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? reframe(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, { ...effectiveLab(labRef.current), bandBy: bandRef.current }, stampRef.current, schemeRef.current, routes);
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, { ...effectiveLab(labRef.current), bandBy: bandRef.current }, stampRef.current, schemeRef.current, routes, chain);
     sceneRef.current = scene;
     if (fitOwedRef.current) { fitOwedRef.current = false; scene.fitWhenSettled(); }
     scene.select(selectedIdRef.current);
@@ -258,7 +261,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     // why onSelect is not a dependency. The size is read through sizeRef: a new
     // size re-fits the view rather than rebuilding.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connections, tierColors, measured, marks, routes, bandBy]);
+  }, [connections, tierColors, measured, marks, routes, chain, bandBy]);
 
   return (
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -385,7 +388,7 @@ function easeRadius(el, r, instant = false) {
 // Graph coordinates put you at 0,0, whatever the size of the box; the zoom
 // transform places that in the box. So a new size only moves the view, and a
 // rebuild can start from the view as it was.
-function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null, routes = new Map()) {
+function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null, routes = new Map(), chain = galaxyChain(connections)) {
   let colourOf = scheme?.of ?? ((d) => tierColors[d.tier] || '#666');
   const centerNode = {
     id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
@@ -393,7 +396,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   };
 
   const nodes = [centerNode, ...connections.map(c => ({
-    id: c.id, name: c.name, tier: c.tier, degree: c.degree || 1, source_connection_id: c.source_connection_id,
+    id: c.id, name: c.name, tier: c.tier, degree: c.degree || 1, step: chain.stepOf.get(c.id) ?? (c.degree || 1),
+    source_connection_id: c.source_connection_id,
     unlocked_from_bridge_id: c.unlocked_from_bridge_id,
     power_score: parseFloat(c.power_score) || 1,
     company: c.company, role: c.role, headline: c.headline,
@@ -406,39 +410,24 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   }))];
   const nodeById = new Map(nodes.map(n => [n.id, n]));
 
-  // Who hangs off whom. Your connections hang off you; someone in a circle off
-  // the connection whose circle it is, when that one is drawn too; and with
-  // more than your connections drawn (Filter → Degree), someone you added
-  // through a circle off the one they came from, so a chain reads as a chain.
+  // Who hangs off whom, at every degree (lib/galaxy.js galaxyChain): your
+  // connections off you; with more than your connections drawn (Filter →
+  // Degree), someone you added through a circle off the one they came from;
+  // and everyone in a circle off its bridge, whatever degree that bridge is
+  // at, so you → 1st → 2nd → 3rd … reads as a chain, each with its line and pull.
   const drawnD1 = new Set(connections.filter(c => (c.degree || 1) === 1).map(c => c.id));
   const multi = connections.some(c => (c.degree || 1) > 1);
-  const parentOf = new Map();
-  for (const n of nodes) {
-    if (n.id === CENTER_ID) continue;
-    const from = n.unlocked_from_bridge_id;
-    if (n.degree === 1 && multi && from != null && from !== n.id && drawnD1.has(from)) parentOf.set(n.id, from);
-    else if (n.degree === 2 && drawnD1.has(n.source_connection_id)) parentOf.set(n.id, n.source_connection_id);
-  }
+  const parentOf = chain.parentOf;
   // How far along the chain: 1 for your connections, one more past each person
   // you came through, to 6.
-  const bandMemo = new Map();
-  const bandOf = (n, seen = new Set()) => {
-    if (n.id === CENTER_ID) return 0;
-    if (bandMemo.has(n.id)) return bandMemo.get(n.id);
-    const p = parentOf.get(n.id);
-    let b = n.degree >= 3 ? 3 : n.degree;
-    if (p != null && !seen.has(n.id)) { seen.add(n.id); b = bandOf(nodeById.get(p), seen) + 1; }
-    b = Math.min(b, 6);
-    bandMemo.set(n.id, b);
-    return b;
-  };
-  // Past the 2nd degree with no one drawn to hang off (the people a company scan
+  const bandOf = (n) => (n.id === CENTER_ID ? 0 : n.step);
+  // Past the 2nd step with no one drawn to hang off (the people a company scan
   // finds): no line to you, which would say you know them (Blake, 2026-10-12:
   // "they are listed as a degree 1"). The link is kept, so links[i] stays
   // connections[i], but it's never drawn and pulls nothing (`none`).
   const links = connections.map(c => {
     const via = parentOf.get(c.id) ?? CENTER_ID;
-    const none = via === CENTER_ID && (c.degree || 1) >= 3;
+    const none = via === CENTER_ID && chain.none.has(c.id);
     return { source: via, target: c.id, near: via !== CENTER_ID, ...(none ? { none: true } : {}) };
   });
   // Every other way in, for someone two steps away who is in more than one
@@ -938,7 +927,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .attr('class', 'gn')
     .attr('r', nodeRadius)
     .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)))
-    .attr('fill-opacity', d => (dotStyle === 'droplet' || dotStyle === 'plain' ? 1 : d.degree >= 3 ? 0.55 : d.degree === 2 ? 0.75 : 1))
+    .attr('fill-opacity', d => (dotStyle === 'droplet' || dotStyle === 'plain' ? 1 : d.step >= 3 ? 0.55 : d.step === 2 ? 0.75 : 1))
     .call(markDots)
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
@@ -1028,7 +1017,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (findHit && findHit.size <= 40 && findHit.has(n.id)) return true;
     if (!L.labels) return false;
     // By degree, no name for being S tier or a catalyst: that's grading by tier again.
-    if (byDegree()) return n.id === CENTER_ID || (n.degree === 1 && L.names === 'all');
+    if (byDegree()) return n.id === CENTER_ID || (n.step === 1 && L.names === 'all');
     return n.id === CENTER_ID || (n.degree === 1 && (L.names === 'all' || n.tier === 'S' || n.is_catalyst || hubs.has(n.id)));
   };
   labelsG = g.append('g').attr('class', 'sd-names').classed('far', d3.zoomTransform(svg.node()).k < FAR);
@@ -1314,8 +1303,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       keptLines = ringNode?.id ?? null;
       // By degree, only the lines of the one picked and the one pointed at
       // (lib/galaxy.js ownLines); Filters → Lines is for the shapes by tier.
-      if (byDegree()) ownLines(links, [keptLines, hoverLines], byTier);
-      else lineMask(links, L.tierLines, { keep: keptLines, into: byTier });
+      if (byDegree()) ownLines(links, [keptLines, hoverLines], byTier, parentOf);
+      else lineMask(links, L.tierLines, { keep: keptLines, into: byTier, parentOf });
     }
     const list = [];
     for (let j = 0; j < links.length; j++) {

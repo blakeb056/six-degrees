@@ -593,7 +593,7 @@ function SetupInner() {
                   </div>
                 </details>
               )}
-              {/* Blake, 2026-10-15: a break every 10 pages, 20 seconds, ticking (lib/manual-breaks.js).
+              {/* Blake, 2026-10-15: a break every 10 pages, as long as the speed says, ticking (lib/manual-breaks.js).
                   The scanner reads it at each break (scrape.py manual_break), so it's never greyed out by a scan. */}
               {shows.manual && (
                 <div style={{ ...rowStyle, marginTop: 12 }}>

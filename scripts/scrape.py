@@ -3236,20 +3236,26 @@ def dig_deeper():
 # connections by hand in 9.5 minutes, a median of 3.3 s between pages, and LinkedIn warned
 # him about going through a lot of data. 10/12: 305 pages a median of 4 s apart, and the
 # account was restricted. 10/3: 288 pages about 50 s apart, and nothing happened. So in
-# manual mode, after every BREAK_EVERY pages read, the next page waits BREAK_SECONDS
-# (_manual_break). Scanner settings change both ("breakEvery", "breakSeconds" in
-# scan-limits.json); lib/manual-breaks.js says the same numbers (tests/manual-breaks.test.mjs).
-# Auto mode keeps its own pace and is untouched.
+# manual mode, after every BREAK_EVERY pages read, the next page waits (_manual_break).
+# How long follows the Scan page's speed ("pace" in scan-limits.json, scan_pace):
+# BREAK_PACE_SECONDS, Medium's when none is saved. Scanner settings change how often
+# ("breakEvery"). "breakSeconds" and its range stay for an adjuster to come that sets
+# the length by hand over the speed's; nothing reads it for now. lib/manual-breaks.js
+# says the same numbers (tests/manual-breaks.test.mjs). Auto mode keeps its own pace
+# and is untouched.
 BREAK_EVERY = 10
 BREAK_SECONDS = 20
 BREAK_EVERY_RANGE = (1, 25)
 BREAK_SECONDS_RANGE = (10, 300)
+BREAK_PACE_SECONDS = {"slow": 30, "medium": 10, "fast": 5}
+BREAK_PACE_DEFAULT = "medium"
 
 
 def manual_break():
     """(every, seconds): a break of `seconds` after every `every` pages read by hand.
-    Read from the file each time, so a change reaches a scan under way. A number that
-    isn't a whole number in its range reads as the default, as the app reads it."""
+    Read from the file each time, so a change reaches a scan under way. `every` that
+    isn't a whole number in its range reads as the default, as the app reads it;
+    `seconds` is the saved speed's (BREAK_PACE_SECONDS), Medium's for anything else."""
     data = _scan_settings()
 
     def pick(key, default, span):
@@ -3257,7 +3263,9 @@ def manual_break():
         ok = isinstance(v, int) and not isinstance(v, bool) and span[0] <= v <= span[1]
         return v if ok else default
 
-    return pick("breakEvery", BREAK_EVERY, BREAK_EVERY_RANGE), pick("breakSeconds", BREAK_SECONDS, BREAK_SECONDS_RANGE)
+    pace = data.get("pace")
+    pace = pace if isinstance(pace, str) and pace in BREAK_PACE_SECONDS else BREAK_PACE_DEFAULT
+    return pick("breakEvery", BREAK_EVERY, BREAK_EVERY_RANGE), BREAK_PACE_SECONDS[pace]
 
 
 def _chime(name):

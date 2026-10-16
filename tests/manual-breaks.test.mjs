@@ -1,6 +1,7 @@
 // Breaks by hand (Blake, 2026-10-15: "let's make them wait every 10 pages so that's
 // like 1-10 and then 20 seconds with a ticking sound"). After every breakEvery pages
-// read in manual mode, the next page waits breakSeconds: the window is held (a layer
+// read in manual mode, the next page waits as long as the speed says (30 s Slow, 10
+// Medium, 5 Fast; lib/manual-breaks.js breakSecondsFor): the window is held (a layer
 // that takes the clicks, and Playwright holding the search requests), a tick plays
 // each second, and the scan light counts down. Also here: the "found" count of a page
 // counts its people, not the names in their mutual lines, and the panel's wording.
@@ -21,7 +22,9 @@ import { PYTHON, noPython } from './python.mjs';
 import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 import {
   BREAK_DEFAULTS, BREAK_EVERY_RANGE, BREAK_SECONDS_RANGE, BREAK_WHY, breakText, validBreakEvery, validBreakSeconds,
+  BREAK_PACE_SECONDS, BREAK_PACE_DEFAULT, BREAK_PACE_TEXT, breakSecondsFor,
 } from '../lib/manual-breaks.js';
+import { PACES } from '../lib/scan-pace.js';
 import { DEFAULT_LIMITS, readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { CHIME_NAMES, chimeSamples, SAMPLE_RATE } from '../lib/chimes.js';
 import { ensureChimes } from '../lib/chime-files.js';
@@ -167,11 +170,11 @@ const ticks = (chimes) => chimes.filter(([n]) => n === 'tick').map(([, at]) => a
 
 // ── the break ─────────────────────────────────────────────────────────────────
 
-test('after page 10, a 20-second break: the next page is held, a tick each second, then Next works again', (t) => {
+test('after page 10, a break as long as the speed says (Slow, 30 seconds): the next page is held, a tick each second, then Next works again', (t) => {
   const r = scanner(t, `${HAND}
 page = HandPage(12)
 people, status, reach = by_hand(page, total=120)
-report(page, people, status)`);
+report(page, people, status)`, { limits: { pace: 'slow' } });
   if (!r) return;
   const { out, log } = r;
   assert.equal(out.status, 'success');
@@ -179,18 +182,18 @@ report(page, people, status)`);
   const at = Object.fromEntries(out.loads.map(([pg, s]) => [pg, s]));
   const read10 = at[10] + 1.2;
   const tickTimes = ticks(out.chimes);
-  assert.equal(tickTimes.length, 20, 'one tick a second, twenty of them');
+  assert.equal(tickTimes.length, 30, 'one tick a second, thirty of them');
   tickTimes.forEach((s, i) => assert.ok(Math.abs(s - (tickTimes[0] + i)) < 0.05, `tick ${i + 1} a second after the last (${s})`));
   assert.ok(tickTimes[0] >= at[10] && tickTimes[0] <= read10 + 0.5, 'the break starts as page 10 is read');
-  assert.ok(at[11] - tickTimes[0] >= 20, `page 11 waits the whole break (${at[11] - tickTimes[0]} s)`);
+  assert.ok(at[11] - tickTimes[0] >= 30, `page 11 waits the whole break (${at[11] - tickTimes[0]} s)`);
   // Every other page went as fast as the person clicked: no break before page 10 or after it.
   for (let pg = 3; pg <= 10; pg++) assert.ok(at[pg] - at[pg - 1] < 4, `page ${pg} came at once`);
   assert.ok(at[12] - at[11] < 4, 'page 12 came at once');
   // The clicks during the break landed on the layer, every one of them.
   assert.ok(out.blocked.length >= 15, `the clicks during the break did nothing (${out.blocked.length})`);
-  for (const s of out.blocked) assert.ok(s >= tickTimes[0] && s <= tickTimes[0] + 20, `${s} is in the break, the layer still up`);
+  for (const s of out.blocked) assert.ok(s >= tickTimes[0] && s <= tickTimes[0] + 30, `${s} is in the break, the layer still up`);
   // The layer counted down, and everything was put back.
-  assert.deepEqual(out.layers, Array.from({ length: 20 }, (_, i) => `Break: ${20 - i} s, then page 11`));
+  assert.deepEqual(out.layers, Array.from({ length: 30 }, (_, i) => `Break: ${30 - i} s, then page 11`));
   assert.equal(out.layer_left, null, 'the layer is gone');
   assert.equal(out.routed, 1, 'routed once, for the one break');
   assert.equal(out.routes_left, 0, 'and unrouted');
@@ -198,13 +201,13 @@ report(page, people, status)`);
   assert.equal(out.hangs, 0);
   // The chimes otherwise as ever: a read chime each page, the flourish at the end, no tap during the break.
   assert.deepEqual(out.chimes.filter(([n]) => n !== 'tick').map(([n]) => n).slice(-3), ['read-8', 'next', 'done']);
-  assert.equal(out.chimes.filter(([n, s]) => n === 'next' && s >= tickTimes[0] && s < tickTimes[0] + 20).length, 0);
+  assert.equal(out.chimes.filter(([n, s]) => n === 'next' && s >= tickTimes[0] && s < tickTimes[0] + 30).length, 0);
 
   // What it says: the status line, the instruction to wait, a countdown line a second, then on.
-  assert.match(log, /^ {2}10 pages read: a 20-second break before page 11\. Pages read seconds apart are what LinkedIn notices\.$/m);
-  assert.match(log, /^LinkedIn needs you: page 10 is read \(10 people\)\. Break: wait 20 seconds, then go on to page 11\. The page is held until the countdown ends\. Close the window when you're done with Invented Bridge\.$/m);
+  assert.match(log, /^ {2}10 pages read: a 30-second break before page 11\. Pages read seconds apart are what LinkedIn notices\.$/m);
+  assert.match(log, /^LinkedIn needs you: page 10 is read \(10 people\)\. Break: wait 30 seconds, then go on to page 11\. The page is held until the countdown ends\. Close the window when you're done with Invented Bridge\.$/m);
   const countdown = log.split('\n').filter((l) => /^ {2}\(break after page/.test(l));
-  assert.deepEqual(countdown, Array.from({ length: 20 }, (_, i) => `  (break after page 10: ${20 - i} s, then page 11)`));
+  assert.deepEqual(countdown, Array.from({ length: 30 }, (_, i) => `  (break after page 10: ${30 - i} s, then page 11)`));
   const lines = log.split('\n');
   const last = lines.findIndex((l) => l === '  (break after page 10: 1 s, then page 11)');
   assert.match(lines[last + 1], /^LinkedIn needs you: page 10 is read \(10 people\)\. Click Next, then scroll to the bottom of page 11\./);
@@ -215,30 +218,30 @@ test('a page asked for another way during the break (the address bar) waits, and
   const r = scanner(t, `${HAND}
 page = HandPage(12, address_at=30)
 people, status, reach = by_hand(page, total=120)
-report(page, people, status)`);
+report(page, people, status)`, { limits: { pace: 'slow' } });
   if (!r) return;
   const { out, log } = r;
   const tickTimes = ticks(out.chimes);
-  assert.equal(tickTimes.length, 20);
-  assert.ok(30 > tickTimes[0] && 30 < tickTimes[0] + 20, 'the address is typed during the break');
+  assert.equal(tickTimes.length, 30);
+  assert.ok(30 > tickTimes[0] && 30 < tickTimes[0] + 30, 'the address is typed during the break');
   assert.equal(out.held.length, 1, 'held by the route, not loaded');
   assert.ok(out.held[0] >= 30 && out.held[0] < 31, `as it was typed (${out.held[0]})`);
   const at11 = out.loads.find(([pg]) => pg === 11)[1];
-  assert.ok(at11 >= tickTimes[0] + 19.9, `it loads as the break ends (${at11})`);
+  assert.ok(at11 >= tickTimes[0] + 29.9, `it loads as the break ends (${at11})`);
   assert.match(log, /^ {2}The page asked for during the break loads now\.$/m);
   assert.equal(out.routes_left, 0);
   // Nothing is evaluated on a page while its navigation is held (it would never answer):
   // the layer stops being written, and the new page replaces it.
   assert.equal(out.hangs, 0);
-  assert.ok(out.layers.length < 20, `the layer was written until the page was held (${out.layers.length})`);
-  assert.equal(ticks(out.chimes).length, 20, 'the countdown and the ticks go on all the same');
+  assert.ok(out.layers.length < 30, `the layer was written until the page was held (${out.layers.length})`);
+  assert.equal(ticks(out.chimes).length, 30, 'the countdown and the ticks go on all the same');
 });
 
-test('Scanner settings set the breaks: every 3 pages for 10 seconds here, read at each break', (t) => {
+test('Scanner settings set the breaks: every 3 pages, for 10 seconds at Medium here, read at each break', (t) => {
   const r = scanner(t, `${HAND}
 page = HandPage(10)
 people, status, reach = by_hand(page, total=100)
-report(page, people, status)`, { limits: { daily: 50, manual: true, breakEvery: 3, breakSeconds: 10 } });
+report(page, people, status)`, { limits: { daily: 50, manual: true, breakEvery: 3, pace: 'medium' } });
   if (!r) return;
   const { out, log } = r;
   assert.equal(ticks(out.chimes).length, 30, 'three breaks of ten ticks');
@@ -253,7 +256,7 @@ test('a break of 1 page says "1 page", and no break comes after the last page of
   const r = scanner(t, `${HAND}
 page = HandPage(3)
 people, status, reach = by_hand(page, total=30)
-report(page, people, status)`, { limits: { breakEvery: 1, breakSeconds: 10 } });
+report(page, people, status)`, { limits: { breakEvery: 1 } });
   if (!r) return;
   assert.match(r.log, /^ {2}1 page read: a 10-second break before page 2\./m);
   assert.equal((r.log.match(/Break: wait/g) || []).length, 2, 'after pages 1 and 2, not after 3, the end');
@@ -301,10 +304,10 @@ def no_route(*a, **k):
     raise RuntimeError('no routing here')
 page.route = no_route
 people, status, reach = by_hand(page, total=110)
-report(page, people, status)`);
+report(page, people, status)`, { limits: { pace: 'slow' } });
   if (!r) return;
-  assert.equal(ticks(r.out.chimes).length, 20);
-  assert.equal(r.out.layers.length, 20);
+  assert.equal(ticks(r.out.chimes).length, 30);
+  assert.equal(r.out.layers.length, 30);
   assert.ok(r.out.blocked.length >= 15);
 });
 
@@ -367,15 +370,17 @@ test('the settings: 10 pages and 20 seconds unless changed, from 1 to 25 pages a
   }
 });
 
-test('the scanner reads the same keys with the same defaults and ranges', (t) => {
+test('the scanner reads the same keys with the same defaults and ranges, and the break by the speed', (t) => {
   const r = scanner(t, `
 f = ns['_home']() / 'scan-limits.json'
-out['consts'] = [ns['BREAK_EVERY'], ns['BREAK_SECONDS'], list(ns['BREAK_EVERY_RANGE']), list(ns['BREAK_SECONDS_RANGE'])]
+out['consts'] = [ns['BREAK_EVERY'], ns['BREAK_SECONDS'], list(ns['BREAK_EVERY_RANGE']), list(ns['BREAK_SECONDS_RANGE']),
+                 ns['BREAK_PACE_SECONDS'], ns['BREAK_PACE_DEFAULT']]
 out['none'] = ns['manual_break']()
 cases = {}
-for name, data in [('set', {'breakEvery': 4, 'breakSeconds': 90}), ('edges', {'breakEvery': 25, 'breakSeconds': 10}),
-                   ('low', {'breakEvery': 0, 'breakSeconds': 9}), ('high', {'breakEvery': 26, 'breakSeconds': 301}),
-                   ('kinds', {'breakEvery': True, 'breakSeconds': 20.5}), ('text', {'breakEvery': '4', 'breakSeconds': '90'})]:
+for name, data in [('set', {'breakEvery': 4, 'pace': 'slow'}), ('edges', {'breakEvery': 25, 'pace': 'fast'}),
+                   ('medium', {'breakEvery': 1, 'pace': 'medium'}), ('low', {'breakEvery': 0, 'pace': 'turbo'}),
+                   ('high', {'breakEvery': 26, 'pace': 'SLOW'}), ('kinds', {'breakEvery': True, 'pace': 5}),
+                   ('text', {'breakEvery': '4', 'pace': None}), ('stored', {'breakSeconds': 90, 'pace': 'fast'})]:
     f.write_text(json.dumps(data))
     cases[name] = ns['manual_break']()
 f.write_text('not json')
@@ -383,22 +388,39 @@ cases['broken'] = ns['manual_break']()
 out['cases'] = cases`);
   if (!r) return;
   assert.deepEqual(r.out.consts, [BREAK_DEFAULTS.breakEvery, BREAK_DEFAULTS.breakSeconds,
-    [BREAK_EVERY_RANGE.min, BREAK_EVERY_RANGE.max], [BREAK_SECONDS_RANGE.min, BREAK_SECONDS_RANGE.max]]);
-  assert.deepEqual(r.out.none, [10, 20]);
+    [BREAK_EVERY_RANGE.min, BREAK_EVERY_RANGE.max], [BREAK_SECONDS_RANGE.min, BREAK_SECONDS_RANGE.max],
+    { ...BREAK_PACE_SECONDS }, BREAK_PACE_DEFAULT]);
+  assert.deepEqual(r.out.none, [10, 10], 'no speed saved: Medium, 10 seconds');
   assert.deepEqual(r.out.cases, {
-    set: [4, 90], edges: [25, 10], low: [10, 20], high: [10, 20], kinds: [10, 20], text: [10, 20], broken: [10, 20],
+    set: [4, 30], edges: [25, 5], medium: [1, 10], low: [10, 10], high: [10, 10], kinds: [10, 10], text: [10, 10],
+    // The stored length is kept for an adjuster to come; for now the speed decides.
+    stored: [10, 5], broken: [10, 10],
   });
 });
 
-test('Scanner settings show the breaks under How circle scans run, sliders saved through set-limits', () => {
+test('the break by the speed: 30 seconds Slow, 10 Medium (the default), 5 Fast', () => {
+  assert.deepEqual(BREAK_PACE_SECONDS, { slow: 30, medium: 10, fast: 5 });
+  assert.equal(BREAK_PACE_DEFAULT, 'medium');
+  assert.deepEqual(['slow', 'medium', 'fast'].map(breakSecondsFor), [30, 10, 5]);
+  for (const p of [undefined, null, '', 'turbo', 'constructor', 5]) assert.equal(breakSecondsFor(p), 10, String(p));
+  assert.deepEqual(Object.keys(BREAK_PACE_SECONDS).sort(), Object.keys(PACES).sort(), 'one length for each speed the Scan page has');
+});
+
+test('Scanner settings show the breaks under How circle scans run: how often saved through set-limits, how long by the speed', () => {
   const page = src('app/setup/page.js');
   assert.match(page, /\{shows\.manual && \(\s*<div style=\{\{ \.\.\.rowStyle, marginTop: 12 \}\}>\s*<ManualBreaksSetting limits=\{li\?\.limits\} disabled=\{busy\} onSave=\{\(change\) => run\('set-limits', change\)\} \/>/);
   const box = src('app/components/ManualBreaksSetting.js');
   assert.match(box, /type="range" min=\{BREAK_EVERY_RANGE\.min\} max=\{BREAK_EVERY_RANGE\.max\}/);
-  assert.match(box, /type="range" min=\{BREAK_SECONDS_RANGE\.min\} max=\{BREAK_SECONDS_RANGE\.max\}/);
+  // The length's slider is hidden until an adjuster comes; the length follows the speed.
+  assert.doesNotMatch(box, /BREAK_SECONDS_RANGE\.min|handlers\('breakSeconds'\)/);
+  assert.match(box, /breakSecondsFor\(limits\?\.pace\)/);
+  assert.match(box, /\{BREAK_PACE_TEXT\}/);
+  assert.equal(BREAK_PACE_TEXT, 'How long follows the scan speed: 30 seconds at Slow, 10 at Medium, 5 at Fast.');
   assert.match(box, /\{BREAK_WHY\}/);
   assert.equal(BREAK_WHY, 'Pages read seconds apart are what LinkedIn notices.');
-  assert.equal(breakText(), 'A 20-second break after every 10 pages');
+  assert.equal(breakText(), 'A 10-second break after every 10 pages');
+  assert.equal(breakText(10, breakSecondsFor('fast')), 'A 5-second break after every 10 pages');
+  assert.equal(breakText(10, breakSecondsFor('slow')), 'A 30-second break after every 10 pages');
   assert.equal(breakText(1, 120), 'A 2-minute break after every page');
   assert.equal(breakText(5, 90), 'A 90-second break after every 5 pages');
   const route = src('app/api/scraper/route.js');
@@ -444,17 +466,17 @@ out['played'] = [[a[0], a[2], a[3].endswith('sounds/tick.wav')] for a in played]
 test('the scan light shows the break as yellow, counting down, then green for Next', (t) => {
   const r = scanner(t, `${HAND}
 page = HandPage(12)
-by_hand(page, total=120)`);
+by_hand(page, total=120)`, { limits: { pace: 'slow' } });
   if (!r) return;
   const lines = r.log.split('\n');
   const job = (upTo) => ({ running: true, action: 'bridge', target: { name: 'Invented Bridge' }, mode: 'manual', log: lines.slice(0, upTo), pages: 10, found: [] });
   const at = (re) => lines.findIndex((l) => re.test(l)) + 1;
 
-  const start = scanLight(job(at(/Break: wait 20 seconds/)));
+  const start = scanLight(job(at(/Break: wait 30 seconds/)));
   assert.equal(start.color, 'yellow');
-  assert.equal(start.headline, 'Break: 20 s, then page 11');
+  assert.equal(start.headline, 'Break: 30 s, then page 11');
   assert.equal(start.stats.page, 10);
-  assert.equal(lightLabel(start), 'Yellow, scanning: Break: 20 s, then page 11');
+  assert.equal(lightLabel(start), 'Yellow, scanning: Break: 30 s, then page 11');
 
   const mid = scanLight(job(at(/^ {2}\(break after page 10: 14 s, then page 11\)$/)));
   assert.equal(mid.mode, 'manual');
@@ -471,7 +493,7 @@ by_hand(page, total=120)`);
   assert.equal(over.headline, 'Click Next to page 11');
 
   // A log holding only the break's instruction is a run by hand.
-  assert.equal(isManualRun({ log: [lines[at(/Break: wait 20 seconds/) - 1]] }), true);
+  assert.equal(isManualRun({ log: [lines[at(/Break: wait 30 seconds/) - 1]] }), true);
 });
 
 test('the app keeps only the newest countdown line, so a long break never pushes the log out', (t) => {
@@ -480,7 +502,7 @@ test('the app keeps only the newest countdown line, so a long break never pushes
   assert.match(route, /if \(BREAK_TICK\.test\(t\) && BREAK_TICK\.test\(state\.log\[state\.log\.length - 1\] \|\| ''\)\) \{\s*state\.log\[state\.log\.length - 1\] = t;\s*continue;/);
   const r = scanner(t, `${HAND}
 page = HandPage(11)
-by_hand(page, total=110)`, { limits: { breakSeconds: 300 } });
+by_hand(page, total=110)`, { limits: { pace: 'slow' } });
   if (!r) return;
   // The route's push(), as it treats the lines: a countdown line after a countdown line replaces it.
   const log = [];
@@ -488,7 +510,7 @@ by_hand(page, total=110)`, { limits: { breakSeconds: 300 } });
     if (re.test(line) && re.test(log[log.length - 1] || '')) log[log.length - 1] = line;
     else log.push(line);
   }
-  assert.equal(r.log.split('\n').filter((l) => re.test(l)).length, 300, 'the scanner says every second');
+  assert.equal(r.log.split('\n').filter((l) => re.test(l)).length, 30, 'the scanner says every second');
   assert.equal(log.filter((l) => re.test(l)).length, 1, 'the app keeps one');
   assert.equal(log.filter((l) => re.test(l))[0], '  (break after page 10: 1 s, then page 11)');
   assert.equal(r.log.split('\n').filter((l) => re.test(l) === false && /break after page/.test(l)).length, 0, 'every countdown line is one the app knows');
@@ -600,8 +622,8 @@ by_hand(HandPage(1), total=10)`);
 
 // ── it ships ──────────────────────────────────────────────────────────────────
 
-test('the scanner change ships in the plugins at 1.0.6', () => {
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.6');
+test('the scanner change ships in the plugins at 1.0.7', () => {
+  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.7');
 });
 
 test('the layer and the hold, as the scanner sends them', (t) => {
