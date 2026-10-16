@@ -18,8 +18,12 @@ const COLUMNS = '52px 36px minmax(0,1.6fr) 104px 112px 132px';
 const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
-/** Their entry, row and words, best Leverage first; and how many have no measured position. */
-export function gatekeeperRows(connections = [], people = null, { tier = 'all', q = '' } = {}) {
+/**
+ * Their entry, row and words, best Leverage first; and how many have no measured position.
+ * Every connection, whatever their tier: Separation's tier chips pick the people to
+ * connect with, never the connections who lead to them (Blake, 2026-10-16). Search narrows it.
+ */
+export function gatekeeperRows(connections = [], people = null, { q = '' } = {}) {
   const ranked = [];
   let unscanned = 0;
   const seen = new Set();
@@ -28,7 +32,6 @@ export function gatekeeperRows(connections = [], people = null, { tier = 'all', 
     const key = keyFor(c);
     if (seen.has(key)) continue;
     seen.add(key);
-    if (tier !== 'all' && c.tier !== tier) continue;
     if (q && !`${c.name || ''} ${c.headline || ''} ${c.company || ''}`.toLowerCase().includes(q)) continue;
     const e = people?.[key];
     if (!e || e.status !== 'measured') { unscanned += 1; continue; }
@@ -38,8 +41,8 @@ export function gatekeeperRows(connections = [], people = null, { tier = 'all', 
   return { ranked, unscanned };
 }
 
-export default function GatekeeperList({ connections, strategy, tierColors, onSelect, selectedKey, isMobile, tier, q }) {
-  const { ranked, unscanned } = useMemo(() => gatekeeperRows(connections, strategy.people, { tier, q }), [connections, strategy.people, tier, q]);
+export default function GatekeeperList({ connections, strategy, tierColors, onSelect, selectedKey, isMobile, q }) {
+  const { ranked, unscanned } = useMemo(() => gatekeeperRows(connections, strategy.people, { q }), [connections, strategy.people, q]);
   const cols = isMobile ? '40px 36px 1fr 52px' : COLUMNS;
 
   if (strategy.error) {

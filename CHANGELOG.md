@@ -18,6 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scrolling or pinching out eases you back. Their card still opens as before. With Reduce
   Motion it cross-fades instead of zooming, and it works in every look, Daylight included.
 
+### Changed
+- **Connect on a profile sends you back.** In Sixgree's own browser, once LinkedIn says
+  "Invitation sent" on a profile you opened from the app, the request is marked sent, the panel
+  closes so you're back in Outlink, Separation or Bridge Chains, and "Request sent to" their name
+  shows for a moment. Only on the profile you opened, once per profile, and never during a scan.
+- **Breaks by hand lock at once.** The break's lock is now ready before the page that starts it:
+  that page opens under the cover from its first paint, is read under it, and the next page can't
+  load however fast you click Next. A wheel over the cover still scrolls the page. The scanner
+  plugins are 1.0.8.
+
+### Fixed
+- **Separation's tier filter picks only the people to connect with.** Every connection who leads
+  to them, and everyone in between, shows whatever their tier, and Gatekeepers lists all your
+  connections.
+
 ## [2.5.2] - 2026-10-15
 
 Every degree chains in Network Circle, and breaks by hand follow your pace.

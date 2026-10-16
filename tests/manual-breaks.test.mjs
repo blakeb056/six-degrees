@@ -74,13 +74,18 @@ class Route:
         self.done = 'continued'
         self.go()
 class HandPage:
-    def __init__(self, pages, mutuals=0, address_at=None, start=1):
+    def __init__(self, pages, mutuals=0, address_at=None, start=1, quick=1.5, slow_read=0.0, address_after=None):
         self.pages, self.mutuals, self.address_at = pages, mutuals, address_at
+        self.quick, self.slow_read, self.address_after = quick, slow_read, address_after
         self.pg, self.foot, self.closed = start, False, False
         self.shown_at, self.foot_at, self.tried = clock.t, None, None
         self.layer, self.layers, self.routes, self.held = None, [], [], []
         self.blocked, self.loads, self.listeners, self.routed = [], [], [], 0
         self.pending, self.hangs = [], 0
+        # BREAK_ARM_JS: the armed click (gone with its page) and the flag (kept by the tab);
+        # BREAK_INIT_JS, once added, covers a whole new page while the flag is set.
+        self.armed, self.flag, self.inits, self.raised = None, None, [], []
+    def add_init_script(self, script): self.inits.append(script)
     def on(self, event, fn): self.listeners.append(fn)
     def remove_listener(self, event, fn): self.listeners.remove(fn)
     def route(self, matcher, handler):
@@ -89,10 +94,17 @@ class HandPage:
     def unroute(self, matcher, handler): self.routes.remove((matcher, handler))
     def address(self, pg):
         return 'https://www.linkedin.com/search/results/people/?connectionOf=%5B%22' + URN + '%22%5D&page=' + str(pg)
-    def _go(self, pg):
+    def _go(self, pg, document=False):
         def go():
             self.loads.append([pg, round(clock.t - NOW, 1)])
             self.pg, self.foot, self.shown_at, self.foot_at, self.tried = pg, False, clock.t, None, None
+            if document:
+                # A whole new page: the old one's layer and armed click go with it, and the
+                # init script puts the layer up from the first paint while the flag is set.
+                self.layer, self.armed = None, None
+                if self.inits and self.flag is not None:
+                    self.layer = self.flag
+                    self.raised.append(round(clock.t - NOW, 1))
         return go
     def _ask(self, url, go):
         for fn in list(self.listeners):
@@ -100,24 +112,33 @@ class HandPage:
         for matcher, handler in list(self.routes):
             if matcher(url):
                 r = Route(self, url, go)
-                self.held.append(round(clock.t - NOW, 1))
                 handler(r, r.request)
+                if r.done is None:
+                    self.held.append(round(clock.t - NOW, 1))
                 return
         go()
     def _act(self):
         now = clock.t
         if self.address_at is not None and now >= NOW + self.address_at:
             self.address_at = None
-            self._ask(self.address(self.pg + 1), self._go(self.pg + 1))
+            self._ask(self.address(self.pg + 1), self._go(self.pg + 1, document=True))
             return
         if not self.foot and now - self.shown_at >= 1.0:
             self.foot, self.foot_at = True, now
-        elif self.foot and self.pg < self.pages and now - self.foot_at >= 1.5 \\
+        elif self.foot and self.pg < self.pages and now - self.foot_at >= self.quick \\
                 and (self.tried is None or now - self.tried >= 1.0):
             self.tried = now
             if self.layer is not None:
                 self.blocked.append(round(now - NOW, 1))
+            elif self.address_after == self.pg and self.armed is not None:
+                # The address bar instead of Next: a whole new page.
+                self.address_after = None
+                self._ask(self.address(self.pg + 1), self._go(self.pg + 1, document=True))
             else:
+                if self.armed is not None:
+                    # The armed click puts the layer up in the same click, before the page it asks for draws.
+                    self.layer = self.armed
+                    self.raised.append(round(now - NOW, 1))
                 self._ask(VOYAGER, self._go(self.pg + 1))
     @property
     def url(self):
@@ -141,14 +162,20 @@ class HandPage:
             self.layer = a[0]
             self.layers.append(a[0])
             return True
+        if js == ns['BREAK_ARM_JS']:
+            self.armed, self.flag, self.layer = a[0][0], a[0][0], None
+            return True
         if js == ns['BREAK_HIDE_JS']:
-            self.layer = None
+            self.layer, self.armed, self.flag = None, None, None
             return True
         if js == ns['AT_FOOT_JS']: return self.foot
         if js == ns['NEXT_STATE_JS']: return 'on' if self.pg < self.pages else 'off'
         if js == ns['CURRENT_PAGE_JS']: return self.pg
         if js == ns['RESULT_LINKS_JS']: return [str(self.pg)]
-        if js == ns['BRIDGE_RESULTS_JS']: return self.people()
+        if js == ns['BRIDGE_RESULTS_JS']:
+            # Reading a page takes a moment (slow_read): the person may click meanwhile.
+            clock.t += self.slow_read
+            return self.people()
         return None
 chimes = []
 ns['_chime'] = lambda name: chimes.append([name, round(clock.t - NOW, 1)])
@@ -163,7 +190,8 @@ def report(page, people, status):
     out.update({'status': status, 'loads': page.loads, 'blocked': page.blocked, 'held': page.held,
                 'layers': page.layers, 'layer_left': page.layer, 'routes_left': len(page.routes), 'routed': page.routed,
                 'chimes': chimes, 'people': len(people), 'marked': sum(1 for p in people if 'mutualOnly' in p),
-                'hangs': page.hangs})
+                'hangs': page.hangs, 'raised': page.raised, 'inits': len(page.inits),
+                'armed_left': page.armed, 'flag_left': page.flag})
 `;
 
 const ticks = (chimes) => chimes.filter(([n]) => n === 'tick').map(([, at]) => at);
@@ -192,9 +220,16 @@ report(page, people, status)`, { limits: { pace: 'slow' } });
   // The clicks during the break landed on the layer, every one of them.
   assert.ok(out.blocked.length >= 15, `the clicks during the break did nothing (${out.blocked.length})`);
   for (const s of out.blocked) assert.ok(s >= tickTimes[0] && s <= tickTimes[0] + 30, `${s} is in the break, the layer still up`);
-  // The layer counted down, and everything was put back.
-  assert.deepEqual(out.layers, Array.from({ length: 30 }, (_, i) => `Break: ${30 - i} s, then page 11`));
+  // Page 10 was read under the layer, up from the click that opened it; then the layer
+  // counted down, and everything was put back.
+  assert.deepEqual(out.raised, [at[10]], 'the click on Next to page 10 put the layer up, before page 10 drew');
+  const before = out.layers.filter((l) => !l.startsWith('Break:'));
+  assert.ok(before.length >= 1 && before.every((l) => l === 'Page 10: scroll to its bottom. Then a 30-second break.'), before.join(' | '));
+  assert.deepEqual(out.layers.slice(before.length), Array.from({ length: 30 }, (_, i) => `Break: ${30 - i} s, then page 11`));
   assert.equal(out.layer_left, null, 'the layer is gone');
+  assert.equal(out.armed_left, null, 'the armed click is gone');
+  assert.equal(out.flag_left, null, 'and the flag');
+  assert.equal(out.inits, 1, 'the init script is added once');
   assert.equal(out.routed, 1, 'routed once, for the one break');
   assert.equal(out.routes_left, 0, 'and unrouted');
   assert.deepEqual(out.held, [], 'nothing reached the network during the break');
@@ -307,8 +342,88 @@ people, status, reach = by_hand(page, total=110)
 report(page, people, status)`, { limits: { pace: 'slow' } });
   if (!r) return;
   assert.equal(ticks(r.out.chimes).length, 30);
-  assert.equal(r.out.layers.length, 30);
+  assert.equal(r.out.layers.filter((l) => l.startsWith('Break:')).length, 30);
   assert.ok(r.out.blocked.length >= 15);
+});
+
+// ── no lag: armed ahead of the page that starts the break ─────────────────────
+// Blake, 2026-10-16: "the screen needs to actually lock the user and not let them proceed
+// to clicking next when it's supposed to be cooldown. There is some lag when it hits the
+// page and processing to lock the screen."
+
+test('a person who clicks Next the moment they reach the foot, while the page is still being read, never gets page 11 before the break ends', (t) => {
+  // Reading a page takes 0.3 s here, and they click Next 0.1 s after its foot shows.
+  const r = scanner(t, `${HAND}
+page = HandPage(12, quick=0.1, slow_read=0.3)
+people, status, reach = by_hand(page, total=120)
+report(page, people, status)`, { limits: { pace: 'slow' } });
+  if (!r) return;
+  const { out, log } = r;
+  assert.equal(out.status, 'success');
+  const at = Object.fromEntries(out.loads.map(([pg, s]) => [pg, s]));
+  const tickTimes = ticks(out.chimes);
+  assert.equal(tickTimes.length, 30);
+  // Page 10 was read, every page in turn, and page 11 waited the whole break.
+  assert.match(log, /^ {2}Page 10\.\.\. 10 found \(total: 100\)$/m);
+  assert.ok(at[11] - tickTimes[0] >= 30, `page 11 waits the whole break (${at[11] - tickTimes[0]} s)`);
+  // Their click while page 10 was read landed on the layer, which was up from the click that opened it.
+  assert.deepEqual(out.raised, [at[10]]);
+  assert.ok(out.blocked.some((s) => s >= at[10] && s <= tickTimes[0]), `the click made as page 10 was read was taken (${out.blocked}, countdown at ${tickTimes[0]})`);
+  assert.deepEqual(out.held, [], 'nothing even reached the network');
+  assert.equal(out.routed, 1);
+  assert.equal(out.routes_left, 0);
+  assert.equal(out.layer_left, null);
+});
+
+test('a whole new page while the break is armed (the address bar instead of Next) has the layer from its first paint', (t) => {
+  const r = scanner(t, `${HAND}
+page = HandPage(12, address_after=9)
+people, status, reach = by_hand(page, total=120)
+report(page, people, status)`, { limits: { pace: 'slow' } });
+  if (!r) return;
+  const { out } = r;
+  const at = Object.fromEntries(out.loads.map(([pg, s]) => [pg, s]));
+  const tickTimes = ticks(out.chimes);
+  assert.equal(out.inits, 1);
+  assert.deepEqual(out.raised, [at[10]], 'up as page 10 loaded, from the init script');
+  assert.ok(at[11] - tickTimes[0] >= 30);
+  assert.equal(out.flag_left, null, 'the flag is taken away with the break');
+  assert.equal(out.hangs, 0);
+});
+
+test('a break after every page is armed from the start: the first page is read under the layer', (t) => {
+  const r = scanner(t, `${HAND}
+page = HandPage(3)
+people, status, reach = by_hand(page, total=30)
+report(page, people, status)`, { limits: { breakEvery: 1 } });
+  if (!r) return;
+  const { out } = r;
+  assert.equal(out.layers[0], 'Page 1: scroll to its bottom. Then a 10-second break.');
+  assert.equal(out.routed, 3, 'armed for page 1, then again after each break');
+  assert.equal(out.routes_left, 0, 'the last one, armed for a page that ended the list, taken away');
+  assert.equal(out.layer_left, null);
+  assert.equal(out.flag_left, null);
+});
+
+test('armed, a page already read (Previous) gets no layer, and a stop takes the armed hold away', (t) => {
+  const r = scanner(t, `${HAND}
+page = HandPage(12)
+read = {'n': 0}
+def chime(name):
+    chimes.append([name, round(clock.t - NOW, 1)])
+    if name.startswith('read-'):
+        read['n'] += 1
+        if read['n'] == 9:
+            ns['_stop_requested'] = True   # Stop with page 9 read: the break for page 10 is armed
+ns['_chime'] = chime
+people, status, reach = by_hand(page, total=120)
+report(page, people, status)`);
+  if (!r) return;
+  assert.equal(r.out.status, 'stopped');
+  assert.equal(r.out.routed, 1, 'armed after page 9');
+  assert.equal(r.out.routes_left, 0, 'and taken away on Stop');
+  assert.equal(r.out.flag_left, null);
+  assert.equal(r.out.armed_left, null);
 });
 
 test('Auto mode is unchanged: no breaks, no layer, no routes', (t) => {
@@ -622,8 +737,8 @@ by_hand(HandPage(1), total=10)`);
 
 // ── it ships ──────────────────────────────────────────────────────────────────
 
-test('the scanner change ships in the plugins at 1.0.7', () => {
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.7');
+test('the scanner change ships in the plugins at 1.0.8 (the break armed ahead of its page)', () => {
+  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.8');
 });
 
 test('the layer and the hold, as the scanner sends them', (t) => {
@@ -685,4 +800,83 @@ out['hide'] = ns['BREAK_HIDE_JS']`);
   vm.runInNewContext(`(${r.out.hide})()`, ctx);
   assert.equal(made[2].removed, true);
   assert.equal(listeners.length, 0);
+});
+
+test('armed: a click on Next, Previous or a page number puts the layer up in the same click; a whole new page gets it from its first paint, only with this scanner\'s flag', (t) => {
+  const r = scanner(t, `
+out['arm'] = ns['BREAK_ARM_JS']
+out['init'] = ns['BREAK_INIT_JS']
+out['hide'] = ns['BREAK_HIDE_JS']
+out['token'] = ns['BREAK_TOKEN']
+out['texts'] = [ns['_break_arm_text'](30), ns['_break_page_text'](10, 30)]`);
+  if (!r) return;
+  assert.deepEqual(r.out.texts, ['Scroll to the bottom of this page. Then a 30-second break.', 'Page 10: scroll to its bottom. Then a 30-second break.']);
+  assert.match(r.out.token, /^[0-9a-f]{12}$/);
+  assert.ok(r.out.init.includes(`'${r.out.token}'`), 'the init script knows this run\'s token');
+  // A stand-in page: a search page with Next, a page number, and a person's link.
+  const page = () => {
+    const listeners = [];
+    const store = new Map();
+    let layer = null;
+    const node = (tag, words, extra = {}) => ({
+      tagName: tag, innerText: words, textContent: words, getAttribute: (k) => extra[k] ?? null,
+      closest(sel) { return sel.includes(tag.toLowerCase()) || (sel.includes('main') && extra.inMain) ? this : null; },
+    });
+    const el = () => {
+      const e = { style: {}, children: [], attrs: {}, listeners: {} };
+      e.setAttribute = (k, v) => { e.attrs[k] = v; };
+      e.appendChild = (c) => { e.children.push(c); if (!e.firstChild) e.firstChild = c; };
+      e.addEventListener = (k, fn) => { e.listeners[k] = fn; };
+      e.contains = (x) => x === e;
+      e.remove = () => { layer = null; };
+      return e;
+    };
+    const root = { appendChild: (e) => { layer = e; } };
+    const ctx = {
+      document: { getElementById: () => layer, createElement: el, documentElement: root, activeElement: null, body: {} },
+      window: {
+        addEventListener: (k, fn) => listeners.push([k, fn]),
+        removeEventListener: (k, fn) => { const i = listeners.findIndex(([a, b]) => a === k && b === fn); if (i >= 0) listeners.splice(i, 1); },
+      },
+      sessionStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) },
+      location: { pathname: '/search/results/people/' },
+      setTimeout: () => 1, clearTimeout: () => {}, getComputedStyle: () => ({ overflowY: 'visible' }),
+      MutationObserver: class { observe() {} disconnect() {} },
+    };
+    const click = (target) => { for (const [k, fn] of [...listeners]) if (k === 'click') fn({ target }); };
+    return { ctx, click, node, store, layer: () => layer, listeners };
+  };
+  const p = page();
+  vm.runInNewContext(`(${r.out.arm})(['Scroll to the bottom of this page. Then a 30-second break.', '${r.out.token}'])`, p.ctx);
+  assert.equal(p.layer(), null, 'armed: no layer yet, Next still works');
+  assert.ok(p.store.get('sixgree-break'), 'the flag is set');
+  p.click(p.node('A', 'Invented Person'));
+  assert.equal(p.layer(), null, 'a click on someone\'s name is not a page of the list');
+  p.click(p.node('BUTTON', 'Next'));
+  assert.equal(p.layer()?.firstChild.textContent, 'Scroll to the bottom of this page. Then a 30-second break.', 'Next: the layer, in the same click');
+  // Armed again on a page that doesn't start the break: the layer a click put up comes off, the click stays armed.
+  vm.runInNewContext(`(${r.out.arm})(['Scroll to the bottom of this page. Then a 30-second break.', '${r.out.token}'])`, p.ctx);
+  assert.equal(p.layer(), null);
+  p.click(p.node('BUTTON', '11', { inMain: true }));
+  assert.ok(p.layer(), 'a page number in the list');
+  vm.runInNewContext(`(${r.out.hide})()`, p.ctx);
+  assert.equal(p.layer(), null);
+  assert.equal(p.store.has('sixgree-break'), false, 'the flag is taken away');
+  assert.equal(p.listeners.filter(([k]) => k === 'click').length, 0, 'and the armed click');
+  p.click(p.node('BUTTON', 'Next'));
+  assert.equal(p.layer(), null, 'disarmed, Next is Next');
+
+  // A whole new page: the init script covers it with the flag set by this run, and only then.
+  const fresh = (flag, pathname = '/search/results/people/') => {
+    const q = page();
+    q.ctx.location.pathname = pathname;
+    if (flag) q.store.set('sixgree-break', JSON.stringify(flag));
+    vm.runInNewContext(r.out.init, q.ctx);
+    return q.layer();
+  };
+  assert.equal(fresh({ text: 'Scroll to the bottom of this page. Then a 30-second break.', token: r.out.token })?.firstChild.textContent,
+    'Scroll to the bottom of this page. Then a 30-second break.');
+  assert.equal(fresh(null), null, 'no flag, no layer');
+  assert.equal(fresh({ text: 'x', token: '000000000000' }), null, 'a flag left by another run is not this one\'s');
+  assert.equal(fresh({ text: 'x', token: r.out.token }, '/in/invented-person/'), null, 'only on a search page');
 });

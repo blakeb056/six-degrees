@@ -28,7 +28,7 @@
 // tests/open-profile.test.mjs keeps it so.
 
 import { useState, useSyncExternalStore } from 'react';
-import { useLinkedInPanel, panelNow, showProfileInPanel } from './linkedInPanelState';
+import { useLinkedInPanel, panelNow, showProfileInPanel, rememberPanelPerson } from './linkedInPanelState';
 import { scannerNow, LIMITS_CHANGED } from '../../lib/scraper-client';
 import { scanHoldsPanel } from '../../lib/linkedin-panel';
 
@@ -72,6 +72,8 @@ export async function openProfile(person, { browser = true } = {}) {
   const url = profileUrlOf(person);
   if (!url) return { where: 'error', message: 'There is no LinkedIn profile to open.' };
   if (panelCanOpen() && await showProfileInPanel(url)) {
+    // Who it is, for when LinkedIn says "Invitation sent" there (LinkedInPanel.js).
+    rememberPanelPerson(person);
     countProfileView(person, url);
     return { where: 'panel' };
   }

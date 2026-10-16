@@ -34,17 +34,23 @@
 // It comes forward by itself when the scanner needs it in front (LinkedIn
 // needs you, signing in, a manual read) and goes back when that's done, and
 // when a profile link is pressed anywhere in the app (OpenProfile.js), which
-// stays for you.
+// stays for you until you press Connect there: once LinkedIn says "Invitation
+// sent", the request is marked sent, the panel goes back to where you were
+// (Outlink, Separation, Bridge Chains) and "Request sent to X" shows for a
+// moment (Blake, 2026-10-16; desktop/main.mjs inviteSent).
 // Outside the desktop app (npm, a plain browser) there is no panel and this
 // draws nothing.
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import useScanner from './useScanner';
-import { panelWanted, panelLayout, scanHoldsPanel, PANEL_BAR } from '../../lib/linkedin-panel';
+import { panelWanted, panelLayout, scanHoldsPanel, inviteSentAction, INVITE_NOTE_MS, PANEL_BAR } from '../../lib/linkedin-panel';
+import { markRequested, hasRequest } from '../../lib/requests-client';
+import { scannerNow } from '../../lib/scraper-client';
 import { watchPanelCover, panelCoveredNow, notCovered } from '../../lib/panel-cover';
 import {
   useLinkedInPanel, showLinkedInPanel, panelBridge as bridge, panelNow, openLinkedInSection, panelBack, panelForward, LINKEDIN_SECTION_TABS,
+  panelPersonFor,
 } from './linkedInPanelState';
 import { ProfileSteps, endProfileSteps } from './OpenProfile';
 
@@ -66,6 +72,7 @@ export default function LinkedInPanel() {
   const [layout, setLayout] = useState({ barTop: 0, top: PANEL_BAR, words: 0 });
   const [bottom, setBottom] = useState(0);
   const [still, setStill] = useState(null);   // { n, src }: the panel's picture, while something is over it
+  const [sentNote, setSentNote] = useState(null);   // "Request sent to X", for a moment
   const covered = useSyncExternalStore(watchPanelCover, panelCoveredNow, notCovered);
 
   const available = Boolean(panel?.available);
@@ -162,6 +169,28 @@ export default function LinkedInPanel() {
     return b.onStill((s) => setStill(s?.src ? s : null));
   }, [available]);
 
+  // "Invitation sent" on the profile a link opened (desktop/main.mjs inviteSent): the
+  // request marked sent as Connect marks it (lib/linkedin-panel.js inviteSentAction), the
+  // panel put away so you're back where you were, and "Request sent to X" for a moment.
+  // Not while a scan drives the panel: Auto marks its own.
+  useEffect(() => {
+    const b = bridge();
+    if (!b || !available || typeof b.onInviteSent !== 'function') return undefined;
+    let timer = 0;
+    const off = b.onInviteSent((info) => {
+      const act = inviteSentAction(info, { job: scannerNow(), panel: panelNow(), person: panelPersonFor(info?.slug) });
+      if (!act) return;
+      if (!hasRequest(act.mark)) markRequested(act.mark, { bridgeId: act.bridgeId }).catch(() => {});
+      shownByJob.current = false;
+      endProfileSteps();
+      b.hide();
+      clearTimeout(timer);
+      setSentNote(act.note);
+      timer = setTimeout(() => setSentNote(null), INVITE_NOTE_MS);
+    });
+    return () => { off?.(); clearTimeout(timer); };
+  }, [available]);
+
   // Choosing a page puts it away, so the page you chose is what you see. Also
   // a click on the header's tabs and links, or the notch's tabs (the same page,
   // another view). Not Auto scan's button, nor anything that opens over it.
@@ -192,14 +221,22 @@ export default function LinkedInPanel() {
   if (!available) return null;
   const b = bridge();
   const { barTop, top, words } = layout;
+  const sentPill = sentNote ? (
+    <div role="status" aria-live="polite" data-invite-sent="" style={{ ...SENT, top: `calc(${barTop || 0}px + 10px)` }}>
+      <Dot green /> {sentNote}
+    </div>
+  ) : null;
 
   if (!visible) {
     // Something to go back to: LinkedIn's open there, and a scan runs or you're on Outlink.
-    if (!panel.linkedin || !(job.running || pathname === '/queue')) return null;
+    if (!panel.linkedin || !(job.running || pathname === '/queue')) return sentPill;
     return (
-      <button type="button" onClick={() => b.show()} title="Show LinkedIn in Sixgree's own browser" style={{ ...PILL, top: `calc(${barTop || 0}px + 10px)` }}>
-        <Dot /> Show LinkedIn
-      </button>
+      <>
+        <button type="button" onClick={() => b.show()} title="Show LinkedIn in Sixgree's own browser" style={{ ...PILL, top: `calc(${barTop || 0}px + 10px)` }}>
+          <Dot /> Show LinkedIn
+        </button>
+        {sentPill}
+      </>
     );
   }
 
@@ -245,6 +282,7 @@ export default function LinkedInPanel() {
           <button type="button" onClick={() => { shownByJob.current = false; endProfileSteps(); b.hide(); }} style={BACK}>Back to Sixgree</button>
         </span>
       </div>
+      {sentPill}
     </>
   );
 }
@@ -284,8 +322,9 @@ const CHEVRON_FORWARD = 'M6 3.2 10.8 8 6 12.8';
 
 const sentence = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-function Dot({ gold = false }) {
-  return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: gold ? 'var(--sd-gold, #FFD700)' : '#0A66C2' }} />;
+function Dot({ gold = false, green = false }) {
+  const background = green ? 'var(--sd-green, #00FF88)' : gold ? 'var(--sd-gold, #FFD700)' : '#0A66C2';
+  return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background }} />;
 }
 
 const BAR_STYLE = {
@@ -300,6 +339,14 @@ const BAR_STYLE = {
 const BACK = {
   flexShrink: 0, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontWeight: 700,
   background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', color: 'var(--sd-fg-1, #fff)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.18)',
+};
+
+// "Request sent to X": under the header, in the middle, over whatever page you're back on.
+const SENT = {
+  position: 'fixed', left: '50%', transform: 'translateX(-50%)', zIndex: 62, display: 'flex', alignItems: 'center', gap: 8,
+  padding: '7px 14px', borderRadius: 999, font: 'inherit', fontSize: 12.5, fontWeight: 700, pointerEvents: 'none', whiteSpace: 'nowrap',
+  background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-1, #fff)', border: '1px solid rgba(0, 255, 136, 0.45)',
+  boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
 };
 
 const PILL = {

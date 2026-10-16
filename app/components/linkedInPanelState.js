@@ -14,6 +14,7 @@
 // null outside the desktop app, or until the shell answers.
 
 import { useSyncExternalStore } from 'react';
+import { profileSlugOf } from '../../lib/linkedin-panel';
 
 export const panelBridge = () => (typeof window !== 'undefined' ? window.sixgreeDesktop?.linkedinPanel ?? null : null);
 
@@ -71,6 +72,25 @@ export async function showProfileInPanel(url) {
   } catch {
     return false;
   }
+}
+
+// Who each profile link opened in the panel was, by their slug, so "Invitation sent" on
+// that profile marks that row (LinkedInPanel.js, lib/linkedin-panel.js inviteSentAction).
+const opened = new Map();
+const OPENED_KEPT = 200;
+
+/** A profile link opened this person in the panel (OpenProfile.js). */
+export function rememberPanelPerson(person) {
+  const slug = profileSlugOf(person?.profile_url || person?.profileUrl);
+  if (!slug) return;
+  opened.delete(slug);
+  opened.set(slug, person);
+  if (opened.size > OPENED_KEPT) opened.delete(opened.keys().next().value);
+}
+
+/** The person a profile link opened at this slug, or null. */
+export function panelPersonFor(slug) {
+  return (typeof slug === 'string' && opened.get(slug.toLowerCase())) || null;
 }
 
 /** Back, and Forward, in the panel's own history (the bar's buttons). */
