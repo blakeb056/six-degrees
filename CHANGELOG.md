@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-15
+
+Rings by degree in Bridge Chains, one Tiers switch, instant profile opens, and Back and Forward in Sixgree's own browser.
+
+### Added
+- **Back and Forward in Sixgree's own browser.** The bar over LinkedIn in the desktop app now
+  starts with Back and Forward: the map's round blue and yellow buttons (Filters' blue for Back,
+  Details' gold for Forward), the same look, sized for the bar. Each is greyed out where there is
+  nowhere to go, and both wait while a scan is using the page. Cmd+[ and Cmd+] (Ctrl+[ and Ctrl+]
+  on Windows and Linux) do the same.
+
 ### Changed
 - **Bridge Chains: a ring for each degree.** A circle scanned from someone you met through
   another circle used to be drawn only inside that circle, once opened. Now the overview keeps
@@ -23,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the Physics panel, since the Tiers switch says it.
 - **Filters is a popover** beside its button, over the map's corner. It no longer pushes the map
   over like a side panel, and a click anywhere else or Esc closes it.
+- **Connect opens the profile at once**, exactly like View profile. In 2.5.0, Connect on a person
+  card (Separation, the map, Outlink) started a scanner job that checked your sign-in on the feed
+  and waited out the gap between profile views, so it could take two or three minutes and showed
+  the feed meanwhile. Now every profile link in the app goes straight to the profile in Sixgree's
+  own browser, and you connect by hand. It still counts as one of the day's profile views and is
+  still written down, by the app in the background, so it never waits for a scan or slows
+  anything. Connect still marks the request as sent. While a scan is using Sixgree's browser, a
+  profile opens in your own browser instead, so the scan keeps its place.
+- **The LinkedIn browser plugin is the LinkedIn tab alone** (1.0.1). The LinkedIn button at the
+  top right of the header and the people list beside the browser are gone; the tab's Feed,
+  Messaging, Notifications and Jobs, now with Back and Forward, are the way in. Its description
+  and README say so.
 
 ### Fixed
 - **The degree chips under the map did the opposite of what they showed.** A chip lit whenever
@@ -30,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one tier off at the 2nd put more people on the map instead of taking them off. Chips and the
   grid now share one rule (`lib/tier-grid.js` `degreeOn`), and a degree with nobody at it is
   never lit.
+- **Settings → Plugins → Browse no longer flickers to older versions.** It showed the plugins as
+  shipped, then replaced them with the online list even when that list was older (a cache served
+  the list from before a release for minutes after it). Now each plugin shows the newer version of
+  the two, and a plugin either list has is never dropped.
 
 ## [2.5.0] - 2026-10-15
 

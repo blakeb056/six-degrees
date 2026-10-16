@@ -58,15 +58,19 @@ test('the check itself would catch one', () => {
   }
 });
 
-test('the shared link keeps the rules: the panel only with a scanner to take it there, else your browser; several are stepped through', () => {
+test('the shared link keeps the rules: the panel, straight there, then counted; your browser while a scan has it; several stepped through', () => {
   const src = fs.readFileSync(path.join(ROOT, SHARED), 'utf8');
-  assert.match(src, /return Boolean\(panel\?\.available && panel\?\.scanner\);/);
-  assert.match(src, /await beginScrape\('outlink', \{ id: person\.id, name: person\.name \}\)/, 'Outlink: one profile view, recorded');
-  assert.match(src, /if \(err\?\.details\?\.fallback\)/, 'a plugin before 1.0.5, or no OK yet: your browser');
+  // Blake, 2026-10-15: Connect "took like 2-3 min to load", View profile was instant. Both are this
+  // one link: the shell takes the panel to the profile at once, and the view is counted after, by the server.
+  assert.match(src, /return Boolean\(panel\?\.available\) && !scanHoldsPanel\(job, panel\);/);
+  assert.match(src, /if \(panelCanOpen\(\) && await showProfileInPanel\(url\)\) \{\s*countProfileView\(person, url\);\s*return \{ where: 'panel' \};/);
+  assert.match(src, /fetch\('\/api\/profile-view', \{/);
+  // No scanner job for a profile any more: nothing waits on a scan, the sign-in check or the gap between views.
+  assert.doesNotMatch(src, /beginScrape|'outlink'/);
   // Several: the first now, the next on "Next profile (N left)", never a burst in the panel.
   assert.match(src, /Next profile \(\{left\} left\)/);
   assert.match(src, /setSteps\(\{ people: list, next: 1/);
-  // Every former link uses it: the person card (Separation's connect), Paths, Insights, Outlink, Messages.
+  // Every former link uses it: the person card (Separation's connect and View profile), Paths, Insights, Outlink, Messages.
   for (const file of ['app/components/Sidebar.js', 'app/paths/page.js', 'app/components/insights/parts.js', 'app/queue/page.js',
     'app/components/OutlinkQuest.js', 'app/social/Crm.js']) {
     assert.match(fs.readFileSync(path.join(ROOT, file), 'utf8'), /<OpenProfile /, file);
@@ -75,4 +79,14 @@ test('the shared link keeps the rules: the panel only with a scanner to take it 
   const card = fs.readFileSync(path.join(ROOT, 'app/components/Sidebar.js'), 'utf8');
   assert.match(card, /<OpenProfile person=\{selected\}\s+title=\{second \? 'Opens their profile, to connect yourself' : undefined\}[\s\S]{0,600}onOpen=\{\(\) => \{[\s\S]{0,300}markRequested\(selected/);
   assert.match(fs.readFileSync(path.join(ROOT, 'app/queue/page.js'), 'utf8'), /openProfiles\(toOpen, /);
+});
+
+test('no page starts a scanner job to open a profile: the server has no such action now', () => {
+  const route = fs.readFileSync(path.join(ROOT, 'app/api/scraper/route.js'), 'utf8');
+  const actions = route.slice(route.indexOf('const ACTIONS = {'), route.indexOf('const PROFILE_READ_BATCHES'));
+  assert.doesNotMatch(actions, /^\s*outlink:/m);
+  assert.doesNotMatch(route, /--outlink=|outlinkTarget|noteOutlink/);
+  for (const file of sources('app')) {
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, file), 'utf8'), /beginScrape\('outlink'|startScrape\('outlink'|action: 'outlink'/, file);
+  }
 });

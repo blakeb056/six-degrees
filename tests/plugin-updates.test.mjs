@@ -23,6 +23,7 @@ import path from 'node:path';
 import { makePackage, makeCatalog, pluginServer } from './helpers/plugins.mjs';
 import { startTestReleaseServer } from '../scripts/test-release-server.mjs';
 import { SHIPPED_PLUGINS, cardsFrom } from '../lib/plugins-shipped.js';
+import { compareVersions } from '../lib/release.js';
 import { catalogAction, cardState, countUpdates, checkedLine, updatedTo } from '../lib/plugins-client.js';
 import {
   LAST_CHECK_KEY, PLUGIN_NOTE_TYPE, PLUGINS_HREF, UPDATE_NOTE_TYPE,
@@ -104,26 +105,55 @@ const turn = (now = T0, more = {}) => runUpdateCheck({
 
 // ── Settings → Plugins: the cards ──────────────────────────────────────────────
 
-test('the cards: the live list merged over the shipped copy, entry by entry, and the live one wins', () => {
+test('the cards: the live list merged over the shipped copy, entry by entry, and the newer version wins', () => {
   assert.equal(cardsFrom({ status: 'idle' }), SHIPPED_PLUGINS, 'nothing fetched: the shipped copy');
   const live = [
     { id: 'auto-scan', name: 'Auto scan', version: '9.0.0', about: 'Newer words.', risk: null, host: 'plugins.example', size: 1, problem: null },
     { id: 'manual-scan', name: 'Manual scan', version: '9.0.0', about: 'Newer words too.', risk: 'A newer risk.', host: 'plugins.example', size: 1, problem: null },
   ];
   const cards = cardsFrom({ status: 'ready', plugins: live });
-  assert.deepEqual(cards.map((c) => [c.id, c.version, c.about, c.host]), live.map((l) => [l.id, l.version, l.about, l.host]));
+  assert.deepEqual(cards.slice(0, 2).map((c) => [c.id, c.version, c.about, c.host]), live.map((l) => [l.id, l.version, l.about, l.host]));
   assert.equal(cards[0].risk, null, 'the live list says no risk line: it wins over the shipped one');
   assert.deepEqual(cards[0].unlocks, ['auto'], 'what the live entry leaves out comes from the shipped copy');
   assert.equal(cards[0].shipped, false);
-  // An entry gone from the live list is gone from the cards: nothing to install.
-  assert.deepEqual(cardsFrom({ status: 'ready', plugins: [live[1]] }).map((c) => c.id), ['manual-scan']);
-  // One the shipped copy doesn't know shows as the list has it.
+  // One the shipped copy doesn't know shows as the list has it, after the shipped ones.
   const other = { id: 'other-scan', name: 'Other', version: '1.0.0', about: 'x', host: 'h', size: 1, problem: null };
-  assert.deepEqual(cardsFrom({ status: 'ready', plugins: [other] }), [other]);
+  assert.deepEqual(cardsFrom({ status: 'ready', plugins: [other] }).at(-1), other);
   // Asked again, or failed after a list that worked: the last list stays, not the shipped copy.
   assert.equal(cardsFrom({ status: 'loading', plugins: live })[0].version, '9.0.0');
   assert.equal(cardsFrom({ status: 'failed', detail: 'offline', plugins: live })[0].version, '9.0.0');
   assert.equal(cardsFrom({ status: 'failed', detail: 'offline' }), SHIPPED_PLUGINS, 'never had one: the shipped copy');
+});
+
+test('a stale live list never takes a card back: the newer of the two per plugin, and every plugin either has', () => {
+  // A CDN served the list from before a release for minutes after it (2026-10-15): older versions,
+  // and a plugin the release added missing. Browse showed the shipped cards, then swapped them for those.
+  const stale = [
+    { id: 'auto-scan', name: 'Auto scan', version: '0.9.0', about: 'Older words.', host: 'plugins.example', size: 1, problem: null },
+    { id: 'manual-scan', name: 'Manual scan', version: '0.9.0', about: 'Older words.', host: 'plugins.example', size: 1, problem: null },
+  ];
+  const cards = cardsFrom({ status: 'ready', plugins: stale });
+  assert.deepEqual(cards.map((c) => c.id), SHIPPED_PLUGINS.map((p) => p.id), 'the shipped order, none dropped');
+  for (const shipped of SHIPPED_PLUGINS) {
+    const card = cards.find((c) => c.id === shipped.id);
+    assert.equal(card, shipped, `${shipped.id}: the shipped copy, newer than the stale list`);
+  }
+  // The same version: the live entry (its host, size and words), so Install has what it needs.
+  const same = SHIPPED_PLUGINS.map((p) => ({ ...p, about: `${p.name}, live.`, host: 'plugins.example', size: 2, problem: null }));
+  for (const card of cardsFrom({ status: 'ready', plugins: same })) {
+    assert.equal(card.shipped, false);
+    assert.equal(card.host, 'plugins.example');
+    assert.match(card.about, /, live\.$/);
+  }
+  // Mixed: each plugin on its own. Newer live for one, stale for another, missing for the third.
+  const [a, b, c] = SHIPPED_PLUGINS;
+  const mixed = cardsFrom({ status: 'ready', plugins: [{ ...b, version: '0.0.1', shipped: undefined }, { ...a, version: '90.0.0', shipped: undefined, host: 'h' }] });
+  assert.deepEqual(mixed.map((x) => [x.id, x.version]), [[a.id, '90.0.0'], [b.id, b.version], [c.id, c.version]]);
+  // Never older than either list has, whatever the two say.
+  for (const card of mixed) {
+    const shipped = SHIPPED_PLUGINS.find((p) => p.id === card.id);
+    assert.ok(compareVersions(card.version, shipped.version) >= 0, card.id);
+  }
 });
 
 test('an installed plugin older than the list shows Update; the same or newer shows Installed', () => {

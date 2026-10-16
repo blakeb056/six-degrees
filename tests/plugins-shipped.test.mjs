@@ -68,13 +68,15 @@ test('a list already built in dist/plugins says the same ids and versions', (t) 
   assert.deepEqual(list.plugins.map((p) => [p.id, p.version]), SHIPPED_PLUGINS.map((p) => [p.id, p.version]));
 });
 
-test('the cards: the shipped copy until the live list is in, then the live list merged over it, which wins', () => {
+test('the cards: the shipped copy until the live list is in, then merged with it, the newer of each winning', () => {
   assert.equal(cardsFrom({ status: 'idle' }), SHIPPED_PLUGINS);
   assert.equal(cardsFrom({ status: 'loading' }), SHIPPED_PLUGINS);
   assert.equal(cardsFrom({ status: 'failed', detail: 'offline' }), SHIPPED_PLUGINS);
   assert.equal(cardsFrom(undefined), SHIPPED_PLUGINS);
   const live = [{ ...SHIPPED_PLUGINS[1], version: '1.1.0', host: 'plugins.example' }];
-  assert.deepEqual(cardsFrom({ status: 'ready', plugins: live }).map((p) => [p.id, p.version, p.host]), [['manual-scan', '1.1.0', 'plugins.example']]);
+  // The newer live entry wins for its plugin; the others stay as shipped (none dropped).
+  assert.deepEqual(cardsFrom({ status: 'ready', plugins: live }).map((p) => [p.id, p.version, p.host]),
+    SHIPPED_PLUGINS.map((p) => (p.id === 'manual-scan' ? ['manual-scan', '1.1.0', 'plugins.example'] : [p.id, p.version, undefined])));
   // A shipped card offers what any card does, from what's installed.
   assert.equal(catalogAction(SHIPPED_PLUGINS[0], []), 'install');
   assert.equal(catalogAction(SHIPPED_PLUGINS[0], [{ id: 'auto-scan', version: SHIPPED_PLUGIN_VERSION, state: 'ready' }]), 'installed');

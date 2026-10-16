@@ -479,6 +479,20 @@ html[data-mode="light"] .sd-edge { --ink: color-mix(in srgb, var(--acc) 72%, #00
 .sd-edge:active .sd-edge-puck::after { opacity: 0.25; }
 .sd-edge:focus-visible .sd-edge-puck { outline: 2px solid var(--ink); outline-offset: 3px; }
 
+/* The same pucks as Back (blue) and Forward (gold) on the bar over Sixgree's own
+   browser (LinkedInPanel.js): in the bar's row instead of at the map's edges,
+   30 px to fit its 40, greyed out where there's nowhere to go. */
+.sd-edge.sd-edge-inline { position: relative; top: auto; left: auto; right: auto; z-index: auto; flex-shrink: 0; width: 30px; height: 30px; }
+.sd-edge-inline .sd-edge-chev { left: 7px; top: 7px; }
+.sd-edge-inline .sd-edge-puck::after { left: 6px; top: 3px; width: 12px; height: 6px; }
+.sd-edge-inline:disabled { cursor: not-allowed; opacity: 0.35; }
+.sd-edge-inline:disabled .sd-edge-puck { transform: none; }
+@media (hover: hover) {
+  .sd-edge-inline.sd-edge-left:not(:disabled):hover .sd-edge-chev { transform: translateX(-1.5px); }
+  .sd-edge-inline.sd-edge-right:not(:disabled):hover .sd-edge-chev { transform: translateX(1.5px); }
+  .sd-edge-inline:disabled:hover .sd-edge-puck { transform: none; }
+}
+
 /* The cluster: built round it on hover (or keyboard focus), streamed along
    the panel's edge as it opens, gathered back as it closes. */
 .sd-edge-orbit { position: absolute; left: -12px; top: -12px; width: 60px; height: 60px; overflow: visible; pointer-events: none; transition: transform 160ms var(--ease-out); }
