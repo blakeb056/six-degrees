@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Focus on one of your connections in Network Circle.** Click one of your connections, or
+  rest the pointer on their dot for 3.5 seconds (a ring fills round it as you wait), and the
+  map eases in on them while the rest of it softly blurs and dims. If anything round them is
+  scanned, their circle comes forward sharp, with every catalyst's circle (someone in it whose
+  own circle is scanned) fanned out behind them, so the whole chain reads: you, them, their
+  people, the catalyst's people. Tier colours, hover cards and clicking through to a card all
+  work inside it. With nothing scanned, the blur is lighter and you see just them and a Scan
+  their circle button (the same scan as their card's). Esc, Back, a click outside, or
+  scrolling or pinching out eases you back. Their card still opens as before. With Reduce
+  Motion it cross-fades instead of zooming, and it works in every look, Daylight included.
+
 ## [2.5.2] - 2026-10-15
 
 Every degree chains in Network Circle, and breaks by hand follow your pace.
