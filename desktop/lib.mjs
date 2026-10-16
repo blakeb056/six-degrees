@@ -666,3 +666,101 @@ export function sectionOf(url, { testOrigin = null } = {}) {
   const p = pathname.endsWith('/') ? pathname : `${pathname}/`;
   return Object.keys(LINKEDIN_SECTIONS).find((k) => p.startsWith(LINKEDIN_SECTIONS[k])) || null;
 }
+
+// ── "Invitation sent": the panel goes back (Blake, 2026-10-16) ───────────────
+// "when they click connect on the person we will detect in the bottom left corner where
+// it says connection has been sent, to close out so they can continue in the Outlink or
+// Separation or bridge." After you press Connect on a profile the app opened in the
+// panel, LinkedIn says so in a small notice ("Invitation sent", "Invitation sent to X",
+// "Your invitation to X was sent"). A watcher in the panel's page sees it (by its words,
+// never a class name: TRAPS §5) and prints one console line; the shell reads that line
+// (main.mjs inviteSent) and tells the app's page, which marks the request sent, puts the
+// panel away and says so (app/components/LinkedInPanel.js).
+
+/** The start of the watcher's console line: what it saw follows, as JSON. */
+export const INVITE_SENT_MARK = '[sixgree:invite-sent]';
+
+/**
+ * The isolated world the watcher runs in (webContents.executeJavaScriptInIsolatedWorld):
+ * it shares the page's document but none of its scripts, so LinkedIn's page never sees
+ * it, its observer or its line. Not Electron's own (999) nor the page's (0).
+ */
+export const INVITE_WATCH_WORLD = 1916;
+
+/** LinkedIn's words for an invitation that went, whole (anchored, so "withdraw invitation sent to X" is not one). */
+const INVITE_SENT_WORDS = [
+  /^invitation sent(?: to (.{1,120}?))?[.!]?$/i,
+  /^your invitation to (.{1,120}?) (?:was|has been) sent[.!]?$/i,
+];
+
+/** Do these words say an invitation went? → { name } (null when they name nobody), or null. */
+export function inviteSentText(text) {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 200) return null;
+  for (const re of INVITE_SENT_WORDS) {
+    const m = t.match(re);
+    if (m) return { name: m[1] ? m[1].trim() : null };
+  }
+  return null;
+}
+
+/**
+ * The watcher, run in the panel's page at each page load (main.mjs watchInvites): on a
+ * profile (/in/<slug>), anything added to the page whose words are LinkedIn's for an
+ * invitation that went (INVITE_SENT_WORDS, the same patterns as inviteSentText) is said
+ * once a page, as INVITE_SENT_MARK and { text, href }. It reads words only, clicks and
+ * changes nothing, and does nothing on any other page.
+ */
+export const INVITE_WATCH_JS = `(() => {
+  if (window.__sixgreeInviteWatch) return;
+  window.__sixgreeInviteWatch = true;
+  const MARK = ${JSON.stringify(INVITE_SENT_MARK)};
+  const WORDS = [${INVITE_SENT_WORDS.map(String).join(', ')}];
+  const said = new Set();
+  const says = (text) => {
+    const t = String(text || '').replace(/\\s+/g, ' ').trim();
+    return t && t.length <= 200 && WORDS.some((re) => re.test(t)) ? t : null;
+  };
+  // The notice's own words: the shortest that say it, so a Dismiss button beside them
+  // ("Invitation sent to Ada Stone" + "Dismiss") is never read as part of a name.
+  const look = (el) => {
+    if (!el || el.nodeType !== 1 || !/invitation/i.test(el.textContent || '')) return;
+    const at = location.pathname;
+    if (said.has(at)) return;
+    let best = null;
+    for (const n of [el, ...el.querySelectorAll('*')].slice(0, 400)) {
+      const t = says(n.textContent);
+      if (t && (!best || t.length < best.length)) best = t;
+    }
+    if (!best) return;
+    said.add(at);
+    console.log(MARK + JSON.stringify({ text: best, href: location.href }));
+  };
+  new MutationObserver((records) => {
+    if (!/^\\/in\\/[^/]+/.test(location.pathname)) return;
+    for (const r of records) {
+      if (r.type === 'characterData') look(r.target.parentElement);
+      else for (const n of r.addedNodes) look(n.nodeType === 3 ? n.parentElement : n);
+    }
+  }).observe(document, { childList: true, subtree: true, characterData: true });
+})();`;
+
+/**
+ * A console line from the panel's page, and where the panel is now: who LinkedIn says
+ * the invitation went to, or null. Only the watcher's line (INVITE_SENT_MARK) whose words
+ * say so (inviteSentText); only while the panel shows a profile a link in the app opened
+ * (mode 'profile'), still on that profile, the notice seen on it; and once a profile
+ * (`seen`, the slugs already acted on). → { slug, name } (name as the notice gives it, or null).
+ */
+export function inviteSentFor(message, { url = '', mode = null, visible = false, seen = new Set(), testOrigin = null } = {}) {
+  const raw = String(message ?? '');
+  if (!raw.startsWith(INVITE_SENT_MARK)) return null;
+  let report = null;
+  try { report = JSON.parse(raw.slice(INVITE_SENT_MARK.length)); } catch { return null; }
+  const said = inviteSentText(report?.text);
+  if (!said || !visible || mode !== 'profile') return null;
+  const slug = panelProfileSlug(String(url ?? ''), { testOrigin });
+  if (!slug || panelProfileSlug(String(report?.href ?? ''), { testOrigin }) !== slug) return null;
+  if (seen.has(slug)) return null;
+  return { slug, name: said.name };
+}

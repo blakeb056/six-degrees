@@ -63,7 +63,7 @@ test('the shared link keeps the rules: the panel, straight there, then counted; 
   // Blake, 2026-10-15: Connect "took like 2-3 min to load", View profile was instant. Both are this
   // one link: the shell takes the panel to the profile at once, and the view is counted after, by the server.
   assert.match(src, /return Boolean\(panel\?\.available\) && !scanHoldsPanel\(job, panel\);/);
-  assert.match(src, /if \(panelCanOpen\(\) && await showProfileInPanel\(url\)\) \{\s*countProfileView\(person, url\);\s*return \{ where: 'panel' \};/);
+  assert.match(src, /if \(panelCanOpen\(\) && await showProfileInPanel\(url\)\) \{\s*(?:\/\/[^\n]*\n\s*)?rememberPanelPerson\(person\);\s*countProfileView\(person, url\);\s*return \{ where: 'panel' \};/);
   assert.match(src, /fetch\('\/api\/profile-view', \{/);
   // No scanner job for a profile any more: nothing waits on a scan, the sign-in check or the gap between views.
   assert.doesNotMatch(src, /beginScrape|'outlink'/);

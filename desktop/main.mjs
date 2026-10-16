@@ -50,6 +50,7 @@ import {
   userDataPath, isAppUrl, isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv,
   LINKEDIN_PANEL_PARTITION, chromeUserAgent, browserPluginInstalled, panelProfileSlug, createPanelCover,
   sectionUrl, sectionOf, profileAddress, historyMoves, historyKey,
+  INVITE_WATCH_JS, INVITE_WATCH_WORLD, inviteSentFor,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -348,6 +349,11 @@ function lockDown(ses) {
 //            through the panel's own history (lib.mjs historyMoves)
 //   covered  anything the page opens over it (a menu, the notch, a note) is
 //            shown over a still picture of it instead (lib.mjs createPanelCover)
+//   invited  on a profile a link opened, LinkedIn's "Invitation sent" notice after
+//            you press Connect sends you back: a watcher in an isolated world of the
+//            panel's page (lib.mjs INVITE_WATCH_JS) prints one line, and the app's
+//            page marks the request sent, puts the panel away and says so
+//            (watchInvites, inviteSent; Blake, 2026-10-16)
 //
 // The trade-off, said plainly: the debugging port listens on 127.0.0.1 only,
 // on a port the system picks at each start, and only while the app runs with a
@@ -367,6 +373,7 @@ let panelTop = null;       // where the page says it starts, in its CSS pixels
 let panelInsets = { bottom: 0 };  // what the page keeps clear under it, likewise
 let panelMode = null;      // 'profile' (a profile link), 'section' (the LinkedIn tab) or 'scan' (anything else that showed it), while shown
 let panelSection = null;   // in 'section' mode: the section its button opened (lib.mjs LINKEDIN_SECTIONS)
+const invitesSeen = new Set();   // the profiles whose "Invitation sent" was passed on, this run: once each
 // Over the panel: a still picture of it while the page has something open there.
 const panelCover = createPanelCover({
   capture: async () => {
@@ -405,6 +412,9 @@ async function createPanel() {
     panel.setBackgroundColor('#0a0a1a');
     const contents = panel.webContents;
     for (const name of ['did-navigate', 'did-navigate-in-page']) contents.on(name, sendPanelState);
+    // "Invitation sent" on a profile a link opened: the watcher in each page, and its line.
+    contents.on('dom-ready', () => watchInvites(contents));
+    contents.on('console-message', (event) => inviteSent(event?.message));
     // Cmd+[ and Cmd+] while LinkedIn has the keyboard.
     contents.on('before-input-event', (event, input) => { if (historyShortcut(input)) event.preventDefault(); });
     await contents.loadURL('about:blank');
@@ -629,6 +639,32 @@ function panelRules(contents) {
   contents.on('will-navigate', guard);
   contents.on('will-redirect', guard);
   contents.on('will-attach-webview', (event) => event.preventDefault());
+}
+
+/**
+ * The "Invitation sent" watcher (lib.mjs INVITE_WATCH_JS) in the page the panel has just
+ * loaded, in a world of its own: LinkedIn's page never sees it. Only on the pages the
+ * panel shows (LinkedIn's, or the local check's); about:blank has nothing to watch.
+ */
+function watchInvites(contents) {
+  const url = contents.getURL();
+  if (url === 'about:blank' || panelRoute(url, { testOrigin: PANEL_TEST_ORIGIN }) !== 'panel') return;
+  contents.executeJavaScriptInIsolatedWorld(INVITE_WATCH_WORLD, [{ code: INVITE_WATCH_JS }]).catch(() => {});
+}
+
+/**
+ * A console line from the panel's page: when it is the watcher's, on the profile a link
+ * opened and still showing (lib.mjs inviteSentFor), the app's page is told, once a
+ * profile, and does the rest: marks the request sent, puts the panel away, says so.
+ */
+function inviteSent(message) {
+  if (!panel || !win || win.isDestroyed()) return;
+  const sent = inviteSentFor(message, {
+    url: panel.webContents.getURL(), mode: panelMode, visible: panelVisible, seen: invitesSeen, testOrigin: PANEL_TEST_ORIGIN,
+  });
+  if (!sent) return;
+  invitesSeen.add(sent.slug);
+  win.webContents.send('linkedin-panel:invite-sent', sent);
 }
 
 function openInApp(pathname) {
