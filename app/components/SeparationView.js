@@ -486,7 +486,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
             // A phone scrolls this strip sideways, so the page itself never does.
             overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
-            <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Their tier</span>
+            <span title={TIER_NOTE} style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Their tier</span>
             {['all', ...TIERS].map((t) => {
               const on = tier === t;
               const c = t === 'all' ? 'var(--sd-fg-1, #fff)' : tierColors[t] || '#888';
@@ -581,8 +581,9 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', position: 'relative', padding: `0 ${sidePad}px` }}
       >
         {gatesOn ? (
+          // Every connection of yours, whatever their tier: the tier chips pick the people to connect with, never the ways in.
           <GatekeeperList connections={fullDegree1} strategy={strategy} tierColors={tierColors} isMobile={isMobile}
-            onSelect={onSelect} selectedKey={selectedGateKey} tier={tier} q={q} />
+            onSelect={onSelect} selectedKey={selectedGateKey} q={q} />
         ) : (
         <div style={{ position: 'relative', maxWidth: 980, margin: '0 auto', height: total }}>
           {mapBlockH > 0 && (
@@ -1325,6 +1326,12 @@ const SLIDER_CSS = `
 .sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
 .sepslide:focus-visible { outline: 2px solid rgba(var(--sd-ink, 255, 255, 255), 0.7); outline-offset: 3px; border-radius: 6px; }
 `;
+// Blake, 2026-10-16: "I want that only to be for the outputs, for the actual tier to be
+// controlled in the filter, and that is all, not the whole function." The chips filter
+// the people ranked (matches, unrankedShown) and nothing else: every route keeps every
+// connection and every person between, whatever their tier (lib/separation.js), and
+// Gatekeepers lists all your connections.
+const TIER_NOTE = 'Picks the tier of the people to connect with. Every connection who leads to them, and everyone in between, shows whatever their tier.';
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
 const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity, leverageOf = null }) {

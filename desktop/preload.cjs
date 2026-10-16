@@ -1,7 +1,8 @@
 // The one thing the app's own page may ask of the desktop shell: the LinkedIn
 // panel (main.mjs, "Sixgree's own browser"). Show it, hide it, open it on a
 // profile or a LinkedIn section, Back and Forward, say where it starts (the bottom of the page's top bar) and what
-// it keeps clear, say when something is open over it, and hear when it changes. Nothing
+// it keeps clear, say when something is open over it, and hear when it changes or when LinkedIn says an
+// invitation went. Nothing
 // else of Electron reaches the page, and main.mjs answers only the app's own
 // address. LinkedIn's page in the panel never has this: it runs without a preload.
 //
@@ -36,6 +37,15 @@ contextBridge.exposeInMainWorld('sixgreeDesktop', {
     },
     /** The still picture n is drawn: the panel may go. */
     stillDrawn: (n) => ipcRenderer.send('linkedin-panel:still-drawn', Number(n)),
+    /**
+     * Called with { slug, name } when LinkedIn says "Invitation sent" on the profile a link
+     * opened in the panel (main.mjs inviteSent); returns a function that stops it.
+     */
+    onInviteSent: (fn) => {
+      const listener = (_event, sent) => fn(sent);
+      ipcRenderer.on('linkedin-panel:invite-sent', listener);
+      return () => ipcRenderer.removeListener('linkedin-panel:invite-sent', listener);
+    },
     /** Called with the state whenever it changes; returns a function that stops it. */
     onState: (fn) => {
       const listener = (_event, state) => fn(state);

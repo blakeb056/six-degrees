@@ -5557,58 +5557,170 @@ def _manual_wait(page, seconds):
 #     needed, so a new layout can't slip past it (TRAPS §5). Written again each
 #     second, so a page that redraws gets it back, and it takes itself away
 #     BREAK_STALE_MS after its last update: a scanner that stops mid-break never
-#     leaves it behind (Sixgree's own panel outlives the scanner).
+#     leaves it behind (Sixgree's own panel outlives the scanner). A wheel over it
+#     still scrolls the page under it.
 #  2. The network (_BreakHold): Playwright routes every request for a search page or
 #     its people (_search_load) and answers none of them until the break ends, then
 #     lets them all through. A page opened some other way (the address bar, a key the
 #     layer missed) waits with a spinner and loads when the break is over, so it is
 #     never read early and never a search seconds after the last.
 #
-# Both go through the Playwright page object and nothing else, so they work the same in
-# the scanner's Chrome and in Sixgree's own panel (PanelPage hands both calls to the
-# panel's real page). Everything is taken away when the break ends, on Stop, and when
+# Both are armed AHEAD of the page that starts the break, not once it is read (Blake,
+# 2026-10-16: "the screen needs to actually lock the user and not let them proceed to
+# clicking next when it's supposed to be cooldown. There is some lag when it hits the
+# page and processing to lock the screen."). Once the page before it is read
+# (_read_by_hand arm):
+#    - the route is on already, letting that next page load through it, and from the
+#      moment its people show, a search it asks for in the page (a click on Next that
+#      got past the layer) waits, so the page after can't load however fast you click;
+#    - a click on Next, Previous or a page number puts the layer up at once, in the
+#      same click (BREAK_ARM_JS), so the page loads under it, and a whole new page
+#      (the address bar) has it from its first paint (BREAK_INIT_JS, an init script
+#      that only acts while this scanner has the break armed);
+#    - the page is read under the layer ("Page 10: scroll to its bottom"), and the
+#      countdown starts on it the moment it is.
+#
+# Everything goes through the Playwright page object and nothing else, so it works the
+# same in the scanner's Chrome and in Sixgree's own panel (PanelPage hands every call to
+# the panel's real page). Everything is taken away when the break ends, on Stop, and when
 # the window closes. Nothing here changes what LinkedIn sees of the browser.
 BREAK_STALE_MS = 5000
+BREAK_FLAG = "sixgree-break"
+# This scanner's own mark on the armed break (BREAK_ARM_JS, BREAK_INIT_JS): a flag left
+# in the tab by an earlier run is never read as this one's.
+BREAK_TOKEN = os.urandom(6).hex()
+# The layer itself, shared by every script below: `cover(text)` puts it up or writes
+# it again, and returns it.
+_BREAK_COVER_JS = r"""
+  const cover = (text) => {
+    let el = document.getElementById('sixgree-break');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sixgree-break';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;inset:0;z-index:2147483647;cursor:wait;pointer-events:auto;'
+        + 'background:rgba(0,0,0,0.12);display:flex;align-items:flex-end;justify-content:center;';
+      const note = document.createElement('div');
+      note.style.cssText = 'margin-bottom:48px;padding:12px 20px;border-radius:12px;background:#1b1f23;color:#ffd84d;'
+        + 'font:600 16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 24px rgba(0,0,0,0.35);';
+      el.appendChild(note);
+      const swallow = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
+      for (const t of ['click', 'dblclick', 'auxclick', 'mousedown', 'mouseup', 'pointerdown', 'pointerup',
+        'touchstart', 'touchend', 'contextmenu']) {
+        el.addEventListener(t, swallow, true);
+      }
+      // A wheel over the layer scrolls the page under it: a page is read once you reach
+      // its foot. The window scrolls on its own; a box of the page that scrolls is moved here.
+      el.addEventListener('wheel', (e) => {
+        const at = document.elementsFromPoint ? document.elementsFromPoint(e.clientX, e.clientY) : [];
+        for (let n = at.find((x) => !el.contains(x)); n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+          if (/(auto|scroll|overlay)/.test(getComputedStyle(n).overflowY) && n.scrollHeight > n.clientHeight) {
+            e.preventDefault();
+            n.scrollBy(0, e.deltaY);
+            return;
+          }
+        }
+      }, { passive: false });
+      // Enter or Space on a focused Next or page number. The arrow keys still scroll.
+      el._keys = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') swallow(e); };
+      window.addEventListener('keydown', el._keys, true);
+      el._gone = () => { window.removeEventListener('keydown', el._keys, true); el.remove(); };
+      const focused = document.activeElement;
+      if (focused && focused !== document.body && typeof focused.blur === 'function') focused.blur();
+      document.documentElement.appendChild(el);
+    }
+    el.firstChild.textContent = text;
+    clearTimeout(el._stale);
+    el._stale = setTimeout(el._gone, STALE_MS);
+    return el;
+  };
+""".replace("STALE_MS", str(BREAK_STALE_MS))
 BREAK_SHOW_JS = r"""
 (text) => {
-  const id = 'sixgree-break';
-  let el = document.getElementById(id);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = id;
-    el.setAttribute('role', 'status');
-    el.style.cssText = 'position:fixed;inset:0;z-index:2147483647;cursor:wait;pointer-events:auto;'
-      + 'background:rgba(0,0,0,0.12);display:flex;align-items:flex-end;justify-content:center;';
-    const note = document.createElement('div');
-    note.style.cssText = 'margin-bottom:48px;padding:12px 20px;border-radius:12px;background:#1b1f23;color:#ffd84d;'
-      + 'font:600 16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 24px rgba(0,0,0,0.35);';
-    el.appendChild(note);
-    const swallow = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
-    for (const t of ['click', 'dblclick', 'auxclick', 'mousedown', 'mouseup', 'pointerdown', 'pointerup',
-      'touchstart', 'touchend', 'contextmenu']) {
-      el.addEventListener(t, swallow, true);
-    }
-    // Enter or Space on a focused Next or page number. The arrow keys still scroll.
-    el._keys = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') swallow(e); };
-    window.addEventListener('keydown', el._keys, true);
-    el._gone = () => { window.removeEventListener('keydown', el._keys, true); el.remove(); };
-    const focused = document.activeElement;
-    if (focused && focused !== document.body && typeof focused.blur === 'function') focused.blur();
-    document.documentElement.appendChild(el);
-  }
-  el.firstChild.textContent = text;
-  clearTimeout(el._stale);
-  el._stale = setTimeout(el._gone, STALE_MS);
+COVER
+  cover(text);
   return true;
 }
-""".replace("STALE_MS", str(BREAK_STALE_MS))
+""".replace("COVER", _BREAK_COVER_JS)
+# Armed on the page before the break's: no layer now (Next has to work), but a click on
+# Next, Previous or a page number puts it up in the same click, before the page it asks
+# for has drawn anything; and the flag BREAK_INIT_JS reads is set, for a whole new page.
+# Run again on a page already read while armed, it takes down a layer such a click put up.
+BREAK_ARM_JS = r"""
+([text, token]) => {
+COVER
+  const root = document.documentElement;
+  const up = document.getElementById('sixgree-break');
+  if (up && up._gone) { clearTimeout(up._stale); up._gone(); }
+  try { sessionStorage.setItem('FLAG', JSON.stringify({ text, token })); } catch (e) { /* the click still covers */ }
+  root._sixgreeArmText = text;
+  if (!root._sixgreeArm) {
+    const paging = (t) => {
+      const b = t && t.closest ? t.closest('button, a') : null;
+      if (!b) return false;
+      const words = (b.innerText || b.textContent || '').trim();
+      return words === 'Next' || words === 'Previous' || /^Page \d+$/i.test(b.getAttribute('aria-label') || '')
+        || (b.tagName === 'BUTTON' && /^\d+$/.test(words) && Boolean(b.closest('main, [role="main"]')));
+    };
+    root._sixgreeArm = (e) => { if (/^\/search\/results\//.test(location.pathname) && paging(e.target)) cover(root._sixgreeArmText); };
+    window.addEventListener('click', root._sixgreeArm, true);
+  }
+  return true;
+}
+""".replace("COVER", _BREAK_COVER_JS).replace("FLAG", BREAK_FLAG)
+# A whole new page while a break is armed (the address bar, a reload): the layer from its
+# first paint, before LinkedIn's page has drawn a thing. Added to the page once
+# (_break_init_script); it does nothing on any page but a search, nor without this
+# scanner's flag (BREAK_ARM_JS sets it, BREAK_HIDE_JS takes it away).
+BREAK_INIT_JS = r"""
+(() => {
+  let flag = null;
+  try { flag = JSON.parse(sessionStorage.getItem('FLAG') || 'null'); } catch (e) { return; }
+  if (!flag || flag.token !== 'TOKEN' || !/^\/search\/results\//.test(location.pathname)) return;
+COVER
+  const show = () => cover(String(flag.text || ''));
+  if (document.documentElement) show();
+  else new MutationObserver((_, seen) => { if (document.documentElement) { seen.disconnect(); show(); } }).observe(document, { childList: true });
+})();
+""".replace("COVER", _BREAK_COVER_JS).replace("FLAG", BREAK_FLAG).replace("TOKEN", BREAK_TOKEN)
+# Everything off: the layer, the armed click and the flag.
 BREAK_HIDE_JS = r"""
 () => {
   const el = document.getElementById('sixgree-break');
   if (el) { clearTimeout(el._stale); el._gone(); }
+  const root = document.documentElement;
+  if (root && root._sixgreeArm) { window.removeEventListener('click', root._sixgreeArm, true); delete root._sixgreeArm; }
+  try { sessionStorage.removeItem('FLAG'); } catch (e) { /* nothing was set */ }
   return true;
 }
-"""
+""".replace("FLAG", BREAK_FLAG)
+
+
+def _break_init_script(page):
+    """BREAK_INIT_JS on this page, once (it stays for the page's life, and does nothing
+    unless a break is armed). A page that can't take one still has the click's layer."""
+    real = getattr(page, "_page", page)
+    if getattr(real, "_sixgree_break_init", False):
+        return True
+    try:
+        page.add_init_script(BREAK_INIT_JS)
+    except Exception:
+        return False
+    try:
+        setattr(real, "_sixgree_break_init", True)
+    except Exception:
+        pass
+    return True
+
+
+def _break_arm_text(seconds):
+    """What the layer says when a click puts it up, before the page under it is known."""
+    return f"Scroll to the bottom of this page. Then a {int(seconds)}-second break."
+
+
+def _break_page_text(pg, seconds):
+    """What the layer says over the page that starts the break, until it's read."""
+    return f"Page {pg}: scroll to its bottom. Then a {int(seconds)}-second break."
 
 
 def _search_load(url):
@@ -5622,10 +5734,19 @@ def _search_load(url):
 
 
 class _BreakHold:
-    """The network half of a break: search requests wait, unanswered, until end()."""
+    """The network half of a break: search requests wait, unanswered, until end().
 
-    def __init__(self, page):
+    `mode` says what waits:
+      "pass"   armed ahead of the page that starts the break: everything goes through,
+               so that page loads (_read_by_hand arm)
+      "early"  that page's people are showing: a search it asks for in the page (Next)
+               waits; a whole new page still loads, as nothing is owed until it's read
+      "hold"   the break: everything waits (the default, and what hold_all() sets)
+    """
+
+    def __init__(self, page, mode="hold"):
         self.page, self.held, self.routed, self.over = page, [], False, False
+        self.mode = mode
         # A whole page held mid-navigation (the address bar): Playwright's evaluate waits
         # for a navigation to commit, so while one is held nothing may evaluate on the page
         # (it would wait for ever). The layer is left as it is; the new page replaces it.
@@ -5634,17 +5755,18 @@ class _BreakHold:
     def _hold(self, route, request=None):
         req = request if request is not None else getattr(route, "request", None)
         try:
-            if req is not None and (req.resource_type == "document" or req.is_navigation_request()):
-                self.navigating = not self.over
+            nav = req is not None and (req.resource_type == "document" or req.is_navigation_request())
         except Exception:
-            pass
-        if self.over:
-            # The break has ended and the route is on its way off: straight through.
+            nav = False
+        if self.over or self.mode == "pass" or (self.mode == "early" and nav):
+            # Through: the break has ended and the route is on its way off, or it isn't on yet.
             try:
                 route.continue_()
             except Exception:
                 pass
             return
+        if nav:
+            self.navigating = True
         # Not answered here: the browser keeps the request waiting until end() lets it go.
         self.held.append(route)
 
@@ -5655,6 +5777,15 @@ class _BreakHold:
         except Exception:
             self.routed = False   # a page that can't route still has the layer
         return self.routed
+
+    def hold_next(self):
+        """The page that starts the break is showing: Next waits from now on."""
+        if self.mode == "pass":
+            self.mode = "early"
+
+    def hold_all(self):
+        """The break: everything waits."""
+        self.mode = "hold"
 
     def end(self):
         """Let through what was held, oldest first, then stop routing. How many were held.
@@ -5676,15 +5807,38 @@ class _BreakHold:
         return len(held)
 
 
-def _manual_break(page, seconds, after, then_page):
+def _lift_break(page, hold, closed=False):
+    """The break's hold and layer taken away, and the armed click and flag with them.
+    Nothing is evaluated on a closed window, nor on one with a navigation held (it
+    would wait for ever): that one is let through first, then cleared."""
+    navigating = hold.navigating
+    if not closed and not navigating:
+        try:
+            page.evaluate(BREAK_HIDE_JS)
+        except Exception:
+            pass
+    let_through = hold.end()
+    if not closed and navigating:
+        try:
+            page.evaluate(BREAK_HIDE_JS)
+        except Exception:
+            pass
+    return let_through
+
+
+def _manual_break(page, seconds, after, then_page, hold=None):
     """The break: `seconds` with the next page held back (the layer and _BreakHold),
     a tick a second (_chime "tick", at the chimes' volume, silent with them off) and a
     line a second the scan light counts down from: "(break after page 20: 14 s, then
     page 21)". The app keeps only the newest of those lines in its log
-    (app/api/scraper/route.js push). Returns "done", "stopped" or "closed"."""
+    (app/api/scraper/route.js push). `hold` is the one armed ahead of the page just
+    read (_read_by_hand arm), else one is made now. Returns "done", "stopped" or "closed"."""
     seconds = max(1, int(seconds))
-    hold = _BreakHold(page)
-    hold.start()
+    if hold is None:
+        hold = _BreakHold(page)
+        hold.start()
+    else:
+        hold.hold_all()
     end = time.time() + seconds
     how = "done"
     try:
@@ -5708,12 +5862,7 @@ def _manual_break(page, seconds, after, then_page):
             _chime("tick")
             _manual_wait(page, max(0.0, end - (left - 1) - time.time()))
     finally:
-        if how != "closed" and not hold.navigating:
-            try:
-                page.evaluate(BREAK_HIDE_JS)
-            except Exception:
-                pass
-        let_through = hold.end()
+        let_through = _lift_break(page, hold, closed=how == "closed")
     if let_through and how == "done":
         print("  The page asked for during the break loads now.", flush=True)
     return how
@@ -5750,6 +5899,25 @@ def _your_search(url):
 
 def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None,
                   read_before=()):
+    """_read_by_hand_pages, with a break armed ahead of its page (the hold and the layer)
+    always taken away at the end, an error included: a hold left on would keep the
+    window's next search waiting."""
+    early = {"hold": None, "every": 0, "seconds": 0, "lifted": None}
+    try:
+        return _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save,
+                                   total, read_before, early)
+    finally:
+        hold, early["hold"] = early["hold"], None
+        if hold is not None:
+            try:
+                closed = page.is_closed()
+            except Exception:
+                closed = True
+            _lift_break(page, hold, closed=closed)
+
+
+def _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total,
+                        read_before, early):
     """Manual mode, from the moment their list is open at start_page in a window
     in front of you. Returns what _scrape_one_bridge returns.
 
@@ -5802,6 +5970,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     loading = set()                # the pages "is loading" was said for
     since_break = 0                # pages read since the last break (manual_break)
     on_break = {"on": False}       # a break is on: a click that got through taps nothing
+    # early: the next break, armed ahead of the page that starts it (arm): its hold, how
+    # long it is, and the page a layer last came off for (_read_by_hand takes it away).
 
     def tap():
         """The Next chime, once a click."""
@@ -5848,6 +6018,60 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             said.add(key)
             print(f"  (waiting: {what})", flush=True)
 
+    def arm(every, seconds, where):
+        """A break is near: hold it ready now, so the lock is on from the first paint of
+        the page that starts it rather than once that page is read (_BreakHold "pass",
+        BREAK_ARM_JS, BREAK_INIT_JS). Armed from the moment the page before it is about
+        to be read, so a click on Next made while it's being read is covered too.
+        `where` is where the window is now: no layer there."""
+        if early["hold"] is not None:
+            early.update(every=every, seconds=seconds)
+            return
+        hold = _BreakHold(page, mode="pass")
+        hold.start()
+        early.update(hold=hold, every=every, seconds=seconds, lifted=None)
+        _break_init_script(page)
+        lift(where)
+
+    def lift(where):
+        """Armed, with no layer wanted where the window is (`where`: a page that doesn't
+        start the break, or away from the list): one a click put up comes off, and the
+        click stays armed. Once for each place."""
+        if early["hold"] is None or early["lifted"] == where:
+            return
+        early["lifted"] = where
+        try:
+            page.evaluate(BREAK_ARM_JS, [_break_arm_text(early["seconds"]), BREAK_TOKEN])
+        except Exception:
+            pass
+
+    def disarm():
+        """No break is near after all (Scanner settings changed): everything off."""
+        hold, early["hold"] = early["hold"], None
+        if hold is not None:
+            _lift_break(page, hold)
+
+    def armed_on(pg):
+        """Armed, on page pg of their list. The page that starts the break (not read yet,
+        with every page but one of the run before the break read) stays under the layer
+        until it's read, and once its people show, its Next waits. Any other page (one
+        read already, say, after Previous) needs no layer: one a click put up comes off."""
+        hold = early["hold"]
+        if hold is None:
+            return
+        if pg in done or since_break + 1 < early["every"]:
+            lift(pg)
+            return
+        early["lifted"] = None
+        if hold.mode == "pass":
+            links = _result_links(page)
+            if links and links != last_links:
+                hold.hold_next()
+        try:
+            page.evaluate(BREAK_SHOW_JS, _break_page_text(pg, early["seconds"]))
+        except Exception:
+            pass
+
     print(f"  Manual mode: you page through {whose} list, and each page is read when you reach its foot.")
     if reach.get("opened_ahead"):
         said.add(("again", reach["opened_ahead"]))   # this says it: not "already read" on top
@@ -5858,6 +6082,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         tell(f"scroll to the bottom of each page of {whose} connections "
              f"{'in the LinkedIn panel' if PANEL['on'] else 'in the Chrome window'}, then click Next. "
              + (done_with if own else "Close the window when you're done with them."))
+    every, break_seconds = manual_break()
+    if since_break + 1 >= every:
+        arm(every, break_seconds, None)   # a break after every page: the first one read starts one
     while True:
         if stop_requested():
             status, how = "stopped", "stopped"
@@ -5888,6 +6115,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 status, how = "pushback", "pushback"
                 break
             away = True
+            lift("away")
             wait_note(("away", url.split("?")[0]), f"the window isn't on {whose} list. Go back to it to carry on.")
             continue
         # Which page this is: the page bar's highlighted number, as LinkedIn shows it.
@@ -5928,6 +6156,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                     note(f"on page {pg}, which is read: go on to page {unread_after(pg)}")
                 else:
                     note(f"on page {pg}, which is read: click Next to page {pg + 1}")
+        armed_on(pg)
         if pg not in counted:
             left, kind = searches_left()
             if left <= 0:
@@ -5977,6 +6206,11 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 note(f"page {pg} is loading")
             wait_note(("same", pg), f"page {pg} still shows the last page's people. It's read once it changes.")
             continue
+        # About to read the page before the one that starts a break: armed now, so a click
+        # on Next while this one is read already opens that page under the layer (arm).
+        every, break_seconds = manual_break()
+        if since_break + 2 >= every:
+            arm(every, break_seconds, pg)
         try:
             found = page.evaluate(BRIDGE_RESULTS_JS) or []
         except Exception:
@@ -6021,6 +6255,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
         reach["last"] = max(reach["last"], contiguous)
         # The same line an automatic read prints, so the app counts it the same way.
         print(f"  Page {pg}... {listed} found (total: {reach['found']})", flush=True)
+        every, break_seconds = manual_break()
         try:
             nxt = page.evaluate(NEXT_STATE_JS)
         except Exception:
@@ -6059,7 +6294,6 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             then = pg + 1
             go_on = (f"page {pg} is read ({listed} people). Click Next, then scroll to the bottom of page {then}. "
                      f"{done_with}")
-        every, break_seconds = manual_break()
         if since_break >= every:
             # A break before the next page (manual_break): the window holds it back until it's over.
             since_break = 0
@@ -6068,13 +6302,21 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
             tell(f"page {pg} is read ({listed} people). Break: wait {break_seconds} seconds, then go on to page "
                  f"{then}. The page is held until the countdown ends. {done_with}")
             on_break["on"] = True
+            # The hold armed ahead of this page, if it was (arm): the break's own from here.
+            hold, early["hold"] = early["hold"], None
             try:
-                ended = _manual_break(page, break_seconds, pg, then)
+                ended = _manual_break(page, break_seconds, pg, then, hold=hold)
             finally:
                 on_break["on"] = False
             last_seen = time.time()
             if ended != "done":
                 continue   # Stop, or the window closed: the top of the loop says which
+        # The page read next starts a break (after a break every page, say): armed (arm).
+        # With none near, nothing is.
+        if since_break + 1 >= every:
+            arm(every, break_seconds, pg)
+        elif since_break + 2 < every:
+            disarm()
         tell(go_on)
 
     try:
