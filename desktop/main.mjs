@@ -10,10 +10,11 @@
 //   links   the app's own pages stay in the app; anything else, LinkedIn above
 //           all, opens in the user's own browser (rule 7), except the two
 //           System Settings panes the Scan page links to (lib.mjs SETTINGS_URLS)
-//   panel   with a scanner installed, LinkedIn can show in a panel of its own
-//           under the app's top bar ("Sixgree's own browser", below): the
-//           scanner drives it instead of starting Chrome, and Outlink opens
-//           profiles in it. Its own sign-in, its own storage, LinkedIn only
+//   panel   with a scanner or the LinkedIn browser plugin installed, LinkedIn
+//           can show in a panel of its own under the app's top bar ("Sixgree's
+//           own browser", below): the scanner drives it instead of starting
+//           Chrome, and every profile link in the app opens in it. Its own
+//           sign-in, its own storage, LinkedIn only
 //   quit    a running scan is stopped the way the Stop button stops it, so the
 //           scanner closes its own Chrome window; then the server stops.
 //           Nothing is left running (rule 6)
@@ -47,8 +48,8 @@ import {
   routeFor, findFreePort, waitForServer, runningJob, quitQuestion, stopScan, stopProcess, dataDirArg,
   RESTART_EXIT_CODE, serverExitAction, bundlePathFromExe, startPathArg,
   userDataPath, isAppUrl, isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv,
-  LINKEDIN_PANEL_PARTITION, chromeUserAgent, browserPluginInstalled, browseHome, panelProfileSlug, createPanelCover,
-  sectionUrl, sectionOf,
+  LINKEDIN_PANEL_PARTITION, chromeUserAgent, browserPluginInstalled, panelProfileSlug, createPanelCover,
+  sectionUrl, sectionOf, profileAddress, historyMoves, historyKey,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -255,6 +256,8 @@ function showWindow() {
   // restarts), nothing says where the panel goes: it goes.
   win.webContents.on('did-navigate', (_event, url) => { if (!isAppUrl(url, origin)) setPanelVisible(false); });
   win.webContents.on('zoom-changed', () => setImmediate(placePanel));
+  // Cmd+[ and Cmd+] go back and forward in the panel while it shows, whichever has the keyboard.
+  win.webContents.on('before-input-event', (event, input) => { if (historyShortcut(input)) event.preventDefault(); });
   attachPanel();
   if (SMOKE) win.webContents.on('did-finish-load', reportReadyOnce);
   if (ready) win.loadURL(origin);
@@ -324,8 +327,8 @@ function lockDown(ses) {
 //   pages    LinkedIn's only. Any other link opens in the user's own browser,
 //            anything that isn't a web page nowhere (lib.mjs panelRoute)
 //   shown    hidden until the page asks: LinkedIn needs you (signing in, a
-//            security check, a manual read), Outlink opened a profile, or the
-//            user pressed Show LinkedIn. Hiding it never stops a scan: the
+//            security check, a manual read), a profile link was pressed, a
+//            LinkedIn tab button, or the user pressed Show LinkedIn. Hiding it never stops a scan: the
 //            page keeps working out of sight, as the scanner's Chrome did
 //   scanner  attaches over Chromium's debugging protocol and drives that one
 //            page (scripts/scrape.py attach_panel), told which by its target
@@ -337,10 +340,12 @@ function lockDown(ses) {
 //            2026-10-15, "the panel should identify as plain Chrome"). That
 //            and nothing more: no client hints, no navigator.webdriver, no
 //            fingerprint. The app's own pages keep Electron's default
-//   browse   the LinkedIn browser plugin's button opens it for your own
-//            browsing, with the people list beside it (the page's); nothing
-//            is read and nothing is counted, except a profile opened from
-//            that list, which goes through Outlink and is one profile view
+//   profile  every profile link in the app (Connect, View profile, Outlink's
+//            Open profile) loads that profile here straight away, from this
+//            process (showProfile): no scanner, no wait. You connect by hand.
+//            The page has the server count it as one profile view
+//   history  Back and Forward on the page's bar, and Cmd+[ / Cmd+], go
+//            through the panel's own history (lib.mjs historyMoves)
 //   covered  anything the page opens over it (a menu, the notch, a note) is
 //            shown over a still picture of it instead (lib.mjs createPanelCover)
 //
@@ -359,8 +364,8 @@ let panelSession = null;   // its session (LINKEDIN_PANEL_PARTITION)
 let panelEnvVars = {};     // what the server is told about it (lib.mjs panelEnv)
 let panelVisible = false;  // asked for by the page
 let panelTop = null;       // where the page says it starts, in its CSS pixels
-let panelInsets = { right: 0, bottom: 0 };  // what the page keeps clear beside and under it, likewise
-let panelMode = null;      // 'browse' (the LinkedIn button), 'section' (the LinkedIn tab) or 'scan' (anything else that showed it), while shown
+let panelInsets = { bottom: 0 };  // what the page keeps clear under it, likewise
+let panelMode = null;      // 'profile' (a profile link), 'section' (the LinkedIn tab) or 'scan' (anything else that showed it), while shown
 let panelSection = null;   // in 'section' mode: the section its button opened (lib.mjs LINKEDIN_SECTIONS)
 // Over the panel: a still picture of it while the page has something open there.
 const panelCover = createPanelCover({
@@ -400,6 +405,8 @@ async function createPanel() {
     panel.setBackgroundColor('#0a0a1a');
     const contents = panel.webContents;
     for (const name of ['did-navigate', 'did-navigate-in-page']) contents.on(name, sendPanelState);
+    // Cmd+[ and Cmd+] while LinkedIn has the keyboard.
+    contents.on('before-input-event', (event, input) => { if (historyShortcut(input)) event.preventDefault(); });
     await contents.loadURL('about:blank');
     // Shown for its first frame (dark on the dark starting page), then hidden.
     // A page that was never shown has no size at all, nothing is ever in its
@@ -493,13 +500,43 @@ function setPanelVisible(on, mode = 'scan') {
   sendPanelState();
 }
 
-/** The LinkedIn browser plugin's button: shown for your own browsing, on LinkedIn's feed if nothing is open. */
-function browsePanel() {
-  if (!panel) return;
-  const url = panel.webContents.getURL();
-  const onLinkedIn = panelRoute(url, { testOrigin: PANEL_TEST_ORIGIN }) === 'panel' && url !== 'about:blank' && url !== '';
-  if (!onLinkedIn) panel.webContents.loadURL(browseHome({ testOrigin: PANEL_TEST_ORIGIN })).catch(() => {});
-  setPanelVisible(true, 'browse');
+/**
+ * A profile link pressed in the app: the panel straight on that profile and
+ * in front, at once (lib.mjs profileAddress builds the address from the slug
+ * alone). True when it went; false for a link that isn't a LinkedIn profile.
+ */
+function showProfile(url) {
+  const address = panel ? profileAddress(url, { testOrigin: PANEL_TEST_ORIGIN }) : null;
+  if (!address) return false;
+  panel.webContents.loadURL(address).catch(() => {});
+  setPanelVisible(true, 'profile');
+  return true;
+}
+
+/** Where the panel can go in its own history: { back, forward } (lib.mjs historyMoves). */
+function panelHistory() {
+  if (!panel) return { back: false, forward: false };
+  const h = panel.webContents.navigationHistory;
+  const urls = [];
+  for (let i = 0; i < h.length(); i++) urls.push(h.getEntryAtIndex(i)?.url ?? '');
+  return historyMoves({ urls, index: h.getActiveIndex() });
+}
+
+/** Back or Forward in the panel's history, where it can go. */
+function goPanel(way) {
+  if (!panel || !panelVisible) return;
+  const can = panelHistory();
+  const h = panel.webContents.navigationHistory;
+  if (way === 'back' && can.back) h.goBack();
+  else if (way === 'forward' && can.forward) h.goForward();
+}
+
+/** Cmd+[ / Cmd+] (Ctrl elsewhere) while the panel shows: true when it was one. */
+function historyShortcut(input) {
+  const way = historyKey(input);
+  if (!way || !panelVisible) return false;
+  goPanel(way);
+  return true;
 }
 
 /** The LinkedIn tab's notch buttons: the panel straight on one section (lib.mjs sectionUrl). */
@@ -519,17 +556,17 @@ function panelState() {
     visible: Boolean(panel) && panelVisible,
     // Is a LinkedIn page open in it (so there is something to show)?
     linkedin: Boolean(panel) && (isLinkedInUrl(url) || Boolean(panelProfileSlug(url, { testOrigin: PANEL_TEST_ORIGIN }))),
-    // Who opened it: 'browse' (the LinkedIn button) or 'scan' (a scan, Outlink, Show LinkedIn).
+    // Who opened it: 'profile' (a profile link), 'section' (the LinkedIn tab) or 'scan' (a scan, Show LinkedIn).
     mode: Boolean(panel) && panelVisible ? panelMode || 'scan' : null,
-    // The profile it is on (linkedin.com/in/<slug>), for the people list's "on screen".
-    profile: panel ? panelProfileSlug(url, { testOrigin: PANEL_TEST_ORIGIN }) : null,
+    // Back and Forward: where its own history can go (the bar's buttons, Cmd+[ / Cmd+]).
+    ...(() => { const can = panelHistory(); return { canGoBack: can.back, canGoForward: can.forward }; })(),
     // In 'section' mode: the section its button opened, and the one its page is in now
     // (another, or null, once the user has gone elsewhere: the page offers the way back).
     section: Boolean(panel) && panelVisible && panelMode === 'section' ? panelSection : null,
     at: panel ? sectionOf(url, { testOrigin: PANEL_TEST_ORIGIN }) : null,
     // Swapped for its still picture while something is open over it.
     frozen: Boolean(panel) && panelCover.frozen,
-    // Whether a scanner can drive it (Outlink's profiles need one).
+    // Whether a scanner can drive it (then a running scan has it, and profile links go to your browser meanwhile).
     scanner: Boolean(panel) && Object.keys(panelEnvVars).length > 0,
   };
 }
@@ -546,7 +583,10 @@ function fromApp(event) {
 function setUpPanelMessages() {
   ipcMain.handle('linkedin-panel:state', (event) => (fromApp(event) ? panelState() : { available: false, visible: false, linkedin: false }));
   ipcMain.on('linkedin-panel:show', (event) => { if (fromApp(event)) setPanelVisible(true); });
-  ipcMain.on('linkedin-panel:browse', (event) => { if (fromApp(event)) browsePanel(); });
+  // A profile link: answered, so the page knows it went (else it opens in your browser).
+  ipcMain.handle('linkedin-panel:profile', (event, url) => (fromApp(event) && typeof url === 'string' ? showProfile(url) : false));
+  ipcMain.on('linkedin-panel:back', (event) => { if (fromApp(event)) goPanel('back'); });
+  ipcMain.on('linkedin-panel:forward', (event) => { if (fromApp(event)) goPanel('forward'); });
   ipcMain.on('linkedin-panel:section', (event, key) => { if (fromApp(event) && typeof key === 'string') showSection(key); });
   ipcMain.on('linkedin-panel:hide', (event) => { if (fromApp(event)) setPanelVisible(false); });
   ipcMain.on('linkedin-panel:top', (event, px) => {
@@ -555,12 +595,12 @@ function setUpPanelMessages() {
     placePanel();
     panelCover.refresh();
   });
-  // Where it starts, and what the page keeps clear beside and under it, in one message.
+  // Where it starts, and what the page keeps clear under it, in one message.
   ipcMain.on('linkedin-panel:place', (event, place) => {
     if (!fromApp(event)) return;
     const px = (v) => (Number.isFinite(v) && v >= 0 ? v : 0);
     panelTop = Number.isFinite(place?.top) && place.top >= 0 ? place.top : null;
-    panelInsets = { right: px(place?.right), bottom: px(place?.bottom) };
+    panelInsets = { bottom: px(place?.bottom) };
     placePanel();
     panelCover.refresh();
   });

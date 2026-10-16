@@ -169,8 +169,9 @@ while the plugin is installed, every file still matches its checksum, and plugin
 never run a feature plugin.
 
 The first is **LinkedIn browser** (`linkedin-browser`, unlocks `"linkedin-browser"`, its own
-version, 1.0.0): the header's LinkedIn button and the people list beside Sixgree's own browser,
-in the desktop app only. `scripts/build-plugin.mjs` builds it from
+version, 1.0.1): the LinkedIn tab, whose notch buttons open Feed, Messaging, Notifications or
+Jobs in Sixgree's own browser, in the desktop app only. (1.0.0 also had a LinkedIn button in
+the header and a people list beside the browser; 1.0.1 took both out.) `scripts/build-plugin.mjs` builds it from
 `scripts/plugins/linkedin-browser/README.md` at its own version, whatever `--version` the
 scanners are built at.
 

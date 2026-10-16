@@ -61,8 +61,8 @@ wrong, however good it looks.
    visible with the notch", accepting a second sign-in inside Sixgree and LinkedIn seeing
    Sixgree's browser rather than Chrome. So LinkedIn now shows in a panel of the window, its
    own `WebContentsView` with its own storage (`persist:linkedin`), under the header; the
-   scanner drives that panel, and Outlink opens profiles there (see *Sixgree's own browser*
-   below). The app's own page still sends every LinkedIn link to the user's browser.
+   scanner drives that panel, and every profile link in the app opens there (see *Sixgree's
+   own browser* below). The app's own page still sends every LinkedIn link to the user's browser.
    Without a scanner installed, or with `SIX_DEGREES_PANEL=0`, everything is as before.
 8. **Say "scanner" and "scanning"** in anything a user reads. The file names (`scrape.py`,
    `/api/scraper`) are legacy. Rename them only when that code is rewritten anyway, not as
@@ -121,10 +121,19 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
 - **The page** (`app/components/LinkedInPanel.js`, through `desktop/preload.cjs`, answered
   only for the app's own address): it says where the panel starts (under the header, a
   40-pixel bar and the notch, times the page's zoom) and when it shows. It brings the panel
-  forward when the job wants it (`panelWanted`: LinkedIn needs you, signing in, Outlink, or
-  the scanner's `Sixgree's browser: in front` line) and puts it back when that's through,
-  except after Outlink. *Back to Sixgree* hides it; *Show LinkedIn* brings it back while a
-  scan runs or on Outlink. Hiding never stops a scan.
+  forward when the job wants it (`panelWanted`: LinkedIn needs you, signing in, or the
+  scanner's `Sixgree's browser: in front` line) and puts it back when that's through.
+  *Back to Sixgree* hides it; *Show LinkedIn* brings it back while a scan runs or on
+  Outlink. Hiding never stops a scan.
+- **Back and Forward** (Blake, 2026-10-15: "there's no way to go back and forwards", and
+  "use my blue and yellow buttons"): two buttons at the left of the bar, the map's round
+  edge pucks (`EdgeToggle.js`, `.sd-edge`) at 30 px (`.sd-edge-inline`): Back the blue one
+  (Filters', the look's accent), Forward the gold one (Details'), greyed out where the panel's
+  history can't go (`canGoBack` / `canGoForward` in the state, from
+  `webContents.navigationHistory` through `lib.mjs historyMoves`, which never counts the
+  starting `about:blank`) and while a scan drives the page (`scanHoldsPanel`). They send
+  `linkedin-panel:back` / `:forward`. Cmd+[ and Cmd+] (Ctrl elsewhere, `historyKey`) do the
+  same from `before-input-event` on both the panel's page and the app's, while it shows.
 - **The user agent** is plain Chrome's (Blake, 2026-10-15: the panel should identify as plain
   Chrome): `desktop/lib.mjs chromeUserAgent` takes the panel session's own user agent at each
   start and removes the `Sixgree/x` and `Electron/x` tokens, so a checkout of 2.4.0 sends
@@ -141,27 +150,24 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
     its words left of the notch, or under the notch when either side lacks room; the panel
     starts under both. Measured again on resize (a zoom arrives as one), page changes, the
     notch tucked or opened, and once a second while shown. The page sends
-    `linkedin-panel:place` `{ top, right, bottom }`: `right` is the LinkedIn browser's
-    people list, `bottom` the stale-server banner (`data-stale-banner`).
+    `linkedin-panel:place` `{ top, bottom }`: `bottom` is the stale-server banner
+    (`data-stale-banner`). The panel takes the whole width.
   - *what opens over it*: each overlay calls `usePanelCover(open)` (`lib/panel-cover.js`):
     the bell's list, the scan light's briefing, the notch opened (`data-notch-open`),
     Auto scan's panel, `InlineNote float`. The page sends `linkedin-panel:cover`; main
     (`createPanelCover`) captures the panel (`capturePage`, JPEG), sends it as
     `linkedin-panel:still`, waits for `still-drawn` (or 400 ms), then hides the view. The
     page draws it at the panel's bounds (z-index 58, under the bar 59, the notch 60 and the
-    overlays); while the panel shows, the header is lifted to z-index 101, over the people
-    list (99). Closing shows the view first,
+    overlays); while the panel shows, the header is lifted to z-index 101. Closing shows
+    the view first,
     then drops the picture. Numbered, so a late answer is ignored.
   - *choosing a page*: a pathname change, or a click on a header link or tab or a notch tab,
     hides the panel.
-- **The LinkedIn browser plugin** (`linkedin-browser`, kind `feature`): the header's `in`
-  button (`app/components/LinkedInBrowser.js`) sends `linkedin-panel:browse`, which loads
-  `browseHome()` (the feed, or `SIX_DEGREES_PANEL_TEST_ORIGIN` in a checkout) if nothing is
-  open and shows the panel with `mode: 'browse'`; the page then draws the people list on the
-  right and keeps it clear. The shell reports `profile` (`panelProfileSlug`, the
-  `/in/<slug>`), matched against stored `profile_url`s by `lib/linkedin-browser.js`.
-  With only this plugin (no scanner) the panel is made but the debugging port isn't opened,
-  so profiles from the list (Outlink) say they need a scanner plugin.
+- **The LinkedIn browser plugin** (`linkedin-browser`, kind `feature`, 1.0.1): the LinkedIn
+  tab, below. The header's `in` button and its people list were taken out in 1.0.1 (Blake,
+  2026-10-15: "I want to remove the LinkedIn button at the top right and don't like the
+  side panel idea"), with `linkedin-panel:browse`, `browseHome` and the state's `profile`.
+  With only this plugin (no scanner) the panel is made but the debugging port isn't opened.
 - **The LinkedIn tab** (`app/linkedin/page.js`, with the same plugin): its notch buttons,
   Feed, Messaging, Notifications and Jobs, send `linkedin-panel:section`; main loads
   `sectionUrl(key)` (`/feed/`, `/messaging/`, `/notifications/`, `/jobs/`) unless the page is
@@ -169,12 +175,22 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
   `at` (`sectionOf` the panel's page); once they differ, the bar offers *Back to <section>*.
   The tab's notch buttons and the tab itself don't put the panel away; any other page does.
 - **Every profile link** is `app/components/OpenProfile.js` (`tests/open-profile.test.mjs`
-  keeps it so): Outlink in the panel when `panel.available && panel.scanner`, else the
-  browser. Several at once are stepped through (`openProfiles`, *Next profile* in the bar).
-- [ ] With a real LinkedIn sign-in: browse, open from the list, and an overlay over a real
+  keeps it so): Connect, View profile and Outlink's Open profile alike. With the panel, the
+  page sends `linkedin-panel:profile` (an `invoke`, answered true or false); main
+  (`showProfile`) loads `profileAddress(url)` (`https://www.linkedin.com/in/<slug>/`, built
+  from the slug alone; the test page's `/in/<slug>/` in a checkout) and shows the panel with
+  `mode: 'profile'` at once. Then the page posts to `/api/profile-view`, which counts one
+  profile view in `linkedin-activity.json` (`lib/outlink-opened.js chargeProfileView`) and
+  writes `outlink-opened.json`: no scanner job, no sign-in check on the feed, no gap between
+  views. In 2.5.0 it was a `--outlink` scanner job, which took minutes (Blake,
+  2026-10-15: "it took like 2-3 min to load and it's not snappy like the view profile
+  button"). While a scan drives the panel (`scanHoldsPanel`) and without a panel: the
+  user's browser. Several at once are stepped through (`openProfiles`, *Next profile* in
+  the bar).
+- [ ] With a real LinkedIn sign-in: Connect, Back and Forward, and an overlay over a real
       LinkedIn page (Blake). Checked against a local test page only.
 
-- [ ] Signed in to LinkedIn in the panel and run a real scan and an Outlink open (Blake).
+- [ ] Signed in to LinkedIn in the panel and run a real scan and a profile open (Blake).
       Checked only against a local test page: the scanner's own `launch_chrome` attached to
       the panel by its target id (never the app's page), clicked and scrolled while it was
       hidden, read the panel's cookies (the app session's had none), was refused a `file:`

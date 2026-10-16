@@ -16,10 +16,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  chromeUserAgent, panelBounds, createPanelCover, browserPluginInstalled, browseHome, panelProfileSlug, scannerInstalled,
-  LINKEDIN_BROWSER_PLUGIN,
+  chromeUserAgent, panelBounds, createPanelCover, browserPluginInstalled, panelProfileSlug, scannerInstalled,
+  profileAddress, historyMoves, historyKey, LINKEDIN_BROWSER_PLUGIN,
 } from '../desktop/lib.mjs';
-import { panelLayout, PANEL_BAR, BROWSER_SIDEBAR } from '../lib/linkedin-panel.js';
+import { panelLayout, PANEL_BAR } from '../lib/linkedin-panel.js';
 import { coverPanel, panelCoveredNow, watchPanelCover } from '../lib/panel-cover.js';
 
 const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -113,15 +113,14 @@ test('nothing measured yet: the bar at the top, never a negative or a fraction',
   assert.equal(Number.isInteger(l.barTop) && Number.isInteger(l.words), true);
 });
 
-test('what the panel keeps clear: the people list on the right, a banner at the bottom, zoomed too', () => {
+test('what the panel keeps clear: a banner at the bottom, zoomed too, and the whole width (no people list now)', () => {
   const win = { width: 1400, height: 900 };
-  assert.deepEqual(panelBounds(win, 126, 1, { right: BROWSER_SIDEBAR }), { x: 0, y: 126, width: 1400 - 340, height: 900 - 126 });
-  assert.deepEqual(panelBounds(win, 126, 1, { right: 340, bottom: 40 }), { x: 0, y: 126, width: 1060, height: 734 });
-  // At 125%, the page's 340 CSS pixels are 425 of the window's points.
-  assert.deepEqual(panelBounds(win, 100, 1.25, { right: 340, bottom: 40 }), { x: 0, y: 125, width: 975, height: 725 });
-  // Nonsense insets count as none; insets that leave no room leave no panel.
-  assert.deepEqual(panelBounds(win, 100, 1, { right: -5, bottom: NaN }), panelBounds(win, 100));
-  assert.equal(panelBounds(win, 100, 1, { right: 1400 }), null);
+  assert.deepEqual(panelBounds(win, 126, 1, { bottom: 40 }), { x: 0, y: 126, width: 1400, height: 734 });
+  // At 125%, the page's 40 CSS pixels are 50 of the window's points.
+  assert.deepEqual(panelBounds(win, 100, 1.25, { bottom: 40 }), { x: 0, y: 125, width: 1400, height: 725 });
+  // Nonsense insets count as none; insets that leave no room leave no panel. A right inset is no longer read.
+  assert.deepEqual(panelBounds(win, 100, 1, { bottom: NaN }), panelBounds(win, 100));
+  assert.deepEqual(panelBounds(win, 100, 1, { right: 340 }), panelBounds(win, 100));
   assert.equal(panelBounds(win, 100, 1, { bottom: 800 }), null);
 });
 
@@ -277,11 +276,6 @@ test('the shell makes a panel for the LinkedIn browser plugin alone, but opens t
   assert.match(main, /PANEL_WANTED = !PANEL_OFF && \(SCANNER_HERE \|\| browserPluginInstalled/);
 });
 
-test('browsing starts on LinkedIn’s feed, or the local check’s page in a checkout', () => {
-  assert.equal(browseHome(), 'https://www.linkedin.com/feed/');
-  assert.equal(browseHome({ testOrigin: 'http://127.0.0.1:61234' }), 'http://127.0.0.1:61234/');
-});
-
 test('which profile the panel is on: /in/<slug>, any page under it, decoded and in lower case', () => {
   for (const [url, slug] of [
     ['https://www.linkedin.com/in/someone-invented/', 'someone-invented'],
@@ -297,4 +291,99 @@ test('which profile the panel is on: /in/<slug>, any page under it, decoded and 
   // The local check's page stands in for LinkedIn only when named.
   assert.equal(panelProfileSlug('http://127.0.0.1:61234/in/ada-invented', { testOrigin: 'http://127.0.0.1:61234' }), 'ada-invented');
   assert.equal(panelProfileSlug('http://127.0.0.1:61234/in/ada-invented'), null);
+});
+
+// ── Profiles, Back and Forward (Blake, 2026-10-15) ───────────────────────────
+
+test('a profile link opens the panel on https://www.linkedin.com/in/<slug>/, from the slug alone', () => {
+  for (const url of [
+    'https://www.linkedin.com/in/ada-invented', 'https://www.linkedin.com/in/ada-invented/', 'https://linkedin.com/in/Ada-Invented?trk=x#top',
+    'https://uk.linkedin.com/in/ada-invented/details/experience/', 'linkedin.com/in/ada-invented', 'www.linkedin.com/in/ada-invented/',
+  ]) assert.equal(profileAddress(url), 'https://www.linkedin.com/in/ada-invented/', url);
+  assert.equal(profileAddress('https://www.linkedin.com/in/j%C3%B6rg-invented/'), 'https://www.linkedin.com/in/j%C3%B6rg-invented/');
+  // Not a profile, not LinkedIn, not https, or not a web page: nothing opens.
+  for (const url of ['https://www.linkedin.com/feed/', 'https://www.linkedin.com/in/', 'https://example.com/in/ada', 'http://www.linkedin.com/in/ada',
+    'javascript:alert(1)', 'file:///etc/passwd', '', null, undefined, 'x'.repeat(3000)]) {
+    assert.equal(profileAddress(url), null, String(url).slice(0, 40));
+  }
+  // The local check's page stands in for LinkedIn in a checkout: a real profile link goes there.
+  const testOrigin = 'http://127.0.0.1:61234';
+  assert.equal(profileAddress('https://www.linkedin.com/in/ada-invented', { testOrigin }), 'http://127.0.0.1:61234/in/ada-invented/');
+  assert.equal(profileAddress('http://127.0.0.1:61234/in/ada-invented', { testOrigin }), 'http://127.0.0.1:61234/in/ada-invented/');
+  assert.equal(profileAddress('http://127.0.0.1:61234/in/ada-invented'), null, 'only when named');
+});
+
+test('Back and Forward: where the panel’s own history can go, never back to the empty page it was made with', () => {
+  const blank = 'about:blank';
+  const feed = 'https://www.linkedin.com/feed/';
+  const ada = 'https://www.linkedin.com/in/ada-invented/';
+  assert.deepEqual(historyMoves({ urls: [blank], index: 0 }), { back: false, forward: false });
+  assert.deepEqual(historyMoves({ urls: [blank, feed], index: 1 }), { back: false, forward: false }, 'the first page: nothing behind it');
+  assert.deepEqual(historyMoves({ urls: [blank, feed, ada], index: 2 }), { back: true, forward: false });
+  assert.deepEqual(historyMoves({ urls: [blank, feed, ada], index: 1 }), { back: false, forward: true });
+  assert.deepEqual(historyMoves({ urls: [feed, ada], index: 1 }), { back: true, forward: false });
+  for (const bad of [{}, { urls: [feed], index: 5 }, { urls: [feed], index: -1 }, { urls: 'x', index: 0 }, undefined]) {
+    assert.deepEqual(historyMoves(bad), { back: false, forward: false });
+  }
+});
+
+test('Cmd+[ and Cmd+] on a Mac, Ctrl+[ and Ctrl+] elsewhere; nothing else', () => {
+  const key = (k, mods = {}) => ({ type: 'keyDown', key: k, meta: false, control: false, alt: false, shift: false, ...mods });
+  assert.equal(historyKey(key('[', { meta: true }), 'darwin'), 'back');
+  assert.equal(historyKey(key(']', { meta: true }), 'darwin'), 'forward');
+  assert.equal(historyKey(key('[', { control: true }), 'win32'), 'back');
+  assert.equal(historyKey(key(']', { control: true }), 'linux'), 'forward');
+  assert.equal(historyKey(key('[', { control: true }), 'darwin'), null, 'Ctrl on a Mac is not it');
+  assert.equal(historyKey(key('[', { meta: true }), 'win32'), null);
+  assert.equal(historyKey(key('['), 'darwin'), null, 'no modifier: typing');
+  assert.equal(historyKey(key('[', { meta: true, shift: true }), 'darwin'), null, 'Cmd+Shift+[ is the browser’s tab switch, not this');
+  assert.equal(historyKey(key('[', { meta: true, alt: true }), 'darwin'), null);
+  assert.equal(historyKey({ ...key('[', { meta: true }), type: 'keyUp' }, 'darwin'), null);
+  assert.equal(historyKey(key('a', { meta: true }), 'darwin'), null);
+  assert.equal(historyKey(null, 'darwin'), null);
+});
+
+test('the shell: profile links, Back and Forward come from the app’s own page only, and the keys work whichever has the keyboard', () => {
+  const main = read('../desktop/main.mjs');
+  assert.match(main, /ipcMain\.handle\('linkedin-panel:profile', \(event, url\) => \(fromApp\(event\) && typeof url === 'string' \? showProfile\(url\) : false\)\);/);
+  assert.match(main, /ipcMain\.on\('linkedin-panel:back', \(event\) => \{ if \(fromApp\(event\)\) goPanel\('back'\); \}\);/);
+  assert.match(main, /ipcMain\.on\('linkedin-panel:forward', \(event\) => \{ if \(fromApp\(event\)\) goPanel\('forward'\); \}\);/);
+  // Straight there: the shell loads it, no scanner and no wait.
+  const show = main.slice(main.indexOf('function showProfile'), main.indexOf('function panelHistory'));
+  assert.match(show, /profileAddress\(url, \{ testOrigin: PANEL_TEST_ORIGIN \}\)/);
+  assert.match(show, /panel\.webContents\.loadURL\(address\)/);
+  assert.match(show, /setPanelVisible\(true, 'profile'\)/);
+  assert.doesNotMatch(show, /beginScrape|executeJavaScript|outlink|setTimeout/i);
+  // The state carries where the history can go, for the bar's buttons.
+  assert.match(main, /canGoBack: can\.back, canGoForward: can\.forward/);
+  // The keys: on the panel's page and on the app's.
+  assert.equal((main.match(/on\('before-input-event', \(event, input\) => \{ if \(historyShortcut\(input\)\) event\.preventDefault\(\); \}\)/g) || []).length, 2);
+  // The browse button's message is gone with the button.
+  assert.doesNotMatch(main, /linkedin-panel:browse|browsePanel|browseHome/);
+  const preload = read('../desktop/preload.cjs');
+  assert.match(preload, /profile: \(url\) => ipcRenderer\.invoke\('linkedin-panel:profile', String\(url\)\)/);
+  assert.match(preload, /back: \(\) => ipcRenderer\.send\('linkedin-panel:back'\)/);
+  assert.match(preload, /forward: \(\) => ipcRenderer\.send\('linkedin-panel:forward'\)/);
+  assert.doesNotMatch(preload, /browse:|linkedin-panel:browse/);
+});
+
+test('the bar: Back and Forward are the app’s own blue and yellow round buttons, greyed out where they can’t go, and waiting while a scan drives the page', () => {
+  const bar = read('../app/components/LinkedInPanel.js');
+  const css = read('../app/globals.css');
+  // The map's edge pucks (EdgeToggle.js): Filters' blue (the look's accent) on the left, Details' gold on the right.
+  assert.match(read('../app/components/EdgeToggle.js'), /className=\{`sd-edge sd-edge-\$\{side\}/);
+  assert.match(css, /\.sd-edge \{\n  --acc: var\(--sd-accent, #3498db\);/);
+  assert.match(css, /\.sd-edge-right \{ right: 16px; --acc: var\(--sd-tier-s, #ffd700\); \}/);
+  // The bar's two are those same classes, Back the blue (left), Forward the gold (right), with the puck and chevron.
+  assert.match(bar, /className=\{`sd-edge sd-edge-\$\{back \? 'left' : 'right'\} sd-edge-inline`\}/);
+  assert.match(bar, /<span className="sd-edge-puck" aria-hidden="true">\s*<svg className="sd-edge-chev"/);
+  assert.match(css, /\.sd-edge\.sd-edge-inline \{ position: relative;/);
+  assert.match(css, /\.sd-edge-inline:disabled \{ cursor: not-allowed; opacity: 0\.35; \}/);
+  assert.match(bar, /<HistoryButton way="back" can=\{Boolean\(panel\.canGoBack\) && !held\} held=\{held\} \/>/);
+  assert.match(bar, /<HistoryButton way="forward" can=\{Boolean\(panel\.canGoForward\) && !held\} held=\{held\} \/>/);
+  assert.match(bar, /disabled=\{!can\}/);
+  assert.match(bar, /const held = scanHoldsPanel\(job, panel\);/);
+  assert.match(bar, /onClick=\{\(\) => \(back \? panelBack\(\) : panelForward\(\)\)\}/);
+  // No people list, nothing kept clear on the right.
+  assert.doesNotMatch(bar, /PeopleSidebar|BROWSER_SIDEBAR|right: sidebar/);
 });

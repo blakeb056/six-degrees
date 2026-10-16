@@ -10,9 +10,9 @@
 // own browser straight on that LinkedIn section, under the header and the
 // notch (desktop/main.mjs showSection). It is your own browsing: nothing is
 // read and nothing is counted. Gone somewhere else from there, the bar offers
-// the way back to the section (LinkedInPanel.js). The whole website, with the
-// people list, is the header's LinkedIn button. Only in the desktop app with
-// the plugin on: anywhere else the tab isn't shown, and this page says why.
+// the way back to the section (LinkedInPanel.js), beside Back and Forward.
+// Only in the desktop app with the plugin on: anywhere else the tab isn't
+// shown, and this page says why.
 
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';

@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Back and Forward in Sixgree's own browser.** The bar over LinkedIn in the desktop app now
+  starts with Back and Forward: the map's round blue and yellow buttons (Filters' blue for Back,
+  Details' gold for Forward), the same look, sized for the bar. Each is greyed out where there is
+  nowhere to go, and both wait while a scan is using the page. Cmd+[ and Cmd+] (Ctrl+[ and Ctrl+]
+  on Windows and Linux) do the same.
+
+### Changed
+- **Connect opens the profile at once**, exactly like View profile. In 2.5.0, Connect on a person
+  card (Separation, the map, Outlink) started a scanner job that checked your sign-in on the feed
+  and waited out the gap between profile views, so it could take two or three minutes and showed
+  the feed meanwhile. Now every profile link in the app goes straight to the profile in Sixgree's
+  own browser, and you connect by hand. It still counts as one of the day's profile views and is
+  still written down, by the app in the background, so it never waits for a scan or slows
+  anything. Connect still marks the request as sent. While a scan is using Sixgree's browser, a
+  profile opens in your own browser instead, so the scan keeps its place.
+- **The LinkedIn browser plugin is the LinkedIn tab alone** (1.0.1). The LinkedIn button at the
+  top right of the header and the people list beside the browser are gone; the tab's Feed,
+  Messaging, Notifications and Jobs, now with Back and Forward, are the way in. Its description
+  and README say so.
+
+### Fixed
+- **Settings → Plugins → Browse no longer flickers to older versions.** It showed the plugins as
+  shipped, then replaced them with the online list even when that list was older (a cache served
+  the list from before a release for minutes after it). Now each plugin shows the newer version of
+  the two, and a plugin either list has is never dropped.
+
 ## [2.5.0] - 2026-10-15
 
 Browse LinkedIn inside Sixgree with your network beside it, breaks every 10 pages by hand, and lines on the Map.
