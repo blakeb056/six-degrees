@@ -98,12 +98,12 @@ test('your own connections keep the mutual count the search of them reads, and a
   assert.equal(mutuals(), 105, 'a walk of your connections never clears it');
   await send([{ ...person(900, 'VP Sales at Hooli'), mutualCount: 'lots' }]);
   assert.equal(mutuals(), 105, 'a misread is dropped');
-  // A company scan still brings none.
+  // A company scan's count is kept too: Breach's company search reads one (scrape.py scan_company_search).
   await POST(new Request('http://127.0.0.1/api/ingest', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ connections: [{ ...person(901, 'Engineer at Initech'), mutualCount: 7 }], type: 'company', companyName: 'Initech', userId: 'me' }),
   }));
-  assert.equal(getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-901').mutual_count, null);
+  assert.equal(getDb().prepare('SELECT mutual_count FROM linkedin_connections WHERE profile_url = ?').get('https://www.linkedin.com/in/person-901').mutual_count, 7);
 });
 
 // ── your field, asked before the first scan ─────────────────────────────────

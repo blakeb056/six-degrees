@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Breach, a tab of its own.** Pick a company you have no way into, and Breach shows how far in you
+  are: the company as an orb, its people on seniority rings with the top seats at the top, a line into
+  the orb for each of your connections inside, and a breach meter ("Breach 62 · highest seat VP
+  Sales") with milestones for the first door, director, VP and C-suite. The score is graded: mapping
+  the company counts a little, and each person inside counts by their seat, a VP a big jump and
+  C-suite or a founder the most. Companies only for now.
+- **Doors, Climb and Summit.** People there are sorted into the likeliest to accept (a mutual, a lower
+  seat, recruiters, your city or school), middle managers, and the top seats, and they move up a band
+  as their mutual counts rise on rescans. This week's doors suggests 10 requests a week, each opened
+  for you to press Connect yourself; nothing is ever sent for you.
+- **Mapping a company through LinkedIn's people search for its name**, with the 1st, 2nd and 3rd+
+  filters, by itself or by hand, in small rounds of 3, 5 or 10 pages that carry on where the last one
+  stopped, with the same daily limit, breaks and push-back as a circle scan. The tab says a company
+  is mapped over days. It marks who works there now, from their headline, apart from alumni and people
+  who only mention it. The scanner plugins are 1.0.9.
+- **Companies side by side**: which are open, which are cold, and where a door is waiting unused,
+  from what's already saved. Acceptances come from Check for new and the requests you marked sent.
+
+### Fixed
+- Someone a company scan found who accepts your request now becomes one of your connections on the
+  next Check for new, keeping their company and the request, instead of staying unconnected.
+
 ## [2.5.2] - 2026-10-15
 
 Every degree chains in Network Circle, and breaks by hand follow your pace.

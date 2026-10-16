@@ -38,7 +38,7 @@ import unicodedata
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 # Local helper: download + compress avatars into permanent WebP files so they
 # don't break every ~3 weeks when LinkedIn's signed CDN URLs expire.
@@ -1690,9 +1690,12 @@ def push_connections(connections, degree=1, bridge_id=None, user_id=None, on_sav
     return inserted
 
 
-def push_company(people, company_name):
+def push_company(people, company_name, on_saved=None):
     """Push company-scraped people to database as degree 3 (company scan).
-    Uses the same Vercel API route but with type='company'."""
+    Uses the same Vercel API route but with type='company'.
+
+    on_saved runs once the app has the rows, before the photos, as push_connections' does:
+    Breach's rounds note how far they got there (scan_company_search)."""
     connections = []
     for p in people:
         c = {
@@ -1706,11 +1709,17 @@ def push_company(people, company_name):
             c["location"] = p["location"]
         if p.get("followers") is not None:
             c["followers"] = p["followers"]
+        # The mutual connections you share, when a keyword search's card said (Breach): the app
+        # keeps it, so a door's mutual count rises as rescans bring it up to date.
+        if p.get("mutualCount") is not None:
+            c["mutualCount"] = p["mutualCount"]
         connections.append(c)
 
     connections = [c for c in connections if c.get("name") and c.get("profileUrl")]
     if not connections:
         print(f"  No valid people to push for {company_name}")
+        if on_saved:
+            on_saved()   # nothing to save, but the pages were read
         return 0
 
     payload = {
@@ -1733,6 +1742,9 @@ def push_company(people, company_name):
     else:
         print(f"  Push error: {resp.status_code} {resp.text[:200]}")
         raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
+
+    if on_saved:
+        on_saved()
 
     # Update profile images
     images_to_update = [
@@ -5748,6 +5760,28 @@ def _your_search(url):
             and "connectionOf" not in u)
 
 
+def _company_search(url, company):
+    """The window shows LinkedIn's people search for this company's name (Breach), at any page of it,
+    whatever degree filters are on. Not someone's circle, and not a search for another word."""
+    try:
+        parts = urlparse(url or "")
+        query = parse_qs(parts.query)
+    except Exception:
+        return False
+    if "/search/results/people" not in parts.path or "connectionOf" in query:
+        return False
+    said = " ".join(((query.get("keywords") or [""])[0]).split()).lower()
+    return bool(said) and said == " ".join(str(company or "").split()).lower()
+
+
+def _company_people(found, company):
+    """A company search's people (Breach): the cards, not the names in their mutual lines, who are
+    your own connections and may work anywhere. Anything else as it is."""
+    if not company:
+        return found
+    return [c for c in found if not c.get("mutualOnly")]
+
+
 def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total=None,
                   read_before=()):
     """Manual mode, from the moment their list is open at start_page in a window
@@ -5777,9 +5811,13 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
     # Your own connections (scan_your_connections): it's "your list", and the window
     # shows LinkedIn's search of them, not someone's connectionOf search.
     own = bool(reach.get("own"))
+    # Breach (scan_company_search): a company's people, through the keyword search for its name.
+    company = reach.get("company")
     whose = "your" if own else f"{bridge_name}'s"
-    done_with = "Close the window when you're done." if own else f"Close the window when you're done with {bridge_name}."
-    on_list = _your_search if own else (lambda u: _their_search(u, urn))
+    done_with = "Close the window when you're done." if own or company \
+        else f"Close the window when you're done with {bridge_name}."
+    on_list = _your_search if own else (lambda u: _company_search(u, company)) if company \
+        else (lambda u: _their_search(u, urn))
     pages = -(-int(total) // 10) if total else None
     # done: every page known to be read, this run's and an earlier read's (read_before);
     # read_now: this run's own, which the note (_PAGES_READ) and "Manual read done" count.
@@ -5855,9 +5893,9 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
              f"Click Previous to page {start_page} and scroll to its bottom, then carry on with Next. "
              f"{done_with}")
     else:
-        tell(f"scroll to the bottom of each page of {whose} connections "
+        tell(f"scroll to the bottom of each page of {whose} {'people' if company else 'connections'} "
              f"{'in the LinkedIn panel' if PANEL['on'] else 'in the Chrome window'}, then click Next. "
-             + (done_with if own else "Close the window when you're done with them."))
+             + (done_with if own or company else "Close the window when you're done with them."))
     while True:
         if stop_requested():
             status, how = "stopped", "stopped"
@@ -6005,6 +6043,7 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
                 wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if not slug or slug not in c.get("profileUrl", "")]
+        found = _company_people(found, company)
         listed = _listed(found)   # the people on the page, not the names in their mutual lines
         done.add(pg)
         read_now.add(pg)
@@ -6097,7 +6136,8 @@ def _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, r
 
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
-                       start_page=1, urn=None, on_save=None, manual=False, dig=False, from_start=False, own=False):
+                       start_page=1, urn=None, on_save=None, manual=False, dig=False, from_start=False, own=False,
+                       company=None, company_url=None):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -6123,6 +6163,9 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     own:    your own connections, through LinkedIn's people search (scan_your_connections):
             no profile to open, so straight to YOUR_SEARCH_URL; `profile_url` is YOUR_LIST,
             the key its progress is noted under.
+    company: Breach, a company's people through LinkedIn's keyword search (scan_company_search):
+            no profile to open either, so straight to `company_url`; `profile_url` is its
+            breach_key. The names in each card's mutual line (your own connections) aren't kept.
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -6130,11 +6173,13 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     - 3s on each page before reading it
     - Playwright locator click for Next (not JS — more reliable)
     """
-    slug = "" if own else profile_url.split("/in/")[1].rstrip("/")
+    slug = "" if own or company else profile_url.split("/in/")[1].rstrip("/")
     reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
              "pushed_back": False}
     if own:
         reach["own"] = True
+    if company:
+        reach["company"] = company
     whose = "your" if own else "their"
     # The pages of their list read before (record_bridge_progress's "readPages"), so
     # the bookmark can move past them once the page before them is read; and the
@@ -6145,6 +6190,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     known_urn = urn
     if own:
         print("  Going straight to your connections, through LinkedIn's people search.")
+    elif company:
+        print(f"  Going straight to LinkedIn's people search for {company}.")
     elif urn and not dig:
         # Known from an earlier read, so their profile needn't be opened again —
         # one fewer profile view, which is what LinkedIn counts most.
@@ -6265,7 +6312,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     # Step 4: search everyone they are connected to. network=["F","S","O"] is
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
     # it saves. It used to be announced as a "3rd+ filter", which it never was.
-    search_url = YOUR_SEARCH_URL if own else \
+    search_url = YOUR_SEARCH_URL if own else company_url if company else \
         f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
     if EXPERIMENT["on"] and not _drip_before_search():
         reach["more"] = True
@@ -6279,11 +6326,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         reach["more"] = True
         print("  " + budget_message(kind))
         return [], "budget", reach
+    opening = f"the people search for {company}" if company else f"{whose} connections"
     if start_page > 1:
         search_url += f"&page={start_page}"
-        print(f"  Opening {whose} connections at page {start_page}...")
+        print(f"  Opening {opening} at page {start_page}...")
     else:
-        print(f"  Opening {whose} connections...")
+        print(f"  Opening {opening}...")
     charge_linkedin("searches")
     _NAV["status"] = None
     try:
@@ -6435,8 +6483,11 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     if total:
         _LIST_TOTALS[profile_url] = int(total)
         pages = -(-total // 10)
-        print(f"  About {total:,} results in {whose} list: {pages} pages"
+        print(f"  About {total:,} results in {'the search for ' + company if company else whose + ' list'}: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
+        if company and pages > LINKEDIN_MAX_PAGES:
+            print(f"  LinkedIn's search shows {LINKEDIN_MAX_PAGES * 10:,} people at most, so about "
+                  f"{total - LINKEDIN_MAX_PAGES * 10:,} at {company} are past its end.")
         if own and pages > LINKEDIN_MAX_PAGES:
             print(f"  LinkedIn's search goes no further than page {LINKEDIN_MAX_PAGES} ({LINKEDIN_MAX_PAGES * 10:,} people), "
                   f"so about {total - LINKEDIN_MAX_PAGES * 10:,} of your connections are past its end. Where they are "
@@ -6514,6 +6565,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
 
         PACE_STATE["pages"] += 1
         page_results = [c for c in page_results if not slug or slug not in c.get("profileUrl", "")]
+        page_results = _company_people(page_results, company)
         listed = _listed(page_results)   # the people on the page, not the names in their mutual lines
         if EXPERIMENT["on"]:
             page_results = _wire_merge(page, profile_url, page_results)
@@ -6906,6 +6958,151 @@ def scan_your_connections(headless=False):
     left = (f" There's more; the next scan carries on from page {reach['last'] + 1}."
             if reach["more"] else " That's every page LinkedIn's search shows.")
     print(f"\nDone! {len(read)} of your connections read and saved.{left}")
+    return _read(read, status)
+
+
+# Breach (Blake, 2026-10-15): a company's people through LinkedIn's keyword search for its
+# name, People filter: "search the term of the company and then click People yields better
+# results, and you can still click 1st, 2nd and 3rd". Not the company page's employee list,
+# nor the currentCompany filter scrape_company uses. A keyword also finds past employees and
+# anyone who mentions the company; the app tells them apart from each headline
+# (lib/breach.js employment). It is read the way a circle is (_scrape_one_bridge), by itself
+# or by hand: page by page, each page a search counted in the daily limit, carried on from
+# its note, with the same breaks, budget and push-back. A round is a few pages (--round), so
+# a company is mapped over days: the account was restricted on 10/16 for data volume.
+BREACH_NETWORK = {"1": "F", "2": "S", "3": "O"}   # LinkedIn's 1st, 2nd and 3rd+ filters
+BREACH_DEGREES = "2,3"                            # your 1st are already saved
+BREACH_ROUND = 5                                  # pages in a round (lib/breach.js BREACH_ROUND)
+BREACH_ROUND_MAX = 10
+
+
+def breach_degrees(text):
+    """The degrees asked for, as LinkedIn's filter takes them and in order ("2,3" from "3, 2");
+    the default when none of them is one."""
+    picked = sorted({d.strip() for d in str(text or "").split(",") if d.strip() in BREACH_NETWORK})
+    return ",".join(picked) or BREACH_DEGREES
+
+
+def breach_key(company, degrees=BREACH_DEGREES):
+    """Where a company's search is noted in bridge-progress.json, a key no profile URL can be
+    (lib/breach.js breachKey): "breach:<name>:<degrees>", one note per set of filters."""
+    name = " ".join(str(company or "").split()).lower()
+    return f"breach:{name}:{breach_degrees(degrees).replace(',', '')}"
+
+
+def company_search_url(company, degrees=BREACH_DEGREES):
+    """LinkedIn's people search for the company's name, with these degree filters."""
+    codes = [BREACH_NETWORK[d] for d in breach_degrees(degrees).split(",")]
+    network = quote(json.dumps(codes, separators=(",", ":")), safe="")
+    name = quote(" ".join(str(company or "").split()), safe="")
+    return f"https://www.linkedin.com/search/results/people/?keywords={name}&network={network}&origin=FACETED_SEARCH"
+
+
+def scan_company_search(company, degrees=BREACH_DEGREES, pages=BREACH_ROUND, headless=False):
+    """One round of a company's people for Breach (company_search_url): `pages` pages from where
+    the last round stopped, by itself or by hand (manual mode), each page a search counted in
+    the daily limit. Everyone is sent as a company scan's people (push_company), with where they
+    are, their followers and the mutual connections you share when the card shows them; the app
+    drops anyone who is already one of your connections. Once every page is read, the next round
+    reads from page 1 again, to bring mutual counts and places up to date. Raises as scrape_bridge does.
+    """
+    from playwright.sync_api import sync_playwright
+
+    company = " ".join(str(company or "").split())
+    degrees = breach_degrees(degrees)
+    try:
+        pages = int(pages)
+    except (TypeError, ValueError):
+        pages = BREACH_ROUND
+    pages = max(1, min(BREACH_ROUND_MAX, pages))
+
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    left, kind = searches_left()
+    if left <= 0:
+        print(budget_message(kind))
+        raise BudgetReached(0, kind)
+
+    key = breach_key(company, degrees)
+    start_page, fresh = your_list_start(load_bridge_progress().get(key))
+    if fresh:
+        forget_bridge_progress(key)
+        print(f"Every page of the search for {company} was read before: reading it again from page 1, "
+              "to bring mutual counts and places up to date.")
+    last_page = min(LINKEDIN_MAX_PAGES, start_page + pages - 1)
+    manual = manual_reads() and not headless
+    if manual:
+        CHROME_WINDOW["show"] = True
+    shown = ", ".join({"1": "1st", "2": "2nd", "3": "3rd+"}[d] for d in degrees.split(","))
+    print(f"\n=== Breach: {'carrying on with' if start_page > 1 else 'mapping'} {company}, pages {start_page} to "
+          f"{last_page} (LinkedIn's people search for the name, {shown}) ===\n")
+    print(f"  A round is {pages} page{'' if pages == 1 else 's'}, each a search counted in your daily limit, "
+          "so a company is mapped over days.")
+
+    read = []
+
+    def save(connections, last, more, _urn=None):
+        if not connections:
+            record_bridge_progress(key, company, last, more)
+            return
+        print(f"  Saving {len(connections)} (through page {last})...")
+        push_company(connections, company, on_saved=lambda: record_bridge_progress(key, company, last, more))
+        read.extend(connections)
+
+    outcome = None
+    try:
+        with sync_playwright() as p:
+            browser = launch_chrome(p, headless=headless)
+            try:
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                page.set_default_timeout(120000)
+                page.set_default_navigation_timeout(120000)
+                if not ensure_logged_in(page, stop_on_checkpoint=True):
+                    raise NotSignedIn()
+                outcome = _scrape_one_bridge(page, company, None, key, max_pages=last_page, start_page=start_page,
+                                             on_save=save, manual=manual, company=company,
+                                             company_url=company_search_url(company, degrees))
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+    except (SaveFailed, NotSignedIn, LinkedInPushedBack):
+        if stop_requested():
+            return _read([], "stopped")
+        raise
+    except Exception:
+        if outcome is None:
+            if stop_requested():
+                return _read([], "stopped")
+            raise
+
+    connections, status, reach = outcome
+    if connections:
+        print(f"\nSaving {len(connections)} people from {company} to the app...")
+        save(connections, reach["last"], reach["more"])
+    elif status == "success" and (start_page > 1 or reach["last"] >= 1 or reach.get("read")):
+        record_bridge_progress(key, company, reach["last"], reach["more"])
+    elif status == "empty":
+        print(f"  LinkedIn's search shows no one for {company} with these filters.")
+
+    # How it ended, as a circle's read: stopped, LinkedIn's monthly limit, push-back, today's limit.
+    if status == "stopped" or stop_requested():
+        return _read(read, "stopped")
+    if reach["limited"]:
+        set_cooldown(until=next_month_start_pacific(), reason="LinkedIn's monthly search limit")
+        raise SearchLimitReached(len(read))
+    if reach.get("pushed_back"):
+        why = reach.get("pushback_reason") or "a page that would not open"
+        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+        raise LinkedInPushedBack(len(read), why)
+    if reach.get("budget"):
+        raise BudgetReached(len(read), reach["budget"])
+
+    after = (f" The next round carries on from page {reach['last'] + 1}." if reach["more"]
+             else " That's every page LinkedIn's search shows for it.")
+    print(f"\nDone! {reach['found']} people found for {company} this round.{after}")
     return _read(read, status)
 
 
@@ -9216,6 +9413,7 @@ Examples:
   python3 scripts/scrape.py --full                   # Walk the whole connections list
   python3 scripts/scrape.py --refresh                # Only what is new since last run
   python3 scripts/scrape.py --your-connections       # Locations and mutuals, from LinkedIn's search
+  python3 scripts/scrape.py --breach "Acme"          # Breach: one round of a company's people
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
         """,
@@ -9236,6 +9434,15 @@ Examples:
     parser.add_argument("--bridge", type=str, help="Name of one bridge person to scrape")
     parser.add_argument("--rescrape", type=str, help="Delete + re-scrape a bridge's cluster from scratch")
     parser.add_argument("--company", type=str, help="Scan everyone the app can see at one company")
+    parser.add_argument("--breach", type=str,
+                        help="Breach: one round of a company's people through LinkedIn's people search for its name, "
+                             "by itself or by hand, carried on from where the last round stopped. Each page is a search "
+                             "counted in your daily limit, so a company is mapped over days")
+    parser.add_argument("--round", type=int, default=BREACH_ROUND,
+                        help=f"With --breach: pages to read this round, 1 to {BREACH_ROUND_MAX} ({BREACH_ROUND} if not given)")
+    parser.add_argument("--degrees", type=str, default=BREACH_DEGREES,
+                        help=f"With --breach: which degrees the search shows, 1, 2 and 3 for 1st, 2nd and 3rd+ "
+                             f"({BREACH_DEGREES} if not given: your 1st are already saved)")
     parser.add_argument("--messages", action="store_true",
                         help="Experimental: read your messages list once for the Social tab (who, when, unread; the newest message's words only if Keep my messages is on)")
     parser.add_argument("--full-history", action="store_true",
@@ -9447,6 +9654,8 @@ Examples:
             sync_messages(headless=args.headless, full_history=args.full_history)
         elif args.your_connections:
             scan_your_connections(headless=args.headless)
+        elif args.breach:
+            scan_company_search(args.breach, degrees=args.degrees, pages=args.round, headless=args.headless)
         elif args.search:
             scrape_full(headless=args.headless)
         elif args.full:
