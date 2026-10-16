@@ -85,8 +85,9 @@ export async function POST(request) {
         connected_date: toIsoDate(c.connectedDate),
         // LinkedIn's own count, read off a result card: in a circle's list, and in the
         // search of your own connections (scrape.py scan_your_connections, "A, B & 103
-        // other mutual connections"). The connections walk and company scans send none.
-        mutual_count: degree <= 2 ? mutualCountOf(c.mutualCount) : null,
+        // other mutual connections"). The connections walk and company scans send none;
+        // Breach's company search does (scrape.py scan_company_search), so its doors have them.
+        mutual_count: degree <= 2 || type === 'company' ? mutualCountOf(c.mutualCount) : null,
         // Where they are and their followers, when their card in the list showed
         // them (scripts/scrape.py placeOf, followersOf). Null when it didn't: an
         // update below never clears what an earlier scan read.
@@ -176,12 +177,15 @@ export async function POST(request) {
     // touches rows at degree 1, of which they had none. They stayed a
     // 2nd-degree contact forever and the path that produced them was never
     // recorded. Promote them instead, keeping who introduced them.
+    // Someone a company scan found (degree 3) the same way: Breach's doors
+    // accept, and "Check for new" has to bring them in as your connections, with
+    // the company and the request-sent mark their row keeps (lib/breach.js).
     if (degree === 1 && existingRecords.length > 0) {
       const stillSecondDegree = new Set();
       for (let i = 0; i < existingRecords.length; i += 100) {
         const batch = existingRecords.slice(i, i + 100).map(r => r.profile_url);
         let q = supabase.from('linkedin_connections')
-          .select('profile_url, degree').in('profile_url', batch).eq('degree', 2);
+          .select('profile_url, degree').in('profile_url', batch).in('degree', [2, 3]);
         if (userId) q = q.eq('user_id', userId);
         const { data: d2 } = await q;
         (d2 || []).forEach(r => stillSecondDegree.add(r.profile_url));
@@ -250,12 +254,14 @@ export async function POST(request) {
     // How many mutual connections you share with someone is one fact about
     // the two of you, whichever bridge's circle turned them up. Every copy of
     // them gets the newest count read (a re-scan brings it up to date), and a
-    // scan that didn't read one leaves the count alone.
-    if (degree === 2) {
+    // scan that didn't read one leaves the count alone. A company search's
+    // count (Breach) reaches their circle copies too, and a circle's reaches
+    // their company scan's copy: people move up a band as it rises.
+    if (degree >= 2) {
       for (const rec of records) {
         if (rec.mutual_count == null) continue;
         let q = supabase.from('linkedin_connections').update({ mutual_count: rec.mutual_count })
-          .eq('profile_url', rec.profile_url).eq('degree', 2);
+          .eq('profile_url', rec.profile_url).in('degree', [2, 3]);
         if (userId) q = q.eq('user_id', userId);
         await q;
       }

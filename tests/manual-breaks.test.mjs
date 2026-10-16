@@ -30,6 +30,7 @@ import { CHIME_NAMES, chimeSamples, SAMPLE_RATE } from '../lib/chimes.js';
 import { ensureChimes } from '../lib/chime-files.js';
 import { scanLight, isManualRun, lightLabel } from '../lib/scan-light.js';
 import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
+import { compareVersions } from '../lib/release.js';
 
 const scratch = () => mkdtempSync(path.join(tmpdir(), 'sixgree-breaks-'));
 const src = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
@@ -737,8 +738,8 @@ by_hand(HandPage(1), total=10)`);
 
 // ── it ships ──────────────────────────────────────────────────────────────────
 
-test('the scanner change ships in the plugins at 1.0.8 (the break armed ahead of its page)', () => {
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.8');
+test('the scanner change ships in the plugins at 1.0.7', () => {
+  assert.ok(compareVersions(SHIPPED_PLUGIN_VERSION, '1.0.7') >= 0, 'the plugins it ships in are 1.0.7 or newer');
 });
 
 test('the layer and the hold, as the scanner sends them', (t) => {

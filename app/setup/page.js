@@ -43,6 +43,7 @@ const ACTION_LABELS = {
   resume: 'Carrying on with one paused list',
   'resume-all': 'Carrying on with every paused list',
   'your-connections': 'Adding locations and mutuals to your connections',
+  breach: 'Mapping a company for Breach',
   connect: 'Sending a connection request (Auto)',
   'read-profiles': 'Reading full profiles',
 };

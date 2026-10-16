@@ -6,17 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-16
+
+Breach a company, focus on anyone in your circle, and the LinkedIn panel closes itself when an invitation is sent.
+
 ### Added
-- **Focus on one of your connections in Network Circle.** Click one of your connections, or
-  rest the pointer on their dot for 3.5 seconds (a ring fills round it as you wait), and the
-  map eases in on them while the rest of it softly blurs and dims. If anything round them is
-  scanned, their circle comes forward sharp, with every catalyst's circle (someone in it whose
-  own circle is scanned) fanned out behind them, so the whole chain reads: you, them, their
-  people, the catalyst's people. Tier colours, hover cards and clicking through to a card all
-  work inside it. With nothing scanned, the blur is lighter and you see just them and a Scan
-  their circle button (the same scan as their card's). Esc, Back, a click outside, or
-  scrolling or pinching out eases you back. Their card still opens as before. With Reduce
-  Motion it cross-fades instead of zooming, and it works in every look, Daylight included.
+- **Breach, a tab of its own.** Pick a company you have no way into, and Breach shows how far in you
+  are: the company as an orb, its people on seniority rings with the top seats at the top, a line into
+  the orb for each of your connections inside, and a breach meter ("Breach 62 · highest seat VP
+  Sales") with milestones for the first door, director, VP and C-suite. The score is graded: mapping
+  the company counts a little, and each person inside counts by their seat, a VP a big jump and
+  C-suite or a founder the most. Companies only for now.
+- **Doors, Climb and Summit.** People there are sorted into the likeliest to accept (a mutual, a lower
+  seat, recruiters, your city or school), middle managers, and the top seats, and they move up a band
+  as their mutual counts rise on rescans. This week's doors suggests 10 requests a week, each opened
+  for you to press Connect yourself; nothing is ever sent for you.
+- **Mapping a company through LinkedIn's people search for its name**, with the 1st, 2nd and 3rd+
+  filters, by itself or by hand, in small rounds of 3, 5 or 10 pages that carry on where the last one
+  stopped, with the same daily limit, breaks and push-back as a circle scan. The tab says a company
+  is mapped over days. It marks who works there now, from their headline, apart from alumni and people
+  who only mention it. The scanner plugins are 1.0.9.
+- **Companies side by side**: which are open, which are cold, and where a door is waiting unused,
+  from what's already saved. Acceptances come from Check for new and the requests you marked sent.
 
 ### Changed
 - **Connect on a profile sends you back.** In Sixgree's own browser, once LinkedIn says
@@ -29,6 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plugins are 1.0.8.
 
 ### Fixed
+- Someone a company scan found who accepts your request now becomes one of your connections on the
+  next Check for new, keeping their company and the request, instead of staying unconnected.
+- **Focus on one of your connections in Network Circle.** Click one of your connections, or
+  rest the pointer on their dot for 3.5 seconds (a ring fills round it as you wait), and the
+  map eases in on them while the rest of it softly blurs and dims. If anything round them is
+  scanned, their circle comes forward sharp, with every catalyst's circle (someone in it whose
+  own circle is scanned) fanned out behind them, so the whole chain reads: you, them, their
+  people, the catalyst's people. Tier colours, hover cards and clicking through to a card all
+  work inside it. With nothing scanned, the blur is lighter and you see just them and a Scan
+  their circle button (the same scan as their card's). Esc, Back, a click outside, or
+  scrolling or pinching out eases you back. Their card still opens as before. With Reduce
+  Motion it cross-fades instead of zooming, and it works in every look, Daylight included.
 - **Separation's tier filter picks only the people to connect with.** Every connection who leads
   to them, and everyone in between, shows whatever their tier, and Gatekeepers lists all your
   connections.

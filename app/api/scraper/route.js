@@ -9,6 +9,7 @@ import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode, applyLockedModes } from '../../../lib/linkedin-limits';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
 import { pausedList, readProgress, readUnclear, yourListNote } from '../../../lib/paused';
+import { breachNotes, breachRoundArgs, companyName } from '../../../lib/breach';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
 import { scanDoneNotification } from '../../../lib/notifications';
@@ -629,6 +630,8 @@ async function status() {
     paused: paused(me?.id),
     // How far the read of your connections through LinkedIn's search got (lib/paused.js yourListNote).
     yourList: me ? yourListNote(readProgress(dataDir(), me.id)) : null,
+    // How far each company's search for Breach got, by its key (lib/breach.js breachNotes).
+    breach: me ? breachNotes(readProgress(dataDir(), me.id)) : {},
   };
 }
 
@@ -867,6 +870,11 @@ const ACTIONS = {
   'your-connections': { flag: '--your-connections', label: 'Adding locations and mutuals to your connections', searches: true },
   rescrape:      { flag: '--rescrape', needsName: true, label: 'Re-mapping the circle behind' },
   company:       { flag: '--company',  needsName: true, label: 'Scanning' },
+  // Breach (app/breach): one small round of a company's people through LinkedIn's
+  // people search for its name (scrape.py scan_company_search), with its pages and
+  // degrees (lib/breach.js breachRoundArgs). Read like a circle, by itself or by
+  // hand, whichever circle scans run in, so either plugin runs it.
+  breach:        { flag: '--breach',   needsName: true, label: 'Breach: mapping', searches: true },
   // Photos an older version kept as links to LinkedIn: saved here, once each.
   // No browser, no search; every scan does the same at its end.
   // Experimental, for the Social tab: your messages list, once (who, when, unread; the
@@ -1271,7 +1279,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   const byId = spec.needsId || (spec.byId && Boolean(body.id));
   let name = null;
   if (spec.needsName && !byId) {
-    name = cleanName(body.name);
+    // A company for Breach is tidied as the tab keeps it (lib/breach.js companyName).
+    name = action === 'breach' ? companyName(body.name) || null : cleanName(body.name);
     if (!name) return Response.json({ error: 'A name is required for this action.' }, { status: 400 });
   }
   // The id comes from the page; the URL is looked up here, for this profile, so
@@ -1318,7 +1327,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // before every search too). Auto scan's sittings are planned against the same
   // limit (autoPlan ends Auto scan at it, in its own words), so they aren't
   // counted as a press held back.
-  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections'].includes(action);
+  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections', 'breach'].includes(action);
   if (readsLists && li.limitReached && !sitting) {
     state.limitHit = Date.now();
     return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
@@ -1374,6 +1383,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
         : profileBatch ? [`--read-profiles=${profileBatch}`]
         : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
       ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
+      // A Breach round: its pages (3, 5 or 10) and the degrees the search shows, a fixed set.
+      ...(action === 'breach' ? breachRoundArgs({ pages: body.pages, degrees: body.degrees }) : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),

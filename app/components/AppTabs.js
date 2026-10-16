@@ -22,6 +22,9 @@ import { LINKEDIN_BROWSER } from '../../lib/linkedin-browser';
 // them, so every look, and frosted glass or soft, draws them its way.
 const PAGES = [
   { key: 'paths', href: '/paths', label: 'Paths', demo: true },
+  // Breach (Blake, 2026-10-15): get into a company with no mutuals, doors first, then
+  // climb (app/breach, lib/breach.js). Your own network only: it's scans and requests.
+  { key: 'breach', href: '/breach', label: 'Breach', own: true },
   // Insights isn't a tab: it's in your Profile, behind ✦ Insights (Blake, 2026-10-04:
   // "insights that should be in the profile where the button already is as that makes
   // more sense and not to add a tab"). /insights forwards there.
