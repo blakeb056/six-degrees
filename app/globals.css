@@ -407,6 +407,14 @@ html[data-mode="light"] .sd-edge { --ink: color-mix(in srgb, var(--acc) 72%, #00
 .sd-edge-left.is-open { transform: translateX(calc(var(--w) - 34px + var(--gap))); }
 .sd-edge-right.is-open { transform: translateX(calc(34px - var(--gap) - var(--w))); }
 .sd-edge.is-closing { transition-duration: 260ms; }
+/* A popover beside the puck (Filters on Network Circle): the puck stays put and nothing streams to an edge */
+.sd-edge-pop.is-open { transform: none; }
+.sd-edge-pop .sd-edge-line { display: none; }
+.sd-edge-pop.is-open .sd-edge-dot, .sd-edge-pop.is-closing .sd-edge-dot { animation: none; opacity: 0; }
+.sd-filter-pop { animation: sdPopIn 160ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; transform-origin: 0 12px; }
+.sd-filter-pop.is-closing { animation: sdFadeOut 140ms linear forwards; }
+@keyframes sdPopIn { from { opacity: 0; transform: translateX(-6px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .sd-filter-pop, .sd-filter-pop.is-closing { animation: none; } }
 
 /* The puck: frosted glass in its colour, a rim lit from the top left, a
    shadow inside at the bottom, a glow round it. */

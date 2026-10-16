@@ -209,3 +209,38 @@ test('a network ranked by power is not laid round by tier: the S tier is all alo
   }
   assert.equal(bands[0].n, 600);
 });
+
+import { bandSteps, bandLayout, TIER_STEPS, tierDot } from '../lib/galaxy.js';
+
+// Blake, 2026-10-15: "we could use the wifi fan for both tiers and also degrees instead of
+// it being one way". Tiers on: a bar per tier, S nearest; tiers off: a bar per degree.
+test('the fan\'s bars follow Filters → Tiers: a bar per tier, S nearest, or a bar per degree', () => {
+  const people = [
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `s${i}`, tier: 'S', degree: i % 2 ? 2 : 1 })),
+    ...Array.from({ length: 300 }, (_, i) => ({ id: `c${i}`, tier: 'C', degree: 2 })),
+    { id: 'none', tier: null, degree: 3 },
+  ];
+  const tiers = bandSteps('tier');
+  assert.deepEqual(tiers.keys, TIER_STEPS);
+  const { bands, at } = bandLayout(people, new Map(), { keys: tiers.keys, keyOf: tiers.keyOf, cellOf: (t) => 2 * tierDot(t) + 5, span: fanSpan() });
+  assert.deepEqual(bands.map((b) => [b.key, b.n]), [['S', 40], ['A', 0], ['B', 0], ['C', 300], ['D', 1]]);
+  for (let i = 1; i < bands.length; i++) assert.ok(bands[i].inner > bands[i - 1].outer, 'each bar outside the last');
+  const [left, right] = fanSpan();
+  for (const p of people) {
+    const { r, a } = at.get(p.id);
+    const band = bands.find((b) => b.key === (p.tier || 'D'));
+    assert.ok(r >= band.inner && r <= band.outer, `${p.id} in its tier's bar`);
+    assert.ok(a >= left - 1e-9 && a <= right + 1e-9, `${p.id} inside the fan`);
+  }
+  assert.equal(tiers.dot({ tier: 'S' }) > tiers.dot({ tier: 'D' }), true);
+  assert.equal(tiers.name('S'), 'S tier');
+
+  const degrees = bandSteps('degree');
+  assert.deepEqual(degrees.keys, DEGREE_STEPS);
+  const byDegree = bandLayout(people, new Map(), { keys: degrees.keys, keyOf: degrees.keyOf, cellOf: (d) => 2 * degreeDot(d) + 5 });
+  assert.deepEqual(byDegree.bands.slice(0, 3).map((b) => [b.key, b.n]), [[1, 20], [2, 320], [3, 1]]);
+  // degreeLayout is the same layout by degree, its bands named by degree as before.
+  const same = degreeLayout(people, new Map(), { cellOf: (d) => 2 * degreeDot(d) + 5 });
+  assert.deepEqual(same.bands.map((b) => [b.degree, b.inner, b.outer]), byDegree.bands.map((b) => [b.key, b.inner, b.outer]));
+  assert.equal(degrees.name(2), degreeName(2));
+});
