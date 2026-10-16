@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.2] - 2026-10-15
+
+Every degree chains in Network Circle, and breaks by hand follow your pace.
+
+### Changed
+- **Breaks by hand follow the scan speed.** The break after every 10 pages read by hand is
+  now as long as the Scan page's speed says: 30 seconds at Slow, 10 at Medium (and when no
+  speed is saved), 5 at Fast. The break-length slider is hidden for now; its saved setting and
+  range are kept for an adjuster to come. Everything else about breaks is as it was. The
+  scanner plugins are 1.0.7.
+
+### Fixed
+- **Every degree chains on the Network Circle.** A circle scanned from someone you met through
+  one of your connections now hangs off that person, at every step: you, then your connection,
+  then the person you met through them, then their circle, and on to the 6th. Each dot has its
+  line and pull to whoever they came through, by the same rules as the 2nd degree, sits in its
+  own degree's band and colour in Degrees and the Wi-Fi fan, and hovering or picking someone
+  lights the whole chain back to you. A bridge hidden by a filter, or filed under another row,
+  no longer cuts their circle loose.
+
 ## [2.5.1] - 2026-10-15
 
 Rings by degree in Bridge Chains, one Tiers switch, instant profile opens, and Back and Forward in Sixgree's own browser.
