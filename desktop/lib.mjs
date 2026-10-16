@@ -378,18 +378,17 @@ export function panelRoute(url, { testOrigin = null } = {}) {
  * the window counts in its own points, which differ by the page's zoom (View →
  * Zoom In). So top × zoom, rounded up, so the bar's last line is never covered.
  * null when `top` isn't a number of pixels the page could mean, or the window
- * has no room under it. `right` and `bottom` are kept clear, in CSS pixels.
+ * has no room under it. `bottom` is kept clear, in CSS pixels.
  */
-export function panelBounds({ width, height }, top, zoom = 1, { right = 0, bottom = 0 } = {}) {
+export function panelBounds({ width, height }, top, zoom = 1, { bottom = 0 } = {}) {
   const t = typeof top === 'number' ? top : NaN;
   const z = Number(zoom) > 0 ? Number(zoom) : 1;
   if (!Number.isFinite(t) || t < 0 || !(width > 0) || !(height > 0)) return null;
   const y = Math.ceil(t * z);
-  // What the page keeps beside and under it (the LinkedIn browser's people
-  // list on the right, a banner along the bottom), in its CSS pixels too:
-  // rounded up, so the panel never covers their first line.
+  // What the page keeps under it (a banner along the bottom), in its CSS
+  // pixels too: rounded up, so the panel never covers its first line.
   const inset = (v) => (Number.isFinite(v) && v > 0 ? Math.ceil(v * z) : 0);
-  const w = Math.floor(width) - inset(right);
+  const w = Math.floor(width);
   const h = Math.floor(height) - y - inset(bottom);
   if (y >= height || w <= 0 || h <= 0) return null;
   return { x: 0, y, width: w, height: h };
@@ -460,11 +459,13 @@ export function chromeUserAgent(ua, { appNames = ['Sixgree'] } = {}) {
 }
 
 // ── The LinkedIn browser plugin (Blake, 2026-10-15) ──────────────────────────
-// "an option to open LinkedIn within the actual application but they can use
-// the side panel on their right for finding people … a button at the top right
-// by the bell and settings and would be a plugin". The page decides whether the
-// plugin is installed and on (lib/plugins-view.js appFeatures); the shell only
-// needs to know whether to have a panel at all.
+// It brings the LinkedIn tab (Feed, Messaging, Notifications, Jobs). The
+// header's LinkedIn button and its people list were taken out in favour of the
+// tab and Back and Forward on the panel's bar (Blake, 2026-10-15: "I want to
+// remove the LinkedIn button at the top right and don't like the side panel
+// idea"). The page decides whether the plugin is installed and on
+// (lib/plugins-view.js appFeatures); the shell only needs to know whether to
+// have a panel at all.
 
 /** The feature plugin's id (lib/plugins-shipped.js). */
 export const LINKEDIN_BROWSER_PLUGIN = 'linkedin-browser';
@@ -473,7 +474,7 @@ export const LINKEDIN_BROWSER_PLUGIN = 'linkedin-browser';
  * Is the LinkedIn browser plugin installed (its folder with its manifest)?
  * Then the panel is made even without a scanner, for browsing only: the
  * debugging port still opens only with a scanner (scannerInstalled). Whether
- * the plugin is sound and switched on is the server's to say, and the button
+ * the plugin is sound and switched on is the server's to say, and the tab
  * shows only then. Read once, at start, like scannerInstalled.
  */
 export function browserPluginInstalled({ dataDir, exists }) {
@@ -485,21 +486,10 @@ export function browserPluginInstalled({ dataDir, exists }) {
 }
 
 /**
- * Where browsing starts when the panel has no LinkedIn page open yet: the
- * feed, or the local check's test page (main.mjs passes `testOrigin` only in a
- * checkout).
- */
-export function browseHome({ testOrigin = null } = {}) {
-  return testOrigin ? `${testOrigin}/` : 'https://www.linkedin.com/feed/';
-}
-
-/**
  * The profile the panel is on: the <slug> of a linkedin.com/in/<slug> page
  * (any page under it, like /in/<slug>/details/experience/), decoded and in
  * lower case, or null on any other page. The local check's origin counts as
- * LinkedIn when it is named. Keep in step with lib/linkedin-browser.js
- * profileSlug, which reads the stored profile_urls the same way (the shell
- * can't import the app's files: tests/linkedin-browser.test.mjs checks the two agree).
+ * LinkedIn when it is named. profileAddress reads a profile link with it.
  */
 export function panelProfileSlug(url, { testOrigin = null } = {}) {
   if (panelRoute(url, { testOrigin }) !== 'panel' || url === 'about:blank') return null;
@@ -511,6 +501,56 @@ export function panelProfileSlug(url, { testOrigin = null } = {}) {
   try { slug = decodeURIComponent(slug); } catch { /* kept as it is */ }
   slug = slug.trim().toLowerCase();
   return slug && slug.length <= 200 ? slug : null;
+}
+
+/**
+ * The address the panel opens for one person's profile link (every profile
+ * link in the app, Connect and View profile alike: app/components/OpenProfile.js):
+ * https://www.linkedin.com/in/<slug>/, built from the slug alone so nothing
+ * else of the link reaches the panel; in a checkout with the local check's
+ * page named, that page's /in/<slug>/ instead. A link with no scheme
+ * (linkedin.com/in/...) is read as https. null for anything that isn't a
+ * LinkedIn profile link.
+ */
+export function profileAddress(url, { testOrigin = null } = {}) {
+  const raw = String(url ?? '').trim();
+  if (!raw || raw.length > 2000) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+  const slug = panelProfileSlug(withScheme, { testOrigin });
+  if (!slug) return null;
+  return `${testOrigin || 'https://www.linkedin.com'}/in/${encodeURIComponent(slug)}/`;
+}
+
+// ── Back and Forward (Blake, 2026-10-15: "there's no way to go back and
+// forwards in the UI for LinkedIn") ──────────────────────────────────────────
+
+/**
+ * Where the panel can go in its own history: { back, forward }. `urls` are its
+ * entries, oldest first, and `index` the one showing. The empty page it was
+ * made with (about:blank) is never somewhere to go back to.
+ */
+export function historyMoves({ urls = [], index = -1 } = {}) {
+  const list = Array.isArray(urls) ? urls : [];
+  const i = Number.isInteger(index) ? index : -1;
+  if (i < 0 || i >= list.length) return { back: false, forward: false };
+  const before = list[i - 1];
+  return {
+    back: i > 0 && typeof before === 'string' && before !== '' && before !== 'about:blank',
+    forward: i < list.length - 1,
+  };
+}
+
+/**
+ * Cmd+[ and Cmd+] (Ctrl on Windows and Linux), as in a browser: 'back',
+ * 'forward', or null. `input` is Electron's before-input-event's.
+ */
+export function historyKey(input, platform = process.platform) {
+  if (!input || input.type !== 'keyDown' || input.alt || input.shift) return null;
+  const mod = platform === 'darwin' ? input.meta && !input.control : input.control && !input.meta;
+  if (!mod) return null;
+  if (input.key === '[') return 'back';
+  if (input.key === ']') return 'forward';
+  return null;
 }
 
 // ── Nothing cut off while the panel shows ────────────────────────────────────
@@ -603,8 +643,7 @@ export function createPanelCover({ capture, sendStill, apply, shown, ackMs = STI
 // "for the actual LinkedIn section tab we can have where the notch will have
 // buttons for exact features like the feed and only the feed embedded into
 // the panel, same for messaging … feed, notifications and jobs". The LinkedIn
-// tab's notch buttons open the panel straight on one of these; the header's
-// LinkedIn button stays the whole website, with the people list.
+// tab's notch buttons open the panel straight on one of these.
 
 export const LINKEDIN_SECTIONS = Object.freeze({
   feed: '/feed/',

@@ -2,15 +2,15 @@
 
 // The LinkedIn panel's state from the desktop shell (desktop/main.mjs
 // panelState), shared by everything on the page that asks: the bar and the
-// still picture (LinkedInPanel.js), the LinkedIn browser's button and people
-// list (LinkedInBrowser.js) and every profile link (OpenProfile.js). Its own
-// file so none of them has to import another to read it.
+// still picture (LinkedInPanel.js), the LinkedIn tab (app/linkedin/page.js)
+// and every profile link (OpenProfile.js). Its own file so none of them has to
+// import another to read it.
 //
-//   { available, visible, linkedin, mode, profile, frozen, scanner }
-//   mode      'browse' (the LinkedIn browser's button) or 'scan', while shown
-//   profile   the linkedin.com/in/<slug> it is on, or null
-//   frozen    swapped for a still picture while something is open over it
-//   scanner   a scanner can drive it (Outlink's profiles need one)
+//   { available, visible, linkedin, mode, section, at, canGoBack, canGoForward, frozen, scanner }
+//   mode         'profile' (a profile link), 'section' (the LinkedIn tab) or 'scan', while shown
+//   canGoBack    Back and Forward on the bar: where its own history can go
+//   frozen       swapped for a still picture while something is open over it
+//   scanner      a scanner can drive it (a running scan then has it)
 // null outside the desktop app, or until the shell answers.
 
 import { useSyncExternalStore } from 'react';
@@ -50,7 +50,7 @@ export function useLinkedInPanel() {
   return useSyncExternalStore(watchPanel, panelNow, none);
 }
 
-/** Bring the panel forward (Outlink's profile, say). False when there is none. */
+/** Bring the panel forward (Show LinkedIn). False when there is none. */
 export function showLinkedInPanel() {
   const b = panelBridge();
   if (!b || !state?.available) return false;
@@ -58,12 +58,27 @@ export function showLinkedInPanel() {
   return true;
 }
 
-/** Open it for your own browsing (the LinkedIn browser plugin). False when there is none. */
-export function browseLinkedIn() {
+/**
+ * Open it straight on one person's profile, at once (desktop/main.mjs
+ * showProfile). Resolves true when it went; false when there is no panel or
+ * the shell refused the link.
+ */
+export async function showProfileInPanel(url) {
   const b = panelBridge();
-  if (!b || !state?.available || typeof b.browse !== 'function') return false;
-  b.browse();
-  return true;
+  if (!b || !state?.available || typeof b.profile !== 'function') return false;
+  try {
+    return (await b.profile(url)) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Back, and Forward, in the panel's own history (the bar's buttons). */
+export function panelBack() {
+  panelBridge()?.back?.();
+}
+export function panelForward() {
+  panelBridge()?.forward?.();
 }
 
 /** Put it away (Back to Sixgree). */

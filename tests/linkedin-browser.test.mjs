@@ -1,16 +1,17 @@
-// The LinkedIn browser plugin's people list (lib/linkedin-browser.js) and the
-// plugin itself: a new kind, "feature", whose package is a manifest and a
-// README, and whose feature (in the app) shows only with it installed, sound,
-// and plugins on (lib/plugins.js, lib/plugins-view.js, scripts/build-plugin.mjs).
-// Invented people and packages only.
+// The LinkedIn browser plugin: a kind of its own, "feature", whose package is
+// a manifest and a README, and whose feature (in the app, the LinkedIn tab)
+// shows only with it installed, sound, and plugins on (lib/plugins.js,
+// lib/plugins-view.js, scripts/build-plugin.mjs). 1.0.1 is the tab alone: the
+// header's LinkedIn button and the people list are gone (Blake, 2026-10-15: "I
+// want to remove the LinkedIn button at the top right and don't like the side
+// panel idea"). Invented packages only.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { profileSlug, peopleIndex, searchPeople, personOnScreen, degreeLabel, LINKEDIN_BROWSER } from '../lib/linkedin-browser.js';
-import { panelProfileSlug } from '../desktop/lib.mjs';
+import { LINKEDIN_BROWSER } from '../lib/linkedin-browser.js';
 import {
   readPackage, installPlugin, listPlugins, scannerPlugin, featureUnlocked, checkManifest, PLUGIN_KINDS, PLUGIN_KIND_UNLOCKS, PLUGIN_UNLOCKS,
 } from '../lib/plugins.js';
@@ -20,82 +21,6 @@ import { PLUGINS, buildPackage, buildCatalog, featureReadme } from '../scripts/b
 import { makePackage, sha256 } from './helpers/plugins.mjs';
 
 const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
-
-// ── Who is on screen ─────────────────────────────────────────────────────────
-
-test('a stored profile_url and the panel’s page meet on the slug: trailing slashes, queries, case, encoding', () => {
-  const same = [
-    'https://www.linkedin.com/in/ada-invented',
-    'https://www.linkedin.com/in/ada-invented/',
-    'https://www.linkedin.com/in/ADA-Invented/?trk=people',
-    'https://linkedin.com/in/ada-invented#about',
-    'http://www.linkedin.com/in/ada-invented/',     // stored by an old import over http
-    'www.linkedin.com/in/ada-invented',             // stored without a scheme
-    'https://de.linkedin.com/in/ada-invented/details/skills/',
-  ];
-  for (const url of same) assert.equal(profileSlug(url), 'ada-invented', url);
-  assert.equal(profileSlug('https://www.linkedin.com/in/j%C3%B6rg-invented/'), 'jörg-invented');
-  assert.equal(profileSlug('https://www.linkedin.com/in/jörg-invented/'), 'jörg-invented');
-  for (const url of [null, '', 'https://www.linkedin.com/company/invented', 'https://example.com/in/ada-invented', 'https://www.linkedin.com/in/', 'not a url']) {
-    assert.equal(profileSlug(url), null, String(url));
-  }
-  // The shell reads the panel's page the same way (desktop/lib.mjs, which can't import this file).
-  for (const url of ['https://www.linkedin.com/in/ADA-Invented/?trk=x', 'https://www.linkedin.com/in/j%C3%B6rg-invented/', 'https://uk.linkedin.com/in/x-y/details/']) {
-    assert.equal(panelProfileSlug(url), profileSlug(url), url);
-  }
-});
-
-// An invented network: you know Bea and Cal; Dee is known through both; Eve through Cal only.
-const NETWORK = {
-  degree1: [
-    { id: 'b1', degree: 1, name: 'Bea Invented', company: 'Acme Robotics', headline: 'Head of Ops at Acme Robotics', location: 'Lisbon, Portugal', tier: 'A', power_score: 70, mutual_count: 12, profile_url: 'https://www.linkedin.com/in/bea-invented/' },
-    { id: 'c1', degree: 1, name: 'Cal Invented', company: 'Globex', headline: 'Engineer', location: 'Austin, Texas, United States', tier: 'B', power_score: 50, profile_url: 'https://www.linkedin.com/in/cal-invented' },
-  ],
-  degree2: [
-    { id: 'd2a', degree: 2, name: 'Dee Invented', source_connection_id: 'b1', company: 'Initech', headline: 'Founder', location: 'São Paulo, Brazil', tier: 'S', power_score: 90, mutual_count: 3, profile_url: 'https://www.linkedin.com/in/dee-invented?trk=x' },
-    { id: 'd2b', degree: 2, name: 'Dee Invented', source_connection_id: 'c1', company: 'Initech', tier: 'S', power_score: 88, mutual_count: 5, profile_url: 'https://www.linkedin.com/in/Dee-Invented/' },
-    { id: 'e2', degree: 2, name: 'Eve Invented', source_connection_id: 'c1', company: 'Acme Robotics', tier: 'C', power_score: 20, profile_url: 'https://www.linkedin.com/in/eve-invented/' },
-  ],
-  degree3: [],
-};
-
-test('one entry a person, however many bridges: closest degree, best row for Outlink, every bridge, the largest mutual count', () => {
-  const index = peopleIndex(NETWORK);
-  assert.equal(index.people.length, 4);
-  const dee = personOnScreen(index, 'dee-invented');
-  assert.equal(dee.id, 'd2a', 'the stronger of their rows');
-  assert.equal(dee.degree, 2);
-  assert.deepEqual(dee.via, ['Bea Invented', 'Cal Invented'], 'who connects you');
-  assert.equal(dee.mutual, 5);
-  assert.equal(dee.location, 'São Paulo, Brazil');
-  assert.equal(dee.tier, 'S');
-  assert.equal(personOnScreen(index, 'bea-invented').degree, 1);
-  assert.equal(personOnScreen(index, 'eve-invented').mutual, null, 'never read: no count, not 0');
-  assert.deepEqual(personOnScreen(index, 'bea-invented').via, []);
-  assert.equal(personOnScreen(index, 'BEA-INVENTED')?.name, 'Bea Invented');
-  // On screen but not in your data: nobody, and the list says so.
-  assert.equal(personOnScreen(index, 'stranger-invented'), null);
-  assert.equal(personOnScreen(index, null), null);
-  assert.equal(personOnScreen(null, 'bea-invented'), null);
-  assert.equal(degreeLabel(1), '1st');
-  assert.equal(degreeLabel(2), '2nd');
-  assert.equal(degreeLabel(3), '3rd');
-});
-
-test('search by name, company or place: every word somewhere, accents and case ignored, names first, then closest', () => {
-  const index = peopleIndex(NETWORK);
-  const names = (q) => searchPeople(index, q).map((p) => p.name);
-  assert.deepEqual(names('bea'), ['Bea Invented']);
-  assert.deepEqual(names('acme'), ['Bea Invented', 'Eve Invented'], 'a company: closest first');
-  assert.deepEqual(names('sao paulo'), ['Dee Invented'], 'a place, without its accent');
-  assert.deepEqual(names('Austin texas'), ['Cal Invented']);
-  assert.deepEqual(names('invented acme'), ['Bea Invented', 'Eve Invented'], 'every word must match');
-  assert.deepEqual(names('eve'), ['Eve Invented']);
-  assert.deepEqual(names('d'), [], 'one letter finds nobody');
-  assert.deepEqual(names('   '), []);
-  assert.equal(searchPeople(index, 'invented', 2).length, 2, 'at most the limit');
-  assert.deepEqual(searchPeople(null, 'bea'), []);
-});
 
 // ── A new kind of plugin ─────────────────────────────────────────────────────
 
@@ -160,43 +85,53 @@ test('the shipped list names it at its own version, with an honest about and ris
   const p = SHIPPED_PLUGINS.find((x) => x.id === 'linkedin-browser');
   assert.ok(p);
   assert.equal(p.version, LINKEDIN_BROWSER_VERSION);
-  assert.equal(LINKEDIN_BROWSER_VERSION, '1.0.0');
+  assert.equal(LINKEDIN_BROWSER_VERSION, '1.0.1', 'the tab only: the header button and people list taken out');
   assert.equal(p.kind, 'feature');
   assert.deepEqual([...p.unlocks], [LINKEDIN_BROWSER]);
   assert.deepEqual([...FEATURE_UNLOCKS], [LINKEDIN_BROWSER]);
   assert.match(p.about, /desktop app/);
+  assert.match(p.about, /LinkedIn tab/);
+  assert.match(p.about, /Feed, Messaging, Notifications and Jobs/);
+  assert.match(p.about, /Back and Forward/);
+  assert.doesNotMatch(p.about, /people list|beside it|on screen|button at the top/i, 'the tab only');
   assert.match(p.risk, /your own LinkedIn account/);
   assert.match(p.risk, /reads nothing on its own/);
   assert.match(p.risk, /one of the day’s profile views/);
+  assert.doesNotMatch(p.risk, /people list/);
   for (const text of [p.about, p.risk]) assert.doesNotMatch(text, /—|scrap/i, 'no em dashes, and "scanning", never the other word');
   // Built: a manifest and its README, at its own version whatever the scanners' is, read back whole.
   const plugin = PLUGINS.find((x) => x.id === 'linkedin-browser');
   const zip = buildPackage(plugin, { version: '9.9.9', appVersion: '2.4.0' });
   const back = readPackage(zip, { appVersion: '2.4.0' });
-  assert.equal(back.manifest.version, '1.0.0');
+  assert.equal(back.manifest.version, '1.0.1');
   assert.equal(back.manifest.kind, 'feature');
   assert.deepEqual([...back.files.keys()], ['README.md']);
   assert.equal(back.files.get('README.md').toString(), fs.readFileSync(featureReadme('linkedin-browser'), 'utf8'));
   assert.doesNotMatch(back.files.get('README.md').toString(), /—|scrap/i);
-  const list = buildCatalog([{ plugin, file: 'linkedin-browser-1.0.0.sgplugin', zip, sha256: sha256(zip) }],
+  // The README describes the tab only.
+  const readme = back.files.get('README.md').toString();
+  assert.match(readme, /\*\*LinkedIn\*\* tab/);
+  assert.match(readme, /\*\*Back\*\* and \*\*Forward\*\*/);
+  assert.doesNotMatch(readme, /people list|top right|beside the bell/i);
+  const list = buildCatalog([{ plugin, file: 'linkedin-browser-1.0.1.sgplugin', zip, sha256: sha256(zip) }],
     { base: 'http://127.0.0.1:4848', version: '9.9.9', appVersion: '2.4.0' });
-  assert.equal(list.plugins[0].version, '1.0.0');
+  assert.equal(list.plugins[0].version, '1.0.1');
   assert.equal(list.plugins[0].kind, 'feature');
 });
 
-test('the app: the button only in the desktop app with the plugin on, beside the bell and Settings, never on a phone', () => {
+test('the app: no LinkedIn button in the header and no people list; the feature is the tab', () => {
   const header = read('../app/components/AppHeader.js');
+  assert.doesNotMatch(header, /LinkedInButton|LinkedInBrowser|data-linkedin-button/);
+  // The right side keeps the scan light, Settings and the bell, as before the plugin.
   const right = header.slice(header.indexOf('<ScanLight isMobile'), header.indexOf('<ProfileButton'));
-  assert.match(right, /<LinkedInButton isMobile=\{isMobile\} \/>[\s\S]*<SettingsGear[\s\S]*<NotificationBell/);
-  const browser = read('../app/components/LinkedInBrowser.js');
-  assert.match(browser, /if \(!panel\?\.available \|\| !on \|\| isMobile\) return null;/);
-  assert.match(browser, /const on = useFeature\(LINKEDIN_BROWSER\);/);
+  assert.match(right, /<SettingsGear[\s\S]*<NotificationBell/);
+  assert.equal(fs.existsSync(new URL('../app/components/LinkedInBrowser.js', import.meta.url)), false, 'the button and the list, gone');
+  const panel = read('../app/components/LinkedInPanel.js');
+  assert.doesNotMatch(panel, /PeopleSidebar|browsing|'browse'/);
+  assert.doesNotMatch(read('../app/components/linkedInPanelState.js'), /browseLinkedIn|\.browse\(/);
   // The feature's answer: plugins on, and that plugin sound.
   assert.match(read('../app/api/plugins/features/route.js'), /appFeatures\(\)/);
   assert.match(read('../lib/plugins-view.js'), /featureUnlocked\(dir, unlock, \{ pluginsEnabled: enabled \}\)/);
-  // A profile from the list goes through Outlink: one view, recorded, never quietly in the panel.
-  assert.match(browser, /openProfile\(\{ id: person\.id, name: person\.name, profile_url: person\.profileUrl \}, \{ browser: false \}\)/);
-  assert.doesNotMatch(browser, /loadURL|\.navigate\(/);
   // The guided setup's cards stay the scanners.
   assert.match(read('../app/components/onboarding/steps.js'), /kinds=\{SCANNER_KINDS\}/);
 });

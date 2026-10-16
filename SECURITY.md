@@ -150,8 +150,8 @@ This app is designed to run **on your own machine, against your own network**.
   real one at each start), so LinkedIn sees the Chrome it is built on. That is the only change:
   client hints, `navigator.webdriver` and everything else a site can read are left as Electron
   has them, and the app's own pages keep Electron's default user agent. All the shell tells the
-  app's page about the panel is whether it shows and which `linkedin.com/in/<slug>` it is on, so
-  the LinkedIn browser's people list can match it against your network on this computer.
+  app's page about the panel is whether it shows, whether it can go back or forward, and which
+  LinkedIn section it is in.
 
 ## Your data
 

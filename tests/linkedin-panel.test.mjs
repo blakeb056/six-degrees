@@ -13,10 +13,11 @@ import {
   isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv, routeFor, LINKEDIN_PANEL_PARTITION,
 } from '../desktop/lib.mjs';
 import {
-  panelEnvOf, scannerEnvWithPanel, hasPanel, outlinkSupported, panelAsked, panelWanted, outlinkResultIn,
-  PANEL_FRONT, PANEL_AWAY, PANEL_SCANNER_VERSION,
+  panelEnvOf, scannerEnvWithPanel, hasPanel, panelAsked, panelWanted, outlinkResultIn, scanHoldsPanel,
+  PANEL_FRONT, PANEL_AWAY,
 } from '../lib/linkedin-panel.js';
-import { recordOutlinkOpened, readOutlinkOpened, OUTLINK_FILE, OUTLINK_KEPT } from '../lib/outlink-opened.js';
+import { recordOutlinkOpened, readOutlinkOpened, chargeProfileView, OUTLINK_FILE, OUTLINK_KEPT, ACTIVITY_FILE } from '../lib/outlink-opened.js';
+import { usage } from '../lib/linkedin-limits.js';
 
 const TARGET = 'A1B2C3D4E5F60718293A4B5C6D7E8F90';
 
@@ -128,22 +129,22 @@ test('the env a scanner starts with: the panel passed on only when sound, on 127
   assert.deepEqual(panelEnvOf({ ...sound, SIX_DEGREES_PANEL_CDP: ' http://127.0.0.1:60212 ' }), sound);
 });
 
-test('which scanners can open Outlink’s profile in the panel: the built-in one, and plugins from 1.0.5', () => {
-  assert.equal(PANEL_SCANNER_VERSION, '1.0.5');
-  const plugin = (version) => ({ found: true, from: 'plugin', plugin: { id: 'auto-scan', version } });
-  assert.equal(outlinkSupported({ found: true, from: 'built-in', plugin: null }), true);
-  assert.equal(outlinkSupported(plugin('1.0.5')), true);
-  assert.equal(outlinkSupported(plugin('1.0.10')), true);
-  assert.equal(outlinkSupported(plugin('1.1.0')), true);
-  assert.equal(outlinkSupported(plugin('2.0.0-beta.1')), true);
-  assert.equal(outlinkSupported(plugin('1.0.4')), false, 'the version before knows no --outlink');
-  assert.equal(outlinkSupported(plugin('1.0.3')), false);
-  assert.equal(outlinkSupported(plugin(undefined)), false);
-  assert.equal(outlinkSupported({ found: false }), false);
-  assert.equal(outlinkSupported(null), false);
+test('a running scan holds the panel only with a scanner driving it, and only for a job that opens LinkedIn', () => {
+  const withScanner = { available: true, scanner: true };
+  const job = (action, running = true) => ({ running, action });
+  assert.equal(scanHoldsPanel(job('bridge'), withScanner), true);
+  assert.equal(scanHoldsPanel(job('connect'), withScanner), true);
+  assert.equal(scanHoldsPanel(job('login'), withScanner), true);
+  // Nothing runs, or what runs never opens LinkedIn: the panel is yours.
+  assert.equal(scanHoldsPanel(job('bridge', false), withScanner), false);
+  for (const action of ['install', 'setup', 'photos']) assert.equal(scanHoldsPanel(job(action), withScanner), false, action);
+  // Only the LinkedIn browser plugin, no scanner: scans run in Chrome, never in the panel.
+  assert.equal(scanHoldsPanel(job('bridge'), { available: true, scanner: false }), false);
+  assert.equal(scanHoldsPanel(job('bridge'), null), false);
+  assert.equal(scanHoldsPanel(null, withScanner), false);
 });
 
-test('when the page brings the panel forward: the scanner says so, LinkedIn needs you, signing in, or Outlink', () => {
+test('when the page brings the panel forward: the scanner says so, LinkedIn needs you, or signing in', () => {
   assert.equal(panelAsked(['Using Sixgree\'s own browser…', PANEL_FRONT, 'Page 1...']), 'front');
   assert.equal(panelAsked([PANEL_FRONT, 'x', PANEL_AWAY]), 'away');
   assert.equal(panelAsked(['  ' + PANEL_FRONT + '  ']), 'front', 'as the app keeps a line: trimmed');
@@ -155,7 +156,8 @@ test('when the page brings the panel forward: the scanner says so, LinkedIn need
   assert.equal(panelWanted(running({ log: [PANEL_FRONT] })), true);
   assert.equal(panelWanted(running({ log: [PANEL_FRONT, PANEL_AWAY] })), false);
   assert.equal(panelWanted(running({ needsYou: "sign in to LinkedIn in Sixgree's own browser." })), true);
-  assert.equal(panelWanted(running({ action: 'outlink' })), true);
+  // Profiles open without a job now (OpenProfile.js): an old --outlink job is a scan like any other.
+  assert.equal(panelWanted(running({ action: 'outlink' })), false);
   assert.equal(panelWanted(running({ action: 'login' })), true);
   assert.equal(panelWanted({ running: false, action: null, log: [PANEL_FRONT], needsYou: 'x' }), false, 'nothing runs: nothing wants it');
   assert.equal(panelWanted(null), false);
@@ -194,6 +196,30 @@ test('Outlink’s record: which profile and when, the newest kept, and a damaged
     assert.equal(kept.length, OUTLINK_KEPT);
     assert.equal(kept.at(-1).id, 'last');
     assert.equal(kept[0].id, 'c6');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a profile opened in the panel is one profile view in the scanner’s own record, and nothing else in it changes', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-view-'));
+  const file = path.join(dir, ACTIVITY_FILE);
+  const now = 1790000000000;
+  try {
+    // No record yet: one is started, with this one view.
+    assert.equal(chargeProfileView(dir, now), true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { searches: [], profiles: [now / 1000] });
+    assert.equal(usage(dir, now + 1000).profilesToday, 1, 'the daily limit counts it, as it counts a scan’s');
+    // The scanner's searches and Auto's requests are kept as they are; the view goes on the end, in seconds.
+    fs.writeFileSync(file, JSON.stringify({ searches: [1, 2], profiles: [3], invites: [4], other: 'kept' }));
+    assert.equal(chargeProfileView(dir, now), true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { searches: [1, 2], profiles: [3, now / 1000], invites: [4], other: 'kept' });
+    // A record that can't be read is left alone: the scanner reads it as the day used up.
+    for (const bad of ['{"profiles": [', '[]', '{"profiles": "x"}', '{"profiles": ["a"]}']) {
+      fs.writeFileSync(file, bad);
+      assert.equal(chargeProfileView(dir, now), false, bad);
+      assert.equal(fs.readFileSync(file, 'utf8'), bad, 'unchanged');
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

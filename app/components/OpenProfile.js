@@ -2,32 +2,42 @@
 
 // Every link that opens one person's LinkedIn profile, in one place.
 //
-// In the desktop app with Sixgree's own browser and a scanner that can drive
-// it (lib/linkedin-panel.js; Blake, 2026-10-15: "yes on the outlink"), the
-// profile opens there instead of in your browser: the scanner takes it to the
-// profile through Outlink and clicks nothing, it counts as one of the day's
-// profile views, and Outlink writes down which profile and when. Anywhere
-// else, or where the app says it can't (no scanner, a plugin before 1.0.5,
-// scanning's one-time "I understand" not given yet), your own browser, as
-// before. Blake, 2026-10-15: "I sent a request to connect manually in the
-// Separation tab and it opened an external tab": every profile link is this
-// one now, and tests/open-profile.test.mjs keeps it so.
+// In the desktop app with Sixgree's own browser (the LinkedIn panel,
+// lib/linkedin-panel.js), the profile opens there at once: the shell takes the
+// panel straight to it (desktop/main.mjs showProfile) and brings it forward,
+// and you connect, follow or message by hand. Then the server counts it as one
+// of the day's profile views and writes down which profile and when
+// (app/api/profile-view, lib/outlink-opened.js), in the background: no scanner
+// job, no sign-in check, no wait between views. Connect, View profile and
+// Outlink's Open profile all do exactly this. Blake, 2026-10-15: "it took like
+// 2-3 min to load and it's not snappy like the view profile button which is
+// essentially the same", and "It should just copy that format as the user
+// wants to do it manually themselves anyways".
+//
+// While a scan is driving the panel (lib/linkedin-panel.js scanHoldsPanel),
+// and anywhere without the panel, your own browser, as before: taking the
+// panel's page from a running scan would lose its place.
 //
 // Several at once (Outlink's Open All, Open Top 10): in the panel they are
 // stepped through, one at a time, each counted, with "Next profile (N left)"
 // in the LinkedIn bar (ProfileSteps), never opened in a burst. Without the
 // panel, the page of links in your browser, as before.
+//
+// Blake, 2026-10-15: "I sent a request to connect manually in the Separation
+// tab and it opened an external tab": every profile link is this one, and
+// tests/open-profile.test.mjs keeps it so.
 
 import { useState, useSyncExternalStore } from 'react';
-import { useLinkedInPanel, showLinkedInPanel, panelNow } from './linkedInPanelState';
-import { beginScrape } from '../../lib/scraper-client';
+import { useLinkedInPanel, panelNow, showProfileInPanel } from './linkedInPanelState';
+import { scannerNow, LIMITS_CHANGED } from '../../lib/scraper-client';
+import { scanHoldsPanel } from '../../lib/linkedin-panel';
 
 /** The profile link of a row: profile_url, or profileUrl. */
 export const profileUrlOf = (person) => person?.profile_url || person?.profileUrl || null;
 
-/** Can a profile open in the panel now: the desktop app's panel, with a scanner to take it there? */
-export function panelCanOpen(panel = panelNow()) {
-  return Boolean(panel?.available && panel?.scanner);
+/** Can a profile open in the panel now: the desktop app's panel, and no scan driving it? */
+export function panelCanOpen(panel = panelNow(), job = scannerNow()) {
+  return Boolean(panel?.available) && !scanHoldsPanel(job, panel);
 }
 
 /** One profile in your own browser, as every link did before the panel. */
@@ -38,31 +48,36 @@ export function openProfileInBrowser(url) {
 export const PANEL_TITLE = 'Opens in Sixgree’s own browser, and counts as one of today’s profile views';
 
 /**
- * Open `person`'s profile: in the panel when it can (Outlink: one profile
- * view, recorded), else in your browser (unless `browser` is false).
+ * Tell the server a profile opened in the panel: one profile view, written
+ * down (app/api/profile-view). In the background; the panel is already there.
+ */
+export function countProfileView(person, url) {
+  fetch('/api/profile-view', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: person?.id ?? null, name: person?.name ?? null, url }),
+  }).then((r) => {
+    // The notch's and the Scan page's counts, at once rather than at their next look.
+    if (r.ok && typeof window !== 'undefined') window.dispatchEvent(new Event(LIMITS_CHANGED));
+  }).catch(() => {});
+}
+
+/**
+ * Open `person`'s profile: in the panel when it can (at once, then counted as
+ * one profile view), else in your browser (unless `browser` is false).
  * → { where: 'panel' | 'browser' | 'fallback' | 'error', message? }:
  *   'fallback' the panel couldn't, and `browser` was false, so nothing opened.
  */
 export async function openProfile(person, { browser = true } = {}) {
   const url = profileUrlOf(person);
   if (!url) return { where: 'error', message: 'There is no LinkedIn profile to open.' };
-  if (!panelCanOpen() || !person?.id) {
-    if (!browser) return { where: 'fallback' };
-    openProfileInBrowser(url);
-    return { where: 'browser' };
-  }
-  showLinkedInPanel();
-  try {
-    await beginScrape('outlink', { id: person.id, name: person.name });
+  if (panelCanOpen() && await showProfileInPanel(url)) {
+    countProfileView(person, url);
     return { where: 'panel' };
-  } catch (err) {
-    if (err?.details?.fallback) {
-      if (!browser) return { where: 'fallback', message: err.message };
-      openProfileInBrowser(url);
-      return { where: 'browser' };
-    }
-    return { where: 'error', message: err?.message || 'It couldn’t be opened.' };
   }
+  if (!browser) return { where: 'fallback' };
+  openProfileInBrowser(url);
+  return { where: 'browser' };
 }
 
 /**
@@ -79,7 +94,7 @@ export default function OpenProfile({ person, style, className, title, onOpen, s
     if (stopPropagation) e.stopPropagation();
     onOpen?.(e);
   };
-  if (!panelCanOpen(panel) || !person?.id) {
+  if (!panel?.available) {
     return <a href={url} target="_blank" rel="noopener noreferrer" onClick={before} className={className} style={style} title={title}>{children}</a>;
   }
   async function open(e) {
@@ -155,7 +170,7 @@ export async function openProfiles(people, { heading = 'Open profiles', color } 
   const list = (people || []).filter((p) => profileUrlOf(p));
   if (!list.length) return;
   if (list.length === 1) { await openProfile(list[0]); return; }
-  if (!panelCanOpen() || !list.every((p) => p.id)) {
+  if (!panelCanOpen()) {
     openLauncherInBrowser(list, { heading, color });
     return;
   }
@@ -176,8 +191,8 @@ export async function nextProfile() {
   setSteps({ ...steps, next: steps.next + 1, busy: true, note: null });
   const got = await openProfile(person, { browser: false });
   if (!steps) return;
-  // Not opened (something else runs): it stays next.
-  if (got.where !== 'panel') setSteps({ ...steps, next: steps.next - 1, busy: false, note: got.message || 'It couldn’t be opened here.' });
+  // Not opened (a scan has taken the panel meanwhile): it stays next.
+  if (got.where !== 'panel') setSteps({ ...steps, next: steps.next - 1, busy: false, note: got.message || 'A scan is using Sixgree’s browser. Next profile works again once it has finished.' });
   else setSteps({ ...steps, busy: false });
 }
 

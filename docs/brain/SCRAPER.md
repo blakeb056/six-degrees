@@ -201,9 +201,9 @@ panel page's DevTools target id); `panel_settings` takes nothing else.
   It checks the cooldown and the day's profile views, then `ensure_logged_in` (a security
   check there is pushback, as for Auto), waits out the gap and takes one profile view
   (`_wait_for_profile_view`, so `linkedin-activity.json` counts it), opens the profile,
-  clicks nothing, prints `Outlink result: opened` and lets go. The app writes down who and
-  when (`lib/outlink-opened.js`, `outlink-opened.json`) and starts it only for plugins from
-  1.0.5 (`outlinkSupported`); otherwise the page opens the profile in the user's browser.
+  clicks nothing, prints `Outlink result: opened` and lets go. The app no longer starts it
+  (after 2.5.0): every profile link opens the panel itself, at once, and the server counts
+  the view (DESKTOP.md, *Every profile link*). The flag stays in the scanner.
 - Tests: `tests/scanner-panel.test.mjs` (stand-in Electron), `tests/linkedin-panel.test.mjs`.
   The real check against a local page is in DESKTOP.md.
 
