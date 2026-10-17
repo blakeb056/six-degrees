@@ -59,10 +59,13 @@ test('S only: the map draws the gold and the purple connections, and the A perso
 
 test('the tier chips filter the people ranked and nothing else: not the ways in, not Gatekeepers', () => {
   const view = src('app/components/SeparationView.js');
-  // The chips' tier reaches the ranked people (matches) and the unranked finds, and nowhere else.
-  assert.match(view, /const matches = useCallback\(\(p, text\) => \(tier === 'all' \|\| p\.tier === tier\)/);
-  assert.match(view, /model\.unranked\.filter\(\(p\) => \(tier === 'all' \|\| p\.tier === tier\)/);
-  assert.equal((view.match(/\.tier === tier\b/g) || []).length, 2, 'only those two compare against the chip');
+  // The chips' tiers reach the ranked people (matches), the unranked finds and the sections, and nowhere else.
+  assert.match(view, /const matches = useCallback\(\(p, text\) => tierShown\(tiers, p\.tier\)/);
+  assert.match(view, /model\.unranked\.filter\(\(p\) => tierShown\(tiers, p\.tier\)/);
+  assert.equal((view.match(/tierShown\(tiers,/g) || []).length, 2, 'only those two compare against the chips');
+  assert.match(view, /tierSections\(visible, \{ tiers, collapsed \}\)/);
+  // Nothing that draws a way in is handed the chips: not the map's layouts, not the routes.
+  assert.doesNotMatch(view, /(summitLayout|convergeLayout|separationPeople|routeIndex)\([^)]*\btiers\b/);
   // Routing reads every row, whatever the Filters grid or the chips say.
   assert.match(view, /const sepRows = useMemo\(\(\) => \[\.\.\.\(showsAt \? fullDegree2 : degree2\), \.\.\.degree3\]/);
   assert.match(view, /separationPeople\(sepRows, connections, \{ include: showsAt \}\)/);
