@@ -6,20 +6,19 @@
 // of your network growing by the date you connected. Everything moves the
 // Galaxy in place; lib/galaxy-lab.js holds the settings and the clock. It began
 // as an experimental box with its own on switch; now it is always on, and sits
-// flush in the panel.
+// flush in the panel. The replay plays on a stage of its own over the map
+// (app/components/ReplayStage.js): here is how to open it and how it looks.
 
 import { useState, useSyncExternalStore } from 'react';
 import {
   LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, drawsByDegree, labNow, setLab, watchLab,
-  clockNow, setClock, watchClock, play, pause, stopReplay,
+  clockNow, setClock, watchClock, stopReplay,
   layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
 } from '../../lib/galaxy-lab';
 import { savePicture, recordReplay, canRecord } from '../../lib/galaxy-export';
-import { showActivity } from '../../lib/island';
+import { openReplay } from '../../lib/replay';
 
 const noLayouts = [];
-
-const DAY = 86400000;
 
 // Obsidian's four forces, by its names, saying what each does to a network
 // (Blake, 2026-10-03: "give the obsidian adjustments making sense to our data
@@ -71,13 +70,28 @@ function Choice({ options, value, onPick }) {
   );
 }
 
-/** Filter → Names: every name on the Galaxy on or off, with or without the lab. */
+// Is there anything to replay: the Galaxy has set the first and last dates on the map.
+const canReplayAt = (clock) => clock.min != null && clock.max != null && clock.max > clock.min;
+
+const watchButton = {
+  width: '100%', padding: '7px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+  border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
+};
+
+/** Filter → Names: every name on the Galaxy on or off, with or without the lab. On a phone, the replay too. */
 export function NamesSwitch() {
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
+  const clock = useSyncExternalStore(watchClock, clockNow, clockNow);
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Names</div>
       <Choice value={lab.labels} options={[[true, 'On'], [false, 'Off']]} onPick={(v) => setLab({ labels: v })} />
+      {canReplayAt(clock) && (
+        <>
+          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, margin: '12px 0 8px', textTransform: 'uppercase' }}>Replay</div>
+          <button type="button" onClick={openReplay} style={watchButton}>▶ Watch your network grow</button>
+        </>
+      )}
     </div>
   );
 }
@@ -90,8 +104,6 @@ const subscribeMotion = (f) => {
   m?.addEventListener('change', f);
   return () => m?.removeEventListener('change', f);
 };
-
-const month = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
 /**
  * `onPickLayout`: how a layout is picked. Network Circle passes its own
@@ -111,11 +123,10 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
   const run = async (what, job) => {
     setBusy(what);
     setNote(null);
-    // A recording runs for the whole replay: the notch under the header shows it.
-    const done = what === 'video' ? showActivity({ id: 'replay-video', label: 'Recording the replay', detail: 'The video saves when it ends' }) : () => {};
-    try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); done(); }
+    // A recording runs for the whole replay: the notch under the header shows it (lib/galaxy-export.js recordReplay).
+    try { await job(); } catch (e) { setNote(e.message || 'That didn’t work.'); } finally { setBusy(null); }
   };
-  const canReplay = clock.min != null && clock.max != null && clock.max > clock.min;
+  const canReplay = canReplayAt(clock);
   const preset = layoutOf(lab);
   const fit = () => setClock({ fit: clockNow().fit + 1 });
   const still = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
@@ -224,58 +235,42 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
           <div style={heading}>Replay</div>
           {canReplay ? (
             <>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                <button onClick={() => (clock.playing ? pause() : play())} style={{
-                  padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  border: '1px solid rgba(52,152,219,0.6)', background: 'rgba(52,152,219,0.18)', color: 'var(--sd-fg-1, #cfe6f7)',
-                }}>{clock.playing ? '❚❚ Pause' : '▶ Replay'}</button>
-                {clock.at != null && (
-                  <button onClick={stopReplay} style={{
-                    padding: '5px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                    border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', color: 'var(--sd-fg-3, #aaa)',
-                  }}>Show all</button>
-                )}
-                <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--sd-fg-3, #aab)', fontVariantNumeric: 'tabular-nums' }}>
-                  {month(clock.at ?? clock.max)}
-                </span>
+              {/* Blake, 2026-10-17: "my recordings come at the very end and don't capture the dots
+                  individually showing ... slowing it down if there's a bunch of connections at once". */}
+              <button type="button" onClick={openReplay} style={watchButton}>▶ Watch your network grow</button>
+              <div style={{ ...small, marginTop: 4, marginBottom: 8 }}>
+                How it was built, one person at a time, in the order you connected: a line draws out from whoever each
+                one came through, you or a bridge, and each circle grows round its bridge. A busy day is slowed down and
+                a quiet year passes in a moment, so no one is skipped. Speed, the timeline and the camera are on the replay.
+                {marks.length > 0 ? ' Gold marks on its timeline are your job starts and blue ones your posts, from the Social tab.' : ''}
               </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="range" min={clock.min} max={clock.max} step={DAY} value={clock.at ?? clock.max}
-                  onChange={(e) => { pause(); setClock({ at: Number(e.target.value) }); }}
-                  style={{ width: '100%', accentColor: 'var(--sd-accent, #3498DB)' }}
-                  aria-label="Time"
-                />
-                {/* Milestones from the Social tab: a job start (gold) or a post (blue). */}
-                <div style={{ position: 'absolute', left: 7, right: 7, top: -3, height: 6, pointerEvents: 'none' }}>
-                  {marks.map((m) => (
-                    <span key={`${m.kind}-${m.t}`} title={`${m.label} · ${month(m.t)}`} style={{
-                      position: 'absolute', left: `${((m.t - clock.min) / (clock.max - clock.min)) * 100}%`,
-                      width: m.kind === 'job' ? 3 : 2, height: m.kind === 'job' ? 8 : 5, borderRadius: 1, transform: 'translateX(-50%)',
-                      background: m.kind === 'job' ? '#D4AF37' : '#74B9FF', opacity: m.kind === 'job' ? 0.95 : 0.7,
-                    }} />
-                  ))}
-                </div>
+              <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Show</div>
+              <Choice value={lab.replayView === 'cluster' ? 'cluster' : 'person'} options={[['person', 'Each person'], ['cluster', 'Each circle']]} onPick={(v) => setLab({ replayView: v })} />
+              <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
+                {lab.replayView === 'cluster'
+                  ? 'Each scanned circle as one bubble beside its bridge, growing as its people arrive. Only circles on the map: show the 2nd degree in Filters to see them.'
+                  : 'Every person as a dot, with a line to whoever they came through.'}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', ...small }}>
-                <span>{month(clock.min)}</span><span>{month(clock.max)}</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', margin: '8px 0 4px' }}>Length</div>
-              <Choice value={lab.speed} options={[[5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '1 min']]} onPick={(v) => setLab({ speed: v })} />
+              <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Colour</div>
+              <Choice value={lab.replayColour === 'degree' ? 'degree' : 'tier'} options={[['tier', 'Tier'], ['degree', 'Degree']]} onPick={(v) => setLab({ replayColour: v })} />
+              <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Camera</div>
+              <Choice value={lab.replayCamera === 'follow' ? 'follow' : 'whole'} options={[['whole', 'Whole map'], ['follow', 'Follow the action']]} onPick={(v) => setLab({ replayCamera: v })} />
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--sd-fg-3, #aab)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={lab.loop} onChange={(e) => setLab({ loop: e.target.checked })} style={{ accentColor: 'var(--sd-accent, #3498DB)' }} />
                 Loop
               </label>
-              <div style={{ ...small, marginTop: 4 }}>
-                Your connections appear on the day you connected; their circles come with them.
-                {marks.length > 0 ? ' Gold marks are your job starts and blue ones your posts, from the Social tab.' : ''}
-              </div>
               {recordable && (
-                <button disabled={!!busy} onClick={() => run('video', recordReplay)} style={{
-                  marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                  cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(231,76,60,0.5)',
-                  background: 'rgba(231,76,60,0.12)', color: 'var(--sd-fg-2, #f5b7b1)',
-                }}>{busy === 'video' ? '● Recording…' : '● Record the replay as a video'}</button>
+                <>
+                  <button disabled={!!busy} onClick={() => run('video', recordReplay)} style={{
+                    marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(231,76,60,0.5)',
+                    background: 'rgba(231,76,60,0.12)', color: 'var(--sd-fg-2, #f5b7b1)',
+                  }}>{busy === 'video' ? '● Recording…' : '● Record the replay as a video'}</button>
+                  <div style={{ ...small, marginTop: 4 }}>
+                    The replay from the start, at the speed it&rsquo;s set to, each person on their own frame. It saves on
+                    this computer and shows real names, so check it before you post it.
+                  </div>
+                </>
               )}
             </>
           ) : (

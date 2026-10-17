@@ -17,6 +17,7 @@ import { canFocus, focusSubgraph, focusLook, focusLayer, hoverIntent } from '../
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
+import ReplayStage from './ReplayStage';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -360,6 +361,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
           ease={focus.ease} reduced={focus.reduced} tierColors={tierColors} selectedId={selectedId}
           onSelect={(row) => onSelectRef.current?.(row)} onClose={closeFocus} canScan={canScan} />
       )}
+      {/* The replay, over the map while it plays: everyone's place comes from this scene (ReplayStage.js). */}
+      <ReplayStage sceneRef={sceneRef} chain={chain} tierColors={tierColors} />
     </div>
   );
 }

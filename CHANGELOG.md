@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **The replay shows your network growing one person at a time.** It used to run the calendar in a
+  straight line, so most people arrived in the last few seconds, a scanned circle landed all in one
+  frame, and a recording showed little but the end. Now it plays on a stage of its own over Network
+  Circle, paced by people rather than dates: each one arrives on their own, in the order you
+  connected, your connections dashing out from you along their line and each circle springing out
+  round the person it came through, with S and A named as they arrive. A busy day (a conference, a
+  scanned circle) is slowed down and a quiet year passes in under a second, so no one is skipped.
+  Speeds from 0.25x to 4x, a timeline you can drag that shows the busy stretches, the years, and
+  your job starts and posts, and the options: each person or each circle (a bubble beside its
+  bridge that grows as its people arrive), tier or degree colours, the whole map or a camera that
+  follows whoever is arriving, names on or off, and Loop. Wheel, drag or pinch to look around. A
+  recording is the same replay at the speed you set, a frame for every step, so the video shows
+  each person arriving; it saves on this computer. It stays smooth with 15,000 people on the map,
+  in every look, Daylight included, and fits a phone. Saved pictures and videos are named by this
+  computer's date, not tomorrow's after 8 pm.
 - **Separation, in tiers.** The people to connect with are in sections, S to D, each with a header in
   its tier's colour, how many it holds, its scores and a fold. The tier chips show and hide whole
   sections, more than one at a time; inside a section the order is the list's own (rank, or the
