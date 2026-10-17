@@ -9,7 +9,8 @@ import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
 import { reachIndex, notScannedYet, degreesOpensOn } from '../lib/reach';
-import { NETWORK_GRID, DEGREES_GRID, MAP_GRID, shows, gridCounts, makeGrid, sameGrid, toggleTiers, bandChips, toggleBand } from '../lib/tier-grid';
+import { NETWORK_GRID, DEGREES_GRID, MAP_GRID, GRID_DEGREES, shows, showsDegree, gridCounts, makeGrid, sameGrid, toggleTiers, bandChips, toggleBand } from '../lib/tier-grid';
+import { chainedDegrees } from '../lib/galaxy';
 import Sidebar from './components/Sidebar';
 import FilterPanel from './components/FilterPanel';
 import { viewsForMode } from './components/views';
@@ -226,6 +227,16 @@ function HomeInner() {
   // once, at the nearest degree they're found (lib/degrees.js).
   const byDegree = useMemo(() => peopleByDegree(degree1, degree2, degree3), [degree1, degree2, degree3]);
   const grid = grids[gridKey];
+  // Network Circle goes by the degree the Galaxy draws each person at, the 1st to
+  // the 6th (lib/galaxy.js chainedDegrees): its chips under the map and its Filters
+  // grid count them so, and pick who shows so, never "3rd 0" beside 3rd-colour dots.
+  // Your connections who came through a circle hang off it only while more than
+  // your connections are on screen (galaxyChain's rule), and the Galaxy is told the same.
+  const isNetwork = mode === 'network';
+  const chainedOn = isNetwork && (degree2.length > 0 || degree3.length > 0)
+    && GRID_DEGREES.some((d) => d > 1 && showsDegree(grids.network, d));
+  const byChain = useMemo(() => (isNetwork ? chainedDegrees(byDegree, { all: [...degree1, ...degree2], chained: chainedOn }) : null),
+    [isNetwork, byDegree, degree1, degree2, chainedOn]);
   // Degrees draws your connections (the bridges among them) and their circles;
   // Network Circle draws whoever the grid shows, at any degree.
   // Separation ranks the people past your connections, and every connection is a way
@@ -236,8 +247,9 @@ function HomeInner() {
   const filtered = useMemo(() => {
     if (isSeparation) return connections;
     if (isDegreesMode) return connections.filter((c) => shows(grid, c.tier, 1));
+    if (byChain) return GRID_DEGREES.flatMap((d) => (byChain[d] || []).filter((c) => shows(grid, c.tier, d)));
     return [1, 2, 3].flatMap((d) => (byDegree[d] || []).filter((c) => shows(grid, c.tier, d)));
-  }, [isSeparation, isDegreesMode, connections, byDegree, grid]);
+  }, [isSeparation, isDegreesMode, connections, byDegree, byChain, grid]);
   // Lookups built once per load. Every click re-renders this component, and the
   // three places below used to scan one list inside another — degree1.find per
   // 2nd-degree row, degree2.some per connection — about 16M comparisons, twice
@@ -275,7 +287,7 @@ function HomeInner() {
     [isSeparation, degree1, degree2, degree3]);
   const panelCounts = useMemo(() => (isSeparation ? sepCounts : gridCounts(isDegreesMode
       ? { 1: unscannedView ? notScannedYet(degree1, reachIndex(degree1, degree2, scanNotes)).todo : degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
-      : byDegree)), [isSeparation, sepCounts, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree]);
+      : byChain || byDegree)), [isSeparation, sepCounts, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree, byChain]);
   // Who Separation ranks: the grid, by tier and the degree each person is at.
   const sepShows = useCallback((tier, degree) => shows(grid, tier, degree), [grid]);
   const selectHandler = useCallback((node) => {
@@ -311,7 +323,8 @@ function HomeInner() {
         // Degrees is by degree, so coming to it turns the tiers off; the fan
         // keeps the Tiers switch as it is, and draws a bar for each tier while
         // it's on (Blake, 2026-10-15: "use the wifi fan for both tiers and also degrees").
-        const next = makeGrid([1, 2, 3], { tiersOff: (entering && key === 'degrees') || Boolean(g.network.tiersOff) });
+        // Every degree the Galaxy can draw, the 4th to the 6th along a chain too.
+        const next = makeGrid(GRID_DEGREES, { tiersOff: (entering && key === 'degrees') || Boolean(g.network.tiersOff) });
         // The same picks keep the same grid, so the map isn't drawn again for nothing.
         return sameGrid(g.network, next) ? g : { ...g, network: next };
       });
@@ -332,7 +345,7 @@ function HomeInner() {
     setGrids((g) => {
       if (g.network !== NETWORK_GRID) return g;
       gridBeforeDegrees.current = g.network;
-      return { ...g, network: makeGrid([1, 2, 3], { tiersOff: layout === 'degrees' }) };
+      return { ...g, network: makeGrid(GRID_DEGREES, { tiersOff: layout === 'degrees' }) };
     });
   }, [layout]);
   // The chips under Network Circle's map, in every shape: one control for tiers
@@ -506,6 +519,8 @@ function HomeInner() {
             onToggleBand: toggleLegendBand,
             onToggleTiers: toggleLegendTiers,
             bandBy: grids.network.tiersOff ? 'degree' : 'tier',
+            // Whether the Galaxy chains your connections who came through a circle, as the chips count them.
+            chained: chainedOn,
           };
           return <View {...viewProps} />;
         })()}

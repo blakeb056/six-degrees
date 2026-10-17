@@ -6,7 +6,9 @@
 // read the other's list: a profile view and up to 100 searches on the wrong
 // person, while the page said the right one's circle was being scanned. The id's
 // profile URL is now looked up here, as Resume's is, and a scan reads that list
-// from page 1 (--from-start); Resume carries on.
+// from page 1 (--from-start); Resume carries on. Since 2026-10-16 each is one
+// round of their list (lib/scan-rounds.js): 25 pages, or 50, from where the last
+// stopped, so a Scan on someone part read carries on too.
 //
 // The scanner is a stand-in. SIX_DEGREES_PYTHON names a shell script that
 // answers the app's look for a Python and writes down what it is started with,
@@ -81,19 +83,20 @@ async function scannerArgs() {
   return args.slice(args.findIndex((a) => a.endsWith('scrape.py')) + 1);
 }
 
-test('a scan of someone picked by id reads their list, found by profile URL, from page 1', async () => {
+const ROUND_1 = ['--from-start', '--max-pages=25', '--round=25'];
+
+test('a scan of someone picked by id reads their list, found by profile URL, from page 1: one round', async () => {
   const res = await post({ action: 'bridge', id: 'p-dalia-2', name: 'Dalia Fenmoor', maxPages: 25 });
   assert.equal(res.status, 200);
-  assert.deepEqual(await scannerArgs(),
-    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=25']);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1]);
   const { target, log } = await job();
   assert.deepEqual(target, { id: 'p-dalia-2', name: 'Dalia Fenmoor' });
   assert.equal(log[0], 'Mapping the circle behind Dalia Fenmoor…');
+  assert.equal(log[1], 'A round of 25 pages: from page 1, to page 25 at most.');
 
   // The other Dalia Fenmoor, by her id: her own list.
   await post({ action: 'bridge', id: 'p-dalia-1', name: 'Dalia Fenmoor' });
-  assert.deepEqual(await scannerArgs(),
-    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-1', '--from-start', '--max-pages=100']);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-1', ...ROUND_1]);
 });
 
 // The guided setup's first scan (Blake, 2026-10-14): three pages of the circle
@@ -104,11 +107,10 @@ test('the setup\'s first scan reads three pages of the circle picked by id, and 
   const res = await post({ action: 'bridge', id: 'p-dalia-2', name: 'Dalia Fenmoor', maxPages: FIRST_SCAN_PAGES });
   assert.equal(res.status, 200);
   assert.deepEqual(await scannerArgs(),
-    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=3']);
-  for (const maxPages of [4, 2, '3', 0, -3, 3.5]) {
+    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=3', '--round=3']);
+  for (const maxPages of [4, 2, '3', 0, -3, 3.5, 100]) {
     assert.equal((await post({ action: 'bridge', id: 'p-dalia-2', maxPages })).status, 200);
-    assert.deepEqual(await scannerArgs(),
-      ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100'], String(maxPages));
+    assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1], String(maxPages));
   }
 });
 
@@ -129,7 +131,7 @@ test('nothing opens LinkedIn before the one-time "I understand", whichever butto
     // Someone who scanned before this existed (the scanner's own Chrome profile is here) isn't asked.
     mkdirSync(profile);
     assert.equal((await post({ action: 'bridge', id: 'p-dalia-2' })).status, 200);
-    assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100']);
+    assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1]);
   } finally {
     rmSync(profile, { recursive: true, force: true });
     writeSettings(getDb(), { scanRiskAccepted: '2026-10-03T00:00:00.000Z' });
@@ -139,16 +141,48 @@ test('nothing opens LinkedIn before the one-time "I understand", whichever butto
   await scannerArgs();
 });
 
-test('carrying on with someone picked by id leaves out --from-start', async () => {
+const PROGRESS = path.join(process.env.SIX_DEGREES_HOME, 'bridge-progress.json');
+const LIMITS = path.join(process.env.SIX_DEGREES_HOME, 'scan-limits.json');
+const noted = (notes) => writeFileSync(PROGRESS, JSON.stringify({ me: notes }));
+
+test('a Scan on someone part read carries on with their next round, leaving out --from-start; Rescan starts again', async (t) => {
+  t.after(() => rmSync(PROGRESS, { force: true }));
+  noted({ 'https://www.linkedin.com/in/dalia-fenmoor-2': { pages: 25, more: true } });
+  await post({ action: 'bridge', id: 'p-dalia-2' });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=50', '--round=25']);
+  assert.equal((await job()).log[1], 'A round of 25 pages: from page 26, to page 50 at most.');
+  // The old "carry on" switch changes nothing now: the note decides.
   await post({ action: 'bridge', id: 'p-dalia-2', deeper: true });
-  assert.deepEqual(await scannerArgs(),
-    ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=100', '--deeper']);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=50', '--round=25']);
+  // Rescan from the start: page 1, one round.
+  await post({ action: 'bridge', id: 'p-dalia-2', fromStart: true });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1]);
+  // Read to the end: a Scan is a rescan from page 1.
+  noted({ 'https://www.linkedin.com/in/dalia-fenmoor-2': { pages: 40, more: false } });
+  await post({ action: 'bridge', id: 'p-dalia-2' });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1]);
 });
 
-test('Resume carries on where the last read stopped, to the end of the list', async () => {
+test('Scan next round (Resume) carries on where the last round stopped, one round, whatever pages are asked', async (t) => {
+  t.after(() => rmSync(PROGRESS, { force: true }));
+  // No note: mapped before notes were kept, read to page 10.
   await post({ action: 'resume', id: 'p-dalia-2', maxPages: 10 });
-  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=100']);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=35', '--round=25']);
   assert.equal((await job()).log[0], 'Carrying on with Dalia Fenmoor…');
+  noted({ 'https://www.linkedin.com/in/dalia-fenmoor-2': { pages: 0, more: true, readPages: [[2, 14]] } });
+  await post({ action: 'resume', id: 'p-dalia-2' });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=25', '--round=25']);
+});
+
+test('rounds of 50 when Scanner settings say so, the most', async (t) => {
+  t.after(() => { rmSync(PROGRESS, { force: true }); rmSync(LIMITS, { force: true }); });
+  writeFileSync(LIMITS, JSON.stringify({ roundPages: 50 }));
+  await post({ action: 'bridge', id: 'p-dalia-2' });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=50', '--round=50']);
+  noted({ 'https://www.linkedin.com/in/dalia-fenmoor-2': { pages: 80, more: true } });
+  await post({ action: 'resume', id: 'p-dalia-2' });
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--max-pages=100', '--round=50'],
+    'never past page 100');
 });
 
 test('a name alone still scans by name, for a caller with no id', async () => {
@@ -179,7 +213,7 @@ test('the window: out of sight unless asked to show it; never headless from the 
   assert.equal((await post({ action: 'refresh', headless: true })).status, 200);
   assert.deepEqual(await scannerArgs(), ['--refresh']);
   assert.equal((await post({ action: 'bridge', id: 'p-dalia-2', showWindow: true })).status, 200);
-  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', '--from-start', '--max-pages=100', '--show-window']);
+  assert.deepEqual(await scannerArgs(), ['--bridge-url=https://www.linkedin.com/in/dalia-fenmoor-2', ...ROUND_1, '--show-window']);
   // Signing in is in front whatever the switch says (scripts/scrape.py launch_chrome sign_in=True).
   assert.equal((await post({ action: 'login', showWindow: true })).status, 200);
   assert.deepEqual(await scannerArgs(), ['--login']);

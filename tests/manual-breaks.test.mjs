@@ -22,7 +22,7 @@ import { PYTHON, noPython } from './python.mjs';
 import { SCRAPER, HARNESS, noScanner } from './helpers/scanner.mjs';
 import {
   BREAK_DEFAULTS, BREAK_EVERY_RANGE, BREAK_SECONDS_RANGE, BREAK_WHY, breakText, validBreakEvery, validBreakSeconds,
-  BREAK_PACE_SECONDS, BREAK_PACE_DEFAULT, BREAK_PACE_TEXT, breakSecondsFor,
+  BREAK_PACE_SECONDS, BREAK_PACE_DEFAULT, BREAK_PACE_TEXT, BREAK_OVERRIDE_TEXT, breakSecondsFor, paceBreakSeconds,
 } from '../lib/manual-breaks.js';
 import { PACES } from '../lib/scan-pace.js';
 import { DEFAULT_LIMITS, readLimits, writeLimits } from '../lib/linkedin-limits.js';
@@ -450,43 +450,56 @@ out.update({'status': status, 'read': sorted(reach['read']), 'calls': calls})`);
 
 // ── the settings ──────────────────────────────────────────────────────────────
 
-test('the settings: 10 pages and 20 seconds unless changed, from 1 to 25 pages and 10 to 300 seconds, only a change written', () => {
-  assert.deepEqual(BREAK_DEFAULTS, { breakEvery: 10, breakSeconds: 20 });
+test('the settings: 10 pages unless changed, the length the speed\'s unless the slider sets one, from 1 to 25 pages and 5 to 120 seconds, only a change written', () => {
+  // Blake, 2026-10-16: the break adjuster. Its slider starts at the pace's length, and moving it overrides it.
+  assert.deepEqual(BREAK_DEFAULTS, { breakEvery: 10, breakSeconds: null });
   assert.deepEqual(BREAK_EVERY_RANGE, { min: 1, max: 25 });
-  assert.deepEqual(BREAK_SECONDS_RANGE, { min: 10, max: 300 });
+  assert.deepEqual(BREAK_SECONDS_RANGE, { min: 5, max: 120 });
   assert.equal(DEFAULT_LIMITS.breakEvery, 10);
-  assert.equal(DEFAULT_LIMITS.breakSeconds, 20);
+  assert.equal(DEFAULT_LIMITS.breakSeconds, null);
   for (const n of [1, 10, 25]) assert.equal(validBreakEvery(n), true, String(n));
   for (const n of [0, 26, 2.5, '10', true, null]) assert.equal(validBreakEvery(n), false, String(n));
-  for (const n of [10, 20, 300]) assert.equal(validBreakSeconds(n), true, String(n));
-  for (const n of [9, 301, 20.5, '20', null]) assert.equal(validBreakSeconds(n), false, String(n));
+  for (const n of [5, 20, 120]) assert.equal(validBreakSeconds(n), true, String(n));
+  for (const n of [4, 121, 300, 20.5, '20', null]) assert.equal(validBreakSeconds(n), false, String(n));
 
   const dir = scratch();
   try {
     const file = () => JSON.parse(readFileSync(path.join(dir, 'scan-limits.json'), 'utf8'));
     assert.equal(readLimits(dir).breakEvery, 10);
-    assert.equal(readLimits(dir).breakSeconds, 20);
+    assert.equal(readLimits(dir).breakSeconds, null, 'none set: the speed\'s');
     writeLimits(dir, { daily: 30 });
     assert.equal('breakEvery' in file(), false);
     assert.equal('breakSeconds' in file(), false);
     writeLimits(dir, { breakEvery: 5, breakSeconds: 45 });
     assert.deepEqual([file().breakEvery, file().breakSeconds], [5, 45]);
-    writeLimits(dir, { breakEvery: 0, breakSeconds: 9 });
+    writeLimits(dir, { breakEvery: 0, breakSeconds: 4 });
     assert.deepEqual([readLimits(dir).breakEvery, readLimits(dir).breakSeconds], [5, 45], 'out of range keeps the saved ones');
-    writeLimits(dir, { breakEvery: 26, breakSeconds: 301 });
+    writeLimits(dir, { breakEvery: 26, breakSeconds: 121 });
     assert.deepEqual([readLimits(dir).breakEvery, readLimits(dir).breakSeconds], [5, 45]);
     writeLimits(dir, { daily: 40 });
     assert.deepEqual([file().breakEvery, file().breakSeconds], [5, 45], 'another setting saved keeps them');
-    writeLimits(dir, { breakEvery: 10, breakSeconds: 20 });
+    // Every other setting is saved with the rest sent back as they are: the length stays.
+    writeLimits(dir, { ...readLimits(dir), pace: 'slow' });
+    assert.equal(file().breakSeconds, 45);
+    // The speed's own number, set by the slider, is still the slider's: it stays when the speed changes.
+    writeLimits(dir, { breakSeconds: 10 });
+    assert.equal(file().breakSeconds, 10);
+    // Use pace default: null takes it away, and nothing of it is written.
+    writeLimits(dir, { breakEvery: 10, breakSeconds: null });
     assert.equal('breakEvery' in file(), false, 'back to the defaults, nothing of them is written');
+    assert.equal('breakSeconds' in file(), false);
+    assert.equal(readLimits(dir).breakSeconds, null);
     writeFileSync(path.join(dir, 'scan-limits.json'), JSON.stringify({ breakEvery: '7', breakSeconds: 1000 }));
-    assert.deepEqual([readLimits(dir).breakEvery, readLimits(dir).breakSeconds], [10, 20], 'a hand-edited file out of range reads as the defaults');
+    assert.deepEqual([readLimits(dir).breakEvery, readLimits(dir).breakSeconds], [10, null], 'a hand-edited file out of range reads as the defaults');
+    // A length kept from before 2.5.2's range (10 to 300) and out of this one is the speed's.
+    writeFileSync(path.join(dir, 'scan-limits.json'), JSON.stringify({ breakSeconds: 300 }));
+    assert.equal(readLimits(dir).breakSeconds, null);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('the scanner reads the same keys with the same defaults and ranges, and the break by the speed', (t) => {
+test('the scanner reads the same keys with the same defaults and ranges, and the break by the speed unless one is set', (t) => {
   const r = scanner(t, `
 f = ns['_home']() / 'scan-limits.json'
 out['consts'] = [ns['BREAK_EVERY'], ns['BREAK_SECONDS'], list(ns['BREAK_EVERY_RANGE']), list(ns['BREAK_SECONDS_RANGE']),
@@ -496,7 +509,10 @@ cases = {}
 for name, data in [('set', {'breakEvery': 4, 'pace': 'slow'}), ('edges', {'breakEvery': 25, 'pace': 'fast'}),
                    ('medium', {'breakEvery': 1, 'pace': 'medium'}), ('low', {'breakEvery': 0, 'pace': 'turbo'}),
                    ('high', {'breakEvery': 26, 'pace': 'SLOW'}), ('kinds', {'breakEvery': True, 'pace': 5}),
-                   ('text', {'breakEvery': '4', 'pace': None}), ('stored', {'breakSeconds': 90, 'pace': 'fast'})]:
+                   ('text', {'breakEvery': '4', 'pace': None}), ('stored', {'breakSeconds': 90, 'pace': 'fast'}),
+                   ('shortest', {'breakSeconds': 5, 'pace': 'slow'}), ('longest', {'breakSeconds': 120}),
+                   ('too long', {'breakSeconds': 300, 'pace': 'fast'}), ('too short', {'breakSeconds': 4, 'pace': 'slow'}),
+                   ('not a number', {'breakSeconds': '45', 'pace': 'fast'}), ('a switch', {'breakSeconds': True, 'pace': 'fast'})]:
     f.write_text(json.dumps(data))
     cases[name] = ns['manual_break']()
 f.write_text('not json')
@@ -509,39 +525,50 @@ out['cases'] = cases`);
   assert.deepEqual(r.out.none, [10, 10], 'no speed saved: Medium, 10 seconds');
   assert.deepEqual(r.out.cases, {
     set: [4, 30], edges: [25, 5], medium: [1, 10], low: [10, 10], high: [10, 10], kinds: [10, 10], text: [10, 10],
-    // The stored length is kept for an adjuster to come; for now the speed decides.
-    stored: [10, 5], broken: [10, 10],
+    // The slider's length wins over the speed's (2026-10-16), within 5 to 120 seconds.
+    stored: [10, 90], shortest: [10, 5], longest: [10, 120],
+    'too long': [10, 5], 'too short': [10, 30], 'not a number': [10, 5], 'a switch': [10, 5], broken: [10, 10],
   });
 });
 
-test('the break by the speed: 30 seconds Slow, 10 Medium (the default), 5 Fast', () => {
+test('the break by the speed: 30 seconds Slow, 10 Medium (the default), 5 Fast, unless the slider sets one', () => {
   assert.deepEqual(BREAK_PACE_SECONDS, { slow: 30, medium: 10, fast: 5 });
   assert.equal(BREAK_PACE_DEFAULT, 'medium');
-  assert.deepEqual(['slow', 'medium', 'fast'].map(breakSecondsFor), [30, 10, 5]);
+  assert.deepEqual(['slow', 'medium', 'fast'].map((p) => breakSecondsFor(p)), [30, 10, 5]);
+  assert.deepEqual(['slow', 'medium', 'fast'].map((p) => paceBreakSeconds(p)), [30, 10, 5]);
   for (const p of [undefined, null, '', 'turbo', 'constructor', 5]) assert.equal(breakSecondsFor(p), 10, String(p));
+  // The slider's length, when it's one the app keeps.
+  assert.equal(breakSecondsFor('slow', 45), 45);
+  assert.equal(breakSecondsFor('fast', 5), 5);
+  for (const n of [null, undefined, 4, 121, '45', 2.5]) assert.equal(breakSecondsFor('slow', n), 30, String(n));
   assert.deepEqual(Object.keys(BREAK_PACE_SECONDS).sort(), Object.keys(PACES).sort(), 'one length for each speed the Scan page has');
 });
 
-test('Scanner settings show the breaks under How circle scans run: how often saved through set-limits, how long by the speed', () => {
+test('Scanner settings show the breaks under How circle scans run: how often and how long, saved through set-limits, with Use pace default', () => {
   const page = src('app/setup/page.js');
   assert.match(page, /\{shows\.manual && \(\s*<div style=\{\{ \.\.\.rowStyle, marginTop: 12 \}\}>\s*<ManualBreaksSetting limits=\{li\?\.limits\} disabled=\{busy\} onSave=\{\(change\) => run\('set-limits', change\)\} \/>/);
   const box = src('app/components/ManualBreaksSetting.js');
   assert.match(box, /type="range" min=\{BREAK_EVERY_RANGE\.min\} max=\{BREAK_EVERY_RANGE\.max\}/);
-  // The length's slider is hidden until an adjuster comes; the length follows the speed.
-  assert.doesNotMatch(box, /BREAK_SECONDS_RANGE\.min|handlers\('breakSeconds'\)/);
-  assert.match(box, /breakSecondsFor\(limits\?\.pace\)/);
-  assert.match(box, /\{BREAK_PACE_TEXT\}/);
+  // The length's slider (2026-10-16): 5 to 120 seconds, starting at the speed's, and a reset.
+  assert.match(box, /type="range" min=\{BREAK_SECONDS_RANGE\.min\} max=\{BREAK_SECONDS_RANGE\.max\}/);
+  assert.match(box, /handlers\('breakSeconds'\)/);
+  assert.match(box, /breakSecondsFor\(limits\?\.pace, own\)/);
+  assert.match(box, /onSave\(\{ breakSeconds: null \}\)/);
+  assert.match(box, />\s*Use pace default\s*</);
+  assert.match(box, /\{own != null \? BREAK_OVERRIDE_TEXT : BREAK_PACE_TEXT\}/);
   assert.equal(BREAK_PACE_TEXT, 'How long follows the scan speed: 30 seconds at Slow, 10 at Medium, 5 at Fast.');
+  assert.match(BREAK_OVERRIDE_TEXT, /Use pace default/);
   assert.match(box, /\{BREAK_WHY\}/);
   assert.equal(BREAK_WHY, 'Pages read seconds apart are what LinkedIn notices.');
   assert.equal(breakText(), 'A 10-second break after every 10 pages');
   assert.equal(breakText(10, breakSecondsFor('fast')), 'A 5-second break after every 10 pages');
   assert.equal(breakText(10, breakSecondsFor('slow')), 'A 30-second break after every 10 pages');
+  assert.equal(breakText(10, breakSecondsFor('slow', 45)), 'A 45-second break after every 10 pages');
   assert.equal(breakText(1, 120), 'A 2-minute break after every page');
   assert.equal(breakText(5, 90), 'A 90-second break after every 5 pages');
   const route = src('app/api/scraper/route.js');
   assert.match(route, /breakEvery: body\.breakEvery, breakSeconds: body\.breakSeconds,/);
-  assert.doesNotMatch(box, /scraping|\u2014/i);
+  assert.doesNotMatch(box + BREAK_OVERRIDE_TEXT, /scraping|\u2014/i);
 });
 
 // ── the tick ──────────────────────────────────────────────────────────────────

@@ -1230,9 +1230,9 @@ function EmptyCircle({ person, depth, reach, requests, scanning, canScan, onSele
     body = 'Their people appear here as the scan saves them, every 10 pages.';
   } else if (stopped) {
     title = `${first}’s scan stopped partway`;
-    body = `${stoppedLine(stopped)}. Everyone on those pages was already one of your connections, so nobody new is here yet. Resume carries on from page ${stopped.nextPage}.`;
+    body = `${stoppedLine(stopped)}. Everyone on those pages was already one of your connections, so nobody new is here yet. The next round carries on from page ${stopped.nextPage}.`;
     if (canScan) {
-      action = <ScanHere person={person} action="resume" label={`Resume from page ${stopped.nextPage}`} problem={problem} setProblem={setProblem} />;
+      action = <ScanHere person={person} action="resume" label="Scan next round" problem={problem} setProblem={setProblem} />;
     }
   } else if (state === 'hidden') {
     title = `${first} keeps their connections hidden`;

@@ -374,7 +374,7 @@ def ensure_logged_in(page, timeout_s=LOGIN_WAIT_SECONDS, log_fn=None, stop_on_ch
     if had_session and wall == "checkpoint":
         print(f"{NEEDS_YOU} finish its security check {_where_linkedin()}.", flush=True)
         print()
-        print("  LinkedIn wants a security check. Finish it in the Chrome window;")
+        print(f"  LinkedIn wants a security check. Finish it {_where_linkedin(short=True)};")
         print("  this carries on by itself once it's done. Then leave scanning for a day.")
         print()
         say("Waiting for you to finish LinkedIn's security check...")
@@ -396,10 +396,10 @@ def _print_sign_in_banner(say):
         print("  window. Nothing is scanned until you are, and the scan starts by itself")
         print("  the moment you are. Take as long as you need; Stop cancels.\n")
         return
-    say("Waiting for you to sign into LinkedIn in the Chrome window...")
+    say(f"Waiting for you to sign into LinkedIn {_where_linkedin(short=True)}...")
     print()
     print("  ==================================================================")
-    print("  Sign into LinkedIn in the Chrome window in front of you.")
+    print(f"  Sign into LinkedIn {_where_linkedin()}{'' if PANEL['on'] else ' of you'}.")
     print()
     print("  Use your email and password. \"Continue with Google\" and \"Sign in")
     print("  with Apple\" do not work here — Google blocks its sign-in flow")
@@ -1204,9 +1204,13 @@ def panel_settings(env=None):
     return {"endpoint": endpoint, "target": target}
 
 
-def _where_linkedin():
-    """Where you find LinkedIn's page right now, for the NEEDS_YOU lines."""
-    return "in Sixgree's own browser" if PANEL["on"] else "in the Chrome window in front"
+def _where_linkedin(short=False):
+    """Where you find LinkedIn's page right now, for the NEEDS_YOU lines and the sign-in
+    and security-check words: Sixgree's own browser when the scanner drives its panel,
+    never "the Chrome window" then. `short` leaves out "in front"."""
+    if PANEL["on"]:
+        return "in Sixgree's own browser"
+    return "in the Chrome window" if short else "in the Chrome window in front"
 
 
 def _short_reason(exc):
@@ -2351,6 +2355,9 @@ BRIDGE_COOLDOWN = 120             # after a real scrape: many page views, be pol
 BRIDGE_LOAD_ATTEMPTS = 6          # how many times to look for the connections URN
 BRIDGE_LOAD_STEP = 5              # seconds between looks
 LINKEDIN_MAX_PAGES = 100          # LinkedIn's people search never goes past page 100
+# A circle scan from the app reads one round of someone's list (--round, scrape_bridge):
+# 25 pages, or 50, the most (lib/scan-rounds.js ROUND_CHOICES), from where the last stopped.
+CIRCLE_ROUND_MAX = 50
 END_CHECKS = 3                    # looks for another page before calling a list finished
 SAVE_EVERY_PAGES = 10             # save as a long read goes, so a stop loses little
 # Pace between searches. 0.1.6 read a page every ~6 s — 27 searches in three and
@@ -2898,7 +2905,8 @@ DAILY_MAX = 1000                  # the most the Scan page's number takes (lib/l
 # takeaway 2: "Dev mode should keep a hard ceiling"). Search pages only: profile
 # views and Auto's requests keep what Dev mode does to them. The app shows the same
 # number (lib/linkedin-limits.js DEV_CEILING; tests/dev-manual-mode.test.mjs checks
-# they match).
+# they match). Lifting the limits for the session keeps it too (2026-10-16): before,
+# the lift had no ceiling at all (searches_left).
 DEV_CEILING = 250
 # Lifted for this session, or not. Read at the start, and changed by the app
 # while a scan runs (_listen_for_limits).
@@ -3250,15 +3258,15 @@ def dig_deeper():
 # account was restricted. 10/3: 288 pages about 50 s apart, and nothing happened. So in
 # manual mode, after every BREAK_EVERY pages read, the next page waits (_manual_break).
 # How long follows the Scan page's speed ("pace" in scan-limits.json, scan_pace):
-# BREAK_PACE_SECONDS, Medium's when none is saved. Scanner settings change how often
-# ("breakEvery"). "breakSeconds" and its range stay for an adjuster to come that sets
-# the length by hand over the speed's; nothing reads it for now. lib/manual-breaks.js
-# says the same numbers (tests/manual-breaks.test.mjs). Auto mode keeps its own pace
-# and is untouched.
+# BREAK_PACE_SECONDS, Medium's when none is saved, unless Scanner settings' slider
+# set a length of its own ("breakSeconds", 5 to 120 seconds, 2026-10-16), which wins
+# until "Use pace default" takes it away. Scanner settings also change how often
+# ("breakEvery"). lib/manual-breaks.js says the same numbers
+# (tests/manual-breaks.test.mjs). Auto mode keeps its own pace and is untouched.
 BREAK_EVERY = 10
-BREAK_SECONDS = 20
+BREAK_SECONDS = None              # the speed's length (BREAK_PACE_SECONDS)
 BREAK_EVERY_RANGE = (1, 25)
-BREAK_SECONDS_RANGE = (10, 300)
+BREAK_SECONDS_RANGE = (5, 120)
 BREAK_PACE_SECONDS = {"slow": 30, "medium": 10, "fast": 5}
 BREAK_PACE_DEFAULT = "medium"
 
@@ -3267,7 +3275,8 @@ def manual_break():
     """(every, seconds): a break of `seconds` after every `every` pages read by hand.
     Read from the file each time, so a change reaches a scan under way. `every` that
     isn't a whole number in its range reads as the default, as the app reads it;
-    `seconds` is the saved speed's (BREAK_PACE_SECONDS), Medium's for anything else."""
+    `seconds` is the length the slider saved ("breakSeconds") when it's a whole number
+    in its range, else the saved speed's (BREAK_PACE_SECONDS), Medium's for anything else."""
     data = _scan_settings()
 
     def pick(key, default, span):
@@ -3277,7 +3286,8 @@ def manual_break():
 
     pace = data.get("pace")
     pace = pace if isinstance(pace, str) and pace in BREAK_PACE_SECONDS else BREAK_PACE_DEFAULT
-    return pick("breakEvery", BREAK_EVERY, BREAK_EVERY_RANGE), BREAK_PACE_SECONDS[pace]
+    seconds = pick("breakSeconds", None, BREAK_SECONDS_RANGE)
+    return pick("breakEvery", BREAK_EVERY, BREAK_EVERY_RANGE), seconds if seconds is not None else BREAK_PACE_SECONDS[pace]
 
 
 def _chime(name):
@@ -3349,15 +3359,13 @@ def linkedin_usage(now=None):
 
 
 def searches_left(now=None):
-    """(how many searches may still be made today, "daily"). Lifted for the session, as
-    good as no end. In Dev mode, what's left of DEV_CEILING, counted over the same
-    rolling 24 hours as the daily limit (linkedin_usage). It goes by the same name,
-    "daily", so every place that stops at the daily limit (or, for Auto scan on the
+    """(how many searches may still be made today, "daily"). In Dev mode, or lifted for the
+    session (which had no end at all until 2026-10-16), what's left of DEV_CEILING, counted
+    over the same rolling 24 hours as the daily limit (linkedin_usage). It goes by the same
+    name, "daily", so every place that stops at the daily limit (or, for Auto scan on the
     command line, waits for it) does the same at the ceiling; budget_message says which."""
-    if dev_mode():
-        return (max(0, DEV_CEILING - linkedin_usage(now)["searches_today"]), "daily")
     if limits_lifted():
-        return (10 ** 9, "daily")
+        return (max(0, DEV_CEILING - linkedin_usage(now)["searches_today"]), "daily")
     use, lim = linkedin_usage(now), search_limits()
     return (max(0, lim["daily"] - use["searches_today"]), "daily")
 
@@ -3396,21 +3404,23 @@ def budget_message(kind):
         return (f"Today's limit of {lim['profiles']} profile views is used — it counts the last 24 hours.{free} "
                 f"No profile was opened and nothing was recorded, so the next run starts with the same person."
                 + _lift_hint())
-    if dev_mode():
+    if limits_lifted():
         return dev_ceiling_message()
     return (f"Today's limit of {lim['daily']} searches is used — it counts the last 24 hours. "
             f"The next run carries on from the same page." + _lift_hint())
 
 
 def dev_ceiling_message(now=None):
-    """What a scan says when Dev mode's ceiling stops it (searches_left). Not the daily
-    limit's words, which the app reads as "offer to lift it": lifting doesn't lift this."""
+    """What a scan says when the ceiling stops it (searches_left), in Dev mode or lifted for
+    the session. Not the daily limit's words, which the app reads as "offer to lift it":
+    lifting doesn't lift this."""
     now = now if now is not None else time.time()
     recent = sorted(t for t in _read_activity()["searches"] if t > now - DAY_SECONDS)
     # The one that stops counting soonest frees the next page, as for profile views.
     extra = len(recent) - DEV_CEILING
     at = f", at {_when(recent[extra] + DAY_SECONDS)}" if extra >= 0 else ""
-    return (f"Dev mode's ceiling: {DEV_CEILING} search pages a day, reached. Scanning resumes when "
+    whose = "Dev mode's ceiling" if dev_mode() else "The ceiling the lifted limits keep"
+    return (f"{whose}: {DEV_CEILING} search pages a day, reached. Scanning resumes when "
             f"the oldest of them is a day old{at}. The next run carries on from the same page.")
 
 
@@ -6311,7 +6321,8 @@ def _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pa
             break
         _chime(f"read-{min(streak, MANUAL_STREAK_TOP)}")
         if contiguous >= max_pages:
-            print(f"  That's the {max_pages} pages this scan reads.")
+            print(f"  That's page {max_pages}, as far as this scan reads: the next one carries on from page "
+                  f"{unread_after(max_pages)}.")
             how = "limit"
             break
         if on_save and chunk_pages >= SAVE_EVERY_PAGES:
@@ -6379,7 +6390,7 @@ def _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pa
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
                        start_page=1, urn=None, on_save=None, manual=False, dig=False, from_start=False, own=False,
-                       company=None, company_url=None):
+                       company=None, company_url=None, round_end=False):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -6408,6 +6419,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     company: Breach, a company's people through LinkedIn's keyword search (scan_company_search):
             no profile to open either, so straight to `company_url`; `profile_url` is its
             breach_key. The names in each card's mutual line (your own connections) aren't kept.
+    round_end: max_pages is the end of one round of their list (scrape_bridge's round_pages),
+            and says so when it stops there.
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -6826,7 +6839,10 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             break
         if pg >= max_pages:
             reach["more"] = _find_next(page) is not None or _window_closed(page)
-            if reach["more"]:
+            if reach["more"] and round_end:
+                print(f"  That's page {max_pages}, the end of this round, and LinkedIn has more: "
+                      f"the next round carries on from page {reach['last'] + 1}.")
+            elif reach["more"]:
                 print(f"  Stopped at the {max_pages}-page limit, and LinkedIn has more. "
                       + _page_limit_hint(reach["last"] + 1))
             else:
@@ -6913,13 +6929,22 @@ def _read(connections, status):
     return out
 
 
+def circle_round(start_page, round_pages):
+    """The last page of one round of someone's list (lib/scan-rounds.js): `round_pages`
+    pages from start_page, held to CIRCLE_ROUND_MAX pages and to page 100."""
+    pages = max(1, min(CIRCLE_ROUND_MAX, int(round_pages)))
+    return min(LINKEDIN_MAX_PAGES, start_page + pages - 1)
+
+
 def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, deeper=False, fresh=False,
-                  profile_url=None):
+                  profile_url=None, round_pages=None):
     """Read one person's connections into the app (opens its own browser).
 
     deeper: carry on from the page the last read of them stopped at, instead of
             starting again at page 1.
     fresh:  their mapped circle was just deleted, so forget how far it was read.
+    round_pages: one round of their list (the app's circle scans, lib/scan-rounds.js):
+            this many pages from where it starts, in place of max_pages.
 
     Returns every connection read ([] when none; None when they could not be
     looked up). Raises SaveFailed if the app refuses a save, NotSignedIn if
@@ -6964,11 +6989,14 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         if nxt is None:
             print(f"Every page of {bridge_name}'s connections has been read already.")
             return _read([], "finished")
-        if nxt > max_pages:
+        if round_pages is None and nxt > max_pages:
             print(f"Pages 1–{nxt - 1} of {bridge_name}'s connections are read already. "
                   f"Choose more than {max_pages} pages to read further.")
             return _read([], "finished")
         start_page, urn = nxt, (entry or {}).get("urn")
+    if round_pages is not None:
+        # One round: the pages after where it starts, whatever --max-pages said.
+        max_pages = circle_round(start_page, round_pages)
     # Without their search id, the read opens their profile: with no profile
     # views left, stop before a browser opens.
     if not urn and profiles_left() <= 0:
@@ -6988,6 +7016,9 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
         print("  Dig deeper waits: today's profile views are used, and their list needs none.")
 
     print(f"\n=== {'Carrying on with' if start_page > 1 else 'Scanning'} connections of {bridge_name} ===\n")
+    if round_pages is not None:
+        print(f"  One round of their list: pages {start_page} to {max_pages}." if max_pages > start_page
+              else f"  One round of their list: page {start_page}.")
 
     read = []
 
@@ -7017,7 +7048,8 @@ def scrape_bridge(bridge_name, headless=False, max_pages=LINKEDIN_MAX_PAGES, dee
 
                 outcome = _scrape_one_bridge(page, bridge_name, bridge_id, profile_url,
                                              max_pages=max_pages, start_page=start_page, urn=urn,
-                                             on_save=save, manual=manual, dig=dig, from_start=not deeper)
+                                             on_save=save, manual=manual, dig=dig, from_start=not deeper,
+                                             round_end=round_pages is not None)
             finally:
                 try:
                     browser.close()
@@ -7687,8 +7719,8 @@ def auto_bridge_all(headless=False, log_fn=None, retry_private=False, max_bridge
         log(f"Dev mode: {use['searches_today']} of its ceiling of {DEV_CEILING} search pages and "
             f"{use['profiles_today']} profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
     elif limits_lifted():
-        log(f"Limits lifted for this session: {use['searches_today']} searches and {use['profiles_today']} "
-            f"profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
+        log(f"Limits lifted for this session: {use['searches_today']} of the ceiling of {DEV_CEILING} search pages "
+            f"and {use['profiles_today']} profile views in the last 24 hours, profiles at least {PROFILE_GAP}s apart")
     else:
         log(f"Searches: {use['searches_today']} of {lim['daily']} a day used, counting the last 24 hours")
         log(f"Profile views: {use['profiles_today']} of {lim['profiles']} in the last 24 hours, "
@@ -9680,8 +9712,10 @@ Examples:
                         help="Breach: one round of a company's people through LinkedIn's people search for its name, "
                              "by itself or by hand, carried on from where the last round stopped. Each page is a search "
                              "counted in your daily limit, so a company is mapped over days")
-    parser.add_argument("--round", type=int, default=BREACH_ROUND,
-                        help=f"With --breach: pages to read this round, 1 to {BREACH_ROUND_MAX} ({BREACH_ROUND} if not given)")
+    parser.add_argument("--round", type=int, default=None,
+                        help=f"With --breach: pages to read this round, 1 to {BREACH_ROUND_MAX} ({BREACH_ROUND} if not given). "
+                             f"With --bridge-url or --bridge: one round of their list, 1 to {CIRCLE_ROUND_MAX} pages, from "
+                             "where the last stopped (or from page 1 with --from-start)")
     parser.add_argument("--degrees", type=str, default=BREACH_DEGREES,
                         help=f"With --breach: which degrees the search shows, 1, 2 and 3 for 1st, 2nd and 3rd+ "
                              f"({BREACH_DEGREES} if not given: your 1st are already saved)")
@@ -9897,7 +9931,8 @@ Examples:
         elif args.your_connections:
             scan_your_connections(headless=args.headless)
         elif args.breach:
-            scan_company_search(args.breach, degrees=args.degrees, pages=args.round, headless=args.headless)
+            scan_company_search(args.breach, degrees=args.degrees,
+                                pages=BREACH_ROUND if args.round is None else args.round, headless=args.headless)
         elif args.search:
             scrape_full(headless=args.headless)
         elif args.full:
@@ -9913,9 +9948,10 @@ Examples:
             # still sends Resume as a bare --bridge-url, and a read from page 1 would
             # spend searches on pages already read.
             scrape_bridge(None, headless=args.headless, max_pages=args.max_pages, deeper=not args.from_start,
-                          profile_url=args.bridge_url)
+                          profile_url=args.bridge_url, round_pages=args.round)
         elif args.bridge:
-            scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper)
+            scrape_bridge(args.bridge, headless=args.headless, max_pages=args.max_pages, deeper=args.deeper,
+                          round_pages=args.round)
         else:
             # Nothing collected yet means this is a first run, and the full scrape
             # is the one that walks every search page and captures photos. Running

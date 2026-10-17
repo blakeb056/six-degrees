@@ -6,7 +6,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-10-16
+
+Scan in rounds of 25 pages, a tour and Help, and a slider for breaks.
+
 ### Added
+- **Circle scans in rounds.** Scanning one person's circle now reads one round of their list, 25
+  pages (about 250 people) by default or 50, the most, set under Scanner settings → Pages a round.
+  Each round carries on where the last one stopped, automatically or by hand, so the 100 pages
+  LinkedIn shows of anyone's list take 4 rounds, or 2. Never-scanned people start at page 1;
+  Rescan from the start reads a round from page 1 again. The person card, the Scan page and the
+  In progress list say "Round 2 of 4" and offer Scan next round. Breach's company rounds are as
+  they were.
+- **Rounds round the dot.** In Network Circle, each bridge's dot has a quiet ring of 4 arcs (2
+  with rounds of 50) in the look's own colours, filling as their list is read: pages read out of
+  their page total, which is their connection count divided by 10 when it's known (100 at most),
+  else 100. Only on your connections who have a circle, or could have one scanned.
+- **Break length by hand.** Scanner settings → Breaks by hand has a slider for how long each
+  break is, 5 to 120 seconds. It starts at the scan speed's length (5, 10 or 30 seconds), moving
+  it sets your own, and Use pace default goes back to the speed's. The scanner follows it at the
+  next break, even mid-scan.
+
+### Changed
+- **Lift limits for this session keeps a ceiling.** Lifted, scans still stop at 250 search pages
+  in 24 hours, Dev mode's ceiling; before, the lift had no ceiling at all. The Scan page, LinkedIn
+  usage and the notch say so, with how many are left.
+- The scanner plugins are 1.0.10.
+
+### Fixed
+- **Network Circle's degree chips count what the map draws.** The chips under the map, and the
+  Filters grid, counted the degree each person was saved at, so they could read "3rd 0" beside
+  dots in the 3rd's colour. They now count, and show or hide, the degree each person is drawn at
+  along the chain, the 4th to the 6th included, and picking Degrees or the fan turns them all on.
+- **An in-app update no longer stops at "ENOENT … mkdtemp".** If the temporary folder Sixgree was
+  started with has been deleted since, the update makes it again, or works in /tmp (or the data
+  folder) instead, and the app it reopens is no longer handed that folder.
+- When there's no scanner, buttons now say to install the Auto scan or Manual scan plugin, not
+  that "the scanner files are missing from this install".
+- Signing in, or a security check, in Sixgree's own browser no longer tells you to use "the
+  Chrome window".
 - **A short tour at the start.** Once the guided setup is done, the map offers a minute's tour: a film
   first (a marked slot for now, for a later release to fill), then a step for each place, with a ring
   round the real tab or button: Network Circle and its tiers, focusing on someone's circle, Degrees and

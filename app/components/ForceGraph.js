@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import * as d3 from 'd3';
 import { localPhoto } from '../../lib/photos';
 import { reframe, settle, seedAngles, galaxyChain, FULL_CIRCLE, FAN_HALF, fanSpan, fromFan, forceFan, fanDrop, ringPath, bandPath, bandLayout, bandSteps, degreeName, linkPull, ownLines } from '../../lib/galaxy';
-import { reachIndex, readyByCircle, scanFill } from '../../lib/reach';
-import { fillArcs, RING } from '../../lib/dot-rings';
+import { reachIndex, readyByCircle } from '../../lib/reach';
+import { roundSegments, RING } from '../../lib/dot-rings';
+import { personRounds } from '../../lib/scan-rounds';
 import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
@@ -104,28 +105,33 @@ svg.still text { transition: none; }
 @keyframes focus-hold-show { 0%, 10% { opacity: 0; } 18%, 100% { opacity: 1; } }
 @keyframes focus-hold-fill { to { stroke-dashoffset: 0; } }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false }) {
-  // The ring round a connection's dot (design C): how much of their circle is
-  // scanned, and how many in it are ready to scan (lib/reach.js).
+export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false, chained = null }) {
+  // Round a connection's dot (design C): their circle's rounds, an arc for each
+  // round of their list filled as it's read (Blake, 2026-10-16: "4 unfilled bars
+  // around the dot showing how scanned it is", lib/scan-rounds.js), on anyone with
+  // a circle or who could have one scanned; and how many in it are ready to scan.
   const marks = useMemo(() => {
     const reach = reachIndex(fullDegree1 || connections, fullDegree2 || [], scanNotes || {});
     const ready = readyByCircle(reach);
     const out = new Map();
     for (const c of connections) {
       if ((c.degree || 1) !== 1) continue;
-      const fill = scanFill(c, reach);
+      const rounds = personRounds(c, reach, { round: scanNotes?.round, canScan });
       const r = ready.get(c.id) || 0;
-      if (fill != null || r) out.set(c.id, { fill, ready: r });
+      if (rounds != null || r) out.set(c.id, { rounds, ready: r });
     }
     return out;
-  }, [connections, fullDegree1, fullDegree2, scanNotes]);
+  }, [connections, fullDegree1, fullDegree2, scanNotes, canScan]);
   // Every circle each person two steps away is in, from every circle scanned:
   // the Galaxy links them to each of those connections, not only the one their
   // row came through, so a shared person sits between the hubs they join.
   const routes = useMemo(() => routeIndex(fullDegree2 || []), [fullDegree2]);
   // Who each person came through and how far along the chain, resolved over
   // everyone on file so a hidden or re-filed bridge still chains (lib/galaxy.js galaxyChain).
-  const chain = useMemo(() => galaxyChain(connections, { all: [...(fullDegree1 || []), ...(fullDegree2 || [])] }), [connections, fullDegree1, fullDegree2]);
+  // `chained` is what the page counted the chips under the map by (lib/galaxy.js chainedDegrees), when it says.
+  const chain = useMemo(() => galaxyChain(connections, {
+    all: [...(fullDegree1 || []), ...(fullDegree2 || [])], ...(typeof chained === 'boolean' ? { chained } : {}),
+  }), [connections, fullDegree1, fullDegree2, chained]);
   const svgRef = useRef(null);
   const ringRef = useRef(null);
   const sceneRef = useRef(null);  // The scene on screen: { resize, select }
@@ -976,7 +982,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // A catalyst is the green outline on their dot (design C, with the scan
   // ring round it); the dashed glow ring that used to sit here hid the ring,
   // so it's only drawn for a catalyst with no scan ring.
-  const catalysts = nodes.filter(n => n.is_catalyst && marks.get(n.id)?.fill == null);
+  const catalysts = nodes.filter(n => n.is_catalyst && marks.get(n.id)?.rounds == null);
   if (catalysts.length) {
     const defs = svg.select('defs').size() ? svg.select('defs') : svg.append('defs');
     if (!defs.select('#catalyst-glow-nm').size()) {
@@ -994,26 +1000,25 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .style('display', byDegree() ? 'none' : null);
   }
 
-  // Design C round a connection's dot: a thin ring for how much of their
-  // circle is scanned (lib/reach.js scanFill: read solid, the rest faint, the
-  // unknown band dashed), and a small badge for how many in it are ready to scan.
+  // Design C round a connection's dot: their circle's rounds (lib/scan-rounds.js,
+  // drawn by lib/dot-rings.js roundSegments), 4 arcs for rounds of 25 pages or 2
+  // for 50, faint, each filling in the look's accent as that part of their list
+  // is read; and a small badge for how many in it are ready to scan.
   const ringed = nodes.filter((n) => marks.has(n.id));
   const dotRings = g.append('g').attr('class', 'dot-rings').style('pointer-events', 'none')
     .selectAll('g').data(ringed).join('g')
     .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
   function drawDotRing(d) {
-    const { fill, ready } = marks.get(d.id);
+    const { rounds, ready } = marks.get(d.id);
     const r = nodeRadius(d) + 3.5;
     const el = d3.select(this);
     el.selectAll('*').remove();
-    if (fill != null) {
-      const arcs = fillArcs(r, fill);
+    if (rounds != null) {
+      const arcs = roundSegments(r, rounds);
       // Styles, not attributes, for the colours that come from the look's variables.
-      if (arcs.rest) el.append('path').attr('d', arcs.rest).attr('fill', 'none').attr('stroke-width', 1.6).style('stroke', RING.rest);
-      if (arcs.unknown) el.append('path').attr('d', arcs.unknown).attr('fill', 'none').attr('stroke-width', 1.6)
-        .attr('stroke-dasharray', RING.dash).style('stroke', RING.unknown);
-      if (arcs.read) el.append('path').attr('d', arcs.read).attr('fill', 'none').attr('stroke-linecap', 'round')
-        .attr('stroke-width', 1.6).style('stroke', RING.filled);
+      if (arcs.track) el.append('path').attr('d', arcs.track).attr('fill', 'none').attr('stroke-width', 1.4).style('stroke', RING.roundTrack);
+      if (arcs.fill) el.append('path').attr('d', arcs.fill).attr('fill', 'none').attr('stroke-width', 1.6)
+        .style('stroke', RING.round).style('stroke-opacity', 0.85);
     }
     if (ready > 0) {
       const at = r * 0.72;

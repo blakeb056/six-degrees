@@ -113,3 +113,38 @@ test('hover and selection light the chain back to you', () => {
   const mask = lineMask(tiers, 'none', { keep: 'c2', parentOf });
   assert.deepEqual(links.filter((_, i) => mask[i]).map((l) => l.target).sort(), ['a1', 'b1', 'c2']);
 });
+
+// The chips under Network Circle's map counted the degree each row was saved
+// at, so they could read "3rd 0" beside dots in the 3rd's colour: Cy is saved
+// at 2nd (in Ben's circle) and drawn at 3rd. They count, and the filter picks,
+// by the step the Galaxy draws (lib/galaxy.js chainedDegrees).
+test('Network Circle counts and picks by the degree drawn, not the degree saved', async () => {
+  const { chainedDegrees } = await import('../lib/galaxy.js');
+  const { peopleByDegree } = await import('../lib/degrees.js');
+  const { gridCounts, bandChips, makeGrid, toggleBand } = await import('../lib/tier-grid.js');
+  const byDegree = peopleByDegree([ava, ben], [dee, cy], []);
+  const ids = (by) => Object.fromEntries(Object.entries(by).map(([d, rows]) => [d, rows.map((r) => r.id)]));
+  // More than your connections on screen: chained, as the Galaxy draws it.
+  const chained = chainedDegrees(byDegree, { all: [ava, ben, dee, cy], chained: true });
+  assert.deepEqual(ids(chained), { 1: ['a1'], 2: ['b1', 'd2'], 3: ['c2'], 4: [], 5: [], 6: [] });
+  const chips = bandChips(makeGrid([1, 2, 3], { tiersOff: true }), gridCounts(chained)).chips;
+  assert.deepEqual(chips.map((c) => [c.label, c.count, c.on]), [['1st', 1, true], ['2nd', 2, true], ['3rd', 1, true]]);
+  // The saved degrees said "3rd 0" beside Cy's 3rd-colour dot.
+  assert.deepEqual(bandChips(makeGrid([1, 2, 3], { tiersOff: true }), gridCounts(byDegree)).chips.map((c) => c.count), [2, 2, 0]);
+  // Tapping 3rd takes Cy off, and the chip goes dark: what it counts is what it picks.
+  const grid = toggleBand(makeGrid([1, 2, 3], { tiersOff: true }), { kind: 'degree', key: 3 }, gridCounts(chained));
+  assert.deepEqual(grid.flat, [1, 2]);
+  // Your connections alone: nobody chains, so Ben is at the 1st with Ava, as the Galaxy draws them alone.
+  const alone = chainedDegrees(byDegree, { all: [ava, ben, dee, cy], chained: false });
+  assert.deepEqual(alone[1].map((r) => r.id), ['a1', 'b1']);
+  // Without being told, galaxyChain's own rule: chained when anyone past your connections is there.
+  assert.deepEqual(ids(chainedDegrees(byDegree, { all: [ava, ben, dee, cy] })), ids(chained));
+  // The page counts and picks so, and tells the Galaxy the same.
+  const page = (await import('node:fs')).readFileSync(new URL('../app/page.js', import.meta.url), 'utf8');
+  assert.match(page, /chainedDegrees\(byDegree, \{ all: \[\.\.\.degree1, \.\.\.degree2\], chained: chainedOn \}\)/);
+  assert.match(page, /if \(byChain\) return GRID_DEGREES\.flatMap\(\(d\) => \(byChain\[d\] \|\| \[\]\)\.filter\(\(c\) => shows\(grid, c\.tier, d\)\)\);/);
+  assert.match(page, /: byChain \|\| byDegree\)\)/);
+  assert.match(page, /chained: chainedOn,/);
+  const graph = (await import('node:fs')).readFileSync(new URL('../app/components/ForceGraph.js', import.meta.url), 'utf8');
+  assert.match(graph, /\.\.\.\(typeof chained === 'boolean' \? \{ chained \} : \{\}\)/);
+});

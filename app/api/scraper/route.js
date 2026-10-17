@@ -8,7 +8,7 @@ import { resolveProfile, networkCounts } from '../../../lib/profile';
 import { scanProgress, mappingNow, needsYou } from '../../../lib/scan-progress';
 import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode, applyLockedModes } from '../../../lib/linkedin-limits';
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
-import { pausedList, readProgress, readUnclear, yourListNote } from '../../../lib/paused';
+import { pausedList, readProgress, readUnclear, yourListNote, nextPageToRead } from '../../../lib/paused';
 import { breachNotes, breachRoundArgs, companyName } from '../../../lib/breach';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
@@ -18,7 +18,7 @@ import { pendingImport } from '../../../lib/data-import';
 import { waitingPhotoCount } from '../../../lib/photos';
 import { readSettings } from '../../../lib/settings';
 import { pluginsEnabled, scannerCapabilitiesNow } from '../../../lib/plugins-view';
-import { capabilityRefusal, settingRefusal, lockedModes, circleMode, pluginTooOld, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
+import { capabilityRefusal, settingRefusal, lockedModes, circleMode, pluginTooOld, pluginHas, AUTO_NEEDED } from '../../../lib/scanner-capabilities';
 import { riskAccepted, touchesLinkedIn, RISK_REFUSAL } from '../../../lib/scan-risk';
 import { reachIndex, circleState, cleanProfileUrl } from '../../../lib/reach';
 import { scannerEnvWithPanel } from '../../../lib/linkedin-panel';
@@ -36,7 +36,8 @@ import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind
 import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
 import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList, MANUAL_STOPS_AUTO } from '../../../lib/auto-scan';
 import { exitOutcome } from '../../../lib/scan-exit';
-import { experienceCounts } from '../../../lib/experience';
+import { experienceCounts, experienceCard } from '../../../lib/experience';
+import { DEFAULT_ROUND, circleRoundArgs, knownCount, personRounds, roundState } from '../../../lib/scan-rounds';
 import { ensureChimes } from '../../../lib/chime-files';
 
 // The app runs the scraper itself.
@@ -378,7 +379,10 @@ function scanNotes() {
       }
     }
   } catch {}
-  return { skips: bridgeSkips(), read, lists };
+  // The pages a round of a circle scan reads (lib/scan-rounds.js), for the rounds round a dot.
+  let round = DEFAULT_ROUND;
+  try { round = readLimits(dataDir()).roundPages; } catch { /* the default */ }
+  return { skips: bridgeSkips(), read, lists, round };
 }
 
 /**
@@ -392,20 +396,23 @@ function pickedPerson(id) {
     if (!me) return { person: null };
     const db = getDb();
     const row = db.prepare(
-      `SELECT id, name, tier, power_score, degree, profile_url, unlocked_from_bridge_id, unlocked_from_name
+      `SELECT id, name, tier, power_score, degree, profile_url, unlocked_from_bridge_id, unlocked_from_name, experience
          FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1`,
     ).get(String(id ?? ''), me.id);
     if (!row) return { person: null };
     const mapped = db.prepare(
       'SELECT 1 FROM linkedin_connections WHERE user_id = ? AND degree = 2 AND source_connection_id = ? LIMIT 1',
     ).get(me.id, row.id);
-    const reach = reachIndex([], mapped ? [{ source_connection_id: row.id }] : [], scanNotes());
+    const notes = scanNotes();
+    const reach = reachIndex([], mapped ? [{ source_connection_id: row.id }] : [], notes);
     return {
       person: {
         id: row.id, name: row.name, tier: row.tier, power_score: row.power_score,
         unlocked_from_bridge_id: row.unlocked_from_bridge_id, unlocked_from_name: row.unlocked_from_name,
       },
       circle: circleState(row, reach),
+      // Where their rounds stand (lib/scan-rounds.js): "Round 2 of 4", and Scan next round.
+      round: personRounds(row, reach, { round: notes.round }),
     };
   } catch {
     return { person: null };
@@ -534,14 +541,21 @@ function paused(userId) {
   try {
     const db = getDb();
     const first = db.prepare(
-      `SELECT id, name, tier, profile_url, connected_date, created_at
+      `SELECT id, name, tier, profile_url, connected_date, created_at, experience
          FROM linkedin_connections WHERE user_id = ? AND degree = 1`,
     ).all(userId);
     const mapped = new Set(db.prepare(
       `SELECT DISTINCT source_connection_id AS id FROM linkedin_connections
         WHERE user_id = ? AND degree = 2 AND source_connection_id IS NOT NULL`,
     ).all(userId).map((r) => r.id));
-    return pausedList(first, mapped, readProgress(dataDir(), userId), readUnclear(dataDir()));
+    const progress = readProgress(dataDir(), userId);
+    const round = readLimits(dataDir()).roundPages;
+    const byId = new Map(first.map((r) => [r.id, r]));
+    // Each with where their rounds stand (lib/scan-rounds.js), for "Round 2 of 4" and Scan next round.
+    return pausedList(first, mapped, progress, readUnclear(dataDir())).map((p) => {
+      const note = progress[p.profileUrl] || null;
+      return { ...p, round: roundState(note, { round, count: knownCount(note, experienceCard(byId.get(p.id))), legacy: !note }) };
+    });
   } catch {
     return [];
   }
@@ -730,6 +744,8 @@ function budgetNow() {
       dev: li.dev,
       // Dev mode's ceiling (lib/linkedin-limits.js DEV_CEILING): the notch shows it in place of "no limit".
       devCeiling: li.devCeiling,
+      // The same ceiling, which lifting the limits for the session keeps too.
+      ceiling: li.ceiling,
       // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
       pace: li.limits?.pace ?? null,
     };
@@ -808,10 +824,20 @@ function resumePoint(id) {
   }
 }
 
+/**
+ * Where one of your connections' circle stands in rounds, for their card's
+ * "Round 2 of 4" and Scan next round (lib/scan-rounds.js personRounds, as the
+ * Scan page's box has it); null when they aren't found, or their list is hidden.
+ */
+function roundPoint(id) {
+  return pickedPerson(id).round ?? null;
+}
+
 export async function GET(request) {
   const q = new URL(request?.url || 'http://127.0.0.1/api/scraper').searchParams;
   if (q.has('job')) return Response.json(job());
   if (q.has('resume')) return Response.json({ resume: resumePoint(q.get('resume')) });
+  if (q.has('round')) return Response.json({ round: roundPoint(q.get('round')) });
   if (q.has('reach')) return Response.json(scanNotes());
   // Scan → LinkedIn usage: the scanner's record of searches, profile views
   // and pauses, counted (lib/linkedin-limits.js linkedinUsage). Reads only; no
@@ -1128,6 +1154,8 @@ function queueUp(body, action, target) {
     action, id: target.id,
     ...(body.showWindow === true ? { showWindow: true } : {}),
     ...(PAGE_CAPS.includes(body.maxPages) ? { maxPages: body.maxPages } : {}),
+    // Rescan from the start, kept as pressed: otherwise its turn would carry on with the next round.
+    ...(body.fromStart === true ? { fromStart: true } : {}),
   };
   if (target.name) request.name = target.name;
   const cap = queueCap();
@@ -1174,6 +1202,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       chimes: body.chimes, chimeVolume: body.chimeVolume,
       // Scanner settings → Breaks by hand (lib/manual-breaks.js): read by the scanner at each break.
       breakEvery: body.breakEvery, breakSeconds: body.breakSeconds,
+      // Scanner settings → Pages a round (lib/scan-rounds.js): what a scan of one person's circle reads.
+      roundPages: body.roundPages,
     });
     if (body.dev === false) state.limitHit = null;
     // Manual mode on while Auto scan waits between sittings: it stops now, with why.
@@ -1287,6 +1317,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // nothing from the request itself reaches the command line.
   let profileUrl = null;
   let person = null;
+  let note = null;
   if (byId) {
     try {
       const me = resolveProfile({ create: false });
@@ -1294,9 +1325,27 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
         'SELECT name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
       ).get(String(body.id ?? ''), me.id);
       profileUrl = person?.profile_url && cleanProfileUrl(person.profile_url);
+      // How far their list was read (the scanner's note), for their round below.
+      if (profileUrl) note = readProgress(dataDir(), me.id)[person.profile_url] || null;
     } catch { profileUrl = null; }
     if (!profileUrl) return Response.json({ error: 'That connection could not be found.' }, { status: 400 });
   }
+  // A scan of one person's circle, by id, is one round of their list (Blake,
+  // 2026-10-16: "scanning 25 pages per round ... unless they pick 50 per scan
+  // which is max"): 25 or 50 pages (Scanner settings), from where the last round
+  // stopped, or from page 1 for someone never scanned, read to the end, or a
+  // Rescan from the start (lib/scan-rounds.js circleRoundArgs). Fewer pages when
+  // asked for (the guided setup's first scan reads three).
+  const circleRound = profileUrl && (action === 'bridge' || action === 'resume')
+    ? circleRoundArgs({
+      action, note, nextPage: nextPageToRead(note ?? undefined), round: readLimits(dataDir()).roundPages,
+      // Only a Scan's; Scan next round is always a whole round.
+      maxPages: action === 'bridge' && PAGE_CAPS.includes(body.maxPages) ? body.maxPages : null,
+      fromStart: body.fromStart === true,
+      // --round only to a scanner that knows it on a circle (plugins 1.0.10 on).
+      roundFlag: pluginHas(scanner, 'circle-round'),
+    })
+    : null;
   // Who the job is of, so every Scan button can say whose scan is running and a
   // profile card can show its own person's progress. Only ever shown: the id
   // never reaches the command line (a name or the URL looked up for it does),
@@ -1382,7 +1431,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       ...(invitee ? [`--connect=${invitee.profileUrl}`, ...(invitee.name ? [`--connect-name=${invitee.name}`] : [])]
         : profileBatch ? [`--read-profiles=${profileBatch}`]
         : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
-      ...(profileUrl && action === 'bridge' && !deeper ? ['--from-start'] : []),
+      // One person's circle by id: one round (circleRound), with --from-start when it starts at page 1.
+      ...(circleRound ? circleRound.args : []),
       // A Breach round: its pages (3, 5 or 10) and the degrees the search shows, a fixed set.
       ...(action === 'breach' ? breachRoundArgs({ pages: body.pages, degrees: body.degrees }) : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
@@ -1393,10 +1443,10 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // Only Auto scan's own sittings (autoTick), never a request: a scan you start
       // yourself never keeps Auto scan's hours or rests (PR #201, TRAPS §49).
       ...(sitting && action === 'auto-bridge' ? ['--experimental', `--sitting=${sitting}`] : []),
-      // Resuming always reads to the end: a remembered "10 pages" would
-      // otherwise leave everyone paused at page 11 and do nothing.
-      ...(readsCircles ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
-      ...(deeper ? ['--deeper'] : []),
+      // Resume all reads each list to the end: a remembered "10 pages" would leave
+      // everyone paused at page 11 and do nothing. A round says its own (above).
+      ...(readsCircles && !circleRound ? [`--max-pages=${action.startsWith('resume') ? 100 : maxPages}`] : []),
+      ...(deeper && !circleRound ? ['--deeper'] : []),
       // Scan page → Fine-tune → "Show the scanner's Chrome window": a normal
       // window in front, to watch it work. Without it the window stays out of
       // sight and comes forward only when LinkedIn needs you (Blake,
@@ -1419,6 +1469,11 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.exitKind = null;
   state.startedAt = Date.now();
   state.log = [spec.label + (target?.name ? ` ${target.name}…` : '…')];
+  // A round of one person's circle says which pages (lib/scan-rounds.js).
+  if (circleRound) {
+    const { start, last, pages, fromStart } = circleRound;
+    state.log.push(`A round of ${pages} ${pages === 1 ? 'page' : 'pages'}: ${fromStart ? 'from page 1' : `from page ${start}`}, to page ${last} at most.`);
+  }
   state.pages = 0;
   state.found = [];
   state.stderrTail = [];
