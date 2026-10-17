@@ -68,6 +68,29 @@ straight to the search), drops the bridge-slug filter, and says "your" where a c
   (`pluginTooOld`, `lib/scanner-capabilities.js PLUGIN_SINCE`), which would not know the flag.
   Either plugin runs it, Automatic or By hand as circle scans do.
 
+## The mutual web (2026-10-16)
+
+> "scanning always for mutuals no matter what ... then it should be tracked to map a web of who
+> knows who, to have the artificial extended network built up past the 1k mark" (Blake, 2026-10-16)
+
+- **Free, from pages already open.** `BRIDGE_RESULTS_JS` (circles, your connections, Breach) and
+  `SEARCH_RESULTS_JS` give each card `mutualNames`: the names its mutual line starts with, each with
+  the link the page draws for it (`mutualNamesIn`, between `// mutualNames: begin/end`). A name two
+  links share, or none has, is left out. `push_company` passes them on; `push_connections` sends the
+  cards as they are. The app keeps each as a `card` tie (`app/api/ingest`, `lib/ties.js cardTies`).
+  Circle ties now come only from your connections the page listed, not from names in mutual lines,
+  when the batch carries names (`circleTieUrls`); an older scanner's batch is read as before.
+- **The panel.** `desktop/lib.mjs MUTUAL_WATCH_JS` reads a profile's top-card mutual line in the
+  invitation watcher's world; the shell posts it to `/api/ties` once a profile a day. Never navigates.
+- **Read all mutuals (`--mutuals=<url> --round=N`, plugins 1.0.11).** `scan_mutual_list`: one round
+  (5 pages, 3 to 10) of LinkedIn's search of their connections filtered to yours (`mutual_search_url`,
+  `network=["F"]`), read by `_scrape_one_bridge(mutuals=True, list_key=mutuals_key(url))`: the same
+  pages, breaks, budget and push-back as a circle, by hand or by itself. Their search id comes from
+  their circle's note or the list's own; else their profile is opened once. The names in each card's
+  mutual line are dropped (`_company_people`). Each round's people go to `POST /api/ties` as
+  `mutual-list` ties, never as people; progress is noted under `mutuals:<url>`, never their circle's
+  note. Only ever started by a press (Breach Summit, S and A connections).
+
 ## The window, and no pop-ups (rule changed 2026-10-04)
 
 **The rule changed.** Until 2026-10-04 the scanner was "openly automated": a Chrome window

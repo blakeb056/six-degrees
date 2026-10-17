@@ -10,6 +10,7 @@ import { linkedinState, linkedinUsage, writeLimits, readLimits, devMode, applyLo
 import { liftLimits, putLimitsBack, liftedAt, liftEnded } from '../../../lib/limits-lift';
 import { pausedList, readProgress, readUnclear, yourListNote, nextPageToRead } from '../../../lib/paused';
 import { breachNotes, breachRoundArgs, companyName } from '../../../lib/breach';
+import { mutualNotes, mutualRound } from '../../../lib/mutual-web';
 import { getDb, backUpDailyIfDue } from '../../../lib/db-client';
 import { db as notesDb } from '../../../lib/db';
 import { scanDoneNotification } from '../../../lib/notifications';
@@ -646,6 +647,8 @@ async function status() {
     yourList: me ? yourListNote(readProgress(dataDir(), me.id)) : null,
     // How far each company's search for Breach got, by its key (lib/breach.js breachNotes).
     breach: me ? breachNotes(readProgress(dataDir(), me.id)) : {},
+    // How far each Read all mutuals got, by profile URL (lib/mutual-web.js mutualNotes).
+    mutuals: me ? mutualNotes(readProgress(dataDir(), me.id)) : {},
   };
 }
 
@@ -901,6 +904,11 @@ const ACTIONS = {
   // degrees (lib/breach.js breachRoundArgs). Read like a circle, by itself or by
   // hand, whichever circle scans run in, so either plugin runs it.
   breach:        { flag: '--breach',   needsName: true, label: 'Breach: mapping', searches: true },
+  // Read all mutuals (the mutual web, lib/ties.js): one round of the "N other mutual
+  // connections" of one person, by id, any degree (scrape.py scan_mutual_list), each
+  // one of your connections who knows them kept as a tie. Only when pressed, on a
+  // Breach target or a top-tier bridge; never by itself. Read like a circle.
+  mutuals:       { flag: '--mutuals',  needsId: true, label: 'Reading all mutuals with', searches: true },
   // Photos an older version kept as links to LinkedIn: saved here, once each.
   // No browser, no search; every scan does the same at its end.
   // Experimental, for the Social tab: your messages list, once (who, when, unread; the
@@ -1321,14 +1329,18 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   if (byId) {
     try {
       const me = resolveProfile({ create: false });
-      person = me && getDb().prepare(
-        'SELECT name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
+      // Your connections, but anyone in the network for Read all mutuals (a Breach target).
+      person = me && getDb().prepare(action === 'mutuals'
+        ? 'SELECT name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ?'
+        : 'SELECT name, profile_url FROM linkedin_connections WHERE id = ? AND user_id = ? AND degree = 1',
       ).get(String(body.id ?? ''), me.id);
       profileUrl = person?.profile_url && cleanProfileUrl(person.profile_url);
       // How far their list was read (the scanner's note), for their round below.
       if (profileUrl) note = readProgress(dataDir(), me.id)[person.profile_url] || null;
     } catch { profileUrl = null; }
-    if (!profileUrl) return Response.json({ error: 'That connection could not be found.' }, { status: 400 });
+    if (!profileUrl) {
+      return Response.json({ error: action === 'mutuals' ? 'That person could not be found.' : 'That connection could not be found.' }, { status: 400 });
+    }
   }
   // A scan of one person's circle, by id, is one round of their list (Blake,
   // 2026-10-16: "scanning 25 pages per round ... unless they pick 50 per scan
@@ -1376,7 +1388,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // before every search too). Auto scan's sittings are planned against the same
   // limit (autoPlan ends Auto scan at it, in its own words), so they aren't
   // counted as a press held back.
-  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections', 'breach'].includes(action);
+  const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections', 'breach', 'mutuals'].includes(action);
   if (readsLists && li.limitReached && !sitting) {
     state.limitHit = Date.now();
     return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
@@ -1430,7 +1442,9 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // unless told to start at page 1.
       ...(invitee ? [`--connect=${invitee.profileUrl}`, ...(invitee.name ? [`--connect-name=${invitee.name}`] : [])]
         : profileBatch ? [`--read-profiles=${profileBatch}`]
-        : name ? [`${spec.flag}=${name}`] : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
+        : name ? [`${spec.flag}=${name}`]
+        : profileUrl && action === 'mutuals' ? [`--mutuals=${profileUrl}`, `--round=${mutualRound(body.pages)}`]
+        : profileUrl ? [`--bridge-url=${profileUrl}`] : spec.flag.split(' ')),
       // One person's circle by id: one round (circleRound), with --from-start when it starts at page 1.
       ...(circleRound ? circleRound.args : []),
       // A Breach round: its pages (3, 5 or 10) and the degrees the search shows, a fixed set.

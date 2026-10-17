@@ -139,7 +139,8 @@ test('a profile link\'s slug, as the shell names it', () => {
 test('wired through: the shell watches each page in a world of its own and tells the app\'s page; the page marks, puts the panel away, and says so', () => {
   const main = read('../desktop/main.mjs');
   assert.match(main, /contents\.on\('dom-ready', \(\) => watchInvites\(contents\)\);/);
-  assert.match(main, /contents\.on\('console-message', \(event\) => inviteSent\(event\?\.message\)\);/);
+  // The same console line feeds the mutual web's watcher too (tests/mutual-web.test.mjs).
+  assert.match(main, /contents\.on\('console-message', \(event\) => \{ inviteSent\(event\?\.message\); mutualsSeen\(event\?\.message\); \}\);/);
   assert.match(main, /executeJavaScriptInIsolatedWorld\(INVITE_WATCH_WORLD, \[\{ code: INVITE_WATCH_JS \}\]\)/);
   assert.match(main, /url: panel\.webContents\.getURL\(\), mode: panelMode, visible: panelVisible, seen: invitesSeen, testOrigin: PANEL_TEST_ORIGIN/);
   assert.match(main, /invitesSeen\.add\(sent\.slug\);\s*win\.webContents\.send\('linkedin-panel:invite-sent', sent\);/);

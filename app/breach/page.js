@@ -22,6 +22,9 @@ import BreachOrb, { BreachMeter, Milestones, BAND_COLORS } from '../components/B
 import useNotchTabs from '../components/useNotchTabs';
 import useRequests from '../components/useRequests';
 import useScanner, { useScanShows, useCircleMode } from '../components/useScanner';
+import useTies from '../components/useTies';
+import ReadAllMutuals from '../components/ReadAllMutuals';
+import { knownThrough, firstDegreeByKey, offersMutualList } from '../../lib/mutual-web';
 import { useUser } from '../components/UserProvider';
 import { loadNetwork } from '../../lib/network';
 import { loadCsvNetwork } from '../../lib/csv';
@@ -33,7 +36,7 @@ import { runScrape, scraperStatus, notReadyMessage, busyReason, startHere } from
 import {
   BANDS, BREACH_WEEKLY, BREACH_ROUNDS, BREACH_ROUND, BREACH_DEGREES, BREACH_DEGREES_DEFAULT,
   breachPeople, breachScore, weeklyPlan, acceptances, compareCompanies, breachKey, mapSpread,
-  companyName, companyKey, homeCity,
+  companyName, companyKey, homeCity, warmDoor,
 } from '../../lib/breach';
 
 const TABS = [['company', 'Company'], ['companies', 'Companies']];
@@ -71,6 +74,8 @@ function BreachInner() {
   const [localOnly, setLocalOnly] = useState(false);
   const [settings, setSettings] = useState(NO_BREACH);
   const [notes, setNotes] = useState({});
+  // How far each Read all mutuals got, by profile URL (lib/mutual-web.js mutualNotes).
+  const [mutualNotes, setMutualNotes] = useState({});
   const [linkedin, setLinkedin] = useState(null);
   const [company, setCompany] = useState(() => companyName(asked) || '');
   const [tab, setTab] = useState('company');
@@ -102,7 +107,7 @@ function BreachInner() {
     }).catch(() => {});
   }, []);
   const lookAgain = useCallback(() => {
-    scraperStatus().then((s) => { setNotes(s?.breach || {}); setLinkedin(s?.linkedin || null); }).catch(() => {});
+    scraperStatus().then((s) => { setNotes(s?.breach || {}); setMutualNotes(s?.mutuals || {}); setLinkedin(s?.linkedin || null); }).catch(() => {});
   }, []);
   useEffect(() => { if (!IS_DEMO) lookAgain(); }, [lookAgain, reload]);
 
@@ -151,7 +156,7 @@ function BreachInner() {
               <Compare companies={companies} onPick={pick} />
             ) : company ? (
               <CompanyView key={companyKey(company)} company={company} network={network} you={you} asks={asks}
-                note={notes} linkedin={linkedin} settings={settings} guessedCity={guessedCity}
+                note={notes} linkedin={linkedin} settings={settings} guessedCity={guessedCity} mutualNotes={mutualNotes} localOnly={localOnly}
                 onSettings={save} onScanned={() => { setReload((n) => n + 1); }} onLook={lookAgain} />
             ) : (
               <Intro />
@@ -219,9 +224,18 @@ function Targets({ settings, company, companies, onPick, onDrop }) {
 
 // ── One company ──────────────────────────────────────────────────────────────
 
-function CompanyView({ company, network, you, asks, note, linkedin, settings, guessedCity, onSettings, onScanned, onLook }) {
+function CompanyView({ company, network, you, asks, note, linkedin, settings, guessedCity, mutualNotes = {}, localOnly = false, onSettings, onScanned, onLook }) {
   const [askedNow, setAskedNow] = useState(() => new Set());
-  const people = useMemo(() => breachPeople(network, company, { you, hasRequest: asks }), [network, company, you, asks]);
+  // Warm doors (the mutual web, lib/mutual-web.js): who of your connections each
+  // person was seen with, in a mutual line or a scanned circle: who to ask.
+  const web = useTies({ off: localOnly });
+  const knownVia = useMemo(() => {
+    if (!web.ready) return null;
+    const mine = firstDegreeByKey(network?.degree1 || []);
+    const d1ById = new Map((network?.degree1 || []).map((r) => [r.id, r]));
+    return (row, rows) => knownThrough(row.profile_url, { index: web.index, mine, circles: rows, d1ById });
+  }, [web, network]);
+  const people = useMemo(() => breachPeople(network, company, { you, hasRequest: asks, knownVia }), [network, company, you, asks, knownVia]);
   const s = useMemo(() => breachScore(people), [people]);
   // Asked here this visit stay in the plan, said as asked, so the list doesn't jump under you.
   const plan = useMemo(() => weeklyPlan(people.map((p) => (askedNow.has(p.key) ? { ...p, requested: false } : p))), [people, askedNow]);
@@ -262,7 +276,7 @@ function CompanyView({ company, network, you, asks, note, linkedin, settings, gu
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
-        {BANDS.map((b) => <Band key={b.key} band={b} people={bands[b.key]} />)}
+        {BANDS.map((b) => <Band key={b.key} band={b} people={bands[b.key]} mutualNotes={mutualNotes} canRead={!localOnly} />)}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 16 }}>
@@ -370,16 +384,29 @@ function Plan({ plan, pending, company, askedNow, setAskedNow }) {
   );
 }
 
-function Band({ band, people }) {
+function Band({ band, people, mutualNotes = {}, canRead = false }) {
   const [all, setAll] = useState(false);
   const shown = all ? people : people.slice(0, 6);
+  const scanShows = useScanShows();
+  // The Summit: Read all mutuals, the mutual web's paid step, by hand, one person at a time.
+  const reads = canRead && band.key === 'summit' && scanShows.scan;
   return (
     <div style={{ ...PANEL, borderTop: `3px solid ${BAND_COLORS[band.key]}` }}>
       <h2 style={{ ...H2, color: BAND_COLORS[band.key] }}>{band.label} · {people.length}</h2>
       <p style={{ ...SMALL, margin: '0 0 6px' }}>{band.about}</p>
       {shown.map((p) => (
         <Who key={p.key} p={p}>
-          <span style={{ fontSize: 11, color: 'var(--sd-fg-3, #888)', flexShrink: 0 }}>{p.mutuals ? `${p.mutuals} mutual${p.mutuals === 1 ? '' : 's'}` : p.lifted ? 'lifted' : ''}</span>
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+            {/* A warm door: the mutual web named who to ask (lib/breach.js warmDoor). */}
+            {warmDoor(p) && (
+              <span data-warm-door="" title={`Seen with ${p.askVia.map((v) => v.name).join(', ')} in a mutual line or a scanned circle: ask them first. Seen together, not close.`}
+                style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: 10, whiteSpace: 'nowrap', color: BAND_COLORS.doors, border: `1px solid ${BAND_COLORS.doors}` }}>
+                {warmDoor(p)}
+              </span>
+            )}
+            <span style={{ fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>{p.mutuals ? `${p.mutuals} mutual${p.mutuals === 1 ? '' : 's'}` : p.lifted ? 'lifted' : ''}</span>
+            {reads && offersMutualList(p.row, { summit: true }) && <ReadAllMutuals person={p.row} note={mutualNotes[p.profile_url] || null} small />}
+          </span>
         </Who>
       ))}
       {people.length > 6 && (

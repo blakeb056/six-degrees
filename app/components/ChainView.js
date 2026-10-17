@@ -39,6 +39,10 @@ import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { hasRequest } from '../../lib/requests-client';
 import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
+import useTies from './useTies';
+import ShowTies from './ShowTies';
+import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
+import { urlKey } from '../../lib/ties';
 import useRequests from './useRequests';
 import { TIER_COLORS } from '../../lib/themes';
 
@@ -66,7 +70,7 @@ function trailTo(id, rows) {
   return trail;
 }
 
-export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened, onCircle, selectedId = null, tierColors = TIER_COLORS }) {
+export default function ChainView({ connections, degree2 = [], onSelect, userName, fullDegree1, fullDegree2, scanNotes, canScan = true, chainOpen = null, onChainOpened, onCircle, selectedId = null, tierColors = TIER_COLORS, seen = NO_TRAIL, webOff = false }) {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const [hovered, setHovered] = useState(null);
@@ -105,6 +109,13 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   }, []);
 
   const index = useMemo(() => circleIndex(all1, all2), [all1, all2]);
+  // The focus draws the people seen outside each circle's scan too (the mutual web), lighter;
+  // the overview's counts and rings go by what scans read.
+  const focusIndex = useMemo(() => (seen.length ? circleIndex(all1, [...all2, ...seen]) : index), [all1, all2, seen, index]);
+  // Show ties (lib/mutual-web.js): lines from the bridge the pointer is on, or the one
+  // picked, to the other bridges they were seen with. Never the whole web at once.
+  const [showTies, setShowTies] = useState(false);
+  const web = useTies({ off: webOff || !showTies });
   const reach = useMemo(() => reachIndex(all1, all2, scanNotes), [all1, all2, scanNotes]);
   const readyCount = useMemo(() => readyByCircle(reach), [reach]);
   // The notifications, by the circle each is about: the busiest circles go on the inner ring.
@@ -271,8 +282,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     const person = rowById.get(focusId) ?? focusNode;
     if (!person) return null;
     const before = focusTrail.map((id) => rowById.get(id)).filter(Boolean);
-    return focusSubgraph(person, index, { trail: before, isRequested: (row) => hasRequest(row, requests) });
-  }, [focusId, focusNode, focusTrail, rowById, index, requests]);
+    return focusSubgraph(person, focusIndex, { trail: before, isRequested: (row) => hasRequest(row, requests) });
+  }, [focusId, focusNode, focusTrail, rowById, focusIndex, requests]);
   // A step back along the trail: that one's circle forward instead, and their card.
   const pick = (row) => {
     const at = focusTrail.indexOf(row.id);
@@ -363,6 +374,14 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const deeper = [...peopleAt.values()].reduce((a, b) => a + b, 0);
   const d2S = degree2.filter(d => d.tier === 'S').length;
   const d2A = degree2.filter(d => d.tier === 'A').length;
+  const tieFrom = hovered ?? (posById.has(selectedId) ? selectedId : null);
+  const bridgeTies = (() => {
+    if (!showTies || !web.ready || tieFrom == null) return NO_TRAIL;
+    const onScreenKeys = new Map();
+    for (const b of bridgePos) { const k = urlKey(b.profile_url); if (k && !onScreenKeys.has(k)) onScreenKeys.set(k, b.id); }
+    const from = urlKey(posById.get(tieFrom)?.profile_url);
+    return from ? tieLines({ index: web.index, onScreen: onScreenKeys, selected: from }) : NO_TRAIL;
+  })();
 
   return (
     <div ref={containerRef} style={{ flex: 1, background: 'var(--sd-page)', position: 'relative', overflow: 'hidden' }}>
@@ -390,6 +409,15 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
             <line key={'chain-' + b.id} x1={from.x} y1={from.y} x2={b.x} y2={b.y} pointerEvents="none"
               stroke={DEGREE_COLORS[b.ring] || '#8899aa'} strokeWidth={lit ? 1.4 : 1} strokeOpacity={lit ? 0.7 : 0.35} />
           );
+        })}
+
+        {/* Show ties: the bridge in hand and the bridges they were seen with (the mutual web). */}
+        {bridgeTies.map((l) => {
+          const a = posById.get(l.a);
+          const b = posById.get(l.b);
+          if (!a || !b) return null;
+          return <line key={`tie-${l.a}-${l.b}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} pointerEvents="none"
+            style={{ stroke: TIE_COLOUR }} strokeOpacity={0.75} strokeWidth={Math.min(2.2, 0.9 + 0.3 * Math.log2(l.n || 1))} />;
         })}
 
         {/* Bridge nodes: click one, or rest the pointer on it, to bring their circle forward */}
@@ -466,6 +494,13 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       {/* The ring that fills while the pointer rests on a bridge: full, and their circle comes forward. */}
       <FocusHold key={holding ?? ''} at={holdAt} />
 
+      {/* Show ties, beside the zoom: who the bridge in hand was seen with. */}
+      {!webOff && (
+        <div style={{ position: 'absolute', bottom: 54, left: 16, ...chrome }}>
+          <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked={tieFrom != null} ready={web.ready} count={bridgeTies.length} />
+        </div>
+      )}
+
       {/* Zoom controls, clear of the Galaxy switch below them */}
       <div style={chrome}>
         <ZoomButtons
@@ -510,7 +545,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       {focused && (
         <CircleFocus focus={focused} phase={focus.phase} box={box} origin={focusDot} you={{ x: cx, y: cy }} look={look}
           ease={focus.ease} reduced={focus.reduced} tierColors={tierColors} selectedId={selectedId}
-          onSelect={onSelect} onClose={closeFocus} onPick={pick} canScan={canScan} bar={UNDER_NOTCH} />
+          onSelect={onSelect} onClose={closeFocus} onPick={pick} canScan={canScan} bar={UNDER_NOTCH} degree1={all1} webOff={webOff} />
       )}
     </div>
   );

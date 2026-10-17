@@ -18,6 +18,10 @@ import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
 import ReplayStage from './ReplayStage';
+import useTies from './useTies';
+import ShowTies from './ShowTies';
+import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
+import { urlKey } from '../../lib/ties';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -100,7 +104,7 @@ svg.still text { transition: none; }
 .galaxy-ring, .galaxy-chrome { transition: opacity 0.3s; }
 .cf-on .galaxy-ring, .cf-on .galaxy-chrome { opacity: 0; }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false, chained = null }) {
+export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false, chained = null, seen = NO_ROWS, webOff = false }) {
   // Round a connection's dot (design C): their circle's rounds, an arc for each
   // round of their list filled as it's read (Blake, 2026-10-16: "4 unfilled bars
   // around the dot showing how scanned it is", lib/scan-rounds.js), on anyone with
@@ -120,7 +124,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   // Every circle each person two steps away is in, from every circle scanned:
   // the Galaxy links them to each of those connections, not only the one their
   // row came through, so a shared person sits between the hubs they join.
-  const routes = useMemo(() => routeIndex(fullDegree2 || []), [fullDegree2]);
+  // The mutual web's people seen outside the scan count as ways in too (lib/mutual-web.js).
+  const routes = useMemo(() => routeIndex(seen.length ? [...(fullDegree2 || []), ...seen] : fullDegree2 || []), [fullDegree2, seen]);
   // Who each person came through and how far along the chain, resolved over
   // everyone on file so a hidden or re-filed bridge still chains (lib/galaxy.js galaxyChain).
   // `chained` is what the page counted the chips under the map by (lib/galaxy.js chainedDegrees), when it says.
@@ -162,7 +167,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   const focusId = focus?.id ?? null;
   const focusing = focusId != null;
   const allD1 = fullDegree1 || connections;
-  const focusIndex = useMemo(() => (focusing ? circleIndex(allD1, fullDegree2 || []) : null), [focusing, allD1, fullDegree2]);
+  // With the people seen outside each circle's scan, drawn lighter (CircleFocus.js).
+  const focusIndex = useMemo(() => (focusing ? circleIndex(allD1, seen.length ? [...(fullDegree2 || []), ...seen] : fullDegree2 || []) : null), [focusing, allD1, fullDegree2, seen]);
   const requests = useRequests();
   const focusNode = focus?.node ?? null;
   const focused = useMemo(() => {
@@ -265,6 +271,29 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     sceneRef.current?.select(selectedId);
   }, [selectedId]);
 
+  // Show ties (the mutual web, lib/mutual-web.js tieLines): thin lines from the
+  // person selected to everyone on the map they were seen with. Only for the
+  // selection, never the whole web at once; drawn by the scene, moved with it.
+  const [showTies, setShowTies] = useState(false);
+  const web = useTies({ off: webOff || !showTies });
+  const onScreen = useMemo(() => {
+    const m = new Map();
+    for (const c of connections) { const k = urlKey(c.profile_url); if (k && !m.has(k)) m.set(k, c.id); }
+    return m;
+  }, [connections]);
+  const selectedKey = useMemo(() => {
+    if (selectedId == null) return null;
+    const row = connections.find((c) => c.id === selectedId);
+    return row ? urlKey(row.profile_url) : null;
+  }, [connections, selectedId]);
+  const tieList = useMemo(() => (showTies && web.ready && selectedKey ? tieLines({ index: web.index, onScreen, selected: selectedKey }) : NO_ROWS),
+    [showTies, web, onScreen, selectedKey]);
+  const tiesRef = useRef(tieList);
+  useEffect(() => {
+    tiesRef.current = tieList;
+    sceneRef.current?.setTies(tieList);
+  }, [tieList]);
+
   const measured = dimensions !== null;
   useEffect(() => {
     if (!measured || !svgRef.current || !connections.length) return;
@@ -284,6 +313,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     if (focusIdRef.current != null) scene.freeze(true, { settle: true });
     if (fitOwedRef.current) { fitOwedRef.current = false; scene.fitWhenSettled(); }
     scene.select(selectedIdRef.current);
+    scene.setTies(tiesRef.current);
     setClock({ min: scene.range.min, max: scene.range.max, of: scene.range.of });
     scene.setTime(clockNow().at);
     scene.setFind(clockNow().find, clockNow().fly);
@@ -349,7 +379,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       {bandLegend && onToggleBand ? (
         <div className="galaxy-chrome" style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
           {colourBy !== 'tier' && colourBy !== 'degree' && <SchemeLegend legend={scheme.legend} />}
-          <BandChips legend={bandLegend} tierColors={tierColors} onToggle={onToggleBand} onTiers={onToggleTiers} />
+          <BandChips legend={bandLegend} tierColors={tierColors} onToggle={onToggleBand} onTiers={onToggleTiers}
+            extra={webOff ? null : <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked={selectedKey != null} count={tieList.length} ready={web.ready} />} />
         </div>
       ) : (
         <div className="galaxy-chrome" style={{ position: 'absolute', bottom: 20, left: 20, right: 20, pointerEvents: 'none' }}>
@@ -359,7 +390,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       {focused && dimensions && (
         <CircleFocus focus={focused} phase={focus.phase} box={dimensions} origin={focus.dot} you={focus.you} look={look}
           ease={focus.ease} reduced={focus.reduced} tierColors={tierColors} selectedId={selectedId}
-          onSelect={(row) => onSelectRef.current?.(row)} onClose={closeFocus} canScan={canScan} />
+          onSelect={(row) => onSelectRef.current?.(row)} onClose={closeFocus} canScan={canScan} webOff={webOff} degree1={allD1} />
       )}
       {/* The replay, over the map while it plays: everyone's place comes from this scene (ReplayStage.js). */}
       <ReplayStage sceneRef={sceneRef} chain={chain} tierColors={tierColors} />
@@ -388,7 +419,7 @@ function SchemeLegend({ legend }) {
  * for each degree while it's off, in the degrees'. Tap a chip to hide or show
  * it; the same grid as Filters, so the two always agree (lib/tier-grid.js bandChips).
  */
-function BandChips({ legend, tierColors, onToggle, onTiers }) {
+function BandChips({ legend, tierColors, onToggle, onTiers, extra = null }) {
   const byTier = legend.by === 'tier';
   const chip = (on, colour, live) => ({
     display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 12,
@@ -420,9 +451,12 @@ function BandChips({ legend, tierColors, onToggle, onTiers }) {
           </button>
         );
       })}
+      {extra}
     </div>
   );
 }
+
+const NO_ROWS = Object.freeze([]);
 
 // Tooltips are fixed to the window, never part of the page's layout.
 //
@@ -474,6 +508,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     influence_signals: c.influence_signals,
     is_catalyst: c.is_catalyst, catalyst_score: c.catalyst_score,
     circle_power: c.circle_power, circle_s_count: c.circle_s_count, circle_a_count: c.circle_a_count,
+    // The mutual web (lib/mutual-web.js): seen outside the scan, their own row's id, and the tie.
+    ...(c.seen_outside ? { seen_outside: true, person_id: c.person_id, seen_with: c.seen_with } : {}),
   }))];
   const nodeById = new Map(nodes.map(n => [n.id, n]));
 
@@ -925,6 +961,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .style('display', d => (d.none ? 'none' : null))
     .attr('stroke', lineColour)
     .attr('stroke-opacity', lineOpacity()).attr('stroke-width', 0.5 * L.lines);
+  // Show ties (the mutual web): the selection's lines only, set from outside (setTies), under the dots.
+  const tieG = g.append('g').attr('class', 'gt').style('pointer-events', 'none');
+  let tieEls = tieG.selectAll('line');
 
   // Catalyst outer glow rings (rendered behind the nodes)
   // A catalyst is the green outline on their dot (design C, with the scan
@@ -1012,16 +1051,19 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // the visual to be the degrees"). Again on every change of shape (resizeDots).
   const catalystMark = (d) => d.is_catalyst && !byDegree();
   function markDots(sel) {
+    sel.attr('stroke-dasharray', d => (d.seen_outside ? '2 1.6' : null));
     sel.attr('stroke', d => {
       if (d.id === CENTER_ID) return '#FFD700';
       if (catalystMark(d)) return '#00ff88';
+      if (d.seen_outside) return colourOf(d);
       // Plain: an analysis tool's node, a solid dot with a thin dark ring.
       return dotStyle === 'droplet' ? colourOf(d) : dotStyle === 'plain' ? '#2b2b2b' : 'none';
     })
-      .attr('stroke-opacity', d => (d.id === CENTER_ID || catalystMark(d) ? 1 : dotStyle === 'droplet' ? 0.45 : dotStyle === 'plain' ? 0.75 : 1))
+      .attr('stroke-opacity', d => (d.id === CENTER_ID || catalystMark(d) || d.seen_outside ? 1 : dotStyle === 'droplet' ? 0.45 : dotStyle === 'plain' ? 0.75 : 1))
       .attr('stroke-width', d => {
         if (d.id === CENTER_ID) return 3;
         if (catalystMark(d)) return 2.5;
+        if (d.seen_outside) return 1;
         return dotStyle === 'droplet' ? 0.7 : dotStyle === 'plain' ? 0.8 : 0;
       });
   }
@@ -1029,7 +1071,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     .attr('class', 'gn')
     .attr('r', nodeRadius)
     .attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)))
-    .attr('fill-opacity', d => (dotStyle === 'droplet' || dotStyle === 'plain' ? 1 : d.step >= 3 ? 0.55 : d.step === 2 ? 0.75 : 1))
+    // Seen outside the scan (the mutual web): lighter, whatever the look, with a dashed ring (markDots).
+    .attr('fill-opacity', d => (d.seen_outside ? 0.3 : dotStyle === 'droplet' || dotStyle === 'plain' ? 1 : d.step >= 3 ? 0.55 : d.step === 2 ? 0.75 : 1))
     .call(markDots)
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
@@ -1112,7 +1155,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
         .style('text-align', 'center').style('min-width', '80px');
     } else {
       tooltip.style('opacity', 1)
-        .html(`<strong>${esc(d.name)}</strong>${d.company ? '<br/>' + esc(d.company) : ''}${d.tier ? '<br/>Tier: ' + esc(d.tier) : ''}`)
+        .html(`<strong>${esc(d.name)}</strong>${d.company ? '<br/>' + esc(d.company) : ''}${d.tier ? '<br/>Tier: ' + esc(d.tier) : ''}${d.seen_outside ? '<br/>Seen outside the scan' : ''}`)
         .style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mousemove', function (event, d) {
@@ -1187,8 +1230,20 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     el.setAttribute('x2', d.target.x); el.setAttribute('y2', d.target.y);
   };
   let drawnLines = links.map((_, j) => j);
+  const paintTies = () => {
+    tieEls.attr('x1', d => d.a.x).attr('y1', d => d.a.y).attr('x2', d => d.b.x).attr('y2', d => d.b.y);
+  };
+  // [{ a, b, n }] by node id (lib/mutual-web.js tieLines): thicker the more often seen.
+  const setTies = (pairs = []) => {
+    const data = pairs.map((t) => ({ a: nodeById.get(t.a), b: nodeById.get(t.b), n: t.n, key: `${t.a}|${t.b}` })).filter((t) => t.a && t.b);
+    tieEls = tieG.selectAll('line').data(data, d => d.key).join('line')
+      .style('stroke', TIE_COLOUR).attr('stroke-opacity', 0.75)
+      .attr('stroke-width', d => Math.min(2.4, 0.9 + 0.3 * Math.log2(d.n || 1)));
+    paintTies();
+  };
   const paint = () => {
     for (const j of drawnLines) paintLine(j);
+    paintTies();
     node.attr('cx', d => d.x).attr('cy', d => d.y);
     catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
     dotRings.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -1568,7 +1623,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (byDegree() || (!stopSettling && simulation.alpha() < SETTLED)) fitView();
     else fitArmed = true;
   };
-  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, fitOwed, fitWhenSettled, dispose, range, freeze, screenOf };
+  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, fitOwed, fitWhenSettled, dispose, range, freeze, screenOf, setTies };
 }
 
 // With Physics off (isStill), a dragged dot moves on its own, nothing pulled

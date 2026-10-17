@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   experience              TEXT,               -- JSON: roles read from their profile by Read profiles (lib/experience.js)
   location                TEXT,               -- where they are, as a scan read it off their card or profile ("Seattle, Washington, United States")
   followers               INTEGER,            -- their follower count as a list's card showed it; a profile's top card (experience) wins
+  seen_via                TEXT,               -- 'ties': known only from the mutual web (a name and a link), never scanned (lib/ties-store.js)
   user_id                 TEXT,
   image_refreshed_at      TEXT,
   created_at              TEXT DEFAULT (datetime('now')),
@@ -137,19 +138,28 @@ CREATE TABLE IF NOT EXISTS company_scores (
 
 -- Small key/value facts about this install, e.g. which scoring model the
 -- stored scores were computed with.
--- Two of your own connections who know each other, seen when a circle scan
--- found one of them in the other's list (they're dropped from that circle,
--- being yours already). By profile URL, the smaller first, so a pair is one
--- row whichever circle showed it. No extra LinkedIn traffic: the scan read
--- them anyway. For clustering and communities later (lib/ties.js).
+-- The mutual web: two people seen together, by profile URL, the smaller
+-- first, so a pair is one row whichever page showed it (lib/ties.js). Seen
+-- where a page was open anyway, never by going to one for it: a circle scan
+-- finding one of your connections in another's list ('circle'), a card's
+-- mutual line naming your connections ('card'), a profile's mutual line in
+-- the LinkedIn panel ('profile'), or the "N other mutual connections" list
+-- read when you ask for it ('mutual-list'). source holds every way it was
+-- seen, comma-separated; seeing it again adds one to seen_count and moves
+-- last_seen (lib/ties-store.js). A tie means seen together, not close.
 CREATE TABLE IF NOT EXISTS connection_ties (
-  id       TEXT,                 -- lib/db.js gives every row one
-  user_id  TEXT NOT NULL,
-  a_url    TEXT NOT NULL,
-  b_url    TEXT NOT NULL,
-  seen_at  TEXT DEFAULT (datetime('now')),
+  id         TEXT,                 -- lib/db.js gives every row one
+  user_id    TEXT NOT NULL,
+  a_url      TEXT NOT NULL,
+  b_url      TEXT NOT NULL,
+  seen_at    TEXT DEFAULT (datetime('now')),   -- first seen
+  source     TEXT DEFAULT 'circle',
+  seen_count INTEGER DEFAULT 1,
+  last_seen  TEXT,
   PRIMARY KEY (user_id, a_url, b_url)
 );
+
+CREATE INDEX IF NOT EXISTS idx_ties_b ON connection_ties(user_id, b_url);
 
 CREATE TABLE IF NOT EXISTS app_meta (
   key    TEXT PRIMARY KEY,

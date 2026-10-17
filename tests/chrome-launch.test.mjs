@@ -215,8 +215,8 @@ test('every Chrome the scanner starts goes through launch_chrome', (t) => {
   const launches = src.split('\n').filter((l) => l.includes('launch_persistent_context(')).map((l) => l.trim());
   assert.deepEqual(launches, ['context = p.chromium.launch_persistent_context(**chrome_launch_options(profile, mode, displays=displays))']);
   // Sign-in, the full and quick walks, messages, a circle, your connections through the search, a company,
-  // a company for Breach (scan_company_search), Auto, Read profiles.
-  assert.equal((src.match(/= launch_chrome\(p, /g) || []).length, 10);
+  // a company for Breach (scan_company_search), Read all mutuals (scan_mutual_list), Auto, Read profiles.
+  assert.equal((src.match(/= launch_chrome\(p, /g) || []).length, 11);
   assert.match(src, /browser = launch_chrome\(p, sign_in=True\)/);
 });
 

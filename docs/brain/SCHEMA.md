@@ -14,7 +14,7 @@ installed rather than run from a checkout. TRAPS §4.
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |
 | `queue_items` | The outreach queue. |
-| `connection_ties` | Two of your own connections who know each other: when a circle scan finds one of your connections in someone's list, the pair (profile URLs, smaller first, one row per pair) is kept here instead of being dropped. Written by `app/api/ingest` (`lib/ties.js`); removed with either person by `app/api/admin-delete`. Nothing reads it yet: it's for clustering and communities. |
+| `connection_ties` | The mutual web (`lib/ties.js`): two people seen together, by profile URL, smaller first, one row per pair. `source` is every way it was seen, comma-separated (`circle`: one of your connections in another's circle scan; `card`: a card's mutual line named them, `scrape.py` `mutualNames`; `profile`: a profile's mutual line in Sixgree's LinkedIn panel; `mutual-list`: Read all mutuals); `seen_count` and `last_seen` go up each time it is seen again, `seen_at` is the first time (`lib/ties-store.js recordTies`). Written by `app/api/ingest` and `POST /api/ties`; read by `/api/network` (the extended network, `seen`), `GET /api/ties` and the strategy engine; removed with either person by `app/api/admin-delete`. An older database gains the columns, its ties as `circle`, seen once. A tie means seen together, not close. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
 | `company_scores` | A company score **you** set (the Scores tab): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
 | `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, `scoring_list` which curated company list, industries' words and labels, and scoring rule tables (a fingerprint of them, `scoringStamp()` in `lib/rpc.js`), and `scoring_focus` which sector focus (`lean:health,dental@<version>`, `<version>` being the sector directory's, since every pick matches by its words, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `legacy_scores_offer` is the one-time offer to keep the old list's scores: `open`, then `kept` or `declined` for good, or `none` when its first look found nothing to offer; absent when the database was never scored with the old list. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`), so it travels with the data: an export, a backup, a restore. The look (`theme`) and the Galaxy's saved layouts (`galaxyLayouts`) are in it too, `null` until first saved on this network. `last_import` is the import this copy last finished (Settings → Your data); an export leaves it out. |
@@ -51,6 +51,11 @@ installed rather than run from a checkout. TRAPS §4.
   brought up to date like `headline`, never cleared by a read that showed none; in a circle
   or a company scan every copy of them at that degree gets the newest. NULL until a scan
   reads one; a Connections export has none. `/api/network` returns it, for the Map.
+- `seen_via`: `'ties'` for someone known only through the mutual web (a profile opened in the
+  panel whose line named your connections): a name and a link, at degree 2 in nobody's circle,
+  never scanned. `/api/network` keeps them out of `degree2` and shows them only through their ties
+  (`seen`); `lib/profile.js networkCounts` doesn't count them. A circle or company scan that reads
+  them later takes their row over (`app/api/ingest`), and promotion clears it (`lib/promote.js`).
 - `followers`: their follower count as a list's card showed it ("· 3,766 followers"), kept
   the same way as `location`. A profile's top card (`experience`'s `card`) wins over it in
   scoring (`lib/scoring.js followersOf`); this is the count for everyone Dig deeper hasn't

@@ -11,6 +11,8 @@ import {
 } from '../../../lib/data-import';
 import { projectRoot, isGitCheckout } from '../../../lib/paths';
 import { installKind } from '../../../lib/release';
+import { webSize } from '../../../lib/ties-store';
+import { resolveProfile } from '../../../lib/profile';
 
 // Settings → Your data: where the network is kept, what it takes up, the
 // backups, and any import waiting to finish. Sizes come from the file system,
@@ -36,6 +38,8 @@ export async function GET() {
       backups,
       backupStatus,
       people: countPeople(db),
+      // The mutual web's size: ties, and the cards, profiles and full lists that named them (lib/ties-store.js).
+      web: webSize(db, resolveProfile({ create: false })?.id || null),
       platform: process.platform,
       kind,
       customDataDir: custom,
