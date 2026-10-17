@@ -17,32 +17,47 @@
 //   - a place's list says who gets you there: lines from the connections who
 //     reach the 2nd-degree people in it, as thick as how many, each with
 //     Outlink's "ask for an intro";
-//   - one connection's reach (from a place's list, the finder, or their card):
+//   - one connection's reach (from a place's list, the finder, or a route):
 //     lines from where they are to everywhere their circle lives;
 //   - From you, off to start: faint lines from home to your connections' places;
-//   - the finder (a person, company or place), and filters as chips you clear;
-//   - a glow on the densest places, and a Heat view of where the network is thickest.
-// Lines are drawn only for what's picked, never for everyone, so the map stays
-// smooth at any size; they draw in unless the system asks for less motion.
+//   - the finder (a person, company or place), and filters as chips you clear.
+//
+// Views, one at a time from one control card (Blake, 2026-10-16: "more cool UI
+// function and visuals for the locations like heat maps, line visuals ... and
+// make it more clean"; lib/map-visuals.js, app/components/WorldMapLayers.js):
+//   - Places: the dots, with a glow on the densest;
+//   - Heat: a smooth density surface of everyone, a tier or a degree, and its densest place;
+//   - Flows: the busiest routes from your connections to where their circles live;
+//   - Hubs: places ranked by reach, each a click from the map flying there;
+// and whenever someone's card is open, the path to them: you, then each person
+// along their chain, place by place.
+// Lines are drawn only for what's picked, or the busiest few routes, never for
+// everyone, so the map stays smooth at any size; they draw in unless the system
+// asks for less motion.
 //
 // All offline: the world is Natural Earth's 1:110m countries and the places a
 // gazetteer, both in public/geo, built by scripts/build-places.mjs. No map
 // tiles, nothing fetched from anywhere but this app (lib/places.js).
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { contourDensity, geoNaturalEarth1, geoPath, select, zoom as d3zoom, zoomIdentity } from 'd3';
+import { contours, geoIdentity, geoNaturalEarth1, geoPath, select, zoom as d3zoom, zoomIdentity } from 'd3';
 import { makeGazetteer, placePeople, placeFor, bestTier, mixOf } from '../../lib/places';
 import { keyFor } from '../../lib/separation';
+import { galaxyChain } from '../../lib/galaxy';
 import { IS_DEMO } from '../../lib/demo';
 import {
   circlesByBridge, reachOf, gettersTo, homeOf, fromYou, filterPeople, keepPlaces, filterChips, clearChip,
   NO_FILTERS, locatedLine, companiesOf, arcPoints, arcPath, arcWidth, arcMotion, prefersReducedMotion, glowKeys,
 } from '../../lib/map-lines';
-import { useSize, Seg } from './PathsAnalyzer';
+import { heatWeights, densityBins, heatLevels, flowsBetween, topFlows, legendSteps, rankHubs, chainAcross } from '../../lib/map-visuals';
+import { useSize } from './PathsAnalyzer';
 import {
-  TIERS, DEGREE_NAMES, LINE, fmt, plural, tierFill, degreeFill, firstName, card, byStrength, smallButton,
+  DEGREE_NAMES, LINE, fmt, plural, tierFill, degreeFill, firstName, card, byStrength, smallButton,
   PersonRow, SidePanel, GettersList, ReachPanel, MapFinder, Chips, MapOptions,
 } from './WorldMapParts';
+import {
+  MAP_VIEWS, readLook, writeLook, MapSeg, DotLegend, HeatLegend, FlowLegend, HubLegend, HubPanel, PathCard, FlowPanel, heatColours, heatFill,
+} from './WorldMapLayers';
 
 // The two files, fetched from this app once a session and kept.
 let geoLoad = null;
@@ -87,19 +102,18 @@ const HOME_KEY = 'six-degrees-map-home';
 const readHome = () => { try { return localStorage.getItem(HOME_KEY) || null; } catch { return null; } };
 const writeHome = (key) => { try { if (key) localStorage.setItem(HOME_KEY, key); else localStorage.removeItem(HOME_KEY); } catch { /* storage off: this visit only */ } };
 
-// The Heat view's contour levels, as shares of the densest spot on screen.
-const HEAT_LEVELS = [0.015, 0.04, 0.09, 0.17, 0.3, 0.48, 0.7];
-
 /** A dot's radius on screen: grows with the square root of its people, and a little as you zoom in. */
-const radiusFor = (count, k) => Math.min(30, 3.2 + Math.sqrt(count) * 2.1) * Math.min(1.8, Math.pow(k, 0.22));
+const radiusFor = (count, k) => Math.min(26, 3 + Math.sqrt(count) * 1.75) * Math.min(1.8, Math.pow(k, 0.22));
 
 const roundButton = {
   width: 32, height: 32, borderRadius: 8, border: LINE, cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1,
   background: 'var(--sd-surface, rgba(8,10,22,0.96))', color: 'var(--sd-fg-2, #cfd8d8)', fontFamily: 'inherit',
 };
+const halo = { paintOrder: 'stroke', stroke: 'var(--sd-bg, #0a0a1a)', strokeWidth: 3.5, strokeLinejoin: 'round', pointerEvents: 'none' };
 
-// Hover, dimming and the lines' draw-in. Reduced motion: no transitions, and
-// the lines are given no animation at all (lib/map-lines.js arcMotion).
+// Hover, dimming, the lines' draw-in, a route's moving dash and a view's fade.
+// Reduced motion: no transitions, and the lines are given no animation at all
+// (lib/map-lines.js arcMotion), and no moving dash.
 const MAP_CSS = `
 .sd-map-dot { transition: opacity 220ms ease; }
 .sd-map-dot[data-dim] { opacity: 0.2; }
@@ -111,12 +125,16 @@ const MAP_CSS = `
 .sd-map-arc-hit { cursor: pointer; }
 .sd-map-arc-hit:hover + .sd-map-arc { stroke-opacity: 1; }
 .sd-map-row:hover { background-color: rgba(var(--sd-ink, 255, 255, 255), 0.06) !important; }
+.sd-map-seg:hover:not([aria-pressed="true"]) { background-color: rgba(var(--sd-ink, 255, 255, 255), 0.06) !important; }
+.sd-map-layer { animation: sd-map-fade 320ms ease both; }
 @keyframes sd-map-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sd-map-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .sd-map-dot, .sd-map-dot .sd-map-body, .sd-map-dot .sd-map-hover { transition: none; }
+  .sd-map-layer { animation: none; }
 }`;
 
-export default function WorldMap({ connections = [], fullDegree1 = [], fullDegree2 = [], onSelect, selectedId = null }) {
+export default function WorldMap({ connections = [], fullDegree1 = [], fullDegree2 = [], degree3 = [], onSelect, selectedId = null }) {
   const [geo, setGeo] = useState(null);
   const [failed, setFailed] = useState(null);
   useEffect(() => {
@@ -134,15 +152,23 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   const [colourBy, setColourBy] = useState('tier');
   const [view, setView] = useState(zoomIdentity);
   // What's picked: a place ({ kind: 'place', key, start }: its list, and the
-  // lines of who gets you there, `start` the line clicked), or one of your
-  // connections ({ kind: 'bridge', id, end }: their reach, `end` the place open).
+  // lines of who gets you there, `start` the line clicked), one of your
+  // connections ({ kind: 'bridge', id, end }: their reach, `end` the place open),
+  // or a route ({ kind: 'flow', id }: who carries it).
   const [focus, setFocus] = useState(null);
   const [filters, setFilters] = useState(NO_FILTERS);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [showHome, setShowHome] = useState(false);
-  const [heat, setHeat] = useState(false);
-  // Read at once: nothing it changes is drawn before the map's files arrive, on the client.
+  // Read at once: nothing they change is drawn before the map's files arrive, on the client.
   const [homeKey, setHomeKey] = useState(readHome);
+  // The view (Places, Heat, Flows, Hubs), whose heat and how many routes: kept in this browser.
+  const [look, setLookState] = useState(readLook);
+  const setLook = (patch) => setLookState((was) => { const next = { ...was, ...patch }; writeLook(next); return next; });
+  const mapView = look.view;
+  // The path to whoever's card is open, unless it was closed for them.
+  const [pathOff, setPathOff] = useState(null);
+  // Hubs' Top places, closed for this visit to the view.
+  const [hubsClosed, setHubsClosed] = useState(false);
 
   // Everyone the Filters panel shows, by place; then who the map's own filters keep (lib/places.js, lib/map-lines.js).
   const whereAll = useMemo(() => (geo ? placePeople(geo.gaz, connections) : null), [geo, connections]);
@@ -167,6 +193,39 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
     [geo, picked, circles, d1ById, shown]);
   const home = useMemo(() => (where ? homeOf(where.places, homeKey) : null), [where, homeKey]);
 
+  // Flows: every route from your connections to where their circles live, worked
+  // out once for the view; drawn are the busiest few, or with a place picked, the
+  // busiest leaving it (in Hubs, a picked place's reach).
+  const routed = mapView === 'flows' || mapView === 'hubs';
+  const flowData = useMemo(() => (geo && routed ? flowsBetween(geo.gaz, circles, d1ById, shown) : null), [geo, routed, circles, d1ById, shown]);
+  const flowFrom = routed && picked ? picked : null;
+  const flowPicked = focus?.kind === 'flow' ? flowData?.flows.find((f) => f.id === focus.id) || null : null;
+  const drawnFlows = useMemo(() => {
+    if (!flowData || bridge || (mapView === 'hubs' && !flowFrom)) return [];
+    const top = topFlows(flowData.flows, { max: flowFrom ? Math.min(look.flowMax, 20) : look.flowMax, from: flowFrom?.key || null });
+    return flowPicked && !top.includes(flowPicked) ? [...top, flowPicked] : top;
+  }, [flowData, bridge, mapView, flowFrom, look.flowMax, flowPicked]);
+
+  // Hubs: the top places by reach.
+  const hubs = useMemo(() => (mapView === 'hubs' && where ? rankHubs(where.places, circles, shown, { max: 10 }) : null), [mapView, where, circles, shown]);
+  const hubRank = useMemo(() => new Map((hubs || []).map((hub, i) => [hub.place.key, { ...hub, rank: i + 1 }])), [hubs]);
+
+  // The path to whoever's card is open: galaxyChain over every row on file, the
+  // chain Network Circle draws (you, then the connection who introduced them, and
+  // on), worked out once while a card is open.
+  const cardOpen = selectedId != null;
+  const lineage = useMemo(() => {
+    if (!cardOpen) return null;
+    const byId = new Map();
+    for (const r of [...fullDegree1, ...fullDegree2, ...degree3, ...connections]) if (r?.id != null && !byId.has(r.id)) byId.set(r.id, r);
+    const rows = [...byId.values()];
+    return { byId, parentOf: galaxyChain(rows, { all: rows }).parentOf };
+  }, [cardOpen, fullDegree1, fullDegree2, degree3, connections]);
+  const path = useMemo(() => (geo && lineage && cardOpen && pathOff !== selectedId
+    ? chainAcross(geo.gaz, selectedId, { parentOf: lineage.parentOf, byId: lineage.byId, home: home?.place || null }) : null),
+  [geo, lineage, cardOpen, pathOff, selectedId, home]);
+  const pathPerson = path ? lineage.byId.get(selectedId) : null;
+
   // The places a line starts or ends at: drawn whatever the thresholds, and the rest dimmed.
   const involved = useMemo(() => {
     const s = new Set();
@@ -178,14 +237,17 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
       s.add(picked.key);
       for (const st of getters?.starts || []) s.add(st.key);
     }
+    for (const f of drawnFlows) { s.add(f.from.key); s.add(f.to.key); }
     return s;
-  }, [reach, picked, getters]);
+  }, [reach, picked, getters, drawnFlows]);
   const drawnPlaces = useMemo(() => {
     if (!where) return [];
     const keep = new Set(involved);
     if (showHome && home) keep.add(home.place.key);
+    for (const key of hubRank.keys()) keep.add(key);
+    for (const s of path?.steps || []) if (s.place) keep.add(s.place.key);
     return keepPlaces(where.places, filters, keep);
-  }, [where, filters, involved, showHome, home]);
+  }, [where, filters, involved, showHome, home, hubRank, path]);
   const homeLines = useMemo(() => (showHome && home ? fromYou(drawnPlaces, home.place) : []), [showHome, home, drawnPlaces]);
 
   // How much of the map the window shows. On a phone the header's tabs wrap to
@@ -245,7 +307,7 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   }, [projection, drawnPlaces]);
   const dotByKey = useMemo(() => new Map(dots.map((d) => [d.key, d])), [dots]);
   const endByKey = useMemo(() => new Map((reach?.ends || []).map((e) => [e.key, e])), [reach]);
-  // A soft glow under the densest few.
+  // A soft glow under the densest few, in Places.
   const glowing = useMemo(() => glowKeys(dots, { max: 12, least: 8 }), [dots]);
 
   // Zoom and pan: the wheel, a pinch, or a drag; the buttons step it.
@@ -260,14 +322,47 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   }, [extent]);
   const ease = reduced ? 0 : 1;
   const zoomBy = (factor) => { if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(250 * ease).call(zoomRef.current.scaleBy, factor); };
-  const zoomHome = () => { if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(300 * ease).call(zoomRef.current.transform, zoomIdentity); };
+  // Flying somewhere is an aim, worked out from the map's size: opening a card
+  // narrows the map mid-flight, and the aim is taken again at the new size, so
+  // the place still lands in the middle rather than the map showing open sea.
+  const geomRef = useRef(null);
+  const aimRef = useRef(null);
+  const aimAt = useCallback((aim, duration) => {
+    const svg = svgRef.current;
+    const z = zoomRef.current;
+    const t = geomRef.current?.projection ? aim(geomRef.current) : null;
+    if (svg && z && t) select(svg).transition().duration(duration).call(z.transform, t);
+  }, []);
+  useEffect(() => {
+    geomRef.current = { projection, w, shownH };
+    const aim = aimRef.current;
+    if (aim && Date.now() - aim.at < 2500) aimAt(aim.fn, 0);
+  }, [projection, w, shownH, aimAt]);
+  const aimFor = useCallback((fn, duration) => { aimRef.current = { fn, at: Date.now() }; aimAt(fn, duration); }, [aimAt]);
+  const zoomHome = () => aimFor(() => zoomIdentity, 300 * ease);
   const flyTo = (lon, lat, k = 4) => {
-    if (!svgRef.current || !zoomRef.current || !projection) return;
-    const [x, y] = projection([lon, lat]) || [];
-    if (!Number.isFinite(x)) return;
     const scale = Math.max(view.k, k);
-    select(svgRef.current).transition().duration(600 * ease)
-      .call(zoomRef.current.transform, zoomIdentity.translate(w / 2 - scale * x, shownH / 2 - scale * y).scale(scale));
+    aimFor(({ projection: pr, w: width, shownH: height }) => {
+      const [x, y] = pr([lon, lat]) || [];
+      return Number.isFinite(x) ? zoomIdentity.translate(width / 2 - scale * x, height / 2 - scale * y).scale(scale) : null;
+    }, 600 * ease);
+  };
+  // Some places on screen at once, clear of the control card and a panel.
+  const fitPlaces = (places) => {
+    const left = phone ? 16 : 420;
+    const right = phone ? 16 : focus || (hubs && !hubsClosed) ? 400 : 110;
+    const top = phone ? 170 : 110;
+    const bottom = phone ? 190 : 60;
+    aimFor(({ projection: pr, w: width, shownH: height }) => {
+      const pts = places.map((p) => pr([p.lon, p.lat])).filter((p) => p && Number.isFinite(p[0]));
+      if (!pts.length) return null;
+      const xs = pts.map((p) => p[0]);
+      const ys = pts.map((p) => p[1]);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      const room = [Math.max(80, width - left - right), Math.max(80, height - top - bottom)];
+      const k = Math.max(1, Math.min(12, Math.min(room[0] / Math.max(30, x1 - x0), room[1] / Math.max(30, y1 - y0)) * 0.9));
+      return zoomIdentity.translate(left + room[0] / 2 - k * (x0 + x1) / 2, top + room[1] / 2 - k * (y0 + y1) / 2).scale(k);
+    }, 700 * ease);
   };
 
   // The lines for what's picked, along great circles, at the map's own scale.
@@ -293,41 +388,67 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
       list.push({ id: `h:${line.place.key}`, kind: 'home', from: home.place, to: line.place, count: line.count, colour: 'var(--sd-fg-3, #889)', end: line.place.key,
         title: `${line.place.label}: ${plural(line.count, 'connection')}` });
     }
-    return list.map((a) => ({ ...a, base: arcPoints(a.from, a.to, 36).map((p) => projection(p) || [NaN, NaN]) })).filter((a) => a.base.length);
-  }, [projection, colourBy, reach, bridge, picked, getters, homeLines, home]);
-  const motion = arcMotion(reduced, arcs.filter((a) => a.kind !== 'home').length);
-
-  // Heat: where the network is densest, as soft contours under the dots. Worked
-  // out a beat behind the zoom (useDeferredValue) and moved with it meanwhile.
-  const heatView = useDeferredValue(view);
-  const heatPaths = useMemo(() => {
-    if (!heat || !dots.length || !w || !h) return null;
-    const pts = [];
-    for (const d of dots) {
-      const x = heatView.applyX(d.x);
-      const y = heatView.applyY(d.y);
-      if (x < -60 || y < -60 || x > w + 60 || y > h + 60) continue;
-      pts.push([x, y, d.count]);
+    for (const f of drawnFlows) {
+      list.push({ id: `f:${f.id}`, kind: 'flow', from: f.from, to: f.to, count: f.count, end: f.id, colour: 'var(--sd-accent, #3498db)',
+        title: `${f.from.name} to ${f.to.name}: ${plural(f.count, 'person', 'people')} through ${plural(f.bridges.length, 'connection')}` });
     }
-    if (!pts.length) return [];
-    // Levels as shares of the densest spot, the first low enough that a place
-    // of a few people still has a halo.
-    const at = contourDensity().x((p) => p[0]).y((p) => p[1]).weight((p) => p[2])
-      .size([w, h]).cellSize(4).bandwidth(20 * Math.min(2, Math.pow(heatView.k, 0.3))).contours(pts);
-    const path = geoPath();
-    return HEAT_LEVELS.map((share, i) => ({ d: path(at(at.max * share)) || '', level: i / (HEAT_LEVELS.length - 1) }));
-  }, [heat, dots, heatView, w, h]);
+    for (const leg of path?.legs || []) {
+      list.push({ id: `c:${leg.step}:${leg.from.key}:${leg.to.key}`, kind: 'path', from: leg.from, to: leg.to, count: 1, colour: 'var(--sd-accent, #3498db)',
+        end: leg.to.key, skipped: leg.skipped, title: `Step ${leg.step}: ${leg.from.name} to ${leg.to.name}` });
+    }
+    return list.map((a) => ({ ...a, base: arcPoints(a.from, a.to, 36).map((p) => projection(p) || [NaN, NaN]) })).filter((a) => a.base.length);
+  }, [projection, colourBy, reach, bridge, picked, getters, homeLines, home, drawnFlows, path]);
+  const motion = arcMotion(reduced, arcs.filter((a) => a.kind !== 'home' && a.kind !== 'path').length);
+  const pathDrawn = arcs.some((a) => a.kind === 'path');
+
+  // Heat: a smooth density surface of one group, worked out a beat behind the
+  // zoom (useDeferredValue) and moved with it meanwhile (lib/map-visuals.js).
+  const heatView = useDeferredValue(view);
+  const heat = useMemo(() => {
+    if (mapView !== 'heat' || !w || !h) return null;
+    const weights = heatWeights(dots, look.heatOf);
+    const people = weights.reduce((n, x) => n + x.weight, 0);
+    const radius = 15 * Math.min(2.4, Math.pow(heatView.k, 0.35));
+    const pts = [];
+    for (const { place, weight } of weights) {
+      const x = heatView.applyX(place.x);
+      const y = heatView.applyY(place.y);
+      if (x < -radius * 3 || y < -radius * 3 || x > w + radius * 3 || y > h + radius * 3) continue;
+      pts.push([x, y, weight]);
+    }
+    const bins = densityBins(pts, { width: w, height: h, cell: 4, radius });
+    const levels = heatLevels(bins.max, 7);
+    const shape = geoPath(geoIdentity().scale(bins.cell).translate([-bins.pad, -bins.pad]));
+    const paths = levels.length ? contours().size([bins.cols, bins.rows]).thresholds(levels)(bins.values)
+      .map((c, i) => ({ d: shape(c) || '', level: i / Math.max(1, levels.length - 1) })) : [];
+    return { paths, people, densest: weights[0] || null, counted: new Map(weights.map((x) => [x.place.key, x.weight])) };
+  }, [mapView, look.heatOf, dots, heatView, w, h]);
   const heatShift = heatView.k ? view.k / heatView.k : 1;
   const heatTransform = `translate(${view.x - heatShift * heatView.x},${view.y - heatShift * heatView.y}) scale(${heatShift})`;
+
+  // The path's steps on screen: a numbered mark at each place, stacked where two share one.
+  const pathMarks = useMemo(() => {
+    if (!path || !projection) return [];
+    const at = new Map();
+    for (const s of path.steps) {
+      if (!s.place) continue;
+      const p = projection([s.place.lon, s.place.lat]);
+      if (!p) continue;
+      const list = at.get(s.place.key) || [];
+      list.push({ ...s, p });
+      at.set(s.place.key, list);
+    }
+    return [...at.values()].flatMap((list) => list.map((s, i) => ({ ...s, nth: i })));
+  }, [path, projection]);
 
   // Names for the places a line touches first, then the biggest in view, never on top of each other.
   const labels = useMemo(() => {
     const out = [];
     const boxes = [];
-    const add = (key, x, y, r, text, strong) => {
+    const add = (key, x, y, r, text, strong, force = false) => {
       if (x < 0 || y < 0 || x > w || y > shownH) return false;
       const box = { x0: x + r + 3, y0: y - 7, x1: x + r + 5 + text.length * 6.3, y1: y + 7 };
-      if (boxes.some((b) => !(box.x1 < b.x0 || box.x0 > b.x1 || box.y1 < b.y0 || box.y0 > b.y1))) return false;
+      if (!force && boxes.some((b) => !(box.x1 < b.x0 || box.x0 > b.x1 || box.y1 < b.y0 || box.y0 > b.y1))) return false;
       boxes.push(box);
       out.push({ key, x: box.x0, y, text, strong });
       return true;
@@ -336,6 +457,18 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
       const d = dotByKey.get(key);
       return d ? [view.applyX(d.x), view.applyY(d.y), radiusFor(d.count, view.k)] : null;
     };
+    // The path's names first, beside its marks: "Lev · Munich".
+    const done = new Set();
+    const onPath = new Map();
+    for (const m of pathMarks) {
+      const at = onPath.get(m.place.key) || { m, names: [] };
+      at.names.push(m.person ? firstName(m.person.name) : 'You');
+      onPath.set(m.place.key, at);
+    }
+    for (const [key, { m, names }] of onPath) {
+      add(`path-${key}`, view.applyX(m.p[0]) + (names.length - 1) * 15, view.applyY(m.p[1]), 10, `${names.join(', ')} · ${m.place.name}`, 'path', true);
+      done.add(key);
+    }
     const special = [];
     if (reach) for (const e of reach.ends.slice(0, 30)) special.push([e.key, `${e.name} · ${fmt(e.count)}`]);
     if (picked) {
@@ -343,21 +476,23 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
       for (const st of (getters?.starts || []).slice(0, 20)) special.push([st.key, `${st.name} · ${fmt(st.count)}`]);
     }
     if (showHome && home) special.push([home.place.key, `Home · ${home.place.name}`]);
-    const done = new Set();
+    for (const hub of hubs || []) special.push([hub.place.key, `${hub.place.name} · ${fmt(hub.reach)}`]);
+    for (const f of drawnFlows.slice(0, 12)) special.push([f.from.key, f.from.name], [f.to.key, f.to.name]);
     for (const [key, text] of special) {
       const p = at(key);
       if (p && !done.has(key) && add(key, p[0], p[1], p[2], text, true)) done.add(key);
     }
     const room = Math.round(5 + 5 * view.k);
     let plain = 0;
-    for (const d of dots) {
+    const order = heat ? [...heat.counted.keys()].map((key) => dotByKey.get(key)).filter(Boolean) : dots;
+    for (const d of order) {
       if (plain >= room) break;
       if (done.has(d.key)) continue;
       if (involved.size && !involved.has(d.key)) continue;
       if (add(d.key, view.applyX(d.x), view.applyY(d.y), radiusFor(d.count, view.k), d.name, false)) plain++;
     }
     return out;
-  }, [dots, dotByKey, view, w, shownH, reach, picked, getters, showHome, home, involved]);
+  }, [dots, dotByKey, view, w, shownH, reach, picked, getters, showHome, home, involved, hubs, drawnFlows, heat, pathMarks]);
 
   // The finder's lists: everyone (your connections whatever the filters), companies, places.
   const finderIndex = useMemo(() => {
@@ -390,6 +525,8 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   const clickArc = (a) => {
     if (a.kind === 'reach') setFocus({ ...focus, end: a.end });
     else if (a.kind === 'getters') setFocus({ ...focus, start: a.end });
+    else if (a.kind === 'flow') setFocus({ kind: 'flow', id: a.end });
+    else if (a.kind === 'path') flyTo(a.to.lon, a.to.lat, 4);
     else pickPlace(a.end);
   };
   const makeHome = (key) => {
@@ -398,12 +535,15 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
     writeHome(next);
     if (next) setShowHome(true);
   };
+  const pickView = (next) => {
+    setLook({ view: next });
+    setHubsClosed(false);
+    if (focus?.kind === 'flow' && next !== 'flows') setFocus(null);
+  };
 
   const chips = filterChips(filters, { through: bridge?.name || null });
   const clearOne = (key) => (key === 'through' ? setFocus(null) : setFilters((f) => clearChip(f, key)));
   const clearAll = () => { setFilters(NO_FILTERS); if (bridge) setFocus(null); };
-  // Their card is open and they have a circle: offer their lines.
-  const cardBridge = selectedId && bridgeIds.has(selectedId) && !(bridge && bridge.id === selectedId) ? d1ById.get(selectedId) : null;
 
   const slices = (d) => (colourBy === 'tier' ? d.tiers.map(([t, n]) => [tierFill(t), n]) : d.degrees.map(([g, n]) => [degreeFill(g), n]));
   const glowOf = (d) => {
@@ -415,11 +555,23 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   const placedCount = whereAll?.placed || 0;
   const drawnPeople = dots.reduce((n, d) => n + d.count, 0);
   const narrowed = shownRows !== connections || filters.minPeople > 1 || filters.minStrong > 0;
-  const optionsSet = (filters.minPeople > 1 ? 1 : 0) + (filters.minStrong > 0 ? 1 : 0) + (showHome ? 1 : 0) + (heat ? 1 : 0);
+  const optionsSet = (filters.minPeople > 1 ? 1 : 0) + (filters.minStrong > 0 ? 1 : 0) + (showHome ? 1 : 0);
   const reachFrom = reach?.from && projection ? projection([reach.from.lon, reach.from.lat]) : null;
+  const viewInfo = MAP_VIEWS.find((v) => v.key === mapView) || MAP_VIEWS[0];
+  const heatBase = heatColours(look.heatOf)[0];
+  const mostReach = hubs?.[0]?.reach || 1;
+  const flowSteps = legendSteps(drawnFlows.map((f) => f.count));
+
+  const pathCard = path && pathPerson ? (
+    <PathCard person={pathPerson} path={path} phone={phone} below={below} canOutlink={!IS_DEMO} homeGuessed={home?.guessed}
+      onStep={(s) => s.place && flyTo(s.place.lon, s.place.lat, 4)}
+      onFit={() => fitPlaces(path.steps.filter((s) => s.place).map((s) => s.place))}
+      onReach={bridgeIds.has(pathPerson.id) && !(bridge && bridge.id === pathPerson.id) ? () => showReach(pathPerson.id) : null}
+      onClose={() => setPathOff(selectedId)} />
+  ) : null;
 
   return (
-    <div ref={wrapRef} data-world-map style={{ flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden', background: 'var(--sd-page)' }}
+    <div ref={wrapRef} data-world-map={mapView} style={{ flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden', background: 'var(--sd-page)' }}
       onKeyDown={(e) => { if (e.key === 'Escape' && focus) setFocus(null); }}>
       <style>{MAP_CSS}</style>
       {failed ? (
@@ -428,10 +580,10 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
         <Centered><div style={{ fontSize: 13, color: 'var(--sd-fg-4, #778)' }}>Drawing the map&hellip;</div></Centered>
       ) : (
         <>
-          <svg ref={svgRef} width={w} height={h} role="img" aria-label={`World map: ${plural(drawnPeople, 'person', 'people')} in ${plural(dots.length, 'place')}`}
+          <svg ref={svgRef} width={w} height={h} role="img" aria-label={`World map, ${viewInfo.label}: ${plural(drawnPeople, 'person', 'people')} in ${plural(dots.length, 'place')}`}
             style={{ display: 'block', cursor: 'grab', touchAction: 'none' }}>
             <defs>
-              {TIERS.map((t) => <Glow key={t} id={`sd-glow-${t}`} colour={tierFill(t)} />)}
+              {['S', 'A', 'B', 'C', 'D'].map((t) => <Glow key={t} id={`sd-glow-${t}`} colour={tierFill(t)} />)}
               {[1, 2, 3].map((d) => <Glow key={d} id={`sd-glow-d${d}`} colour={degreeFill(d)} />)}
             </defs>
             <rect width={w} height={h} fill="transparent" onClick={() => setFocus(null)} />
@@ -443,41 +595,72 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
                   onClick={() => setFocus(null)} />
               ))}
             </g>
-            {heatPaths && (
-              <g data-map-heat="" transform={heatTransform} style={{ pointerEvents: 'none', filter: 'blur(4px)' }}>
-                {heatPaths.map((p, i) => (
+            {heat && (
+              <g key={`heat-${look.heatOf}`} className="sd-map-layer" data-map-heat={look.heatOf} transform={heatTransform} style={{ pointerEvents: 'none' }}>
+                {heat.paths.map((p, i) => (
                   <path key={i} d={p.d} style={{
-                    fill: `color-mix(in srgb, var(--sd-tier-s, #ffd700) ${Math.round(p.level * 100)}%, var(--sd-accent, #3498db))`,
-                    fillOpacity: 0.1 + 0.08 * p.level,
+                    fill: heatFill(look.heatOf, p.level), fillOpacity: 0.08 + 0.13 * p.level,
+                    stroke: heatFill(look.heatOf, p.level), strokeOpacity: 0.18 + 0.3 * p.level, strokeWidth: 0.8,
                   }} />
                 ))}
               </g>
             )}
-            {/* The glow under the densest places. */}
-            {!heat && dots.map((d) => {
+            {/* The glow under the densest places, in Places. */}
+            {mapView === 'places' && dots.map((d) => {
               if (!glowing.has(d.key)) return null;
               const x = view.applyX(d.x);
               const y = view.applyY(d.y);
               const r = radiusFor(d.count, view.k) * 2.2;
               if (x < -r || y < -r || x > w + r || y > h + r) return null;
               if (involved.size && !involved.has(d.key)) return null;
-              return <circle key={`glow-${d.key}`} cx={x} cy={y} r={r} fill={`url(#${glowOf(d)})`} opacity={0.7} style={{ pointerEvents: 'none' }} />;
+              return <circle key={`glow-${d.key}`} cx={x} cy={y} r={r} fill={`url(#${glowOf(d)})`} opacity={0.6} style={{ pointerEvents: 'none' }} />;
             })}
+            {/* Hubs: a ring round each of the top places, as wide as its reach. */}
+            {hubs && (
+              <g key="hubs" className="sd-map-layer" style={{ pointerEvents: 'none' }}>
+                {hubs.map((hub) => {
+                  const d = dotByKey.get(hub.place.key);
+                  if (!d) return null;
+                  const r = radiusFor(d.count, view.k);
+                  return (
+                    <circle key={`reach-${hub.place.key}`} cx={view.applyX(d.x)} cy={view.applyY(d.y)} r={r + 4 + 30 * Math.sqrt(hub.reach / mostReach) * Math.min(1.6, Math.pow(view.k, 0.2))}
+                      style={{ fill: 'var(--sd-accent, #3498db)', fillOpacity: 0.08, stroke: 'var(--sd-accent, #3498db)', strokeOpacity: 0.55 }} strokeWidth={1.2} strokeDasharray="3 3" />
+                  );
+                })}
+              </g>
+            )}
             {/* The lines, under the dots so each runs into its place. */}
             {arcs.map((a, i) => {
-              const d = arcPath(a.base.map(([x, y]) => [view.applyX(x), view.applyY(y)]), { jump: w * 0.3 * view.k });
+              const d = arcPath(a.base.map(([x, y]) => [view.applyX(x), view.applyY(y)]), { jump: w * 0.3 * view.k, lift: a.kind === 'path' ? 0.1 : 0.16 });
               if (!d) return null;
+              if (a.kind === 'path') {
+                return (
+                  <g key={a.id}>
+                    <path className="sd-map-arc-hit" d={d} fill="none" stroke="transparent" strokeWidth={14}
+                      onClick={(e) => { e.stopPropagation(); clickArc(a); }}><title>{a.title}</title></path>
+                    <path d={d} fill="none" strokeLinecap="round" strokeWidth={5.5} style={{ stroke: 'var(--sd-bg, #0a0a1a)', strokeOpacity: 0.85, pointerEvents: 'none' }} />
+                    <path d={d} fill="none" strokeLinecap="round" strokeWidth={2.6} strokeDasharray={a.skipped ? '6 5' : undefined}
+                      style={{ stroke: a.colour, pointerEvents: 'none' }} />
+                  </g>
+                );
+              }
               const width = a.kind === 'home' ? Math.min(2.4, 0.7 + Math.sqrt(a.count) * 0.3) : arcWidth(a.count);
-              const lit = (a.kind === 'reach' && focus?.end === a.end) || (a.kind === 'getters' && focus?.start === a.end);
+              const lit = (a.kind === 'reach' && focus?.end === a.end) || (a.kind === 'getters' && focus?.start === a.end) || (a.kind === 'flow' && focus?.id === a.end);
               const draw = a.kind !== 'home' && motion.draw
                 ? { strokeDasharray: 1, animation: `sd-map-draw ${motion.draw}ms cubic-bezier(.2,.7,.2,1) ${Math.round(i * motion.stagger)}ms both` } : null;
+              const base = a.kind === 'home' ? 0.38 : a.kind === 'flow' ? 0.55 : 0.82;
               return (
-                <g key={a.id}>
+                <g key={a.id} style={{ opacity: pathDrawn ? 0.4 : 1, transition: reduced ? undefined : 'opacity 240ms ease' }}>
                   <path className="sd-map-arc-hit" d={d} fill="none" stroke="transparent" strokeWidth={Math.max(12, width + 8)}
                     onClick={(e) => { e.stopPropagation(); clickArc(a); }}><title>{a.title}</title></path>
                   <path className="sd-map-arc" d={d} pathLength={1} fill="none" strokeLinecap="round"
                     strokeWidth={lit ? width + 1.5 : width}
-                    style={{ stroke: a.colour, strokeOpacity: a.kind === 'home' ? 0.38 : lit ? 1 : 0.82, pointerEvents: 'none', ...draw }} />
+                    style={{ stroke: a.colour, strokeOpacity: lit ? 1 : base, pointerEvents: 'none', ...draw }} />
+                  {/* A route's dash runs from where the connections are to where their people are. */}
+                  {a.kind === 'flow' && motion.draw > 0 && (
+                    <path d={d} pathLength={1} fill="none" strokeLinecap="round" strokeWidth={Math.max(1.4, width * 0.6)} strokeDasharray="0.05 0.95"
+                      style={{ stroke: 'var(--sd-fg-1, #fff)', strokeOpacity: 0.75, pointerEvents: 'none', animation: `sd-map-draw ${2400 + (i % 5) * 260}ms linear ${-(i * 370) % 2400}ms infinite` }} />
+                  )}
                 </g>
               );
             })}
@@ -489,27 +672,53 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
               const on = picked?.key === d.key || (reach && focus?.end === d.key);
               const dim = involved.size > 0 && !involved.has(d.key);
               const end = endByKey.get(d.key);
+              const inHeat = heat?.counted.get(d.key) || 0;
+              const small = Boolean(heat) && !on;
               return (
-                <g key={d.key} className="sd-map-dot" transform={`translate(${x},${y})`} style={{ cursor: 'pointer', opacity: heat ? 0.8 : undefined }}
+                <g key={d.key} className="sd-map-dot" transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }}
                   data-dim={dim ? '' : undefined}
                   role="button" tabIndex={0} aria-pressed={Boolean(on)}
-                  aria-label={`${d.label}: ${plural(d.count, 'person', 'people')}, strongest tier ${d.best}${d.approx ? ', placed at its middle' : ''}${end ? `, ${fmt(end.count)} through ${bridge.name}` : ''}`}
+                  aria-label={`${d.label}: ${plural(d.count, 'person', 'people')}, strongest tier ${d.best}${d.approx ? ', placed at its middle' : ''}${end ? `, ${fmt(end.count)} through ${bridge.name}` : ''}${heat ? `, ${fmt(inHeat)} in the heat` : ''}`}
                   onClick={(e) => { e.stopPropagation(); clickDot(d); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); clickDot(d); } }}>
-                  <title>{`${d.label}: ${plural(d.count, 'person', 'people')} (${(colourBy === 'tier' ? d.tiers.map(([t, n]) => `${n} ${t}`) : d.degrees.map(([g, n]) => `${n} ${DEGREE_NAMES[g]}`)).join(', ')})${end ? `; ${fmt(end.count)} through ${bridge.name}` : ''}${d.approx ? ', approximate: placed at its middle' : ''}`}</title>
-                  <circle className="sd-map-focus" r={r + 5} fill="none" style={{ stroke: 'var(--sd-accent, #3498db)' }} strokeWidth={2} />
-                  <circle className="sd-map-hover" r={r + 3} fill="none" style={{ stroke: 'var(--sd-fg-1, #fff)', pointerEvents: 'none' }} strokeWidth={1.5} />
-                  {end && !on && <circle r={r + 3.5} fill="none" style={{ stroke: 'var(--sd-accent, #3498db)', pointerEvents: 'none' }} strokeWidth={1.6} strokeOpacity={0.9} />}
-                  {on && <circle r={r + 5} fill="none" style={{ stroke: 'var(--sd-fg-1, #fff)' }} strokeWidth={2} />}
-                  <g className="sd-map-body">
-                    <Pie r={r} parts={slices(d)} />
-                    <circle r={r} fill="none" style={{ stroke: d.approx ? 'var(--sd-fg-2, #cfd8d8)' : 'var(--sd-bg, #0a0a1a)' }} strokeWidth={d.approx ? 1.3 : 1.2}
-                      strokeDasharray={d.approx ? '3 2' : undefined} />
-                    {r >= 11 && (
-                      <text textAnchor="middle" dy="0.35em" fontSize={r >= 18 ? 11 : 9.5} fontWeight={800}
-                        style={{ fill: '#fff', stroke: 'rgba(0,0,0,0.6)', strokeWidth: 2.5, paintOrder: 'stroke', strokeLinejoin: 'round', pointerEvents: 'none' }}>{d.count > 999 ? `${Math.round(d.count / 100) / 10}k` : d.count}</text>
-                    )}
-                  </g>
+                  <title>{`${d.label}: ${plural(d.count, 'person', 'people')} (${(colourBy === 'tier' ? d.tiers.map(([t, n]) => `${n} ${t}`) : d.degrees.map(([g, n]) => `${n} ${DEGREE_NAMES[g]}`)).join(', ')})${end ? `; ${fmt(end.count)} through ${bridge.name}` : ''}${heat ? `; ${fmt(inHeat)} of them in this heat map` : ''}${d.approx ? ', approximate: placed at its middle' : ''}`}</title>
+                  <circle className="sd-map-focus" r={(small ? 4 : r) + 5} fill="none" style={{ stroke: 'var(--sd-accent, #3498db)' }} strokeWidth={2} />
+                  <circle className="sd-map-hover" r={(small ? 4 : r) + 3} fill="none" style={{ stroke: 'var(--sd-fg-1, #fff)', pointerEvents: 'none' }} strokeWidth={1.5} />
+                  {small ? (
+                    <g className="sd-map-body">
+                      <circle r={10} fill="transparent" />
+                      <circle r={inHeat ? 2.8 : 2} style={{ fill: inHeat ? heatBase : 'var(--sd-fg-4, #778)', stroke: 'var(--sd-bg, #0a0a1a)' }} strokeWidth={1} fillOpacity={inHeat ? 0.95 : 0.6} />
+                    </g>
+                  ) : (
+                    <>
+                      {end && !on && <circle r={r + 3.5} fill="none" style={{ stroke: 'var(--sd-accent, #3498db)', pointerEvents: 'none' }} strokeWidth={1.6} strokeOpacity={0.9} />}
+                      {on && <circle r={r + 5} fill="none" style={{ stroke: 'var(--sd-fg-1, #fff)' }} strokeWidth={2} />}
+                      <g className="sd-map-body">
+                        <Pie r={r} parts={slices(d)} />
+                        <circle r={r} fill="none" style={{ stroke: d.approx ? 'var(--sd-fg-2, #cfd8d8)' : 'var(--sd-bg, #0a0a1a)' }} strokeWidth={d.approx ? 1.3 : 1.2}
+                          strokeDasharray={d.approx ? '3 2' : undefined} />
+                        {r >= 11 && (
+                          <text textAnchor="middle" dy="0.35em" fontSize={r >= 18 ? 11 : 9.5} fontWeight={800}
+                            style={{ fill: '#fff', stroke: 'rgba(0,0,0,0.6)', strokeWidth: 2.5, paintOrder: 'stroke', strokeLinejoin: 'round', pointerEvents: 'none' }}>{d.count > 999 ? `${Math.round(d.count / 100) / 10}k` : d.count}</text>
+                        )}
+                      </g>
+                    </>
+                  )}
+                </g>
+              );
+            })}
+            {/* Hubs: each top place's rank. */}
+            {hubs && hubs.map((hub, i) => {
+              const d = dotByKey.get(hub.place.key);
+              if (!d) return null;
+              const r = radiusFor(d.count, view.k);
+              const x = view.applyX(d.x) + r * 0.72;
+              const y = view.applyY(d.y) - r * 0.72;
+              if (x < -10 || y < -10 || x > w + 10 || y > h + 10) return null;
+              return (
+                <g key={`rank-${hub.place.key}`} transform={`translate(${x},${y})`} style={{ pointerEvents: 'none' }}>
+                  <circle r={8} style={{ fill: 'var(--sd-accent, #3498db)', stroke: 'var(--sd-bg, #0a0a1a)' }} strokeWidth={1.5} />
+                  <text textAnchor="middle" dy="0.35em" fontSize={9.5} fontWeight={800} style={{ fill: 'var(--sd-bg, #0a0a1a)' }}>{i + 1}</text>
                 </g>
               );
             })}
@@ -529,60 +738,63 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
               );
             })}
             {labels.map((l) => (
-              <text key={`label-${l.key}`} x={l.x} y={l.y} dy="0.35em" fontSize={l.strong ? 11.5 : 11} fontWeight={l.strong ? 750 : 600}
-                style={{ fill: l.strong ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #cfd8d8)', pointerEvents: 'none', paintOrder: 'stroke', stroke: 'var(--sd-bg, #0a0a1a)', strokeWidth: 3.5, strokeLinejoin: 'round' }}>
+              <text key={`label-${l.key}`} x={l.x} y={l.y} dy="0.35em" fontSize={l.strong ? 11.5 : 11} fontWeight={l.strong === 'path' ? 800 : l.strong ? 750 : 600}
+                style={{ fill: l.strong === 'path' ? 'var(--sd-accent, #3498db)' : l.strong ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #cfd8d8)', ...halo }}>
                 {l.text}
               </text>
             ))}
             {reachFrom && (
               <text x={view.applyX(reachFrom[0])} y={view.applyY(reachFrom[1]) - radiusFor(dotByKey.get(reach.from.key)?.count || 1, view.k) - 12} textAnchor="middle" fontSize={11.5} fontWeight={800}
-                style={{ fill: 'var(--sd-accent, #3498db)', pointerEvents: 'none', paintOrder: 'stroke', stroke: 'var(--sd-bg, #0a0a1a)', strokeWidth: 3.5, strokeLinejoin: 'round' }}>
+                style={{ fill: 'var(--sd-accent, #3498db)', ...halo }}>
                 {firstName(bridge.name)}
               </text>
             )}
+            {/* The path's steps: You, then 1, 2, 3 along the chain, each with a first name. */}
+            {pathMarks.map((s) => {
+              const x = view.applyX(s.p[0]) + s.nth * 15;
+              const y = view.applyY(s.p[1]);
+              if (x < -20 || y < -20 || x > w + 20 || y > h + 20) return null;
+              const last = s.person && s.person.id === selectedId;
+              return (
+                <g key={`step-${s.step ?? 'x'}-${s.person?.id ?? 'you'}`} transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); flyTo(s.place.lon, s.place.lat, 4); }}>
+                  <title>{`${s.person ? s.person.name : 'You'}: ${s.place.label}`}</title>
+                  <circle r={last ? 10 : 9} style={{ fill: s.person ? 'var(--sd-accent, #3498db)' : 'var(--sd-fg-1, #fff)', stroke: 'var(--sd-bg, #0a0a1a)' }} strokeWidth={2} />
+                  <text textAnchor="middle" dy="0.35em" fontSize={9.5} fontWeight={800} style={{ fill: 'var(--sd-bg, #0a0a1a)', pointerEvents: 'none' }}>{s.step == null ? '?' : s.step === 0 ? '' : s.step}</text>
+                </g>
+              );
+            })}
           </svg>
 
-          {/* Colour, the legend, the finder and the filters: top left, clear of the Filters button */}
-          <div style={{ position: 'absolute', top: phone ? 52 : 10, left: phone ? 8 : 64, display: 'flex', flexDirection: 'column', gap: 6, width: phone ? 'calc(100% - 60px)' : 330 }}>
-            <div style={{ ...card, padding: phone ? '6px 8px' : '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Seg value={colourBy} onChange={setColourBy} options={[['tier', 'Tier'], ['degree', 'Degree']]} />
-                <span style={{ fontSize: 11, color: 'var(--sd-fg-3, #889)' }} title="People with a location the map knows, of everyone the Filters panel shows">
-                  {locatedLine(placedCount, total)}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: phone ? 6 : 9, flexWrap: 'wrap', fontSize: 10.5, color: 'var(--sd-fg-3, #889)' }}>
-                {(colourBy === 'tier' ? TIERS.map((t) => [t, tierFill(t)]) : [1, 2, 3].map((d) => [DEGREE_NAMES[d], degreeFill(d)])).map(([name, colour]) => (
-                  <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <span className="sd-dot-html" style={{ width: 8, height: 8, borderRadius: '50%', background: colour, display: 'inline-block' }} />{name}
-                  </span>
-                ))}
-                {!phone && <span style={{ marginLeft: 'auto', color: 'var(--sd-fg-4, #778)' }}>{plural(dots.length, 'place')}</span>}
-              </div>
-              {!phone && !focus && !chips.length && (
-                <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #778)', lineHeight: 1.4 }}>
-                  {colourBy === 'tier' ? 'Each dot is the mix of tiers there.' : 'Each dot is the mix of degrees there.'} A dashed ring is a region or country, at its middle. Pick a place for who gets you there.
-                </div>
-              )}
+          {/* One card: find, pick a view, read its legend, then the filters. Top left, clear of the Filters button. */}
+          <div style={{ position: 'absolute', top: phone ? 52 : 10, left: phone ? 8 : 64, width: phone ? 'calc(100% - 60px)' : 340, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ ...card, padding: phone ? '7px 8px' : '10px 11px', display: 'flex', flexDirection: 'column', gap: phone ? 6 : 8 }}>
               <MapFinder index={finderIndex} phone={phone} onPerson={onPerson} onBridge={(p) => showReach(p.id)} onPlace={onPlace}
                 onCompany={(name) => setFilters((f) => ({ ...f, company: name }))} onText={(text) => setFilters((f) => ({ ...f, text }))} />
-              <Chips chips={chips} onClear={clearOne} onClearAll={clearAll} />
-              {narrowed && (
-                <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #889)' }}>Showing {plural(drawnPeople, 'person', 'people')} in {plural(dots.length, 'place')}</div>
+              <MapSeg value={mapView} onChange={pickView} label="What the map shows" wide options={MAP_VIEWS.map((v) => [v.key, v.label, v.question])} />
+              {!phone && <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.45, marginTop: -2 }}>{viewInfo.question}</div>}
+              {mapView === 'places' && <DotLegend colourBy={colourBy} setColourBy={setColourBy} phone={phone} />}
+              {mapView === 'heat' && <HeatLegend heatOf={look.heatOf} setHeatOf={(heatOf) => setLook({ heatOf })} heat={heat} onDensest={onPlace} />}
+              {mapView === 'flows' && (
+                <FlowLegend flows={flowData} drawn={drawnFlows.length} max={look.flowMax} setMax={(flowMax) => setLook({ flowMax })} steps={flowSteps}
+                  from={flowFrom} widthOf={arcWidth} />
               )}
-              <div>
+              {mapView === 'hubs' && <HubLegend hubs={hubs} phone={phone} />}
+              <Chips chips={chips} onClear={clearOne} onClearAll={clearAll} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: LINE, paddingTop: 6, marginTop: 1 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: 'var(--sd-fg-4, #778)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title="People with a location the map knows, of everyone the Filters panel shows">
+                  {narrowed ? `Showing ${plural(drawnPeople, 'person', 'people')} in ${plural(dots.length, 'place')}` : locatedLine(placedCount, total)}
+                </span>
                 <button type="button" aria-expanded={optionsOpen} onClick={() => setOptionsOpen(!optionsOpen)}
                   style={{ ...smallButton, border: 'none', padding: '2px 0', color: 'var(--sd-fg-3, #889)' }}>
-                  {optionsOpen ? '▾' : '▸'} Declutter, From you, Heat{optionsSet ? ` (${optionsSet} on)` : ''}
+                  {optionsOpen ? '▾' : '▸'} Declutter, From you{optionsSet ? ` (${optionsSet})` : ''}
                 </button>
-                {optionsOpen && <MapOptions filters={filters} setFilters={setFilters} home={home} showHome={showHome} setShowHome={setShowHome} heat={heat} setHeat={setHeat} />}
               </div>
+              {optionsOpen && <MapOptions filters={filters} setFilters={setFilters} home={home} showHome={showHome} setShowHome={setShowHome} />}
             </div>
-            {cardBridge && (
-              <button type="button" onClick={() => showReach(cardBridge.id)} style={{ ...smallButton, ...card, alignSelf: 'flex-start', padding: '6px 10px', fontSize: 11.5, fontWeight: 650, borderRadius: 999, color: 'var(--sd-fg-1, #fff)' }}>
-                Show where {firstName(cardBridge.name)}&rsquo;s circle lives
-              </button>
-            )}
+            {/* The path to whoever's card is open, under the card. */}
+            {!phone && pathCard}
           </div>
 
           {/* Zoom: top right, clear of the Details button; a column on a phone too, beside the finder */}
@@ -603,19 +815,29 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
             </div>
           )}
 
+          {/* The path to whoever's card is open: a sheet at the bottom on a phone, when nothing else is. */}
+          {phone && !(focus || (hubs && !hubsClosed)) && pathCard}
+
           {bridge && reach && (
             <ReachPanel bridge={bridge} reach={reach} openEnd={focus.end} onOpenEnd={(end) => setFocus({ ...focus, end })} canOutlink={!IS_DEMO}
               phone={phone} below={below} sheet={Math.round(shownH * 0.46)} selectedId={selectedId} onSelect={onSelect} onClose={() => setFocus(null)} />
           )}
           {picked && (
             <PlacePanel place={picked} getters={getters} bridgeIds={bridgeIds} onLines={showReach} canOutlink={!IS_DEMO}
-              openStart={focus.start} isHome={homeKey === picked.key} onHome={() => makeHome(picked.key)}
+              openStart={focus.start} isHome={homeKey === picked.key} onHome={() => makeHome(picked.key)} hub={hubRank.get(picked.key)}
               phone={phone} below={below} sheet={Math.round(shownH * 0.46)} selectedId={selectedId} onSelect={onSelect} onClose={() => setFocus(null)} />
           )}
-          {/* On a phone the place's list takes the bottom; who isn't on the map comes back when it closes. */}
-          {whereAll && !(phone && focus) && <Unplaced where={whereAll} phone={phone} bottom={below + 8} />}
+          {hubs && !focus && !hubsClosed && (
+            <HubPanel hubs={hubs} pickedKey={null} onPick={onPlace} phone={phone} below={below} sheet={Math.round(shownH * 0.46)} onClose={() => setHubsClosed(true)} />
+          )}
+          {flowPicked && (
+            <FlowPanel flow={flowPicked} canOutlink={!IS_DEMO} phone={phone} below={below} sheet={Math.round(shownH * 0.46)}
+              selectedId={selectedId} onSelect={onSelect} onLines={showReach} onClose={() => setFocus(null)} />
+          )}
+          {/* On a phone the lists take the bottom; who isn't on the map comes back when they close. */}
+          {whereAll && !(phone && (focus || path || (hubs && !hubsClosed))) && <Unplaced where={whereAll} phone={phone} bottom={below + 8} />}
           {/* GeoNames' licence (CC BY 4.0) asks for this credit wherever its places show (docs/PLACES.md). */}
-          {!(phone && focus) && (
+          {!(phone && (focus || path || (hubs && !hubsClosed))) && (
             <p data-map-credit="" style={{ position: 'absolute', right: 10, bottom: below + 6, margin: 0, fontSize: 9, color: 'var(--sd-fg-3, #888)', pointerEvents: 'none' }}>
               Places: GeoNames (CC BY 4.0) · Natural Earth
             </p>
@@ -630,8 +852,8 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
 function Glow({ id, colour }) {
   return (
     <radialGradient id={id}>
-      <stop offset="0%" style={{ stopColor: colour, stopOpacity: 0.55 }} />
-      <stop offset="55%" style={{ stopColor: colour, stopOpacity: 0.16 }} />
+      <stop offset="0%" style={{ stopColor: colour, stopOpacity: 0.5 }} />
+      <stop offset="55%" style={{ stopColor: colour, stopOpacity: 0.14 }} />
       <stop offset="100%" style={{ stopColor: colour, stopOpacity: 0 }} />
     </radialGradient>
   );
@@ -659,16 +881,18 @@ function Centered({ children }) {
 /**
  * Who's at one place: who gets you there (the connections who reach the
  * 2nd-degree people in it), then everyone, strongest first; a click opens
- * their card, and a connection with a circle has its own reach.
+ * their card, and a connection with a circle has its own reach. In Hubs, its
+ * rank and reach.
  */
-function PlacePanel({ place, getters, bridgeIds, onLines, canOutlink, openStart, isHome, onHome, phone, below = 0, sheet = 320, selectedId, onSelect, onClose }) {
+function PlacePanel({ place, getters, bridgeIds, onLines, canOutlink, openStart, isHome, onHome, hub = null, phone, below = 0, sheet = 320, selectedId, onSelect, onClose }) {
   const people = useMemo(() => [...place.people].sort(byStrength), [place]);
   const shown = people.slice(0, 300);
+  const reachLine = hub ? ` · #${hub.rank} by reach: ${fmt(hub.reach)}, ${fmt(hub.through)} more through ${plural(hub.bridges, 'connection')} here` : '';
   return (
     <SidePanel label={`People in ${place.label}`} title={place.label} phone={phone} below={below} sheet={sheet} onClose={onClose}
-      subtitle={`${plural(place.count, 'person', 'people')}${place.approx ? ` · placed at the ${place.kind === 'country' ? 'country' : 'region'}’s middle` : ''}`}
+      subtitle={`${plural(place.count, 'person', 'people')}${place.approx ? ` · placed at the ${place.kind === 'country' ? 'country' : 'region'}’s middle` : ''}${reachLine}`}
       actions={(
-        <button type="button" aria-pressed={isHome} onClick={onHome} style={smallButton} title="From you draws its lines from home">
+        <button type="button" aria-pressed={isHome} onClick={onHome} style={smallButton} title="From you, and the path to someone, start from home">
           {isHome ? 'Home ✓' : 'Make this home'}
         </button>
       )}>

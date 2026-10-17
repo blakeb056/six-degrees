@@ -5,7 +5,7 @@
 //   the finder        where is this person, company, place, or this connection's circle?
 //   Through whom      how far does one connection's circle reach, and where?
 //   Who gets you here  which of my connections can introduce me to the people in this place?
-//   the options       declutter: only places with enough people, or enough of tier S or A.
+//   the options       declutter: only places with enough people, or enough of tier S or A; From you.
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { TIER_COLORS } from '../../lib/themes';
@@ -251,8 +251,8 @@ export function Chips({ chips, onClear, onClearAll }) {
   );
 }
 
-/** The map's own options: the two declutter thresholds, From you and Heat. */
-export function MapOptions({ filters, setFilters, home, showHome, setShowHome, heat, setHeat }) {
+/** The map's own options: the two declutter thresholds and From you (Heat is a view of its own). */
+export function MapOptions({ filters, setFilters, home, showHome, setShowHome }) {
   const select = {
     fontFamily: 'inherit', fontSize: 11, padding: '2px 4px', borderRadius: 6, border: LINE,
     background: 'var(--sd-surface, #10131f)', color: 'var(--sd-fg-1, #fff)',
@@ -283,10 +283,6 @@ export function MapOptions({ filters, setFilters, home, showHome, setShowHome, h
           Where most of your connections are. A place&rsquo;s list can make another one home.
         </div>
       )}
-      <label style={{ ...row, cursor: 'pointer' }}>
-        <input type="checkbox" checked={heat} onChange={(e) => setHeat(e.target.checked)} />
-        Heat: where your network is densest
-      </label>
     </div>
   );
 }
