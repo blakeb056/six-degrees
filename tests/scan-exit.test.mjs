@@ -50,12 +50,12 @@ out['kinds'] = kinds`], { encoding: 'utf8', env: { ...process.env, SIX_DEGREES_H
 });
 
 test('each code means one thing to the app: a calm end, or a stop with its reason', () => {
-  const calm = [['ok', 0, 'Finished.'], ['limit', 11, 'Stopped at today’s limit.'], ['cooldown', 12, 'Stopped: scanning is paused for now.']];
+  const calm = [['ok', 0, 'Finished.'], ['limit', 11, 'Stopped at a limit.'], ['cooldown', 12, 'Stopped: scanning is paused for now.']];
   for (const [kind, code, line] of calm) {
     const o = exitOutcome(code);
     assert.deepEqual([o.kind, o.failure, o.effective, o.line], [kind, false, 0, line], kind);
   }
-  assert.equal(exitOutcome(11).limit, true, 'the notch offers the lift');
+  assert.equal(exitOutcome(11).limit, true, 'the notch says which limit');
   for (const [kind, code] of [['pushback', 10], ['signed-out', 13], ['save-failed', 14], ['unread', 15], ['search-limit', 16], ['try-later', 17]]) {
     const o = exitOutcome(code);
     assert.deepEqual([o.kind, o.failure, o.effective], [kind, true, code], kind);
@@ -130,7 +130,7 @@ beforeEach(async () => {
 
 for (const [code, kind, exitCode, failed, line] of [
   [0, 'ok', 0, false, 'Finished.'],
-  [11, 'limit', 0, false, 'Stopped at today’s limit.'],
+  [11, 'limit', 0, false, 'Stopped at a limit.'],
   [12, 'cooldown', 0, false, 'Stopped: scanning is paused for now.'],
   [10, 'pushback', 10, true, 'Stopped: LinkedIn pushed back.'],
   [15, 'unread', 15, true, 'Stopped: a page couldn’t be read.'],

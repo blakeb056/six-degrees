@@ -15,7 +15,7 @@ import {
 } from '../lib/help.js';
 import { HOVER_HOLD } from '../lib/circle-focus.js';
 import { BREACH_WEEKLY } from '../lib/breach.js';
-import { DEFAULT_LIMITS } from '../lib/linkedin-limits.js';
+import { WINDOW_DEFAULTS } from '../lib/scan-windows.js';
 import { BREAK_DEFAULTS } from '../lib/manual-breaks.js';
 import { MODE_KEYS } from '../lib/app-tabs.js';
 
@@ -109,11 +109,11 @@ test('the steps: the film first and Settings last, and a page\'s step only where
   const keys = (o) => tourSteps(o).map((s) => s.key);
   // Everything Blake listed, with your own network, a scanner and the LinkedIn browser plugin.
   assert.deepEqual(keys({ own: true, scanner: true, linkedin: true }),
-    ['film', 'network', 'focus', 'degrees', 'separation', 'outlink', 'map', 'breach', 'scan', 'linkedin', 'help']);
-  // The sample or a CSV: no Outlink, Breach, Scan or LinkedIn, as their tabs aren't there (AppTabs `own`).
+    ['film', 'network', 'focus', 'degrees', 'separation', 'map', 'breach', 'scan', 'linkedin', 'help']);
+  // The sample or a CSV: no Breach, Scan or LinkedIn, as their tabs aren't there (AppTabs `own`).
   assert.deepEqual(keys({ own: false, scanner: true, linkedin: true }), ['film', 'network', 'focus', 'degrees', 'separation', 'map', 'help']);
   // Your own network with no scanner: no Scan step; no LinkedIn step without the plugin.
-  assert.deepEqual(keys({ own: true }), ['film', 'network', 'focus', 'degrees', 'separation', 'outlink', 'map', 'breach', 'help']);
+  assert.deepEqual(keys({ own: true }), ['film', 'network', 'focus', 'degrees', 'separation', 'map', 'breach', 'help']);
   // Every target is a [data-tour] the app draws: the four map tabs and the pages (AppTabs), the map (app/page.js), the ⚙ (AppHeader).
   const tabs = read('app/components/AppTabs.js');
   assert.equal((tabs.match(/data-tour=\{m\.key\}/g) || []).length, 2, 'the map tabs, as buttons and as links');
@@ -176,7 +176,7 @@ test('one hint a place, each place a page or a map tab the header knows', () => 
   const places = HINTS.map((h) => h.place);
   assert.equal(new Set(places).size, places.length, 'never two hints in one place');
   assert.equal(new Set(HINTS.map((h) => h.key)).size, HINTS.length);
-  assert.deepEqual(places, ['network', 'degrees', 'separation', 'map', 'paths', 'outlink', 'breach', 'scan', 'linkedin']);
+  assert.deepEqual(places, ['network', 'degrees', 'separation', 'map', 'paths', 'breach', 'scan', 'linkedin']);
   for (const p of places) assert.equal(placeOf(p), p);
   for (const p of ['settings', 'profile', 'import', undefined, null, '']) assert.equal(placeOf(p), null);
   // Blake's two examples.
@@ -244,11 +244,11 @@ test('Settings → Help: its own notch tab, before About, with how-tos that each
   assert.match(page, /<HelpSection about=\{about\} \/>/);
   assert.match(read('app/components/settings/HelpSection.js'), /<Section id="help" title="Help"/);
   for (const h of HOW_TOS) {
-    assert.match(h.href, /^\/(\?mode=(network|degrees|separation|map)|queue|breach|setup|linkedin)$/, h.key);
+    assert.match(h.href, /^\/(\?mode=(network|degrees|separation|map)|breach|setup|linkedin)$/, h.key);
     // 2 to 4 lines in a how-to's card, about 45 characters a line at its narrowest.
     assert.ok(h.text.length >= 90 && h.text.length <= 160, `${h.key}: ${h.text.length} characters`);
   }
-  assert.deepEqual(HOW_TOS.map((h) => h.key), ['tiers', 'focus', 'chains', 'separation', 'outlink', 'map', 'breach', 'scan', 'linkedin']);
+  assert.deepEqual(HOW_TOS.map((h) => h.key), ['tiers', 'focus', 'chains', 'separation', 'map', 'breach', 'scan', 'linkedin']);
   // Shortcuts: the LinkedIn panel's back and forward, and Esc.
   assert.equal(SHORTCUTS[0].keys, '{mod}[ and {mod}]');
   assert.ok(SHORTCUTS.some((s) => s.keys === 'Esc'));
@@ -269,7 +269,9 @@ test('the numbers the words quote agree with the app', () => {
     assert.ok(t.includes(hold), t);
   }
   assert.ok(words.includes(`${BREACH_WEEKLY} requests a week`));
-  assert.ok(PACING_NOTES.join(' ').includes(`(${DEFAULT_LIMITS.daily} to start)`));
+  // The scan windows (lib/scan-windows.js, 2026-10-17), in place of the daily limit's number.
+  assert.ok(PACING_NOTES.join(' ').includes(`at most ${WINDOW_DEFAULTS.windowPages} a window, two windows a day, a new one ${WINDOW_DEFAULTS.windowGapHours} hours after`));
+  assert.doesNotMatch(PACING_NOTES.join(' '), /daily limit/);
   assert.ok(PACING_NOTES.join(' ').includes(`every ${BREAK_DEFAULTS.breakEvery} pages`));
   // Blake's words: scanning, never the other one.
   assert.doesNotMatch(words, /scrap/i);

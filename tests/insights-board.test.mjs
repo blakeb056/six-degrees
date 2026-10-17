@@ -205,7 +205,7 @@ test('coverage: scanned, hidden and not yet by tier, how far lists were read, an
   assert.deepEqual(c.strongest.map((r) => r.id), ['lee']);
   assert.deepEqual([c.each.searches, c.nextSearches, c.nextDays, c.daily], [100, 100, 4, 25]);
   assert.equal(c.todoSA, 1);
-  assert.equal(coverage(base()).daily, 50, 'the default budget when yours isn\'t known');
+  assert.equal(coverage(base()).daily, 120, 'the scan windows\' most a day when yours isn\'t known');
 });
 
 test('how sure: the share of scores that rest on a guess, and the top tie', () => {

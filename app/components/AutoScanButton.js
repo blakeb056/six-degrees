@@ -51,8 +51,8 @@ export default function AutoScanButton({ isMobile = false }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [daily, setDaily] = useState(null);
-  // Lifted for this session (lib/limits-lift.js): no daily limit, only its sittings, rests and hours.
+  // The scan window's pages (lib/scan-windows.js), for the pace line. They hold lifted for the session too.
+  const [windowPages, setWindowPages] = useState(null);
   const [lifted, setLifted] = useState(false);
   const [note, say] = useFadingNote(9000);
   const btnRef = useRef(null);
@@ -76,7 +76,7 @@ export default function AutoScanButton({ isMobile = false }) {
   };
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  // The day's limit, for the pace line: asked once each time the panel opens.
+  // The scan window, for the pace line: asked once each time the panel opens.
   useEffect(() => {
     if (!shown) return;
     let gone = false;
@@ -84,7 +84,7 @@ export default function AutoScanButton({ isMobile = false }) {
       .then((u) => {
         if (gone || !u?.limits) return;
         setLifted(u.lifted === true);
-        setDaily(u.lifted ? null : Number(u.limits.daily) || null);
+        setWindowPages(Number(u.window?.cap) || null);
       })
       .catch(() => {});
     return () => { gone = true; };
@@ -161,7 +161,7 @@ export default function AutoScanButton({ isMobile = false }) {
       {mounted && <AutoPanel
         anchor={btnRef} panelRef={panelRef} closing={closing}
         onEnter={() => hover(true)} onLeave={() => { if (!pinned) hover(false); }}
-        status={status} live={live} pace={pace} tiers={tiers} daily={daily} lifted={lifted} busy={busy}
+        status={status} live={live} pace={pace} tiers={tiers} windowPages={windowPages} lifted={lifted} busy={busy}
         onPace={(p) => choose({ pace: p, tiers })}
         onTier={(t) => choose({ pace, tiers: tiers.includes(t) ? tiers.filter((x) => x !== t) : cleanTiers([...tiers, t]) })}
         onStart={start} onStop={stop} onTurnOff={() => { setOpen(false); setPinned(false); setAllDay(false); }}
@@ -171,7 +171,7 @@ export default function AutoScanButton({ isMobile = false }) {
 }
 
 /** The panel, anchored under the button and laid over the page (a portal: the header's glass would clip it). */
-function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, pace, tiers, daily, lifted, busy, onPace, onTier, onStart, onStop, onTurnOff }) {
+function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, pace, tiers, windowPages, lifted, busy, onPace, onTier, onStart, onStop, onTurnOff }) {
   const [pos, setPos] = useState(null);
   useLayoutEffect(() => {
     const place = () => {
@@ -219,7 +219,7 @@ function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, 
           ))}
         </div>
       </div>
-      <p className="sd-auto-line">{paceLine(pace, daily)}</p>
+      <p className="sd-auto-line">{paceLine(pace, windowPages)}</p>
 
       <div className="sd-auto-row">
         <span className="sd-auto-label" id="sd-auto-tiers">Tiers</span>
@@ -252,8 +252,8 @@ function AutoPanel({ anchor, panelRef, closing, onEnter, onLeave, status, live, 
         <Link href="/setup#usage" style={{ fontSize: 11.5, color: 'var(--sd-blue, #3498db)', textDecoration: 'none' }}>LinkedIn usage</Link>
       </div>
       <p className="sd-auto-line" style={{ marginTop: 8 }}>
-        Experimental. {AUTO_HOURS[0]}:00 to {AUTO_HOURS[1]}:00, only while Sixgree is open, and it stops at your daily limit
-        {lifted ? ' (lifted for this session: its sittings, rests and hours still hold)' : ''}.
+        Experimental. {AUTO_HOURS[0]}:00 to {AUTO_HOURS[1]}:00, only while Sixgree is open, and it stops when the scan window is used
+        {lifted ? ' (the limits are lifted for this session: the windows, its sittings, rests and hours still hold)' : ''}.
         Anything you queue goes first.
       </p>
       {/* The same switch as Scan → Scanner settings → Auto scan (lib/experimental-client.js setAllDay). */}

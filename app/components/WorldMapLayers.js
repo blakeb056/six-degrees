@@ -11,8 +11,9 @@
 // and, whenever someone's card is open, the path to them across the map.
 
 import { HEAT_OF } from '../../lib/map-visuals';
+import OpenProfile from './OpenProfile';
 import {
-  TIERS, DEGREE_NAMES, LINE, fmt, plural, tierFill, degreeFill, firstName, card, smallButton, byStrength, outlinkFor,
+  TIERS, DEGREE_NAMES, LINE, fmt, plural, tierFill, degreeFill, firstName, card, smallButton, byStrength, introButton, INTROS, introsTitle,
   PersonRow, SidePanel,
 } from './WorldMapParts';
 
@@ -223,9 +224,11 @@ export function HubPanel({ hubs, pickedKey, onPick, phone, below, sheet, onClose
 /**
  * The path to someone whose card is open: you, then each person along their
  * chain, each at their place. A step flies the map there; the last of your
- * connections on it, whose circle they're in, is who to ask for the intro (Outlink).
+ * connections on it, whose circle they're in, is who to ask for the intro: their
+ * profile opens (OpenProfile), for you to message them yourself. Blake, 2026-10-17:
+ * "We have LinkedIn embedded into the app". Not in the public demo (`canAsk`).
  */
-export function PathCard({ person, path, phone, below, canOutlink, onStep, onFit, onReach = null, onClose, homeGuessed }) {
+export function PathCard({ person, path, phone, below, canAsk = false, onStep, onFit, onReach = null, onClose, homeGuessed }) {
   if (!person || !path) return null;
   const name = person.name || 'Them';
   // Who to ask: the last of your connections on the way, the one whose circle they're in.
@@ -270,10 +273,10 @@ export function PathCard({ person, path, phone, below, canOutlink, onStep, onFit
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ ...note, flex: 1, minWidth: 160 }}>{words}</span>
         {onReach && <button type="button" onClick={onReach} style={smallButton} title={`Lines from ${name} to everywhere their circle lives`}>Where {firstName(name)}&rsquo;s circle lives</button>}
-        {far && ask && canOutlink && (
-          <a href={outlinkFor(ask.id)} style={{ ...smallButton, textDecoration: 'none', color: 'var(--sd-orange, #FF6B35)' }} title="Outlink, filtered to who they can introduce you to">
+        {far && ask && canAsk && (
+          <OpenProfile person={ask} style={{ ...introButton, textDecoration: 'none' }} title={`Opens ${ask.name ? `${ask.name}’s` : 'their'} profile, to ask them for an intro yourself`}>
             Ask {firstName(ask.name)} for an intro
-          </a>
+          </OpenProfile>
         )}
       </div>
     </section>
@@ -282,9 +285,10 @@ export function PathCard({ person, path, phone, below, canOutlink, onStep, onFit
 
 /**
  * One route: from where some of your connections are to where people in their
- * circles are. Who carries it (each with their reach and the intro), then who's at the end.
+ * circles are. Who carries it (each with their reach, and who they can introduce you to in
+ * Separation), then who's at the end.
  */
-export function FlowPanel({ flow, canOutlink, phone, below, sheet, selectedId, onSelect, onLines, onClose }) {
+export function FlowPanel({ flow, onIntros = null, phone, below, sheet, selectedId, onSelect, onLines, onClose }) {
   const people = [...flow.people].sort(byStrength).slice(0, 100);
   return (
     <SidePanel label={`Route from ${flow.from.label} to ${flow.to.label}`} title={`${flow.from.name} → ${flow.to.name}`} phone={phone} below={below} sheet={sheet} onClose={onClose}
@@ -297,7 +301,7 @@ export function FlowPanel({ flow, canOutlink, phone, below, sheet, selectedId, o
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px 6px 42px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #889)' }}>knows {fmt(count)} in {flow.to.name}</span>
               <button type="button" onClick={() => onLines(bridge.id)} style={smallButton} title={`Lines from ${bridge.name} to everywhere their circle lives`}>Their reach</button>
-              {canOutlink && <a href={outlinkFor(bridge.id)} style={{ ...smallButton, textDecoration: 'none', color: 'var(--sd-orange, #FF6B35)' }} title="Outlink, filtered to who they can introduce you to">Ask for an intro</a>}
+              {onIntros && bridge.name && <button type="button" onClick={() => onIntros(bridge)} style={introButton} title={introsTitle(bridge.name)}>{INTROS}</button>}
             </div>
           </div>
         ))}

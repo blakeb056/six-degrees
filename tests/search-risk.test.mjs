@@ -1,20 +1,19 @@
-// The daily limit's note: past 100 a day it says why, beside the number. Since
-// 2026-10-05 nothing asks first (one limit, one number, no pop-up).
+// The meter's marks for how much searching is asking for trouble. Since the scan
+// windows (2026-10-17) no setting reaches them: searches are 120 a day at most,
+// and the note a risky searches a day showed went with that setting.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { limitNote, riskyDaily, RISKY_DAILY, RESTRICTED_AT, SAFE_LIMITS } from '../lib/search-risk.js';
+import * as risk from '../lib/search-risk.js';
+import { WINDOW_DEFAULTS } from '../lib/scan-windows.js';
 
-test('the default is 50 a day, and there is no monthly part any more', () => {
-  assert.deepEqual(SAFE_LIMITS, { daily: 50 });
-  assert.equal(RISKY_DAILY, 100);
+test('the marks: 50, 100 and the 373 an account was restricted at', () => {
+  assert.deepEqual(risk.SAFE_LIMITS, { daily: 50 });
+  assert.equal(risk.RISKY_DAILY, 100);
+  assert.equal(risk.RESTRICTED_AT, 373);
 });
 
-test('the note shows only while the number is over 100, and says why', () => {
-  assert.equal(limitNote(SAFE_LIMITS), null);
-  assert.equal(limitNote({ daily: 100 }), null);
-  assert.equal(riskyDaily(100), false);
-  assert.equal(riskyDaily(101), true);
-  assert.match(limitNote({ daily: 500 }), new RegExp(`^A real account was restricted after ${RESTRICTED_AT} searches in 24 hours\\. 500 a day can use up`));
-  assert.equal(limitNote({ daily: 500 }, { restriction: false }), '500 a day can use up a free account\'s month in a day or two.');
-  assert.doesNotMatch(limitNote({ daily: 500 }), /monthly cap/);
+test('the windows keep a day well under the restriction, and the searches-a-day note is gone', () => {
+  assert.ok(WINDOW_DEFAULTS.windowPages * WINDOW_DEFAULTS.windowsPerDay < risk.RESTRICTED_AT / 3);
+  assert.equal(risk.limitNote, undefined);
+  assert.equal(risk.riskyDaily, undefined);
 });

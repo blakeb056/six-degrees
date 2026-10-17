@@ -24,6 +24,7 @@ import { reachIndex } from '../lib/reach.js';
 import { DEFAULT_LIMITS, readLimits, writeLimits } from '../lib/linkedin-limits.js';
 import { pluginHas, PLUGIN_FLAGS_SINCE } from '../lib/scanner-capabilities.js';
 import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
+import { compareVersions } from '../lib/release.js';
 
 const src = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 const near = (a, b) => Math.abs(a - b) < 1e-9;
@@ -232,7 +233,7 @@ test('a Scan button: page 1 for someone never scanned, the next round for someon
 
 test('--round goes only to a scanner that knows it on a circle: plugins 1.0.10 on, and the built-in one', () => {
   assert.equal(PLUGIN_FLAGS_SINCE['circle-round'], '1.0.10');
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.11');
+  assert.ok(compareVersions(SHIPPED_PLUGIN_VERSION, '1.0.11') >= 0);
   const plugin = (version) => ({ from: 'plugin', plugin: { id: 'auto-scan', name: 'Auto scan', version } });
   assert.equal(pluginHas(plugin('1.0.9'), 'circle-round'), false);
   assert.equal(pluginHas(plugin('1.0.10'), 'circle-round'), true);

@@ -14,11 +14,12 @@
 // (lib/island.js). It only reports: the pacing and the caps live in the scanner
 // (scripts/scrape.py, lib/linkedin-limits.js).
 //
-// The daily limit (Blake, 2026-10-05: "Just a simple default limit for the day
-// and a button to lift restrictions for this session"): opened while a scan
-// runs, its line has the number to change; once the limit holds a scan back,
-// the notch says so with "Lift limits for this session" and what that does;
-// while they're lifted, a small gold "Limits lifted" and "Put limits back".
+// The scan windows (Blake, 2026-10-17, in place of the daily limit): opened while
+// a scan runs, its line says "Window 1 of 2: 34 of 60" and when the next window
+// opens; once a limit holds a scan back, the notch says which: the window, with
+// when the next opens (the lift never passes a window), or profile views a day,
+// with "Lift limits for this session" and what that does; while they're lifted,
+// a small gold "Limits lifted" and "Put limits back".
 //
 // The queue (lib/scan-queue.js; Blake, 2026-10-05: "have it shown in the
 // notch"): "+2 queued" beside what runs, and opened, who waits and for what
@@ -38,7 +39,8 @@ import Link from 'next/link';
 import {
   watchScanner, scannerNow, stopScrape, removeQueued, clearQueued, resumeQueue, liftLimitsForSession, putLimitsBack, setDailyLimit, turnDevModeOff,
 } from '../../lib/scraper-client';
-import { DailyLimitInput, LiftLimits, LiftedTag } from './LinkedInLimits';
+import { DailyLimitInput, LiftLimits, LiftedTag, WindowLine } from './LinkedInLimits';
+import { windowWords } from '../../lib/scan-windows';
 import { KIND_LABEL } from '../../lib/scan-queue';
 import { watchAllDay, allDayNow } from '../../lib/experimental-client';
 import { autoStatus } from '../../lib/auto-scan';
@@ -109,7 +111,7 @@ export default function ScanStatusBar() {
   // What the installed scanner unlocks (lib/scanner-capabilities.js): no scanner, no budget here;
   // no auto plugin, no Auto scan.
   const shows = useScanShows();
-  // The daily limit holding a scan back opens the notch by itself, once each
+  // A limit holding a scan back opens the notch by itself, once each
   // time, so the lift is a click away from the press that was refused.
   const heldRef = useRef(false);
   useEffect(() => watchScanner(() => {
@@ -180,7 +182,7 @@ export default function ScanStatusBar() {
   const queue = job?.queue;
   const queued = queue?.items || [];
   const waiting = queue?.waiting || 0;
-  // The daily limit held a scan back (and nothing else is going on), or it's lifted for this session.
+  // A limit held a scan back (and nothing else is going on), or they're lifted for this session.
   const limits = (shows.scan && job?.limits) || {};
   const lifted = limits.lifted === true;
   // Dev mode (Scanner settings) lifts them too, until it's turned off rather than for the session.
@@ -262,10 +264,10 @@ export default function ScanStatusBar() {
   const sitting = running && job.auto?.phase === 'running';
   const label = needs ? 'LinkedIn needs you' : running ? (sitting ? 'Auto scan' : WHAT[job.action] || 'Scanning') : other ? other.label
     : queueOnly ? (!waiting ? 'Queue: skipped' : queue.paused ? 'Queue paused' : 'Up next')
-    : limitHeld ? 'Daily limit reached' : auto ? 'Auto scan' : lifted ? (devOn ? 'Dev mode' : 'Limits lifted') : 'Auto scan';
+    : limitHeld ? (limits.profilesReached ? 'Profile views used' : 'Scan window used') : auto ? 'Auto scan' : lifted ? (devOn ? 'Dev mode' : 'Limits lifted') : 'Auto scan';
   const short = needs ? needs.replace(/\.$/, '') : running ? step : other ? other.detail
     : queueOnly ? (!waiting ? `${queued.length} couldn’t start` : queue.paused ? `${waiting} waiting` : nextName || null)
-    : limitHeld && limits.daily ? `${limits.searches ?? limits.daily} of ${limits.daily} today`
+    : limitHeld && !limits.profilesReached && limits.window ? windowWords(limits.window)
     : auto ? auto.text.toLowerCase() : null;
   // "Limits lifted" beside whatever else it says, when that isn't already what it says.
   const liftedTag = lifted && label !== 'Limits lifted' && label !== 'Dev mode';
@@ -388,26 +390,18 @@ export default function ScanStatusBar() {
         {expanded && running && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 8px 0', flexWrap: 'wrap' }}>
             {job.target?.name && <span>{job.target.name}</span>}
-            {/* A rolling 24 hours, as the limit counts them (lib/linkedin-limits.js usage), not
-                since midnight, with the number to change; the words open Scan → LinkedIn usage. */}
-            {b && (b.lifted ? (
-              <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Link href="/setup#usage" style={{ color: 'var(--sd-fg-2, #cfd8d8)', textDecoration: 'none' }} title={b.dev && b.devCeiling ? 'Dev mode’s ceiling: scans stop here. Open LinkedIn usage' : b.ceiling ? 'The ceiling lifted limits keep: scans stop here. Open LinkedIn usage' : 'Open LinkedIn usage'}>
-                  {b.searches}{(b.dev && b.devCeiling) || b.ceiling ? ` of ${b.devCeiling || b.ceiling}` : ''} searches in the last 24 hours
+            {/* The scan window (lib/scan-windows.js): "Window 1 of 2: 34 of 60" and when the next opens;
+                the words open Scan → LinkedIn usage. The windows hold lifted or not. */}
+            {b?.window && (
+              <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone(b.window.used, b.window.cap) }}>
+                <Link href="/setup#usage" style={{ color: 'inherit', textDecoration: 'none' }} title="Search pages in this scan window, and when the next opens. Open LinkedIn usage">
+                  <WindowLine window={b.window} />
                 </Link>
-                {b.dev
+                {b.lifted && (b.dev
                   ? <button type="button" onClick={() => turnDevModeOff().catch(() => {})} style={SMALL} title="Every limit comes back on now">Turn off Dev mode</button>
-                  : <button type="button" onClick={() => putLimitsBack().catch(() => {})} style={SMALL} title="The daily limit and the cooldown come back on now">Put limits back</button>}
+                  : <button type="button" onClick={() => putLimitsBack().catch(() => {})} style={SMALL} title="Profile views a day and the cooldown come back on now">Put limits back</button>)}
               </span>
-            ) : (
-              <span data-notch-budget="" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone(b.searches, b.cap) }}>
-                {b.searches} of
-                <DailyLimitInput small value={b.cap} onSave={(n) => setDailyLimit(n).catch(() => {})} />
-                <Link href="/setup#usage" style={{ color: 'inherit', textDecoration: 'none' }} title="Searches on your LinkedIn account in the last 24 hours, and your searches a day. Open LinkedIn usage">
-                  searches in the last 24 hours
-                </Link>
-              </span>
-            ))}
+            )}
             {last && (
               <span style={{ color: 'var(--sd-fg-4, #667)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={last}>{last}</span>
             )}
@@ -424,17 +418,22 @@ export default function ScanStatusBar() {
           </div>
         )}
         {expanded && !running && other?.detail && <div style={{ margin: '6px 8px 0', color: 'var(--sd-fg-3, #8b9a9a)' }}>{other.detail}</div>}
-        {/* The daily limit held a scan back: what's used, the number, and the lift, in a click. */}
+        {/* A limit held a scan back. The scan window: what's used and when the next opens (the lift
+            never passes a window, so it isn't offered). Profile views a day: the number, and the lift. */}
         {expanded && limitHeld && (
           <div data-notch-limit="" style={{ margin: '8px 8px 6px', width: 340, maxWidth: 'calc(100vw - 48px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.5 }}>
-              Today&rsquo;s searches are used: {limits.searches ?? limits.daily} in the last 24 hours.
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--sd-fg-3, #8b9a9a)' }}>
-              Searches a day
-              <DailyLimitInput small value={limits.daily} onSave={(n) => setDailyLimit(n).catch(() => {})} />
-            </div>
-            <LiftLimits small lifted={false} onLift={() => liftLimitsForSession().catch(() => {})} />
+            {limits.profilesReached ? (<>
+              <div style={{ color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.5 }}>Today&rsquo;s profile views are used.</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--sd-fg-3, #8b9a9a)' }}>
+                Profile views a day
+                <DailyLimitInput small value={limits.daily} onSave={(n) => setDailyLimit(n).catch(() => {})} />
+              </div>
+              {!lifted && <LiftLimits small lifted={false} onLift={() => liftLimitsForSession().catch(() => {})} />}
+            </>) : (
+              <div style={{ color: 'var(--sd-fg-2, #cfd8d8)', lineHeight: 1.5 }}>
+                The scan window is used. <WindowLine window={limits.window} />. Scans carry on from the same page then.
+              </div>
+            )}
           </div>
         )}
         {/* Lifted, and nothing running: what that means, and the way back. */}

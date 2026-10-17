@@ -59,12 +59,15 @@ export default function InsightsBoards({ board, onBoard, isMobile = false, onCou
           if (live) setNet({ degree1: local.degree1 || [], degree2: local.degree2 || [], degree3: [], notes: NO_SCAN_NOTES, source: local.source || 'csv', budget: null });
           return;
         }
-        // Your daily search budget and speed, for what scanning the next circles would take:
-        // ?usage only reads the scanner's files (no checks, no Python, nothing written).
+        // The most a day's scan windows let through (lib/scan-windows.js) and the speed, for what
+        // scanning the next circles would take: ?usage only reads the scanner's files (no checks,
+        // no Python, nothing written).
         const usage = fetch('/api/scraper?usage').then((r) => (r.ok ? r.json() : null)).catch(() => null);
         const [n, notes, used] = await Promise.all([loadNetwork(userId), loadScanNotes(), usage]);
         const limits = used?.limits;
-        if (live) setNet({ ...n, notes, source: 'own', budget: limits ? { daily: limits.daily, pace: limits.pace } : null });
+        const win = used?.window;
+        const daily = win?.cap && win?.of ? win.cap * win.of : undefined;
+        if (live) setNet({ ...n, notes, source: 'own', budget: limits ? { daily, pace: limits.pace } : null });
       } catch (e) {
         if (live) setFailed(e.message || 'The network couldn’t be loaded.');
       }

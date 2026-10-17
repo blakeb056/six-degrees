@@ -341,8 +341,8 @@ function lockDown(ses) {
 //            2026-10-15, "the panel should identify as plain Chrome"). That
 //            and nothing more: no client hints, no navigator.webdriver, no
 //            fingerprint. The app's own pages keep Electron's default
-//   profile  every profile link in the app (Connect, View profile, Outlink's
-//            Open profile) loads that profile here straight away, from this
+//   profile  every profile link in the app (Connect, View profile, the Map's
+//            Ask for an intro) loads that profile here straight away, from this
 //            process (showProfile): no scanner, no wait. You connect by hand.
 //            The page has the server count it as one profile view
 //   history  Back and Forward on the page's bar, and Cmd+[ / Cmd+], go

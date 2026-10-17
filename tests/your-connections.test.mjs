@@ -63,10 +63,10 @@ function scanner(t, script) {
 test('the scanner takes --your-connections, and the app runs it as its own action with either plugin', () => {
   const scrape = src('scripts/scrape.py');
   assert.match(scrape, /parser\.add_argument\("--your-connections", action="store_true"/);
-  assert.match(scrape, /elif args\.your_connections:\n\s+scan_your_connections\(headless=args\.headless\)/);
+  assert.match(scrape, /elif args\.your_connections:\n\s+scan_your_connections\(headless=args\.headless, again=args\.again\)/);
   const route = src('app/api/scraper/route.js');
   assert.match(route, /'your-connections': \{ flag: '--your-connections', label: '[^']+', searches: true \}/);
-  // Counted against the daily limit before it starts, as a circle's read is.
+  // Held by the scan window before it starts, as a circle's read is.
   assert.match(route, /const readsLists = [^\n]*'your-connections'/);
   // A circle scan's kind of action: not only the auto plugin's, so the manual plugin runs it, By hand.
   assert.ok(!AUTO_ACTIONS.includes('your-connections'));
@@ -91,17 +91,20 @@ test('a scanner plugin from before 1.0.4 is asked to update, never run with a fl
 test('the Scan page offers it under Your connections, with either plugin, in the mode circle scans run in', () => {
   const page = src('app/setup/page.js');
   assert.match(page, /\{shows\.scan && <Part title="Your connections"/);
-  assert.match(page, /onScan=\{\(\) => run\('your-connections'\)\}/);
+  assert.match(page, /onScan=\{\(opts\) => run\('your-connections', opts\)\}/);
+  // Every page read: the button asks to read them again from page 1 (--again, 2026-10-17).
+  assert.match(page, /onClick=\{\(\) => onScan\(finished \? \{ again: true \} : \{\}\)\}/);
+  assert.match(page, /finished \? 'Read again from page 1'/);
   assert.match(page, /tooOld=\{pluginTooOld\(c\.scanner, 'your-connections'\)\}/);
   const box = page.slice(page.indexOf('function YourConnectionsSearch'), page.indexOf('/** Why a button can\'t be pressed yet'));
-  assert.match(box, /About 100 pages for 1,000 connections, each page a search counted in your daily\s+limit, so it spreads over days/);
+  assert.match(box, /About 100 pages for 1,000 connections, each page a search counted in the scan\s+window, so it spreads over days/);
   assert.match(box, /mode === 'manual' \? 'By hand' : mode === 'auto' \? 'Automatic'/);
   assert.doesNotMatch(box, /scraping/i);
 });
 
 // ── where it starts, and the note it keeps ────────────────────────────────────
 
-test('where a scan of your connections starts: page 1, where it stopped, or page 1 again once every page is read', (t) => {
+test('where a scan of your connections starts: page 1, where it stopped, or, once every page is read, nowhere unless asked', (t) => {
   const r = scanner(t, `
 start = ns['your_list_start']
 out['none'] = start(None)
@@ -109,14 +112,20 @@ out['more'] = start({'pages': 37, 'more': True})
 out['gap'] = start({'pages': 4, 'more': True, 'readPages': [[1, 4], [9, 12]]})
 out['done'] = start({'pages': 100, 'more': False})
 out['capped'] = start({'pages': 100, 'more': True})
-out['ended'] = start({'pages': 60, 'more': False})`);
+out['ended'] = start({'pages': 60, 'more': False})
+out['again'] = [start({'pages': 100, 'more': False}, again=True), start({'pages': 60, 'more': False}, again=True),
+                start({'pages': 37, 'more': True}, again=True)]`);
   if (!r) return;
   assert.deepEqual(r.out.none, [1, false]);
   assert.deepEqual(r.out.more, [38, false]);
   assert.deepEqual(r.out.gap, [5, false], 'the first page still unread, as Resume does');
-  assert.deepEqual(r.out.done, [1, true], 'read again from page 1, the note forgotten so it can carry on too');
-  assert.deepEqual(r.out.capped, [1, true], 'page 100 is as far as the search goes');
-  assert.deepEqual(r.out.ended, [1, true]);
+  // Blake's research (2026-10-17): a finished list started again at page 1 by itself, up to
+  // 100 more search pages. Now it opens nothing unless Read again from page 1 asks (--again).
+  assert.deepEqual(r.out.done, [null, false], 'every page read: nothing to read');
+  assert.deepEqual(r.out.capped, [null, false], 'page 100 is as far as the search goes');
+  assert.deepEqual(r.out.ended, [null, false]);
+  assert.deepEqual(r.out.again, [[1, true], [1, true], [38, false]],
+    'asked: page 1, the note forgotten so it can carry on too; a list still going just carries on');
 });
 
 test('its note is no one\'s circle: the Paused list never shows it, and the Scan page reads how far it got', () => {
@@ -210,14 +219,16 @@ ns['_advance'] = advance
 ns['_read_results_page'] = lambda page: page.evaluate(ns['BRIDGE_RESULTS_JS'])
 page = OwnPage(3)
 saved = []
+first_saved = []
 people, status, reach = ns['_scrape_one_bridge'](page, 'your connections', None, ns['YOUR_LIST'], own=True,
-                                                on_save=lambda c, last, more, urn: saved.append(len(c)))
-out.update({'people': len(people), 'status': status, 'last': reach['last'], 'more': reach['more'],
-            'opened': page.opened, 'read': page.read_at, 'searches': len(charged),
-            'first': people[0] if people else None})`);
+                                                on_save=lambda c, last, more, urn: (saved.append(len(c)), first_saved.extend(c[:1]) if not first_saved else None))
+out.update({'people': len(people) + sum(saved), 'status': status, 'last': reach['last'], 'more': reach['more'],
+            'opened': page.opened, 'read': page.read_at, 'searches': len(charged), 'saved': saved,
+            'first': people[0] if people else (first_saved[0] if first_saved else None)})`);
   if (!r) return;
   assert.equal(r.out.status, 'success');
   assert.equal(r.out.people, 30, 'no one filtered out: there is no bridge on your own list');
+  assert.deepEqual(r.out.saved, [10, 10, 10], 'each page saved as it is read (2026-10-17)');
   assert.deepEqual(r.out.read, [1, 2, 3]);
   assert.equal(r.out.last, 3);
   assert.equal(r.out.more, false);
@@ -279,7 +290,7 @@ out.update({'people': len(people), 'status': status, 'last': reach['last'], 'mor
   assert.equal(scanLight(job(done)).headline, 'Done with your list');
 });
 
-test('scan_your_connections carries on from its note, reads again from page 1 once done, and saves as 1st degree', (t) => {
+test('scan_your_connections carries on from its note, reads again from page 1 once done only when asked, and saves as 1st degree', (t) => {
   const r = scanner(t, `
 import json
 install_browser(types.SimpleNamespace(set_default_timeout=lambda ms: None, set_default_navigation_timeout=lambda ms: None))
@@ -299,9 +310,14 @@ out['first'] = note()
 ns['record_bridge_progress'](ns['YOUR_LIST'], 'Your connections', 37, True)
 ns['scan_your_connections']()
 ns['record_bridge_progress'](ns['YOUR_LIST'], 'Your connections', 100, False)
-ns['scan_your_connections']()
+out['finished'] = getattr(ns['scan_your_connections'](), 'status', None)
+out['calls_before'] = len(calls)
+ns['scan_your_connections'](again=True)
 out['calls'], out['pushed'], out['after'] = calls, pushed, note()`);
   if (!r) return;
+  assert.equal(r.out.finished, 'finished');
+  assert.equal(r.out.calls_before, 2, 'a finished list opens nothing by itself');
+  assert.match(r.log, /Every page of your connections is read already, so nothing was opened\. To read them again from page 1, for up-to-date locations and mutual counts, press Read again from page 1\./);
   assert.deepEqual(r.out.calls.map((c) => c.start), [1, 38, 1]);
   for (const c of r.out.calls) {
     assert.equal(c.url, 'your-connections');

@@ -44,8 +44,10 @@ optional and gated. (User-facing text says "scanner"; the file names are legacy.
 action `your-connections`) reads `YOUR_SEARCH_URL`, the people search filtered to your 1st
 degree, with the circle scan's own reader: `_scrape_one_bridge(..., own=True)`, so it gets
 `BRIDGE_RESULTS_JS` (place, followers, mutual count), the page-1/Previous fix, a search
-charged per page, push-back, the 250-page Dev ceiling and the daily limit, saving every
-`SAVE_EVERY_PAGES` pages, and Stop. `own` only skips the profile (there is none to open:
+charged per page, push-back, the scan windows (2026-10-17, in place of the 250-page Dev
+ceiling and the daily limit), saving each page as it's read, and Stop. Once every page is read
+it opens nothing unless asked (`--again`, *Read again from page 1*), as Breach and Read all
+mutuals. `own` only skips the profile (there is none to open:
 straight to the search), drops the bridge-slug filter, and says "your" where a circle says
 "their" ("Opening your connections...", "About N results in your list"). By hand it is
 `_read_by_hand` with `_your_search` in place of `_their_search` (the window must be on a
@@ -220,13 +222,9 @@ panel page's DevTools target id); `panel_settings` takes nothing else.
 - **Fallback**: a panel that can't be reached, or no page with that id, is said in one line
   ("Sixgree's own browser couldn't be reached (…), so this uses a Chrome window instead") and
   Chrome starts as before. With neither variable, nothing at all changes.
-- **Outlink** (`--outlink URL --outlink-name NAME`, `open_outlink`): only in the panel.
-  It checks the cooldown and the day's profile views, then `ensure_logged_in` (a security
-  check there is pushback, as for Auto), waits out the gap and takes one profile view
-  (`_wait_for_profile_view`, so `linkedin-activity.json` counts it), opens the profile,
-  clicks nothing, prints `Outlink result: opened` and lets go. The app no longer starts it
-  (after 2.5.0): every profile link opens the panel itself, at once, and the server counts
-  the view (DESKTOP.md, *Every profile link*). The flag stays in the scanner.
+- **Opening a profile** is no scanner job: every profile link opens the panel itself, at
+  once, and the server counts the view (DESKTOP.md, *Every profile link*). The scanner's
+  own flag for it, unused by the app since 2.5.0, went with Outlink on 2026-10-17.
 - Tests: `tests/scanner-panel.test.mjs` (stand-in Electron), `tests/linkedin-panel.test.mjs`.
   The real check against a local page is in DESKTOP.md.
 
@@ -339,7 +337,35 @@ circle) makes it too; until 0.4.0 only the batch did.
 **Company scans are still unverified** and share the old patterns TRAPS §5 and §6
 describe. Watch one live before trusting it.
 
-## Limits: one daily number, and a lift for the session (rule changed 2026-10-05)
+## Scan windows, in place of the daily search limit (rule changed 2026-10-17)
+
+Blake, 2026-10-17, from his scan load research (pace was the clearest line across every
+restriction: 56 to 72 pages in ten minutes against 10 on the one fine heavy day):
+
+- **The rule.** At most 60 search pages in a window, at most two windows in any 24 hours,
+  and a new window only 6 hours or more after the last one began: 120 a day at most. Every
+  search page counts (by hand, automatic, your connections, Breach, Read all mutuals,
+  reloads and revisits); profile pages don't.
+- **Where.** `lib/scan-windows.js` (`scanWindow`, `windowRules`, `windowLine`) and
+  `scrape.py` (`scan_window`, `window_rules`, `searches_left` returning `(left, "window")`,
+  `window_message`). Neither saves a window: both work it out from
+  `linkedin-activity.json`'s searches, greedily, a window running `gap` from its first page.
+  A run that began when two windows already began in the 24 hours before it isn't a window
+  (a record from before, an import, a page clicked by hand past the window): it opens
+  nothing, and the next window waits until it's over too. `tests/scan-windows.test.mjs`
+  runs both on the same records.
+- **Settings.** `windowPages`, `windowsPerDay`, `windowGapHours` in `scan-limits.json`,
+  written only when stricter than the defaults (60, 2, 6), which are also the ceilings.
+- **Lift and Dev mode** put the ceilings back and never pass them. Dev mode's 250 a day
+  (`DEV_CEILING`) is gone. The daily number (`"daily"`) is profile views a day only.
+- **Stopping.** The automatic loop checks before each page as before. By hand, every page
+  load is charged (each page change, and each whole page load: a reload or the address bar,
+  paired with the page change it brings within `MANUAL_LOAD_PAIR`), and the read stops as
+  the window's last page is read, before another loads; a load past the window stops it at once.
+- **Words.** `"Scan window N of M is used: U of C search pages. The next window opens at …"`;
+  the scan light reads it (`lib/scan-light.js` STOPS), and the app never offers the lift for it.
+
+## Limits: one daily number, and a lift for the session (rule changed 2026-10-05; the windows since 2026-10-17)
 
 > "we need to simplify this and allow more usage as it's constrained too much. Just a
 > simple default limit for the day and a button to lift restrictions for this session."
@@ -793,7 +819,7 @@ known to use, not what this code has seen. Watch the first real one, and expect 
 to rot like everything else here.
 
 **How it's started.** Auto (`app/components/AutoConnect.js`, next to every Connect on a
-person's card and in Outlink) posts `{action: 'connect', id}`. The route looks the person
+person's card and in Insights) posts `{action: 'connect', id}`. The route looks the person
 up by id (`connectTarget`): anyone in your network with a profile URL who has no copy at
 degree 1 and no request out. The URL and name on the command line come from the database,
 never the request. It refuses, in this order, with a plain sentence:

@@ -113,7 +113,7 @@ test('a sent request is marked on every copy of them, through the circle it was 
     { id: 'd2-ada@maren', outreach_status: 'sent', unlock_status: 'pending', unlocked_from_bridge_id: 'p-oriel' },
     { id: 'd2-ada@oriel', outreach_status: 'sent', unlock_status: 'pending', unlocked_from_bridge_id: 'p-oriel' },
   ]);
-  // The same store as the Connect button: the Outlink Pending list has her.
+  // The same store as the Connect button: the requests every view reads (GET /api/outreach) have her.
   const { GET: outreach } = await import('../app/api/outreach/route.js');
   const pending = await (await outreach(new Request('http://127.0.0.1/api/outreach?userId=me'))).json();
   assert.ok(pending.pending.some((p) => p.profile_url === url('ada-quill')));

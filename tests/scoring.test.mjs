@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   readTitle, cleanCompany, currentCompany, companyScore, reachBonus, scorePerson, scoreNetwork, bridgeBoost, tierFor,
   explainScore, companyIndustry, industryAndSource, networkCompanies, knownIndustry, readNetwork, SECTOR_BONUS,
-  TOP_COMPANY, rowCompanyScore, scoredCompany, topCompanies, isStudent, UNKNOWN_COMPANY, CURVE, CURVE_FLOOR, curveCutoffs,
+  TOP_COMPANY, scoredCompany, topCompanies, isStudent, UNKNOWN_COMPANY, CURVE, CURVE_FLOOR, curveCutoffs,
   curvedTier, TIER_SCALE_SETTING,
 } from '../lib/scoring.js';
 
@@ -548,8 +548,8 @@ test('a network read once scores exactly like one read afresh, however many ways
 });
 
 // ── what the views read ─────────────────────────────────────────────────────
-// The Queue's order and the person panel's notes used to keep their own lists
-// of famous names, matched anywhere in a headline. They read the model's
+// The person panel's notes (and the introductions queue's order, removed
+// 2026-10-17) used to keep their own lists of famous names, matched anywhere in a headline. They read the model's
 // company scores instead (lib/scoring.js is the only model).
 
 // A row as rescoring stores it (lib/rpc.js): the title points and company score it was scored with.
@@ -560,15 +560,16 @@ const asStored = (row, companyFor) => {
 
 test('views read the company score a row was scored with, or the list\'s for a row not scored yet', () => {
   assert.equal(TOP_COMPANY, 8);
-  assert.equal(rowCompanyScore(asStored({ headline: 'VP at Google' })), 10);
-  assert.equal(rowCompanyScore({ headline: 'VP at Google' }), 10);
-  assert.equal(rowCompanyScore({ headline: 'VP at Google', company_prestige_score: 0 }), 10);   // 0: not scored yet
+  const score = (row) => scoredCompany(row).score;
+  assert.equal(score(asStored({ headline: 'VP at Google' })), 10);
+  assert.equal(score({ headline: 'VP at Google' }), 10);
+  assert.equal(score({ headline: 'VP at Google', company_prestige_score: 0 }), 10);   // 0: not scored yet
   // A score you set and your sector are in what was stored.
-  assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) }))), 9);
-  assert.equal(rowCompanyScore(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { headcount: 20, industry: 'tech', focus: strong('tech') }))), 8);
+  assert.equal(score(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { overrides: new Map([['Quillon', 9]]) }))), 9);
+  assert.equal(score(asStored({ headline: 'Founder at Quillon' }, (n) => companyScore(n, { headcount: 20, industry: 'tech', focus: strong('tech') }))), 8);
   // A famous name inside another word or another company's name is not that company.
-  assert.equal(rowCompanyScore(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 5);
-  assert.equal(rowCompanyScore(asStored({ headline: 'Director at Applewood Bakery' })), 5);
+  assert.equal(score(asStored({ headline: 'Metadata Analyst at Pinecrest Foods' })), 5);
+  assert.equal(score(asStored({ headline: 'Director at Applewood Bakery' })), 5);
 });
 
 test('the company a score is built on: its strongest role\'s, current or former, found by the stored title points', () => {

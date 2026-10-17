@@ -101,8 +101,8 @@ tick an item in the same change that finishes it.
       Scan page shows, and a Paused list with Resume per person (by profile URL) and Resume
       all. Checked with the simulated LinkedIn and on a copy of real data; not run live
 - [x] 0.1.9 — Paths as a company & industry analyzer (InMaps-style map, industry cards,
-      analyzer panel), Outlink as Circles (stages of five, next best moves, levels, new doors),
-      and Orbit in Degrees. Checked on a copy of real data
+      analyzer panel), Outlink as Circles (stages of five, next best moves, levels, new doors;
+      Outlink was removed on 2026-10-17), and Orbit in Degrees. Checked on a copy of real data
 - [x] 0.1.10 — Scoring audit and rebuild: one model (title × company weight + capped bonuses),
       company scores you can set (the Scores tab), score explanations. Checked on a copy of real data
 - [x] 0.1.11 — Security: Next.js 16.3.6 (two critical RCE advisories and a middleware bypass

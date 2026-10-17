@@ -236,10 +236,10 @@ export function PaceArt({ daily, pace }) {
           <g className="needle" style={{ transform: `rotate(${-rot}deg)` }}><line x1="0" y1="0" x2="112" y2="0" stroke="var(--ob-fg1)" strokeWidth="4" strokeLinecap="round" /></g>
           <circle r="10" fill="var(--ob-fg1)" /><circle r="4" fill="var(--sd-bg, #0a0a1a)" />
         </svg>
-        <div className={`ob-gval${daily > RISKY_DAILY ? ' warn' : ''}`}><b>{daily}</b><span>searches a day{daily === 50 ? ', the default' : ''}</span></div>
+        <div className={`ob-gval${daily > RISKY_DAILY ? ' warn' : ''}`}><b>{daily}</b><span>search pages a day at most, in the scan windows</span></div>
       </div>
       <div className="ob-stats">
-        <div className="ob-stat"><b>{time}</b><span>of scanning a day at {PACES[pace]?.label || 'Fast'}, ~{searchesPerHour(pace)} searches an hour</span></div>
+        <div className="ob-stat"><b>{time}</b><span>of scanning a day at most at {PACES[pace]?.label || 'Fast'}, ~{searchesPerHour(pace)} searches an hour</span></div>
         <div className="ob-stat"><b style={{ color: 'var(--ob-red)' }}>{RESTRICTED_AT}</b><span>searches in 24 hours: when a real account was restricted</span></div>
       </div>
     </div>

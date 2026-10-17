@@ -65,7 +65,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   const [showInsights, setShowInsights] = useState(false);
   const bridgeById = useMemo(() => new Map(connections.map(c => [c.id, c])), [connections]);
   // Who you've asked, shared with every view: a request sent here shows in
-  // Separation, the circle and the Outlink queue at once (lib/requests-client.js).
+  // Separation, the circle and Breach at once (lib/requests-client.js).
   const requests = useRequests();
   const isRequested = useCallback((row) => hasRequest(row, requests), [requests]);
   // Where Resume would carry on with the person open, asked once for the whole
@@ -435,14 +435,17 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                 {sTier.length > 0 && <span style={{ color: 'var(--sd-gold, #FFD700)', fontWeight: 600 }}>{sTier.length} S-tier</span>}
                 {aTier.length > 0 && <span style={{ color: 'var(--sd-purple, #9B59B6)', fontWeight: 600 }}>{aTier.length} A-tier</span>}
               </div>
-              {/* Outlink Bridge button */}
-              <a href={`/queue?bridge=${selected.id}&groupBy=bridge`} style={{
-                display: 'block', textAlign: 'center', padding: '8px 12px', marginBottom: 10,
-                background: 'linear-gradient(135deg, #FF6B35, #FFD700)', color: '#000',
-                borderRadius: 6, textDecoration: 'none', fontWeight: 700, fontSize: 11,
-              }}>
-                Outlink Bridge → Add {bridgeConnections.filter(m => m.tier === 'S' || m.tier === 'A' || m.tier === 'B').length} People
-              </a>
+              {/* Who they can introduce you to: Separation, filtered to their circle, each with
+                  Connect and every way in (Blake, 2026-10-17: "Separation is what you want to do anyway"). */}
+              {onShowInSeparation && (
+                <button type="button" onClick={() => onShowInSeparation({ query: selected.name })} style={{
+                  display: 'block', width: '100%', textAlign: 'center', padding: '8px 12px', marginBottom: 10,
+                  background: 'linear-gradient(135deg, #FF6B35, #FFD700)', color: '#000', border: 'none', cursor: 'pointer',
+                  borderRadius: 6, fontWeight: 700, fontSize: 11, fontFamily: 'inherit',
+                }}>
+                  Who {selected.name?.split(' ')[0] || 'they'} can introduce · {bridgeConnections.length} in Separation →
+                </button>
+              )}
               <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginBottom: 8 }}>Most valuable in this cluster:</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {topPeople.map(m => (

@@ -288,7 +288,7 @@ def read(page, **kw):
     return [p['profileUrl'] for p in people], status, reach
 
 
-ns['searches_left'] = lambda now=None: (999, 'daily')
+ns['searches_left'] = lambda now=None: (999, 'window')
 ns['charge_linkedin'] = lambda kind='searches', n=1: charged.append(kind)
 charged = []
 ns['PACE_RNG'].seed(7)

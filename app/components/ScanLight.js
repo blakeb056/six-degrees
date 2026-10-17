@@ -34,6 +34,7 @@ import usePanelCover from './usePanelCover';
 import { stopScrape } from '../../lib/scraper-client';
 import { stopAutoScan } from '../../lib/experimental-client';
 import { scanLight, endedLight, lightLabel, timeLeftText, whoseConnections, LIGHT_LINGER_MS, LIGHT_WORDS } from '../../lib/scan-light';
+import { windowLine } from '../../lib/scan-windows';
 
 // The light's colours, the theme's own where it has them (Daylight's are deeper, to read on white).
 const COLOR = {
@@ -286,11 +287,10 @@ export default function ScanLight({ isMobile = false }) {
                 </span>
               </Row>
             )}
-            {s.searches && (
-              <Row label="Searches today">
-                {s.searches.limit != null
-                  ? `${n(s.searches.used)} of ${n(s.searches.limit)} used, ${n(s.searches.left)} left${s.searches.dev ? ' (Dev mode’s ceiling)' : ''}`
-                  : `${n(s.searches.used)} used, no daily limit this session`}
+            {s.window && (
+              <Row label="Scan window">
+                {/* "Window 1 of 2: 34 of 60 · next window opens 15:09" (lib/scan-windows.js windowLine). */}
+                {windowLine(s.window)}
               </Row>
             )}
             {!manual && (s.secondsLeft != null || s.wait) && (

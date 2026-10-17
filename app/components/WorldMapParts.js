@@ -35,14 +35,15 @@ const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 export const byStrength = (a, b) => (TIER_RANK[a.tier] ?? 4) - (TIER_RANK[b.tier] ?? 4)
   || (Number(a.degree) || 1) - (Number(b.degree) || 1) || score(b) - score(a);
 
-/** Outlink, filtered to one connection's circle: who to ask them to introduce you to. */
-export const outlinkFor = (id) => `/queue?view=recs&bridge=${encodeURIComponent(id)}&groupBy=bridge`;
-
 const smallButton = {
   border: LINE, borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit',
   fontSize: 10.5, fontWeight: 650, padding: '3px 7px', color: 'var(--sd-fg-2, #cfd8d8)', whiteSpace: 'nowrap',
 };
-const linkButton = { ...smallButton, textDecoration: 'none', display: 'inline-block', color: 'var(--sd-orange, #FF6B35)' };
+// Who a connection can introduce you to: Separation, filtered to their circle (`onIntros`,
+// app/components/WorldMap.js). Blake, 2026-10-17: "Separation is what you want to do anyway".
+export const introButton = { ...smallButton, color: 'var(--sd-orange, #FF6B35)' };
+export const INTROS = 'Who they can introduce';
+export const introsTitle = (name) => `Separation, filtered to who ${name || 'they'} can introduce you to`;
 const strongIn = (people) => people.reduce((n, p) => n + (p.tier === 'S' || p.tier === 'A' ? 1 : 0), 0);
 const sub = { fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--sd-fg-5, #667)' };
 
@@ -98,9 +99,9 @@ export function SidePanel({ label, title, subtitle, phone, below = 0, sheet = 32
 
 /**
  * Who gets you here: the connections who reach the 2nd-degree people at this
- * place, each with how many, their lines, and Outlink to ask for the intro.
+ * place, each with how many, their lines, and who they can introduce you to (Separation).
  */
-export function GettersList({ getters, here, canOutlink, selectedId, onSelect, onLines, openStart }) {
+export function GettersList({ getters, here, onIntros = null, selectedId, onSelect, onLines, openStart }) {
   if (!getters?.bridges.length) return null;
   const shown = getters.bridges.slice(0, 40);
   return (
@@ -120,7 +121,7 @@ export function GettersList({ getters, here, canOutlink, selectedId, onSelect, o
                 reaches {fmt(g.count)} here{strongIn(g.people) ? `, ${fmt(strongIn(g.people))} S or A` : ''}{g.place ? ` · lives in ${g.place.name}` : ''}
               </span>
               <button type="button" onClick={() => onLines(g.bridge.id)} style={smallButton} title={`Lines from ${g.bridge.name} to everywhere their circle lives`}>Their reach</button>
-              {canOutlink && <a href={outlinkFor(g.bridge.id)} style={linkButton} title="Outlink, filtered to who they can introduce you to">Ask for an intro</a>}
+              {onIntros && g.bridge.name && <button type="button" onClick={() => onIntros(g.bridge)} style={introButton} title={introsTitle(g.bridge.name)}>{INTROS}</button>}
             </div>
           </div>
         );
@@ -134,7 +135,7 @@ export function GettersList({ getters, here, canOutlink, selectedId, onSelect, o
  * Through whom: one connection's circle, place by place. A place opens to who's
  * there; clicking a line's end on the map opens the same one.
  */
-export function ReachPanel({ bridge, reach, openEnd, onOpenEnd, canOutlink, phone, below, sheet, selectedId, onSelect, onClose }) {
+export function ReachPanel({ bridge, reach, openEnd, onOpenEnd, onIntros = null, phone, below, sheet, selectedId, onSelect, onClose }) {
   const listRef = useRef(null);
   useEffect(() => {
     if (!openEnd || !listRef.current) return;
@@ -149,7 +150,7 @@ export function ReachPanel({ bridge, reach, openEnd, onOpenEnd, canOutlink, phon
     <SidePanel label={`Where ${name}’s circle lives`} title={`Through ${name}`} subtitle={subtitle} phone={phone} below={below} sheet={sheet} onClose={onClose}
       actions={<>
         <button type="button" onClick={() => onSelect?.(bridge)} style={smallButton}>Open their card</button>
-        {canOutlink && <a href={outlinkFor(bridge.id)} style={linkButton} title="Outlink, filtered to who they can introduce you to">Ask for intros</a>}
+        {onIntros && bridge?.name && <button type="button" onClick={() => onIntros(bridge)} style={introButton} title={introsTitle(bridge.name)}>{INTROS}</button>}
       </>}>
       <div ref={listRef}>
         {reach.ends.map((e) => {

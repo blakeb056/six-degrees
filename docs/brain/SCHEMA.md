@@ -9,11 +9,11 @@ installed rather than run from a checkout. TRAPS §4.
 
 | Table | Holds |
 |---|---|
-| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. Nothing in the app writes `sectors`; the Sidebar and Outlink read it as free text. The sectors you pick in Settings live in `app_meta` 'settings'. |
+| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. Nothing in the app writes `sectors`; the Sidebar reads it as free text. The sectors you pick in Settings live in `app_meta` 'settings'. |
 | `linkedin_connections` | Everyone in the network, all degrees. The main table. |
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |
-| `queue_items` | The outreach queue. |
+| `queue_items` | The old outreach queue's. Nothing reads or writes it since its route went with the introductions queue (2026-10-17); the table stays, so no migration. |
 | `connection_ties` | The mutual web (`lib/ties.js`): two people seen together, by profile URL, smaller first, one row per pair. `source` is every way it was seen, comma-separated (`circle`: one of your connections in another's circle scan; `card`: a card's mutual line named them, `scrape.py` `mutualNames`; `profile`: a profile's mutual line in Sixgree's LinkedIn panel; `mutual-list`: Read all mutuals); `seen_count` and `last_seen` go up each time it is seen again, `seen_at` is the first time (`lib/ties-store.js recordTies`). Written by `app/api/ingest` and `POST /api/ties`; read by `/api/network` (the extended network, `seen`), `GET /api/ties` and the strategy engine; removed with either person by `app/api/admin-delete`. An older database gains the columns, its ties as `circle`, seen once. A tie means seen together, not close. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
 | `company_scores` | A company score **you** set (the Scores tab): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |

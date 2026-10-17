@@ -1,6 +1,6 @@
 // A profile opened in Sixgree's own browser, counted by the server
 // (/api/profile-view POST): one of the day's profile views in the scanner's
-// own record, and a line in Outlink's history, with no scanner job. Blake,
+// own record, and a line in the history of profiles opened (lib/profile-opened.js), with no scanner job. Blake,
 // 2026-10-15: Connect "took like 2-3 min to load and it's not snappy like the
 // view profile button which is essentially the same". The panel is already on
 // the profile when this is asked (desktop/main.mjs showProfile); this only

@@ -23,7 +23,7 @@ test('exactly these routes are gated; everything else, reads included, is not', 
   assert.equal(isDestructive('/api/pluginsx'), false);
   // A route added to the list is a decision: SECURITY.md, README and ENDPOINTS.md name them all.
   assert.deepEqual([...DESTRUCTIVE_ROUTES].sort(), [...gated].sort());
-  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/queue', '/', '/import', '/api/settings', '/api/data']) {
+  for (const p of ['/api/network', '/api/users', '/api/ingest', '/api/outreach', '/', '/import', '/api/settings', '/api/data']) {
     assert.equal(isDestructive(p), false, p);
   }
 });

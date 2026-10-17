@@ -23,7 +23,7 @@ It captures:
   are signed and expire in about three weeks).
 
 The one thing it ever sends: **a connection request, only when you press Auto** on a
-person (their card, or Outlink), one person per press, never a batch and never on a timer.
+person (their card, or Insights), one person per press, never a batch and never on a timer.
 It opens their profile once (a profile view), presses their Connect, and sends without a
 note. If LinkedIn asks for their email address, or for anything else it can't answer
 without a note, it closes that and sends nothing. It counts the request as sent only when
@@ -58,7 +58,7 @@ settings that would install the packages somewhere else are ignored, and the las
 checks that the scanner can load them before it says it has finished.
 
 The page has four steps: set up the scanner, sign in, **1st degree** (the people you know) and
-**2nd degree** (the people they know — this is what fills Degrees and Outlink). The
+**2nd degree** (the people they know: this is what fills Degrees and Separation). The
 second-degree step runs in batches of 5, 10 or 25 and has a **Stop** button; stopping
 closes the browser cleanly and keeps everything found so far.
 
@@ -71,9 +71,12 @@ results a page at a time until their list ends — every page by default, or up 
 or 50 if you choose. LinkedIn's search itself stops at page 100 (about 1,000 people).
 Before calling a list finished it looks for a Next button three times, scrolling to the
 foot of the page and waiting longer each time, and a click that doesn't move to the next
-page is tried three times. A long read saves every 10 pages, and
+page is tried three times. Each page is saved the moment it's read (until 2026-10-17 it was
+every 10 pages, and a Stop could lose up to nine read pages), and
 `~/.six-degrees/bridge-progress.json` notes the last page read for each person and
-whether LinkedIn had more. **Also finish people already mapped** (on by default;
+whether LinkedIn had more. A round that reaches a page an earlier run read past a gap ends
+there instead of clicking Next through pages already read; the next round opens straight at
+the first page not read yet. **Also finish people already mapped** (on by default;
 `--deeper` in a terminal) carries on from that page, so a read that was stopped, cut
 short by a page limit, or done before 0.1.6 at 10 pages is finished rather than started
 again. Once the id their connections are searched by is known, their profile isn't
@@ -92,31 +95,53 @@ is left unmarked, two of those in a row end the batch, and anyone unclear twice 
 back of the queue (`~/.six-degrees/bridge-unclear.json`). After any of these, leave it at least a day. A security
 check needs a person: **Open LinkedIn** on the Scan page opens a window to finish it.
 
-**One daily limit, and the cooldown.** Every search and profile view is written down, and
-the Scan page (LinkedIn usage, and the notch while a scan runs) shows how many searches were
-made in the last 24 hours against one number you set there: **searches a day**, 50 by
-default, any whole number from 1 to 1000. Profile views count against the same number, on
-their own count. At the limit a read saves, stops, and carries on from the same page next
-time. When LinkedIn pushes back, a cooldown stops anything that searches for a day (until
-the 1st, when LinkedIn says its own monthly limit is reached); the Scan page shows when it
-ends.
+**Scan windows (2026-10-17), in place of the daily search limit.** Every search page is
+written down, and counts in a **scan window**: at most **60 search pages a window**, at most
+**two windows a day** (in any 24 hours), and a new window opens only **6 hours or more after
+the last one began**, so 120 a day at most. Every search page counts, however it was opened:
+by hand, automatic, your connections, Breach and Read all mutuals, and a reload or a page read
+before counts again. Profile pages don't. The first search page opens a window and every page
+in the next 6 hours counts in it; a window not used up still closes when its 6 hours are over.
+A scan stops when the window is used, saves what it read, says when the next window opens,
+and carries on from the same page then. The Scan page and the scan light show it as
+"Window 1 of 2: 34 of 60" and the time the next window opens. The three numbers are settings
+in Scanner settings (`scan-limits.json`: `"windowPages"`, `"windowsPerDay"`,
+`"windowGapHours"`), whose defaults are also their ceilings: a setting can only make them
+stricter. A window isn't saved: the app (`lib/scan-windows.js`) and the scanner
+(`scan_window`) work it out the same way from the record of search pages.
 
-**Lift limits for this session.** One button on the Scan page (and in the notch when the
-limit holds a scan back): until you quit Sixgree, the daily limit and the cooldown are off.
-It is kept in the app's memory only, so a restart puts them back, and LinkedIn pushing back
-again puts them back by itself. **What never lifts:** the pace between pages and searches
-(your speed), the minute between any two profile opens, stopping when LinkedIn shows a
-sign-in, a security check or a restriction, Auto's own caps on connection requests, and one
-scan at a time.
+**Finished lists start again only when asked.** Your connections, a Breach company and Read
+all mutuals are read in rounds, each carrying on where the last stopped. Once every page is
+read, a round opens nothing: it used to start again at page 1 by itself, up to 100 more search
+pages for your connections. Their button says *Read again from page 1* (*Read all mutuals
+again*) then, which asks the scanner for it (`--again`). A scanner plugin before 1.0.12 doesn't
+know the flag and still starts again by itself.
 
-**Dev mode.** A switch in Scanner settings, *Dev mode: no limits*, saved with the daily
-limit (`scan-limits.json`: `"dev": true` and `"devSince"`, when it was turned on). Until you
-turn it off, every limit Sixgree sets is off: the daily limit and the cooldown (what the lift
-does), Auto's caps on connection requests, Auto scan's hours (9:00 to 18:00) and the queue's
-length (500 instead of 10). **What it never touches:** the speed you pick (Slow, Medium or
-Fast) and everything it sets, which is the pause before each page, the gap between profile
-views and Auto scan's sittings and rests; one scan at a time; and the stop when LinkedIn shows
-a sign-in, a security check or a restriction. LinkedIn pushing back turns Dev mode off
+**Profile views a day, and the cooldown.** Every profile view is written down too, against
+its own number, **profile views a day** (`"daily"`, 50 by default, any whole number from 1 to
+1000; it was searches a day as well until the windows came). At it a scan stops before
+opening the next profile. When LinkedIn pushes back, a cooldown stops anything that searches
+for a day (until the 1st, when LinkedIn says its own monthly limit is reached); the Scan page
+shows when it ends.
+
+**Lift limits for this session.** One button on the Scan page (and in the notch when profile
+views a day hold a scan back): until you quit Sixgree, profile views a day and the cooldown
+are off, and the scan windows go back to their ceilings if you set them stricter. It is kept
+in the app's memory only, so a restart puts them back, and LinkedIn pushing back again puts
+them back by itself. **What never lifts:** the scan windows (60 a window, two a day, 6 hours
+apart), the pace between pages and searches (your speed), the minute between any two profile
+opens, stopping when LinkedIn shows a sign-in, a security check or a restriction, Auto's own
+caps on connection requests, and one scan at a time.
+
+**Dev mode.** A switch in Scanner settings, *Dev mode: no limits but the scan windows*,
+saved with them (`scan-limits.json`: `"dev": true` and `"devSince"`, when it was turned on).
+Until you turn it off, every limit Sixgree sets is off but the windows, which stay at their
+ceilings: profile views a day and the cooldown (what the lift does), Auto's caps on connection
+requests, Auto scan's hours (9:00 to 18:00) and the queue's length (500 instead of 10). Its
+old ceiling of 250 search pages a day is the windows' 120 now. **What it never touches:** the
+scan windows; the speed you pick (Slow, Medium or Fast) and everything it sets, which is the
+pause before each page, the gap between profile views and Auto scan's sittings and rests; one
+scan at a time; and the stop when LinkedIn shows a sign-in, a security check or a restriction. LinkedIn pushing back turns Dev mode off
 (`set_cooldown` writes it off; the app also turns it off on seeing a pause set after
 `devSince`), and it stays off until you turn it on again. Everything is still counted, so
 LinkedIn usage stays true. The scanner reads the switch from the file each time it asks, so
@@ -139,8 +164,12 @@ ladder), and a flourish when a list is finished. Settings → Sound turns them o
 volume and plays each one. They're synthesised by the app (`lib/chimes.js`), written into
 `sounds/` in the data folder before a scan starts, and played by the scanner on this
 computer's speakers (`afplay` on a Mac, `winsound` on Windows, `paplay` or `aplay` on Linux). Each
-page LinkedIn opens is still a search on your account, counted the first time it's seen and
-held to the daily limit (not in Dev mode); LinkedIn pushing back stops it as ever. A page you
+page the window loads is still a search on your account, counted every time it loads: Next,
+Previous, a page number, a page read before, a reload and the address bar (until 2026-10-17 a
+page was counted once a run by its number, so going back and forth was free on the record and
+not on LinkedIn's side). It is held to the scan window: as the window's last page is read the
+read stops, before another loads; LinkedIn pushing back stops it as ever. Each page is saved
+the moment it's read, so a Stop loses nothing read. A page you
 skip to is read, but the pages between are never noted as read. It ends when their list
 does, at the scan's page limit, on **Stop**, or when you close the window, which in a round
 means "done with this person": the next one opens in a new window. Ten minutes with no new
@@ -168,7 +197,7 @@ old *Read full profiles* round:
 **Profile views.** A circle scan opens the person's profile once, and that is a profile
 view. Profile views are what got an account restricted, so at least a minute passes between
 any two profile opens, even across scans started one after another, lifted or not; the log
-counts down while it waits, and Stop ends the wait. When the day's limit is reached, a scan
+counts down while it waits, and Stop ends the wait. When profile views a day are used, a scan
 stops before opening the next profile. Nothing about that person is recorded, so the next
 run starts with them. Carrying on with someone whose search id is already known doesn't
 open their profile, so it doesn't count.
