@@ -17,6 +17,7 @@ import { canFocus, focusSubgraph, focusLook, focusLayer, hoverIntent } from '../
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
 import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
+import ReplayStage from './ReplayStage';
 import useTies from './useTies';
 import ShowTies from './ShowTies';
 import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
@@ -391,6 +392,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
           ease={focus.ease} reduced={focus.reduced} tierColors={tierColors} selectedId={selectedId}
           onSelect={(row) => onSelectRef.current?.(row)} onClose={closeFocus} canScan={canScan} webOff={webOff} degree1={allD1} />
       )}
+      {/* The replay, over the map while it plays: everyone's place comes from this scene (ReplayStage.js). */}
+      <ReplayStage sceneRef={sceneRef} chain={chain} tierColors={tierColors} />
     </div>
   );
 }
