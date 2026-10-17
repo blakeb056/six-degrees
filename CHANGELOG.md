@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The Map's views: Heat, Flows and Hubs, from one tidy card.** The finder, a switch between four
+  views and the legend for the one showing now share one card, with Declutter and From you folded
+  under it. *Heat* is a smooth density surface of everyone, tier S, S and A, or one degree, with a
+  legend and its densest place a click away. *Flows* draws the busiest 20, 40 or 80 routes from your
+  connections to where the people in their circles live, as thick as how many, a dash running the
+  way each goes; a route lists who carries it, each with *Their reach* and *Ask for an intro*.
+  *Hubs* ranks places by reach (the people there plus everyone your connections there can introduce
+  you to), rings the top ten as wide as their reach, and lists them in *Top places*, each a click
+  from the map flying there. The view is remembered in this browser.
+- **The chain to someone, on the Map.** While a person's card is open, the map draws you, then each
+  person along their chain (the one Network Circle draws), numbered at their places, with a card to
+  step along it, fit it on screen, and ask the right connection for an intro.
+
+### Changed
+- The Map's dots are a little smaller at the whole-world view, its legends and buttons take the
+  look's own colours, and a view fades in unless the system asks for less motion. Heat is a view now,
+  not a box to tick under the options.
+
+### Fixed
+- Opening someone's card from the Map's finder no longer leaves the map showing open sea: the map
+  narrows for the card, and the flight to their place is aimed again at the new size.
+
 ## [2.7.0] - 2026-10-16
 
 Scan in rounds of 25 pages, a tour and Help, and a slider for breaks.

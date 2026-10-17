@@ -54,7 +54,7 @@ in, unless the system asks for less motion.
 | You pick | Lines | It answers |
 |---|---|---|
 | A place | From the connections who reach the 2nd-degree people there, as thick as how many each reaches. The place's list says who they are, each with *Ask for an intro* (Outlink, filtered to that connection's circle). | Who can introduce me to people in Austin? |
-| A connection with a scanned circle (*Reach* in a place's list, the finder, or the button that appears while their card is open) | From where they are to every place their circle lives. Clicking a line or its end opens who's there. A connection with no location has no lines; the places are ringed. | How far does Jane's network reach, and where? |
+| A connection with a scanned circle (*Reach* in a place's list, the finder, a route's list, or *Where X's circle lives* on the chain card while their card is open) | From where they are to every place their circle lives. Clicking a line or its end opens who's there. A connection with no location has no lines; the places are ringed. | How far does Jane's network reach, and where? |
 | *From you* (off to start) | Faint lines from home to your connections' places, at most 40. Home is a place you pick (*Make this home* in its list, kept in this browser), or where most of your connections are, marked as a guess: Sixgree doesn't know where you are. | How spread out is my own network? |
 
 A person in two circles counts under both connections, since either can
@@ -70,9 +70,31 @@ The filters narrow the map and show as chips you clear one at a time:
   is always drawn.
 - The Filters panel's tier and degree grid, as before.
 
-The count at the top says how many of everyone shown have a place
-(*676 of 748 located*). The densest places glow softly, and *Heat* shades
-where the network is thickest, merging the towns of one metro into one patch.
+The count at the foot of the card says how many of everyone shown have a place
+(*676 of 748 located*).
+
+## Views, and the chain to someone
+
+One control card holds the finder, the view and its legend, the chips, and
+*Declutter, From you*. One view at a time, each for one question
+(`lib/map-visuals.js`, drawn by `app/components/WorldMap.js` and
+`app/components/WorldMapLayers.js`); the view is remembered in this browser.
+
+| View | What's drawn | It answers | It leads to |
+|---|---|---|---|
+| **Places** | The dots, as the mix of tiers or degrees; the densest few glow. | Where are my people? | A place's list: who gets you there. |
+| **Heat** | A smooth density surface of everyone, tier S, S and A, or one degree: the people binned on a 4-pixel grid, blurred about 15 pixels (more as you zoom in), drawn as 7 contour levels from a faint edge to the core. A legend, and the densest place. | Where are my S-tier people? Where's my 2nd degree? | *Densest: …* flies there and opens its list. |
+| **Flows** | The busiest 20, 40 or 80 routes from where your connections are to where the people in their circles live, as thick as how many people, a dash running along each the way it goes (none with less motion). With a place picked, the busiest leaving it. | Where do my connections' circles live, place to place? | A route lists who carries it, each with *Their reach* and *Ask for an intro*. |
+| **Hubs** | Places ranked by reach: the people there, plus everyone in the circles of your connections there, each person once. A ring as wide as the reach, the rank on the top ten, and *Top places* at the right (at the bottom on a phone). | Which places reach furthest? | A place flies there, opens its list, and draws where its people's circles live. |
+
+While someone's card is open, the map draws **the chain to them**: you at home,
+then each person along their chain (`lib/galaxy.js` `galaxyChain`, the chain
+Network Circle draws), each at their place, numbered, with a leg wherever the
+place changes and a dashed one past someone with no location. The chain card
+under the control card lists the steps (a step flies there), *Fit* puts the
+whole chain on screen, and *Ask … for an intro* opens Outlink for the last of
+your connections on it, whose circle they're in. Someone a company scan found,
+with nobody on file between you, has no chain: a line would say you know them.
 
 ## The data, and its credits
 
