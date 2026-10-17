@@ -27,6 +27,8 @@ import AppHeader from './components/AppHeader';
 import { networkLevel } from '../lib/level';
 import { TIER_COLORS } from '../lib/themes';   // the theme's dot colours, filled before anything draws
 import { MODE_KEYS, FIRST_VIEW } from '../lib/app-tabs';
+import Tour from './components/help/Tour';
+import { TOUR_PARAM, TOUR_REPLAY } from '../lib/help';
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -99,6 +101,8 @@ function HomeInner() {
   // Another page's tab row links back here with the tab named: /?mode=separation (app/components/AppTabs.js, lib/app-tabs.js).
   const linkedMode = MODE_KEYS.includes(params.get('mode')) ? params.get('mode') : null;
   const [chainOpen, setChainOpen] = useState(linkedChain);
+  // Settings → Help's Replay the tour comes here as /?tour=replay (lib/help.js).
+  const replayTour = params.get(TOUR_PARAM) === TOUR_REPLAY;
   // Whose circle is open in Bridge Chains right now: the right panel follows it.
   const [chainIn, setChainIn] = useState(null);
   const [mode, setMode] = useState(() => (chainOpen ? 'degrees' : linkedMode || 'network'));
@@ -428,7 +432,7 @@ function HomeInner() {
         )}
       />
 
-      <div style={{ display: 'flex', height: isMobile ? 'calc(100vh - 70px)' : 'calc(100vh - 130px)', position: 'relative' }}>
+      <div data-tour="canvas" style={{ display: 'flex', height: isMobile ? 'calc(100vh - 70px)' : 'calc(100vh - 130px)', position: 'relative' }}>
         <FilterPanel
           collapsed={filterPanelCollapsed}
           onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
@@ -544,6 +548,8 @@ function HomeInner() {
         {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain' || view.key === 'unscanned'} />}
 
       </div>
+      {/* The tour, once, now the setup is behind you; again from Settings → Help (lib/help.js). Not in the public demo. */}
+      {!IS_DEMO && <Tour own={!csvMode} scanner={Boolean(scanner)} replay={replayTour} />}
     </div>
   );
 }

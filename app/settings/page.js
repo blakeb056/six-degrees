@@ -15,6 +15,7 @@ import AppearanceSection from '../components/settings/AppearanceSection';
 import ExperimentalSection from '../components/settings/ExperimentalSection';
 import SoundSection from '../components/settings/SoundSection';
 import PluginsSection from '../components/settings/PluginsSection';
+import HelpSection from '../components/settings/HelpSection';
 import { useScanShows } from '../components/useScanner';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, FONT } from '../components/ui';
@@ -52,7 +53,7 @@ export default function SettingsPage() {
 // at the very top in the settings page"): the scanner comes from them now.
 const SECTIONS = [
   ['plugins', 'Plugins'], ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
-  ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['about', 'About'],
+  ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['help', 'Help'], ['about', 'About'],
 ];
 
 /** The section you're reading: the last whose top has passed just under the notch, or the last of all at the foot of the page. */
@@ -192,6 +193,8 @@ function SettingsInner() {
         </Section>
         <DataSection />
         <ExperimentalSection />
+        {/* Help: Replay the tour, the hints switch, how-tos, scanning's limits, shortcuts, your data (lib/help.js). */}
+        <HelpSection about={about} />
 
         <Section id="about" title="About this copy">
           {about ? (

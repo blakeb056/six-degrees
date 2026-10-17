@@ -28,6 +28,7 @@ import ScanLight from './ScanLight';
 import Wordmark from './Wordmark';
 import ClusterSpinner from './ClusterSpinner';
 import usePanelCover from './usePanelCover';
+import Hint from './help/Hint';
 import useScanner, { useScanShows, useCircleMode } from './useScanner';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { useUser } from './UserProvider';
@@ -113,6 +114,8 @@ export default function AppHeader({ active, isMobile: mobileProp, csvMode = fals
       {children}
       {/* While a scan runs: a dot on the line below for each page it reads */}
       {own && <ScanTrail inset={isMobile ? 12 : 30} />}
+      {/* This page's hint, the first visits here (lib/help.js): drawn over the page, not in the header */}
+      <Hint place={active} />
     </header>
   );
 }
@@ -143,7 +146,7 @@ function SettingsGear({ isMobile }) {
   const update = useUnreadUpdate();
   const label = update !== null ? `Settings: Sixgree ${update ? `${update} ` : ''}is out` : 'Settings';
   return (
-    <Link href={update !== null ? UPDATES_HREF : '/settings'} title={label} aria-label={label}
+    <Link href={update !== null ? UPDATES_HREF : '/settings'} title={label} aria-label={label} data-tour="settings"
       onClick={(e) => {
         if (update === null) return;
         e.preventDefault();
