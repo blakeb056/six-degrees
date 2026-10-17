@@ -5,7 +5,8 @@
 // Network Circle, Degrees, Separation and Map are views of the map page: there
 // they switch in place (onMode); anywhere else they are links back to it with
 // the tab named (/?mode=…). The list is lib/app-tabs.js. A page's own sub-tabs go in the notch under this row
-// (lib/island.js setNotchTabs), which looks for #main-tabs to hang from.
+// (lib/island.js setNotchTabs), which looks for #main-tabs to hang from. Each tab's
+// data-tour is what the tour's ring finds it by (lib/help.js TOUR_STEPS).
 
 import Link from 'next/link';
 import { IS_DEMO } from '../../lib/demo';
@@ -56,12 +57,12 @@ export default function AppTabs({ active, isMobile = false, csvMode = false, onM
         const on = active === m.key;
         const label = isMobile && m.short ? m.short : m.label;
         return onMode
-          ? <button key={m.key} type="button" className="sd-tab" aria-current={on ? 'page' : undefined} onClick={() => onMode(m.key)} style={base}>{label}</button>
-          : <Link key={m.key} href={`/?mode=${m.key}`} className="sd-tab" aria-current={on ? 'page' : undefined} style={base}>{label}</Link>;
+          ? <button key={m.key} type="button" className="sd-tab" data-tour={m.key} aria-current={on ? 'page' : undefined} onClick={() => onMode(m.key)} style={base}>{label}</button>
+          : <Link key={m.key} href={`/?mode=${m.key}`} className="sd-tab" data-tour={m.key} aria-current={on ? 'page' : undefined} style={base}>{label}</Link>;
       })}
       {children}
       {PAGES.filter((p) => (IS_DEMO ? false : p.own ? !csvMode && (scanner || !p.scanner) && (browser || !p.browser) : true)).map((p) => (
-        <Link key={p.key} href={p.href} title={p.title} className="sd-tab" aria-current={active === p.key ? 'page' : undefined} style={base}>
+        <Link key={p.key} href={p.href} title={p.title} className="sd-tab" data-tour={p.key} aria-current={active === p.key ? 'page' : undefined} style={base}>
           {p.label}{p.badge && <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>{p.badge}</span>}
         </Link>
       ))}

@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A short tour at the start.** Once the guided setup is done, the map offers a minute's tour: a film
+  first (a marked slot for now, for a later release to fill), then a step for each place, with a ring
+  round the real tab or button: Network Circle and its tiers, focusing on someone's circle, Degrees and
+  Bridge Chains, Separation, Outlink, the Map, Breach, Scan with its breaks, and the LinkedIn tab when
+  its plugin is on. Back, Next, Skip tour and Esc. It's offered once, never while a scan runs, and only
+  has the steps for the tabs you have.
+- **Settings → Help.** Replay the tour, a switch for hints, short how-tos that each link to the place
+  they're about, what scanning's pace and limits mean (LinkedIn can restrict an account: slow is safer,
+  never a guarantee), the keyboard shortcuts (⌘[ and ⌘] in the LinkedIn panel, Esc, ⌘. and ⌘,), and
+  where your data lives.
+- **Hints.** A small card the first times you open a place, one at a time, until you press Got it:
+  "Hold the pointer on one of your connections for 3.5 s… to focus on their circle", "Breach: start
+  with Doors", and one for each tab. Never during a scan, never over the tour. Settings → Help turns
+  them all off, or brings back the ones you dismissed. Remembered on this computer, in this window only.
+
 ## [2.6.0] - 2026-10-16
 
 Breach a company, focus on anyone in your circle, and the LinkedIn panel closes itself when an invitation is sent.
