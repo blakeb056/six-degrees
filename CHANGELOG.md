@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-10-17
+
+The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation and a replay that shows every dot.
+
 ### Added
 - **The mutual web.** Every mutual line Sixgree already reads ("Maya Chen, Leo Park & 103 other
   mutual connections") is now kept as ties: that person was seen with Maya, and with Leo. They come
