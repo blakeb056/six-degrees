@@ -1,15 +1,21 @@
 // Focus on a connection in Network Circle (lib/circle-focus.js). Blake,
 // 2026-10-16: a click, or the pointer resting 3.5 s on one of your connections,
 // zooms in; their circle comes forward with every catalyst's circle chained on,
-// or with nothing scanned, just them and the way to scan. Invented people.
+// or with nothing scanned, just them and the way to scan. Bridge Chains opens
+// the same focus on a bridge ("make it just like that"), from the same code.
+// Invented people.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { circleIndex } from '../lib/circle.js';
+import { clusterRings } from '../lib/chain-layout.js';
 import {
-  HOVER_HOLD, canFocus, focusSubgraph, focusLayout, focusLook, focusTransform, focusPoint,
-  spring, springEasing, hoverIntent, wheelOut, pinchOut,
+  HOVER_HOLD, FOCUS_IN_MS, FOCUS_OUT_MS, FADE_MS, canFocus, focusSubgraph, focusLayout, focusLook, focusTransform, focusPoint,
+  focusDuration, focusLayer, spring, springEasing, hoverIntent, wheelOut, pinchOut,
 } from '../lib/circle-focus.js';
+
+const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
 const url = (id) => `https://www.linkedin.com/in/${id}`;
 const d1 = (id, extra = {}) => ({ id, name: id, degree: 1, tier: 'A', power_score: 6, profile_url: url(id), ...extra });
@@ -204,4 +210,140 @@ test('scrolling or pinching out closes it; a nudge or a scroll in does not', () 
   assert.equal(pinchOut(200, 150), true);
   assert.equal(pinchOut(200, 190), false);
   assert.equal(pinchOut(0, 10), false);
+});
+
+// ── Bridge Chains: the same focus on a bridge ────────────────────────────────
+
+// Who introduced whom among your connections, as Bridge Chains reads it.
+const introducedBy = (index) => {
+  const m = new Map();
+  for (const [from, rows] of index.introduced) for (const row of rows) m.set(row.id, from);
+  return m;
+};
+
+test('a bridge on the first ring: its circle forward, each catalyst chained outward, as in Network Circle', () => {
+  const { ava, index } = network();
+  // Ava's cluster is on Bridge Chains' first ring: nobody before her.
+  const ring = clusterRings(['ava', 'ben'], introducedBy(index)).get('ava');
+  assert.deepEqual(ring.trail, ['ava']);
+  const f = focusSubgraph(ava, index, { trail: [] });
+  assert.deepEqual(f, focusSubgraph(ava, index), 'the very focus Network Circle opens on her');
+  assert.deepEqual(f.trail, []);
+});
+
+test('a bridge further along a chain: rings counted along it, the trail kept, nobody on it drawn again', () => {
+  const { ava, ben, index } = network();
+  // Ben, met through Ava's circle and scanned: Bridge Chains' second ring, the 3rd degree.
+  const ring = clusterRings(['ava', 'ben'], introducedBy(index)).get('ben');
+  assert.equal(ring.ring, 2);
+  assert.deepEqual(ring.trail, ['ava', 'ben']);
+  const f = focusSubgraph(ben, index, { trail: [ava] });
+  assert.equal(f.kind, 'circle');
+  assert.deepEqual(f.trail.map((r) => r.name), ['ava']);
+  assert.deepEqual(f.rings.map((r) => r.degree), [3, 4], 'his circle is the 3rd degree, as the ring it sits on says');
+  assert.deepEqual(names(f.rings[0]).sort(), ['dee', 'eli']);
+  assert.deepEqual(names(f.rings[1]), ['fay']);
+  assert.deepEqual(f.catalysts.map((c) => [c.row.name, c.degree, c.people]), [['eli', 3, 1]]);
+  assert.equal(f.circle, 2);
+  assert.equal(f.beyond, 1);
+
+  // Ben's scan found Ava too: she is on the trail, so never one of his dots.
+  const withAva = circleIndex([ava, ben], [d2('dee', 'ben'), d2('ava', 'ben', { profile_url: ava.profile_url })]);
+  assert.deepEqual(names(focusSubgraph(ben, withAva).rings[0]).sort(), ['ava', 'dee'], 'Network Circle has no trail');
+  assert.deepEqual(names(focusSubgraph(ben, withAva, { trail: [ava] }).rings[0]), ['dee']);
+});
+
+test('a chain six long stops at the 6th degree, counted along it', () => {
+  const people = ['a1', 'a2', 'a3', 'a4', 'a5'].map((id, i, all) => d1(id, i ? { unlocked_from_bridge_id: all[i - 1] } : {}));
+  const degree2 = [d2('x', 'a5'), d2('y', 'a5'), d2('z', 'x@a5')];
+  const index = circleIndex(people, degree2);
+  const f = focusSubgraph(people[4], index, { trail: people.slice(0, 4) });
+  assert.deepEqual(f.rings.map((r) => r.degree), [6], 'a5’s circle is the 6th; nothing past it');
+  assert.deepEqual(names(f.rings[0]).sort(), ['x', 'y']);
+});
+
+test('a bridge with nothing scanned (a link to them): just the core, with the trail to them', () => {
+  const { ava, gil, index } = network();
+  const f = focusSubgraph(gil, index, { trail: [ava] });
+  assert.equal(f.kind, 'core');
+  assert.deepEqual(f.rings, []);
+  assert.deepEqual(f.trail.map((r) => r.name), ['ava']);
+  assert.ok(canFocus(gil), 'a bridge is one of your connections, so it opens');
+  // The map behind it: the lighter touch, as in Network Circle.
+  assert.deepEqual(focusLook(f.kind), focusLook('core'));
+});
+
+test('resting on a bridge: moving over its dot, face and name keeps one wait; off it, or a press, cancels', () => {
+  const timers = new Map();
+  let next = 1;
+  const later = (fn, ms) => { const id = next++; timers.set(id, { fn, ms }); return id; };
+  const cancel = (id) => timers.delete(id);
+  const run = () => { for (const [id, t] of [...timers]) { timers.delete(id); t.fn(); } };
+  const opened = [];
+  const intent = hoverIntent((id) => opened.push(id), { later, cancel });
+
+  // Onto Ava's bridge, then across its parts: the ring keeps filling.
+  assert.equal(intent.start('ava'), true, 'the ring starts filling');
+  assert.equal(intent.start('ava'), false);
+  assert.equal(intent.start('ava'), false);
+  assert.equal(timers.size, 1);
+  assert.equal([...timers.values()][0].ms, HOVER_HOLD);
+  // A press (the click opens it instead): the wait is dropped.
+  intent.stop();
+  assert.equal(timers.size, 0);
+  // Ava, then on to Ben's bridge before the hold is up: only Ben opens, after his own full wait.
+  intent.start('ava');
+  intent.stop('ava');
+  intent.start('ben');
+  assert.equal(intent.waiting, 'ben');
+  run();
+  assert.deepEqual(opened, ['ben']);
+});
+
+test('Network Circle’s focus is as it was: the same map behind, in, open and out', () => {
+  const box = { width: 1000, height: 600 };
+  const dot = { x: 700, y: 150 };
+  const look = focusLook('circle');
+  const ease = 'linear(0, 1)';
+  const at = (phase, reduced = false) => focusLayer({ dot, phase, reduced, ease }, box, focusLook('circle', { reduced }));
+  const open = at('open');
+  const t = focusTransform(dot, box, look);
+  assert.equal(open.transform, t.transform);
+  assert.equal(open.filter, t.filter);
+  assert.equal(open.transformOrigin, '700px 150px');
+  assert.equal(open.overflow, 'visible');
+  assert.match(open.transition, new RegExp(`^transform ${FOCUS_IN_MS}ms linear\\(0, 1\\), transform-origin ${FOCUS_IN_MS}ms .*filter ${FOCUS_IN_MS}ms`));
+  for (const phase of ['in', 'out']) {
+    const l = at(phase);
+    assert.equal(l.transform, 'translate(0px, 0px) scale(1)', `${phase}: as it was`);
+    assert.equal(l.filter, 'blur(0px) saturate(1)');
+    assert.match(l.transition, new RegExp(`^transform ${FOCUS_OUT_MS}ms`));
+  }
+  // Reduce Motion: no zoom, only the blur, cross-faded.
+  const still = at('open', true);
+  assert.equal(still.transform, 'translate(0px, 0px) scale(1)');
+  assert.match(still.filter, /^blur\(9px\)/);
+  assert.match(still.transition, new RegExp(`^transform ${FADE_MS}ms`));
+  assert.equal(focusDuration({ phase: 'open' }), FOCUS_IN_MS);
+  assert.equal(focusDuration({ phase: 'out' }), FOCUS_OUT_MS);
+  assert.equal(focusDuration({ phase: 'out', reduced: true }), FADE_MS);
+});
+
+test('one focus for both views: Bridge Chains uses Network Circle’s, not a copy, and nothing it replaced is left', () => {
+  const graph = read('app/components/ForceGraph.js');
+  const chains = read('app/components/ChainView.js');
+  const shared = read('app/components/CircleFocus.js');
+  for (const view of [graph, chains]) {
+    assert.match(view, /import CircleFocus, \{ useFocus, FocusHold \} from '\.\/CircleFocus'/);
+    assert.match(view, /focusLayer\(/);
+    assert.match(view, /<CircleFocus /);
+    assert.match(view, /<FocusHold /);
+    assert.doesNotMatch(view, /focus-hold-fill|setTimeout\(go, 60\)/, 'the hold ring and the timing live in CircleFocus.js');
+  }
+  assert.match(shared, /export function useFocus\(/);
+  assert.match(shared, /@keyframes focus-hold-fill/);
+  // The hover preview and the circle opened in place on a click are gone, not left beside it.
+  assert.doesNotMatch(chains, /CirclePreview|function CircleFocus|setPath\(/);
+  assert.match(chains, /hoverIntent\(/);
+  assert.match(chains, /onPick=\{pick\}/, 'the trail, inside the focus');
 });

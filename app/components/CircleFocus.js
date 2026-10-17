@@ -5,21 +5,26 @@
 // scanned dots and also catalysts from them who's been scanned so it shows the
 // full chain ... If they don't have anything scanned then it will be more
 // subtle with the blur in place but showing just the core and telling them to
-// scan the circle or making it easy to back out of this").
+// scan the circle or making it easy to back out of this"). And a bridge, in
+// front of Bridge Chains, the same way (Blake, the same day: "I want the click
+// UI/UX we added on the dots for Network Circle onto the bridge and make it
+// just like that").
 //
-// The Galaxy (ForceGraph.js) zooms and blurs its own layer behind this and
-// says where the dot was; this draws only what comes forward: their circle as
-// rings round them (lib/circle-focus.js focusLayout), each catalyst's circle chained
-// on outward, and you, off to the side the map has you on. Or, with nothing
-// scanned, just them and a Scan button. Esc, a click outside, Back, or
-// scrolling or pinching out closes it (lib/circle-focus.js).
+// The view behind (ForceGraph.js, ChainView.js) runs it with useFocus below,
+// zooms and blurs its own layer with lib/circle-focus.js focusLayer, draws the
+// ring that fills while the pointer rests (FocusHold), and says where the dot
+// was; this draws only what comes forward: their circle as rings round them
+// (lib/circle-focus.js focusLayout), each catalyst's circle chained on outward,
+// and you, off to the side the map has you on. Or, with nothing scanned, just
+// them and a Scan button. Esc, a click outside, Back, or scrolling or pinching
+// out closes it (lib/circle-focus.js).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Avatar from './Avatar';
 import useScanner from './useScanner';
 import { degreeName } from '../../lib/galaxy';
-import { FOCUS_IN_MS, FOCUS_OUT_MS, FADE_MS, focusLayout, wheelOut, pinchOut } from '../../lib/circle-focus';
+import { HOVER_HOLD, FOCUS_OUT_MS, FADE_MS, focusDuration, focusLayout, springEasing, SPRING_FALLBACK, wheelOut, pinchOut } from '../../lib/circle-focus';
 import { startHere, scansCircleOf, queuedFor, willQueue, busyReason } from '../../lib/scraper-client';
 import { MAP_LOOK } from '../../lib/themes';
 
@@ -39,9 +44,112 @@ const CSS = `
 .cf-btn[disabled] { cursor: default; opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) { .cf-ring { animation: none; } .cf-dot { transition: none; } }`;
 
-export default function CircleFocus({ focus, phase, box, origin, you, look, ease, reduced, tierColors, selectedId, onSelect, onClose, canScan }) {
+// Reduce Motion, the Mac's accessibility setting: the focus cross-fades instead of zooming.
+const reducedMotion = () => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) || false;
+
+/**
+ * The focus's comings and goings, for whichever view opens it. `open(id,
+ * extra)` starts it; `extra` is what the view needs to draw it (where the dot
+ * is, who it is, the trail to them). `focus.phase` is 'in' for its first
+ * frame, everything styled where it starts and those styles worked out now
+ * (on `layerRef`, the layer that zooms), so the next frame, with everything
+ * where it goes, eases there; then 'open'; then 'out' while it eases back,
+ * and `onGone(id)` once it has, with the id of any focus opened meanwhile.
+ * `move(patch)` changes it while it's open: the dot's new place after a
+ * resize, or someone else along the chain (a function of the focus, or
+ * nothing to leave it). Esc closes it. `idRef` is who it's on, null once it's
+ * going.
+ */
+export function useFocus({ layerRef = null, onGone } = {}) {
+  const [focus, setFocus] = useState(null);
+  const idRef = useRef(null);
+  useEffect(() => { idRef.current = focus && focus.phase !== 'out' ? focus.id : null; }, [focus]);
+  const goneRef = useRef(onGone);
+  useEffect(() => { goneRef.current = onGone; });
+  const open = useCallback((id, extra = {}) => {
+    const ease = typeof CSS !== 'undefined' && CSS.supports?.('transition-timing-function', 'linear(0, 1)') ? springEasing() : SPRING_FALLBACK;
+    idRef.current = id;
+    setFocus({ ...extra, id, phase: 'in', reduced: reducedMotion(), ease });
+  }, []);
+  const close = useCallback(() => setFocus((f) => (f && f.phase !== 'out' ? { ...f, phase: 'out' } : f)), []);
+  const move = useCallback((patch) => setFocus((f) => {
+    if (!f || f.phase === 'out') return f;
+    const next = typeof patch === 'function' ? patch(f) : patch;
+    return next ? { ...f, ...next } : f;
+  }), []);
+  const phase = focus?.phase ?? null;
+  const reduced = Boolean(focus?.reduced);
+  useEffect(() => {
+    if (phase !== 'in') return undefined;
+    if (layerRef?.current) void getComputedStyle(layerRef.current).transform;
+    // A timer too, for a window the browser isn't drawing frames for just then.
+    const go = () => setFocus((f) => (f && f.phase === 'in' ? { ...f, phase: 'open' } : f));
+    const frame = requestAnimationFrame(go);
+    const timer = setTimeout(go, 60);
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }, [phase, layerRef]);
+  // Out: once the zoom has eased back, the map is the map again.
+  useEffect(() => {
+    if (phase !== 'out') return undefined;
+    const timer = setTimeout(() => {
+      setFocus((f) => (f && f.phase === 'out' ? null : f));
+      goneRef.current?.(idRef.current);
+    }, reduced ? FADE_MS : FOCUS_OUT_MS);
+    return () => clearTimeout(timer);
+  }, [phase, reduced]);
+  const shown = phase === 'in' || phase === 'open';
+  useEffect(() => {
+    if (!shown) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shown, close]);
+  return { focus, open, close, move, idRef };
+}
+
+const HOLD_CSS = `
+.focus-hold .track { stroke: rgba(var(--sd-ink, 255, 255, 255), 0.18); }
+.focus-hold .fill { stroke-dasharray: 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-box: fill-box; transform-origin: center; }
+.focus-hold.run { animation: focus-hold-show var(--hold, 3.5s) linear forwards; }
+.focus-hold.run .fill { animation: focus-hold-fill var(--hold, 3.5s) linear forwards; }
+@keyframes focus-hold-show { 0%, 10% { opacity: 0; } 18%, 100% { opacity: 1; } }
+@keyframes focus-hold-fill { to { stroke-dashoffset: 0; } }`;
+
+/**
+ * The ring that fills round a dot while the pointer rests on it, HOVER_HOLD
+ * long: full, and the focus opens. The Galaxy's scene places it itself through
+ * `holdRef`, a frame at a time as the map moves; Bridge Chains says where with
+ * `at`, { x, y, r, colour } in px in its box, and keys it by the bridge so
+ * each rest fills from empty.
+ */
+export function FocusHold({ holdRef, at = null }) {
+  const size = at ? 2 * at.r + 6 : null;
+  const ring = at ? { cx: size / 2, cy: size / 2, r: at.r } : null;
+  return (
+    <>
+      <style>{HOLD_CSS}</style>
+      <div ref={holdRef} className={at ? 'focus-hold run' : 'focus-hold'} style={{
+        position: 'absolute', left: 0, top: 0, display: at ? 'block' : 'none', pointerEvents: 'none', '--hold': `${HOVER_HOLD}ms`,
+        ...(at ? { transform: `translate(${at.x - size / 2}px, ${at.y - size / 2}px)` } : null),
+      }}>
+        <svg {...(at ? { width: size, height: size } : null)} style={{ display: 'block', overflow: 'visible' }}>
+          <circle className="track" fill="none" strokeWidth={2} {...ring} />
+          <circle className="fill" fill="none" strokeWidth={2.5} strokeLinecap="round" pathLength={1} {...ring}
+            {...(at ? { style: { stroke: at.colour || 'var(--sd-accent, #3498db)' } } : null)} />
+        </svg>
+      </div>
+    </>
+  );
+}
+
+/**
+ * `bar` is where Back's row sits, { top, side } in px: in the corner, or where
+ * the row of view buttons over the top of the map is wide (Bridge Chains has
+ * four), under it and clear of the panels' tabs at either edge.
+ */
+export default function CircleFocus({ focus, phase, box, origin, you, look, ease, reduced, tierColors, selectedId, onSelect, onClose, onPick, canScan, bar = CORNER }) {
   const open = phase === 'open';
-  const dur = reduced ? FADE_MS : open ? FOCUS_IN_MS : FOCUS_OUT_MS;
+  const dur = focusDuration({ phase, reduced });
   const { person, kind } = focus;
   const backRef = useRef(null);
   const tipRef = useRef(null);
@@ -77,16 +185,17 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
         opacity: open ? 1 : 0, transition: `opacity ${dur}ms ease-out`,
       }} />
       <div style={stage}>
+        {/* Keyed by who's in front, so moving along a chain brings the next one in afresh. */}
         {kind === 'circle'
-          ? <FocusMap focus={focus} box={box} origin={origin} you={you} tierColors={tierColors} selectedId={selectedId} onSelect={onSelect} tipRef={tipRef} />
-          : <FocusCore person={person} box={box} tierColors={tierColors} canScan={canScan} onClose={onClose} />}
+          ? <FocusMap key={person.id} focus={focus} box={box} origin={origin} you={you} tierColors={tierColors} selectedId={selectedId} onSelect={onSelect} tipRef={tipRef} />
+          : <FocusCore key={person.id} person={person} box={box} tierColors={tierColors} canScan={canScan} onClose={onClose} />}
       </div>
-      <TopBar backRef={backRef} onClose={onClose} open={open} dur={dur} />
+      <TopBar backRef={backRef} onClose={onClose} open={open} dur={dur} at={bar} />
       <div style={{
         position: 'absolute', bottom: 14, left: 12, right: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         pointerEvents: 'none', opacity: open ? 1 : 0, transition: `opacity ${dur}ms ease-out`,
       }}>
-        {kind === 'circle' && <Chain focus={focus} />}
+        {(kind === 'circle' || focus.trail?.length > 0) && <Chain focus={focus} onPick={onPick} />}
         {kind === 'circle' && <Counts focus={focus} />}
       </div>
       <div ref={tipRef} style={{
@@ -99,11 +208,13 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
   );
 }
 
+const CORNER = Object.freeze({ top: 12, side: 12 });
+
 /** Back, top left; how else to go back, top right. */
-function TopBar({ backRef, onClose, open, dur }) {
+function TopBar({ backRef, onClose, open, dur, at }) {
   return (
     <div style={{
-      position: 'absolute', top: 12, left: 12, right: 12, display: 'flex', alignItems: 'center', gap: 10,
+      position: 'absolute', top: at.top, left: at.side, right: at.side, display: 'flex', alignItems: 'center', gap: 10,
       opacity: open ? 1 : 0, transition: `opacity ${dur}ms ease-out`, pointerEvents: 'none',
     }}>
       <button ref={backRef} type="button" className="cf-btn" onClick={onClose} aria-label="Back to the map" style={{
@@ -120,17 +231,28 @@ function TopBar({ backRef, onClose, open, dur }) {
   );
 }
 
-/** The chain this is: you, them, their circle, its catalysts, and the people past them. */
-function Chain({ focus }) {
-  const { person, kind, circle, catalysts, beyond } = focus;
-  const pill = (text, tone) => (
-    <span style={{
-      padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 650, whiteSpace: 'nowrap',
-      color: tone || 'var(--sd-fg-1, #fff)', background: 'var(--sd-surface, rgba(10,15,30,0.8))',
-      border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
-    }}>{text}</span>
-  );
-  const steps = [pill('You'), pill(person.name)];
+const PILL = {
+  padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 650, whiteSpace: 'nowrap',
+  color: 'var(--sd-fg-1, #fff)', background: 'var(--sd-surface, rgba(10,15,30,0.8))',
+  border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
+};
+
+/**
+ * The chain this is: you, anyone before them along it (the trail, in Bridge
+ * Chains: each one brings their own circle forward with `onPick`), them, their
+ * circle, its catalysts, and the people past them.
+ */
+function Chain({ focus, onPick }) {
+  const { person, kind, circle, catalysts, beyond, trail = [] } = focus;
+  const pill = (text, tone) => <span style={{ ...PILL, ...(tone ? { color: tone } : null) }}>{text}</span>;
+  const steps = [pill('You')];
+  for (const row of trail) {
+    steps.push(onPick
+      ? <button type="button" className="cf-btn" onClick={() => onPick(row)} title={`Bring ${row.name}’s circle forward`}
+        style={{ ...PILL, pointerEvents: 'auto', color: 'var(--sd-blue, #3498DB)' }}>{row.name}</button>
+      : pill(row.name));
+  }
+  steps.push(pill(person.name));
   if (kind === 'circle') {
     steps.push(pill(`${circle.toLocaleString('en-US')} in their circle`));
     if (catalysts.length) steps.push(pill(`${catalysts.length} ${catalysts.length === 1 ? 'catalyst' : 'catalysts'}`, GREEN));
