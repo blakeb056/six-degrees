@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Bridge Chains goes one level deeper.** In a bridge's focus, click the person in the middle, or
+  scroll or pinch in, and their circle opens full size: unblurred, filling the view, in tier rings,
+  the chains round it faded away. Hover anyone for who they are, click for their card, drag and
+  scroll to zoom. Back, Esc or scrolling out comes back to the focus, then to the overview, and
+  scrolling in over a bridge opens its focus, so it is one zoom all the way in. Network Circle's
+  focus is unchanged.
+
+### Changed
+- **Tier rings, and no dotted lines.** Degrees → Unscanned was one giant disc of dots; it now rings
+  everyone by tier round you: S (gold) nearest and biggest, then A, B and C, D furthest out, small
+  and muted, with a gap and a letter for each tier and names under S and A once they fit. Bridge
+  Chains' dive, its focus on a circle seen outside the scan only, and a circle built in Unscanned
+  once it settles all use the same rings and dots. Your line to a circle stops at its edge instead
+  of running dotted across it, and in Bridge Chains someone seen outside the scan is a lighter dot,
+  not a dashed one.
+
 ## [2.8.0] - 2026-10-17
 
 The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation, a replay that shows every dot, and a Network Circle that stays smooth at ten thousand.
