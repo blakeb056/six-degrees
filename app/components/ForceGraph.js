@@ -13,10 +13,10 @@ import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
 import { lineMask } from '../../lib/tier-lines';
 import { circleIndex } from '../../lib/circle';
-import { HOVER_HOLD, FOCUS_IN_MS, FOCUS_OUT_MS, FADE_MS, canFocus, focusSubgraph, focusLook, focusTransform, hoverIntent, springEasing, SPRING_FALLBACK } from '../../lib/circle-focus';
+import { canFocus, focusSubgraph, focusLook, focusLayer, hoverIntent } from '../../lib/circle-focus';
 import { hasRequest } from '../../lib/requests-client';
 import useRequests from './useRequests';
-import CircleFocus from './CircleFocus';
+import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -97,13 +97,7 @@ const RING_CSS = `
 .galaxy-ring.still .galaxy-ring-pulse { animation: none; opacity: 0.8; }
 svg.still text { transition: none; }
 .galaxy-ring, .galaxy-chrome { transition: opacity 0.3s; }
-.cf-on .galaxy-ring, .cf-on .galaxy-chrome { opacity: 0; }
-.focus-hold .track { stroke: rgba(var(--sd-ink, 255, 255, 255), 0.18); }
-.focus-hold .fill { stroke-dasharray: 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-box: fill-box; transform-origin: center; }
-.focus-hold.run { animation: focus-hold-show var(--hold, 3.5s) linear forwards; }
-.focus-hold.run .fill { animation: focus-hold-fill var(--hold, 3.5s) linear forwards; }
-@keyframes focus-hold-show { 0%, 10% { opacity: 0; } 18%, 100% { opacity: 1; } }
-@keyframes focus-hold-fill { to { stroke-dashoffset: 0; } }`;
+.cf-on .galaxy-ring, .cf-on .galaxy-chrome { opacity: 0; }`;
 
 export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false, chained = null }) {
   // Round a connection's dot (design C): their circle's rounds, an arc for each
@@ -146,53 +140,23 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
 
   // Focus (Blake, 2026-10-16): a click on one of your connections, or the
   // pointer resting on one for HOVER_HOLD, zooms in on them and brings their
-  // circle forward over the map (app/components/CircleFocus.js). The map
-  // behind zooms and blurs as one picture: a CSS transform and filter on its
-  // <svg>, so ten thousand dots cost the same as ten (lib/circle-focus.js
-  // focusTransform). `phase` is 'in' for the first frame, 'open', then 'out'
-  // while it goes back. The scene draws the ring that fills while the pointer rests.
+  // circle forward over the map (app/components/CircleFocus.js, which Bridge
+  // Chains shares). The map behind zooms and blurs as one picture: a CSS
+  // transform and filter on its <svg>, so ten thousand dots cost the same as
+  // ten (lib/circle-focus.js focusLayer), and holds still meanwhile. The scene
+  // draws the ring that fills while the pointer rests.
   const holdRef = useRef(null);
-  const [focus, setFocus] = useState(null);   // { id, dot, you, node, phase, reduced, ease }
-  const focusIdRef = useRef(null);
-  useEffect(() => { focusIdRef.current = focus && focus.phase !== 'out' ? focus.id : null; }, [focus]);
+  // { id, dot, you, node, phase, reduced, ease }; once it has gone, the map moves again, unless another opened meanwhile.
+  const { focus, open: startFocus, close: closeFocus, move: moveFocus, idRef: focusIdRef } = useFocus({
+    layerRef: svgRef,
+    onGone: (next) => { if (next == null) sceneRef.current?.freeze(false); },
+  });
   const openFocus = useCallback((id) => {
     const at = sceneRef.current?.screenOf(id);
     if (!at) return;
     sceneRef.current.freeze(true);
-    const ease = typeof CSS !== 'undefined' && CSS.supports?.('transition-timing-function', 'linear(0, 1)') ? springEasing() : SPRING_FALLBACK;
-    focusIdRef.current = id;
-    setFocus({ id, ...at, phase: 'in', reduced: reducedMotion(), ease });
-  }, []);
-  const closeFocus = useCallback(() => setFocus((f) => (f && f.phase !== 'out' ? { ...f, phase: 'out' } : f)), []);
-  const focusPhase = focus?.phase ?? null;
-  const focusReduced = Boolean(focus?.reduced);
-  // In: everything styled where it starts and those styles worked out now, so
-  // the next frame, with everything where it goes, eases there. A timer too,
-  // for a window the browser isn't drawing frames for just then.
-  useEffect(() => {
-    if (focusPhase !== 'in') return undefined;
-    if (svgRef.current) void getComputedStyle(svgRef.current).transform;
-    const go = () => setFocus((f) => (f && f.phase === 'in' ? { ...f, phase: 'open' } : f));
-    const frame = requestAnimationFrame(go);
-    const timer = setTimeout(go, 60);
-    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
-  }, [focusPhase]);
-  // Out: once the zoom has eased back, the map is the map again.
-  useEffect(() => {
-    if (focusPhase !== 'out') return undefined;
-    const timer = setTimeout(() => {
-      setFocus((f) => (f && f.phase === 'out' ? null : f));
-      if (focusIdRef.current == null) sceneRef.current?.freeze(false);
-    }, focusReduced ? FADE_MS : FOCUS_OUT_MS);
-    return () => clearTimeout(timer);
-  }, [focusPhase, focusReduced]);
-  const focusOpen = focusPhase === 'in' || focusPhase === 'open';
-  useEffect(() => {
-    if (!focusOpen) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') closeFocus(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [focusOpen, closeFocus]);
+    startFocus(id, at);
+  }, [startFocus]);
   // What comes forward: built only while focused, from every row on file whatever the filters.
   const focusId = focus?.id ?? null;
   const focusing = focusId != null;
@@ -272,8 +236,9 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       if (was && (was.width !== width || was.height !== height || was.left !== left || was.top !== top)) {
         sceneRef.current?.resize(next);
         // Focused: the zoom follows their dot to wherever the view put it, and the box's new middle.
-        const at = focusIdRef.current != null ? sceneRef.current?.screenOf(focusIdRef.current) : null;
-        if (at) setFocus((f) => (f && f.id === focusIdRef.current ? { ...f, dot: at.dot, you: at.you } : f));
+        const id = focusIdRef.current;
+        const at = id != null ? sceneRef.current?.screenOf(id) : null;
+        if (at) moveFocus((f) => (f.id === id ? { dot: at.dot, you: at.you } : null));
       }
       // Only publish a genuinely new size. A fresh object every observation is
       // never Object.is-equal, so React re-rendered on every callback —
@@ -290,7 +255,8 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const ro = new ResizeObserver(updateSize);
     ro.observe(container);
     return () => ro.disconnect();
-  }, []);
+    // The focus's ref and move never change (CircleFocus.js useFocus).
+  }, [focusIdRef, moveFocus]);
 
   // Selection moves the ring; it never rebuilds the scene.
   useEffect(() => {
@@ -352,21 +318,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
 
   // The map behind a focus: zoomed to their dot and blurred while it's open, back as it was while it goes.
   const look = focused ? focusLook(focused.kind, { reduced: focus.reduced }) : null;
-  const layer = focused && dimensions ? (() => {
-    const shown = focus.phase === 'open';
-    const dur = focus.reduced ? FADE_MS : shown ? FOCUS_IN_MS : FOCUS_OUT_MS;
-    const t = focusTransform(focus.dot, dimensions, look);
-    return {
-      // The map past the box's edge drawn too, or carrying a dot near the edge
-      // to the middle shows where the <svg> stops; the box clips it as ever.
-      overflow: 'visible',
-      transformOrigin: t.transformOrigin,
-      transform: shown && t.transform !== 'none' ? t.transform : 'translate(0px, 0px) scale(1)',
-      filter: shown ? t.filter : 'blur(0px) saturate(1)',
-      transition: `transform ${dur}ms ${focus.ease}, filter ${dur}ms ${focus.ease}`,
-      willChange: 'transform, filter',
-    };
-  })() : null;
+  const layer = focused && dimensions ? focusLayer(focus, dimensions, look) : null;
 
   return (
     <div className={focus ? 'cf-on' : undefined} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -385,14 +337,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
         <div className="galaxy-ring-pulse" style={{ boxSizing: 'border-box', border: '2.5px solid', borderRadius: '50%' }} />
       </div>
       {/* The ring that fills while the pointer rests on one of your connections: full, and they open. */}
-      <div ref={holdRef} className="focus-hold" style={{
-        position: 'absolute', left: 0, top: 0, display: 'none', pointerEvents: 'none', '--hold': `${HOVER_HOLD}ms`,
-      }}>
-        <svg style={{ display: 'block', overflow: 'visible' }}>
-          <circle className="track" fill="none" strokeWidth={2} />
-          <circle className="fill" fill="none" strokeWidth={2.5} strokeLinecap="round" pathLength={1} />
-        </svg>
-      </div>
+      <FocusHold holdRef={holdRef} />
       {/* The replay's date, written by the scene as it plays. */}
       <div ref={stampRef} style={{
         position: 'absolute', bottom: 56, left: '50%', transform: 'translateX(-50%)', display: 'none',
