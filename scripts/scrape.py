@@ -1717,6 +1717,10 @@ def push_company(people, company_name, on_saved=None):
         # keeps it, so a door's mutual count rises as rescans bring it up to date.
         if p.get("mutualCount") is not None:
             c["mutualCount"] = p["mutualCount"]
+        # Who the mutual line named (the reader's mutualNames): the app keeps each as a tie,
+        # so a door shows which of your connections to ask (lib/ties.js, lib/breach.js).
+        if p.get("mutualNames"):
+            c["mutualNames"] = p["mutualNames"]
         connections.append(c)
 
     connections = [c for c in connections if c.get("name") and c.get("profileUrl")]
@@ -1920,6 +1924,23 @@ SEARCH_RESULTS_JS = r"""
     if (!text || text.length > 60 || text.includes('mutual') || text.includes('Connect')) return;
     if (!urlMap[text]) urlMap[text] = url;
   });
+  // The names a mutual line starts with ("Maya Chen, Leo Park & 103 other mutual
+  // connections"), each with its link when the page links it: the mutual web
+  // (app/api/ingest, lib/ties.js). BRIDGE_RESULTS_JS reads the same.
+  const mutualNamesOf = (text, own) => {
+    const l = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!/\bmutual connections?$/i.test(l) || l.length > 300) return [];
+    const m = l.match(/^(.*?)\s*(?:\band|&) [\d,]+ others? mutual connections?$/i)
+      || l.match(/^(.+?) is a mutual connection$/i)
+      || l.match(/^(.+?)\s+are mutual connections$/i);
+    if (!m || !m[1]) return [];
+    const out = [];
+    for (const n of m[1].split(/\s*,\s*|\s+(?:and|&)\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 3)) {
+      const u = urlMap[n];
+      if (u && u !== own && !out.some((x) => x.profileUrl === u)) out.push({ profileUrl: u, name: n });
+    }
+    return out;
+  };
   const main = document.querySelector('[role="main"], main');
   const pageText = main ? main.innerText : '';
   const lines = pageText.split('\n').map(l => l.trim());
@@ -1931,6 +1952,7 @@ SEARCH_RESULTS_JS = r"""
       let headline = '';
       let location = '';
       let followers = null;
+      let mutualNames = null;
       let open = true;
       let j = i + 1;
       while (j < lines.length && j < i + 10 && !urlMap[lines[j]]) {
@@ -1940,6 +1962,10 @@ SEARCH_RESULTS_JS = r"""
         if (!l || l.match(/^•\s*(1st|2nd|3rd)/) || l === name) continue;
         const f = followersOf(l);
         if (f != null) { if (followers == null) followers = f; open = false; continue; }
+        if (l.includes('mutual connection') && !mutualNames) {
+          const named = mutualNamesOf(l, url);
+          if (named.length) mutualNames = named;
+        }
         if (l === 'Connect' || l === 'Follow' || l === 'Message' || l.includes('mutual connection')) { open = false; continue; }
         if (!open) continue;
         if (!headline) { if (before) headline = l; else open = false; continue; }
@@ -1950,6 +1976,7 @@ SEARCH_RESULTS_JS = r"""
       const person = { name, headline, profileUrl: url, imageUrl: imgMap[url] || '' };
       if (location) person.location = location;
       if (followers != null) person.followers = followers;
+      if (mutualNames) person.mutualNames = mutualNames;
       results.push(person);
     }
     i++;
@@ -3887,7 +3914,7 @@ def _wire_merge(page, profile_url, page_results):
         people.extend(voyager_people(data))
         total = total or voyager_total(data)
     if total:
-        _LIST_TOTALS[profile_url] = int(total)
+        _LIST_TOTALS[key] = int(total)
     own = (profile_url or "").rstrip("/").split("/")[-1]
     by_url = {c.get("profileUrl"): c for c in page_results}
     only_wire = 0
@@ -4459,6 +4486,21 @@ BRIDGE_RESULTS_JS = r"""
             return null;
           };
           // mutualCount: end
+          // mutualNames: begin
+          // The names a mutual line starts with, each of them one of your own
+          // connections: "Maya Chen, Leo Park & 103 other mutual connections" is
+          // Maya Chen and Leo Park. [] for a line that names nobody ("12 mutual
+          // connections") or isn't a mutual line. English only, as the count.
+          const mutualNamesIn = (text) => {
+            const l = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!/\bmutual connections?$/i.test(l) || l.length > 300) return [];
+            const m = l.match(/^(.*?)\s*(?:\band|&) [\d,]+ others? mutual connections?$/i)
+              || l.match(/^(.+?) is a mutual connection$/i)
+              || l.match(/^(.+?)\s+are mutual connections$/i);
+            if (!m || !m[1]) return [];
+            return m[1].split(/\s*,\s*|\s+(?:and|&)\s+/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+          };
+          // mutualNames: end
           const byName = new Map();
           for (const r of byHref.values()) {
             if (r.name) byName.set(r.name, byName.has(r.name) ? null : r);
@@ -4482,6 +4524,18 @@ BRIDGE_RESULTS_JS = r"""
           const give = (n) => {
             if (current && current.mutualCount == null && Number.isFinite(n) && n >= 1) current.mutualCount = n;
           };
+          // The mutual web (app/api/ingest, lib/ties.js): who the line names, with each
+          // one's link, read off the page's own links to them. A name two links share
+          // ("LinkedIn Member"), or none has, is left out: no tie is better than a wrong one.
+          const giveNames = (text) => {
+            if (!current || current.mutualNames) return;
+            const named = [];
+            for (const name of mutualNamesIn(text)) {
+              const r = byName.get(name);
+              if (r && r !== current && !named.some((x) => x.profileUrl === r.profileUrl)) named.push({ profileUrl: r.profileUrl, name: r.name });
+            }
+            if (named.length) current.mutualNames = named;
+          };
           // Where they are and their followers, from the same reading of the
           // card ("Ada Stone \u2022 2nd" / "VP Sales at Northwind Labs" /
           // "Seattle, Washington, United States" / "Follow" / the mutual line /
@@ -4500,13 +4554,16 @@ BRIDGE_RESULTS_JS = r"""
             let j = i;
             while (j < lines.length && j - i < 3 && !tailOf(lines[j]) && nameAt(lines[j]) !== undefined) j++;
             if (j > i && j < lines.length && tailOf(lines[j])) {
-              give(mutualCount(`${lines.slice(i, j).join(', ')} ${lines[j]}`));
+              const line = `${lines.slice(i, j).join(', ')} ${lines[j]}`;
+              giveNames(line);
+              give(mutualCount(line));
               open = false;
               i = j;
               continue;
             }
             const n = mutualCount(l);
             if (n != null) {
+              giveNames(l);
               give(n);
               open = false;
               continue;
@@ -5934,8 +5991,9 @@ def _company_search(url, company):
 
 
 def _company_people(found, company):
-    """A company search's people (Breach): the cards, not the names in their mutual lines, who are
-    your own connections and may work anywhere. Anything else as it is."""
+    """A company search's people (Breach), or a full mutual list's (scan_mutual_list, `company`
+    True): the cards, not the names in their mutual lines, who are your own connections and may
+    work anywhere, or know anyone. Anything else as it is."""
     if not company:
         return found
     return [c for c in found if not c.get("mutualOnly")]
@@ -6287,7 +6345,7 @@ def _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pa
                 wait_note(("empty", pg), f"page {pg} shows no one yet. It's read once its people show.")
             continue   # still loading, or nothing there yet: it looks again
         found = [c for c in found if not slug or slug not in c.get("profileUrl", "")]
-        found = _company_people(found, company)
+        found = _company_people(found, company or reach.get("mutuals"))
         listed = _listed(found)   # the people on the page, not the names in their mutual lines
         done.add(pg)
         read_now.add(pg)
@@ -6390,7 +6448,7 @@ def _read_by_hand_pages(page, bridge_name, profile_url, slug, start_page, max_pa
 
 def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINKEDIN_MAX_PAGES,
                        start_page=1, urn=None, on_save=None, manual=False, dig=False, from_start=False, own=False,
-                       company=None, company_url=None, round_end=False):
+                       company=None, company_url=None, round_end=False, mutuals=False, list_key=None):
     """
     Read one person's connections, from start_page until their list ends or
     max_pages. Takes an already-open Playwright page.
@@ -6421,6 +6479,12 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
             breach_key. The names in each card's mutual line (your own connections) aren't kept.
     round_end: max_pages is the end of one round of their list (scrape_bridge's round_pages),
             and says so when it stops there.
+    mutuals: Read all mutuals (scan_mutual_list): the mutual connections you share with them,
+            your own connections who know them, through LinkedIn's search of their connections
+            filtered to your 1st degree (mutual_search_url). Their profile is opened for their
+            search id only when it isn't known. The names in each card's mutual line aren't kept.
+    list_key: where this list's progress is noted, when not under `profile_url` (scan_mutual_list's
+            mutuals_key): their circle's note stays their circle's.
 
     Timing is calibrated from successful runs:
     - 30s profile render wait (LinkedIn is slow)
@@ -6429,18 +6493,21 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     - Playwright locator click for Next (not JS — more reliable)
     """
     slug = "" if own or company else profile_url.split("/in/")[1].rstrip("/")
+    key = list_key or profile_url
     reach = {"last": start_page - 1, "more": False, "urn": urn, "found": 0, "limited": False,
              "pushed_back": False}
     if own:
         reach["own"] = True
     if company:
         reach["company"] = company
+    if mutuals:
+        reach["mutuals"] = True
     whose = "your" if own else "their"
     # The pages of their list read before (record_bridge_progress's "readPages"), so
     # the bookmark can move past them once the page before them is read; and the
     # pages this run reads, for the note.
-    read_before = set() if from_start else pages_known_read(load_bridge_progress().get(profile_url))
-    reach["read"] = _PAGES_READ[profile_url] = set()
+    read_before = set() if from_start else pages_known_read(load_bridge_progress().get(key))
+    reach["read"] = _PAGES_READ[key] = set()
 
     known_urn = urn
     if own:
@@ -6567,7 +6634,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     # Step 4: search everyone they are connected to. network=["F","S","O"] is
     # 1st, 2nd and 3rd+ — all of them; the app drops your own connections when
     # it saves. It used to be announced as a "3rd+ filter", which it never was.
-    search_url = YOUR_SEARCH_URL if own else company_url if company else \
+    search_url = YOUR_SEARCH_URL if own else company_url if company else mutual_search_url(urn) if mutuals else \
         f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%2C%22S%22%2C%22O%22%5D&connectionOf=%5B%22{urn}%22%5D"
     if EXPERIMENT["on"] and not _drip_before_search():
         reach["more"] = True
@@ -6581,7 +6648,8 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
         reach["more"] = True
         print("  " + budget_message(kind))
         return [], "budget", reach
-    opening = f"the people search for {company}" if company else f"{whose} connections"
+    opening = f"the people search for {company}" if company else \
+        f"the mutual connections you share with {bridge_name}" if mutuals else f"{whose} connections"
     if start_page > 1:
         search_url += f"&page={start_page}"
         print(f"  Opening {opening} at page {start_page}...")
@@ -6736,7 +6804,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
     except Exception:
         total = None
     if total:
-        _LIST_TOTALS[profile_url] = int(total)
+        _LIST_TOTALS[key] = int(total)
         pages = -(-total // 10)
         print(f"  About {total:,} results in {'the search for ' + company if company else whose + ' list'}: {pages} pages"
               + (f", and LinkedIn shows the first {LINKEDIN_MAX_PAGES}." if pages > LINKEDIN_MAX_PAGES else "."))
@@ -6748,7 +6816,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
                   f"so about {total - LINKEDIN_MAX_PAGES * 10:,} of your connections are past its end. Where they are "
                   f"can come from Dig deeper later.")
     if manual:
-        return _read_by_hand(page, bridge_name, profile_url, slug, start_page, max_pages, reach, on_save, total,
+        return _read_by_hand(page, bridge_name, key, slug, start_page, max_pages, reach, on_save, total,
                              read_before=read_before)
 
     until = "until their list ends" if max_pages >= LINKEDIN_MAX_PAGES else f"up to page {max_pages}"
@@ -6820,7 +6888,7 @@ def _scrape_one_bridge(page, bridge_name, bridge_id, profile_url, max_pages=LINK
 
         PACE_STATE["pages"] += 1
         page_results = [c for c in page_results if not slug or slug not in c.get("profileUrl", "")]
-        page_results = _company_people(page_results, company)
+        page_results = _company_people(page_results, company or mutuals)
         listed = _listed(page_results)   # the people on the page, not the names in their mutual lines
         if EXPERIMENT["on"]:
             page_results = _wire_merge(page, profile_url, page_results)
@@ -7377,6 +7445,175 @@ def scan_company_search(company, degrees=BREACH_DEGREES, pages=BREACH_ROUND, hea
     after = (f" The next round carries on from page {reach['last'] + 1}." if reach["more"]
              else " That's every page LinkedIn's search shows for it.")
     print(f"\nDone! {reach['found']} people found for {company} this round.{after}")
+    return _read(read, status)
+
+
+# Read all mutuals (the mutual web, Blake, 2026-10-16): the "N other mutual connections" on
+# someone's card, read in full, so every one of your connections who knows them is a tie
+# (lib/ties.js, source "mutual-list"). Paid, so only when you press it, on a Breach target or a
+# top-tier bridge, never by itself: it is LinkedIn's search of their connections filtered to
+# your own (network=["F"]), read the way a circle is (_scrape_one_bridge), by itself or by hand,
+# in rounds, with the same breaks, daily limit and push-back. Their profile is opened for their
+# search id only when no earlier read of their circle kept it (a profile view).
+MUTUALS_ROUND = 5          # pages in a round (lib/mutual-web-client.js MUTUAL_ROUND)
+MUTUALS_ROUND_MAX = 10
+
+
+def mutuals_key(profile_url):
+    """Where one person's full mutual list is noted in bridge-progress.json: never their circle's note."""
+    return f"mutuals:{profile_url}"
+
+
+def mutual_search_url(urn):
+    """LinkedIn's search of someone's connections, your 1st degree only: the mutual connections you share."""
+    return f"https://www.linkedin.com/search/results/people/?network=%5B%22F%22%5D&connectionOf=%5B%22{urn}%22%5D"
+
+
+def push_mutual_list(person, people, first=False):
+    """Their mutual connections to the app as ties (POST /api/ties, source "mutual-list"): the
+    person and each of your connections the list showed. `first`: the run's first save, which
+    counts one list read in the web's size."""
+    mutuals = [{"profileUrl": p.get("profileUrl", "").strip(), "name": p.get("name", "").strip()}
+               for p in people if p.get("profileUrl")]
+    added = 0
+    for i in range(0, max(1, len(mutuals)), 200):
+        batch = mutuals[i:i + 200]
+        if not batch:
+            break
+        resp = requests.post(f"{APP_URL}/api/ties", headers=app_headers(), json={
+            "source": "mutual-list",
+            "person": {"profileUrl": person["profile_url"], "name": person.get("name") or ""},
+            "mutuals": batch,
+            "list": bool(first and i == 0),
+            "userId": _active_user_id,
+        })
+        if resp.status_code != 200:
+            print(f"  Push error: {resp.status_code} {resp.text[:200]}")
+            raise SaveFailed(f"the app answered {resp.status_code}: {resp.text[:160]}")
+        result = resp.json()
+        added += int(result.get("added") or 0)
+        print(f"  Sent {len(batch)} → {result.get('added', 0)} new ties, {result.get('again', 0)} seen again")
+    return added
+
+
+def scan_mutual_list(profile_url, pages=MUTUALS_ROUND, headless=False):
+    """One round of the mutual connections you share with one person (mutual_search_url), from where
+    the last round stopped, by itself or by hand (manual mode), each page a search counted in the
+    daily limit. Every card is one of your connections who knows them: sent as a tie, never as a
+    person (push_mutual_list). Once every page is read, the next round reads from page 1 again.
+    Raises as scrape_bridge does."""
+    from playwright.sync_api import sync_playwright
+
+    try:
+        pages = int(pages)
+    except (TypeError, ValueError):
+        pages = MUTUALS_ROUND
+    pages = max(1, min(MUTUALS_ROUND_MAX, pages))
+
+    cd = read_cooldown()
+    if cd:
+        raise CoolingDown(cd)
+    left, kind = searches_left()
+    if left <= 0:
+        print(budget_message(kind))
+        raise BudgetReached(0, kind)
+
+    params = {"profile_url": f"eq.{profile_url}", "limit": "1", "order": "power_score.desc"}
+    if _active_user_id:
+        params["user_id"] = f"eq.{_active_user_id}"
+    found = read_connections(params=params)
+    if not found:
+        print(f"'{profile_url}' isn't in your network.")
+        return
+    person = found[0]
+    name = person.get("name") or "them"
+
+    key = mutuals_key(person["profile_url"])
+    progress = load_bridge_progress()
+    # Their search id, from any earlier read of their circle or of this list: no profile view then.
+    urn = (progress.get(key) or {}).get("urn") or (progress.get(person["profile_url"]) or {}).get("urn")
+    start_page, fresh = your_list_start(progress.get(key))
+    if fresh:
+        forget_bridge_progress(key)
+        print(f"Every page of the mutual connections you share with {name} was read before: reading them "
+              "again from page 1, to find anyone new.")
+    if not urn and profiles_left() <= 0:
+        raise BudgetReached(0, "profiles")
+    last_page = min(LINKEDIN_MAX_PAGES, start_page + pages - 1)
+    manual = manual_reads() and not headless
+    if manual:
+        CHROME_WINDOW["show"] = True
+    print(f"\n=== Read all mutuals: {'carrying on with' if start_page > 1 else 'reading'} the mutual connections "
+          f"you share with {name}, pages {start_page} to {last_page} ===\n")
+    print(f"  A round is {pages} page{'' if pages == 1 else 's'}, each a search counted in your daily limit. "
+          "Each person on them is one of your connections who knows them: a tie, nothing more.")
+
+    read = []
+    # A list is counted once, at its first round's first save: a round that carries one on is the same list.
+    sent = {"first": start_page == 1}
+
+    def save(connections, last, more, urn_now=None):
+        if connections:
+            print(f"  Saving {len(connections)} ties (through page {last})...")
+            push_mutual_list(person, connections, first=sent["first"])
+            sent["first"] = False
+            read.extend(connections)
+        record_bridge_progress(key, name, last, more, urn_now)
+
+    outcome = None
+    try:
+        with sync_playwright() as p:
+            browser = launch_chrome(p, headless=headless)
+            try:
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                page.set_default_timeout(120000)
+                page.set_default_navigation_timeout(120000)
+                if not ensure_logged_in(page, stop_on_checkpoint=True):
+                    raise NotSignedIn()
+                outcome = _scrape_one_bridge(page, name, person.get("id"), person["profile_url"],
+                                             max_pages=last_page, start_page=start_page, urn=urn, on_save=save,
+                                             manual=manual, mutuals=True, list_key=key)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+    except (SaveFailed, NotSignedIn, LinkedInPushedBack):
+        if stop_requested():
+            return _read([], "stopped")
+        raise
+    except Exception:
+        if outcome is None:
+            if stop_requested():
+                return _read([], "stopped")
+            raise
+
+    connections, status, reach = outcome
+    if connections:
+        print(f"\nSaving {len(connections)} of the mutual connections you share with {name}...")
+        save(connections, reach["last"], reach["more"], reach.get("urn"))
+    elif status == "success" and (start_page > 1 or reach["last"] >= 1 or reach.get("read")):
+        record_bridge_progress(key, name, reach["last"], reach["more"], reach.get("urn"))
+    elif status == "empty":
+        print(f"  LinkedIn's search shows no mutual connections with {name}.")
+    elif status == "private":
+        print(f"  {name}'s connections are hidden, so their mutual connections can't be listed.")
+
+    if status == "stopped" or stop_requested():
+        return _read(read, "stopped")
+    if reach["limited"]:
+        set_cooldown(until=next_month_start_pacific(), reason="LinkedIn's monthly search limit")
+        raise SearchLimitReached(len(read))
+    if reach.get("pushed_back"):
+        why = reach.get("pushback_reason") or "a page that would not open"
+        set_cooldown(seconds=DAY_SECONDS, reason=f"LinkedIn pushed back: {why}")
+        raise LinkedInPushedBack(len(read), why)
+    if reach.get("budget"):
+        raise BudgetReached(len(read), reach["budget"])
+
+    after = (f" The next round carries on from page {reach['last'] + 1}." if reach["more"]
+             else " That's every page of them.")
+    print(f"\nDone! {reach['found']} mutual connections with {name} read this round.{after}")
     return _read(read, status)
 
 
@@ -9688,6 +9925,7 @@ Examples:
   python3 scripts/scrape.py --refresh                # Only what is new since last run
   python3 scripts/scrape.py --your-connections       # Locations and mutuals, from LinkedIn's search
   python3 scripts/scrape.py --breach "Acme"          # Breach: one round of a company's people
+  python3 scripts/scrape.py --mutuals URL            # Read all mutuals: one round of someone's mutual list
   python3 scripts/scrape.py --bridge "Jane Doe"      # Scrape one bridge's connections
   python3 scripts/scrape.py --rescrape "Name"        # Delete + re-scrape a bridge
         """,
@@ -9712,8 +9950,13 @@ Examples:
                         help="Breach: one round of a company's people through LinkedIn's people search for its name, "
                              "by itself or by hand, carried on from where the last round stopped. Each page is a search "
                              "counted in your daily limit, so a company is mapped over days")
+    parser.add_argument("--mutuals", type=str,
+                        help="Read all mutuals: one round of the mutual connections you share with one person, "
+                             "found by their LinkedIn profile URL, each a tie in the mutual web. Each page is a search "
+                             "counted in your daily limit; it carries on where the last round stopped")
     parser.add_argument("--round", type=int, default=None,
                         help=f"With --breach: pages to read this round, 1 to {BREACH_ROUND_MAX} ({BREACH_ROUND} if not given). "
+                             f"With --mutuals: 1 to {MUTUALS_ROUND_MAX} ({MUTUALS_ROUND} if not given). "
                              f"With --bridge-url or --bridge: one round of their list, 1 to {CIRCLE_ROUND_MAX} pages, from "
                              "where the last stopped (or from page 1 with --from-start)")
     parser.add_argument("--degrees", type=str, default=BREACH_DEGREES,
@@ -9933,6 +10176,9 @@ Examples:
         elif args.breach:
             scan_company_search(args.breach, degrees=args.degrees,
                                 pages=BREACH_ROUND if args.round is None else args.round, headless=args.headless)
+        elif args.mutuals:
+            scan_mutual_list(args.mutuals, pages=MUTUALS_ROUND if args.round is None else args.round,
+                             headless=args.headless)
         elif args.search:
             scrape_full(headless=args.headless)
         elif args.full:

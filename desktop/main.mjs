@@ -50,7 +50,7 @@ import {
   userDataPath, isAppUrl, isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv,
   LINKEDIN_PANEL_PARTITION, chromeUserAgent, browserPluginInstalled, panelProfileSlug, createPanelCover,
   sectionUrl, sectionOf, profileAddress, historyMoves, historyKey,
-  INVITE_WATCH_JS, INVITE_WATCH_WORLD, inviteSentFor,
+  INVITE_WATCH_JS, INVITE_WATCH_WORLD, inviteSentFor, MUTUAL_WATCH_JS, mutualsSeenFor,
 } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -354,6 +354,12 @@ function lockDown(ses) {
 //            panel's page (lib.mjs INVITE_WATCH_JS) prints one line, and the app's
 //            page marks the request sent, puts the panel away and says so
 //            (watchInvites, inviteSent; Blake, 2026-10-16)
+//   mutuals  a profile's mutual line ("Maya Chen, Leo Park and 103 other mutual
+//            connections"), read where the panel already shows it by a second
+//            watcher in that world (lib.mjs MUTUAL_WATCH_JS): its line is sent to the
+//            app's own server (POST /api/ties), once a profile a day, and kept as
+//            ties of the mutual web (lib/ties.js). Nothing is opened for it
+//            (mutualsSeen; Blake, 2026-10-16)
 //
 // The trade-off, said plainly: the debugging port listens on 127.0.0.1 only,
 // on a port the system picks at each start, and only while the app runs with a
@@ -374,6 +380,7 @@ let panelInsets = { bottom: 0 };  // what the page keeps clear under it, likewis
 let panelMode = null;      // 'profile' (a profile link), 'section' (the LinkedIn tab) or 'scan' (anything else that showed it), while shown
 let panelSection = null;   // in 'section' mode: the section its button opened (lib.mjs LINKEDIN_SECTIONS)
 const invitesSeen = new Set();   // the profiles whose "Invitation sent" was passed on, this run: once each
+const mutualsSent = new Map();   // the profiles whose mutual line was sent, and the day: once a profile a day
 // Over the panel: a still picture of it while the page has something open there.
 const panelCover = createPanelCover({
   capture: async () => {
@@ -414,7 +421,7 @@ async function createPanel() {
     for (const name of ['did-navigate', 'did-navigate-in-page']) contents.on(name, sendPanelState);
     // "Invitation sent" on a profile a link opened: the watcher in each page, and its line.
     contents.on('dom-ready', () => watchInvites(contents));
-    contents.on('console-message', (event) => inviteSent(event?.message));
+    contents.on('console-message', (event) => { inviteSent(event?.message); mutualsSeen(event?.message); });
     // Cmd+[ and Cmd+] while LinkedIn has the keyboard.
     contents.on('before-input-event', (event, input) => { if (historyShortcut(input)) event.preventDefault(); });
     await contents.loadURL('about:blank');
@@ -650,6 +657,25 @@ function watchInvites(contents) {
   const url = contents.getURL();
   if (url === 'about:blank' || panelRoute(url, { testOrigin: PANEL_TEST_ORIGIN }) !== 'panel') return;
   contents.executeJavaScriptInIsolatedWorld(INVITE_WATCH_WORLD, [{ code: INVITE_WATCH_JS }]).catch(() => {});
+  contents.executeJavaScriptInIsolatedWorld(INVITE_WATCH_WORLD, [{ code: MUTUAL_WATCH_JS }]).catch(() => {});
+}
+
+/**
+ * A console line from the panel's page: when it is the mutual watcher's, on the profile
+ * still showing (lib.mjs mutualsSeenFor), the line goes to the app's own server as ties
+ * (POST /api/ties, source 'profile'), once a profile a day. Quietly: the web is extra,
+ * and a server not up yet just misses one.
+ */
+function mutualsSeen(message) {
+  if (!panel || !ready || !origin) return;
+  const seen = mutualsSeenFor(message, { url: panel.webContents.getURL(), seen: mutualsSent, testOrigin: PANEL_TEST_ORIGIN });
+  if (!seen) return;
+  mutualsSent.set(seen.slug, new Date().toISOString().slice(0, 10));
+  fetch(`${origin}/api/ties`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(seen.body),
+  }).catch(() => {});
 }
 
 /**

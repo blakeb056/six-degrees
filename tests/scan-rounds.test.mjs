@@ -232,7 +232,7 @@ test('a Scan button: page 1 for someone never scanned, the next round for someon
 
 test('--round goes only to a scanner that knows it on a circle: plugins 1.0.10 on, and the built-in one', () => {
   assert.equal(PLUGIN_FLAGS_SINCE['circle-round'], '1.0.10');
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.10');
+  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.11');
   const plugin = (version) => ({ from: 'plugin', plugin: { id: 'auto-scan', name: 'Auto scan', version } });
   assert.equal(pluginHas(plugin('1.0.9'), 'circle-round'), false);
   assert.equal(pluginHas(plugin('1.0.10'), 'circle-round'), true);

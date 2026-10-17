@@ -6,7 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The mutual web.** Every mutual line Sixgree already reads ("Maya Chen, Leo Park & 103 other
+  mutual connections") is now kept as ties: that person was seen with Maya, and with Leo. They come
+  from every card a scan reads (a circle, your connections, a company for Breach) and from any
+  profile you have open in Sixgree's LinkedIn browser, its mutual line read where it already shows.
+  Nothing is opened just to collect them. A tie seen again counts up, with the date it was last seen.
+  A tie means seen together, never close.
+- **Past the 1,000.** Someone seen with one of your connections is reachable through them, even when
+  that connection's circle scan stopped at LinkedIn's 1,000 or was never run. They show as "seen
+  outside the scan", lighter and with a dashed ring, in Network Circle, Bridge Chains' focus,
+  Separation (marked on the way in) and Breach. They are never counted as scanned, and a circle
+  with only them in it still offers Scan their circle.
+- **Known through.** A person's card, and each dot in the focus, says how you know them: "Known
+  through: Maya Chen, Leo Park (seen together 3 times, last on Oct 16, 2026)".
+- **Show ties.** A switch under Network Circle, in Bridge Chains and in the focus draws thin lines
+  between people who were seen together, for the person or circle in hand only, never the whole web
+  at once.
+- **Warm doors in Breach.** A door whose mutual line named one of your connections says who to ask
+  ("Ask Maya Chen"), counts that as a mutual, and comes first.
+- **Read all mutuals.** On Breach's Summit and on your S and A tier connections, a button reads the
+  "N other mutual connections" list in full, in rounds of 5 pages, by itself or by hand, with the
+  same breaks, daily limit and push-back as a circle scan. Each person on it becomes a tie. It only
+  ever runs when you press it.
+- **Settings → Your data** says how big the web is, as what was seen ("1,240 ties from 3,100 cards,
+  12 profiles and circle scans"), never as if it were complete.
+
 ### Changed
+- The scanner plugins are 1.0.11.
 - **Separation, in tiers.** The people to connect with are in sections, S to D, each with a header in
   its tier's colour, how many it holds, its scores and a fold. The tier chips show and hide whole
   sections, more than one at a time; inside a section the order is the list's own (rank, or the

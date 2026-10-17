@@ -1,6 +1,8 @@
 import { db as supabase } from '../../../lib/db';
 import { uniqueByProfile, splitAlreadyConnected, toIsoDate, refreshNotifications, mutualCountOf, parseHeadline, locationOf, followersCountOf } from '../../../lib/ingest';
-import { tiePairs } from '../../../lib/ties';
+import { tiePairs, cardTies, circleTieUrls } from '../../../lib/ties';
+import { recordTies, countWeb } from '../../../lib/ties-store';
+import { getDb } from '../../../lib/db-client';
 import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
@@ -130,17 +132,45 @@ export async function POST(request) {
       records = split.keep;
       alreadyConnected = split.alreadyConnected;
       // Each of your connections in someone's circle is a tie between the two
-      // (lib/ties.js). Kept quietly: a failure here never costs the scan's save.
+      // (lib/ties.js), seen again on every scan that finds them there. Kept
+      // quietly: a failure here never costs the scan's save. Only those the
+      // page listed: a name in a card's mutual line is your connection and that
+      // card's person's, not necessarily the circle's (circleTieUrls).
       if (degree === 2 && bridgeId && split.connected.length) {
         try {
           const { data: owner } = await supabase.from('linkedin_connections')
             .select('profile_url').eq('id', bridgeId).eq('user_id', userId).limit(1);
-          const pairs = tiePairs(owner?.[0]?.profile_url, split.connected).map((p) => ({ user_id: userId, ...p }));
-          if (pairs.length) {
-            await supabase.from('connection_ties').upsert(pairs, { onConflict: 'user_id,a_url,b_url', ignoreDuplicates: true });
-          }
+          const pairs = tiePairs(owner?.[0]?.profile_url, circleTieUrls(connections, split.connected));
+          if (pairs.length) recordTies(getDb(), { userId, pairs, source: 'circle' });
         } catch { /* ties are extra; the circle is what matters */ }
       }
+    }
+
+    // Someone kept only through the mutual web (seen_via 'ties', lib/ties-store.js)
+    // whom a circle or a company scan now reads: that row becomes the scan's, with
+    // what the card says, so any request marked on it stays and nobody is twice.
+    // Your own connections come in through promotion below, as anyone past the 1st does.
+    let adopted = 0;
+    if (degree > 1 && userId && records.length > 0) {
+      try {
+        const urls = records.map((r) => r.profile_url);
+        const tieOnly = new Map();
+        for (let i = 0; i < urls.length; i += 100) {
+          const { data } = await supabase.from('linkedin_connections').select('id, profile_url')
+            .in('profile_url', urls.slice(i, i + 100)).eq('user_id', userId).eq('seen_via', 'ties');
+          (data || []).forEach((r) => tieOnly.set(r.profile_url, r.id));
+        }
+        const rest = [];
+        for (const rec of records) {
+          const id = tieOnly.get(rec.profile_url);
+          if (!id) { rest.push(rec); continue; }
+          const { error } = await supabase.from('linkedin_connections')
+            .update({ ...rec, seen_via: null, updated_at: new Date().toISOString() }).eq('id', id);
+          if (error) rest.push(rec);
+          else adopted += 1;
+        }
+        records = rest;
+      } catch { /* they're saved as new below instead */ }
     }
 
     // Pre-filter: find which profile_urls already exist for this specific context
@@ -249,6 +279,22 @@ export async function POST(request) {
     if (insertError) {
       console.error('Supabase insert error:', insertError);
       return Response.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // The mutual web (lib/ties.js): every card whose mutual line named your
+    // connections ("Maya Chen, Leo Park & 103 other mutual connections") is that
+    // person seen with each of them. Free: the card was read anyway. Kept quietly,
+    // like the circle's ties: a failure never costs the scan's save.
+    let tiesSeen = 0;
+    if (userId) {
+      try {
+        const { pairs, cards } = cardTies(connections);
+        if (pairs.length) {
+          const kept = recordTies(getDb(), { userId, pairs, source: 'card' });
+          tiesSeen = kept.added + kept.again;
+          countWeb(getDb(), { cards });
+        }
+      } catch { /* ties are extra */ }
     }
 
     // How many mutual connections you share with someone is one fact about
@@ -446,6 +492,10 @@ export async function POST(request) {
       alreadyConnected,
       duplicates,
       promoted,
+      // Ties the cards' mutual lines showed (lib/ties.js cardTies), new and seen again.
+      ties: tiesSeen,
+      // People known only through ties whom this scan read, their rows now the scan's.
+      adopted,
     });
   } catch (err) {
     console.error('Ingest error:', err);

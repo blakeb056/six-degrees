@@ -1,4 +1,8 @@
 import { db as supabase } from '../../../lib/db';
+import { getDb } from '../../../lib/db-client';
+import { allTies } from '../../../lib/ties-store';
+import { extendedNetwork, firstDegreeByKey } from '../../../lib/mutual-web';
+import { urlKey } from '../../../lib/ties';
 
 // One read endpoint for the whole client.
 //
@@ -26,32 +30,44 @@ export async function GET(request) {
     // Scores stored by an older scoring model are recomputed once, here.
     try { await supabase.rpc('rescore_if_stale'); } catch { /* serve what's stored */ }
 
-    const [d1, d2, d3] = await Promise.all([forDegree(1), forDegree(2), forDegree(3)]);
+    const [d1, d2all, d3] = await Promise.all([forDegree(1), forDegree(2), forDegree(3)]);
 
-    const firstError = d1.error || d2.error || d3.error;
+    const firstError = d1.error || d2all.error || d3.error;
     if (firstError) {
       return Response.json({ error: firstError.message }, { status: 500 });
     }
 
-    // How many ties between your own connections circle scans have kept (lib/ties.js),
-    // for network health on the Scores tab.
+    // People known only through the mutual web (seen_via 'ties', lib/ties-store.js)
+    // are never a scan's: kept out of the 2nd degree, and shown only through
+    // their ties, in `seen` below.
+    const degree2 = (d2all.data || []).filter((r) => r.seen_via !== 'ties');
+    const tiePeople = (d2all.data || []).filter((r) => r.seen_via === 'ties');
+
+    // The mutual web (lib/ties.js): everyone a tie links to one of your
+    // connections, outside what a scan of their circle read, attached to them as
+    // "seen outside the scan" (lib/mutual-web.js extendedNetwork). And how many
+    // ties are between two of your own connections, for network health on the
+    // Scores tab (what circle scans alone used to keep).
     let ties = 0;
+    let seen = [];
     try {
-      let tq = supabase.from('connection_ties').select('a_url');
-      if (userId) tq = tq.eq('user_id', userId);
-      const { data } = await tq;
-      ties = data?.length || 0;
+      const all = allTies(getDb(), userId || null);
+      const mine = firstDegreeByKey(d1.data || []);
+      ties = all.filter((t) => mine.has(urlKey(t.a)) && mine.has(urlKey(t.b))).length;
+      seen = extendedNetwork({ degree1: d1.data || [], degree2, degree3: d3.data || [], tiePeople, ties: all });
     } catch { /* an older database: none yet */ }
 
     return Response.json({
       ties,
       degree1: d1.data || [],
-      degree2: d2.data || [],
+      degree2,
       degree3: d3.data || [],
+      seen,
       counts: {
         degree1: d1.data?.length || 0,
-        degree2: d2.data?.length || 0,
+        degree2: degree2.length,
         degree3: d3.data?.length || 0,
+        seen: seen.length,
       },
     });
   } catch (err) {

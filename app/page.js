@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { fillsCircles, loadScanNotes, NO_SCAN_NOTES } from '../lib/scraper-client';
 import useScanner, { useScanShows } from './components/useScanner';
 import { loadNetwork } from '../lib/network';
+import { forgetTies } from '../lib/ties-client';
 import { resolveView } from './components/views';
 import { peopleByDegree } from '../lib/degrees';
 import { separationCounts } from '../lib/separation';
@@ -86,6 +87,11 @@ function HomeInner() {
   const [degree2, setDegree2] = useState([]);
   // People found only by company scans: 3rd degree in Network Circle's filter.
   const [degree3, setDegree3] = useState([]);
+  // The mutual web's extended network (lib/mutual-web.js extendedNetwork): people a
+  // tie attaches to one of your connections outside what a scan of their circle
+  // read, "seen outside the scan". Drawn where 2nd-degree people are, marked, and
+  // never counted as scanned: every count of circles and scans goes by degree2.
+  const [seen, setSeen] = useState(NO_DEGREE2);
   // The Filters panel's grid, one for each tab: which tiers show, at which
   // degrees (lib/tier-grid.js). Network Circle starts with your connections
   // alone; Degrees with everything it has; Map with everyone, 1st to 3rd.
@@ -141,7 +147,7 @@ function HomeInner() {
       // is lib/csv.js openNetworkSource: a scan you've made wins over a CSV.
       const csv = await loadCsvNetwork();
       if (csv) { setCsvMode(true); setCsvSource(csv.source || 'csv'); }
-      const { degree1: d1, degree2: d2, degree3: d3 = [] } = IS_DEMO
+      const { degree1: d1, degree2: d2, degree3: d3 = [], seen: web = [] } = IS_DEMO
         ? await loadDemoNetwork()
         : csv
         ? csv
@@ -152,6 +158,7 @@ function HomeInner() {
       setDegree1(d1);
       setDegree2(d2);
       setDegree3(d3 || []);
+      setSeen(web.length ? web : NO_DEGREE2);
       // The step a setup was left on, kept with your settings: the scanner's
       // steps come after the CSV has put people in your network, and turning
       // App Management on makes macOS quit and reopen Sixgree, perhaps at a
@@ -165,7 +172,7 @@ function HomeInner() {
         setSetupOpen(setupMode({ firstDegree: d1.length, secondDegree: d2.length, saved, memory }));
         if (d1.length > 0) rememberSetup({ finished: true });
       }
-      shapeRef.current = networkShape(d1, d2);
+      shapeRef.current = networkShape(d1, d2, web);
       setStats(statsFor(d1, d2));
       setLoading(false);
       if (!IS_DEMO && !csv) loadScanNotes().then(setScanNotes);
@@ -180,14 +187,17 @@ function HomeInner() {
   const reload = useCallback(async () => {
     if (IS_DEMO || csvMode || !userId) return;
     try {
-      const [{ degree1: d1, degree2: d2, degree3: d3 = [] }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
+      const [{ degree1: d1, degree2: d2, degree3: d3 = [], seen: web = [] }, notes] = await Promise.all([loadNetwork(userId), loadScanNotes()]);
       setScanNotes((prev) => (JSON.stringify(prev) === JSON.stringify(notes) ? prev : notes));
       setDegree3((prev) => (prev.length === (d3 || []).length ? prev : d3 || []));
-      const shape = networkShape(d1, d2);
+      const shape = networkShape(d1, d2, web);
       if (shape === shapeRef.current) return;
       shapeRef.current = shape;
+      // New people or new ties: the web is loaded again where it's read (lib/ties-client.js).
+      forgetTies();
       setDegree1(d1);
       setDegree2(d2);
+      setSeen(web.length ? web : NO_DEGREE2);
       setStats(statsFor(d1, d2));
     } catch { /* the app restarting, say: keep what's on screen */ }
   }, [userId, csvMode]);
@@ -225,7 +235,8 @@ function HomeInner() {
   // empty list in network mode was a new [] each time, which was enough on its own.
   // Network Circle draws the degrees picked in the Filter panel, each person
   // once, at the nearest degree they're found (lib/degrees.js).
-  const byDegree = useMemo(() => peopleByDegree(degree1, degree2, degree3), [degree1, degree2, degree3]);
+  // The people seen outside the scan are 2nd degree here too, each once at the nearest degree.
+  const byDegree = useMemo(() => peopleByDegree(degree1, seen.length ? [...degree2, ...seen] : degree2, degree3), [degree1, degree2, degree3, seen]);
   const grid = grids[gridKey];
   // Network Circle goes by the degree the Galaxy draws each person at, the 1st to
   // the 6th (lib/galaxy.js chainedDegrees): its chips under the map and its Filters
@@ -283,8 +294,8 @@ function HomeInner() {
   const unscannedView = isDegreesMode && !isSeparation && visualMode === 'unscanned';
   // Separation counts each person once, at the nearest degree a chain of
   // scanned circles reaches them, and company scans' finds at 3rd (lib/separation.js).
-  const sepCounts = useMemo(() => (isSeparation ? separationCounts([...degree2, ...degree3], degree1) : null),
-    [isSeparation, degree1, degree2, degree3]);
+  const sepCounts = useMemo(() => (isSeparation ? separationCounts([...degree2, ...seen, ...degree3], degree1) : null),
+    [isSeparation, degree1, degree2, degree3, seen]);
   const panelCounts = useMemo(() => (isSeparation ? sepCounts : gridCounts(isDegreesMode
       ? { 1: unscannedView ? notScannedYet(degree1, reachIndex(degree1, degree2, scanNotes)).todo : degree1.filter((c) => bridgeIds.has(c.id)), 2: byDegree[2] }
       : byChain || byDegree)), [isSeparation, sepCounts, isDegreesMode, unscannedView, degree1, degree2, scanNotes, bridgeIds, byDegree, byChain]);
@@ -505,6 +516,10 @@ function HomeInner() {
             fullDegree2: degree2,
             // Company scans' finds, for Separation's 3rd degree, and who it ranks.
             degree3,
+            // The mutual web's people seen outside the scan, for the views that draw them, marked.
+            seen,
+            // The sample and a CSV have no ties to read.
+            webOff: IS_DEMO || csvMode,
             showsAt: sepShows,
             scanNotes,
             canScan,
@@ -544,6 +559,7 @@ function HomeInner() {
           csvSource={IS_DEMO ? 'sample' : csvMode ? csvSource : null}
           scanNotes={scanNotes}
           canScan={canScan}
+          webOff={IS_DEMO || csvMode}
         />
         {canScan && <NetworkRefresh onChange={reload} live={view.key === 'chain' || view.key === 'unscanned'} />}
 
@@ -559,15 +575,15 @@ function HomeInner() {
  * whose circle, and how they're marked. Equal fingerprints mean nothing a view
  * draws has changed.
  */
-function networkShape(d1, d2) {
+function networkShape(d1, d2, seen = []) {
   let h = 0x811c9dc5;
   const mix = (text) => {
     for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
   };
-  for (const r of [...d1, ...d2]) {
-    mix(`${r.id}|${r.degree}|${r.source_connection_id ?? ''}|${r.unlocked_from_bridge_id ?? ''}|${r.tier}|${r.power_score}|${r.unlock_status ?? ''}|${r.profile_image_url ?? ''};`);
+  for (const r of [...d1, ...d2, ...seen]) {
+    mix(`${r.id}|${r.degree}|${r.source_connection_id ?? ''}|${r.unlocked_from_bridge_id ?? ''}|${r.tier}|${r.power_score}|${r.unlock_status ?? ''}|${r.profile_image_url ?? ''}|${r.seen_with?.n ?? ''};`);
   }
-  return `${d1.length}:${d2.length}:${h >>> 0}`;
+  return `${d1.length}:${d2.length}:${seen.length}:${h >>> 0}`;
 }
 
 // Looks at the network again when a scan has changed it: once when any scan

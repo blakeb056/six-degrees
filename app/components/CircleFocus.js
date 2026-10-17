@@ -27,6 +27,10 @@ import { degreeName } from '../../lib/galaxy';
 import { HOVER_HOLD, FOCUS_OUT_MS, FADE_MS, focusDuration, focusLayout, springEasing, SPRING_FALLBACK, wheelOut, pinchOut } from '../../lib/circle-focus';
 import { startHere, scansCircleOf, queuedFor, willQueue, busyReason } from '../../lib/scraper-client';
 import { MAP_LOOK } from '../../lib/themes';
+import useTies from './useTies';
+import ShowTies from './ShowTies';
+import { tieLines, knownThrough, knownThroughText, firstDegreeByKey, TIE_COLOUR } from '../../lib/mutual-web';
+import { urlKey } from '../../lib/ties';
 
 const GREEN = 'var(--sd-green, #00ff88)';
 // Words over the blurred map: a soft halo in the page's own shade, so they read on any look.
@@ -147,8 +151,25 @@ export function FocusHold({ holdRef, at = null }) {
  * the row of view buttons over the top of the map is wide (Bridge Chains has
  * four), under it and clear of the panels' tabs at either edge.
  */
-export default function CircleFocus({ focus, phase, box, origin, you, look, ease, reduced, tierColors, selectedId, onSelect, onClose, onPick, canScan, bar = CORNER }) {
+export default function CircleFocus({ focus, phase, box, origin, you, look, ease, reduced, tierColors, selectedId, onSelect, onClose, onPick, canScan, bar = CORNER, degree1 = null, webOff = false }) {
   const open = phase === 'open';
+  // The mutual web (lib/mutual-web.js): "Known through" in each dot's note, and Show
+  // ties, the lines between the people of this circle seen together.
+  const web = useTies({ off: webOff });
+  const [showTies, setShowTies] = useState(false);
+  const mine = useMemo(() => firstDegreeByKey(degree1 || []), [degree1]);
+  const d1ById = useMemo(() => new Map((degree1 || []).map((r) => [r.id, r])), [degree1]);
+  // Everyone in front, by urlKey, for Show ties' lines between them (and only them).
+  const lines = useMemo(() => {
+    if (!showTies || !web.ready || focus.kind !== 'circle') return NO_LINES;
+    const onScreen = new Map();
+    for (const ring of focus.rings) {
+      for (const p of ring.people) { const k = urlKey(p.row.profile_url); if (k && !onScreen.has(k)) onScreen.set(k, p.row.id); }
+    }
+    const k = urlKey(focus.person.profile_url);
+    if (k && !onScreen.has(k)) onScreen.set(k, focus.person.id);
+    return tieLines({ index: web.index, onScreen, among: new Set(onScreen.keys()) });
+  }, [showTies, web, focus]);
   const dur = focusDuration({ phase, reduced });
   const { person, kind } = focus;
   const backRef = useRef(null);
@@ -187,7 +208,8 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
       <div style={stage}>
         {/* Keyed by who's in front, so moving along a chain brings the next one in afresh. */}
         {kind === 'circle'
-          ? <FocusMap key={person.id} focus={focus} box={box} origin={origin} you={you} tierColors={tierColors} selectedId={selectedId} onSelect={onSelect} tipRef={tipRef} />
+          ? <FocusMap key={person.id} focus={focus} box={box} origin={origin} you={you} tierColors={tierColors} selectedId={selectedId} onSelect={onSelect} tipRef={tipRef}
+            web={web} mine={mine} d1ById={d1ById} lines={webOff ? NO_LINES : lines} />
           : <FocusCore key={person.id} person={person} box={box} tierColors={tierColors} canScan={canScan} onClose={onClose} />}
       </div>
       <TopBar backRef={backRef} onClose={onClose} open={open} dur={dur} at={bar} />
@@ -196,7 +218,12 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
         pointerEvents: 'none', opacity: open ? 1 : 0, transition: `opacity ${dur}ms ease-out`,
       }}>
         {(kind === 'circle' || focus.trail?.length > 0) && <Chain focus={focus} onPick={onPick} />}
+        {kind === 'circle' && focus.unscanned && <ScanNudge person={person} canScan={canScan} />}
         {kind === 'circle' && <Counts focus={focus} />}
+        {kind === 'circle' && !webOff && (
+          <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked ready={web.ready}
+            count={lines.length} style={{ pointerEvents: 'auto' }} />
+        )}
       </div>
       <div ref={tipRef} style={{
         position: 'fixed', left: 0, top: 0, display: 'none', pointerEvents: 'none', zIndex: 1000, maxWidth: 260,
@@ -209,6 +236,43 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
 }
 
 const CORNER = Object.freeze({ top: 12, side: 12 });
+const NO_LINES = Object.freeze([]);
+
+/**
+ * Their circle holds only people seen outside the scan (the mutual web): what
+ * shows is a start, and their circle is still to scan. The same scan as their
+ * card's (lib/scraper-client.js startHere).
+ */
+function ScanNudge({ person, canScan }) {
+  const scan = useScanner();
+  const [checking, setChecking] = useState(false);
+  const [problem, setProblem] = useState(null);
+  const mine = scan.running && scansCircleOf(scan, person);
+  const queued = queuedFor(scan, 'bridge', person);
+  const busy = scan.running && !mine && !queued && !willQueue(scan, 'bridge', person) ? busyReason(scan) : null;
+  const start = async () => {
+    setProblem(null);
+    setChecking(true);
+    const why = await startHere('bridge', { name: person.name, id: person.id });
+    setChecking(false);
+    if (why) setProblem(why);
+  };
+  const first = String(person.name || 'them').split(' ')[0];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center', pointerEvents: 'auto',
+      padding: '6px 12px', borderRadius: 12, fontSize: 12, color: 'var(--sd-fg-2, #ccc)',
+      background: 'var(--sd-surface, rgba(10,15,30,0.86))', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)' }}>
+      <span>Seen outside the scan only: {first}&apos;s circle isn&apos;t scanned yet.</span>
+      {canScan && (
+        <button type="button" className="cf-btn" onClick={start} disabled={Boolean(mine || queued || busy || checking)}
+          style={{ padding: '4px 12px', border: 'none', color: '#fff', background: 'linear-gradient(135deg, #9B59B6, #3498DB)' }}>
+          {mine ? 'Scanning…' : queued ? queued.label : checking ? 'Checking the scanner…' : 'Scan their circle'}
+        </button>
+      )}
+      {(problem || busy) && <span style={{ color: problem ? 'var(--sd-red, #ff6b6b)' : 'var(--sd-fg-3, #999)' }}>{problem || busy}</span>}
+    </div>
+  );
+}
 
 /** Back, top left; how else to go back, top right. */
 function TopBar({ backRef, onClose, open, dur, at }) {
@@ -243,7 +307,7 @@ const PILL = {
  * circle, its catalysts, and the people past them.
  */
 function Chain({ focus, onPick }) {
-  const { person, kind, circle, catalysts, beyond, trail = [] } = focus;
+  const { person, kind, circle, catalysts, beyond, trail = [], outside = 0 } = focus;
   const pill = (text, tone) => <span style={{ ...PILL, ...(tone ? { color: tone } : null) }}>{text}</span>;
   const steps = [pill('You')];
   for (const row of trail) {
@@ -254,7 +318,9 @@ function Chain({ focus, onPick }) {
   }
   steps.push(pill(person.name));
   if (kind === 'circle') {
-    steps.push(pill(`${circle.toLocaleString('en-US')} in their circle`));
+    // What a scan read, and apart from it who the mutual web saw with them (lib/mutual-web.js).
+    if (circle > outside) steps.push(pill(`${(circle - outside).toLocaleString('en-US')} in their circle`));
+    if (outside > 0) steps.push(pill(`${outside.toLocaleString('en-US')} seen outside the scan`));
     if (catalysts.length) steps.push(pill(`${catalysts.length} ${catalysts.length === 1 ? 'catalyst' : 'catalysts'}`, GREEN));
     if (beyond > 0) steps.push(pill(`${beyond.toLocaleString('en-US')} past them`));
   }
@@ -285,6 +351,8 @@ function Counts({ focus }) {
       {swatch(<svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="var(--sd-tier-a, #9b59b6)" /></svg>, 'colour = tier')}
       {swatch(<svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--sd-green, #00ff88)" strokeWidth="1.6" /></svg>, 'you added them')}
       {swatch(<span aria-hidden="true" style={{ color: GREEN, fontWeight: 800 }}>⚡</span>, 'catalyst: their circle is scanned too')}
+      {focus.outside > 0 && swatch(<svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4" fill="var(--sd-tier-b, #3498db)" fillOpacity="0.3" stroke="var(--sd-tier-b, #3498db)" strokeWidth="1" strokeDasharray="2 1.6" /></svg>,
+        `${focus.outside.toLocaleString('en-US')} seen outside the scan`)}
     </div>
   );
 }
@@ -294,7 +362,7 @@ function Counts({ focus }) {
  * catalyst's people fanning out behind the catalyst, and you off to the side
  * the map has you on, so it reads you → them → their people → the catalyst's.
  */
-function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, tipRef }) {
+function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, tipRef, web = null, mine = null, d1ById = null, lines = NO_LINES }) {
   // Room above for Back, and below for the chain and the counts.
   const size = Math.max(220, Math.min(box.width - 120, box.height - 200));
   const layout = useMemo(() => focusLayout(focus.rings, size), [focus.rings, size]);
@@ -332,6 +400,9 @@ function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, t
       [r.company, r.role].filter(Boolean).join(' · ') || r.headline || '',
       `${r.tier || 'D'} tier${r.power_score != null && r.power_score !== '' ? ` · ${Number(r.power_score).toFixed(1)}` : ''}`,
       c ? `Catalyst: ${c.people.toLocaleString('en-US')} more through them` : it.state === 'connected' ? 'You added them' : it.state === 'requested' ? 'Request sent' : '',
+      r.seen_outside ? 'Seen outside the scan' : '',
+      // How you know them, through the mutual web: "Known through: A, B (seen together 3 times, last on Oct 16, 2026)".
+      web?.ready && (Number(r.degree) || 2) > 1 ? knownThroughText(knownThrough(r.profile_url, { index: web.index, mine, circles: [r], d1ById })) : '',
     ].filter(Boolean);
     // Text, never markup: names come from the network file.
     el.replaceChildren();
@@ -374,6 +445,20 @@ function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, t
             <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={GREEN} strokeOpacity={0.55} strokeWidth={1.4} />
           ))}
         </g>
+        {/* Show ties: the people in front seen together, thin lines under the dots (lib/mutual-web.js tieLines). */}
+        {lines.length > 0 && (
+          <g pointerEvents="none" aria-hidden="true">
+            {lines.map((l) => {
+              // A dot, or them in the middle.
+              const pos = (id) => at.get(id) || (id === focus.person.id ? { x: half, y: half } : null);
+              const from = pos(l.a);
+              const to = pos(l.b);
+              if (!from || !to) return null;
+              return <line key={`${l.a}|${l.b}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} style={{ stroke: TIE_COLOUR }}
+                strokeOpacity={0.7} strokeWidth={Math.min(2.2, 0.8 + 0.3 * Math.log2(l.n || 1))} />;
+            })}
+          </g>
+        )}
         <g pointerEvents="visiblePainted" onPointerOver={(e) => tip(e, itemOf(e))} onPointerMove={(e) => tip(e, itemOf(e))} onPointerOut={(e) => tip(e, null)}
           onClick={(e) => { const it = itemOf(e); if (!it) return; e.stopPropagation(); onSelect?.(it.row); }}>
           {layout.rings.map((ring, i) => (
@@ -418,6 +503,12 @@ function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, t
 
 function Dot({ it, i, r, colour, picked, catalyst }) {
   const common = { 'data-i': i, className: 'cf-dot' };
+  // Seen outside the scan (the mutual web): lighter, with a dashed ring of its tier's colour.
+  if (it.row?.seen_outside && it.state !== 'requested') {
+    return <circle {...common} cx={it.x} cy={it.y} r={r} fill={colour} fillOpacity={0.3}
+      stroke={picked ? 'var(--sd-fg-1, #fff)' : colour} strokeWidth={picked ? 2.4 : Math.max(0.8, r * 0.28)}
+      strokeDasharray={picked ? undefined : `${Math.max(1, r * 0.5)} ${Math.max(0.8, r * 0.35)}`} />;
+  }
   if (it.state === 'requested') {
     return <circle {...common} cx={it.x} cy={it.y} r={r * 1.25} fill="transparent" stroke={colour}
       strokeWidth={Math.max(0.8, r * 0.45)} strokeDasharray={`${Math.max(1, r * 0.55)} ${Math.max(0.8, r * 0.45)}`} />;
