@@ -187,3 +187,45 @@ test('the chips under the map: tiers while Tiers is on, degrees while it is off,
   const only1 = toggleBand(toggleBand(no2, { kind: 'degree', key: 3 }, counts), { kind: 'degree', key: 1 }, counts);
   assert.deepEqual(only1.flat, [1]);
 });
+
+// Filters → Reset filters (app/components/FilterPanel.js): every tier back, at
+// the degrees the tab opens with, and the Tiers switch left as it is.
+import { resetGrid, atReset, startGrid, everyone, MAP_GRID, GRID_DEGREES } from '../lib/tier-grid.js';
+
+test('Reset filters puts every tier back at the degrees the tab opens with', () => {
+  const messy = toggleCell(toggleTier(toggleDegree(NETWORK_GRID, 2, counts), 'D', counts), 'S', 3, counts);
+  assert.equal(atReset(messy, NETWORK_GRID), false);
+  const back = resetGrid(messy, NETWORK_GRID);
+  assert.ok(sameGrid(back, NETWORK_GRID), 'the same grid, so the map is not drawn again for nothing');
+  assert.equal(atReset(back, NETWORK_GRID), true);
+  // The tab's own start is never changed.
+  assert.deepEqual(NETWORK_GRID.degrees.S, [1]);
+});
+
+test('Reset filters leaves the Tiers switch where it is: off, the degrees the tab opens with are picked', () => {
+  const everyDegree = startGrid('network', { everyDegree: true });
+  const off = toggleDegree(toggleTiers(everyDegree), 2, counts);
+  assert.deepEqual(off.flat, [1, 3, 4, 5, 6]);
+  const back = resetGrid(off, everyDegree);
+  assert.equal(back.tiersOff, true);
+  assert.deepEqual(back.flat, GRID_DEGREES);
+  assert.equal(atReset(back, everyDegree), true);
+  // Tiers off and only your connections, in Rings: already as it opens.
+  assert.equal(atReset(toggleTiers(NETWORK_GRID), NETWORK_GRID), true);
+  // Tiers on again after a reset with them off: the tier rows are the start's too.
+  assert.ok(sameGrid(toggleTiers(back), everyDegree));
+});
+
+test('each tab resets to how it opens', () => {
+  assert.equal(startGrid('network'), NETWORK_GRID);
+  assert.ok(sameGrid(startGrid('network', { everyDegree: true }), makeGrid(GRID_DEGREES)));
+  assert.equal(startGrid('degrees'), DEGREES_GRID);
+  assert.equal(startGrid('separation'), DEGREES_GRID);
+  assert.equal(startGrid('map'), MAP_GRID);
+});
+
+test('everyone counts every tier at every degree: the "of" in "N of M"', () => {
+  assert.equal(everyone(counts), 455);
+  assert.equal(everyone({}), 0);
+  assert.equal(showing(NETWORK_GRID, counts), 150);
+});

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import GalaxyLab, { NamesSwitch } from './GalaxyLab';
-import { TIERS, GRID_DEGREES, showing, showingIn, toggleCell, toggleTier, toggleDegree, toggleTiers, showAllTiers, degreeOn } from '../../lib/tier-grid';
+import { TIERS, GRID_DEGREES, showing, showingIn, everyone, toggleCell, toggleTier, toggleDegree, toggleTiers, showAllTiers, degreeOn, resetGrid, atReset, startGrid } from '../../lib/tier-grid';
 import { TIER_COLORS } from '../../lib/themes';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
-import { LAB_DEFAULTS, LAYOUTS, drawsByDegree, labNow, setLab, watchLab } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, LAYOUTS, drawsByDegree, labNow, setLab, watchLab, showsEveryDegree } from '../../lib/galaxy-lab';
 import { LINE_TIERS, cleanTierLines, toggleLineTier, isPicked, describeTierLines } from '../../lib/tier-lines';
 
 const PANEL_ID = 'sd-filters-panel';
@@ -31,6 +31,9 @@ const DEGREE_IS = {
   paths:{ 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
   map: { 1: 'your connections', 2: 'people in a scanned circle', 3: 'people found by a company scan' },
 };
+// The small uppercase name over each group of controls (Lines, and the Physics panel's own).
+const GROUP = { fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, textTransform: 'uppercase' };
+
 
 /**
  * Tiers down, six degrees across: tap a tier to hide or show it, a dot to show
@@ -43,8 +46,11 @@ const DEGREE_IS = {
  * tier rows fold away and a row of degrees is left, each with how many are at
  * it; on again, the rows come back as they were.
  */
-export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
+export function TierGrid({ grid, counts, onChange, mode, isMobile, resetTo = null }) {
   const total = showing(grid, counts);
+  const all = everyone(counts);
+  // Reset filters: the tab's starting grid, the Tiers switch as it is (lib/tier-grid.js resetGrid).
+  const canReset = Boolean(resetTo) && !atReset(grid, resetTo);
   const tiersOff = Boolean(grid.tiersOff);
   const dot = isMobile ? 21 : 23;
   const anyAt = (d) => TIERS.some((t) => (counts[t]?.[d] || 0) > 0);
@@ -63,6 +69,22 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
       : `No ${t ? `${t}-Tier ` : 'one '}at ${DEGREE_NAMES[d]} degree yet`);
   return (
     <div style={{ marginBottom: 18 }}>
+      {/* The group: who is on the map, how many of everyone, and the way back to how the tab opens */}
+      {resetTo && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ ...GROUP, flex: 1 }}>On the map</span>
+          <span style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #889)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {total.toLocaleString('en-US')} of {all.toLocaleString('en-US')}
+          </span>
+          <button type="button" disabled={!canReset} onClick={() => onChange(resetGrid(grid, resetTo))}
+            title={canReset ? 'Every tier back, at the degrees this tab opens with. The Tiers switch stays as it is.' : 'Nothing to reset: this is how the tab opens'}
+            style={{
+              padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap',
+              cursor: canReset ? 'pointer' : 'default', opacity: canReset ? 1 : 0.4,
+              border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-2, #ccd)',
+            }}>Reset filters</button>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: tiersOff ? 8 : 6 }}>
         <div style={{ flex: 1 }}>
           <button type="button" aria-pressed={!tiersOff} onClick={() => onChange(toggleTiers(grid))}
@@ -87,9 +109,10 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
           {GRID_DEGREES.map((d) => {
             const any = anyAt(d);
             const on = any && degreeOn(grid, d, counts);   // the rule a tap follows, so a lit one always goes off
+            const at = TIERS.reduce((n, t) => n + (counts[t]?.[d] || 0), 0);
             return (
               <button key={d} type="button" disabled={!any} aria-pressed={on}
-                title={any ? `${DEGREE_NAMES[d]} degree${what(d) ? `: ${what(d)}` : ''}. Tap to ${on ? 'hide' : 'show'} it for every tier` : emptyTitle(d)}
+                title={any ? `${DEGREE_NAMES[d]} degree${what(d) ? `: ${what(d)}` : ''}, ${at.toLocaleString('en-US')} ${at === 1 ? 'person' : 'people'}. Tap to ${on ? 'hide' : 'show'} it for every tier` : emptyTitle(d)}
                 onClick={() => onChange(toggleDegree(grid, d, counts))}
                 style={{
                   width: dot, height: 18, padding: 0, border: 'none', background: 'none', cursor: any ? 'pointer' : 'default',
@@ -168,7 +191,7 @@ export function TierGrid({ grid, counts, onChange, mode, isMobile }) {
               : 'Tap a tier to hide it, or a dot to show that degree.'}
         </div>
         <div style={{ fontSize: 10.5, color: 'var(--sd-fg-3, #889)', whiteSpace: 'nowrap', marginLeft: 8 }}>
-          {total.toLocaleString('en-US')} showing
+          {resetTo ? `${total.toLocaleString('en-US')} showing` : `${total.toLocaleString('en-US')} of ${all.toLocaleString('en-US')} showing`}
           {!tiersOff && grid.hidden.length > 0 && (
             <button type="button" onClick={() => onChange(showAllTiers(grid))} style={{
               marginLeft: 8, padding: '2px 8px', borderRadius: 10, fontSize: 10, cursor: 'pointer',
@@ -234,7 +257,7 @@ export function TierLines() {
   if (drawsByDegree(lab)) {
     return (
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Lines</div>
+        <div style={{ ...GROUP, marginBottom: 6 }}>Lines</div>
         <div style={{ fontSize: 10, color: 'var(--sd-fg-4, #667)', lineHeight: 1.4 }}>
           In Degrees and the Wi-Fi fan only the lines of the person you pick, or point at, are drawn.
         </div>
@@ -252,7 +275,7 @@ export function TierLines() {
   });
   return (
     <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Lines</div>
+      <div style={{ ...GROUP, marginBottom: 6 }}>Lines</div>
       <div role="group" aria-label="Which lines to draw" style={{ display: 'flex', gap: 4 }}>
         <button type="button" aria-pressed={choice === 'all'} title="Draw every line" onClick={() => pick('all')} style={plain(choice === 'all')}>All</button>
         {LINE_TIERS.map((t) => {
@@ -444,7 +467,7 @@ export default function FilterPanel({ collapsed, onToggle, mode, visualMode, gri
             aria-labelledby={hasShapes ? tabId(panelTab) : undefined}>
           {panelTab === 'shape' ? <ShapeList current={shape} onPick={onPickShape} /> : <>
           {/* Which tiers, at which degrees: the same grid in Network Circle and in Degrees */}
-          <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} />
+          <TierGrid grid={grid} counts={gridCounts} onChange={onGridChange} mode={mode} isMobile={isMobile} resetTo={startGrid(mode, { everyDegree: showsEveryDegree(shape) })} />
 
           {/* Network Circle's Galaxy: which of its lines are drawn, by tier. */}
           {!isDegreesMode && visualMode === 'galaxy' && <TierLines />}

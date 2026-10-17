@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.8.0] - 2026-10-17
 
-The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation and a replay that shows every dot.
+The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation, a replay that shows every dot, and a Network Circle that stays smooth at ten thousand.
 
 ### Added
 - **The mutual web.** Every mutual line Sixgree already reads ("Maya Chen, Leo Park & 103 other
@@ -52,6 +52,19 @@ The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation and 
   each person arriving; it saves on this computer. It stays smooth with 15,000 people on the map,
   in every look, Daylight included, and fits a phone. Saved pictures and videos are named by this
   computer's date, not tomorrow's after 8 pm.
+- **Network Circle stays smooth at ten thousand dots, and filters apply without starting over.**
+  Tapping a tier or degree chip, the Tiers switch, or anything in Filters used to throw the whole
+  layout away and lay it out again from the middle, 30 to 45 seconds of a busy map at 13,000 people.
+  Now everyone already on the map keeps their place, newcomers start beside whoever they came
+  through, and the map settles in about a second; hiding a tier and showing it again puts everyone
+  back exactly where they were. Coming back to the tab, reopening Sixgree, or switching Rings to
+  Degrees and back starts from the layout you left, kept in this browser only. While a big map
+  does settle, each frame writes only the dots and lines that moved enough to see and none off
+  screen, so it settles faster and smoother; a quick run of taps is drawn once, after the last.
+  The look, the forces and the settled shape are the same as before. Filters also groups its
+  controls under On the map, shows how many of everyone are showing, says how many people are at
+  each degree, and has **Reset filters**, which brings back every tier at the degrees the tab
+  opens with and leaves the Tiers switch as it is.
 - The scanner plugins are 1.0.11.
 - **The Map's views: Heat, Flows and Hubs, from one tidy card.** The finder, a switch between four
   views and the legend for the one showing now share one card, with Declutter and From you folded

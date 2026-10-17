@@ -7,7 +7,7 @@ import { reframe, settle, seedAngles, galaxyChain, FULL_CIRCLE, FAN_HALF, fanSpa
 import { reachIndex, readyByCircle } from '../../lib/reach';
 import { roundSegments, RING } from '../../lib/dot-rings';
 import { personRounds } from '../../lib/scan-rounds';
-import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, stopReplay, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, chapterAt, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
@@ -22,6 +22,7 @@ import useTies from './useTies';
 import ShowTies from './ShowTies';
 import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
 import { urlKey } from '../../lib/ties';
+import { coalesceMs, createPainter, viewOf, moveStep, placesKey, seedPlaces, warmStart, coolingFor, createPlaces, snapshotPlaces, recallPlaces, rememberPlaces } from '../../lib/galaxy-perf';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
 // accept writes, and a page on any other site can POST to this app on localhost.
@@ -53,6 +54,26 @@ const DEGREE_REACH = 60;
 // rather than d3's 300. At ten thousand dots each tick is the same work as in
 // any shape; there are just far fewer of them.
 const DEGREE_COOLING = 1 - Math.pow(0.001, 1 / 80);
+
+// Where everyone was, for every layout seen this visit and the newest few from
+// the last (lib/galaxy-perf.js): a filter change or a visit back starts from
+// there rather than from scratch. Read from this browser once, on first draw.
+const PLACES = createPlaces();
+let placesRecalled = false;
+
+// A burst of filter taps on a big map is drawn once, when they stop
+// (lib/galaxy-perf.js coalesceMs): the chips answer at once, the map a moment
+// later. A small map is drawn at once, as always.
+function useCoalesced(value, sizeOf, waitFor) {
+  const [held, setHeld] = useState(value);
+  const wait = waitFor(Math.max(sizeOf(value), sizeOf(held)));
+  useEffect(() => {
+    if (held === value) return undefined;
+    const t = setTimeout(() => setHeld(value), wait);
+    return () => clearTimeout(t);
+  }, [value, held, wait]);
+  return wait ? held : value;
+}
 
 // Builds the avatar tooltip through the DOM rather than a string, so no value
 // can break out of the attribute it is written into. Only a photo saved on this
@@ -104,7 +125,10 @@ svg.still text { transition: none; }
 .galaxy-ring, .galaxy-chrome { transition: opacity 0.3s; }
 .cf-on .galaxy-ring, .cf-on .galaxy-chrome { opacity: 0; }`;
 
-export default function ForceGraph({ connections, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy = 'tier', canScan = false, chained = null, seen = NO_ROWS, webOff = false }) {
+export default function ForceGraph({ connections: givenRows, onSelect, tierColors, focusNodeRef, userName, selectedId = null, scanNotes, fullDegree1, fullDegree2, bandLegend = null, onToggleBand, onToggleTiers, bandBy: givenBandBy = 'tier', canScan = false, chained: givenChained = null, seen = NO_ROWS, webOff = false }) {
+  // Who is drawn and how it's banded change together (a filter tap, the Tiers switch), so they wait together.
+  const given = useMemo(() => ({ rows: givenRows, bandBy: givenBandBy, chained: givenChained }), [givenRows, givenBandBy, givenChained]);
+  const { rows: connections, bandBy, chained } = useCoalesced(given, (g) => g.rows?.length || 0, coalesceMs);
   // Round a connection's dot (design C): their circle's rounds, an arc for each
   // round of their list filled as it's read (Blake, 2026-10-16: "4 unfilled bars
   // around the dot showing how scanned it is", lib/scan-rounds.js), on anyone with
@@ -142,7 +166,6 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   // shape picked also changes the filter: the new scene makes it once it settles.
   const fitOwedRef = useRef(false);
   const [dimensions, setDimensions] = useState(null);
-  const stampRef = useRef(null);
 
   // Focus (Blake, 2026-10-16): a click on one of your connections, or the
   // pointer resting on one for HOVER_HOLD, zooms in on them and brings their
@@ -195,11 +218,9 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
   }, [lab]);
   useEffect(() => watchClock(() => {
     const c = clockNow();
-    sceneRef.current?.setTime(c.at);
     sceneRef.current?.setFind(c.find, c.fly);
     sceneRef.current?.setFit(c.fit);
   }), []);
-  useEffect(() => () => stopReplay(), []);
 
   // The dots' colours (Colour by, in the lab): tier, or degree with Filters →
   // Tiers off, or heat, company or warmth (colourModeOf).
@@ -306,7 +327,7 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     const saved = transform ? reframe(transform, setFor, size) : null;
 
     const select = (d) => onSelectRef.current?.(d);
-    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, { ...effectiveLab(labRef.current), bandBy: bandRef.current }, stampRef.current, schemeRef.current, routes, chain, { hold: holdRef.current, open: openFocus });
+    const scene = renderNetworkMode(svg, ringRef.current, size, connections, select, tierColors, focusNodeRef, saved, viewRef, userName, marks, { ...effectiveLab(labRef.current), bandBy: bandRef.current }, schemeRef.current, routes, chain, { hold: holdRef.current, open: openFocus });
     sceneRef.current = scene;
     // Rebuilt behind an open focus (the network reloaded after a scan, say):
     // held still like the last, but left to settle first, so going back finds it in place.
@@ -315,12 +336,12 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
     scene.select(selectedIdRef.current);
     scene.setTies(tiesRef.current);
     setClock({ min: scene.range.min, max: scene.range.max, of: scene.range.of });
-    scene.setTime(clockNow().at);
     scene.setFind(clockNow().find, clockNow().fly);
     // Save picture and Record replay (lib/galaxy-export.js) draw from this <svg>.
     const unregister = registerGalaxy({
       svg: svgRef.current,
-      stamp: () => (stampRef.current?.style.display === 'block' ? stampRef.current.textContent : null),
+      // The replay's date is drawn on its own stage now (ReplayStage.js): none on a picture of the map.
+      stamp: () => null,
       legend: () => schemeRef.current.legend,
     });
 
@@ -369,12 +390,6 @@ export default function ForceGraph({ connections, onSelect, tierColors, focusNod
       </div>
       {/* The ring that fills while the pointer rests on one of your connections: full, and they open. */}
       <FocusHold holdRef={holdRef} />
-      {/* The replay's date, written by the scene as it plays. */}
-      <div ref={stampRef} style={{
-        position: 'absolute', bottom: 56, left: '50%', transform: 'translateX(-50%)', display: 'none',
-        padding: '6px 14px', borderRadius: 16, background: 'var(--sd-surface, rgba(10,15,30,0.8))', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)',
-        color: 'var(--sd-fg-1, #e6edf5)', fontSize: 13, fontWeight: 600, pointerEvents: 'none', fontVariantNumeric: 'tabular-nums',
-      }} />
       {/* Network Circle: the chips under the map are the filter, tiers or degrees by the Tiers switch (app/page.js bandLegend). */}
       {bandLegend && onToggleBand ? (
         <div className="galaxy-chrome" style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
@@ -489,7 +504,7 @@ function easeRadius(el, r, instant = false) {
 // Graph coordinates put you at 0,0, whatever the size of the box; the zoom
 // transform places that in the box. So a new size only moves the view, and a
 // rebuild can start from the view as it was.
-function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, stamp = null, scheme = null, routes = new Map(), chain = galaxyChain(connections), focusApi = null) {
+function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, focusNodeRef, savedTransform, viewRef, userName, marks = new Map(), lab = LAB_DEFAULTS, scheme = null, routes = new Map(), chain = galaxyChain(connections), focusApi = null) {
   let colourOf = scheme?.of ?? ((d) => tierColors[d.tier] || '#666');
   const centerNode = {
     id: CENTER_ID, name: userName || 'You', tier: 'center', degree: 0,
@@ -711,6 +726,8 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // through re-fits the destination, and a rebuild starts from it, rather than
   // from a point along the way.
   let heading = null;
+  // Dots and lines left out of date off screen are written when the view comes to them (paintSoon, below).
+  let paintSoon = () => {};
   // Names fade out zoomed out, as Obsidian's text does, all but the hubs'.
   let labelsG = null;
   const FAR = 0.85;
@@ -753,6 +770,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     g.attr('transform', e.transform);
     viewRef.current = { transform: heading ?? e.transform, size: box };
     labelsG?.classed('far', e.transform.k < FAR);
+    paintSoon();
     placeRing();
     placeHold();
   });
@@ -897,6 +915,25 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       n.y = r * Math.sin(a);
     }
   }
+  // Places kept (lib/galaxy-perf.js): whoever the last scene drew in this
+  // layout starts where they were, a filter change or a visit back included,
+  // and newcomers beside whoever they came through. By degree, a kept place
+  // counts only while it is still in that person's band; everyone else is at
+  // their place in it already.
+  if (!placesRecalled) { placesRecalled = true; recallPlaces(PLACES); }
+  const placesNow = () => placesKey(L, { layered });
+  const kept = isMobileGraph ? null : PLACES.get(placesNow());
+  const inBand = (n, x, y) => {
+    const key = steps().keyOf(n);
+    const b = degreeBands.find((band) => band.key === key);
+    const r = Math.hypot(x, y - youY());
+    return Boolean(b) && r >= b.inner - b.cell && r <= b.outer + b.cell;
+  };
+  const seedFrom = (entry) => seedPlaces(nodes, entry.at, byDegree()
+    ? { fixed: CENTER_ID, fits: inBand }
+    : { fixed: CENTER_ID, parentOf, centre: { x: 0, y: youY() }, ringOf: radiusOf });
+  const seeded = kept ? seedFrom(kept) : { kept: 0 };
+  const warm = warmStart({ kept: seeded.kept, total: nodes.length - 1, alpha: kept?.alpha });
   // The fan's edges, round you wherever you sit (lib/galaxy.js forceFan): the last force, always.
   const fanForce = forceFan(() => ({ x: 0, y: youY() }));
   const simulation = d3.forceSimulation(nodes)
@@ -912,6 +949,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   const cooling = simulation.alphaDecay();   // d3's own, for the shapes by tier
   const cool = () => simulation.alphaDecay(byDegree() ? DEGREE_COOLING : cooling);
   cool();
+  // A warm start (lib/galaxy-perf.js warmStart): only as hard as the newcomers
+  // need, cooling in a hundred ticks, then the shape's own cooling again; with
+  // nobody new and the last layout at rest, none at all.
+  if (warm.ticks != null) {
+    simulation.alpha(warm.alpha).alphaDecay(coolingFor(warm.alpha, warm.ticks, simulation.alphaMin()));
+    simulation.on('end.warm', () => { simulation.on('end.warm', null); cool(); });
+  } else simulation.alpha(warm.alpha);
   // Physics off: its own timer never ticks; settleNow, below, runs it instead.
   if (isStill()) simulation.stop();
   guidesG?.attr('opacity', Math.min(1, L.rings));
@@ -947,8 +991,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     heatDots = heatG.selectAll('circle').data(hot, d => d.id).join('circle')
       .attr('r', d => nodeRadius(d) * 2.5 + 12 + 30 * heatFn(d))
       .attr('fill', d => `url(#heat-glow-${Math.round(heatFn(d) * 5)})`)
-      .attr('cx', d => d.x || 0).attr('cy', d => d.y || 0)
-      .style('display', d => (clockAt == null || bornById.get(d.id) <= clockAt ? null : 'none'));
+      .attr('cx', d => d.x || 0).attr('cy', d => d.y || 0);
   };
 
   // forceLink has already swapped each link's ids for the nodes themselves, so
@@ -1224,11 +1267,37 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Only the lines drawn are moved: with Filters → Lines on one tier, or the
   // replay early on, most of a big network's lines cost nothing a frame.
   const linkEls = link.nodes();   // links[i] is connections[i], which is nodes[i + 1]
-  const paintLine = (j) => {
-    const el = linkEls[j], d = links[j];
-    el.setAttribute('x1', d.source.x); el.setAttribute('y1', d.source.y);
-    el.setAttribute('x2', d.target.x); el.setAttribute('y2', d.target.y);
-  };
+  // A frame writes only the dots and lines that moved enough to see at this
+  // zoom, and none off screen (lib/galaxy-perf.js createPainter): at ten
+  // thousand people, writing every one of them every frame was a third of
+  // each frame. What's left out of date off screen is written as the view
+  // comes to it, and everything exactly once the map is at rest.
+  const dotEls = node.nodes();
+  const extrasOf = new Map();   // a dot's scan ring and catalyst ring move with it
+  dotRings.each(function (d) { extrasOf.set(d, [[this, true]]); });
+  catalystRings.each(function (d) { extrasOf.set(d, [...(extrasOf.get(d) || []), [this, false]]); });
+  const extras = nodes.map((n) => extrasOf.get(n) || null);
+  // Written as numbers (an SVG length's baseVal), not as text to be read back:
+  // half the time of setAttribute at this size. Anything not a number is
+  // written as text, which an SVG length won't take.
+  const put = (len, v, el, name) => { if (Number.isFinite(v)) len.baseVal.value = v; else el.setAttribute(name, v); };
+  const painter = createPainter({
+    dots: nodes, links,
+    drawDot: (i, x, y) => {
+      const el = dotEls[i];
+      put(el.cx, x, el, 'cx'); put(el.cy, y, el, 'cy');
+      if (extras[i]) for (const [ex, moved] of extras[i]) {
+        if (moved) ex.setAttribute('transform', `translate(${x},${y})`);
+        else { ex.setAttribute('cx', x); ex.setAttribute('cy', y); }
+      }
+    },
+    drawLine: (j, x1, y1, x2, y2) => {
+      const el = linkEls[j];
+      put(el.x1, x1, el, 'x1'); put(el.y1, y1, el, 'y1');
+      put(el.x2, x2, el, 'x2'); put(el.y2, y2, el, 'y2');
+    },
+  });
+  const paintLine = (j) => painter.line(j);
   let drawnLines = links.map((_, j) => j);
   const paintTies = () => {
     tieEls.attr('x1', d => d.a.x).attr('y1', d => d.a.y).attr('x2', d => d.b.x).attr('y2', d => d.b.y);
@@ -1241,16 +1310,28 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       .attr('stroke-width', d => Math.min(2.4, 0.9 + 0.3 * Math.log2(d.n || 1)));
     paintTies();
   };
-  const paint = () => {
-    for (const j of drawnLines) paintLine(j);
+  const paint = ({ all = false } = {}) => {
+    const t = d3.zoomTransform(svg.node());
+    painter.pass({ view: viewOf(t, box), step: moveStep(t.k), lines: drawnLines, all });
+    // The selection's ties only: a handful, so all of them every frame.
     paintTies();
-    node.attr('cx', d => d.x).attr('cy', d => d.y);
-    catalystRings.attr('cx', d => d.x).attr('cy', d => d.y);
-    dotRings.attr('transform', d => `translate(${d.x},${d.y})`);
     labels.attr('x', d => d.x).attr('y', d => d.y);
     if (heatFn) heatDots.attr('cx', d => d.x).attr('cy', d => d.y);
     placeRing();
   };
+  let paintAsked = 0;
+  paintSoon = () => {
+    if (!painter.stale || paintAsked) return;
+    paintAsked = requestAnimationFrame(() => { paintAsked = 0; paint(); });
+  };
+  // Where everyone is, kept for the next scene in this layout (lib/galaxy-perf.js),
+  // and in this browser once they are at rest.
+  const keepPlaces = (alpha, remember = false, key = placesNow()) => {
+    if (isMobileGraph) return;
+    PLACES.put(key, snapshotPlaces(nodes, { alpha, fixed: CENTER_ID, into: PLACES.get(key)?.at }));
+    if (remember) rememberPlaces(PLACES);
+  };
+  simulation.on('end.places', () => { paint({ all: true }); keepPlaces(0, true); });
   let tickedAt = 0;
   simulation.on('tick', () => {
     tickedAt = performance.now();
@@ -1265,8 +1346,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   let lastFit = clockNow().fit;
   const fitView = () => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    nodes.forEach((n, i) => {
-      if (!shown[i]) return;
+    nodes.forEach((n) => {
       const r = nodeRadius(n);
       x0 = Math.min(x0, n.x - r); y0 = Math.min(y0, n.y - r); x1 = Math.max(x1, n.x + r); y1 = Math.max(y1, n.y + r);
     });
@@ -1294,7 +1374,9 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       done: () => {
         finished = true;
         stopSettling = null;
-        paint();
+        if (simulation.on('end.warm')) { simulation.on('end.warm', null); cool(); }
+        paint({ all: true });
+        keepPlaces(0, true);
         placeGuides();
         if (fitArmed) { fitArmed = false; fitView(); }
       },
@@ -1370,6 +1452,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       centerNode.x = centerNode.fx = 0;
       centerNode.y = centerNode.fy = 0;
     }
+    // Been in this shape before: everyone back where they were in it (lib/galaxy-perf.js).
+    const before = PLACES.get(placesNow());
+    const seededAgain = before ? seedFrom(before) : null;
+    const back = seededAgain ? warmStart({ kept: seededAgain.kept, total: nodes.length - 1, alpha: before.alpha }) : null;
     const to = youY();
     simulation.force('center', isFan() ? null : d3.forceCenter(0, 0));
     simulation.force('charge').distanceMax(byDegree() ? DEGREE_REACH : Infinity);
@@ -1380,12 +1466,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     drawGuides();
     setOrbit();
     applyLines({ tiers: true });
-    paint();
+    paint({ all: true });
     // A new shape is a new size of map: everyone on screen. By degree they're
     // already where they stay; by tier, once it settles, even if the fit the
     // pick asked for came while the old shape was still drawn.
     if (byDegree()) fitView();
     else fitArmed = true;
+    return back?.ticks != null ? back : null;
   };
 
   // Every dot its size again, and what's drawn round it.
@@ -1400,7 +1487,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // A slider moved: change the running layout in place and let it settle again.
   const setLab = (next) => {
     if (isMobileGraph) {
-      if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); showBorn(); }
+      if (next.labels !== L.labels) { L = { ...L, labels: next.labels }; drawLabels(); }
       if (next.tierLines !== L.tierLines) { L = { ...L, tierLines: next.tierLines }; applyLines({ tiers: true }); }
       if (next.shape !== L.shape || next.bandBy !== L.bandBy) {
         L = { ...L, shape: next.shape, bandBy: next.bandBy };
@@ -1409,22 +1496,24 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
         resizeDots();
         applyLines({ tiers: true });
         drawLabels();
-        showBorn();
-        paint();
+        paint({ all: true });
       }
       return;
     }
     const prev = L;
+    const prevKey = placesNow();
     L = next;
     if (prev.physics !== L.physics) setPhysics();
     const shaped = prev.shape !== L.shape || (byDegree() && (prev.dotSize !== L.dotSize || prev.bandBy !== L.bandBy));
-    if (shaped) setShape(prev);
+    // The shape left is kept, so coming back to it finds everyone where they were.
+    if (shaped) keepPlaces(simulation.alpha() >= simulation.alphaMin() ? simulation.alpha() : 0, false, prevKey);
+    const back = shaped ? setShape(prev) : null;
     const sized = shaped || prev.dotSize !== L.dotSize || prev.sizeBy !== L.sizeBy;
     if (sized) resizeDots();
     if (prev.lines !== L.lines) link.attr('stroke-width', 0.5 * L.lines).attr('stroke-opacity', lineOpacity());
     // Filters → Lines: only which lines are drawn. The layout isn't touched.
     if (prev.tierLines !== L.tierLines) applyLines({ tiers: true });
-    if (sized || prev.names !== L.names || prev.labels !== L.labels) { drawLabels(); showBorn(); }
+    if (sized || prev.names !== L.names || prev.labels !== L.labels) drawLabels();
     if (!L.on || !L.branch) g.classed('lab-focus', false);
     g.classed('lab-pop', L.on && nodes.length < 5000 && !isStill());
     if (prev.orbit !== L.orbit) setOrbit();
@@ -1440,7 +1529,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     stopSettling?.();
     stopSettling = null;
     cool();
-    simulation.alpha(Math.max(simulation.alpha(), 0.5));
+    if (back) {
+      // Back to a shape seen before: only as hard as what changed needs (lib/galaxy-perf.js warmStart).
+      simulation.alpha(back.alpha).alphaDecay(coolingFor(back.alpha, back.ticks, simulation.alphaMin()));
+      simulation.on('end.warm', () => { simulation.on('end.warm', null); cool(); });
+    } else simulation.alpha(Math.max(simulation.alpha(), 0.5));
     if (isStill()) settleNow();
     else simulation.restart();
   };
@@ -1465,21 +1558,11 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   ring.classList.toggle('still', isStill());
   svg.classed('still', isStill());
 
-  // The replay: whoever wasn't there yet at the clock's time is hidden. Only the
-  // dots that change are touched, so a frame costs little at 30,000 people.
-  const born = bornTimes(nodes, parentOf);
-  const bornById = new Map(nodes.map((n, i) => [n.id, born[i]]));
-  const nodeEls = node.nodes();
-  const extraEls = new Map();
-  dotRings.each(function (d) { extraEls.set(d.id, [this]); });
-  catalystRings.each(function (d) { extraEls.set(d.id, [...(extraEls.get(d.id) || []), this]); });
-  const shown = new Uint8Array(nodes.length).fill(1);
-  const idxOf = new Map(nodes.map((n, i) => [n.id, i]));
-  // A line is drawn while both its ends are there in the replay and Filters →
-  // Lines lets it through (lib/tier-lines.js lineMask), or it is one of the
-  // selected person's own. Worked out as bytes, and only a line that changes
-  // is touched, so a change costs one pass over the lines and no rebuild.
-  const ends = links.map((l) => [idxOf.get(l.source.id), idxOf.get(l.target.id)]);
+  // A line is drawn while Filters → Lines lets it through (lib/tier-lines.js
+  // lineMask), or it is one of the selected person's own. Worked out as bytes,
+  // and only a line that changes is touched, so a change costs one pass over
+  // the lines and no rebuild. (The replay draws on a stage of its own now,
+  // app/components/ReplayStage.js, so nobody here is hidden by date.)
   const byTier = new Uint8Array(links.length).fill(1);
   const lineOn = Uint8Array.from(links, (l) => (l.none ? 0 : 1));
   applyLines = ({ tiers = false } = {}) => {
@@ -1492,7 +1575,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
     const list = [];
     for (let j = 0; j < links.length; j++) {
-      const on = !links[j].none && byTier[j] && shown[ends[j][0]] && shown[ends[j][1]] ? 1 : 0;
+      const on = !links[j].none && byTier[j] ? 1 : 0;
       if (on) list.push(j);
       if (on === lineOn[j]) continue;
       lineOn[j] = on;
@@ -1501,40 +1584,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     }
     drawnLines = list;
   };
+  // The first and last day you connected with anyone on the map: whether the
+  // replay has anything to play (GalaxyLab.js), and over how many connections.
+  const born = bornTimes(nodes, parentOf);
   const d1 = nodes.filter(n => n.degree === 1);
-  const dated = d1.map(n => bornById.get(n.id)).filter(Number.isFinite);
+  const dated = nodes.flatMap((n, i) => (n.degree === 1 && Number.isFinite(born[i]) ? [born[i]] : []));
   const range = { min: dated.length ? dated.reduce((m, t) => Math.min(m, t)) : null, max: dated.length ? dated.reduce((m, t) => Math.max(m, t)) : null, of: d1.length };
-  let clockAt = null;
-  const showBorn = () => {
-    const born = d => (clockAt == null || bornById.get(d.id) <= clockAt ? null : 'none');
-    labels.style('display', born);
-    if (heatFn) heatDots.style('display', born);
-  };
   drawHeat();
-  const setTime = (at) => {
-    if (!L.on) at = null;
-    clockAt = at;
-    let n1 = 0;
-    for (let i = 1; i < nodes.length; i++) {
-      const vis = at == null || born[i] <= at ? 1 : 0;
-      if (vis && nodes[i].degree === 1) n1++;
-      if (vis === shown[i]) continue;
-      shown[i] = vis;
-      const display = vis ? '' : 'none';
-      nodeEls[i].style.display = display;
-      for (const el of extraEls.get(nodes[i].id) || []) el.style.display = display;
-    }
-    // A line shows while both its ends do, and Filters → Lines lets it.
-    applyLines();
-    showBorn();
-    if (!stamp) return;
-    stamp.style.display = at == null ? 'none' : 'block';
-    if (at != null) {
-      const when = new Date(at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-      const job = chapterAt(clockNow().social, at);
-      stamp.textContent = `${when} · ${n1.toLocaleString()} of ${range.of.toLocaleString()} connections${job ? ` · at ${job.company}` : ''}`;
-    }
-  };
 
   // A new colour scheme (Colour by): recolour the dots, lines and names in place.
   const setColours = (next) => {
@@ -1544,7 +1600,6 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     node.attr('fill', d => d.id === CENTER_ID ? MAP_LOOK.you : dotFill(colourOf(d)));
     link.attr('stroke', lineColour);
     drawLabels();
-    showBorn();
     if (ringNode) select(ringNode.id);
   };
 
@@ -1561,7 +1616,6 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       link.classed('found', l => !!findHit?.has(l.target.id));
       g.classed('lab-find', !!findHit);
       drawLabels();
-      showBorn();
       setClock({ found: findHit ? findHit.size : 0 });
     }
     if (fly !== lastFly) {
@@ -1615,7 +1669,13 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       node: d,
     };
   };
-  const dispose = () => { orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); stopSettling?.(); intent.stop(); hideHold(); };
+  const dispose = () => {
+    // Where everyone got to, for the next scene: at rest or not, and how far from it.
+    const moving = stopSettling != null || simulation.alpha() >= simulation.alphaMin();
+    keepPlaces(moving ? simulation.alpha() : 0);
+    cancelAnimationFrame(paintAsked);
+    orbitTimer?.stop(); orbitTimer = null; clearTimeout(fitCheck); stopSettling?.(); intent.stop(); hideHold();
+  };
   const fitOwed = () => fitArmed;
   // Settled already (Physics off, a small map worked out at once), or drawn by
   // degree, where everyone starts where they stay: now; otherwise once it is.
@@ -1623,7 +1683,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (byDegree() || (!stopSettling && simulation.alpha() < SETTLED)) fitView();
     else fitArmed = true;
   };
-  return { simulation, resize, select, setLab, setTime, setColours, setFind, setFit, fitOwed, fitWhenSettled, dispose, range, freeze, screenOf, setTies };
+  return { simulation, resize, select, setLab, setColours, setFind, setFit, fitOwed, fitWhenSettled, dispose, range, freeze, screenOf, setTies };
 }
 
 // With Physics off (isStill), a dragged dot moves on its own, nothing pulled
