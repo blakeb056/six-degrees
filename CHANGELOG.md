@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   profile beside it, both in Sixgree's own browser where they can. No colour stands for two things any
   more (gold is S's alone, Path is no longer C's green), words read on Daylight, the search box keeps
   clear of the side buttons, and on a phone the chips wrap instead of scrolling sideways.
+- **Bridge Chains opens the same focus as Network Circle.** Click a bridge, or rest the pointer on
+  it for 3.5 seconds (a ring fills round it as you wait), and the overview eases in on it and
+  softly blurs while its circle comes forward sharp, with every catalyst's circle chained outward,
+  rings by degree counted along the chain. A bridge you met through another's circle shows the
+  trail to it under the circle, and a press on any step before it brings that one's circle forward.
+  With nothing scanned you see just them and Scan their circle. Esc, Back, a click outside, or
+  scrolling or pinching out eases you back, and their card opens as it does in Network Circle. It
+  replaces the hover preview and the circle opened in place on a click; links to someone's circle
+  open the focus too. Both views share one implementation, so they look and move the same, in every
+  look, Daylight included, and at any width.
 
 ## [2.7.0] - 2026-10-16
 

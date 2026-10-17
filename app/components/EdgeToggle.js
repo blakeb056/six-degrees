@@ -87,8 +87,9 @@ export default function EdgeToggle({ side, label, open, onToggle, panelId, width
   }, [closing]);
 
   // Esc closes the panel the focus is in (or on this button), and leaves the
-  // focus here. Not from a text box, and not while a dialog is over the page;
-  // caught before Bridge Chains' own Esc (back one circle) so one key does one thing.
+  // focus here. Not from a text box, and not while a dialog is over the page,
+  // such as a circle's focus over the map (CircleFocus.js), which closes on
+  // Esc itself: one key does one thing.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
