@@ -33,16 +33,18 @@
 // appearing cannot feed a resize loop.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostMutuals, shortName, TIERS, keyFor, routeIndex } from '../../lib/separation';
+import { separationPeople, comparePower, summitLayout, convergeLayout, mapCount, mostMutuals, shortName, TIERS, keyFor, routeIndex, tierOf, tierShown, tierSections, sectionLayout, itemsBetween } from '../../lib/separation';
 import { companyOf, industryOf, INDUSTRIES } from '../../lib/companies';
 import { RARITY, rarityOf, rarityInfo, toggle, SLIDER_MIDDLE, slideValue, slideLabel, easeOf } from '../../lib/rarity';
-import { hasRequest, refreshRequests } from '../../lib/requests-client';
+import { hasRequest, refreshRequests, markRequested } from '../../lib/requests-client';
 import { autoAsks, autoAsksSignature, askStatus, leavesTop, topToAsk } from '../../lib/ask-next';
 import useRequests from './useRequests';
 import useScanner from './useScanner';
-import { initialsFor } from '../../lib/tiers';
+import { initialsFor, TIER_LABELS } from '../../lib/tiers';
 import { watchNotchShown, notchShownNow, noNotch } from '../../lib/island';
 import Avatar from './Avatar';
+// Every profile link, Connect and View profile alike: Sixgree's own browser where it can.
+import OpenProfile from './OpenProfile';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 // The strategy engine (experimental, off by default): a Gatekeepers list and a
 // Leverage badge on each way in, only while Settings → Experimental has it on.
@@ -52,17 +54,32 @@ import GatekeeperList, { LeverageBadge, GATE } from './GatekeeperList';
 const ORANGE = '#FF6B35';
 const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const CANT_NAME = 'a connection we can’t name';
-// The fixed Filters (left:16) and Details (right:16) pills sit at viewport
-// top:140 — inside the header band on a desktop, in the controls row on a
-// phone. This much side padding keeps them off the text at every width.
-const SIDE = 56;
+// The fixed Filters (left:16) and Details (right:16) pucks are 36px wide at
+// viewport top:140: inside the header band on a desktop, beside the search box
+// on a phone. This much side padding keeps 12px clear of them at every width.
+const SIDE = 64;
+const SIDE_PHONE = 60;
 const LABEL_ROW = 28;
 const TITLE_ROW = 44;           // the ledger's title bar, on a computer (Blake, 2026-10-02: mock-up 2)
-// The ledger's columns: rank, face, person, way in, how rare the way in, power.
-const COLUMNS = '64px 36px minmax(0,1.3fr) minmax(0,1fr) 190px 132px';
 const BOTTOM_PAD = 72;           // clear of the last row's reach, and the corner toggles
 const OVERSCAN = 8;
 const SCROLL_STEP = 16;          // scroll is published to state in 16px steps, not every pixel
+// The results in tier sections (Blake, 2026-10-16: "separating the tiers"): a
+// header per tier, then its people as cards, every height fixed (lib/separation.js sectionLayout).
+const SECTION_HEAD = 44;
+const ROW_DESK = 60;
+const ROW_PHONE = 98;
+// The ledger's columns, wide (person, way in, how rare, score, actions) and
+// narrower (the rarity goes under the way in).
+const COLUMNS_WIDE = 'minmax(0,1.2fr) minmax(0,1.35fr) 124px 40px 108px';
+const COLUMNS_MID = 'minmax(0,1.1fr) minmax(0,1.3fr) 40px 108px';
+const WIDE_AT = 880;             // the list's width from which the rarity has a column of its own
+
+// A colour as words: a light look deepens it toward ink, so gold or cyan reads on
+// white (lib/themes.js --sd-tier-ink); a dark look leaves it as it is.
+const ink = (c) => `color-mix(in srgb, ${c} 58%, var(--sd-tier-ink, ${c}))`;
+// A colour see-through, for any colour, a CSS variable included.
+const tint = (c, pct) => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 const plural = (n, one, many) => `${fmt(n)} ${n === 1 ? one : many}`;
@@ -103,7 +120,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const isMobile = useIsMobile();
   // Room at the top for the notch, only while it's on screen (a scan, or another tab's views).
   const notch = useSyncExternalStore(watchNotchShown, notchShownNow, noNotch);
-  const ROW_H = isMobile ? 68 : 56;
+  const ROW_H = isMobile ? ROW_PHONE : ROW_DESK;
   const K = isMobile ? 5 : 10;
   const sidePad = isMobile ? 8 : 16;
 
@@ -116,7 +133,11 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   // to see the whole graph on the single screen ... at least have a plus and minus").
   const [zoom, setZoom] = useState(null);
   const atSlow = useDeferredValue(at);
-  const [tier, setTier] = useState('all');
+  // The tier chips: the tiers switched on, as rarity's are; none is every tier.
+  // Each tier is a section of the list, so a chip shows or hides a whole section.
+  const [tiers, setTiers] = useState(() => new Set());
+  // Sections folded away to their header (S, A, …, or 'unranked').
+  const [collapsed, setCollapsed] = useState(() => new Set());
   // Rarity beside the tier (lib/rarity.js): any bands switched on; none is everyone.
   const [rarities, setRarities] = useState(() => new Set());
   // Path: one sector or one company, or none. The picker is only on screen while it's open.
@@ -138,7 +159,7 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   if (preset && preset.id !== presetFor) {
     setPresetFor(preset.id);
     setQuery(preset.query || '');
-    setTier(preset.tier || 'all');
+    setTiers(new Set(TIERS.includes(preset.tier) ? [preset.tier] : []));
     setRarities(new Set(preset.rarity ? [preset.rarity] : []));
     setGates(false);
   }
@@ -210,18 +231,18 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
     const f = facets.by.get(p.key);
     return path.kind === 'sector' ? f?.sector === path.key : f?.company === path.key;
   }, [path, facets]);
-  const matches = useCallback((p, text) => (tier === 'all' || p.tier === tier)
+  const matches = useCallback((p, text) => tierShown(tiers, p.tier)
     && (!rarities.size || rarities.has(rarityBy.get(p.key)?.key))
     && onPath(p)
-    && (!text || p.haystack.includes(text)), [tier, rarities, rarityBy, onPath]);
+    && (!text || p.haystack.includes(text)), [tiers, rarities, rarityBy, onPath]);
   const visible = useMemo(() => {
-    if (!q && tier === 'all' && !rarities.size && !path) return ordered;
+    if (!q && !tiers.size && !rarities.size && !path) return ordered;
     return ordered.filter((p) => matches(p, q));
-  }, [ordered, q, tier, rarities, path, matches]);
+  }, [ordered, q, tiers, rarities, path, matches]);
   // Under the ranking: who company scans found that no chain reaches. They have
   // no mutual connections on file, so a rarity filter leaves them out.
-  const unrankedShown = useMemo(() => (rarities.size ? [] : model.unranked.filter((p) => (tier === 'all' || p.tier === tier)
-    && onPath(p) && (!q || p.haystack.includes(q)))), [model, rarities, tier, onPath, q]);
+  const unrankedShown = useMemo(() => (rarities.size ? [] : model.unranked.filter((p) => tierShown(tiers, p.tier)
+    && onPath(p) && (!q || p.haystack.includes(q)))), [model, rarities, tiers, onPath, q]);
 
   // Who you've already asked, or already know. The map is "who to ask next",
   // so it moves on past them: send requests to its ten and the next ten come
@@ -324,21 +345,34 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const mapH = single ? (target ? Math.round(layout.height * scale) + NEXT_H : 0) : Math.round(layout.height * scale);
   const mapBlockH = mapH ? captionH + mapH + 12 : 0;
   const titleH = isMobile ? 0 : TITLE_ROW;
-  const HEAD = mapBlockH + titleH + LABEL_ROW;
-  // The unranked section: its note, then its rows, after the last ranked one.
-  const UNRANKED_TOP = HEAD + visible.length * ROW_H;
-  const unrankedHead = unrankedShown.length ? (isMobile ? UNRANKED_NOTE_MOBILE : UNRANKED_NOTE_H) : 0;
-  const total = UNRANKED_TOP + unrankedHead + unrankedShown.length * ROW_H + BOTTOM_PAD;
+  const labelH = isMobile ? 6 : LABEL_ROW;
+  const HEAD = mapBlockH + titleH + labelH;
+  // The list's own width decides its columns: the rarity has one when there's room.
+  const wide = !isMobile && cw >= WIDE_AT;
+
+  // ── The list: a section per tier, S to D, then the unranked finds ────────
+  // Each keeps the order the list has (power, or the slider's). The chips have
+  // already left out the tiers they hide (matches), so a hidden tier has no section.
+  const sections = useMemo(() => {
+    const out = tierSections(visible, { tiers, collapsed });
+    if (unrankedShown.length) {
+      out.push({ tier: 'unranked', people: unrankedShown, count: unrankedShown.length, collapsed: collapsed.has('unranked'),
+        head: isMobile ? UNRANKED_NOTE_MOBILE : UNRANKED_NOTE_H });
+    }
+    return out;
+  }, [visible, unrankedShown, tiers, collapsed, isMobile]);
+  const list = useMemo(() => sectionLayout(sections, { top: HEAD, head: SECTION_HEAD, row: ROW_H, gap: isMobile ? 10 : 14 }),
+    [sections, HEAD, ROW_H, isMobile]);
+  const total = HEAD + list.height + BOTTOM_PAD;
+  // Searching, a rarity or a path: a section then says how many of its tier are showing.
+  const narrowed = !!q || rarities.size > 0 || !!path;
+  const toggleSection = useCallback((t) => setCollapsed((set) => toggle(set, t)), []);
 
   // ── Windowing ────────────────────────────────────────────────────────────
   // Derived from the last published scroll position on every render, so a
   // change in the map's height or the row height can never leave it stale.
   // No requestAnimationFrame (TRAPS §17): the scroll event owns it.
-  const start = Math.max(0, Math.floor((scrollY - HEAD) / ROW_H) - OVERSCAN);
-  const end = Math.min(visible.length, start + Math.ceil(box.h / ROW_H) + 2 * OVERSCAN);
-  const uTop = UNRANKED_TOP + unrankedHead;
-  const uStart = Math.max(0, Math.floor((scrollY - uTop) / ROW_H) - OVERSCAN);
-  const uEnd = Math.min(unrankedShown.length, Math.max(0, Math.ceil((scrollY + box.h - uTop) / ROW_H)) + OVERSCAN);
+  const mounted = itemsBetween(list.items, scrollY - OVERSCAN * ROW_H, scrollY + box.h + OVERSCAN * ROW_H);
   const onScroll = useCallback((e) => {
     const next = Math.floor(e.currentTarget.scrollTop / SCROLL_STEP) * SCROLL_STEP;
     setScrollY((prev) => (prev === next ? prev : next));
@@ -362,9 +396,17 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   }, []);
 
   const changeQuery = (v) => { setQuery(v); toTop(); };
-  const changeTier = (t) => { setTier(t); toTop(); };
+  // A tier chip shows or hides its section; All (or every tier picked) is all of them.
+  const changeTier = (t) => {
+    setTiers((set) => {
+      if (t == null) return new Set();
+      const next = toggle(set, t);
+      return next.size === TIERS.length ? new Set() : next;
+    });
+    toTop();
+  };
   const changeRarity = (r) => { setRarities((set) => toggle(set, r)); toTop(); };
-  const clearAll = () => { setQuery(''); setTier('all'); setRarities(new Set()); setPath(null); toTop(); };
+  const clearAll = () => { setQuery(''); setTiers(new Set()); setRarities(new Set()); setPath(null); toTop(); };
   const openPath = () => { setPathUsed(true); setPathText(''); setPathOpen(true); };
   const pickPath = (next) => { setPath(next); setPathOpen(false); toTop(); };
   const changeAt = (v) => { setAt(Math.max(0, Math.min(100, Math.round(Number(v) || 0)))); toTop(); };
@@ -381,18 +423,18 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   };
 
   const { summary } = model;
-  const filtered = !!q || tier !== 'all' || rarities.size > 0 || !!path;
+  const filtered = !!q || tiers.size > 0 || rarities.size > 0 || !!path;
   const slide = slideLabel(at);
-  const slideColor = at < 45 ? RARE : at > 55 ? EASY : '#FFD700';
+  // The slider's colours as CSS variables, so a light look deepens them (lib/themes.js).
+  const slideColor = at < 45 ? RARE_VAR : at > 55 ? EASY_VAR : 'var(--sd-gold, #FFD700)';
   const youLabel = !userName || /^you$/i.test(String(userName).trim()) ? 'You' : initialsFor(userName);
-  const rows = visible.slice(start, end);
 
   // Where the slider is, in words (and in full, as its tooltip).
   const pillEl = (
     <span aria-live="polite" title={`${slide.name}. ${slide.detail} It only reorders: scores, tiers and ranks stay as they are.`} style={{
-      ...(isMobile ? { marginLeft: 'auto' } : {}), textTransform: 'none', letterSpacing: 0, flexShrink: 0, height: isMobile ? 40 : 26, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
+      textTransform: 'none', letterSpacing: 0, flexShrink: 0, height: 26, padding: '0 12px', borderRadius: 15, boxSizing: 'border-box',
       display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-      border: `1px solid ${slideColor}66`, background: `${slideColor}14`, color: slideColor,
+      border: `1px solid ${tint(slideColor, 40)}`, background: tint(slideColor, 8), color: slideColor,
     }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: slideColor }} />
       <span style={{ fontVariantNumeric: 'tabular-nums' }}>{at}</span>
@@ -407,37 +449,35 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
       value={query}
       onChange={(e) => changeQuery(e.target.value)}
       onKeyDown={onSearchKey}
-      placeholder={isMobile ? 'Search people, companies, or who knows them' : 'Search people, companies, who knows them'}
+      placeholder="Search people, companies, who knows them"
       aria-label="Search people, companies, or who knows them"
       style={{
-        width: isMobile ? '100%' : 300, flexShrink: 0, minWidth: 0, height: isMobile ? 44 : 32, boxSizing: 'border-box',
+        width: isMobile ? '100%' : 340, flexShrink: 0, minWidth: 0, height: isMobile ? 44 : 32, boxSizing: 'border-box',
         padding: '0 12px', borderRadius: 8, outline: 'none', color: 'var(--sd-fg-1, #fff)',
         fontSize: isMobile ? 16 : 13,        // under 16px, iOS zooms the page on focus
         border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.12)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',
       }}
     />
   );
-  // "Only show": the rarity chips, beside the tiers on a computer, on their own row on a phone.
+  const chipH = isMobile ? 32 : 28;
+  // "Only show": the rarity chips, beside the tiers on a computer, on a row of their own on a phone.
+  // One group, so a line that wraps never leaves its label behind.
   const rarityChips = (
-    <>
-      <span title={RARITY_NOTE} style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Only show</span>
+    <span role="group" aria-label="Only show, by how rare the way in is" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+      <span title={RARITY_NOTE} style={GROUP_LABEL}>Only show</span>
       {RARITY.map((r) => {
         const on = rarities.has(r.key);
         return (
           <button key={r.key} type="button" aria-pressed={on} onClick={() => changeRarity(r.key)}
-            title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`} style={{
-              height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
-              fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
-              border: `1px solid ${on ? r.color : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
-              background: on ? `${r.color}22` : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
-              color: on ? r.color : 'var(--sd-fg-3, #999)',
-            }}>
+            title={`${r.label}: ${r.range} mutual connection${r.range === '1' ? '' : 's'}. ${RARITY_NOTE}`}
+            style={chipStyle(on, r.color, chipH)}>
+            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             {r.label}
-            <span style={{ marginLeft: 5, fontWeight: 500, color: on ? r.color : 'var(--sd-fg-4, #666)', opacity: 0.85 }}>{fmt(byRarity[r.key])}</span>
+            <span style={COUNT}>{fmt(byRarity[r.key])}</span>
           </button>
         );
       })}
-    </>
+    </span>
   );
 
   return (
@@ -445,20 +485,22 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
       flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
       background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', overflow: 'hidden',
     }}>
+      <style>{LIST_CSS}</style>
       {/* ── Top: the search box, and on a phone what it ranks ── */}
-      <div style={{ padding: `${notch ? 48 : 14}px ${SIDE}px 8px`, flexShrink: 0 }}>
+      <div style={{ padding: `${notch ? 48 : 14}px ${isMobile ? SIDE_PHONE : SIDE}px 8px`, flexShrink: 0 }}>
         {/* Blake, 2026-10-03: no title, count line or tier strip up here ("remove this
             line of text … and the actual line of visual of the tiers"); the map and the
             slider say it. The search box keeps the row. */}
         {!isMobile && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{searchBox}</div>}
-        {/* What it ranks, on a phone, where there's room under the search box. */}
+        {/* On a phone: what it ranks, then the search, between the two pucks. */}
         {isMobile && (
-          <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', lineHeight: 1.4 }}>Ranks reachability, not people · lists scanned so far</div>
+          <div style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)', lineHeight: 1.4, marginBottom: 6, textWrap: 'balance' }}>Ranks reachability, not people · lists scanned so far</div>
         )}
+        {isMobile && searchBox}
         {summary.peopleOnlyUnresolved > 0 && (
           <div style={{
             marginTop: 8, padding: '8px 10px', borderRadius: 8, fontSize: 11.5, lineHeight: 1.5, color: 'var(--sd-fg-2, #e8d9a0)',
-            background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
+            background: 'rgba(var(--sd-ink, 255, 255, 255), 0.04)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.14)',
           }}>
             {/* Worded without a cause on purpose: the one time this happened, the
                 people were still connections — under new ids — and a message
@@ -471,79 +513,78 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
         )}
       </div>
 
-      {/* ── Controls: search, then the slider with their tier and rarity ── */}
-      <div style={{ padding: `0 ${SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)' }}>
+      {/* ── Controls: their tier, path and rarity, then the slider ── */}
+      {/* A phone's controls sit under the pucks, so they can use the width; nothing in them scrolls sideways. */}
+      <div style={{ padding: `0 ${isMobile ? 10 : SIDE}px 10px`, flexShrink: 0, borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)' }}>
         <style>{SLIDER_CSS}</style>
-        {isMobile && searchBox}
         <div style={{
-          marginTop: isMobile ? 8 : 2, padding: isMobile ? '8px 10px' : '8px 14px', borderRadius: 12, position: 'relative',
+          marginTop: isMobile ? 4 : 2, padding: isMobile ? '10px 10px 8px' : '8px 14px', borderRadius: 12, position: 'relative',
           border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.025)',
         }}>
           {pathOpen && (
             <PathPicker facets={facets} text={pathText} onText={setPathText} isMobile={isMobile}
               onPick={pickPath} onClose={() => setPathOpen(false)} />
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0,
-            // A phone scrolls this strip sideways, so the page itself never does.
-            overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'thin' }}>
-            <span title={TIER_NOTE} style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help' }}>Their tier</span>
-            {['all', ...TIERS].map((t) => {
-              const on = tier === t;
-              const c = t === 'all' ? 'var(--sd-fg-1, #fff)' : tierColors[t] || '#888';
-              const n = t === 'all' ? summary.people : summary.byTier[t];
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+            <span title={TIER_NOTE} style={GROUP_LABEL}>Their tier</span>
+            <button type="button" aria-pressed={!tiers.size} onClick={() => changeTier(null)}
+              title="Every tier, each in a section of its own" style={chipStyle(!tiers.size, 'var(--sd-fg-1, #fff)', chipH)}>
+              All<span style={COUNT}>{fmt(summary.people)}</span>
+            </button>
+            {TIERS.map((t) => {
+              const on = tiers.has(t);
+              const c = tierColors[t] || '#888';
               return (
-                <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)} style={{
-                  height: isMobile ? 40 : 28, padding: isMobile ? '0 10px' : '0 8px', borderRadius: 14, cursor: 'pointer', flexShrink: 0,
-                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                  border: `1px solid ${on ? c : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
-                  background: on ? (t === 'all' ? 'rgba(var(--sd-ink, 255, 255, 255), 0.13)' : `${c}22`) : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
-                  color: on ? c : 'var(--sd-fg-3, #999)',
-                }}>
-                  {t === 'all' ? 'All' : t}
-                  <span style={{ marginLeft: 5, fontWeight: 500, color: on ? c : 'var(--sd-fg-4, #666)', opacity: 0.85 }}>{fmt(n)}</span>
+                <button key={t} type="button" aria-pressed={on} onClick={() => changeTier(t)}
+                  aria-label={`${t} tier, ${fmt(summary.byTier[t])} people`}
+                  title={`${t} tier: ${tierLabel(t)}. Shows or hides the ${t} section; pick more than one to see them together.`}
+                  style={chipStyle(on, c, chipH)}>
+                  <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                  {t}
+                  <span style={COUNT}>{fmt(summary.byTier[t])}</span>
                 </button>
               );
             })}
             {/* Path: one sector or one company. The picker opens under here and goes away once you pick. */}
-            <span style={{ display: 'inline-flex', flexShrink: 0, height: isMobile ? 40 : 30, borderRadius: 15, overflow: 'hidden',
-              border: `1px solid ${path ? PATH : 'rgba(0,255,136,0.35)'}`, background: path ? 'rgba(0,255,136,0.12)' : 'rgba(0,255,136,0.04)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, minWidth: 0, maxWidth: '100%', height: chipH, borderRadius: 14, overflow: 'hidden',
+              border: `1px solid ${path ? 'rgba(var(--sd-ink, 255, 255, 255), 0.45)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
+              background: path ? 'rgba(var(--sd-ink, 255, 255, 255), 0.1)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)' }}>
               <button type="button" aria-haspopup="dialog" aria-expanded={pathOpen} onClick={() => (pathOpen ? setPathOpen(false) : openPath())}
                 title="Narrow everyone to one sector or one company" style={{
-                  padding: path ? '0 6px 0 12px' : '0 12px', border: 'none', background: 'none', cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: PATH, maxWidth: isMobile ? 200 : 300, overflow: 'hidden', textOverflow: 'ellipsis',
+                  height: '100%', padding: path ? '0 6px 0 12px' : '0 12px', border: 'none', background: 'none', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0,
+                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--sd-fg-1, #fff)', maxWidth: isMobile ? 220 : 300, overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                {path ? <>Path<span style={{ fontWeight: 500, color: 'var(--sd-fg-1, #cfe)' }}> · {path.label}</span></> : 'Path ▾'}
+                {path?.color && <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: path.color, flexShrink: 0 }} />}
+                {path ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Path<span style={{ fontWeight: 500, color: 'var(--sd-fg-2, #cfe)' }}> · {path.label}</span></span> : 'Path ▾'}
               </button>
               {path && (
                 <button type="button" aria-label={`Clear the path: ${path.label}`} onClick={() => pickPath(null)} style={{
-                  padding: '0 10px 0 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: PATH,
+                  height: '100%', padding: '0 10px 0 4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--sd-fg-2, #ccc)',
                 }}>×</button>
               )}
             </span>
             {strategy.on && (
               <button type="button" aria-pressed={gates} onClick={() => { setGates((g) => !g); toTop(); }}
                 title="Experimental: your connections ranked by where they stand in your network (who you reach only through them), not by power"
-                style={{
-                  height: isMobile ? 40 : 30, padding: '0 12px', borderRadius: 15, cursor: 'pointer', flexShrink: 0,
-                  fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: GATE,
-                  border: `1px solid ${gates ? GATE : `${GATE}55`}`, background: gates ? `${GATE}22` : `${GATE}08`,
-                }}>
+                style={chipStyle(gates, GATE, chipH)}>
+                <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 2, background: GATE, flexShrink: 0 }} />
                 Gatekeepers{gates ? ' ✓' : ''}
               </button>
             )}
-            {!isMobile && <>
-              <span aria-hidden="true" style={{ width: 1, height: 18, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', margin: '0 2px' }} />
-              {rarityChips}
-            </>}
-            {isMobile && pillEl}
+            {!isMobile && <span style={{ marginLeft: 8, minWidth: 0 }}>{rarityChips}</span>}
           </div>
+          {/* On a phone the rarity chips have a row of their own, wrapping, never sideways */}
+          {isMobile && (
+            <div style={{ marginTop: 8, minWidth: 0 }}>{rarityChips}</div>
+          )}
 
           {/* The slider: the rarest ways in at one end, the easiest at the other, power alone in the middle */}
-          {/* On a computer the pill saying where the slider is sits over its middle, in place of "Power" */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'baseline' : 'center', marginTop: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            <span style={{ color: 'var(--sd-cyan, #00E5FF)', flex: isMobile ? undefined : 1 }}>Rare{isMobile ? '' : ' · one way in'}</span>
-            {isMobile ? <span style={{ color: 'var(--sd-gold, #FFD700)' }}>Power</span> : pillEl}
-            <span style={{ color: 'var(--sd-coral, #FF7043)', flex: isMobile ? undefined : 1, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
+          {/* The pill saying where the slider is sits over its middle, in place of "Power" */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <span style={{ color: RARE_VAR, flex: 1, minWidth: 0 }}>Rare{isMobile ? '' : ' · one way in'}</span>
+            {pillEl}
+            <span style={{ color: EASY_VAR, flex: 1, minWidth: 0, textAlign: 'right' }}>Easy{isMobile ? '' : ' · many mutual connections'}</span>
           </div>
           <input
             className="sepslide" type="range" min={0} max={100} step={1} value={at}
@@ -561,16 +602,12 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
               }}>{v}{name && !isMobile ? ` · ${name}` : ''}</button>
             ))}
           </div>
-          {/* On a phone: the sentence, and the rarity chips on a row of their own */}
-          {isMobile && <>
-            <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45, color: 'var(--sd-fg-2, #bbb)' }}>
+          {/* On a phone, once the order has moved off power: the sentence, as there's no tooltip to hover */}
+          {isMobile && at !== SLIDER_MIDDLE && (
+            <div style={{ marginTop: 2, fontSize: 11.5, lineHeight: 1.45, color: 'var(--sd-fg-2, #bbb)' }}>
               <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name}.</span>{' '}{slide.detail}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, minWidth: 0, flexWrap: 'nowrap',
-              overflowX: 'auto', scrollbarWidth: 'thin' }}>
-              {rarityChips}
-            </div>
-          </>}
+          )}
         </div>
       </div>
 
@@ -652,82 +689,61 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
 
           {visible.length > 0 && !isMobile && (
             <div style={{
-              height: TITLE_ROW, display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 0 15px', boxSizing: 'border-box',
+              height: TITLE_ROW, display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 0 14px', boxSizing: 'border-box',
               borderTop: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.06)',
             }}>
               <span style={{ fontSize: 15, fontWeight: 800 }}>Ranked by reach</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#000', background: '#FFD700', borderRadius: 10, padding: '2px 8px' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--sd-fg-1, #fff)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', borderRadius: 10, padding: '2px 8px', fontVariantNumeric: 'tabular-nums' }}>
                 {fmt(visible.length)}{filtered ? ` of ${fmt(summary.people)}` : ''}
               </span>
+              <span style={{ fontSize: 11, color: 'var(--sd-fg-4, #777)' }}>in tiers, S to D</span>
               <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sd-fg-4, #777)' }}>
-                order follows the slider · <span style={{ color: slideColor }}>{slide.name.toLowerCase()}</span>
+                order in each tier follows the slider · <span style={{ color: slideColor, fontWeight: 700 }}>{slide.name.toLowerCase()}</span>
               </span>
             </div>
           )}
-          {visible.length > 0 && (
-            <div style={{
-              height: LABEL_ROW, display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px 0 15px',
-              gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
-              fontSize: 9, fontWeight: 700, color: 'var(--sd-fg-5, #555)', textTransform: 'uppercase', letterSpacing: 0.5,
-              borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)', boxSizing: 'border-box',
+          {visible.length > 0 && !isMobile && (
+            <div aria-hidden="true" style={{
+              height: LABEL_ROW, display: 'grid', alignItems: 'center', columnGap: 12, padding: '0 12px 0 15px',
+              gridTemplateColumns: wide ? COLUMNS_WIDE : COLUMNS_MID,
+              fontSize: 9.5, fontWeight: 700, color: 'var(--sd-fg-4, #666)', textTransform: 'uppercase', letterSpacing: 0.5, boxSizing: 'border-box',
             }}>
-              <span title="Rank by score, then ways in. = means tied">#</span>
+              <span style={{ ...ellipsis, paddingLeft: 2 }}>Rank · person</span>
+              <span style={ellipsis}>Way in: you → your connection → them</span>
+              {wide && <span style={ellipsis} title={RARITY_NOTE}>How rare</span>}
+              <span style={{ ...ellipsis, textAlign: 'right' }}>Score</span>
               <span />
-              {isMobile ? <span>Person · way in</span> : <><span>Person</span><span>Way in</span><span title={RARITY_NOTE}>How rare the way in</span><span style={{ textAlign: 'right' }}>Power</span></>}
-              {isMobile && <span style={{ textAlign: 'right' }}>Score</span>}
             </div>
           )}
 
-          {rows.map((p, i) => (
-            <Row
-              key={p.key}
-              p={p}
-              top={HEAD + (start + i) * ROW_H}
-              height={ROW_H}
-              isMobile={isMobile}
-              selected={p.key === selectedKey}
-              tierColors={tierColors}
-              onPick={onPick}
-              q={q}
-              status={statusOf(p)}
-              rarity={rarityBy.get(p.key)}
-              leverageOf={leverageOf}
-            />
-          ))}
-
-          {unrankedShown.length > 0 && (
-            <div style={{
-              position: 'absolute', top: UNRANKED_TOP, left: 0, right: 0, height: unrankedHead, boxSizing: 'border-box',
-              padding: isMobile ? '14px 8px 8px' : '18px 15px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 4,
-              borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.08)',
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: isMobile ? 13 : 15, fontWeight: 800 }}>3rd degree · not ranked</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--sd-fg-1, #fff)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.12)', borderRadius: 10, padding: '2px 8px' }}>
-                  {fmt(unrankedShown.length)}
-                </span>
-              </span>
-              <span style={{ fontSize: isMobile ? 10.5 : 11.5, lineHeight: 1.45, color: 'var(--sd-fg-3, #99a)' }}>
-                Found by company scans. No circle you&rsquo;ve scanned leads to them, so there&rsquo;s no one on file to
-                introduce you and no route to rank. Scored the same way; they join the ranking once a scanned circle has them.
-              </span>
-            </div>
-          )}
-          {unrankedShown.slice(uStart, uEnd).map((p, i) => (
-            <Row
-              key={p.key}
-              p={p}
-              top={uTop + (uStart + i) * ROW_H}
-              height={ROW_H}
-              isMobile={isMobile}
-              selected={p.key === selectedKey}
-              tierColors={tierColors}
-              onPick={onPick}
-              q={q}
-              status={statusOf(p)}
-              rarity={null}
-            />
-          ))}
+          {mounted.map((it) => (it.kind === 'head'
+            ? (
+              <SectionHead
+                key={it.key}
+                section={it.section}
+                top={it.top}
+                height={it.height}
+                tierColors={tierColors}
+                of={narrowed && it.tier !== 'unranked' ? summary.byTier[it.tier] : null}
+                isMobile={isMobile}
+                onToggle={toggleSection}
+              />
+            ) : (
+              <Row
+                key={it.key}
+                p={it.p}
+                top={it.top}
+                height={it.height}
+                layout={isMobile ? 'phone' : wide ? 'wide' : 'mid'}
+                selected={it.p.key === selectedKey}
+                tierColors={tierColors}
+                onPick={onPick}
+                q={q}
+                status={statusOf(it.p)}
+                rarity={it.p.unranked ? null : rarityBy.get(it.p.key)}
+                leverageOf={it.p.unranked ? null : leverageOf}
+              />
+            )))}
 
           {visible.length === 0 && unrankedShown.length === 0 && (
             <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', color: 'var(--sd-fg-3, #888)', fontSize: 13, padding: '0 16px' }}>
@@ -855,7 +871,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
         <radialGradient id="sepAimHalo"><stop offset="0" stopColor="#FFD700" stopOpacity="0.2" /><stop offset="1" stopColor="#FFD700" stopOpacity="0" /></radialGradient>
       </defs>
       {spokes.map((s) => (
-        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${cards ? s.x2 - PILL_W : s.x2},${s.y2}`} fill="none" stroke="#fff" strokeOpacity={0.12} strokeWidth={1} />
+        <path key={`s-${s.id ?? 'unresolved'}`} className="spk in" d={`M${s.x1},${s.y1} L${cards ? s.x2 - PILL_W : s.x2},${s.y2}`} fill="none" style={{ stroke: 'rgb(var(--sd-ink, 255, 255, 255))' }} strokeOpacity={0.14} strokeWidth={1} />
       ))}
 
       {/* Not as bright when most of the way in is still unscanned: the glow follows the share drawn. */}
@@ -952,10 +968,10 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                 ) : pp.big ? (
                   <>
                     <circle r={pp.r} fill="var(--sd-bg)" stroke={c} strokeWidth={3} strokeOpacity={0.35 + 0.65 * drawn} />
-                    <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
+                    <text dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={800} style={{ fill: ink(c) }}>{initialsFor(p.person.name)}</text>
                     <text x={lx} y={-20} fontSize={fs + 3} fontWeight={800} fill="var(--sd-fg-1, #fff)" style={HALO}>{clip(p.person.name)}</text>
                     <text x={lx} y={-4} fontSize={fs} fill="var(--sd-fg-3, #aaa)" style={HALO}>{clip(subline(p.person))}</text>
-                    <text x={lx} y={13} fontSize={fs} fontWeight={700} fill={c} style={HALO}>
+                    <text x={lx} y={13} fontSize={fs} fontWeight={700} style={{ ...HALO, fill: ink(c) }}>
                       #{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}
                     </text>
                     <text x={lx} y={29} fontSize={fs} fill="var(--sd-fg-2, #ccc)" style={HALO}>
@@ -975,7 +991,7 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                     <circle className="sd-dot" r={pp.r} fill={c} />
                     <text x={14} dy="0.35em" fontSize={fs} fill="var(--sd-fg-1, #ddd)" style={HALO}>
                       {pp.label}
-                      <tspan dx={6} fill={c} fontWeight={700}>{p.score.toFixed(1)}</tspan>
+                      <tspan dx={6} style={{ fill: ink(c) }} fontWeight={700}>{p.score.toFixed(1)}</tspan>
                       {queued && <tspan dx={6} fontSize={fs - 2} fontWeight={800} fill="var(--sd-gold, #FFD700)">Queued</tspan>}
                       {/* How many mutual connections lead to them: one is the rare kind */}
                       {doors && (
@@ -1010,8 +1026,8 @@ const SummitMap = memo(function SummitMap({ layout, scale = 1, selectedKey, tier
                 strokeWidth={b.unresolved ? 1 : 1.5}
                 strokeDasharray={b.unresolved ? '2 2' : undefined}
               />
-              <text x={-9} dy="0.35em" textAnchor="end" fontSize={fs - 1} fill={c}
-                fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : b.primary ? 800 : 600} style={HALO}>
+              <text x={-9} dy="0.35em" textAnchor="end" fontSize={fs - 1}
+                fontStyle={b.unresolved ? 'italic' : undefined} fontWeight={b.unresolved ? 400 : b.primary ? 800 : 600} style={{ ...HALO, fill: ink(c) }}>
                 {b.label}
               </text>
               </>)}
@@ -1058,14 +1074,14 @@ function Pill({ b, c, big }) {
   return (
     <g>
       <rect x={-PILL_W} y={-14} width={PILL_W} height={28} rx={14} fill="var(--sd-card, #14172e)"
-        stroke={hot ? 'rgba(255,215,0,0.55)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={hot ? 1.3 : 1} />
+        stroke={hot ? 'rgba(255,107,53,0.7)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.12)'} strokeWidth={hot ? 1.3 : 1} />
       <circle className="sd-dot" cx={-PILL_W + 15} r={10} fill={c} />
       <text x={-PILL_W + 15} dy="0.35em" textAnchor="middle" fontSize={8} fontWeight={800} fill="#000">{initialsFor(b.bridge.name)}</text>
       <text x={-PILL_W + 31} dy="0.35em" fontSize={12} fontWeight={600} fill="var(--sd-fg-1, #e8e8f0)">
         {clipText(b.bridge.name, Math.max(6, Math.floor((PILL_W - 31 - tw - 10) / 6.4)))}
       </text>
       <rect x={-tw - 7} y={-9} width={tw} height={18} rx={9} fill={`${c}22`} />
-      <text x={-7 - tw / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={c}>{tag}</text>
+      <text x={-7 - tw / 2} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} style={{ fill: ink(c) }}>{tag}</text>
     </g>
   );
 }
@@ -1076,12 +1092,12 @@ function SmallCard({ p, c, tag, width, sel, queued = false }) {
   return (
     <g>
       <rect x={0} y={-20} width={width} height={40} rx={10} fill="var(--sd-card, #151830)" stroke={sel ? 'var(--sd-fg-1, #fff)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.09)'} strokeWidth={sel ? 1.5 : 1} />
-      <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="var(--sd-gold, #FFD700)">#{p.rank}{p.tied ? '=' : ''}</text>
+      <text x={12} dy="0.35em" fontSize={11} fontWeight={800} fill="var(--sd-fg-3, #8a8fa8)">#{p.rank}{p.tied ? '=' : ''}</text>
       <text x={60} y={-3} fontSize={13} fontWeight={700} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor((width - 60 - (queued ? 120 : 70)) / 7))}</text>
       {/* Auto's request waits in the scan queue: still here, until it's sent */}
       {queued && <text data-queued x={width - 52} y={-2} textAnchor="end" fontSize={9.5} fontWeight={800} fill="var(--sd-gold, #FFD700)">Queued</text>}
       <text x={60} y={12} fontSize={10.5} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), Math.floor((width - 60 - tw - 20) / 5.6))}</text>
-      <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} fill={c}>{p.score.toFixed(1)}</text>
+      <text x={width - 12} y={-2} textAnchor="end" fontSize={14} fontWeight={800} style={{ fill: ink(c) }}>{p.score.toFixed(1)}</text>
       <rect x={width - 12 - tw} y={4} width={tw} height={14} rx={7}
         fill={tag.rare ? 'rgba(0,229,255,0.1)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.06)'} stroke={tag.rare ? 'rgba(0,229,255,0.35)' : 'rgba(var(--sd-ink, 255, 255, 255), 0.14)'} />
       <text x={width - 12 - tw / 2} y={11} dy="0.35em" textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tag.rare ? 'var(--sd-cyan, #00E5FF)' : 'var(--sd-fg-2, #cfd3e6)'}>{tag.text}</text>
@@ -1102,12 +1118,12 @@ function BigCard({ p, c, tag, width, fs }) {
     <g>
       <rect x={0} y={-76} width={width} height={152} rx={16} fill="var(--sd-card, #151830)" stroke="rgba(255,215,0,0.45)" />
       <circle cx={48} r={32} fill="var(--sd-bg)" stroke={c} strokeWidth={3} />
-      <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} fill={c}>{initialsFor(p.person.name)}</text>
+      <text x={48} dy="0.35em" textAnchor="middle" fontSize={18} fontWeight={800} style={{ fill: ink(c) }}>{initialsFor(p.person.name)}</text>
       <text x={tx} y={-40} fontSize={11} fontWeight={800} fill="var(--sd-gold, #FFD700)">#{p.rank}{p.tied ? '=' : ''} · {p.tier}-tier · {p.score.toFixed(1)}</text>
       <text x={tx} y={-17} fontSize={fs + 8} fontWeight={800} fill="var(--sd-fg-1, #fff)">{clipText(p.person.name, Math.floor(room * 0.72))}</text>
       <text x={tx} y={1} fontSize={12} fill="var(--sd-fg-3, #8a8fa8)">{clipText(subline(p.person), room)}</text>
       <rect x={tx} y={12} width={w1} height={20} rx={10} fill="rgba(255,112,67,0.12)" stroke="rgba(255,112,67,0.4)" />
-      <text x={tx + w1 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill={EASY}>{first}</text>
+      <text x={tx + w1 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill={EASY_VAR}>{first}</text>
       <rect x={tx + w1 + 6} y={12} width={w2} height={20} rx={10} fill="rgba(var(--sd-ink, 255, 255, 255), 0.06)" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.14)" />
       <text x={tx + w1 + 6 + w2 / 2} y={22} dy="0.35em" textAnchor="middle" fontSize={10.5} fontWeight={800} fill="var(--sd-fg-2, #cfd3e6)">{second}</text>
       <text x={tx} y={50} fontSize={10.5} fill="#6b7090">
@@ -1122,22 +1138,91 @@ function BigCard({ p, c, tag, width, fs }) {
   );
 }
 
-// ── Rows ───────────────────────────────────────────────────────────────────
+// ── The list: a section per tier, then a card per person ───────────────────
 
 const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
-// The unranked section's title and note (a phone's note takes more lines).
-const UNRANKED_NOTE_H = 84;
-const UNRANKED_NOTE_MOBILE = 108;
+// The unranked section's header: its title and note (a phone's note takes more lines).
+const UNRANKED_NOTE_H = 88;
+const UNRANKED_NOTE_MOBILE = 118;
+// Read by a screen reader, never seen: who a Connect or View profile is for.
+const SR_ONLY = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 };
 
 /** Who's between your connection and them, past the 2nd degree: " → Ana → Ben". */
 const viaTail = (route) => (route?.via || []).map((v) => ` → ${v.name || 'someone'}`).join('');
+
+/** "S · Highest leverage" → "Highest leverage". */
+const tierLabel = (t) => String(TIER_LABELS[t] || `${t} tier`).replace(/^[A-Z]\s*·\s*/, '');
+
+/** The scores a section spans, highest first: "9.5 to 9.0", or one score. */
+function scoreRange(people) {
+  let hi = -Infinity;
+  let lo = Infinity;
+  for (const p of people) { hi = Math.max(hi, p.score); lo = Math.min(lo, p.score); }
+  if (!Number.isFinite(hi)) return '';
+  return hi === lo ? hi.toFixed(1) : `${hi.toFixed(1)} to ${lo.toFixed(1)}`;
+}
+
+/** A tier's header: its colour and letter, its name, how many, and the fold. */
+const SectionHead = memo(function SectionHead({ section, top, height, tierColors, of = null, isMobile, onToggle }) {
+  const unranked = section.tier === 'unranked';
+  const c = unranked ? '#8a8fa8' : tierColors[section.tier] || '#888';
+  const open = !section.collapsed;
+  const name = unranked ? '3rd degree · not ranked' : `${section.tier} tier`;
+  const sub = unranked ? 'found by company scans' : tierLabel(section.tier);
+  const count = `${fmt(section.count)}${of != null && of !== section.count ? ` of ${fmt(of)}` : ''}`;
+  const people = section.count === 1 && of == null ? 'person' : 'people';
+  return (
+    <div className="sephead seprow" role="heading" aria-level={3} style={{
+      position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box', overflow: 'hidden',
+      borderRadius: open ? '10px 10px 0 0' : 10, borderLeft: `3px solid ${c}`,
+      background: tint(c, 10), borderBottom: open ? `1px solid ${tint(c, 30)}` : '1px solid transparent',
+    }}>
+      <button type="button" aria-expanded={open} onClick={() => onToggle(section.tier)}
+        aria-label={`${name}, ${sub}: ${count} ${people}. ${open ? 'Fold this section away' : 'Show this section'}`}
+        title={open ? 'Fold this section away' : 'Show this section'}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', width: '100%', height: SECTION_HEAD, padding: '0 12px 0 10px', margin: 0,
+          display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, color: 'var(--sd-fg-1, #fff)', font: 'inherit', textAlign: 'left', boxSizing: 'border-box',
+        }}>
+        <svg aria-hidden="true" className="sepchev" width="12" height="12" viewBox="0 0 12 12" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>
+          <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {unranked
+          ? <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: 7, border: '1.5px dashed var(--sd-fg-4, #777)', flexShrink: 0, boxSizing: 'border-box' }} />
+          : (
+            <span aria-hidden="true" style={{
+              width: 24, height: 24, borderRadius: 7, background: c, color: '#000', fontSize: 13, fontWeight: 800, flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>{section.tier}</span>
+          )}
+        <span style={{ fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>{name}</span>
+        <span style={{ ...ellipsis, fontSize: 12, color: 'var(--sd-fg-3, #99a)', minWidth: 0, flexShrink: 1 }}>{sub}</span>
+        <span style={{
+          fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 10, flexShrink: 0, whiteSpace: 'nowrap',
+          background: tint(c, 24), color: 'var(--sd-fg-1, #fff)', fontVariantNumeric: 'tabular-nums',
+        }}>{count}</span>
+        {!unranked && !isMobile && (
+          <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 11, color: 'var(--sd-fg-4, #777)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            score {scoreRange(section.people)}
+          </span>
+        )}
+      </button>
+      {unranked && (
+        <div style={{ padding: isMobile ? '0 12px 0 14px' : '0 16px 0 46px', fontSize: isMobile ? 10.5 : 11.5, lineHeight: 1.45, color: 'var(--sd-fg-3, #99a)' }}>
+          Found by company scans. No circle you&rsquo;ve scanned leads to them, so there&rsquo;s no one on file to
+          introduce you and no route to rank. Scored the same way; they join the ranking once a scanned circle has them.
+        </div>
+      )}
+    </div>
+  );
+});
 
 /** No route on file: who found them, instead of a way in. */
 function NoRoute({ p, compact }) {
   const where = p.foundBy?.length ? `a company scan of ${p.foundBy.slice(0, 2).join(', ')}${p.foundBy.length > 2 ? ` +${p.foundBy.length - 2}` : ''}` : 'a company scan';
   return (
     <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }} title={`No one on file links you to them: found by ${where}.`}>
-      <span style={{ ...ellipsis, fontSize: compact ? 11 : 13, fontWeight: compact ? 500 : 700, color: 'var(--sd-fg-4, #889)', fontStyle: 'italic' }}>
+      <span style={{ ...ellipsis, fontSize: compact ? 11.5 : 12.5, fontWeight: 600, color: 'var(--sd-fg-3, #889)', fontStyle: 'italic' }}>
         no route on file
       </span>
       {!compact && <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: 'var(--sd-fg-4, #777)' }}>found by {where}</span>}
@@ -1145,47 +1230,57 @@ function NoRoute({ p, compact }) {
   );
 }
 
-function Via({ p, route, tierColors, compact, leverageOf = null }) {
-  if (p.unranked) return <NoRoute p={p} compact={compact} />;
-  if (!compact) return <WayIn p={p} route={route} tierColors={tierColors} leverageOf={leverageOf} />;
-  if (!route?.bridge) {
-    return <span style={{ ...ellipsis, color: 'var(--sd-fg-4, #777)', fontStyle: 'italic', fontSize: compact ? 11 : 12 }}>via {CANT_NAME}</span>;
-  }
-  const b = route.bridge;
-  const extra = p.waysIn - 1;
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, fontSize: compact ? 11 : 12 }}>
-      <span style={{ color: 'var(--sd-fg-4, #666)', flexShrink: 0 }}>via</span>
-      {!compact && <Avatar person={b} size={16} tierColors={tierColors} />}
-      <span style={{ ...ellipsis, color: tierColors[b.tier] || '#aaa', fontWeight: 600, minWidth: 0 }}>{compact ? shortName(b.name) : b.name}{route.via?.length ? <span style={{ color: 'var(--sd-fg-3, #99a)', fontWeight: 500 }}>{viaTail(route)}</span> : null}</span>
-      {extra > 0 && (
-        <span title={`Every way in:\n${everyRoute(p)}`} style={{
-          flexShrink: 0, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 800,
-          color: 'var(--sd-orange, #FF6B35)', background: 'rgba(255,107,53,0.15)',
-        }}>+{extra}</span>
-      )}
-    </span>
-  );
-}
+const ARROW = { flexShrink: 0, fontSize: 11, color: 'var(--sd-fg-4, #667)' };
+const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'them';
 
-/** The ledger's way in: the connection's face and name, and under it "only way in" or how many more. */
-function WayIn({ p, route, tierColors, leverageOf = null }) {
+/**
+ * The way in, read left to right: You → your connection → them. The
+ * connection is a chip in their own tier's colour, whatever tier the chips
+ * show (bridges are never filtered); anyone between, past the 2nd degree,
+ * sits on the line; "+2" is how many other ways in, all of them on hover.
+ */
+function PathLine({ p, route, tierColors, compact = false }) {
+  if (p.unranked) return <NoRoute p={p} compact={compact} />;
   const b = route?.bridge;
+  const c = b ? tierColors[b.tier] || '#888' : null;
   const extra = p.waysIn - 1;
+  const via = route?.via || [];
+  const between = via.length ? (compact && via.length > 1 ? `${via.length} between` : via.map((v) => shortName(v.name) || 'someone').join(' → ')) : '';
+  const them = p.person.name === 'LinkedIn Member' ? 'them' : firstName(p.person.name);
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }} title={`Every way in:\n${everyRoute(p)}`}>
-      {b ? <Avatar person={b} size={26} tierColors={tierColors} /> : <span style={{ width: 26, height: 26, borderRadius: '50%', border: '1px dashed #666', flexShrink: 0 }} />}
-      <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <span style={{ ...ellipsis, fontSize: 13, fontWeight: 700, color: b ? tierColors[b.tier] || 'var(--sd-fg-1, #ddd)' : 'var(--sd-fg-4, #777)', fontStyle: b ? 'normal' : 'italic' }}>
-          {b ? b.name : CANT_NAME}
-          {route?.via?.length ? <span style={{ color: 'var(--sd-fg-2, #bbc)', fontWeight: 600 }}>{viaTail(route)}</span> : null}
+    <span title={`Every way in:\n${everyRoute(p)}`} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, fontSize: 12 }}>
+      <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--sd-fg-3, #99a)' }}>You</span>
+      <span aria-hidden="true" style={ARROW}>→</span>
+      {b ? (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0, flexShrink: 1, height: 22, padding: '0 8px 0 3px', boxSizing: 'border-box',
+          borderRadius: 11, border: `1px solid ${tint(c, 55)}`, background: tint(c, 14),
+        }}>
+          {/* Their tier, as the section headers show one: the letter on its colour */}
+          <span title={`${b.tier} tier`} style={{
+            width: 15, height: 15, borderRadius: 4, background: c, color: '#000', fontSize: 9.5, fontWeight: 800, flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          }}>{b.tier}</span>
+          <span style={{ ...ellipsis, minWidth: 0, fontWeight: 700, color: 'var(--sd-fg-1, #fff)' }}>{compact ? shortName(b.name) : b.name}</span>
         </span>
-        <span style={{ ...ellipsis, fontSize: 10.5, marginTop: 1, color: extra > 0 ? 'var(--sd-fg-3, #99a)' : RARE, fontWeight: extra > 0 ? 500 : 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={ellipsis}>{p.degree > 2 ? `${p.degree - 1} introductions · ` : ''}{extra > 0 ? `+${extra} more way${extra > 1 ? 's' : ''} in` : 'only way in'}</span>
-          {/* The strategy engine (experimental): where this way in stands, when it's on and measured */}
-          {b && leverageOf && <LeverageBadge small value={leverageOf(b)} />}
-        </span>
-      </span>
+      ) : (
+        <span style={{
+          ...ellipsis, minWidth: 0, flexShrink: 1, height: 22, lineHeight: '20px', padding: '0 8px', boxSizing: 'border-box', borderRadius: 11,
+          border: '1px dashed rgba(var(--sd-ink, 255, 255, 255), 0.3)', fontStyle: 'italic', color: 'var(--sd-fg-3, #889)',
+        }}>{compact ? 'can’t be named' : CANT_NAME}</span>
+      )}
+      {between && <>
+        <span aria-hidden="true" style={ARROW}>→</span>
+        <span style={{ ...ellipsis, minWidth: 0, flexShrink: 2, color: 'var(--sd-fg-2, #bbc)' }}>{between}</span>
+      </>}
+      <span aria-hidden="true" style={ARROW}>→</span>
+      <span style={{ ...ellipsis, minWidth: 24, flexShrink: 3, color: 'var(--sd-fg-3, #99a)' }}>{them}</span>
+      {extra > 0 && (
+        <span style={{
+          flexShrink: 0, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap',
+          color: 'var(--sd-fg-2, #ccd)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.1)',
+        }}>+{extra}{compact ? '' : ` more`}</span>
+      )}
     </span>
   );
 }
@@ -1195,57 +1290,86 @@ function RarityBar({ p, rarity }) {
   const info = rarity ? rarityInfo(rarity.key) : null;
   if (!info) return <span />;
   const fill = Math.max(0.06, 1 - easeOf(rarity.count));
-  const mapped = rarity.from === 'linkedin' && rarity.count > p.waysIn ? `, ${fmt(p.waysIn)} mapped` : '';
-  const what = p.degree > 2 ? `route${rarity.count === 1 ? '' : 's'}` : `mutual${rarity.count === 1 ? '' : 's'}`;
   return (
-    <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}
-      title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (the platform’s count)'}. ${RARITY_NOTE}`}>
-      <span style={{ height: 6, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.07)', overflow: 'hidden' }}>
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }} title={rarityTitle(p, rarity)}>
+      <span style={{ height: 5, borderRadius: 3, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.08)', overflow: 'hidden' }}>
         <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, borderRadius: 3, background: info.color }} />
       </span>
-      <span style={{ ...ellipsis, fontSize: 10.5, fontWeight: 700, color: info.color }}>
-        {info.label} · {fmt(rarity.count)} {what}{mapped}
-      </span>
+      <span style={{ ...ellipsis, fontSize: 10.5, fontWeight: 600, color: 'var(--sd-fg-3, #99a)' }}>{rarityWords(p, rarity, info)}</span>
     </span>
   );
+}
+
+/** The same, as one line of words under the way in, where there's no column for it. */
+function RarityLine({ p, rarity }) {
+  const info = rarity ? rarityInfo(rarity.key) : null;
+  if (!info) return null;
+  return (
+    <span title={rarityTitle(p, rarity)} style={{ ...ellipsis, display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 600, color: 'var(--sd-fg-3, #99a)', minWidth: 0 }}>
+      <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: info.color, flexShrink: 0 }} />
+      <span style={ellipsis}>{rarityWords(p, rarity, info)}</span>
+    </span>
+  );
+}
+
+function rarityWords(p, rarity, info) {
+  const mapped = rarity.from === 'linkedin' && rarity.count > p.waysIn ? `, ${fmt(p.waysIn)} mapped` : '';
+  const what = p.degree > 2 ? `route${rarity.count === 1 ? '' : 's'}` : `mutual${rarity.count === 1 ? '' : 's'}`;
+  return `${info.label} · ${fmt(rarity.count)} ${what}${mapped}`;
+}
+
+function rarityTitle(p, rarity) {
+  return `${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ' (the platform’s count)'}. ${RARITY_NOTE}`;
 }
 
 /** "3rd", for someone ranked along a chain of scanned circles. */
 function DegreeTag({ degree }) {
   return (
     <span title={`${DEGREE_WORD[degree]} degree: ${degree - 1} introductions away, along circles you've scanned`} style={{
-      flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-fg-2, #ccd)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.25)', borderRadius: 4, padding: '0 4px',
+      flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: 'var(--sd-fg-2, #ccd)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.25)', borderRadius: 4, padding: '0 4px',
     }}>{DEGREE_WORD[degree]}</span>
   );
 }
 
-/** "Request sent" or "Connected", and how rare the way in is. */
-function Tags({ status, rarity }) {
-  const info = rarity ? rarityInfo(rarity.key) : null;
-  return (
-    <>
-      {status === 'asked' && (
-        <span title="You sent a request. It shows everywhere in the app." style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-gold, #FFD700)', border: '1px dashed rgba(255,215,0,0.6)', borderRadius: 4, padding: '0 4px',
-        }}>Request sent</span>
-      )}
-      {(status === 'sending' || status === 'queued') && (
-        <span title={status === 'sending' ? 'Auto is sending them a request now.' : 'Auto’s request to them waits in the scan queue. Remove it in the notch.'} style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-gold, #FFD700)', border: '1px solid rgba(255,215,0,0.45)', borderRadius: 4, padding: '0 4px',
-        }}>{status === 'sending' ? 'Sending…' : 'Queued'}</span>
-      )}
-      {status === 'connected' && (
-        <span title="Already one of your connections" style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 800, color: 'var(--sd-green, #00ff88)', border: '1px solid rgba(0,255,136,0.5)', borderRadius: 4, padding: '0 4px',
-        }}>Connected</span>
-      )}
-      {info && status !== 'connected' && (
-        <span title={`${rarity.count} mutual connection${rarity.count === 1 ? '' : 's'}${rarity.from === 'scans' ? ' (from your scans, so it can only go up)' : ''}. ${RARITY_NOTE}`} style={{
-          flexShrink: 0, fontSize: 9, fontWeight: 700, color: info.color, border: `1px solid ${info.color}55`, borderRadius: 4, padding: '0 4px',
-        }}>{info.label}</span>
-      )}
-    </>
+// Where a request stands, said once, in place of Connect: obvious, and in no tier's colour.
+const STATE = Object.freeze({
+  asked: { text: 'Request sent', mark: '✓', title: 'You sent a request. It shows everywhere in the app; Details can undo it.' },
+  connected: { text: 'Connected', mark: '✓', title: 'Already one of your connections' },
+  sending: { text: 'Sending…', mark: '', title: 'Auto is sending them a request now.' },
+  queued: { text: 'Queued', mark: '', title: 'Auto’s request to them waits in the scan queue. Remove it in the notch.' },
+});
+
+/**
+ * One clear next step per card. Connect, the primary, opens their profile to
+ * connect yourself and marks the request sent (as the person card's does);
+ * once asked, where it stands takes its place. View profile sits beside it.
+ * Both are OpenProfile links: Sixgree's own browser where it can.
+ */
+function Actions({ p, route, status, compact = null }) {
+  const { person } = p;
+  const state = STATE[status] || null;
+  const bridgeId = route?.bridge ? route.id : person.source_connection_id ?? null;
+  const who = <span style={SR_ONLY}> {person.name}</span>;
+  const main = state ? (
+    <span className="sepstate" data-state={status} title={state.title}>
+      {state.mark && <span aria-hidden="true">{state.mark}</span>}{state.text}
+    </span>
+  ) : (
+    <OpenProfile person={person} stopPropagation className="sepgo" title="Opens their profile, to connect yourself"
+      onOpen={() => { markRequested(person, { bridgeId }).catch(() => {}); }}
+      style={{ height: compact ? 32 : 26, padding: compact ? '0 16px' : '0 14px' }}>
+      Connect{who}
+    </OpenProfile>
   );
+  const view = (
+    <OpenProfile person={person} stopPropagation className="sepview" style={{ padding: compact ? '3px 2px' : '1px 2px' }}>
+      {compact ? 'Profile' : 'View profile'}{who}
+    </OpenProfile>
+  );
+  // A phone puts View profile under the score, and the one step beside the way in.
+  if (compact === 'main') return main;
+  if (compact === 'view') return view;
+  return <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, minWidth: 0 }}>{main}{view}</span>;
 }
 
 // ── Path: pick one sector or one company ───────────────────────────────────
@@ -1269,7 +1393,7 @@ function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
       <div role="dialog" aria-label="Pick a sector or a company" style={{
         position: 'absolute', zIndex: 41, top: isMobile ? 52 : 44, left: isMobile ? 6 : 14, width: isMobile ? 'calc(100% - 12px)' : 'min(560px, calc(100% - 28px))',
         maxHeight: 340, overflowY: 'auto', boxSizing: 'border-box', padding: 12, borderRadius: 12,
-        background: 'var(--sd-surface, #0c101e)', border: `1px solid ${PATH}55`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+        background: 'var(--sd-surface, #0c101e)', border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.18)', boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
       }}>
         <input
           autoFocus type="search" value={text} onChange={(e) => onText(e.target.value)} onKeyDown={onKey}
@@ -1314,104 +1438,162 @@ function PathPicker({ facets, text, onText, onPick, onClose, isMobile }) {
   );
 }
 
-const PATH = '#00ff88';
-// The slider's two ends, in the colours rarity already uses for them.
+// The slider's two ends, in the colours rarity already uses for them; as words,
+// the variables a light look deepens (lib/themes.js lightTokens).
 const RARE = '#00E5FF';
 const EASY = '#FF7043';
+const RARE_VAR = `var(--sd-cyan, ${RARE})`;
+const EASY_VAR = `var(--sd-coral, ${EASY})`;
 const SLIDER_CSS = `
 .sepslide { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; background: transparent; cursor: pointer; }
 .sepslide::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
+.sepslide::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--sd-bg); border: 3px solid var(--sd-fg-1, #fff); box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
 .sepslide::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, ${RARE} 0%, #FFD700 50%, ${EASY} 100%); }
-.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid #fff; box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
+.sepslide::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sd-bg); border: 3px solid var(--sd-fg-1, #fff); box-shadow: 0 0 10px rgba(var(--sd-ink, 255, 255, 255), 0.45); }
 .sepslide:focus-visible { outline: 2px solid rgba(var(--sd-ink, 255, 255, 255), 0.7); outline-offset: 3px; border-radius: 6px; }
 `;
+// The list's cards and headers: hover and the picked card in CSS, never in React
+// state (TRAPS §29), a focus ring inside the card, and Connect and View profile.
+const LIST_CSS = `
+.sepcard { transition: top ${MOVE}, background .12s; }
+.sepcard:hover { background: rgba(var(--sd-ink, 255, 255, 255), 0.045); }
+.sepcard[data-state="asked"] { background: rgba(var(--sd-ink, 255, 255, 255), 0.025); }
+.sepcard[data-sel] { background: color-mix(in srgb, ${ORANGE} 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, ${ORANGE} 50%, transparent); }
+.sepchev { display: block; flex-shrink: 0; color: var(--sd-fg-3, #99a); transition: transform .18s; }
+.sephead:hover { filter: brightness(1.08); }
+.seppick:focus-visible { outline: 2px solid var(--sd-accent, #3498db) !important; outline-offset: 3px !important; border-radius: 8px; }
+.sephead button:focus-visible { outline: 2px solid var(--sd-accent, #3498db) !important; outline-offset: -3px !important; border-radius: 8px; }
+.sepgo { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 84px; border-radius: 14px;
+  background: linear-gradient(135deg, #FF8A4C, ${ORANGE}); color: #111 !important; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); position: relative; }
+.sepgo:hover { filter: brightness(1.08); }
+.sepview { position: relative; font-size: 11px; font-weight: 600; color: var(--sd-fg-3, #99a); text-decoration: none; white-space: nowrap; }
+.sepview:hover { color: var(--sd-fg-1, #fff); text-decoration: underline; }
+.sepgo:focus-visible, .sepview:focus-visible { outline: 2px solid var(--sd-accent, #3498db); outline-offset: 2px; border-radius: 6px; }
+.sepstate { display: inline-flex; align-items: center; gap: 5px; box-sizing: border-box; height: 26px; padding: 0 10px; border-radius: 13px;
+  font-size: 11.5px; font-weight: 800; white-space: nowrap; color: var(--sd-fg-1, #fff); border: 1px solid rgba(var(--sd-ink, 255, 255, 255), 0.3); }
+.sepstate[data-state="asked"] { background: var(--sd-fg-1, #fff); color: var(--sd-bg, #0a0a1a); border-color: transparent; }
+.sepstate[data-state="sending"], .sepstate[data-state="queued"] { border-style: dashed; color: var(--sd-fg-2, #ccd); }
+@media (prefers-reduced-motion: reduce) { .sepcard, .sepchev { transition: none; } }
+`;
+// The small capitals that name a group of chips.
+const GROUP_LABEL = { fontSize: 10, color: 'var(--sd-fg-4, #666)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'help', marginRight: 2 };
+const COUNT = { fontWeight: 500, color: 'var(--sd-fg-4, #777)', fontVariantNumeric: 'tabular-nums' };
+/** A filter chip: its colour shows only once it's on, and its words stay ink, so no colour stands for two things. */
+const chipStyle = (on, color, height) => ({
+  height, padding: '0 10px', borderRadius: 14, cursor: 'pointer', flexShrink: 0, boxSizing: 'border-box',
+  display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+  border: `1px solid ${on ? tint(color, 70) : 'rgba(var(--sd-ink, 255, 255, 255), 0.1)'}`,
+  background: on ? tint(color, 16) : 'rgba(var(--sd-ink, 255, 255, 255), 0.03)',
+  color: on ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-2, #bbb)',
+});
 // Blake, 2026-10-16: "I want that only to be for the outputs, for the actual tier to be
 // controlled in the filter, and that is all, not the whole function." The chips filter
 // the people ranked (matches, unrankedShown) and nothing else: every route keeps every
 // connection and every person between, whatever their tier (lib/separation.js), and
-// Gatekeepers lists all your connections.
-const TIER_NOTE = 'Picks the tier of the people to connect with. Every connection who leads to them, and everyone in between, shows whatever their tier.';
+// Gatekeepers lists all your connections. Each tier is a section of the list, so a chip
+// shows or hides a whole section.
+const TIER_NOTE = 'Shows or hides a section of the people to connect with, by their tier. Every connection who leads to them, and everyone in between, shows whatever their tier.';
 const RARITY_NOTE = 'Rarity is how many mutual connections lead to them: few is a rare way in, many is warm (likely to accept). It never changes a score or a tier.';
 
-const Row = memo(function Row({ p, top, height, isMobile, selected, tierColors, onPick, q, status, rarity, leverageOf = null }) {
+/**
+ * One person as a card in their tier's section: rank, face, name and role
+ * (the part that picks them for Details), the way in, how rare it is, their
+ * score, and one clear next step. A phone stacks it: who, then the way in
+ * beside the step.
+ */
+const Row = memo(function Row({ p, top, height, layout, selected, tierColors, onPick, q, status, rarity, leverageOf = null }) {
   const { person } = p;
-  const c = tierColors[p.tier] || '#888';
+  const c = tierColors[tierOf(p)] || '#888';
   const route = pickRoute(p, q);
-  const podium = !p.unranked && p.rank <= 3;
-  const base = selected ? 'rgba(255,107,53,0.08)' : podium ? `${c}08` : 'transparent';
   const member = person.name === 'LinkedIn Member';
   const rank = p.unranked ? DEGREE_WORD[p.degree] : `#${p.rank}${p.tied ? '=' : ''}`;
   const extra = p.waysIn - 1;
   const viaText = p.unranked
     ? 'no route on file, found by a company scan'
-    : `via ${route?.bridge ? route.bridge.name : CANT_NAME}${viaTail(route)}${extra > 0 ? ` and ${extra} other${extra > 1 ? 's' : ''}` : ''}`;
+    : `via ${route?.bridge ? `${route.bridge.name}, ${route.bridge.tier} tier` : CANT_NAME}${viaTail(route)}${extra > 0 ? ` and ${extra} other${extra > 1 ? 's' : ''}` : ''}`;
+  const label = `${p.unranked ? `${DEGREE_WORD[p.degree]} degree, not ranked` : `Rank ${p.rank}${p.tied ? ', tied' : ''}`}, ${person.name}, ${p.tier} tier, ${p.score.toFixed(1)}${p.degree > 2 && !p.unranked ? `, ${DEGREE_WORD[p.degree]} degree` : ''}, ${p.waysIn} way${p.waysIn === 1 ? '' : 's'} in, ${viaText}${STATE[status] ? `. ${STATE[status].text}` : ''}`;
+  const phone = layout === 'phone';
+  const sub = subline(person);
+  const score = (
+    <span title="Power score" style={{ flexShrink: 0, textAlign: 'right', fontSize: 15, fontWeight: 800, color: ink(c), fontVariantNumeric: 'tabular-nums' }}>{p.score.toFixed(1)}</span>
+  );
+  // Who: the part that picks them, a button, so it's reached with Tab and pressed with Enter or Space.
+  const pick = (
+    <button type="button" className="seppick" aria-pressed={selected} aria-label={label} style={{
+      background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left',
+      display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: phone ? 1 : undefined, width: phone ? undefined : '100%', height: phone ? 42 : '100%',
+    }}>
+      {!phone && (
+        <span style={{ width: 38, flexShrink: 0, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+          color: !p.unranked && p.rank <= 3 ? 'var(--sd-fg-1, #fff)' : 'var(--sd-fg-3, #889)' }}>{rank}</span>
+      )}
+      <Avatar person={person} size={phone ? 36 : 32} tierColors={tierColors} />
+      <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <span style={{ ...ellipsis, fontSize: 13.5, fontWeight: 650, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)' }}>{person.name}</span>
+          {p.degree > 2 && !p.unranked && <DegreeTag degree={p.degree} />}
+          {member && <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>out of network</span>}
+        </span>
+        <span style={{ ...ellipsis, fontSize: 11, color: 'var(--sd-fg-3, #889)' }}>
+          {phone && <span style={{ fontWeight: 700, color: 'var(--sd-fg-2, #bbc)', fontVariantNumeric: 'tabular-nums' }}>{rank}{sub ? ' · ' : ''}</span>}
+          {sub}
+        </span>
+      </span>
+    </button>
+  );
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`${p.unranked ? `${DEGREE_WORD[p.degree]} degree, not ranked` : `Rank ${p.rank}${p.tied ? ', tied' : ''}`}, ${person.name}, ${p.tier} tier, ${p.score.toFixed(1)}${p.degree > 2 && !p.unranked ? `, ${DEGREE_WORD[p.degree]} degree` : ''}, ${p.waysIn} way${p.waysIn === 1 ? '' : 's'} in, ${viaText}`}
-      aria-pressed={selected}
+      className="seprow sepcard"
+      data-sel={selected ? '' : undefined}
+      data-state={status || undefined}
       onClick={() => onPick(p)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(p); } }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'rgba(var(--sd-ink, 255, 255, 255), 0.04)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = base; }}
-      className="seprow"
       style={{
-        position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box',
-        display: 'grid', alignItems: 'center', gap: 10, padding: '0 12px',
-        gridTemplateColumns: isMobile ? '44px 36px 1fr 44px' : COLUMNS,
-        borderLeft: `3px solid ${selected ? ORANGE : 'transparent'}`,
-        borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.04)',
-        background: base, cursor: 'pointer',
+        position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box', cursor: 'pointer',
+        borderLeft: `3px solid ${tint(c, 55)}`, borderBottom: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.05)',
+        ...(phone
+          ? { display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, padding: '8px 10px' }
+          : { display: 'grid', gridTemplateColumns: layout === 'wide' ? COLUMNS_WIDE : COLUMNS_MID, alignItems: 'center', columnGap: 12, padding: '0 12px' }),
       }}
     >
-      <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, color: podium ? c : 'var(--sd-fg-5, #555)', whiteSpace: 'nowrap' }}>{rank}</span>
-      <Avatar person={person} size={32} tierColors={tierColors} />
-
-      {isMobile ? (
-        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-            <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)', minWidth: 0 }}>
-              {person.name}{member && <span style={{ fontSize: 10, color: 'var(--sd-fg-4, #666)', fontWeight: 400 }}> · out of network</span>}
-            </span>
-            <Tags status={status} rarity={rarity} />
-          </span>
-          <Via p={p} route={route} tierColors={tierColors} compact />
-          <span style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>{subline(person)}</span>
-        </div>
-      ) : (
+      {phone ? (
         <>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <span style={{ ...ellipsis, fontSize: 13, fontWeight: 600, color: member ? 'var(--sd-fg-3, #888)' : 'var(--sd-fg-1, #fff)' }}>{person.name}</span>
-              <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}55`, borderRadius: 4, padding: '0 4px' }}>{p.tier}</span>
-              {p.degree > 2 && !p.unranked && <DegreeTag degree={p.degree} />}
-              {/* The rarity has its own column here */}
-              <Tags status={status} rarity={null} />
-              {member && <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--sd-fg-4, #666)' }}>out of network</span>}
-            </div>
-            <div style={{ ...ellipsis, fontSize: 10, color: 'var(--sd-fg-4, #777)', marginTop: 2 }}>{subline(person)}</div>
+          {/* A phone: who, with the score and View profile on the right; then the way in, beside the one step */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {pick}
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+              {score}
+              <Actions p={p} route={route} status={status} compact="view" />
+            </span>
           </div>
-          <Via p={p} route={route} tierColors={tierColors} leverageOf={leverageOf} />
-          {p.unranked
-            ? <span title="No mutual connections on file: no scanned circle has them" style={{ fontSize: 10.5, color: 'var(--sd-fg-5, #556)' }}>no mutuals on file</span>
-            : <RarityBar p={p} rarity={rarity} />}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1, height: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', borderRadius: 3 }}>
-              <div style={{ height: '100%', borderRadius: 3, background: c, width: `${Math.max(0, Math.min(1, p.score / 10)) * 100}%` }} />
-            </div>
-            <span style={{ fontSize: 15, fontWeight: 800, color: c, width: 30, textAlign: 'right' }}>{p.score.toFixed(1)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span style={{ flex: 1, minWidth: 0 }}><PathLine p={p} route={route} tierColors={tierColors} compact /></span>
+            <Actions p={p} route={route} status={status} compact="main" />
           </div>
         </>
-      )}
-
-      {isMobile && (
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: c }}>{p.score.toFixed(1)}</div>
-          <div style={{ fontSize: 9, color: 'var(--sd-fg-4, #666)', fontWeight: 700 }}>{p.tier}</div>
-        </div>
+      ) : (
+        <>
+          {pick}
+          <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <PathLine p={p} route={route} tierColors={tierColors} />
+            {(layout !== 'wide' || p.degree > 2 || (leverageOf && route?.bridge)) && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {layout !== 'wide' && <RarityLine p={p} rarity={rarity} />}
+                {layout === 'wide' && p.degree > 2 && !p.unranked && (
+                  <span style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)', whiteSpace: 'nowrap' }}>{p.degree - 1} introductions</span>
+                )}
+                {/* The strategy engine (experimental): where this way in stands, when it's on and measured */}
+                {leverageOf && route?.bridge && <LeverageBadge small value={leverageOf(route.bridge)} />}
+              </span>
+            )}
+          </span>
+          {layout === 'wide' && (p.unranked
+            ? <span title="No mutual connections on file: no scanned circle has them" style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)' }}>no mutuals on file</span>
+            : <RarityBar p={p} rarity={rarity} />)}
+          {score}
+          <Actions p={p} route={route} status={status} />
+        </>
       )}
     </div>
   );

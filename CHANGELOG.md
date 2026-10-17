@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Separation, in tiers.** The people to connect with are in sections, S to D, each with a header in
+  its tier's colour, how many it holds, its scores and a fold. The tier chips show and hide whole
+  sections, more than one at a time; inside a section the order is the list's own (rank, or the
+  slider's). Each person is a card that reads You → your connection → them, the connection in their
+  own tier's colour whatever the chips show, with one clear next step: Connect, which opens their
+  profile and marks the request sent, or, once asked, a plain "✓ Request sent" in its place, and View
+  profile beside it, both in Sixgree's own browser where they can. No colour stands for two things any
+  more (gold is S's alone, Path is no longer C's green), words read on Daylight, the search box keeps
+  clear of the side buttons, and on a phone the chips wrap instead of scrolling sideways.
+
 ## [2.7.0] - 2026-10-16
 
 Scan in rounds of 25 pages, a tour and Help, and a slider for breaks.
