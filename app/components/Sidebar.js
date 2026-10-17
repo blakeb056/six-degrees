@@ -25,8 +25,12 @@ import CirclePanel from './CirclePanel';
 import { localPhoto } from '../../lib/photos';
 import ConnectChoice, { secondaryLook } from './AutoConnect';
 import OpenProfile from './OpenProfile';
+import ReadAllMutuals from './ReadAllMutuals';
+import useTies from './useTies';
+import { knownThrough, knownThroughText, firstDegreeByKey, offersMutualList } from '../../lib/mutual-web';
+import { urlKey } from '../../lib/ties';
 
-export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote, circle = null }) {
+export default function Sidebar({ selected, stats, tierColors, connections, degree2 = [], mode, collapsed, filter, pending = [], onToggle, onSelect, onSwitchMode, onFocusNode, onMarkSent, onUndoPending, scanNotes, csvSource = null, onOpenCircle, onShowInSeparation, note = null, onCloseNote, circle = null, webOff = false }) {
   const isDegreesMode = mode === 'degrees';
   // 'sample' or 'csv' while the sample or a CSV import is open in this window,
   // null for your own network. Only your own can be scanned: the scanner looks
@@ -70,6 +74,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // so the hook order never changes.
   const scansHere = Boolean(selected) && canScan && (selected.degree === 1 || selected.outreach_status === 'accepted');
   const { resume, round, scanning: scanningThem } = useResume(scansHere ? selected : null);
+  // The mutual web (lib/mutual-web.js): how you know someone past your connections,
+  // "Known through: Maya Chen, Leo Park (seen together 3 times, last on Oct 16, 2026)".
+  const web = useTies({ off: webOff || Boolean(csvSource) });
+  const mine = useMemo(() => firstDegreeByKey(connections), [connections]);
+  const known = useMemo(() => {
+    if (!selected || (selected.degree || 1) < 2 || !web.ready) return '';
+    const key = urlKey(selected.profile_url);
+    const circles = key ? degree2.filter((r) => urlKey(r.profile_url) === key) : [];
+    return knownThroughText(knownThrough(selected.profile_url, { index: web.index, mine, circles, d1ById: bridgeById }));
+  }, [selected, web, mine, degree2, bridgeById]);
 
   // A notification someone clicked takes the panel over until they go back (app/components/NoteDetail.js).
   if (note) {
@@ -116,6 +130,16 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
           }}>
             {selected.degree === 2 ? `DEGREE 2 · TIER ${selected.tier}` : `TIER ${selected.tier}`}
           </div>
+          {/* Known through the mutual web, outside what a scan of anyone's circle read. */}
+          {selected.seen_outside && (
+            <div title="Seen in a mutual line with one of your connections, outside what a scan of their circle read. A tie means seen together, not close."
+              style={{
+                display: 'inline-block', padding: '1px 9px', borderRadius: 12, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3,
+                color: 'var(--sd-fg-2, #ccc)', border: '1px dashed rgba(var(--sd-ink, 255, 255, 255), 0.35)',
+              }}>
+              SEEN OUTSIDE THE SCAN
+            </div>
+          )}
           {/* Where this person came from. A path you actually walked is the whole
             point of the tool, so it stays visible after they become a direct
             connection — a 1st-degree contact with an origin was someone you
@@ -166,6 +190,11 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             {selected.location && (
               <p data-person-location="" style={{ color: 'var(--sd-fg-3, #aaa)', fontSize: 11, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.location}</p>
             )}
+            {/* How you know them, through the mutual web: seen together, not close (lib/mutual-web.js). */}
+            {known && (
+              <p data-known-through="" title="Seen together in mutual lines and scans: a tie means seen together, not close."
+                style={{ color: 'var(--sd-fg-2, #bbb)', fontSize: 11, margin: '3px 0 0', lineHeight: 1.4 }}>{known}</p>
+            )}
             {selected.profile_url && (
               <OpenProfile person={selected} style={{ fontSize: 10, color: '#0077B5', textDecoration: 'none', fontWeight: 600 }}>
                 View profile
@@ -176,6 +205,14 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
 
         {/* What a scan read on their profile: followers, connections, their roles, their circle (ProfileFacts.js). */}
         <ProfileFacts person={selected} reach={insightReach} />
+
+        {/* Read all mutuals, for a top-tier bridge: the paid step of the mutual web, only when pressed. */}
+        {canScan && offersMutualList(selected) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 12px', fontSize: 11, color: 'var(--sd-fg-3, #999)' }}>
+            <ReadAllMutuals person={selected} />
+            <span>Everyone you both know, as ties. Each page is one of today&rsquo;s searches.</span>
+          </div>
+        )}
 
         {/* The strategy engine (experimental): nothing unless Settings → Experimental has it on. */}
         <StrategyNote person={selected} />

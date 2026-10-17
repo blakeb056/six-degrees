@@ -764,3 +764,99 @@ export function inviteSentFor(message, { url = '', mode = null, visible = false,
   if (seen.has(slug)) return null;
   return { slug, name: said.name };
 }
+
+// ── The mutual web: a profile's mutual line, read where it already is ───────
+// Blake, 2026-10-16: "scanning always for mutuals no matter what ... whenever a new
+// connection is showing with the mutuals listed, then it should be tracked to map a web
+// of who knows who". A profile open in the panel (Outlink, Separation, Breach, the
+// LinkedIn tab) shows its mutual line in its top card: "Maya Chen, Leo Park and 103
+// other mutual connections". A watcher in the panel's page, in the same world of its own
+// as the invitation watcher, reads it once a profile (by its words and the page's own
+// tags, never a class name: TRAPS §5) and prints one console line; the shell passes it
+// to the app (main.mjs mutualsSeen, POST /api/ties), which keeps a tie between the
+// profile's person and each of your connections the line names (lib/ties.js). Nothing
+// is opened, clicked or scrolled for it: only a page already showing is read.
+
+/** The start of the mutual watcher's console line: what it read follows, as JSON. */
+export const MUTUALS_MARK = '[sixgree:mutuals]';
+
+/**
+ * The watcher, run in the panel's page at each page load (main.mjs watchInvites): on a
+ * profile itself (/in/<slug>/, not its details pages), once its top card (the section
+ * holding the name, <h1>) shows a mutual line, says once a profile, as MUTUALS_MARK and
+ * { href, name, degree, line, links }: the line's words, the profile links inside it
+ * (most lines link none), and the degree the card shows ("2nd"). Reads words only.
+ */
+export const MUTUAL_WATCH_JS = `(() => {
+  if (window.__sixgreeMutualWatch) return;
+  window.__sixgreeMutualWatch = true;
+  const MARK = ${JSON.stringify(MUTUALS_MARK)};
+  const said = new Set();
+  const words = (t) => String(t || '').replace(/\\s+/g, ' ').trim();
+  const LINE = /\\bmutual connections?$/i;
+  const DEGREE = /^(?:[\\u00b7\\u2022]\\s*)?(1st|2nd|3rd\\+?)(?:\\s+degree connection)?$/i;
+  const read = () => {
+    const at = location.pathname;
+    if (!/^\\/in\\/[^/]+\\/?$/.test(at) || said.has(at)) return;
+    const main = document.querySelector('main') || document.body;
+    const h1 = main && main.querySelector('h1');
+    if (!h1) return;
+    const card = h1.closest('section') || main;
+    let line = null;
+    let degree = null;
+    for (const n of Array.from(card.querySelectorAll('*')).slice(0, 3000)) {
+      if (n.closest && n.closest('aside')) continue;
+      const t = words(n.textContent);
+      if (!t || t.length > 300) continue;
+      if (!degree) { const d = t.match(DEGREE); if (d) degree = d[1]; }
+      if (LINE.test(t) && (!line || t.length < line.t.length)) line = { n, t };
+    }
+    if (!line) return;
+    said.add(at);
+    const links = [];
+    for (const a of Array.from(line.n.querySelectorAll('a'))) {
+      const href = a.href || a.getAttribute('href') || '';
+      const name = words(a.textContent);
+      if (/\\/in\\/[^/?#]+/.test(href) && name && links.length < 3) links.push({ href, name });
+    }
+    console.log(MARK + JSON.stringify({ href: location.href, name: words(h1.textContent).slice(0, 120), degree, line: line.t, links }));
+  };
+  let timer = 0;
+  const later = () => { clearTimeout(timer); timer = setTimeout(read, 700); };
+  new MutationObserver(later).observe(document, { childList: true, subtree: true, characterData: true });
+  later();
+})();`;
+
+/**
+ * A console line from the panel's page, and where the panel is now: what to send the app
+ * (POST /api/ties), or null. Only the mutual watcher's line (MUTUALS_MARK), on the
+ * profile still showing, with a mutual line; once a profile a day (`seen`: slug → the
+ * day it was sent, kept by the shell), so a page looked at twice is one sighting.
+ * → { slug, body: { source: 'profile', person: { profileUrl, name, degree }, line, mutuals } }.
+ */
+export function mutualsSeenFor(message, { url = '', seen = new Map(), today = new Date().toISOString().slice(0, 10), testOrigin = null } = {}) {
+  const raw = String(message ?? '');
+  if (!raw.startsWith(MUTUALS_MARK)) return null;
+  let report = null;
+  try { report = JSON.parse(raw.slice(MUTUALS_MARK.length)); } catch { return null; }
+  const line = String(report?.line ?? '').replace(/\s+/g, ' ').trim();
+  if (!line || line.length > 300 || !/\bmutual connections?$/i.test(line)) return null;
+  const slug = panelProfileSlug(String(url ?? ''), { testOrigin });
+  if (!slug || panelProfileSlug(String(report?.href ?? ''), { testOrigin }) !== slug) return null;
+  if (seen.get(slug) === today) return null;
+  const name = String(report?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const degree = /^(1st|2nd|3rd\+?)$/i.test(String(report?.degree ?? '')) ? String(report.degree) : null;
+  const mutuals = (Array.isArray(report?.links) ? report.links : []).slice(0, 3).map((l) => {
+    const s = panelProfileSlug(String(l?.href ?? ''), { testOrigin });
+    return s ? { profileUrl: `https://www.linkedin.com/in/${encodeURIComponent(s)}/`, name: String(l?.name ?? '').slice(0, 120) } : null;
+  }).filter(Boolean);
+  return {
+    slug,
+    body: {
+      source: 'profile',
+      person: { profileUrl: `https://www.linkedin.com/in/${encodeURIComponent(slug)}/`, name, degree },
+      line,
+      mutuals,
+    },
+  };
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Section, Body, Mono, Status, Btn, LINE } from '../ui';
+import { webLine } from '../../../lib/mutual-web';
 
 // Settings → Your data: where the network is kept, what it takes up, its
 // backups, and how to carry it to another computer. The server does the work
@@ -425,6 +426,8 @@ export default function DataSection() {
 
       <div style={{ marginTop: 16, borderBottom: LINE }}>
         <Fact label="Your network">{people(info.people)} · {size(info.databaseBytes)}</Fact>
+        {/* The mutual web: its size, never implying it's complete (lib/mutual-web.js webLine). */}
+        {info.web && <Fact label="Mutual web">{webLine(info.web)}</Fact>}
         <Fact label="Profile photos">{info.photos.count ? `${count(info.photos.count)} · ${size(info.photos.bytes)}` : 'none saved yet'}</Fact>
         <Fact label="Backups">{backups.length ? `${plural(backups.length, 'copy', 'copies')} · ${size(backupBytes)}` : 'none yet'}</Fact>
         <Fact label="LinkedIn sign-in for scanning">

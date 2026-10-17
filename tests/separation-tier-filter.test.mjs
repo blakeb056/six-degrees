@@ -67,7 +67,8 @@ test('the tier chips filter the people ranked and nothing else: not the ways in,
   // Nothing that draws a way in is handed the chips: not the map's layouts, not the routes.
   assert.doesNotMatch(view, /(summitLayout|convergeLayout|separationPeople|routeIndex)\([^)]*\btiers\b/);
   // Routing reads every row, whatever the Filters grid or the chips say.
-  assert.match(view, /const sepRows = useMemo\(\(\) => \[\.\.\.\(showsAt \? fullDegree2 : degree2\), \.\.\.degree3\]/);
+  // With the mutual web's people seen outside the scan (tests/mutual-web.test.mjs), whatever the chips.
+  assert.match(view, /const sepRows = useMemo\(\(\) => \[\.\.\.\(showsAt \? fullDegree2 : degree2\), \.\.\.seen, \.\.\.degree3\]/);
   assert.match(view, /separationPeople\(sepRows, connections, \{ include: showsAt \}\)/);
   // Gatekeepers: every connection of yours, whatever the chip.
   const gate = view.match(/<GatekeeperList [^>]*\/>/s)?.[0] || '';

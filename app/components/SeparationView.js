@@ -50,6 +50,7 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 // Leverage badge on each way in, only while Settings → Experimental has it on.
 import useStrategy from './useStrategy';
 import GatekeeperList, { LeverageBadge, GATE } from './GatekeeperList';
+import { TIE_COLOUR } from '../../lib/mutual-web';
 
 const ORANGE = '#FF6B35';
 const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -116,7 +117,7 @@ function subline(person) {
   return person.headline || person.role || person.company || '';
 }
 
-export default function SeparationView({ connections = [], degree2 = [], degree3 = [], fullDegree1 = connections, fullDegree2 = degree2, showsAt = null, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null }) {
+export default function SeparationView({ connections = [], degree2 = [], degree3 = [], fullDegree1 = connections, fullDegree2 = degree2, showsAt = null, onSelect, userName, selectedId, tierColors = CLASSIC, preset = null, seen = NO_SEEN }) {
   const isMobile = useIsMobile();
   // Room at the top for the notch, only while it's on screen (a scan, or another tab's views).
   const notch = useSyncExternalStore(watchNotchShown, notchShownNow, noNotch);
@@ -180,12 +181,14 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   // Every row past the 1st degree, so a chain is never cut by a hidden tier; the
   // grid (showsAt) picks who is ranked, at the degree each person is at.
   // Company scans' finds come back unranked: no one on file links you to them.
-  const sepRows = useMemo(() => [...(showsAt ? fullDegree2 : degree2), ...degree3], [showsAt, fullDegree2, degree2, degree3]);
+  // With the mutual web's people seen outside the scan (lib/mutual-web.js), each way in
+  // through a tie marked as one (lib/separation.js route.seen).
+  const sepRows = useMemo(() => [...(showsAt ? fullDegree2 : degree2), ...seen, ...degree3], [showsAt, fullDegree2, degree2, seen, degree3]);
   const model = useMemo(() => separationPeople(sepRows, connections, { include: showsAt }), [sepRows, connections, showsAt]);
   // How rare the way in to each person is, counted across every circle you've
   // scanned (not only the ones a bridge-tier filter leaves): never a score.
   // Past the 2nd degree it is the routes: LinkedIn shares no mutuals there.
-  const waysAll = useMemo(() => routeIndex(fullDegree2), [fullDegree2]);
+  const waysAll = useMemo(() => routeIndex(seen.length ? [...fullDegree2, ...seen] : fullDegree2), [fullDegree2, seen]);
   const rarityBy = useMemo(() => {
     const m = new Map();
     for (const p of model.people) {
@@ -1231,6 +1234,7 @@ function NoRoute({ p, compact }) {
 }
 
 const ARROW = { flexShrink: 0, fontSize: 11, color: 'var(--sd-fg-4, #667)' };
+const NO_SEEN = Object.freeze([]);
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'them';
 
 /**
@@ -1275,6 +1279,13 @@ function PathLine({ p, route, tierColors, compact = false }) {
       </>}
       <span aria-hidden="true" style={ARROW}>→</span>
       <span style={{ ...ellipsis, minWidth: 24, flexShrink: 3, color: 'var(--sd-fg-3, #99a)' }}>{them}</span>
+      {route?.seen && (
+        <span title={`Seen with ${b?.name || 'them'} in a mutual line, outside what a scan of their circle read. A tie means seen together, not close.`}
+          style={{
+            flexShrink: 0, padding: '0 6px', borderRadius: 8, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', lineHeight: '16px',
+            color: 'var(--sd-fg-2, #ccd)', border: `1px dashed ${TIE_COLOUR}`,
+          }}>outside scan</span>
+      )}
       {extra > 0 && (
         <span style={{
           flexShrink: 0, padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap',
