@@ -10,6 +10,7 @@ import { setupStep, askForField, appManagementStep } from '../../lib/scanner-set
 import { RISK_POINTS } from '../../lib/scan-risk';
 import { IS_DEMO } from '../../lib/demo';
 import { circleScanCost } from '../../lib/reach';
+import { ROUND_CHOICES, roundOf, roundWords, segmentsFor } from '../../lib/scan-rounds';
 import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
 import useNotchTabs from '../components/useNotchTabs';
@@ -40,7 +41,7 @@ const ACTION_LABELS = {
   refresh: 'Checking for new connections',
   'auto-bridge': 'Mapping 2nd-degree connections',
   'auto-bridge-retry': 'Mapping 2nd degree, hidden ones included',
-  resume: 'Carrying on with one paused list',
+  resume: 'Scanning the next round of one circle',
   'resume-all': 'Carrying on with every paused list',
   'your-connections': 'Adding locations and mutuals to your connections',
   breach: 'Mapping a company for Breach',
@@ -84,10 +85,11 @@ function SetupInner() {
   // someone: the old fixed tier order skipped straight past new connections that
   // were not S-tier.
   const [order, setOrder] = useRemembered('six-degrees-bridge-order', 'newest');
-  // How many result pages to read per person. Every page, by default: a list cut
-  // off at page 10 was the one thing people noticed missing, and a long read now
-  // saves as it goes and carries on where it stopped. A new key, so a 10 that was
-  // remembered from before does not quietly keep the old limit.
+  // How many result pages Map 2nd degree reads per person. Every page, by default:
+  // a list cut off at page 10 was the one thing people noticed missing, and a long
+  // read now saves as it goes and carries on where it stopped. A new key, so a 10
+  // that was remembered from before does not quietly keep the old limit. A scan of
+  // one person's circle reads one round instead (Pages a round, lib/scan-rounds.js).
   const [pages, setPages] = useRemembered('six-degrees-bridge-pages-v2', 100);
   // Also finish people mapped before, from the page each one's read stopped at.
   const [finish, setFinish] = useRemembered('six-degrees-bridge-finish', true);
@@ -322,9 +324,9 @@ function SetupInner() {
           {/* By id: the server finds them by their profile, since two connections can share a name. */}
           {pick?.person.id === pickId && (
             <ScanOne
-              pick={pick} pages={pages} setPages={setPages} li={li} running={running} s={s}
+              pick={pick} li={li} running={running} s={s}
               canSearch={canSearch} busy={busy} onUnpick={unpick}
-              onStart={() => run('bridge', { id: pick.person.id, maxPages: pages })}
+              onStart={(fromStart) => run('bridge', { id: pick.person.id, ...(fromStart ? { fromStart: true } : {}) })}
             />
           )}
 
@@ -446,7 +448,7 @@ function SetupInner() {
               <Part title="Their circles" hint={<>
                 Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
                 circle shows in {firstCircle}; the rest fills in over days,{' '}
-                {devOn ? `up to Dev mode’s ceiling of ${li.devCeiling} searches a day` : li?.lifted ? 'with no daily limit for this session' : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
+                {devOn ? `up to Dev mode’s ceiling of ${li.devCeiling} searches a day` : li?.lifted ? `with no daily limit for this session, up to a ceiling of ${li.ceiling ?? 250} searches a day` : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
               </>}>
                 {/* Lifting the limits for this session lifts the pause too (lib/limits-lift.js). */}
                 <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-limits')} />
@@ -638,7 +640,7 @@ function SetupInner() {
                   {devOn
                     ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, under Safety, but never past Dev mode’s ceiling of {li.devCeiling} in the last 24 hours.</span></>
                     : li?.lifted
-                    ? <><LiftedTag /> <span>No daily limit until you quit Sixgree.</span></>
+                    ? <><LiftedTag /> <span>No daily limit until you quit Sixgree, but never past a ceiling of {li.ceiling ?? 250} in the last 24 hours, as in Dev mode.</span></>
                     : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
                   {!devOn && <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>}
                 </div>
@@ -668,8 +670,23 @@ function SetupInner() {
             </Group>
 
             <Group title="What it reads">
+              {/* Blake, 2026-10-16: "scanning 25 pages per round so there's like 4 unfilled bars around the dot
+                  showing how scanned it is, unless they pick 50 per scan which is max". Saved with the scanner's
+                  settings (scan-limits.json roundPages, lib/scan-rounds.js): a scan of one person's circle reads one
+                  round, by itself or by hand, from where the last stopped, and Network Circle draws an arc round
+                  their dot for each round. */}
+              <div data-round-pages="" style={rowStyle}>
+                <SettingTitle title="Pages a round"
+                  line={`A scan of one person’s circle reads one round of their list, from where the last round stopped. LinkedIn shows 100 pages at most, so ${segmentsFor(roundOf(li?.limits?.roundPages))} rounds read it all, and Network Circle draws an arc round their dot for each.`} />
+                <select value={roundOf(li?.limits?.roundPages)} onChange={(e) => run('set-limits', { roundPages: Number(e.target.value) })}
+                  disabled={busy} style={selectStyle} aria-label="Pages a round">
+                  {ROUND_CHOICES.map((n) => (
+                    <option key={n} value={n}>{n} pages a round ({segmentsFor(n)} rounds){n === Math.max(...ROUND_CHOICES) ? ', the most' : ''}</option>
+                  ))}
+                </select>
+              </div>
               <div style={rowStyle}>
-                <SettingTitle title="How much of each list" line="Every page is one LinkedIn search; LinkedIn shows 100 pages at most." />
+                <SettingTitle title="How much of each list in Map 2nd degree" line="Map 2nd degree’s rounds of several people. Every page is one LinkedIn search; LinkedIn shows 100 pages at most." />
                 <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle} aria-label="Read up to">
                   <option value={100}>Every page, to the end of their list</option>
                   <option value={50}>50 pages each</option>
@@ -771,14 +788,19 @@ function SetupInner() {
 }
 
 // One person's circle, picked in Insights (Scan circle): what it costs beside
-// what the budget has left, and one button that starts it (backlog 2.4). Their
-// read goes as deep as "Read up to" below says; Bridge Chains shows it filling in.
-function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onStart, onUnpick }) {
-  const { person, circle } = pick;
+// what the budget has left, and one button that starts it (backlog 2.4). A scan
+// of one circle reads one round of their list (lib/scan-rounds.js): "Round 2 of
+// 4", and Scan next round once a round is read. Bridge Chains shows it filling in.
+function ScanOne({ pick, li, running, s, canSearch, busy, onStart, onUnpick }) {
+  const { person, circle, round: rounds } = pick;
   const first = String(person.name || '').trim().split(/\s+/)[0] || 'them';
-  const cost = circleScanCost(pages, li?.limits?.pace, li?.limits?.gentle !== false);
+  const size = roundOf(li?.limits?.roundPages);
+  const cost = circleScanCost(size, li?.limits?.pace, li?.limits?.gentle !== false);
   const theirs = running && s?.target?.id === person.id;
   const short = !li?.lifted && li?.leftToday != null && li.leftToday < cost.searches;
+  // Part read: the next round carries on. Read to the end: a rescan, from page 1.
+  const started = Boolean(rounds?.pages) && rounds.next != null;
+  const finished = Boolean(rounds?.done);
   return (
     <div style={{
       margin: '16px 0', padding: '16px 18px', borderRadius: 10, fontSize: 13.5, lineHeight: 1.6,
@@ -793,24 +815,33 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
       {person.unlocked_from_name && (
         <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #9aa)' }}>Was in {person.unlocked_from_name}&rsquo;s circle</div>
       )}
+      {rounds && (
+        <div data-round-of="" style={{ fontSize: 12.5, fontWeight: 650, color: 'var(--sd-fg-2, #cfd8d8)', marginTop: 2 }}>
+          {roundWords(rounds)}{!finished && rounds.next != null ? ` · ${size} pages a round` : ''}
+        </div>
+      )}
       {theirs ? (
         <div style={{ marginTop: 10 }}>
-          <b>Scanning {first}&rsquo;s circle.</b> It saves every 10 pages, and{' '}
+          <b>Scanning {first}&rsquo;s circle, one round.</b> It saves every 10 pages, and{' '}
           <Link href={`/?chain=${encodeURIComponent(person.id)}`} style={{ color: 'var(--sd-green, #00ff88)' }}>Bridge Chains shows it filling in →</Link>
         </div>
       ) : (
         <>
           <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
-            It costs <b>{cost.profileViews} profile view</b> to find their list, then <b>one LinkedIn search for
-            every page</b> of it: up to {cost.searches} {cost.searches === 1 ? 'page' : 'pages'}, about {cost.minutes} minutes.
+            A round is up to {cost.searches} pages of their list, about {cost.minutes} minutes: <b>one LinkedIn search
+            for every page</b>{started ? '' : <>, and <b>{cost.profileViews} profile view</b> to find their list</>}.
             {li?.dev ? <> Dev mode is on, so it reads at its pace with no daily limit, up to its ceiling of {li.devCeiling} searches in 24 hours (<b>{li.devLeftToday}</b> left).</>
-              : li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit.</>
-              : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the scan stops when they run out, and can carry on from that page later' : ''}.</>}
+              : li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit, up to a ceiling of {li.ceiling ?? 250} searches in 24 hours{li.ceilingLeftToday != null ? <> (<b>{li.ceilingLeftToday}</b> left)</> : null}.</>
+              : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the round stops when they run out, and the next carries on from that page' : ''}.</>}
           </div>
-          {circle === 'scanned' && (
+          {started && (
+            <div style={{ color: 'var(--sd-fg-3, #9aa)', fontSize: 12.5, marginTop: 6 }}>
+              {rounds.pages} {rounds.pages === 1 ? 'page' : 'pages'} of their list are read. The next round carries on from where the last stopped.
+            </div>
+          )}
+          {finished && (
             <div style={{ color: 'var(--sd-gold, #FFD700)', fontSize: 12.5, marginTop: 6 }}>
-              Their circle is already scanned. This reads their whole list again from page 1; to carry on
-              from where a read stopped, use Resume on their card or under In progress below.
+              Their whole list is read. Their list isn&rsquo;t in date order, so a rescan reads a round again from page 1 to find anyone new.
             </div>
           )}
           {circle === 'hidden' && (
@@ -819,14 +850,9 @@ function ScanOne({ pick, pages, setPages, li, running, s, canSearch, busy, onSta
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
-            <Btn onClick={onStart} disabled={!canSearch || busy} primary>Scan {first}&rsquo;s circle</Btn>
-            <select value={pages} onChange={(e) => setPages(Number(e.target.value))} disabled={running} style={selectStyle}
-              aria-label="How many pages of their list to read">
-              <option value={100}>every page, to the end of their list</option>
-              <option value={50}>up to 50 pages</option>
-              <option value={25}>up to 25 pages</option>
-              <option value={10}>up to 10 pages (~100 people)</option>
-            </select>
+            <Btn onClick={() => onStart(finished)} disabled={!canSearch || busy} primary>
+              {finished ? 'Rescan from the start' : started ? 'Scan next round' : `Scan ${first}’s circle`}
+            </Btn>
             <Btn onClick={onUnpick}>Not now</Btn>
           </div>
           {!canSearch && (

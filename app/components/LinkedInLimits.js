@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import { inProgressSummary, pagesReadText } from '../../lib/in-progress';
 import { LIFT_LINE, DEV_LINE } from '../../lib/limits-lift';
+import { roundWords } from '../../lib/scan-rounds';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -223,14 +224,16 @@ export function PausedList({ paused = [], onResume, onResumeAll, disabled }) {
                 }}>{p.name}</Link>
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--sd-fg-3, #8b9a9a)' }}>
-                {pagesReadText(p)} · carries on at {p.nextPage}
+                {/* Where their rounds stand (lib/scan-rounds.js): "Round 2 of 4". */}
+                {p.round?.next != null ? `${roundWords(p.round)} · ` : ''}{pagesReadText(p)} · carries on at {p.nextPage}
                 {/* Kept whole: on a phone "Oct" and "3" landed on two lines. */}
                 {p.at ? <> <span style={{ whiteSpace: 'nowrap' }}>· {day(p.at)}</span></> : ''}
                 {p.unclear >= 2 ? ' · came back unclear twice, so it waits at the back of Resume all' : ''}
               </div>
             </div>
+            {/* One round of their list, from where the last stopped (app/api/scraper/route.js circleRound). */}
             <button onClick={() => onResume(p)} disabled={disabled} style={{ ...btn, padding: '6px 12px', fontSize: 12, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-              Resume
+              Scan next round
             </button>
           </div>
         ))}

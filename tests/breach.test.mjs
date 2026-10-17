@@ -23,6 +23,7 @@ import {
 } from '../lib/breach.js';
 import { capabilityRefusal, capabilities, PLUGIN_SINCE, AUTO_ACTIONS, pluginTooOld } from '../lib/scanner-capabilities.js';
 import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
+import { compareVersions } from '../lib/release.js';
 import { scanDoneNotification } from '../lib/notifications.js';
 import { SETTINGS } from '../lib/settings.js';
 
@@ -270,9 +271,11 @@ out['degrees'] = [ns['breach_degrees'](x) for x in ['3, 2', '1,2,3', 'x', '']]`)
   assert.deepEqual(r.out.degrees, ['2,3', '1,2,3', '2,3', '2,3']);
   const scrape = src('scripts/scrape.py');
   assert.match(scrape, /parser\.add_argument\("--breach", type=str,/);
-  assert.match(scrape, /parser\.add_argument\("--round", type=int, default=BREACH_ROUND,/);
+  // No default of its own since circle rounds took it too (lib/scan-rounds.js): Breach's is BREACH_ROUND.
+  assert.match(scrape, /parser\.add_argument\("--round", type=int, default=None,/);
+  assert.match(scrape, /scan_company_search\(args\.breach, degrees=args\.degrees,\s+pages=BREACH_ROUND if args\.round is None else args\.round/);
   assert.match(scrape, /parser\.add_argument\("--degrees", type=str, default=BREACH_DEGREES,/);
-  assert.match(scrape, /elif args\.breach:\n\s+scan_company_search\(args\.breach, degrees=args\.degrees, pages=args\.round, headless=args\.headless\)/);
+  assert.match(scrape, /elif args\.breach:\n\s+scan_company_search\(args\.breach, degrees=args\.degrees,\n\s+pages=BREACH_ROUND if args\.round is None else args\.round, headless=args\.headless\)/);
 });
 
 test('the app runs a round as its own action, with either plugin, counted against the daily limit', () => {
@@ -286,7 +289,7 @@ test('the app runs a round as its own action, with either plugin, counted agains
     assert.equal(capabilityRefusal(caps, 'breach'), null);
   }
   assert.equal(PLUGIN_SINCE.breach, '1.0.9');
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.9');
+  assert.ok(compareVersions(SHIPPED_PLUGIN_VERSION, '1.0.9') >= 0, 'the plugins it ships in are 1.0.9 or newer');
   const plugin = (version) => ({ from: 'plugin', plugin: { id: 'manual-scan', name: 'Manual scan', version } });
   assert.match(pluginTooOld(plugin('1.0.8'), 'breach'), /version 1\.0\.9 or newer of the Manual scan plugin/);
   assert.equal(pluginTooOld(plugin('1.0.9'), 'breach'), null);

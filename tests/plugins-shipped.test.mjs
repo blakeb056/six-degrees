@@ -199,3 +199,34 @@ test('the setup: the cards in sight under the CSV, titled, with no box to tick f
   assert.doesNotMatch(other, /type="checkbox"|Allow plugins/);
   assert.match(other, /enabled: view\?\.enabled === true/, 'Install turns plugins on when they are off');
 });
+
+// CI's smoke test of the installed Windows and Linux apps (scripts/smoke-desktop.mjs)
+// never started a scan job: the app has no scanner of its own, and a fresh install
+// has no plugin. It now builds the Auto scan package from the checkout, installs it
+// through Settings → Plugins' own route (the check, then the yes naming its
+// checksum), and runs Save photos on it: the plugin's scrape.py on the app's Python,
+// talking to the app, with no browser and nothing of LinkedIn's.
+test('CI\'s smoke test installs a real built plugin and starts a scan job on it, without LinkedIn', async (t) => {
+  const smoke = read('../scripts/smoke-desktop.mjs');
+  assert.match(smoke, /import \{ buildPackage, PLUGINS \} from '\.\/build-plugin\.mjs';/);
+  assert.match(smoke, /buildPackage\(autoScan, \{ version: SHIPPED_PLUGIN_VERSION, appVersion: pkg\.version \}\)/);
+  assert.match(smoke, /post\(`\$\{url\}\/api\/plugins\/enabled`, \{ enabled: true \}\)/);
+  assert.match(smoke, /\/api\/plugins\/install\$\{headers\[CONFIRM_HEADER\] \? '' : '\?check=1'\}/);
+  assert.match(smoke, /sendPackage\(zip, \{ \[CONFIRM_HEADER\]: checked\.json\.sha256 \}\)/);
+  assert.match(smoke, /withPlugin\.scanner\?\.from !== 'plugin'/);
+  assert.match(smoke, /post\(`\$\{url\}\/api\/scraper`, \{ action: 'photos' \}\)/);
+  assert.match(smoke, /No photos are waiting to be saved/);
+  // Save photos never opens LinkedIn (lib/scan-risk.js), so no "I understand" is needed for it.
+  const { touchesLinkedIn } = await import('../lib/scan-risk.js');
+  assert.equal(touchesLinkedIn('photos'), false);
+  // And the scanner says that line when there's nothing to save, as the smoke test waits for.
+  if (noScanner(t)) return;
+  assert.match(read('../scripts/scrape.py'), /print\("No photos are waiting to be saved\."\)/);
+  // The package the smoke test installs carries this checkout's scanner, rounds and all.
+  const { readPackage } = await import('../lib/plugins.js');
+  const pkg = readPackage(buildPackage(PLUGINS.find((p) => p.id === 'auto-scan'), { version: SHIPPED_PLUGIN_VERSION, appVersion: '1.2.8' }), { appVersion: '1.2.8' });
+  assert.equal(pkg.manifest.version, SHIPPED_PLUGIN_VERSION);
+  const scraper = [...pkg.files].find(([name]) => name === 'scanner/scrape.py');
+  assert.ok(scraper, 'the scanner is in it');
+  assert.match(scraper[1].toString('utf8'), /CIRCLE_ROUND_MAX = 50/);
+});

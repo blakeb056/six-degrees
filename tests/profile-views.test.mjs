@@ -434,11 +434,12 @@ test('lifted: the day\'s limit doesn\'t stop a circle scan, and profiles still o
 limits(daily=10)
 record(profiles=[NOW - 20] + [NOW - 600 * i for i in range(1, 30)], searches=[NOW - 30 * i for i in range(1, 40)])
 people, status, reach = ns['_scrape_one_bridge'](page, 'Ada Quill', 'c1', A)
-out.update(status=status, opened=page.opened, left=[ns['searches_left']()[0] >= 10 ** 9, ns['profiles_left']() >= 10 ** 9],
+out.update(status=status, opened=page.opened, left=[ns['searches_left']()[0], ns['profiles_left']() >= 10 ** 9],
            lifted=ns['limits_lifted']())`, { lifted: true });
   if (!r) return;
   assert.equal(r.out.lifted, true);
-  assert.deepEqual(r.out.left, [true, true], 'no daily limit on searches or profile views');
+  // No daily limit on searches or profile views; searches stop at the ceiling the lift keeps (2026-10-16).
+  assert.deepEqual(r.out.left, [250 - 39, true], 'no daily limit on searches or profile views, up to the ceiling of 250');
   assert.equal(r.out.status, 'private', 'it opened, 30 views over a limit of 10');
   assert.equal(r.out.opened.length, 1);
   assert.ok(r.out.opened[0][1] - (1790000000 - 20) >= 60, 'the minute between profile views holds');
@@ -503,14 +504,14 @@ first = ns['searches_left'](NOW)[0]
 ns['sys'].stdin = io.StringIO('limits: lifted\\n')
 ns['_listen_for_limits']()
 real.sleep(0.3)
-lifted = [ns['limits_lifted'](), ns['searches_left'](NOW)[0] >= 10 ** 9]
+lifted = [ns['limits_lifted'](), ns['searches_left'](NOW)[0]]
 ns['sys'].stdin = io.StringIO('something else\\nlimits: on\\n')
 ns['_listen_for_limits']()
 real.sleep(0.3)
 out.update(first=first, lifted=lifted, back=[ns['limits_lifted'](), ns['searches_left'](NOW)[0]])`);
   if (!r) return;
   assert.equal(r.out.first, 0);
-  assert.deepEqual(r.out.lifted, [true, true]);
+  assert.deepEqual(r.out.lifted, [true, 250 - 3], 'lifted: no daily limit, up to the ceiling of 250');
   assert.deepEqual(r.out.back, [false, 0]);
   assert.match(r.log, /Limits lifted for this session: no daily limit or cooldown\. The pace stays\./);
   assert.match(r.log, /Limits are back on\./);

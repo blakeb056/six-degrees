@@ -1,7 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { accessSync, constants, existsSync } from 'node:fs';
 import { projectRoot, isGitCheckout, dataDir } from '../../../lib/paths';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { repoSlug, compareVersions, installKind, updateCommand, INSTALLER_KINDS } from '../../../lib/release';
 import {
@@ -10,7 +10,7 @@ import {
 } from '../../../lib/updater';
 import {
   bundleFacts, cancelUpdate, checkedVersion, cleanLeftovers, confirmStarted, currentUpdate, macFacts,
-  othersRunningApp, readStatusFile, rememberCheck, startUpdate, updateActive, updatePaths,
+  othersRunningApp, readStatusFile, rememberCheck, startUpdate, updateActive, updatePaths, updateTmpRoot,
 } from '../../../lib/updater-job';
 import { busyRefusal, scannerJob } from '../../../lib/scan-state';
 import { latestRelease, settleUpdateNotes } from '../../../lib/update-check';
@@ -183,7 +183,8 @@ function fallbackFor(bundle, refusal) {
 function tidyUp(bundle) {
   if (!bundle || updateActive()) return;
   try {
-    cleanLeftovers({ bundle, tmpRoot: tmpdir(), ...updatePaths() });
+    const tmpRoot = updateTmpRoot({ dataDir: dataDir() });
+    cleanLeftovers({ bundle, tmpRoot, ...updatePaths({ tmp: tmpRoot }) });
   } catch { /* next time */ }
 }
 
@@ -279,6 +280,7 @@ async function installedPost(action, root) {
     }
     tidyUp(bundle);
     const mac = macFacts();
+    const tmpRoot = updateTmpRoot({ dataDir: dataDir() });
     const started = startUpdate({
       slug: info.slug,
       currentVersion: info.version,
@@ -288,8 +290,9 @@ async function installedPost(action, root) {
       bundle,
       dataDir: dataDir(),
       helper: helperPath(root),
-      tmpRoot: tmpdir(),
-      ...updatePaths(),
+      // The temporary folder, made again if it has gone (lib/updater-job.js updateTmpRoot).
+      tmpRoot,
+      ...updatePaths({ tmp: tmpRoot }),
       apiBase: source.apiBase,
       downloadBase: source.downloadBase,
       scanRunning: scannerJob,

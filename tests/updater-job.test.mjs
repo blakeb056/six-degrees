@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   startUpdate, cancelUpdate, currentUpdate, _resetUpdateForTesting, readStatusFile, launchHelper, updatePaths,
-  helperEnv, confirmStarted, cleanLeftovers, rememberCheck, checkedVersion,
+  updateTmpRoot, helperEnv, confirmStarted, cleanLeftovers, rememberCheck, checkedVersion,
 } from '../lib/updater-job.js';
 import { startTestReleaseServer } from '../scripts/test-release-server.mjs';
 
@@ -474,7 +474,10 @@ mv "$1.tmp" "$1"
   assert.equal(value('LANG'), 'en_US.UTF-8');
   assert.equal(value('LC_ALL'), 'en_US.UTF-8');
   assert.deepEqual(lines.filter((l) => /^SIX_DEGREES_|^NODE_|^npm_/.test(l)), [], 'a clean environment');
-  assert.deepEqual(Object.keys(helperEnv()).sort(), ['HOME', 'LANG', 'LC_ALL', 'PATH', 'TMPDIR', ...(process.env.USER ? ['LOGNAME', 'USER'] : [])].sort());
+  assert.deepEqual(Object.keys(helperEnv()).sort(), ['HOME', 'LANG', 'LC_ALL', 'PATH', ...(process.env.USER ? ['LOGNAME', 'USER'] : [])].sort());
+  // Never this process's TMPDIR, which can be a folder deleted since it started:
+  // the helper, and the app it reopens, don't inherit it.
+  assert.equal(value('TMPDIR'), undefined);
 });
 
 test('a download that stops arriving is given up after the idle time, not a fixed total', { skip }, async (t) => {
@@ -707,4 +710,39 @@ test('the updater\'s own files: the cache and TMPDIR, never the data folder', ()
   assert.equal(p.statusFile, '/Users/me/Library/Caches/Six Degrees/last-update.json');
   assert.equal(p.logFile, '/var/folders/x/T/six-degrees-update.log');
   for (const file of Object.values(p)) assert.equal(file.includes('.six-degrees'), false, file);
+});
+
+// Blake, 2026-10-16: the update to 2.6.0 stopped with "ENOENT … mkdtemp
+// '/private/tmp/…/scratchpad/tmp/six-degrees-update-…'". The app had kept the
+// TMPDIR of the terminal session that last started it, and that folder had
+// been deleted since.
+test('REGRESSION: a temporary folder that has gone is made again; one that can\'t be used falls back', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-tmproot-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const gone = path.join(root, 'session', 'scratchpad', 'tmp');
+  assert.equal(updateTmpRoot({ tmp: gone, dataDir: path.join(root, 'data') }), gone);
+  assert.ok(fs.statSync(gone).isDirectory(), 'made again');
+  assert.equal(fs.statSync(gone).mode & 0o077, 0, 'for this user only');
+  // A file where the folder should be: /tmp on the Mac, the data folder elsewhere.
+  const blocked = path.join(root, 'a-file');
+  fs.writeFileSync(blocked, '');
+  const data = path.join(root, 'data');
+  assert.equal(updateTmpRoot({ tmp: path.join(blocked, 'tmp'), dataDir: data, platform: 'darwin' }), '/tmp');
+  assert.equal(updateTmpRoot({ tmp: path.join(blocked, 'tmp'), dataDir: data, platform: 'linux' }), data);
+  // A folder that is there is used as it is.
+  assert.equal(updateTmpRoot({ tmp: root }), root);
+});
+
+test('REGRESSION: an update whose temporary folder was deleted still downloads, stages and hands over', { skip }, async (t) => {
+  const w = world(t);
+  server.setRelease(release());
+  const gone = path.join(w.root, 'deleted-session', 'tmp');
+  const { c, calls } = context(w, { tmpRoot: gone, logFile: path.join(gone, 'six-degrees-update.log') });
+  const job = await run(c);
+  assert.equal(job.phase, 'restarting', job.error);
+  assert.equal(calls.launch.length, 1);
+  const { cwd, logFile, helper } = calls.launch[0];
+  assert.equal(cwd, gone, 'the folder was made again and used');
+  assert.equal(logFile, path.join(gone, 'six-degrees-update.log'));
+  assert.ok(helper.startsWith(path.join(gone, 'six-degrees-update-')));
 });

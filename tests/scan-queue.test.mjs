@@ -205,7 +205,8 @@ test('a circle scan that waits its turn keeps how many pages it was to read', as
   await until(async () => runs().length === 3 && (await settled()), 'the queue to run');
   assert.deepEqual(runs(), [`--bridge-url=${url('oriel-vantasse')}`, `--bridge-url=${url('maren-holt')}`, `--bridge-url=${url('tobin-ashgrove')}`]);
   const pages = readFileSync(PAGES, 'utf8').trim().split('\n');
-  assert.deepEqual(pages, ['--max-pages=100', '--max-pages=3', '--max-pages=100']);
+  // A scan of one circle is one round (lib/scan-rounds.js), 25 pages; the first scan's three stay three.
+  assert.deepEqual(pages, ['--max-pages=25', '--max-pages=3', '--max-pages=25']);
   // What the page sees of the queue never carries what a start sends.
   assert.ok(!('request' in ((await job()).recent[0] || {})));
 });

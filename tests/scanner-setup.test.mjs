@@ -13,7 +13,7 @@ import {
   APP_MANAGEMENT_URL, APP_MANAGEMENT_URL_OLDER, APP_MANAGEMENT_SETTING, APP_MANAGEMENT_TITLE, APP_MANAGEMENT_WHERE,
 } from '../lib/scanner-setup.js';
 import { SETTINGS } from '../lib/settings.js';
-import { notReadyMessage } from '../lib/scraper-client.js';
+import { notReadyMessage, NO_SCANNER } from '../lib/scraper-client.js';
 
 const MB = 1024 * 1024;
 const status = (checks, extra = {}) => ({ checks: { scriptsFound: true, chrome: true, ...checks }, running: false, ...extra });
@@ -129,7 +129,9 @@ test('the app\'s own Python failing is said in a line of its own: what happened,
 
 test('other pages send people to Scan while there is something to set up there', () => {
   assert.equal(notReadyMessage(null), 'Could not reach the app.');
-  assert.equal(notReadyMessage(status({ scriptsFound: false })), 'The scanner files are missing from this install.');
+  // The scanner is a plugin now: no "files are missing from this install".
+  assert.equal(notReadyMessage(status({ scriptsFound: false })), NO_SCANNER);
+  assert.equal(NO_SCANNER, 'No scanner is installed. Install the Auto scan or Manual scan plugin in Settings → Plugins, then scan.');
   assert.equal(notReadyMessage(status({ python: false, dependencies: false, download: DOWNLOAD })),
     'The scanner is not set up yet. Open Scan to set it up.');
   assert.equal(notReadyMessage(status({ python: true, dependencies: false })),
@@ -271,22 +273,10 @@ test('not known until both answers are in, so the question never shows and then 
   assert.equal(askForField(status({}, { network: FIRST }), undefined), null);
 });
 
-test('the guided setup asks it during the first scan, and only then (duringFirstScan)', () => {
-  const during = { duringFirstScan: true };
+test('one way to ask: the unused duringFirstScan option is gone, so a first scan never asks it', () => {
   const reading = status({}, { network: NOTHING, running: true, action: 'full' });
-  assert.equal(askForField(reading, unasked, during), true);
-  // The Scan page still waits for the scan to end.
-  assert.equal(askForField(reading, unasked), false);
-  // Still once: picked, answered or skipped before, never again.
-  assert.equal(askForField(reading, { ...unasked, fieldAsked: true }, during), false);
-  assert.equal(askForField(reading, { ...unasked, sectorFocus: { sectors: ['tech'], strength: 'lean' } }, during), false);
-  assert.equal(askForField(reading, undefined, during), null);
-  // Not during any other job, nor a first scan's re-read once people are in (that's the usual rule).
-  assert.equal(askForField(status({}, { network: NOTHING, running: true, action: 'login' }), unasked, during), false);
-  assert.equal(askForField(status({}, { network: { ...NOTHING, second: 3 }, running: true, action: 'full' }), unasked, during), false);
-  assert.equal(askForField(status({}, { network: FIRST, running: true, action: 'full' }), unasked, during), false);
-  // After it, as before.
-  assert.equal(askForField(status({}, { network: FIRST }), unasked, during), true);
+  assert.equal(askForField(reading, unasked, { duringFirstScan: true }), false);
+  assert.equal(askForField.length, 2);
 });
 
 // ── App Management, on a Mac ────────────────────────────────────────────────

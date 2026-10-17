@@ -325,7 +325,7 @@ out['again'] = run(5)`);
   }
 });
 
-test('with Dev mode off the ceiling changes nothing: the daily limit as before, and a lift for the session has no end', (t) => {
+test('with Dev mode off the ceiling holds only a lift: the daily limit as before, and a lift for the session stops at it too', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${RECORD}
@@ -336,7 +336,11 @@ out['line'] = ns['budget_message']('daily')
 settings(daily=400)
 out['high'] = ns['searches_left']()
 ns['LIMITS']['lifted'] = True
-out['lifted'] = ns['searches_left']()[0] >= 10 ** 9
+out['lifted'] = ns['searches_left']()
+out['lifted_line'] = ns['budget_message']('daily')
+record([NOW_S - 60 * (i + 1) for i in range(100)])
+out['lifted_room'] = ns['searches_left']()
+record([NOW_S - 60 * (i + 1) for i in range(300)])
 settings(daily=50, **DEV)
 out['lifted_dev'] = ns['searches_left']()
 ns['LIMITS']['lifted'] = False
@@ -347,7 +351,11 @@ out['damaged'] = ns['searches_left']()`);
     assert.deepEqual(r.out.off, [0, 'daily']);
     assert.match(r.out.line, /^Today's limit of 50 searches is used/);
     assert.deepEqual(r.out.high, [100, 'daily'], 'a daily limit set above 250 is the person\'s choice, as before');
-    assert.equal(r.out.lifted, true, '300 in the last 24 hours, and the session\'s lift still has no end');
+    // Blake's brief, 2026-10-16: "Lift limits for this session" had no ceiling at all. It keeps Dev mode's.
+    assert.deepEqual(r.out.lifted, [0, 'daily'], '300 in the last 24 hours: past the ceiling the lift keeps');
+    assert.match(r.out.lifted_line, /^The ceiling the lifted limits keep: 250 search pages a day, reached\./);
+    assert.doesNotMatch(r.out.lifted_line, /^Today's limit/, 'not the daily limit\'s words, which offer the lift');
+    assert.deepEqual(r.out.lifted_room, [150, 'daily'], '100 used: 150 of the ceiling left, whatever the daily limit');
     assert.deepEqual(r.out.lifted_dev, [0, 'daily'], 'Dev mode on as well: its ceiling holds');
   } finally {
     rmSync(home, { recursive: true, force: true });
@@ -359,7 +367,7 @@ test('the notch, LinkedIn usage and the Scan page show Dev mode\'s ceiling, not 
   assert.ok(DEV_LINE.includes(`ceiling of ${DEV_CEILING} search pages`), 'Dev mode\'s own words name the number');
   // The notch while a scan runs: the route hands it the ceiling, and it shows "N of 250".
   assert.match(src('app/api/scraper/route.js'), /devCeiling: li\.devCeiling/);
-  assert.match(src('app/components/ScanStatusBar.js'), /b\.dev && b\.devCeiling \? ` of \$\{b\.devCeiling\}`/);
+  assert.match(src('app/components/ScanStatusBar.js'), /\(b\.dev && b\.devCeiling\) \|\| b\.ceiling \? ` of \$\{b\.devCeiling \|\| b\.ceiling\}`/);
   // LinkedIn usage: the meter is "of 250" with a mark there, never "no limit in Dev mode".
   const usage = src('app/components/settings/UsageSection.js');
   assert.match(usage, /of \$\{u\.devCeiling\}, Dev mode’s ceiling/);

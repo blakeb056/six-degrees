@@ -2,9 +2,12 @@
 // CI's check of the Windows and Linux apps as installed (docs/brain/DESKTOP.md
 // rule 6), the same checks release.yml runs on the Mac app: the scanner's code
 // isn't in it (it comes only as a plugin), it opens, every page answers, the
-// scanner would run on the Python inside the app (the plugin runtime),
-// Settings → Updates offers the installer and never the Mac's swap, a second
-// copy hands over and exits, it quits, and nothing of it is left running.
+// scanner would run on the Python inside the app (the plugin runtime), a real
+// scanner plugin built from this checkout installs and a scan job starts on it
+// and finishes (Save photos: the plugin's scrape.py on the app's Python, talking
+// to the app, with no browser and nothing of LinkedIn's), Settings → Updates
+// offers the installer and never the Mac's swap, a second copy hands over and
+// exits, it quits, and nothing of it is left running.
 //
 //   node scripts/smoke-desktop.mjs --exe <app executable> --dir <install folder> --home <scratch data folder> [--shot <png>]
 //
@@ -18,6 +21,9 @@ import net from 'node:net';
 import path from 'node:path';
 import { startTestReleaseServer } from './test-release-server.mjs';
 import { SCANNER_CODE } from '../lib/scanner-files.js';
+import { buildPackage, PLUGINS } from './build-plugin.mjs';
+import { SIZE_HEADER, CONFIRM_HEADER } from '../lib/plugins-client.js';
+import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
 
 const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i > -1 ? process.argv[i + 1] : null; };
 const EXE = arg('exe');
@@ -136,13 +142,51 @@ console.log('  plugin runtime:', scanner.pythonSource, scanner.pythonVersion, sc
 if (scanner.pythonSource !== 'bundled' || !scanner.dependencies || !inside(scanner.pythonPath, DIR)) fail('The app isn\'t using the Python inside it.');
 if (!scanner.chrome) fail('Google Chrome is installed on this runner, and the app didn\'t find it.');
 
+// ---- a real scanner plugin: built, installed, and a scan job started on it -------------
+// The app has no scanner of its own, so until now CI never started one. The Auto scan
+// package, built from this checkout the way releases build it (scripts/build-plugin.mjs),
+// installed through Settings → Plugins' own route (its check, then the yes naming the
+// checksum the check gave). Then a job that runs the plugin's scrape.py on the app's
+// Python and has it talk to the app, without LinkedIn: Save photos opens no browser and
+// no page (lib/scan-risk.js OFF_LINKEDIN), and on a fresh data folder has none to save.
+const sendPackage = async (zip, headers = {}) => {
+  const r = await fetch(`${url}/api/plugins/install${headers[CONFIRM_HEADER] ? '' : '?check=1'}`, {
+    method: 'POST', body: zip, headers: { 'Content-Type': 'application/octet-stream', [SIZE_HEADER]: String(zip.length), ...headers },
+  });
+  return { status: r.status, json: await r.json().catch(() => ({})) };
+};
+const autoScan = PLUGINS.find((p) => p.id === 'auto-scan');
+const zip = buildPackage(autoScan, { version: SHIPPED_PLUGIN_VERSION, appVersion: pkg.version });
+const enabled = await post(`${url}/api/plugins/enabled`, { enabled: true });
+if (enabled.status !== 200) fail(`Turning plugins on answered ${enabled.status}: ${enabled.json.error || ''}`);
+const checked = await sendPackage(zip);
+if (checked.status !== 200 || !checked.json.sha256) fail(`The plugin's check answered ${checked.status}: ${checked.json.error || ''}`);
+const installed = await sendPackage(zip, { [CONFIRM_HEADER]: checked.json.sha256 });
+if (installed.status !== 200) fail(`Installing the plugin answered ${installed.status}: ${installed.json.error || ''}`);
+const withPlugin = JSON.parse((await get(`${url}/api/scraper`)).body).checks;
+console.log(`  installed ${autoScan.name} ${SHIPPED_PLUGIN_VERSION}: scanner from`, withPlugin.scanner?.from, withPlugin.scanner?.plugin?.version);
+if (!withPlugin.scriptsFound || withPlugin.scanner?.from !== 'plugin') fail('The app doesn\'t scan with the plugin just installed.');
+const job = await post(`${url}/api/scraper`, { action: 'photos' });
+if (job.status !== 200) fail(`A scan job on the plugin wouldn't start (${job.status}): ${job.json.error || ''}`);
+let ran = null;
+for (let i = 0; i < 120; i++) {
+  ran = JSON.parse((await get(`${url}/api/scraper?job=1`)).body);
+  if (!ran.running) break;
+  await sleep(1000);
+}
+console.log('  scan job on the plugin:', ran.action, 'exit', ran.exitCode, ran.exitKind);
+if (ran.running) fail('The scan job on the plugin never finished.');
+if (ran.exitCode !== 0 || !ran.log.some((line) => /No photos are waiting to be saved/.test(line))) {
+  fail(`The scan job on the plugin didn't run through (exit ${ran.exitCode}):\n${ran.log.slice(-15).join('\n')}`);
+}
+
 // ---- Updates: the installer, never the Mac's swap or a Terminal line ---------------
 const local = JSON.parse((await get(`${url}/api/update`)).body);
 console.log('  updates:', local.kind, local.version, local.command);
 if (local.kind !== KIND || local.command !== null) fail(`Updates thinks this is ${local.kind} (command ${local.command}).`);
-const checked = await post(`${url}/api/update`, { action: 'check-release' });
-console.log('  check:', checked.status, checked.json.newer, checked.json.install, checked.json.fallback);
-if (checked.status !== 200 || !checked.json.newer || checked.json.install || checked.json.fallback) fail('Check for updates didn\'t offer the newer release the right way.');
+const released = await post(`${url}/api/update`, { action: 'check-release' });
+console.log('  check:', released.status, released.json.newer, released.json.install, released.json.fallback);
+if (released.status !== 200 || !released.json.newer || released.json.install || released.json.fallback) fail('Check for updates didn\'t offer the newer release the right way.');
 const refused = await post(`${url}/api/update`, { action: 'install-release' });
 if (refused.status !== 400) fail(`Install and restart answered ${refused.status}: it must refuse off the Mac.`);
 if (releases.requests.some((r) => r.includes('/releases/download/'))) fail('Something downloaded the pretend release.');
@@ -176,7 +220,7 @@ app = start({ SIX_DEGREES_PYTHON: '' });
 url = await ready(app);
 const checks = JSON.parse((await get(`${url}/api/scraper`)).body).checks;
 // Setting up the scanner is the job, which needs a scanner: a plugin, since the
-// app has none of its own. A fresh install has none, so it quits without a job.
+// app has none of its own; the one installed above.
 const action = !checks.scriptsFound ? null : checks.installFrom ? 'install' : checks.download ? 'setup' : null;
 if (action) {
   const started = await post(`${url}/api/scraper`, { action });
@@ -192,5 +236,5 @@ if (left2.length) fail(`App processes were left running after quitting mid-job:\
 
 await releases.close();
 rmSync(READY, { force: true });
-console.log('\n✓ No scanner code inside, opened, reached every page, its own Python for plugins, updates by installer, refused a second copy, quit, left nothing.');
+console.log('\n✓ No scanner code inside, opened, reached every page, its own Python for plugins, a scan job ran on a real plugin, updates by installer, refused a second copy, quit, left nothing.');
 process.exit(0);

@@ -241,6 +241,8 @@ export default function UsageSection() {
   }
   if (dev && u.devCeiling) {
     dayTicks.push({ at: u.devCeiling, label: `${u.devCeiling} ceiling`, title: 'Dev mode’s ceiling', color: 'var(--sd-gold, #FFD700)' });
+  } else if (lifted && u.ceiling) {
+    dayTicks.push({ at: u.ceiling, label: `${u.ceiling} ceiling`, title: 'The ceiling lifted limits keep', color: 'var(--sd-gold, #FFD700)' });
   }
   const dayMax = barMax(day, dayTicks.map((t) => t.at));
   const views = u.profilesToday;
@@ -278,14 +280,16 @@ export default function UsageSection() {
       )}
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Meter title="Searches in the last 24 hours" used={day} of={dev ? `of ${u.devCeiling}, Dev mode’s ceiling` : lifted ? '· no limit for this session' : `of ${limits.daily} a day`}
+      <Meter title="Searches in the last 24 hours" used={day} of={dev ? `of ${u.devCeiling}, Dev mode’s ceiling` : lifted ? (u.ceiling ? `of ${u.ceiling}, the ceiling lifted limits keep` : '· no limit for this session') : `of ${limits.daily} a day`}
         max={dayMax} color={(LEVELS[dayLevel] || LEVELS.unknown).color} ticks={dayTicks}>
         {u.unreadable ? null : dev
           ? u.devFreesAt
             ? <>Dev mode&rsquo;s ceiling of {u.devCeiling} is reached. The next one frees {whenAndUntil(u.devFreesAt, now)}.</>
             : <>Dev mode: scans don&rsquo;t stop at {limits.daily}, but never pass {u.devCeiling} in 24 hours ({plural(u.devLeftToday, 'search', 'searches')} left), until you turn it off in Scanner settings, or LinkedIn pushes back.</>
           : lifted
-          ? <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree.</>
+          ? u.ceilingFreesAt
+            ? <>The ceiling lifted limits keep, {u.ceiling} in 24 hours, is reached. The next one frees {whenAndUntil(u.ceilingFreesAt, now)}.</>
+            : <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree, but never pass {u.ceiling ?? 250} in 24 hours{u.ceilingLeftToday != null ? <> ({plural(u.ceilingLeftToday, 'search', 'searches')} left)</> : null}.</>
           : u.dayFreesAt
             ? <>Your {limits.daily} a day are used. The next one frees {whenAndUntil(u.dayFreesAt, now)}.</>
             : <>{plural(u.leftToday, 'search', 'searches')} left today{u.cooldown ? ', once the pause ends' : ''}.</>}

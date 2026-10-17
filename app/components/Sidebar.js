@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
+import { beginScrape, startHere, scraperStatus, notReadyMessage, resumePoint, roundPoint, scansCircleOf, isCircleScan, busyReason, watchScanner, scannerNow, willQueue, queuedFor } from '../../lib/scraper-client';
 import { scanBoxTitle, stoppedLine, pagesReadText } from '../../lib/in-progress';
+import { roundWords } from '../../lib/scan-rounds';
 import useScanner, { useScanShows } from './useScanner';
 import useRequests from './useRequests';
 import InlineNote, { useFadingNote } from './InlineNote';
@@ -68,7 +69,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   // whoever gets a scan box (the same test as below). Above the early returns,
   // so the hook order never changes.
   const scansHere = Boolean(selected) && canScan && (selected.degree === 1 || selected.outreach_status === 'accepted');
-  const { resume, scanning: scanningThem } = useResume(scansHere ? selected : null);
+  const { resume, round, scanning: scanningThem } = useResume(scansHere ? selected : null);
 
   // A notification someone clicked takes the panel over until they go back (app/components/NoteDetail.js).
   if (note) {
@@ -180,7 +181,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         <StrategyNote person={selected} />
 
         {/* Their scan stopped partway: said by their name, where it's seen without scrolling. */}
-        {scansHere && resume && <StoppedPartway resume={resume} scanning={scanningThem} />}
+        {scansHere && resume && <StoppedPartway resume={resume} round={round} scanning={scanningThem} />}
 
         {/* Their circle, out to six degrees: who they know, who you added from
             it, and who those people know (TheirCircle.js). Your connections only:
@@ -258,12 +259,12 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                     {/* Both press the card's own scan box, so they start right here with its
                         checks, its log and any refusal (Blake, 2026-10-04: no pop-ups, nothing
                         in the way; they used to open the Scan page to confirm there). Stopped
-                        partway: Resume carries on from that page, never page 1 again (the
+                        partway: the next round carries on from that page, never page 1 again (the
                         searches are spent already). Never scanned: Scan. A list read in part
                         with nowhere to carry on from offers nothing here: the box below has Rescan. */}
                     {i.bars !== 5 && canScan && scansHere && (resume ? (
-                      <button type="button" style={act} title={`Resume from page ${resume.nextPage}`}
-                        onClick={() => pressInScanBox('resume', scanningThem)}>Resume →</button>
+                      <button type="button" style={act} title={`Scan the next round, from page ${resume.nextPage}`}
+                        onClick={() => pressInScanBox('resume', scanningThem)}>Next round →</button>
                     ) : i.bars == null && (
                       <button type="button" style={act} title={`Scan ${first}’s circle: it starts here, in the background`}
                         onClick={() => pressInScanBox('scan', scanningThem)}>Scan →</button>
@@ -539,7 +540,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
         {/* Create Cluster — for D1 connections OR accepted D2 (promoted, ready to bridge for D3) */}
         {(selected.degree === 1 || selected.outreach_status === 'accepted') && (
           canScan
-            ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} resume={resume} />
+            ? <CreateClusterCard key={selected.id} selected={selected} degree2={degree2} resume={resume} round={round} />
             : csvSource && <ScansNeedYourNetwork csvSource={csvSource} style={{ marginTop: 16 }} />
         )}
 
@@ -1094,12 +1095,13 @@ const noWatch = () => () => {};
 
 /**
  * Where Resume would carry on with this person ({ nextPage, pagesRead, legacy };
- * null when there is nothing to carry on with; undefined until known), and
- * whether their circle is being scanned right now. One question to the server
- * for the whole card (GET /api/scraper?resume=<id>), asked again whenever a
- * scan ends, since every read moves it. Only those two facts are taken from the
- * scanner, never its whole answer: that changes every time a running scan's log
- * grows, and this panel would redraw with it.
+ * null when there is nothing to carry on with; undefined until known), where
+ * their rounds stand (`round`, lib/scan-rounds.js: "Round 2 of 4"), and whether
+ * their circle is being scanned right now. Two questions to the server for the
+ * whole card (GET /api/scraper?resume=<id> and ?round=<id>), asked again
+ * whenever a scan ends, since every read moves them. Only those facts are taken
+ * from the scanner, never its whole answer: that changes every time a running
+ * scan's log grows, and this panel would redraw with it.
  */
 function useResume(person) {
   const id = person?.id ?? null;
@@ -1109,15 +1111,17 @@ function useResume(person) {
     const now = scannerNow();
     return Boolean(now.running && person && scansCircleOf(now, person));
   }, () => false);
-  const [got, setGot] = useState({ id: null, resume: undefined });
+  const [got, setGot] = useState({ id: null, resume: undefined, round: undefined });
   useEffect(() => {
     if (!id) return undefined;
     let live = true;
-    resumePoint(id).then((r) => { if (live) setGot({ id, resume: r }); }, () => { if (live) setGot({ id, resume: null }); });
+    Promise.all([resumePoint(id).catch(() => null), roundPoint(id).catch(() => null)])
+      .then(([resume, round]) => { if (live) setGot({ id, resume, round }); });
     return () => { live = false; };
   }, [id, lastEnded]);
   // Another person's answer never shows on this one's card while theirs is asked.
-  return { resume: id && got.id === id ? got.resume : undefined, scanning: Boolean(id) && scanning };
+  const mine = id && got.id === id;
+  return { resume: mine ? got.resume : undefined, round: mine ? got.round : undefined, scanning: Boolean(id) && scanning };
 }
 
 /**
@@ -1142,11 +1146,13 @@ function pressInScanBox(which = 'resume', scanning = false) {
  * the box, brought into view, is where the scan's log and any problem show.
  * While their scan runs it says so, and only takes you to the box.
  */
-function StoppedPartway({ resume, scanning }) {
+function StoppedPartway({ resume, round, scanning }) {
   const gold = 'var(--sd-gold, #FFD700)';
+  // In rounds (lib/scan-rounds.js): the round the next scan reads, "Round 2 of 4".
+  const next = round?.next != null ? roundWords(round) : null;
   return (
     <button type="button" onClick={() => pressInScanBox('resume', scanning)}
-      aria-label={scanning ? 'Scanning their circle now: go to the scan' : `${stoppedLine(resume)}. Resume from page ${resume.nextPage}`}
+      aria-label={scanning ? 'Scanning their circle now: go to the scan' : `${stoppedLine(resume)}. ${next ? `${next}: scan next round` : `Resume from page ${resume.nextPage}`}`}
       style={{
         display: 'flex', alignItems: 'center', gap: 9, width: '100%', boxSizing: 'border-box', margin: '-6px 0 16px',
         padding: '8px 11px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', font: 'inherit',
@@ -1163,20 +1169,22 @@ function StoppedPartway({ resume, scanning }) {
         </span>
       )}
       <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.35 }}>
-        <b style={{ color: gold }}>{scanning ? 'Scanning their circle now' : `${stoppedLine(resume)}.`}</b>
-        {!scanning && <span style={{ color: 'var(--sd-fg-3, #999)' }}> Their list isn&apos;t finished.</span>}
+        <b style={{ color: gold }}>{scanning ? 'Scanning their circle now' : next ? `${next} next.` : `${stoppedLine(resume)}.`}</b>
+        {!scanning && <span style={{ color: 'var(--sd-fg-3, #999)' }}>{next ? ` ${pagesReadText(resume)} so far.` : ' Their list isn’t finished.'}</span>}
       </span>
-      <span style={{ fontSize: 11.5, fontWeight: 800, color: gold, whiteSpace: 'nowrap' }}>{scanning ? 'See it ↓' : 'Resume ↓'}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 800, color: gold, whiteSpace: 'nowrap' }}>{scanning ? 'See it ↓' : next ? 'Scan next round ↓' : 'Resume ↓'}</span>
     </button>
   );
 }
 
 // Scan one person's circle, or carry on with it.
 //
-// LinkedIn lists someone else's connections in its own order, with no dates,
-// so anyone new can turn up on any page: Rescan reads the whole list again from
-// page 1. Resume carries on from the page the last read stopped at, for a list
-// that was only partly read. Both show when there is something to resume.
+// A scan reads one round of their list (lib/scan-rounds.js: 25 pages, or 50 as
+// Scanner settings say), and the box says which: "Round 2 of 4". Scan next
+// round carries on from the page the last round stopped at, for a list only
+// partly read. LinkedIn lists someone else's connections in its own order, with
+// no dates, so anyone new can turn up on any page: Rescan from the start reads a
+// round again from page 1. Both show when there is a next round.
 //
 // Whether a scan is running comes from the scanner (useScanner), not from this
 // card: close the card mid-scan and open it again and the scan is still here,
@@ -1189,7 +1197,7 @@ function StoppedPartway({ resume, scanning }) {
 // not finished it needs to show that in their profile card ... showing resume
 // scanner in that actual card"). It used to sit under CLUSTER ACTIVE, which
 // reads as done.
-function CreateClusterCard({ selected, degree2, resume }) {
+function CreateClusterCard({ selected, degree2, resume, round }) {
   const scan = useScanner();
   const [checking, setChecking] = useState(false);
   const [problem, setProblem] = useState(null);      // why a scan didn't start: { text, offline }
@@ -1203,7 +1211,7 @@ function CreateClusterCard({ selected, degree2, resume }) {
   const busy = scan.running && !mine && !queued && !willQueue(scan, 'bridge', selected) ? busyReason(scan) : null;
   const last = scan.finished.find((j) => scansCircleOf(j, selected));
 
-  async function start(action) {
+  async function start(action, { fromStart = false } = {}) {
     setProblem(null);
     setChecking(true);
     const blocked = notReadyMessage(await scraperStatus().catch(() => null));
@@ -1213,7 +1221,8 @@ function CreateClusterCard({ selected, degree2, resume }) {
       return;
     }
     try {
-      await beginScrape(action, action === 'resume' ? { id: selected.id } : { name: selected.name, id: selected.id });
+      await beginScrape(action, action === 'resume' ? { id: selected.id }
+        : { name: selected.name, id: selected.id, ...(fromStart ? { fromStart: true } : {}) });
     } catch (e) {
       setProblem({ text: e.message || 'Could not start the scan.' });
     }
@@ -1242,13 +1251,19 @@ function CreateClusterCard({ selected, degree2, resume }) {
       <div style={{ fontSize: 10, color: ink, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: 'center' }}>
         {scanBoxTitle({ resume, hasCluster })}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #aaa)', marginBottom: 12, textAlign: 'center' }}>
+      <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #aaa)', marginBottom: round ? 4 : 12, textAlign: 'center' }}>
         {resume
           ? (hasCluster ? `${clusterCount} connections mapped so far` : 'Their list is only partly read')
           : hasCluster
           ? `${clusterCount} connections mapped in Sixgree`
           : <>Scan {selected.name}&apos;s connections to map their network</>}
       </div>
+      {/* Where their rounds stand (lib/scan-rounds.js): "Round 2 of 4 · 25 pages a round". */}
+      {round && (
+        <div data-round-of="" style={{ fontSize: 11.5, fontWeight: 700, color: ink, marginBottom: 12, textAlign: 'center' }}>
+          {roundWords(round)}{round.next != null ? ` · ${round.round} pages a round` : ''}
+        </div>
+      )}
 
       {mine ? (
         <ScanLog title={scan.pending ? 'Starting…' : `Scanning ${selected.name}’s circle…`} log={scan.log} />
@@ -1273,24 +1288,25 @@ function CreateClusterCard({ selected, degree2, resume }) {
           <div style={{ display: 'flex', gap: 8 }}>
             {resume && (
               // data-resume: the line by their name presses this one (StoppedPartway).
+              // One round from where the last stopped (app/api/scraper/route.js circleRound).
               <button data-resume onClick={() => start('resume')} disabled={off} style={button(true)}>
-                {queued?.action === 'resume' ? queued.label : <>Resume from page {resume.nextPage}</>}
+                {queued?.action === 'resume' ? queued.label : 'Scan next round'}
               </button>
             )}
-            <button data-scan onClick={() => start('bridge')} disabled={off} style={button(!resume && !hasCluster)}>
+            <button data-scan onClick={() => start('bridge', { fromStart: read })} disabled={off} style={button(!resume && !hasCluster)}>
               {queued && queued.action !== 'resume' ? queued.label : read ? 'Rescan from the start' : <>Scan {selected.name}&apos;s Network</>}
             </button>
           </div>
           {resume && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              {pagesReadText(resume)} so far. Resume carries on from page {resume.nextPage}. Their
-              list isn&rsquo;t in date order, so Rescan reads them all again from page 1.
+              {pagesReadText(resume)} so far. Scan next round carries on from page {resume.nextPage}. Their
+              list isn&rsquo;t in date order, so Rescan reads a round again from page 1.
             </div>
           )}
           {hasCluster && resume === null && (
             <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
               Their whole list has been read. Other people&apos;s connections aren&apos;t dated, so a
-              rescan reads it all again to find anyone new.
+              rescan reads a round again from page 1 to find anyone new.
             </div>
           )}
           {(busy || (scan.running && !mine)) && (
