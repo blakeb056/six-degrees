@@ -40,6 +40,7 @@ import { exitOutcome } from '../../../lib/scan-exit';
 import { experienceCounts, experienceCard } from '../../../lib/experience';
 import { DEFAULT_ROUND, circleRoundArgs, knownCount, personRounds, roundState } from '../../../lib/scan-rounds';
 import { ensureChimes } from '../../../lib/chime-files';
+import { tryRecord, recordInteraction, mirrorAccountLoad } from '../../../lib/learning-log';
 
 // The app runs the scraper itself.
 //
@@ -1496,6 +1497,14 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   state.invitee = invitee;
   state.outcome = null;
   state.autoSitting = Boolean(sitting);
+  // The learning log (lib/learning-log.js): Auto's Connect pressed, or Read all mutuals.
+  if (action === 'connect' || action === 'mutuals') {
+    try {
+      const db = getDb();
+      const row = target?.id != null ? db.prepare('SELECT * FROM linkedin_connections WHERE id = ?').get(String(target.id)) : null;
+      if (row) recordInteraction(db, { type: action === 'connect' ? 'connect-click' : 'read-all-mutuals', row, data: action === 'connect' ? { route: 'auto' } : {} });
+    } catch { /* the log never stops a scan */ }
+  }
   if (sitting) state.log = [`Auto scan: a sitting of up to ${sitting} searches, in ${tierList(auto().tiers)}…`];
   forgetChecks();
   // Manual mode's chimes, as files the scanner can play (lib/chime-files.js): written once, never in the way.
@@ -1535,9 +1544,14 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     who.marked = true;
     try {
       const { saved, xp, user } = markSentRows(getDb(), {
-        connectionId: who.id, profileUrl: who.profileUrl, userId: who.userId, bridgeId: who.bridgeId,
+        connectionId: who.id, profileUrl: who.profileUrl, userId: who.userId, bridgeId: who.bridgeId, route: 'auto',
       });
       if (saved) Promise.resolve(awardXP(whose(user), xp)).catch(() => {});
+      // LinkedIn's "Invitation sent" seen, in the learning log.
+      try {
+        const row = getDb().prepare('SELECT * FROM linkedin_connections WHERE profile_url = ? ORDER BY degree DESC LIMIT 1').get(who.profileUrl);
+        if (row) recordInteraction(getDb(), { type: 'invite-detected', row, data: { outcome: String(state.outcome || '').slice(0, 80) } });
+      } catch { /* the log never stops a request */ }
       push('Marked as sent in Sixgree.');
     } catch (err) {
       push(`Sent on LinkedIn, but it couldn’t be marked as sent here: ${err.message}`);
@@ -1584,6 +1598,27 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // How Auto's request went, for the button that started it (lib/auto-connect.js connectOutcome).
       ...(state.action === 'connect' ? { outcome: state.outcome } : {}),
     }, ...state.recent].slice(0, 5);
+    // The learning log: how this job went (whose circle, pages, people per
+    // page, how it ended, a limit or push-back), and the account's load by the
+    // hour from linkedin-activity.json. Never in the way of the job's end.
+    if (!['install', 'setup', 'login'].includes(state.action)) {
+      try {
+        const db = getDb();
+        const found = Array.isArray(state.found) ? state.found.map((n) => Number(n) || 0) : [];
+        tryRecord(db, {
+          kind: 'scan', type: 'job', person: null, lens: undefined,
+          data: {
+            action: state.action, target: state.target?.id ?? null, startedAt: state.startedAt, endedAt: Date.now(),
+            pages: Number(state.pages) || 0, perPage: found, people: found.reduce((a, b) => a + b, 0),
+            exit: state.exitKind, limitHit: Boolean(state.limitHit && state.limitHit >= state.startedAt),
+            pushback: state.log.some((l) => /pushed back|cooldown|restricted|unusual activity/i.test(String(l))),
+            sitting: wasSitting ? auto().sittings : null,
+          },
+          dedupe: `scanjob:${state.startedAt}:${state.action}`,
+        });
+        mirrorAccountLoad(db, dataDir());
+      } catch { /* the log never stops a scan */ }
+    }
     // A scan that finished leaves a notification ("Scan done: …"); a stop or a failure doesn't.
     // One per Auto scan sitting would be one an hour: none for those.
     const done = wasSitting ? null : scanDoneNotification({ action: state.action, target: state.target, exitCode: out.effective, stopped, log: state.log.slice(-12), userId: profileId || null });

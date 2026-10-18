@@ -43,6 +43,8 @@ import useCsvImport from '../useCsvImport';
 import { ONBOARDING_CSS } from './styles';
 import Wordmark from '../Wordmark';
 import { Welcome, GetReady, Connect, Pace, FirstScan, Final, ImportCsv } from './steps';
+import ClassFlow, { FLOW_STEPS } from '../class/ClassFlow';
+import { loadClass } from '../../../lib/class-client';
 
 const SCREENS = { welcome: Welcome, ready: GetReady, connect: Connect, pace: Pace, map: FirstScan };
 const OUT_MS = 190;
@@ -161,9 +163,21 @@ export default function Onboarding({ onFinish, again = false }) {
   // asksField), and kept on screen until it's answered or skipped, though the
   // scan may end meanwhile.
   const [fieldShown, setFieldShown] = useState(false);
-  const wantsField = asksField(settings);
-  if (!fieldShown && wantsField && view === 'map' && fieldMoment(fs)) setFieldShown(true);
-  const fieldOpen = fieldShown && wantsField && ['running', 'saving', 'done'].includes(fs.state);
+  // Your class (Sixgree Classes, lib/class-store.js): picked after the CSV and
+  // the plugins, before scanning, since it changes which circle is worth the
+  // first scan. This or That then runs while the first scan reads, in the slot
+  // the field question had; without a class, the field question as before.
+  const [classInfo, setClassInfo] = useState(undefined);
+  const refreshClass = useCallback(() => loadClass().then((d) => { if (!d.error) setClassInfo(d); return d; }), []);
+  useEffect(() => { refreshClass(); }, [refreshClass]);
+  const [classOpen, setClassOpen] = useState(null);   // { after: 'ready' | 'galaxy' }: the class screen, over the setup
+  const [classDuelsDone, setClassDuelsDone] = useState(false);
+  const classUndecided = Boolean(classInfo && !classInfo.class && !classInfo.offer);
+  const classBuild = classInfo?.class && classInfo.build?.class === classInfo.class ? classInfo.build : null;
+  const wantsClass = Boolean(classBuild && !classBuild.done && !classBuild.skipped && !classDuelsDone);
+  const wantsField = asksField(settings) && !classInfo?.class;
+  if (!fieldShown && (wantsField || wantsClass) && view === 'map' && fieldMoment(fs)) setFieldShown(true);
+  const fieldOpen = fieldShown && (wantsField || wantsClass) && ['running', 'saving', 'done'].includes(fs.state);
   const [phase, setPhase] = useState('in');
   const [dir, setDir] = useState(1);
   const timer = useRef(null);
@@ -227,7 +241,31 @@ export default function Onboarding({ onFinish, again = false }) {
     next: (step) => go(stepAfter(step, caps)),
     back: (step) => go(stepBefore(step, caps)),
     // The CSV's result, or the CSV step without one → Set up scanning, the scanner's steps from Get ready.
-    setUpScanning: () => { setMemory(rememberSetup({ started: true })); leaveCsvFor('ready'); },
+    // Your class first, the once it hasn't been picked or skipped.
+    setUpScanning: () => {
+      setMemory(rememberSetup({ started: true }));
+      if (classUndecided) { setClassOpen({ after: 'ready' }); return; }
+      leaveCsvFor('ready');
+    },
+    // The CSV's result → the map: your class first, the once.
+    toGalaxy: () => {
+      if (classUndecided) { setClassOpen({ after: 'galaxy' }); return Promise.resolve(); }
+      return ctx.finish();
+    },
+    // This or That while the first scan reads, for the class picked (replaces the field question).
+    classDuel: wantsClass ? { cls: classInfo.class, color: classInfo.classes?.find((c) => c.key === classInfo.class)?.color } : null,
+    classDone: () => { setClassDuelsDone(true); refreshClass(); },
+    // Out of the class screen: to the scanner's steps, or with none ahead, the map.
+    leaveClass: (after) => {
+      refreshClass();
+      if (after === 'galaxy') { setClassOpen(null); return ctx.finish(); }
+      setCsvOpen(false);
+      setView('ready');
+      setClassOpen(null);
+      window.scrollTo(0, 0);
+      return undefined;
+    },
+    classInfo,
     // Set your pace → Continue: it has no check of its own, so this browser remembers it.
     paced: () => { setMemory(rememberSetup({ paced: true })); go(stepAfter('pace', caps)); },
     // The first scan (lib/onboarding.js firstScanOffer): with your people in,
@@ -282,7 +320,7 @@ export default function Onboarding({ onFinish, again = false }) {
   // moment a job ends or the window comes back (useScanStatus), so this
   // follows the end within a second or two.
   // Never over the CSV import's screen: it has its own end.
-  const final = !csvOpen && (again || (view === 'map' && (fs.state === 'done' || later) && !fieldOpen));
+  const final = !csvOpen && !classOpen && (again || (view === 'map' && (fs.state === 'done' || later) && !fieldOpen));
   const Screen = view && SCREENS[view];
   const at = view || 'welcome';
   // The dots: the steps there are with what's installed (no Pace with Manual scan alone).
@@ -324,6 +362,15 @@ export default function Onboarding({ onFinish, again = false }) {
       </header>
 
       {final ? <Final ctx={ctx} onFinish={ctx.finish} />
+        : classOpen ? (
+          // Your class: S1 and S2 before scanning; with no scanning ahead, the whole flow, then the map.
+          <section key="class" className={`ob-card ob-class ob-step-${phase}`} style={{ '--dir': dir }} data-glass-panel aria-label="Setup: your class">
+            <div className="ob-class-in">
+              <ClassFlow start="pick" steps={classOpen.after === 'galaxy' ? FLOW_STEPS : ['pick', 'target']}
+                onSkip={() => ctx.leaveClass(classOpen.after)} onDone={() => ctx.leaveClass(classOpen.after)} />
+            </div>
+          </section>
+        )
         : csvOpen ? (
           <section key="csv" className={`ob-card ob-step-${phase}`} style={{ '--dir': dir }} data-glass-panel aria-label="Setup: Import a connections CSV">
             <ImportCsv ctx={ctx} />

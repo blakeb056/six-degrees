@@ -11,7 +11,7 @@ test('exactly these routes are gated; everything else, reads included, is not', 
   const gated = [
     '/api/admin-delete', '/api/admin-update', '/api/delete-cluster', '/api/setup-profile', '/api/scraper', '/api/update',
     '/api/data/export', '/api/data/import', '/api/data/restart', '/api/data/reveal', '/api/data/backup', '/api/data/restore', '/api/data/csv',
-    '/api/data/network', '/api/plugins',
+    '/api/data/network', '/api/data/learning', '/api/plugins',
   ];
   for (const p of gated) assert.equal(isDestructive(p), true, p);
   // A network file's Import sits under its preview, and is gated with it.

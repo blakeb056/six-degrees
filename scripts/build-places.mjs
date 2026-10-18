@@ -148,7 +148,9 @@ function readGeonames(dir) {
   const names = new Map(lines('countryInfo.txt').map((l) => { const c = l.split('\t'); return [c[0], c[4]]; }));
   const cities = lines('cities15000.txt').map((l) => {
     const c = l.split('\t');
-    return { name: c[1], cc: c[8], region: admin1.get(`${c[8]}.${c[10]}`) || '', lat: Number(c[4]), lon: Number(c[5]), pop: Number(c[14]) || 0 };
+    // Column 17 is the city's IANA time zone ("America/New_York"): kept for the
+    // class spec's best-time-to-send, in the recipient's own hours.
+    return { name: c[1], cc: c[8], region: admin1.get(`${c[8]}.${c[10]}`) || '', lat: Number(c[4]), lon: Number(c[5]), pop: Number(c[14]) || 0, tz: c[17] || '' };
   });
   return { cities, names, source: 'GeoNames cities15000 (CC BY 4.0) and Natural Earth 1:110m countries (public domain)' };
 }
@@ -217,13 +219,20 @@ function main() {
   const countryRows = [...countries.values()].sort((a, b) => a.code.localeCompare(b.code))
     .map((c) => [c.code, c.name, c.lat, c.lon, ...[...new Set(c.names)].filter((n) => n !== c.name)]);
 
-  const cityRows = cities.map((c) => [c.name, regionIndex.get(`${c.cc}|${c.region}`), round(c.lat), round(c.lon), c.pop]);
+  // Time zones: a table of names, each city holding its index (GeoNames only; the stand-in has none).
+  const zones = [...new Set(cities.map((c) => c.tz).filter(Boolean))].sort();
+  const zoneIndex = new Map(zones.map((z, i) => [z, i]));
+  const cityRows = cities.map((c) => {
+    const row = [c.name, regionIndex.get(`${c.cc}|${c.region}`), round(c.lat), round(c.lon), c.pop];
+    return c.tz && zoneIndex.has(c.tz) ? [...row, zoneIndex.get(c.tz)] : row;
+  });
   const places = {
-    about: 'The Map tab\'s gazetteer, built by scripts/build-places.mjs. Rows: countries [code, name, lat, lon, ...other names]; regions [code, name, lat, lon]; cities [name, region, lat, lon, population]. Credits: docs/PLACES.md.',
+    about: 'The Map tab\'s gazetteer, built by scripts/build-places.mjs. Rows: countries [code, name, lat, lon, ...other names]; regions [code, name, lat, lon]; cities [name, region, lat, lon, population, zone?], zone an index into zones (IANA names). Credits: docs/PLACES.md.',
     source,
     countries: countryRows,
     regions: regionRows,
     cities: cityRows,
+    ...(zones.length ? { zones } : {}),
   };
 
   mkdirSync(OUT_DIR, { recursive: true });
@@ -232,7 +241,7 @@ function main() {
   writeFileSync(path.join(OUT_DIR, 'world.json'), worldText);
   writeFileSync(path.join(OUT_DIR, 'places.json'), placesText);
   console.log(`wrote ${OUT_DIR}/world.json  (${Math.round(worldText.length / 1024)} KB, ${world.features.length} countries)`);
-  console.log(`wrote ${OUT_DIR}/places.json (${Math.round(placesText.length / 1024)} KB: ${countryRows.length} countries, ${regionRows.length} regions, ${cityRows.length} cities)`);
+  console.log(`wrote ${OUT_DIR}/places.json (${Math.round(placesText.length / 1024)} KB: ${countryRows.length} countries, ${regionRows.length} regions, ${cityRows.length} cities, ${zones.length} time zones)`);
   console.log(`  source: ${source}`);
 }
 

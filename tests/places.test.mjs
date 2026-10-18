@@ -236,3 +236,21 @@ test('Map is a tab of the map page, for your own network, a CSV and the sample a
   assert.deepEqual(fetched, ['/geo/places.json', '/geo/world.json']);
   assert.doesNotMatch(view, /https?:\/\//);
 });
+
+// Phase 0 of the class spec: each city's time zone, kept from GeoNames' column 17
+// (scripts/build-places.mjs), for best-time-to-send in the recipient's own hours.
+test('a city carries its time zone when the gazetteer has zones, and none when it doesn’t', async () => {
+  const { makeGazetteer, placeFor } = await import('../lib/places.js');
+  const data = {
+    countries: [['US', 'United States', 39.8, -98.6]],
+    regions: [['US', 'Florida', 28.1, -81.6]],
+    cities: [['Orlando', 0, 28.54, -81.38, 310000, 0], ['Tampa', 0, 27.95, -82.46, 400000]],
+    zones: ['America/New_York'],
+  };
+  const gaz = makeGazetteer(data);
+  assert.equal(placeFor(gaz, 'Orlando, Florida, United States').tz, 'America/New_York');
+  assert.equal(placeFor(gaz, 'Tampa, Florida, United States').tz, null);
+  assert.equal(placeFor(makeGazetteer({ ...data, zones: undefined }), 'Orlando, Florida').tz, null);
+  const build = readFileSync(new URL('../scripts/build-places.mjs', import.meta.url), 'utf8');
+  assert.match(build, /tz: c\[17\]/);
+});

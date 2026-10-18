@@ -17,6 +17,7 @@ import useNotchTabs from '../components/useNotchTabs';
 import { durationText, firstCircleSeconds, paceLine, paceOf } from '../../lib/scan-pace';
 import { CooldownBanner, PausedList, LiftedTag, DailyLimitInput } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
+import ClassQuestion from '../components/class/ClassQuestion';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import ClusterSpinner from '../components/ClusterSpinner';
 import useScanStatus from '../components/useScanStatus';
@@ -330,8 +331,9 @@ function SetupInner() {
             />
           )}
 
-          {/* Your field, once, now that there are people to rank with it; then a line saying what it did. */}
-          {askField && <FieldStep onDone={answered} />}
+          {/* Your class, once, now that there are people to rank with it (This or That writes your field too);
+              the field question for whoever skipped the class pick. Then a line saying what it did. */}
+          {askField && <ClassQuestion onDone={answered} fallback={<FieldStep onDone={answered} />} />}
           {field && <FieldAnswer sectors={field.sectors} />}
 
           <div id="scan-top" className={`scan-top${allSet ? '' : ' scan-setup-first'}`}>

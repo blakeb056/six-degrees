@@ -51,26 +51,27 @@ const xp = () => getDb().prepare("SELECT xp FROM user_stats WHERE id = 'me'").ge
 
 test('a request marks every copy of the person, in both columns, and keeps who you asked through', async () => {
   const r = await send({ action: 'mark-sent', connectionId: 'ada@maya', bridgeId: 'maya' });
-  assert.deepEqual([r.saved, r.xp, r.already], [2, 25, false]);
+  // A send earns a token 1, whatever the tier (spec section 7.10: outcomes carry the XP).
+  assert.deepEqual([r.saved, r.xp, r.already], [2, 1, false]);
   assert.deepEqual(copies('ada').map((c) => [c.id, c.outreach_status, c.unlock_status, c.unlocked_from_bridge_id, c.unlocked_from_name]), [
     ['ada@maya', 'sent', 'pending', 'maya', 'Maya Chen'],
     ['ada@zoe', 'sent', 'pending', 'maya', 'Maya Chen'],
   ]);
   assert.equal(copies('ben')[0].outreach_status, null, 'nobody else is touched');
-  assert.equal(xp(), 25);
+  assert.equal(xp(), 1);
 });
 
 test('XP once per person: a second click, or a click on another copy, gives none', async () => {
   await send({ action: 'mark-sent', connectionId: 'ada@maya' });
   assert.equal((await send({ action: 'mark-sent', connectionId: 'ada@zoe' })).xp, 0);
   assert.equal((await send({ action: 'mark-sent', profileUrl: url('ada') })).already, true);
-  assert.equal(xp(), 25);
+  assert.equal(xp(), 1);
 });
 
 test('Undo takes all of it back: both columns, every copy, and the XP', async () => {
   await send({ action: 'mark-sent', connectionId: 'ada@zoe', bridgeId: 'zoe' });
   const r = await send({ action: 'undo', profileUrl: url('ada') });
-  assert.deepEqual([r.saved, r.xp], [2, -25]);
+  assert.deepEqual([r.saved, r.xp], [2, -1]);
   assert.deepEqual(copies('ada').map((c) => [c.outreach_status, c.unlock_status]), [[null, 'locked'], [null, 'locked']]);
   assert.equal(xp(), 0);
   // Never below zero, even for a request sent before sends gave XP.

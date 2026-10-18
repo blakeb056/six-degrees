@@ -12,10 +12,11 @@ This app is designed to run **on your own machine, against your own network**.
 
 - The web UI binds to localhost. It is not hardened for exposure to the
   internet, and it has no multi-user authentication or per-user authorization.
-- Fifteen API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
+- Sixteen API routes are gated (`admin-delete`, `admin-update`, `delete-cluster`,
   `setup-profile`, `scraper`, `update`, Settings → Your data's
   `data/export`, `data/import`, `data/restart`, `data/reveal`, `data/backup`,
-  `data/restore`, `data/csv`, and `data/network`, with `data/network/apply` under it,
+  `data/restore`, `data/csv`, `data/learning` (the learning log's Export and
+  Delete), and `data/network`, with `data/network/apply` under it,
   and Settings → Plugins' `plugins`, with `plugins/install`, `plugins/uninstall`,
   `plugins/enabled`, `plugins/catalog` and `plugins/download` under it). The first four can irreversibly destroy or rewrite data,
   `scraper` starts processes, and `update` changes the code that runs next. `data/export` hands over the whole

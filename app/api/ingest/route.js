@@ -7,6 +7,8 @@ import { promoteToFirstDegree } from '../../../lib/promote';
 import { addedBackNotification, topCompanyNotification } from '../../../lib/notifications';
 import { localPhoto } from '../../../lib/photos';
 import { cleanExperience, readExperience, cleanCard } from '../../../lib/experience';
+import { recordAccept, recordStillPending } from '../../../lib/send-log';
+import { tryRecord } from '../../../lib/learning-log';
 
 /**
  * Read profiles' answer (scripts/scrape.py push_experience): for each person,
@@ -234,6 +236,8 @@ export async function POST(request) {
             ...(rec.location ? { location: rec.location } : {}),
             ...(rec.followers != null ? { followers: rec.followers } : {}),
             ...(rec.mutual_count != null ? { mutual_count: rec.mutual_count } : {}),
+            // The day they connected: the send log's accept day (lib/promote.js, lib/send-log.js).
+            ...(rec.connected_date ? { connected_date: rec.connected_date } : {}),
           },
         });
         if (res.promoted) { promoted += 1; addedBack.push(res); }
@@ -373,6 +377,30 @@ export async function POST(request) {
       } catch (e) { /* notifications are optional */ }
     }
 
+    // The learning log: this batch of a scan, with its tier mix on both lenses
+    // (S and A per batch, the circle-yield model's label). Rescored above, so
+    // the tiers are the ones just stored.
+    if (degree > 1 && records.length) {
+      try {
+        const db = getDb();
+        const listed = records.map((r) => r.profile_url).filter(Boolean);
+        const mix = { S: 0, A: 0, classS: 0, classA: 0 };
+        const one = db.prepare(`SELECT tier, class_tier FROM linkedin_connections WHERE profile_url = ? AND degree = ?${bridgeId && degree === 2 ? ' AND source_connection_id = ?' : ''} LIMIT 1`);
+        for (const url of listed) {
+          const r = one.get(...[url, degree, ...(bridgeId && degree === 2 ? [String(bridgeId)] : [])]);
+          if (r?.tier === 'S') mix.S += 1;
+          if (r?.tier === 'A') mix.A += 1;
+          if (r?.class_tier === 'S') mix.classS += 1;
+          if (r?.class_tier === 'A') mix.classA += 1;
+        }
+        tryRecord(db, {
+          kind: 'scan', type: 'batch', person: null, user: userId || null,
+          data: { degree, bridge: bridgeId ?? null, company: degree === 3 ? (companyName ?? null) : null, received, people: records.length, added: newRecords.length, alreadyConnected, ...mix },
+          dedupe: null,
+        });
+      } catch { /* the log never stops a save */ }
+    }
+
     // A circle scan that found people at top companies: one notification naming them (lib/notifications.js).
     if (degree === 2 && bridgeId && newRecords.length) {
       try {
@@ -432,6 +460,12 @@ export async function POST(request) {
             .from('linkedin_connections')
             .update({ outreach_status: 'accepted' })
             .in('id', acceptedIds);
+          // The send log: accepted_at (now, when Check for new saw it), the
+          // connection's own date, the days it took and its warmth band.
+          const dayOf = new Map(records.map((r) => [r.profile_url, r.connected_date || null]));
+          for (const url of new Set(pendingAccepted.map((p) => p.profile_url))) {
+            recordAccept(getDb(), { profileUrl: url, user: userId || null, acceptedDay: dayOf.get(url), via: 'check' });
+          }
 
           // Award XP for each accepted connection
           const XP_ACCEPT = { S: 100, A: 60, B: 35, C: 15, D: 5 };
@@ -460,6 +494,10 @@ export async function POST(request) {
         }
       } catch (e) { /* auto-detect is optional */ }
     }
+
+    // A refresh of your own connections checks every request still out (the
+    // send log's last_checked_at, and "still pending" once a week in the learning log).
+    if (degree === 1 && records.length > 0) recordStillPending(getDb(), { user: userId || null });
 
     // Notifications for a refresh of your own connections: how many are new,
     // and each new person the model scored S or A (lib/ingest.js

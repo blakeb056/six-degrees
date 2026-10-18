@@ -358,6 +358,8 @@ reaches S or A, and a first scan looks bleak. The curve fixes that:
 - **Cut-offs** (`curveCutoffs`) come from your 1st-degree people's powers before any circle
   boost, so a boost (which reads the graded tiers) can't move its own cut-off. Everyone, the
   2nd degree included, is graded on the same cut-offs. At least one person reaches each cut-off.
+  Only the 1st degree: until scoring 7 the filter was `degree !== 2`, so a company scan's rows
+  (degree 3) moved everyone's S and A (`tests/scoring-pool.test.mjs`).
 - **Ties** at a cut-off all come in or all stay out, whichever lands nearer the share (in,
   when it's as near): eight "Store Manager at <a company nobody knows>", all at 4.7, don't
   all become A to fill two places.
@@ -379,6 +381,26 @@ and the saved choice differ. Saving a new choice rescores everyone and reports h
 people changed tier, each person once at their closest degree (lib/settings-effects.js, with
 the sector focus's own `tierMoves`). Scores → Your sector's preview grades both sides on
 the saved scale, so the preview and the save agree.
+
+## Class worth: a second lens (Sixgree Classes, 2026-10-17)
+
+The power score and the network tier above are one axis, network worth, the same for everyone,
+and classes never change them. A class adds a second, personal axis, class worth
+(`lib/class-fit.js`, presets in `lib/class-presets.js`): a utility `u` over about 30 features
+(a soft maximum over every role's seat, founder, investor, recruiter, student and other flags,
+company prestige and where its score came from, the target sectors, roles and companies S2
+named, the place a card read against your city, followers, and, for the Cartographer, ways in
+and exclusive reach), with the class preset as a Gaussian prior and This or That's answers fitted
+on top (`lib/pairwise.js`). `V = min(4, exp(rho x (u - u_S)))`, 1.0 at the class S line. Class
+tiers are by share of your deduped 1st and 2nd degree (3/12/25/30%), company scans never moving
+a cut-off; a Never chip forces class D; once 3 "neither" or "both great" answers exist, S must
+beat the outside option by ln 9 and A by 0.85. Stored per row as `class_u`, `class_v`,
+`class_tier`, `class_why`, stamped `scoring_class` in `app_meta` and redone by `rescoreIfStale`
+like the other stamps. Never read: names, photos, the power score, circle bonuses, mutual counts.
+
+**Headcount** (`networkCompanies`) counts your 1st and 2nd degree only since scoring 7: a company
+scan's people still help name a company's industry, but no longer lift an unknown company from
+5 to 6.
 
 ## The curated list
 

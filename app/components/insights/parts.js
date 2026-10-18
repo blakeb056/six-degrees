@@ -209,7 +209,7 @@ export function ScanCircle({ id, compact }) {
  * to an outline beside it, as everywhere else Connect is offered
  * (components/AutoConnect.js; Blake, 2026-10-03: "wherever its available").
  */
-export function AskButton({ row, bridgeId, asked, compact, canAuto = false }) {
+export function AskButton({ row, bridgeId, asked, compact, canAuto = false, exposure = null }) {
   if (asked) {
     return <span title="A request is marked sent. The next check of your own connections notices when they accept." style={{ ...ACT, cursor: 'default', color: 'var(--sd-fg-4, #6f7a88)', border: `1px dashed ${LINE}`, ...(compact ? { padding: '4px 8px', fontSize: 11 } : null) }}>Asked</span>;
   }
@@ -218,7 +218,7 @@ export function AskButton({ row, bridgeId, asked, compact, canAuto = false }) {
   const ask = (second) => (
     <OpenProfile person={row}
       title="Opens their profile in a new tab to send the request there, and marks it sent here"
-      onOpen={() => { markRequested(row, { bridgeId }).catch(() => {}); }}
+      onOpen={() => { markRequested(row, { bridgeId, exposure }).catch(() => {}); }}
       style={second
         ? { ...ACT, ...secondaryLook(compact ? 'row' : 'table'), ...size }
         : { ...ACT, color: '#000', border: 'none', background: 'linear-gradient(135deg, #FF6B35, #FFD700)', ...size }}>

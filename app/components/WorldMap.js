@@ -58,6 +58,7 @@ import {
 import {
   MAP_VIEWS, readLook, writeLook, MapSeg, DotLegend, HeatLegend, FlowLegend, HubLegend, HubPanel, PathCard, FlowPanel, heatColours, heatFill,
 } from './WorldMapLayers';
+import { logExposure } from '../../lib/learning-client';
 
 // The two files, fetched from this app once a session and kept.
 let geoLoad = null;
@@ -189,6 +190,8 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
     [geo, bridge, circles, shown]);
   // Who gets me there: the place's list, and the connections who reach the people in it.
   const picked = useMemo(() => (focus?.kind === 'place' && where ? where.places.find((p) => p.key === focus.key) || null : null), [focus, where]);
+  // The learning log: who a picked place lists (lib/learning-client.js).
+  useEffect(() => { if (picked?.people?.length) logExposure('map', picked.people, { sort: 'place', context: picked.key }); }, [picked]);
   const getters = useMemo(() => (geo && picked ? gettersTo(geo.gaz, picked.key, circles, d1ById, shown) : null),
     [geo, picked, circles, d1ById, shown]);
   const home = useMemo(() => (where ? homeOf(where.places, homeKey) : null), [where, homeKey]);

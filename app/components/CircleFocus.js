@@ -31,6 +31,7 @@ import useTies from './useTies';
 import ShowTies from './ShowTies';
 import { tieLines, knownThrough, knownThroughText, firstDegreeByKey, TIE_COLOUR } from '../../lib/mutual-web';
 import { urlKey } from '../../lib/ties';
+import { logExposure } from '../../lib/learning-client';
 
 const GREEN = 'var(--sd-green, #00ff88)';
 // Words over the blurred map: a soft halo in the page's own shade, so they read on any look.
@@ -378,6 +379,8 @@ function FocusMap({ focus, box, origin, you, tierColors, selectedId, onSelect, t
     return out;
   }, [layout]);
   const at = useMemo(() => new Map(items.map((it) => [it.row.id, it])), [items]);
+  // The learning log: who this circle's focus shows, ring by ring (lib/learning-client.js).
+  useEffect(() => { logExposure('focus', items.map((it) => it.row), { sort: 'rings' }); }, [items]);
   // You, just outside the rings, the way the map has you from them.
   const toYou = you ? Math.atan2(you.y - origin.y, you.x - origin.x) : Math.PI / 2;
   const youAt = { x: half + (half + 2) * Math.cos(toYou), y: half + (half + 2) * Math.sin(toYou) };

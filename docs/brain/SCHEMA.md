@@ -13,9 +13,10 @@ installed rather than run from a checkout. TRAPS §4.
 | `linkedin_connections` | Everyone in the network, all degrees. The main table. |
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |
-| `queue_items` | The outreach queue. |
+| `queue_items` | The send log (`lib/send-log.js`): one row per person asked (`profile_url` is UNIQUE), with `sent_at`, `route` (manual, auto, panel), `result` (pending, accepted, undone), `snapshot` (JSON: the person as known when sent, and what list and rank it was sent from), `attempts` and `attempt_history`, `accepted_at` (when it was seen), `accepted_day` (the connection's own date), `warmth` (1 day very warm, 3 warm, 14 cool, else cold), `sender_tz`, `recipient_tz`, `withdrawn_at`, `last_checked_at`. The older outreach-queue columns stay. |
+| `learning_events` | The learning log (`lib/learning-log.js`): append-only, versioned (`schema_version`), one row per event: `kind` (exposure, interaction, outcome, scan, onboarding, load, snapshot), `type`, `person` (profile key), `lens` (the class active), `snap` (the person's snapshot hash), `dedupe` (UNIQUE: a repeat is a no-op), `data` (JSON). Indexed by person and time, and by kind. Only ever added to; Settings → Your data exports it as JSON and deletes it all. Never sent anywhere. |
 | `connection_ties` | The mutual web (`lib/ties.js`): two people seen together, by profile URL, smaller first, one row per pair. `source` is every way it was seen, comma-separated (`circle`: one of your connections in another's circle scan; `card`: a card's mutual line named them, `scrape.py` `mutualNames`; `profile`: a profile's mutual line in Sixgree's LinkedIn panel; `mutual-list`: Read all mutuals); `seen_count` and `last_seen` go up each time it is seen again, `seen_at` is the first time (`lib/ties-store.js recordTies`). Written by `app/api/ingest` and `POST /api/ties`; read by `/api/network` (the extended network, `seen`), `GET /api/ties` and the strategy engine; removed with either person by `app/api/admin-delete`. An older database gains the columns, its ties as `circle`, seen once. A tie means seen together, not close. |
-| `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. |
+| `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. `goals` (JSON) is where your class lives (`lib/class-goals.js`): the class picked, the one-time offer, and a saved build per class (its target, every This or That answer with both cards' features, Never show me, and the weights). S2's "about you" fills `role` and `company`. |
 | `company_scores` | A company score **you** set (the Scores tab): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
 | `app_meta` | Key/value facts about this install. `scoring_version` says which model the stored scores came from, `scoring_list` which curated company list, industries' words and labels, and scoring rule tables (a fingerprint of them, `scoringStamp()` in `lib/rpc.js`), and `scoring_focus` which sector focus (`lean:health,dental@<version>`, `<version>` being the sector directory's, since every pick matches by its words, or `none`); a mismatch with the code or with the saved focus rescores everyone once. `legacy_scores_offer` is the one-time offer to keep the old list's scores: `open`, then `kept` or `declined` for good, or `none` when its first look found nothing to offer; absent when the database was never scored with the old list. `settings` holds what the user chose on the Settings page, one JSON object (`lib/settings.js`), so it travels with the data: an export, a backup, a restore. The look (`theme`) and the Galaxy's saved layouts (`galaxyLayouts`) are in it too, `null` until first saved on this network. `last_import` is the import this copy last finished (Settings → Your data); an export leaves it out. |
 
@@ -60,6 +61,10 @@ installed rather than run from a checkout. TRAPS §4.
   the same way as `location`. A profile's top card (`experience`'s `card`) wins over it in
   scoring (`lib/scoring.js followersOf`); this is the count for everyone Dig deeper hasn't
   opened.
+
+- `class_u`, `class_v`, `class_tier`, `class_why`: class worth under the class you picked
+  (`lib/class-rescore.js`), a second lens beside `power_score` and `tier`, which they never
+  change. Rewritten by every rescore and whenever the `scoring_class` stamp is stale; NULL with no class.
 
 **Two fields are easy to conflate and must not be:**
 

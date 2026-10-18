@@ -51,6 +51,7 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import useStrategy from './useStrategy';
 import GatekeeperList, { LeverageBadge, GATE } from './GatekeeperList';
 import { TIE_COLOUR } from '../../lib/mutual-web';
+import { logExposure } from '../../lib/learning-client';
 
 const ORANGE = '#FF6B35';
 const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -273,6 +274,8 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const unasked = useMemo(() => topToAsk(visible, statusOf, K + 1), [visible, K, statusOf]);
   const top = useMemo(() => unasked.slice(0, shown), [unasked, shown]);
   const queuedKeys = useMemo(() => new Set(top.filter((p) => statusOf(p) === 'queued').map((p) => p.key)), [top, statusOf]);
+  // The learning log (lib/learning-client.js): who the map's top shows, in order, once it settles.
+  useEffect(() => { logExposure('separation', top.map((p) => p.person).filter(Boolean), { sort: 'separation' }); }, [top]);
   const askedShown = useMemo(() => visible.reduce((n, p) => n + (leavesTop(statusOf(p)) ? 1 : 0), 0), [visible, statusOf]);
   const selectedKey = selectedId != null ? model.rowToKey.get(selectedId) ?? null : null;
   const selectedGateKey = useMemo(() => {

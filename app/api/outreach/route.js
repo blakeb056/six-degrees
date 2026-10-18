@@ -2,6 +2,7 @@ import { getDb, decodeRow } from '../../../lib/db-client';
 import {
   XP_SEND, XP_ACCEPT, awardXP, whose, copiesOf, inList, bestTier, markSent,
 } from '../../../lib/requests';
+import { recordUndo } from '../../../lib/send-log';
 
 // Requests you've sent, kept per PERSON.
 //
@@ -20,20 +21,23 @@ import {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { action, connectionId, profileUrl, userId, bridgeId } = body;
+    const { action, connectionId, profileUrl, userId, bridgeId, route, exposure } = body;
     if (!['mark-sent', 'mark-accepted', 'undo'].includes(action)) {
       return Response.json({ error: 'Unknown action' }, { status: 400 });
     }
     const db = getDb();
 
     if (action === 'mark-sent') {
-      const { saved, xp, already } = await markSent(db, { connectionId, profileUrl, userId, bridgeId });
+      // How it was sent ('manual' from a page's Connect, 'panel' from the LinkedIn
+      // panel) and what was shown beside them, for the send log (lib/send-log.js).
+      const how = route === 'panel' ? 'panel' : 'manual';
+      const { saved, xp, already } = await markSent(db, { connectionId, profileUrl, userId, bridgeId, route: how, exposure });
       // Nobody on file (the sample network lives in the browser): nothing to keep.
       if (!saved) return Response.json({ success: true, saved: 0, xp: 0 });
       return Response.json({ success: true, saved, xp, already });
     }
 
-    const { user, rows } = copiesOf(db, { connectionId, profileUrl, userId });
+    const { url, user, rows } = copiesOf(db, { connectionId, profileUrl, userId });
     // Nobody on file (the sample network lives in the browser): nothing to keep.
     if (!rows.length) return Response.json({ success: true, saved: 0, xp: 0 });
     const ids = rows.map((r) => r.id);
@@ -50,7 +54,9 @@ export async function POST(request) {
       WHERE id IN (${inList(ids)}) AND outreach_status = 'sent'`).run(now, ...ids);
     db.prepare(`UPDATE linkedin_connections SET unlock_status = 'locked', updated_at = ?
       WHERE id IN (${inList(ids)}) AND unlock_status = 'pending'`).run(now, ...ids);
-    const xp = wasSent ? -(XP_SEND[bestTier(rows)] || 2) : 0;
+    const xp = wasSent ? -(XP_SEND[bestTier(rows)] || 1) : 0;
+    // The send log keeps the attempt, as undone (lib/send-log.js).
+    if (wasSent && url) recordUndo(db, { profileUrl: url });
     await awardXP(whose(user), xp);
     return Response.json({ success: true, saved: ids.length, xp });
   } catch (err) {

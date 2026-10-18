@@ -69,8 +69,8 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
     const done = cluster.done + 1;
     const first = String(cluster.bridge.name || '').split(/[\s,]+/)[0];
     setToast(done >= cluster.targets.length
-      ? `+${XP_SEND[person.tier] || 2} · Stage ${cluster.stage} of ${first}'s circle cleared. The next ${STAGE_SIZE} are up`
-      : `+${XP_SEND[person.tier] || 2} · ${first}'s circle ${done}/${cluster.targets.length}`);
+      ? `+${XP_SEND[person.tier] || 1} · Stage ${cluster.stage} of ${first}'s circle cleared. The next ${STAGE_SIZE} are up`
+      : `+${XP_SEND[person.tier] || 1} · ${first}'s circle ${done}/${cluster.targets.length}`);
     setTimeout(() => setToast(null), 3500);
   }
 
@@ -132,7 +132,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                   const by = (
                     <>
                       {person.profile_url && <OpenProfile person={person} style={btnGhost}>Open profile</OpenProfile>}
-                      <button onClick={() => send(person, cluster)} style={second ? btnGhost : btnHot}>I sent an invite · +{XP_SEND[person.tier] || 2}</button>
+                      <button onClick={() => send(person, cluster)} style={second ? btnGhost : btnHot}>I sent an invite · +{XP_SEND[person.tier] || 1}</button>
                     </>
                   );
                   return second ? by : <div style={{ display: 'flex', gap: 8 }}>{by}</div>;
@@ -207,7 +207,7 @@ export default function OutlinkQuest({ recs, sentIds, added, mappedIds, reach, o
                   <ConnectChoice person={p} canAuto={canAuto} size="quest" onSent={(x) => cheer(x, expanded)} connect={(second) => (
                     <>
                       {p.profile_url && <OpenProfile person={p} style={btnGhost}>Profile</OpenProfile>}
-                      <button onClick={() => send(p, expanded)} style={second ? btnGhost : btnHot}>Sent · +{XP_SEND[p.tier] || 2}</button>
+                      <button onClick={() => send(p, expanded)} style={second ? btnGhost : btnHot}>Sent · +{XP_SEND[p.tier] || 1}</button>
                     </>
                   )} />
                 )}

@@ -38,6 +38,7 @@ import {
   breachPeople, breachScore, weeklyPlan, acceptances, compareCompanies, breachKey, mapSpread,
   companyName, companyKey, homeCity, warmDoor,
 } from '../../lib/breach';
+import { logExposure } from '../../lib/learning-client';
 
 const TABS = [['company', 'Company'], ['companies', 'Companies']];
 const DEGREE_WORDS = { 1: '1st', 2: '2nd', 3: '3rd+' };
@@ -239,6 +240,8 @@ function CompanyView({ company, network, you, asks, note, linkedin, settings, gu
   const s = useMemo(() => breachScore(people), [people]);
   // Asked here this visit stay in the plan, said as asked, so the list doesn't jump under you.
   const plan = useMemo(() => weeklyPlan(people.map((p) => (askedNow.has(p.key) ? { ...p, requested: false } : p))), [people, askedNow]);
+  // The learning log: this week's doors, in order, for the company (lib/learning-client.js).
+  useEffect(() => { logExposure('breach', plan, { sort: 'doors', context: company || null }); }, [plan, company]);
   const { accepted, pending } = useMemo(() => acceptances(people), [people]);
   const now = people.filter((p) => p.employment === 'current');
   const others = people.length - now.length;

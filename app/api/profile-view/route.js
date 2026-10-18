@@ -4,6 +4,7 @@ import { resolveProfile } from '../../../lib/profile';
 import { cleanProfileUrl } from '../../../lib/reach';
 import { linkedinState } from '../../../lib/linkedin-limits';
 import { chargeProfileView, recordOutlinkOpened } from '../../../lib/outlink-opened';
+import { recordInteraction, personKey } from '../../../lib/learning-log';
 
 // One profile opened in Sixgree's own browser (app/components/OpenProfile.js):
 // counted as one of the day's profile views and written down
@@ -46,6 +47,12 @@ export async function POST(request) {
   const dir = dataDir();
   const counted = chargeProfileView(dir);
   recordOutlinkOpened(dir, { id: row?.id ?? null, name: cleanName(row?.name ?? body?.name), url });
+  // The learning log: a profile opened in the panel, with the person as known now.
+  try {
+    const db = getDb();
+    const full = row ? db.prepare('SELECT * FROM linkedin_connections WHERE id = ?').get(row.id) : null;
+    recordInteraction(db, { type: 'profile-open', row: full, person: full ? null : personKey(url), data: { counted: Boolean(counted) } });
+  } catch { /* the view is counted either way */ }
   let profilesLeftToday = null;
   try { profilesLeftToday = linkedinState(dir).profilesLeftToday; } catch { /* the count is written either way */ }
   return Response.json({ ok: true, counted, profilesLeftToday });

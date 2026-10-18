@@ -151,7 +151,8 @@ test('wired through: the shell watches each page in a world of its own and tells
   assert.match(open, /await showProfileInPanel\(url\)\) \{\s*\/\/[^\n]*\n\s*rememberPanelPerson\(person\);/);
   const bar = read('../app/components/LinkedInPanel.js');
   assert.match(bar, /inviteSentAction\(info, \{ job: scannerNow\(\), panel: panelNow\(\), person: panelPersonFor\(info\?\.slug\) \}\)/);
-  assert.match(bar, /if \(!hasRequest\(act\.mark\)\) markRequested\(act\.mark, \{ bridgeId: act\.bridgeId \}\)\.catch\(\(\) => \{\}\);/);
+  // Marked as from the panel, for the send log (lib/send-log.js).
+  assert.match(bar, /if \(!hasRequest\(act\.mark\)\) markRequested\(act\.mark, \{ bridgeId: act\.bridgeId, route: 'panel' \}\)\.catch\(\(\) => \{\}\);/);
   assert.match(bar, /endProfileSteps\(\);\s*b\.hide\(\);/);
   assert.match(bar, /role="status" aria-live="polite" data-invite-sent=""/);
   for (const src of [read('../desktop/lib.mjs'), bar, read('../lib/linkedin-panel.js')]) assert.doesNotMatch(src, /—/);

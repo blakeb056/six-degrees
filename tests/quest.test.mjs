@@ -27,14 +27,14 @@ test('sending to the whole stage clears it and the next five appear', () => {
   assert.equal(q.clearedStages, 1);
 });
 
-test('points come from invites sent and people added, by tier', () => {
+test('points come from people added, by tier; an invite sent is a token 1', () => {
   const jane = bridge('jane');
   const q = buildQuest({
     recs: [rec('s1', jane, 9, 'S'), rec('a1', jane, 8, 'A')],
     sentIds: new Set(['s1', 'a1']),
     added: [{ id: 'new1', tier: 'S', unlocked_from_bridge_id: 'jane' }],
   });
-  assert.equal(q.points, 25 + 15 + 100);
+  assert.equal(q.points, 1 + 1 + 100);
   assert.equal(q.addedTotal, 1);
   assert.equal(q.clusters[0].added.length, 1);
 });

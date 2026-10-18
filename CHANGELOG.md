@@ -6,6 +6,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Classes.** Pick a class for what you're after: Poacher (sales), Founder, Seeker (investors),
+  Grower (your local circle), Cartographer (your network's structure) or Infiltrator (a job). Your
+  class ranks the same network its own way, as a second lens: every person gets a class tier beside
+  their network tier ("Class S · Network A"), and your network tiers stay exactly as they were.
+  Each class card flips to show what it would find in your own network.
+- **Name your target.** One question per class: who you sell to and where, what you're building,
+  what kind of capital, where you grow, or where you want to work (which also becomes your Breach
+  targets), with an optional line about you.
+- **This or That.** About 16 quick duels, two cards side by side: pick the one you'd rather have, or
+  say both are great, or neither. Each class asks its own questions: the Grower about sectors and
+  kinds of people, the others about positions, seniority and companies. Cards mix real titles from
+  your network with made-up ones where yours has no good example, and never show a name or a photo.
+  The pairs are chosen to learn the most from each answer, it stops when your answers are enough,
+  and keys work too (left, right, up for both, down for neither, space to skip, Z to undo). It runs
+  while your first scan reads, where the field question was, and still sets your field when you
+  hadn't picked one.
+- **Never show me.** Students, recruiters, sectors or companies you'd rather not see ranked: Less
+  pushes them down, Never takes them off every class list.
+- **Your build.** What your answers weigh, as five bars (sector, role, place, company, reach), your
+  new top 5 to say "more like this" or "not this one" to, and how many people moved into class S.
+- **The Class tab.** Your class, your build, the people it ranks highest (with Ask), and a map of
+  class worth against network worth: act first, destinations, bridges, background.
+- **Settings → Class.** Switch class any time. Each class keeps its own answers, so switching back
+  brings its scoring back exactly; a class with none asks its questions. Retune or retake one class
+  without touching the others. Networks from before classes are offered the pick once.
+- **The learning log.** Sixgree now keeps a record, on this computer only, of who was shown where,
+  what you opened, sent and skipped, how each request went (when it was sent and accepted, and how
+  warm: within a day very warm, 3 days warm, 14 days cool, later cold), each scan's yield, your This
+  or That answers and LinkedIn's load by the hour, so later versions can learn what works for you.
+  Settings → Your data shows its size, exports it as JSON, and deletes it. It is never sent anywhere.
+- **The send log.** Every connection request now records when it was sent, how (a Connect, Auto or
+  the LinkedIn panel), the person as known then, and every attempt, and an accept records the day
+  it happened.
+
+### Changed
+- **A send earns a token 1 XP**, whoever it's to. Paying more for S-tier sends pushed toward sending
+  and scanning more; accepted requests still carry the XP.
+- **The places file can carry each city's time zone** (`scripts/build-places.mjs` keeps GeoNames'
+  zone column), for best-time-to-send later. The shipped file gains zones when it's next rebuilt.
+
+### Fixed
+- **A company scan no longer moves everyone's tiers.** The curve's S and A cut-offs counted the people
+  a company scan found, so one Breach scan of a big company shifted your whole network. They now come
+  from your own connections only.
+- **A company scan no longer lifts an unknown company's score.** Its people counted toward the company's
+  headcount in your network, raising it from 5 to 6. Only your 1st and 2nd degree count now.
+
 ## [2.8.0] - 2026-10-17
 
 The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation, a replay that shows every dot, and a Network Circle that stays smooth at ten thousand.
