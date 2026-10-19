@@ -179,7 +179,7 @@ export default function LinkedInPanel() {
     const off = b.onInviteSent((info) => {
       const act = inviteSentAction(info, { job: scannerNow(), panel: panelNow(), person: panelPersonFor(info?.slug) });
       if (!act) return;
-      if (!hasRequest(act.mark)) markRequested(act.mark, { bridgeId: act.bridgeId }).catch(() => {});
+      if (!hasRequest(act.mark)) markRequested(act.mark, { bridgeId: act.bridgeId, route: 'panel' }).catch(() => {});
       shownByJob.current = false;
       b.hide();
       clearTimeout(timer);

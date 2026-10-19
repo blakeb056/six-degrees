@@ -67,6 +67,10 @@ CREATE TABLE IF NOT EXISTS linkedin_connections (
   location                TEXT,               -- where they are, as a scan read it off their card or profile ("Seattle, Washington, United States")
   followers               INTEGER,            -- their follower count as a list's card showed it; a profile's top card (experience) wins
   seen_via                TEXT,               -- 'ties': known only from the mutual web (a name and a link), never scanned (lib/ties-store.js)
+  class_u                 REAL,               -- class worth as a utility, under the class you picked (lib/class-fit.js); NULL with no class
+  class_v                 REAL,               -- class worth on a ratio scale: 1.0 just makes class S
+  class_tier              TEXT,               -- the class tier, S to D: a second lens, never the network tier
+  class_why               TEXT,               -- the three largest terms of class_u, in words
   user_id                 TEXT,
   image_refreshed_at      TEXT,
   created_at              TEXT DEFAULT (datetime('now')),
@@ -124,7 +128,21 @@ CREATE TABLE IF NOT EXISTS queue_items (
   created_at    TEXT DEFAULT (datetime('now')),
   sent_at       TEXT,
   accepted_at   TEXT,
-  scanned_at    TEXT
+  scanned_at    TEXT,
+  -- The send log (lib/send-log.js): one row per person asked, the clock every
+  -- learned model (acceptance, warmth, best time) will train on.
+  user_id         TEXT,
+  route           TEXT,      -- how it was sent: 'manual' (a Connect on a page), 'auto', 'panel'
+  result          TEXT,      -- 'pending', 'accepted', 'undone'
+  snapshot        TEXT,      -- JSON: the person as known when it was sent, and what was shown beside them
+  attempts        INTEGER DEFAULT 0,
+  attempt_history TEXT,      -- JSON: earlier attempts, newest last
+  sender_tz       TEXT,
+  recipient_tz    TEXT,
+  accepted_day    TEXT,      -- the connection's own date (a day), when it carried one
+  warmth          TEXT,      -- the warmth band of an accept (lib/class-presets.js WARMTH_BANDS)
+  withdrawn_at    TEXT,
+  last_checked_at TEXT
 );
 
 -- Company scores you set yourself (lib/scoring.js): they win over the curated
@@ -160,6 +178,32 @@ CREATE TABLE IF NOT EXISTS connection_ties (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ties_b ON connection_ties(user_id, b_url);
+
+-- The learning log (lib/learning-log.js): one append-only, versioned store of
+-- what happened, so every later model has labels from the first day: who was
+-- shown where and at what rank, what was opened, sent, accepted or skipped,
+-- each scan's yield, each This or That answer, and the account's load. Rows
+-- are never changed, only added, and all of them deleted at once from
+-- Settings → Your data. A person's facts at the moment ride along as a
+-- compact snapshot ('snapshot' rows, kept once per change, referenced by
+-- hash). Local only: nothing here is ever sent anywhere.
+CREATE TABLE IF NOT EXISTS learning_events (
+  seq            INTEGER PRIMARY KEY,
+  schema_version INTEGER NOT NULL,
+  at             TEXT NOT NULL,       -- when, ISO-8601 UTC
+  kind           TEXT NOT NULL,       -- exposure, interaction, outcome, scan, onboarding, load, snapshot
+  type           TEXT NOT NULL,       -- what, within the kind ('request-sent', 'accepted', 'duel', ...)
+  person         TEXT,                -- whose, by profile key (lib/ties.js urlKey), when it's about one person
+  user_id        TEXT,
+  lens           TEXT,                -- the class active then, or 'network'
+  snap           TEXT,                -- the person's snapshot hash at the moment
+  dedupe         TEXT UNIQUE,         -- a repeat of the same event is a no-op
+  data           TEXT                 -- JSON: the event's own fields
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_person ON learning_events(person, at);
+CREATE INDEX IF NOT EXISTS idx_learning_at     ON learning_events(at);
+CREATE INDEX IF NOT EXISTS idx_learning_kind   ON learning_events(kind, type, at);
 
 CREATE TABLE IF NOT EXISTS app_meta (
   key    TEXT PRIMARY KEY,

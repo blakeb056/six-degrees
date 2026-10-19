@@ -32,6 +32,7 @@ import { saveField, skipField } from '../FieldStep';
 import SectorPicker from '../settings/SectorPicker';
 import ClusterSpinner from '../ClusterSpinner';
 import { usePluginInstall, PluginCards } from '../settings/PluginBrowse';
+import ClassFlow from '../class/ClassFlow';
 
 // The ways to bring in a network are the scanners; a feature plugin (the LinkedIn browser) is Settings → Plugins'.
 const SCANNER_KINDS = ['scanner'];
@@ -631,6 +632,27 @@ function FirstCircle({ ctx }) {
   const pageLine = `Page ${Math.min(fs.pages, fs.of)} of ${fs.of}`
     + (fs.found > 0 ? ` · ${fs.found.toLocaleString()} ${fs.found === 1 ? 'person' : 'people'}` : '');
 
+  // This or That while it reads, for the class you picked (the field question's slot).
+  if (ctx.fieldOpen && ctx.classDuel) {
+    return (
+      <Frame
+        eyebrow={stepEyebrow('map', ctx.caps)}
+        title={<>While it reads,<br />This or That</>}
+        error={scan.error}
+        art={art}
+        foot={null}
+      >
+        {fs.state === 'done' ? (
+          <div className="ob-strip ok"><Ico.check /><span>{who}’s circle is mapped</span></div>
+        ) : (
+          <div className="ob-strip"><ClusterSpinner size={18} live glyph="" />
+            <span>{fs.state === 'saving' ? 'Saving…' : manual ? `${pageLine}. Scroll each page in Chrome, then click Next` : pageLine}</span>{bar}</div>
+        )}
+        <ClassFlow start="duels" cls={ctx.classDuel.cls} steps={['duels', 'avoid', 'reveal']} compact onDone={ctx.classDone} />
+      </Frame>
+    );
+  }
+
   // Your field, while it reads: the old first scan's question, kept until answered.
   if (ctx.fieldOpen) {
     const done = fs.state === 'done';
@@ -790,6 +812,20 @@ function FirstWalk({ ctx }) {
       <i style={{ width: pct == null ? undefined : `${pct}%` }} />
     </div>
   );
+
+  if (ctx.fieldOpen && ctx.classDuel) {
+    return (
+      <Frame eyebrow={stepEyebrow('map', ctx.caps)} title={<>While it reads,<br />This or That</>} error={scan.error} art={art} foot={null}>
+        {fs.state === 'done' ? (
+          <div className="ob-strip ok"><Ico.check /><span>All {fs.done.toLocaleString()} connections saved</span></div>
+        ) : (
+          <div className="ob-strip"><ClusterSpinner size={18} live glyph="" />
+            <span>{fs.state === 'saving' ? 'Saving…' : `${(fs.done || 0).toLocaleString()} of ${(fs.total || 0).toLocaleString()}`}</span>{bar}</div>
+        )}
+        <ClassFlow start="duels" cls={ctx.classDuel.cls} steps={['duels', 'avoid', 'reveal']} compact onDone={ctx.classDone} />
+      </Frame>
+    );
+  }
 
   if (ctx.fieldOpen) {
     const done = fs.state === 'done';
@@ -991,7 +1027,8 @@ function ImportDone({ ctx }) {
   const r = csv.result;
   const total = Number(r.network) || 0;
   const scanning = afterImport(ctx.caps) === 'ready';
-  const finish = async () => { setOpening(true); await ctx.finish(); };
+  // To the map, by way of your class the once it hasn't been picked or skipped (Onboarding.js toGalaxy).
+  const finish = async () => { setOpening(true); await ctx.toGalaxy(); setOpening(false); };
   return (
     <Frame
       eyebrow="Imported"
@@ -1174,7 +1211,9 @@ export function Final({ ctx, onFinish }) {
           {circles > 0 && <div><b>{circles.toLocaleString()}</b>in their circles</div>}
           {(kind === 'auto' || kind === 'both') && <div><b>{PACES[limits.pace]?.label || 'Fast'} · {limits.windowPages || WINDOW_DEFAULTS.windowPages} a window</b>your pace</div>}
           {kind === 'manual' && <div><b>Manual scan</b>you turn the pages</div>}
-          <div><b>{sectors.length ? fieldLabel(sectors) : 'None for now'}</b>your field</div>
+          {ctx.classInfo?.class
+            ? <div><b>{ctx.classInfo.classes?.find((c) => c.key === ctx.classInfo.class)?.name}</b>your class</div>
+            : <div><b>{sectors.length ? fieldLabel(sectors) : 'None for now'}</b>your field</div>}
         </div>
         <Primary onClick={async () => { setOpening(true); await onFinish(); }} disabled={opening}>{opening ? 'Opening…' : 'Open the map'}</Primary>
         <p className="next">{next}</p>

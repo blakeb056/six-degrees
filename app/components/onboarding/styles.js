@@ -55,6 +55,11 @@ export const ONBOARDING_CSS = `
               radial-gradient(90% 70% at 0% 100%, color-mix(in srgb, var(--ob-b) 14%, transparent), transparent 60%), rgba(var(--ob-ink), 0.02); }
 .ob-ill > div { position: absolute; inset: 0; }
 
+/* Your class (app/components/class): one wide column, the class screens' own layout */
+.ob-card.ob-class { display: block; overflow-y: auto; }
+.ob-class-in { padding: 36px 44px 32px; max-width: 1080px; margin: 0 auto; }
+@media (max-width: 700px) { .ob-class-in { padding: 22px 18px; } }
+
 /* Moving between steps */
 @keyframes obIn { from { opacity: 0; transform: translateX(calc(28px * var(--dir, 1))); } }
 @keyframes obOut { to { opacity: 0; transform: translateX(calc(-28px * var(--dir, 1))); } }

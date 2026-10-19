@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Section, Body, Mono, Status, Btn, LINE } from '../ui';
+import LearningLog from './LearningLog';
 import { webLine } from '../../../lib/mutual-web';
 
 // Settings → Your data: where the network is kept, what it takes up, its
@@ -612,6 +613,8 @@ export default function DataSection() {
           </Body>
         )
       )}
+      {/* The learning log: its size, Export and Delete (lib/learning-log.js). */}
+      <LearningLog />
     </Section>
   );
 }

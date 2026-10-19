@@ -11,6 +11,7 @@ import InlineNote, { useFadingNote } from './InlineNote';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import TheirCircle from './TheirCircle';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
+import { logInteraction } from '../../lib/learning-client';
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
@@ -41,6 +42,11 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   const { userId, userProfile: ctxProfile } = useUser();
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
   const [searchQuery, setSearchQuery] = useState('');
+  // The learning log: a person card opened (lib/learning-client.js), once per person picked.
+  const selectedId = selected?.id ?? null;
+  useEffect(() => {
+    if (selectedId != null && !csvSource) logInteraction('card-open', { id: selectedId });
+  }, [selectedId, csvSource]);
 
   // Built once per load, not on every render: the panel re-renders on every
   // click in every view. Above the early return so the hook order never changes.

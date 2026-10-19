@@ -22,6 +22,9 @@ import { LINKEDIN_BROWSER } from '../../lib/linkedin-browser';
 // No gradients and no colour of its own per tab; app/globals.css .sd-tab draws
 // them, so every look, and frosted glass or soft, draws them its way.
 const PAGES = [
+  // Class (Blake, 2026-10-17): your class's lens on the same network, its build
+  // and its ranked list (app/class, lib/class-store.js). Your own network only.
+  { key: 'class', href: '/class', label: 'Class', own: true },
   { key: 'paths', href: '/paths', label: 'Paths', demo: true },
   // Breach (Blake, 2026-10-15): get into a company with no mutuals, doors first, then
   // climb (app/breach, lib/breach.js). Your own network only: it's scans and requests.

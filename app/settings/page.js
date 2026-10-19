@@ -16,6 +16,7 @@ import ExperimentalSection from '../components/settings/ExperimentalSection';
 import SoundSection from '../components/settings/SoundSection';
 import PluginsSection from '../components/settings/PluginsSection';
 import HelpSection from '../components/settings/HelpSection';
+import ClassSection from '../components/settings/ClassSection';
 import { useScanShows } from '../components/useScanner';
 import CompanyScores from '../components/CompanyScores';
 import { Section, Body, Mono, FONT } from '../components/ui';
@@ -52,7 +53,7 @@ export default function SettingsPage() {
 // Plugins first, at the very top (Blake, 2026-10-14: "i want the plugins to be
 // at the very top in the settings page"): the scanner comes from them now.
 const SECTIONS = [
-  ['plugins', 'Plugins'], ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
+  ['plugins', 'Plugins'], ['class', 'Class'], ['updates', 'Updates'], ['appearance', 'Appearance'], ['sound', 'Sound'],
   ['scoring', 'Scores'], ['data', 'Your data'], ['experimental', 'Experimental'], ['help', 'Help'], ['about', 'About'],
 ];
 
@@ -164,6 +165,8 @@ function SettingsInner() {
 
         {/* Plugins first: where the scanner comes from (SECTIONS). */}
         <PluginsSection />
+        {/* Your class (lib/class-store.js): switch, retune, retake; each class keeps its own answers. */}
+        {userId !== CSV_USER.id && <ClassSection />}
         <UpdatePanel />
         {/* LinkedIn usage is on the Scan page now, last, with the scanner it measures. */}
         <Section id="usage" title="LinkedIn usage">

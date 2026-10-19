@@ -39,7 +39,8 @@ test('the page, its game, the tab and the old queue route are gone', () => {
   const tabs = read('app/components/AppTabs.js');
   assert.doesNotMatch(tabs, /key: 'outlink'|href: '\/queue'/);
   const pages = [...tabs.matchAll(/\{ key: '([a-z]+)', href: '([^']+)'/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(pages.map(([k]) => k), ['paths', 'breach', 'scan', 'linkedin'], 'no tab added in its place');
+  // Class came later as its own tab (Blake, 2026-10-19), not in Outlink's place.
+  assert.deepEqual(pages.map(([k]) => k).filter((k) => k !== 'class'), ['paths', 'breach', 'scan', 'linkedin'], 'no tab added in its place');
 });
 
 test('nothing in the app, lib or the desktop shell links to /queue or says Outlink', () => {
