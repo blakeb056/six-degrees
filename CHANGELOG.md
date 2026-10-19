@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-19
+
+Classes: pick your journey and Sixgree scores everyone for it, a learning log from day one, scan windows of 60 pages, Bridge Chains you can dive into, and Outlink retired.
+
 ### Added
 - **Classes.** Pick a class for what you're after: Poacher (sales), Founder, Seeker (investors),
   Grower (your local circle), Cartographer (your network's structure) or Infiltrator (a job). Your
