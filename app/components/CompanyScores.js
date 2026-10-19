@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import LegacyScoresCard from './LegacyScoresCard';
+import { logSearch } from '../../lib/learning-client';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const SOURCE = {
@@ -122,7 +123,7 @@ export default function CompanyScores({ onRescored, version = 0 }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 10px' }}>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
+          <input value={query} onChange={(e) => { setQuery(e.target.value); logSearch('company-scores', e.target.value, { as: 'company' }); }} placeholder="Find a company"
             style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, minWidth: 180 }} />
           {[['all', `All ${companies.length}`], ['known', `Known list ${count('known')}`], ['data', `Public data ${count('data')}`], ['yours', `Yours ${count('yours')}`], ['network', `Estimated ${count('network')}`], ['default', `Unknown ${count('default')}`]].map(([k, l]) => (
             <button key={k} onClick={() => setOnly(k)} style={{

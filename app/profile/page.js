@@ -183,7 +183,7 @@ function ProfileInner() {
   );
 }
 
-/** The profile itself: your level, how much is mapped, your messages and follow-ups, and your sectors. */
+/** The profile itself: your level, how much is mapped, recent activity, and your sectors. */
 function ProfileBody({ s, profile, mapping, notifications, sectorFocus }) {
   const tierColors = TIER_COLORS;   // the theme's (lib/themes.js)
 
@@ -254,22 +254,6 @@ function ProfileBody({ s, profile, mapping, notifications, sectorFocus }) {
         degree2={mapping.degree2}
         skips={mapping.skips}
       />
-
-      {/* === MESSAGES & FOLLOW-UPS === */}
-      {/* Blake, 2026-10-17: the queue's card that sat here went with it. Messages & follow-ups
-          has no tab, so this is its door (app/social/page.js); the Scan page's messages sync is the other. */}
-      <div style={{
-        background: 'rgba(255,107,53,0.06)', borderRadius: 12, padding: 20, marginBottom: 24,
-        border: '1px solid rgba(255,107,53,0.2)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--sd-orange, #FF6B35)' }}>Messages &amp; follow-ups</h3>
-          <Link href="/social" style={{ fontSize: 11, color: 'var(--sd-orange, #FF6B35)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Open &rarr;</Link>
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #888)', lineHeight: 1.5 }}>
-          Everyone you&rsquo;ve been in touch with, who&rsquo;s waiting on you, and your own notes and follow-up dates, from your data export or the messages sync.
-        </div>
-      </div>
 
       {/* === NOTIFICATIONS === */}
       {notifications.length > 0 && (

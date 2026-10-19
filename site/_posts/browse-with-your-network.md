@@ -7,6 +7,8 @@ image: /img/app/outlink.jpg
 ---
 
 > **Update, 17 October 2026:** Outlink, which this post mentions, has been removed: Separation does its job, and a profile opens one per press.
+>
+> **Update, 19 October 2026:** Messages & follow-ups, whose Messages card this post mentions, has been removed too.
 
 > **Update, 2.5.1:** the header button and the people list described below are gone. The browser plugin is now the LinkedIn tab (Feed, Messaging, Notifications, Jobs), with Back and Forward, and every profile opens straight in the panel. See the [release notes](/releases/#v2.5.1).
 

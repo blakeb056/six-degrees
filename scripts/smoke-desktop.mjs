@@ -130,7 +130,7 @@ async function quit(child) {
 let app = start();
 let url = await ready(app);
 console.log(`Running at ${url}`);
-for (const p of ['', 'paths', 'class', 'social', 'setup', 'settings', 'api/network', 'api/company-scores', 'api/scraper', 'api/settings']) {
+for (const p of ['', 'paths', 'class', 'setup', 'settings', 'api/network', 'api/company-scores', 'api/scraper', 'api/settings']) {
   const { status } = await get(`${url}/${p}`);
   console.log(`  /${p} ${status}`);
   if (status !== 200) fail(`/${p} answered ${status}`);

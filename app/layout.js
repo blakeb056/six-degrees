@@ -20,7 +20,7 @@ export const metadata = {
 import UserProvider from './components/UserProvider';
 import StaleServerBanner from './components/StaleServerBanner';
 import ScanStatusBar from './components/ScanStatusBar';
-import SocialAutoSync from './components/SocialAutoSync';
+import BehaviorLogger from './components/BehaviorLogger';
 import ThemeLoader from './components/ThemeLoader';
 import LiquidGlass from './components/LiquidGlass';
 import ThemeDefs from './components/ThemeDefs';
@@ -50,8 +50,8 @@ export default function RootLayout({ children }) {
           <ScanStatusBar />
           {/* The desktop app's LinkedIn panel: its bar, and when it comes forward. Nothing elsewhere. */}
           <LinkedInPanel />
-          {/* The Social tab's once-a-day messages sync, when switched on. */}
-          <SocialAutoSync />
+          {/* The learning log's window session: tabs, dwell, health (lib/learning-client.js). Draws nothing. */}
+          <BehaviorLogger />
         </UserProvider>
       </body>
     </html>

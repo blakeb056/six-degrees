@@ -58,7 +58,7 @@ import {
 import {
   MAP_VIEWS, readLook, writeLook, MapSeg, DotLegend, HeatLegend, FlowLegend, HubLegend, HubPanel, PathCard, FlowPanel, heatColours, heatFill,
 } from './WorldMapLayers';
-import { logExposure } from '../../lib/learning-client';
+import { logExposure, logSearch, track, trackSettled } from '../../lib/learning-client';
 
 // The two files, fetched from this app once a session and kept.
 let geoLoad = null;
@@ -322,7 +322,11 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || !extent) return undefined;
-    const z = d3zoom().scaleExtent([1, 60]).translateExtent(extent).on('zoom', (e) => setView(e.transform));
+    // A zoom is many events a second: the learning log keeps where it stopped (to one decimal).
+    const z = d3zoom().scaleExtent([1, 60]).translateExtent(extent).on('zoom', (e) => {
+      setView(e.transform);
+      trackSettled('control', 'map-view', { what: 'zoom', value: Math.round(e.transform.k * 10) / 10 }, { key: 'map-zoom', wait: 1500 });
+    });
     zoomRef.current = z;
     select(svg).call(z);
     return () => { select(svg).on('.zoom', null); };
@@ -543,6 +547,7 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
     if (next) setShowHome(true);
   };
   const pickView = (next) => {
+    track('control', 'map-view', { what: 'view', value: next });
     setLook({ view: next });
     setHubsClosed(false);
     if (focus?.kind === 'flow' && next !== 'flows') setFocus(null);
@@ -777,11 +782,12 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
           <div style={{ position: 'absolute', top: phone ? 52 : 10, left: phone ? 8 : 64, width: phone ? 'calc(100% - 60px)' : 340, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ ...card, padding: phone ? '7px 8px' : '10px 11px', display: 'flex', flexDirection: 'column', gap: phone ? 6 : 8 }}>
               <MapFinder index={finderIndex} phone={phone} onPerson={onPerson} onBridge={(p) => showReach(p.id)} onPlace={onPlace}
-                onCompany={(name) => setFilters((f) => ({ ...f, company: name }))} onText={(text) => setFilters((f) => ({ ...f, text }))} />
+                onCompany={(name) => { track('control', 'map-view', { what: 'company', value: name }); setFilters((f) => ({ ...f, company: name })); }}
+                onText={(text) => { logSearch('map', text); setFilters((f) => ({ ...f, text })); }} />
               <MapSeg value={mapView} onChange={pickView} label="What the map shows" wide options={MAP_VIEWS.map((v) => [v.key, v.label, v.question])} />
               {!phone && <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.45, marginTop: -2 }}>{viewInfo.question}</div>}
-              {mapView === 'places' && <DotLegend colourBy={colourBy} setColourBy={setColourBy} phone={phone} />}
-              {mapView === 'heat' && <HeatLegend heatOf={look.heatOf} setHeatOf={(heatOf) => setLook({ heatOf })} heat={heat} onDensest={onPlace} />}
+              {mapView === 'places' && <DotLegend colourBy={colourBy} setColourBy={(v) => { track('control', 'map-view', { what: 'colour', value: v }); setColourBy(v); }} phone={phone} />}
+              {mapView === 'heat' && <HeatLegend heatOf={look.heatOf} setHeatOf={(heatOf) => { track('control', 'map-view', { what: 'heat', value: heatOf }); setLook({ heatOf }); }} heat={heat} onDensest={onPlace} />}
               {mapView === 'flows' && (
                 <FlowLegend flows={flowData} drawn={drawnFlows.length} max={look.flowMax} setMax={(flowMax) => setLook({ flowMax })} steps={flowSteps}
                   from={flowFrom} widthOf={arcWidth} />

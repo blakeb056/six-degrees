@@ -21,7 +21,7 @@ import ClassFlow, { ClassFlowModal } from '../components/class/ClassFlow';
 import { Emblem, BuildBars, BuildWords, Dials, PersonRow } from '../components/class/parts';
 import { AskButton } from '../components/insights/parts';
 import { loadClass, retake } from '../../lib/class-client';
-import { logExposure } from '../../lib/learning-client';
+import { logExposure, track } from '../../lib/learning-client';
 import { hasRequest } from '../../lib/requests-client';
 import { IS_DEMO } from '../../lib/demo';
 
@@ -162,8 +162,8 @@ function ClassInner() {
           <h2 className="cl-h2" style={{ margin: 0 }}>Ranked by your class</h2>
           <span className="cl-spacer" />
           <span className="cl-tabs" role="group" aria-label="Which people">
-            <button type="button" aria-pressed={shownList === 'reach'} onClick={() => { setList('reach'); setMore(20); }} disabled={!people?.reach?.length}>People you could add</button>
-            <button type="button" aria-pressed={shownList === 'yours'} onClick={() => { setList('yours'); setMore(20); }}>Your connections</button>
+            <button type="button" aria-pressed={shownList === 'reach'} onClick={() => { track('onboarding', 'tier-browse', { class: state.class, what: 'list', value: 'reach', shown: 20 }); setList('reach'); setMore(20); }} disabled={!people?.reach?.length}>People you could add</button>
+            <button type="button" aria-pressed={shownList === 'yours'} onClick={() => { track('onboarding', 'tier-browse', { class: state.class, what: 'list', value: 'yours', shown: 20 }); setList('yours'); setMore(20); }}>Your connections</button>
           </span>
         </div>
         {!rows.length ? <div className="cl-quiet">Nobody to rank here yet.</div> : (
@@ -180,7 +180,7 @@ function ClassInner() {
         )}
         {rows.length > more && (
           <div className="cl-row" style={{ marginTop: 10 }}>
-            <button type="button" className="cl-btn ghost small" onClick={() => setMore(more + 20)}>Show {Math.min(20, rows.length - more)} more</button>
+            <button type="button" className="cl-btn ghost small" onClick={() => { track('onboarding', 'tier-browse', { class: state.class, what: 'more', value: shownList, shown: more + 20 }); setMore(more + 20); }}>Show {Math.min(20, rows.length - more)} more</button>
           </div>
         )}
         {people?.nevers ? <div className="cl-quiet" style={{ marginTop: 8 }}>{people.nevers} vetoed with Not this one or Never stay off this list.</div> : null}

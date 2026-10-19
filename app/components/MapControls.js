@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3';
 import { heatColour } from '../../lib/galaxy-lab';
 import { Seg, panelHeading } from './PathsAnalyzer';
+import { track } from '../../lib/learning-client';
 
 export const PHYSICS_OFF = Object.freeze({ live: false, spread: 1, pull: 1, links: 1 });
 
@@ -26,7 +27,7 @@ export function MapLook({ colourBy, onColourBy, physics, onPhysics, heatHint }) 
   return (
     <>
       <div style={panelHeading}>Colour</div>
-      <Seg value={colourBy} onChange={onColourBy} options={[['sector', 'Sector'], ['heat', 'Heat']]} />
+      <Seg value={colourBy} onChange={(v) => { track('control', 'lens', { where: 'paths-colour', value: v }); onColourBy(v); }} options={[['sector', 'Sector'], ['heat', 'Heat']]} />
       {colourBy === 'heat' && <div style={hint}>{heatHint}</div>}
 
       <div style={panelHeading}>Physics</div>

@@ -11,7 +11,8 @@ import InlineNote, { useFadingNote } from './InlineNote';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import TheirCircle from './TheirCircle';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
-import { logInteraction } from '../../lib/learning-client';
+import { logInteraction, logSearch } from '../../lib/learning-client';
+import { usePersonDwell } from './useBehaviour';
 import { useUser } from './UserProvider';
 import { routeIndex, routesFor } from '../../lib/separation';
 import { topCompanies } from '../../lib/scoring';
@@ -42,11 +43,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
   const { userId, userProfile: ctxProfile } = useUser();
   const userProfile = ctxProfile || { name: 'User', sectors: [], goals: [] };
   const [searchQuery, setSearchQuery] = useState('');
-  // The learning log: a person card opened (lib/learning-client.js), once per person picked.
-  const selectedId = selected?.id ?? null;
-  useEffect(() => {
-    if (selectedId != null && !csvSource) logInteraction('card-open', { id: selectedId });
-  }, [selectedId, csvSource]);
+  // The learning log: a person card opened, and how long it stayed open (lib/learning-client.js), once per person picked.
+  usePersonDwell(selected && !csvSource ? selected : null, { where: 'details', openType: 'card-open' });
 
   // Built once per load, not on every render: the panel re-renders on every
   // click in every view. Above the early return so the hook order never changes.
@@ -113,6 +111,8 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
 
     return (
       <SidebarWrapper collapsed={collapsed} onToggle={onToggle}>
+        {/* data-card: a click in here that changes the tab came from a card (lib/learning-client.js entryOf). */}
+        <div data-card="" style={{ display: 'contents' }}>
         {/* Back to list button */}
         <button
           onClick={() => onSelect && onSelect(null)}
@@ -572,6 +572,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
                       // where it can, OpenProfile.js), and marks the request
                       // sent, through the bridge whose circle you found them in.
                       markRequested(selected, { bridgeId: selected.source_connection_id }).catch(() => {});
+                      logInteraction('connect-click', selected, { route: 'linkedin', where: 'details' });
                     }}
                   >
                     {/* Beside Auto there's room for one word (a 320 px panel). */}
@@ -599,6 +600,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             View profile
           </OpenProfile>
         )}
+        </div>
       </SidebarWrapper>
     );
   }
@@ -639,7 +641,7 @@ export default function Sidebar({ selected, stats, tierColors, connections, degr
             type="text"
             placeholder="Search bridges or d2..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => { setSearchQuery(e.target.value); logSearch('details', e.target.value); }}
             style={{
               width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 12,
               border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)',

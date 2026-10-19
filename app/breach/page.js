@@ -11,7 +11,7 @@
 // "Check for new" and the request-sent marks. Nothing here polls LinkedIn or
 // sends a request.
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AppHeader from '../components/AppHeader';
@@ -39,7 +39,8 @@ import {
   breachPeople, breachScore, weeklyPlan, acceptances, compareCompanies, breachKey, mapSpread,
   companyName, companyKey, homeCity, warmDoor,
 } from '../../lib/breach';
-import { logExposure } from '../../lib/learning-client';
+import { logExposure, logInteraction, track } from '../../lib/learning-client';
+import { useSeen } from '../components/useBehaviour';
 
 const TABS = [['company', 'Company'], ['companies', 'Companies']];
 const DEGREE_WORDS = { 1: '1st', 2: '2nd', 3: '3rd+' };
@@ -374,6 +375,7 @@ function Plan({ plan, pending, company, askedNow, setAskedNow }) {
                 title="Opens their profile so you can press Connect, and marks it asked here"
                 onOpen={() => {
                   setAskedNow((s) => new Set(s).add(p.key));
+                  logInteraction('connect-click', p.row, { route: 'linkedin', where: 'breach' });
                   markRequested(p.row, { bridgeId: p.degree === 2 ? p.source_connection_id : undefined }).catch((e) => say(e.message));
                 }}
                 style={{ padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#0077B5', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>
@@ -390,12 +392,15 @@ function Plan({ plan, pending, company, askedNow, setAskedNow }) {
 
 function Band({ band, people, mutualNotes = {}, canRead = false }) {
   const [all, setAll] = useState(false);
+  // The learning log: this band on screen for a second, once a visit, and Show all.
+  const seenRef = useRef(null);
+  useSeen(seenRef, 'breach', band.key);
   const shown = all ? people : people.slice(0, 6);
   const scanShows = useScanShows();
   // The Summit: Read all mutuals, the mutual web's paid step, by hand, one person at a time.
   const reads = canRead && band.key === 'summit' && scanShows.scan;
   return (
-    <div style={{ ...PANEL, borderTop: `3px solid ${BAND_COLORS[band.key]}` }}>
+    <div ref={seenRef} style={{ ...PANEL, borderTop: `3px solid ${BAND_COLORS[band.key]}` }}>
       <h2 style={{ ...H2, color: BAND_COLORS[band.key] }}>{band.label} · {people.length}</h2>
       <p style={{ ...SMALL, margin: '0 0 6px' }}>{band.about}</p>
       {shown.map((p) => (
@@ -414,7 +419,7 @@ function Band({ band, people, mutualNotes = {}, canRead = false }) {
         </Who>
       ))}
       {people.length > 6 && (
-        <button type="button" onClick={() => setAll(!all)} style={{ ...QUIET, marginTop: 8 }}>{all ? 'Show fewer' : `Show all ${people.length}`}</button>
+        <button type="button" onClick={() => { track('section', 'toggle', { page: 'breach', section: band.key, open: !all }); setAll(!all); }} style={{ ...QUIET, marginTop: 8 }}>{all ? 'Show fewer' : `Show all ${people.length}`}</button>
       )}
     </div>
   );

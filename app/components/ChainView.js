@@ -92,7 +92,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // The focus (app/components/CircleFocus.js): { id, node, trail, phase, reduced, ease },
   // `trail` the ids before them along the chain. The overview's <svg> is the layer that zooms and blurs.
   // `focus.dive` is the level past it: their circle full size (CircleFocus.js CircleDive).
-  const { focus, open: startFocus, close: closeFocus, move: moveFocus, step: stepFocus, idRef: focusIdRef } = useFocus({ layerRef: svgRef });
+  const { focus, open: startFocus, close: closeFocus, move: moveFocus, step: stepFocus, idRef: focusIdRef } = useFocus({ layerRef: svgRef, where: 'chains' });
   // The bridge the pointer rests on, its ring filling.
   const [holding, setHolding] = useState(null);
   const intentRef = useRef(null);
@@ -232,18 +232,18 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // Where a point of the overview is on screen: it's drawn at `zoom` about the middle.
   const onScreen = (p) => ({ x: cx + (p.x - cx) * zoom, y: cy + (p.y - cy) * zoom });
   // Bring `row`'s circle forward; `before` the ids along the chain to them, nearest you first.
-  const bringForward = (row, before) => {
+  const bringForward = (row, before, how = 'click') => {
     setHovered(null);
     setHolding(null);
     intentRef.current?.stop();
-    startFocus(row.id, { node: row, trail: before });
+    startFocus(row.id, { node: row, trail: before, how });
   };
   // A bridge, by a click or a rest on it: their card opens too, as a dot's does in Network Circle.
-  const openBridge = (id) => {
+  const openBridge = (id, how = 'click') => {
     const row = rowById.get(id);
     if (!canFocus(row) || focusIdRef.current != null) return;
     onSelect?.(row);
-    bringForward(row, (ringOf.get(id)?.trail || [id]).slice(0, -1));
+    bringForward(row, (ringOf.get(id)?.trail || [id]).slice(0, -1), how);
   };
   // Resting on a bridge opens it as a click does. A mouse or a pen only: a
   // finger has no hover, and taps instead. Nothing starts while a focus is
@@ -268,7 +268,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     if (state.in) openBridge(id);
   };
   const fireRef = useRef(null);
-  useEffect(() => { fireRef.current = (id) => { setHolding(null); openBridge(id); }; });
+  useEffect(() => { fireRef.current = (id) => { setHolding(null); openBridge(id, 'hold'); }; });
   useEffect(() => {
     const intent = hoverIntent((id) => fireRef.current?.(id));
     intentRef.current = intent;
@@ -517,7 +517,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       {/* Show ties, beside the zoom: who the bridge in hand was seen with. */}
       {!webOff && (
         <div style={{ position: 'absolute', bottom: 54, left: 16, ...chrome }}>
-          <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked={tieFrom != null} ready={web.ready} count={bridgeTies.length} />
+          <ShowTies where="chains" on={showTies} onToggle={() => setShowTies((v) => !v)} picked={tieFrom != null} ready={web.ready} count={bridgeTies.length} />
         </div>
       )}
 

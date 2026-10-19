@@ -182,7 +182,7 @@ own part of them (`lib/scanner-capabilities.js`):
 
 - **`auto`** (the *Auto scan* plugin): circle scans that turn the pages by themselves, Auto
   scan's sittings, Auto connect, company scans, *Check for new* and the first scan of your
-  connections, message sync, and Dev mode.
+  connections, and Dev mode.
 - **`manual`** (the *Manual scan* plugin): manual mode, where you scroll and click Next in the
   scanner's Chrome, and its chimes (Settings → Sound).
 
@@ -191,7 +191,7 @@ What shows, by what is installed while plugins are on:
 | Installed | What shows |
 |---|---|
 | Nothing (plugins off, or on with nothing installed) | The built-in scanner, while the app has one: everything, as before plugins. Without one, no Scan tab, Auto scan or *Check for new*, and no scan buttons anywhere. The map, Degrees, Separation, Paths, Breach, Insights and Settings all stay. |
-| `manual` only | Circle scans, always in manual mode: the Scan page's manual-mode switch shows on and locked, and says the Auto scan plugin isn't installed. No Auto scan, Auto connect, *Check for new*, company scans, message sync or Dev mode. Settings → Sound shows. |
+| `manual` only | Circle scans, always in manual mode: the Scan page's manual-mode switch shows on and locked, and says the Auto scan plugin isn't installed. No Auto scan, Auto connect, *Check for new*, company scans or Dev mode. Settings → Sound shows. |
 | `auto` only | Everything but manual mode: its switch is hidden and every scan runs without it. Settings → Sound is hidden. |
 | Both | Everything, as before plugins. |
 

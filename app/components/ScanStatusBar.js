@@ -69,8 +69,6 @@ const WHAT = {
   company: 'Scanning a company',
   breach: 'Mapping a company for Breach',
   photos: 'Saving photos',
-  messages: 'Reading your messages list',
-  'messages-full': 'Reading your whole messages history',
   connect: 'Sending a connection request',
   'read-profiles': 'Reading full profiles',
 };

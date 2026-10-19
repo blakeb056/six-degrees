@@ -41,12 +41,12 @@ test('the sliders are always on: with none moved, the layout is today\'s', () =>
   assert.equal(effectiveLab({ ...LAB_DEFAULTS, push: 40, labels: false }).labels, false);
 });
 
-import { colourScheme, findMatches, milestones, chapterAt, mergeSocial } from '../lib/galaxy-lab.js';
+import { colourScheme, findMatches } from '../lib/galaxy-lab.js';
 
 const tiers = { S: '#FFD700', A: '#9B59B6', B: '#3498DB', C: '#95A5A6', D: '#BDC3C7' };
 const url = (s) => `https://www.linkedin.com/in/${s}`;
 
-test('colour by: tier as always, degree, the most common companies, warmth', () => {
+test('colour by: tier as always, degree, the most common companies', () => {
   const people = [
     { id: 1, degree: 1, tier: 'S', company: 'Hooli', profile_url: url('ana') },
     { id: 2, degree: 1, tier: 'A', company: 'hooli ', profile_url: url('ben') },
@@ -61,13 +61,8 @@ test('colour by: tier as always, degree, the most common companies, warmth', () 
   assert.equal(co.of(people[0]), co.of(people[1]));          // Hooli, however it's typed
   assert.notEqual(co.of(people[0]), co.of(people[2]));
   assert.equal(co.of(people[4]), co.legend.at(-1)[1]);       // Initech: only one, so Other
-  const day = 86400000;
-  const social = mergeSocial({ asOf: 400 * day, people: { [url('ana')]: { last: 395 * day, total: 4, recent: 2 }, [url('ben')]: { last: 10 * day, total: 1, recent: 0 } } });
-  const warm = colourScheme('warmth', people, tiers, social);
-  assert.equal(warm.of(people[0]), warm.legend[0][1]);       // warm
-  assert.equal(warm.of(people[1]), warm.legend[2][1]);       // dormant
-  assert.equal(warm.of(people[4]), warm.legend[3][1]);       // never messaged
-  assert.equal(colourScheme('warmth', people, tiers, null).of(people[0]), '#FFD700');   // no Social data: tier
+  // Warmth went with Messages & follow-ups (2026-10-19): asked for, it's by tier.
+  assert.equal(colourScheme('warmth', people, tiers).of(people[0]), '#FFD700');
 });
 
 test('find matches name, company or role, from two letters', () => {
@@ -75,39 +70,6 @@ test('find matches name, company or role, from two letters', () => {
   assert.equal(findMatches(nodes, 'h'), null);
   assert.deepEqual([...findMatches(nodes, 'hoo')], ['a']);
   assert.deepEqual([...findMatches(nodes, 'GROWTH')], ['b']);
-});
-
-test('milestones and the job you were at', () => {
-  const social = { chapters: [{ company: 'Hooli', from: 100, to: 200 }, { company: 'Initech', from: 300, to: null }], posts: [{ t: 150 }] };
-  assert.deepEqual(milestones(social).map((m) => m.kind), ['job', 'post', 'job']);
-  assert.equal(chapterAt(social, 150).company, 'Hooli');
-  assert.equal(chapterAt(social, 250), null);
-  assert.equal(chapterAt(social, 900).company, 'Initech');
-});
-
-test('who wrote last comes from the live sync where the export is missing or older', async () => {
-  const { repliesWaiting } = await import('../lib/linkedin-export.js');
-  const day = 86400000;
-  const { merged, asOf } = mergeSocial({
-    asOf: 100 * day,
-    people: {
-      [url('ana')]: { last: 90 * day, lastFromThem: false, total: 3, recent: 1 },
-      [url('ben')]: { last: 95 * day, lastFromThem: true, total: 2, recent: 1 },
-    },
-    live: {
-      [url('ana')]: { last: 110 * day, unread: 1, lastFromThem: true },        // newer: Ana wrote since
-      [url('ben')]: { last: 80 * day, unread: 0, lastFromThem: false },        // older: the export's word stands
-      [url('cy')]: { last: 105 * day, unread: 0, lastFromThem: true },         // not in the export at all
-      [url('dee')]: { last: 104 * day, unread: 0, lastFromThem: null },        // unknown stays unknown
-    },
-  });
-  assert.equal(merged.get(url('ana')).lastFromThem, true);
-  assert.equal(merged.get(url('ben')).lastFromThem, true);
-  assert.equal(merged.get(url('cy')).lastFromThem, true);
-  assert.equal(merged.get(url('dee')).lastFromThem, undefined);
-  const waiting = repliesWaiting({ asOf, people: new Map([...merged].filter(([, v]) => v.lastFromThem != null)) });
-  // As of Ana's newest message: Cy wrote 5 days before, Ben 15; Ana's is too fresh to owe.
-  assert.deepEqual(waiting.map((w) => [w.url, w.days]), [[url('cy'), 5], [url('ben'), 15]]);
 });
 
 import { heatColour, heatOf } from '../lib/galaxy-lab.js';
@@ -290,11 +252,14 @@ test('Degrees and the fan are drawn in bands, coloured by the Tiers switch in ev
       assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy, bandBy: 'tier' }), 'tier');
       assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy, bandBy: 'degree' }), 'degree');
     }
-    // Heat, company and warmth are choices of their own, whichever way the switch is.
-    for (const colourBy of ['heat', 'company', 'warmth']) {
+    // Heat and company are choices of their own, whichever way the switch is.
+    for (const colourBy of ['heat', 'company']) {
       assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy, bandBy: 'degree' }), colourBy);
       assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy }), colourBy);
     }
+    // Warmth, from Messages & follow-ups (removed 2026-10-19), follows the switch, in a layout saved back then say.
+    assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy: 'warmth' }), 'tier');
+    assert.equal(colourModeOf({ ...LAB_DEFAULTS, shape, colourBy: 'warmth', bandBy: 'degree' }), 'degree');
   }
   const deg = colourScheme('degree', [], tiers);
   assert.deepEqual([1, 2, 3].map((d) => deg.of({ degree: d, tier: 'S' })), [1, 2, 3].map((d) => deg.of({ degree: d, tier: 'D' })));
@@ -334,5 +299,16 @@ test('Degrees saved when it was Rings coloured by degree opens drawn by degree',
     const rings = await import('../lib/galaxy-lab.js?rings-by-degree-colour');
     assert.equal(rings.labNow().shape, 'round');
     assert.equal(rings.layoutNow(), 'rings');
+  } finally { delete globalThis.localStorage; }
+});
+
+test('a Colour by Warmth saved before Messages & follow-ups was removed reads as Tier', async () => {
+  const store = new Map([['six-degrees-galaxy-lab', JSON.stringify({ colourBy: 'warmth', push: 40, v: 2 })]]);
+  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  try {
+    const old = await import('../lib/galaxy-lab.js?saved-warmth');
+    assert.equal(old.labNow().colourBy, 'tier');
+    assert.equal(old.labNow().push, 40);              // the rest of the setting kept
+    assert.equal(old.colourModeOf(old.labNow()), 'tier');
   } finally { delete globalThis.localStorage; }
 });

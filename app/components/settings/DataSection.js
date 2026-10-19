@@ -164,7 +164,6 @@ export default function DataSection() {
   const [exportNote, setExportNote] = useState(null);
   const [importNote, setImportNote] = useState(null);
   const [photos, setPhotos] = useState(true);
-  const [social, setSocial] = useState(true);
   const [file, setFile] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -278,7 +277,7 @@ export default function DataSection() {
       const res = await fetch('/api/data/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photos, social }),
+        body: JSON.stringify({ photos }),
       });
       if (!res.ok) await answer(res, 'The backup file could not be made.');
       const blob = await res.blob();
@@ -451,9 +450,8 @@ export default function DataSection() {
         made. Sixgree makes one each day it’s open and before a new version first opens your data. It keeps the
         last {keep.daily ?? 7} daily backups, {keep['before-update'] ?? 3} from before new versions, and
         {' '}{keep['before-import'] ?? 3} from before an import or a restore (those for at least {status.floorDays ?? 30} days).
-        Backups you make with Back up now stay until you delete them. The Social tab’s messages and notes are never
-        in them, so deleting those there deletes them everywhere. Backups are on this computer only, so to keep one safe
-        if the computer is lost, copy it somewhere else.
+        Backups you make with Back up now stay until you delete them. Backups are on this computer only, so to keep
+        one safe if the computer is lost, copy it somewhere else.
       </Body>
 
       {backups.length > 0 && (
@@ -528,13 +526,6 @@ export default function DataSection() {
           They can’t be downloaded again without a new scan.
         </span>
       </label>
-      <label style={check}>
-        <input type="checkbox" checked={social} onChange={(e) => setSocial(e.target.checked)} style={{ marginTop: 3 }} />
-        <span>
-          Include the Social tab: its findings, your CRM notes, stages and follow-ups, and any messages you keep
-          there.
-        </span>
-      </label>
       <div style={row}>
         <Btn primary onClick={exportNow} disabled={!!busy || restarting || info.people === 0}>
           {busy === 'export' ? 'Saving…' : 'Export backup file…'}
@@ -545,9 +536,7 @@ export default function DataSection() {
       <Body style={small}>
         The file holds the names, headlines and photos of the people in your network. Keep it private: don’t
         post it or share it, and delete it once it has been restored. A connections CSV import kept on this computer
-        goes into the file too, and opens on the new one. With the
-        Social tab included, the file also holds your CRM notes and any messages you keep, so it&rsquo;s as private
-        as your inbox.
+        goes into the file too, and opens on the new one.
       </Body>
 
       <h3 style={subhead}>Bring in a network from another computer</h3>

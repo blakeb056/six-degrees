@@ -25,6 +25,7 @@ import { useScanShows } from '../components/useScanner';
 import { AUTO_NEEDS_AUTOMATIC, modeChoices, modeSetting, pluginTooOld } from '../../lib/scanner-capabilities';
 import UsageSection from '../components/settings/UsageSection';
 import ManualBreaksSetting from '../components/ManualBreaksSetting';
+import { track } from '../../lib/learning-client';
 
 // Everything here runs through /api/scraper. There is deliberately no second
 // server and no command to copy: the step where people gave up was starting a
@@ -130,21 +131,6 @@ function SetupInner() {
 
   // Setup's steps opened or closed by their chevron: { [key]: true | false }.
   const [openSteps, setOpenSteps] = useState({});
-  // Messages & follow-ups' once-a-day messages sync (/social), switchable here too once there
-  // are messages to sync (GET /api/social; PATCH as app/social/SocialHub.js does).
-  const [social, setSocial] = useState(null);
-  useEffect(() => {
-    if (IS_DEMO) return undefined;
-    let live = true;
-    fetch('/api/social').then((r) => (r.ok ? r.json() : null)).then((d) => { if (live) setSocial(d?.social || null); }, () => {});
-    return () => { live = false; };
-  }, []);
-  async function syncMessages(on) {
-    setSocial((v) => (v ? { ...v, autoSync: on } : v));
-    const d = await fetch('/api/social', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoSync: on }) })
-      .then((r) => r.json()).catch(() => null);
-    if (d && typeof d.autoSync === 'boolean') setSocial((v) => (v ? { ...v, autoSync: d.autoSync } : v));
-  }
   // /setup#usage (the notch's budget, Settings' old address): the section only
   // exists once the status is in, so go to it then, once.
   const toUsage = useRef(true);
@@ -477,7 +463,7 @@ function SetupInner() {
                     </label>
                     <label style={labelRow}>
                       Start with
-                      <select value={order} onChange={(e) => setOrder(e.target.value)} disabled={running} style={selectStyle}>
+                      <select value={order} onChange={(e) => { track('control', 'sort', { where: 'scan-bridges', value: e.target.value }); setOrder(e.target.value); }} disabled={running} style={selectStyle}>
                         <option value="newest">Newest connections</option>
                         <option value="score">Highest tier</option>
                       </select>
@@ -749,13 +735,6 @@ function SetupInner() {
                   line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
                   more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or the scan windows." />
               </div>
-              {social && shows.auto && (
-                <div style={rowStyle}>
-                  <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
-                    title="Sync messages once a day"
-                    line={<>Brings your LinkedIn conversations up to date in <Link href="/social" style={{ color: 'var(--sd-fg-2, #aab7c4)' }}>Messages &amp; follow-ups</Link>, once a day, with the scanner.</>} />
-                </div>
-              )}
             </Group>
 
             <Group title="Safety">

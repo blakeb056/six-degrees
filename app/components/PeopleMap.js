@@ -23,6 +23,7 @@ import { makeGrid, shows, gridCounts } from '../../lib/tier-grid';
 import { heatBy, heatColour } from '../../lib/galaxy-lab';
 import { clusterStrength } from '../../lib/map-heat';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import { logGridChange, logSearch, track } from '../../lib/learning-client';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
@@ -87,13 +88,13 @@ export default function PeopleMap({ d1 = [], d2 = [], top = null, look = null, c
       <SidePanel open={panelOpen} onToggle={() => setPanelOpen((o) => !o)}>
         {top}
         <div style={panelHeading}>Filter</div>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a person"
+        <input value={query} onChange={(e) => { setQuery(e.target.value); logSearch('paths-people', e.target.value, { as: 'person' }); }} placeholder="Find a person"
           style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, marginBottom: 8 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Seg value={who} onChange={setWho} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All (${fmt(model.people.length)})`]]} />
+          <Seg value={who} onChange={(v) => { track('control', 'filter', { what: 'scanned', value: v, where: 'paths' }); setWho(v); }} options={[['scanned', `Scanned (${fmt(scannedCount)})`], ['all', `All (${fmt(model.people.length)})`]]} />
         </div>
         <div style={{ marginTop: 12 }}>
-          <TierGrid grid={grid} counts={counts} onChange={setGrid} mode="paths" />
+          <TierGrid grid={grid} counts={counts} onChange={(g) => { logGridChange(grid, g, 'paths'); setGrid(g); }} mode="paths" />
         </div>
         <div style={panelHeading}>Sectors</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -113,7 +114,7 @@ export default function PeopleMap({ d1 = [], d2 = [], top = null, look = null, c
         <div style={{ fontSize: 10.5, color: 'var(--sd-fg-4, #667)', marginTop: 6 }}>Inferred from where each connection works.</div>
         <div style={panelHeading}>Read the map</div>
         <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 4 }}>Bubble size</div>
-        <Seg value={sizeBy} onChange={setSizeBy} options={Object.entries(SIZE_BY).map(([k, v]) => [k, v.label])} />
+        <Seg value={sizeBy} onChange={(v) => { track('control', 'lens', { where: 'paths-people', value: v }); setSizeBy(v); }} options={Object.entries(SIZE_BY).map(([k, v]) => [k, v.label])} />
         <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', margin: '10px 0 4px' }}>Names</div>
         <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
         {look}

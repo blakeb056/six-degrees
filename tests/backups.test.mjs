@@ -31,7 +31,7 @@ const folder = (tag) => mkdtempSync(path.join(scratch, `${tag}-`));
 const dbIn = (dir) => path.join(dir, 'six-degrees.sqlite');
 const backupsIn = (dir) => path.join(dir, 'backups');
 
-/** A data folder with a network of invented people, their photos, the scanner's files and a Social file. */
+/** A data folder with a network of invented people, their photos and the scanner's files. */
 function network(tag, { people = 3 } = {}) {
   const dir = folder(tag);
   const db = new DatabaseSync(dbIn(dir));
@@ -46,7 +46,6 @@ function network(tag, { people = 3 } = {}) {
     writeFileSync(path.join(dir, 'avatars', `${tag}${i}.webp`), `RIFF-${tag}-${i}-webp`);
   }
   writeFileSync(path.join(dir, 'bridge-progress.json'), JSON.stringify({ [`${tag}-me`]: {} }));
-  writeFileSync(path.join(dir, `crm-${tag}-me.json`), JSON.stringify({ notes: { x: `note from ${tag}` } }));
   return { dir, db };
 }
 
@@ -76,19 +75,6 @@ test('a backup is the whole network as a .sixdegrees file, photos and files too,
   assert.equal(check.files, 1, 'the scanner file');
   // Nothing half-written beside it, hidden or not.
   assert.deepEqual(readdirSync(backupsIn(dir)), [made.name]);
-});
-
-test("REGRESSION: a backup never holds the Social tab's files, so Forget it forgets them everywhere", () => {
-  const { dir, db } = network('s');
-  writeFileSync(path.join(dir, 'social-s-me.json'), JSON.stringify({ people: {} }));
-  writeFileSync(path.join(dir, 'social-messages-s-me.json'), JSON.stringify({ threads: { x: 'words someone wrote' } }));
-  const made = makeBackup('manual', opts(dir, db));
-  db.close();
-  const inside = new DatabaseSync(made.file, { readOnly: true });
-  const paths = inside.prepare('SELECT path FROM sd_export_files').all().map((r) => r.path);
-  inside.close();
-  assert.ok(paths.every((p) => !/^(social|social-messages|crm)-/.test(p)), paths.join(', '));
-  assert.ok(!readFileSync(made.file).includes(Buffer.from('words someone wrote')));
 });
 
 test("a copy that fails the importer's check is never kept under a backup's name", () => {
@@ -324,7 +310,8 @@ test('restoring a backup puts its network, photos and files back at the next sta
     VALUES ('late', 1, 'Invented Latecomer', 'https://www.linkedin.com/in/invented-late', 'h-me')`).run();
   db.close();
   rmSync(path.join(dir, 'avatars', 'h0.webp'));
-  writeFileSync(path.join(dir, 'crm-h-me.json'), JSON.stringify({ notes: { x: 'changed since' } }));
+  // A file Messages & follow-ups left in the data folder (removed 2026-10-19).
+  writeFileSync(path.join(dir, 'crm-h-me.json'), JSON.stringify({ notes: { x: 'left here' } }));
 
   const ready = restoreBackup(made.name, { dir, backupsDir: backupsIn(dir), ...checks, replacedPeople: 3 });
   assert.equal(ready.restoredFrom, made.name);
@@ -336,8 +323,8 @@ test('restoring a backup puts its network, photos and files back at the next sta
   assert.equal(done.restoredFrom, made.name);
   assert.deepEqual(names(dir), ['Invented h 0', 'Invented h 1']);
   assert.ok(existsSync(path.join(dir, 'avatars', 'h0.webp')), 'the photo is back');
-  // The Social tab's files aren't in a backup, so a restore leaves this computer's where they are.
-  assert.match(readFileSync(path.join(dir, 'crm-h-me.json'), 'utf8'), /changed since/);
+  // A file this version doesn't know stays exactly where it was: a restore never deletes it.
+  assert.match(readFileSync(path.join(dir, 'crm-h-me.json'), 'utf8'), /left here/);
   // What was there is kept, and listed, so the restore can be undone the same way.
   const kept = describeBackups(backupsIn(dir)).find((b) => b.kind === 'before-import');
   assert.ok(kept?.restorable && kept.withFiles);

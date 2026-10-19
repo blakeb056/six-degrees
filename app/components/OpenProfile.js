@@ -29,6 +29,7 @@ import { useState } from 'react';
 import { useLinkedInPanel, panelNow, showProfileInPanel, rememberPanelPerson } from './linkedInPanelState';
 import { scannerNow, LIMITS_CHANGED } from '../../lib/scraper-client';
 import { scanHoldsPanel } from '../../lib/linkedin-panel';
+import { logInteraction } from '../../lib/learning-client';
 
 /** The profile link of a row: profile_url, or profileUrl. */
 export const profileUrlOf = (person) => person?.profile_url || person?.profileUrl || null;
@@ -74,6 +75,8 @@ export async function openProfile(person) {
     countProfileView(person, url);
     return { where: 'panel' };
   }
+  // The learning log: opened in your own browser (one opened in the panel is logged by app/api/profile-view).
+  logInteraction('profile-open', person, { via: 'browser' });
   openProfileInBrowser(url);
   return { where: 'browser' };
 }
@@ -93,7 +96,9 @@ export default function OpenProfile({ person, style, className, title, onOpen, s
     onOpen?.(e);
   };
   if (!panel?.available) {
-    return <a href={url} target="_blank" rel="noopener noreferrer" onClick={before} className={className} style={style} title={title}>{children}</a>;
+    // The learning log: a profile opened in your own browser, before whatever the link does with it (Connect).
+    const inBrowser = (e) => { logInteraction('profile-open', person, { via: 'browser' }); before(e); };
+    return <a href={url} target="_blank" rel="noopener noreferrer" onClick={inBrowser} className={className} style={style} title={title}>{children}</a>;
   }
   async function open(e) {
     e.preventDefault();

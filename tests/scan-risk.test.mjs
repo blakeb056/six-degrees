@@ -29,7 +29,7 @@ test('everything that opens LinkedIn waits for it; installing and saving photos 
   assert.ok(ACTIONS.length >= 10, 'read the scanner actions from the route');
   const off = ACTIONS.filter((a) => !touchesLinkedIn(a));
   assert.deepEqual(off.sort(), ['install', 'photos', 'setup']);
-  for (const a of ['login', 'full', 'refresh', 'auto-bridge', 'bridge', 'company', 'messages']) {
+  for (const a of ['login', 'full', 'refresh', 'auto-bridge', 'bridge', 'company']) {
     assert.ok(ACTIONS.includes(a), `${a} is a scanner action`);
     assert.equal(touchesLinkedIn(a), true, a);
   }

@@ -39,6 +39,8 @@ Six rules, each learned expensively. If a change violates one, the change is wro
 - Changing the UI or a route → [`MAP.md`](MAP.md), then [`ENDPOINTS.md`](ENDPOINTS.md)
 - Changing how data is stored → [`SCHEMA.md`](SCHEMA.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Changing scoring or tiers → [`SCORING.md`](SCORING.md)
+- Recording something new, or reading what's recorded → [`LEARNING-LOG.md`](LEARNING-LOG.md): the
+  learning log's taxonomy, every event and field, and its rules (local only, no names)
 - Touching the scanner → [`SCRAPER.md`](SCRAPER.md), and **read [`TRAPS.md`](TRAPS.md) first**
 - Packaging, the desktop app, Windows → [`DESKTOP.md`](DESKTOP.md): the plan, its phases,
   and the rules that protect the working version

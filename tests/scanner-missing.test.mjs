@@ -77,7 +77,7 @@ test('everything that runs or sets up the scanner says it isn\'t installed, befo
   // No "I understand" was given here: the scanner's absence is still what is said.
   for (const body of [
     { action: 'install' }, { action: 'setup' }, { action: 'login' }, { action: 'full' }, { action: 'refresh' },
-    { action: 'auto-bridge', tiers: ['S'] }, { action: 'resume-all' }, { action: 'messages' }, { action: 'photos' },
+    { action: 'auto-bridge', tiers: ['S'] }, { action: 'resume-all' }, { action: 'photos' },
     { action: 'read-profiles', batch: 10 }, { action: 'bridge', id: 'p-mira' }, { action: 'company', name: 'Invented Co' },
     { action: 'connect', id: 'd2-pax' },
   ]) {

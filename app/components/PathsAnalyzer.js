@@ -27,6 +27,7 @@ import {
   INDUSTRIES, UNKNOWN_INDUSTRY, waysInto, isSenior,
 } from '../../lib/companies';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
+import { logGridChange, logSearch, track } from '../../lib/learning-client';
 
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
@@ -109,7 +110,7 @@ function ShowSwitch({ show, onShow }) {
   return (
     <div style={{ marginBottom: 6 }}>
       <div style={{ ...panelHeading, marginTop: 0 }}>Bubbles are</div>
-      <Seg value={show} onChange={onShow} options={[['companies', 'Companies'], ['people', 'People']]} />
+      <Seg value={show} onChange={(v) => { track('control', 'view', { value: v, where: 'paths' }); onShow(v); }} options={[['companies', 'Companies'], ['people', 'People']]} />
     </div>
   );
 }
@@ -190,7 +191,7 @@ export default function PathsAnalyzer({ d1 = [], d2 = [], d3 = [], initialShow =
           onIndustry={(key) => setFocus({ kind: 'industry', key })} />
         <div style={panelHeading}>Read the map</div>
         <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginBottom: 4 }}>Bubble size</div>
-        <Seg value={sizeBy} onChange={setSizeBy} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
+        <Seg value={sizeBy} onChange={(v) => { track('control', 'lens', { where: 'paths-companies', value: v }); setSizeBy(v); }} options={[['people', 'Your people'], ['sa', 'S & A there'], ['known', 'You know']]} />
         <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', margin: '10px 0 4px' }}>Names</div>
         <Seg value={labels} onChange={setLabels} options={[['top', 'Biggest'], ['all', 'All'], ['none', 'None']]} />
         {look('How strong your people at each company are: the average power score of the five strongest. The hotter, the stronger; size is still how many.')}
@@ -219,12 +220,12 @@ function Filters({ filters, setFilters, counts, query, setQuery, industries, hid
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={panelHeading}>Filter</div>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a company"
+      <input value={query} onChange={(e) => { setQuery(e.target.value); logSearch('paths-companies', e.target.value, { as: 'company' }); }} placeholder="Find a company"
         style={{ padding: '6px 10px', borderRadius: 7, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
       {/* The same tiers × degrees as Network Circle (Blake, 2026-10-02) */}
-      <TierGrid grid={filters.grid} counts={counts} onChange={(g) => set('grid', g)} mode="paths" />
+      <TierGrid grid={filters.grid} counts={counts} onChange={(g) => { logGridChange(filters.grid, g, 'paths'); set('grid', g); }} mode="paths" />
       <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #8b9a9a)', marginTop: -10 }}>Level</div>
-      <Seg value={filters.seniority} onChange={(v) => set('seniority', v)} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
+      <Seg value={filters.seniority} onChange={(v) => { track('control', 'filter', { what: 'seniority', value: v, where: 'paths' }); set('seniority', v); }} options={[['all', 'Any level'], ['senior', 'Director+'], ['csuite', 'C-suite']]} />
       <div style={panelHeading}>Industries</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {industries.map((i) => {

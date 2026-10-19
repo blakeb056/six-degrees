@@ -235,12 +235,9 @@ that's left, the cooldown lock, and a **Paused** list you can carry on from.
   your effective reach, and the five connections who reach the most people no one else
   does. Only your own numbers, never a percentile against other people.
 - **A physics lab for the Galaxy** (experimental, in Filters). Sliders for gravity, rings,
-  push, pull and distance; colour by tier, degree, company or warmth; find anyone; and a
+  push, pull and distance; colour by tier, degree, heat or company; find anyone; and a
   **replay** of your network growing by the date you connected, saved as a picture or a
   video.
-- **Messages & follow-ups** (experimental, from your Profile). From your own data
-  export: who's warm, dormant or waiting on a reply, your own notes and follow-up dates,
-  and your career chapters. Message text is kept only if you turn on *Keep my messages*.
 
 ## Latest news
 
@@ -462,9 +459,7 @@ Finder*), what each part takes up, and the backups in it.
 A backup is your whole network in one `.sixdegrees` file: your connections, their profile
 photos, your settings (the look and your saved Galaxy layouts too), and the scanner's
 progress, skip lists and budget. Each one is checked as it's made, the same way a
-restore would check it, so a backup that's listed would restore. The Social tab's messages
-and notes are never in a backup, so deleting them there (*Forget it*) deletes them
-everywhere, and a restore leaves them as they are. Sixgree makes one:
+restore would check it, so a backup that's listed would restore. Sixgree makes one:
 
 - **each day** it's open with a network in it (when it starts, and after a scan, if the
   newest daily one is a day old; nothing runs on a timer), keeping the last 7;

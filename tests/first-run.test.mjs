@@ -94,7 +94,7 @@ test('without Google Chrome, nothing that opens LinkedIn starts, and the refusal
   const asks = [
     { action: 'login' }, { action: 'full' }, { action: 'refresh' }, { action: 'auto-bridge', maxBridges: 5 },
     { action: 'resume-all' }, { action: 'bridge', id: 'p-mira' }, { action: 'resume', id: 'p-mira' },
-    { action: 'company', name: 'Initech' }, { action: 'messages' },
+    { action: 'company', name: 'Initech' },
   ];
   for (const body of asks) {
     const res = await post(body);
