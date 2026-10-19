@@ -43,6 +43,17 @@ test('the page, its game, the tab and the old queue route are gone', () => {
   assert.deepEqual(pages.map(([k]) => k).filter((k) => k !== 'class'), ['paths', 'breach', 'scan', 'linkedin'], 'no tab added in its place');
 });
 
+test('the release checks no longer open /queue, and do open /class and /social', () => {
+  // 2.9.0's first release run failed: the installed-app check still opened /queue.
+  const yml = read('.github/workflows/release.yml');
+  const smoke = read('scripts/smoke-desktop.mjs');
+  for (const src of [yml, smoke]) {
+    assert.doesNotMatch(src, /\bqueue\b(?! is full)/, 'a page list still opens /queue');
+    assert.match(src, /class/);
+    assert.match(src, /social/);
+  }
+});
+
 test('nothing in the app, lib or the desktop shell links to /queue or says Outlink', () => {
   const found = [];
   for (const file of [...sources('app'), ...sources('lib'), ...sources('desktop')]) {
