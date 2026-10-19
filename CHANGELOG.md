@@ -6,6 +6,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The learning log records how you use Sixgree, not only what you send.** Kept on this computer
+  only and never sent anywhere, so later models and analysis have real data to work from:
+  - your sessions (open, close, active time, version, plugins, class, look, window size);
+  - each tab and sub-tab, how long it was shown and what led there (the header, the notch, a link or
+    a card);
+  - filters, the Tiers switch, shapes, sorts, Map views, Show ties and searches. A search for a
+    person keeps only its length, never the name; company and sector searches keep their words;
+  - a circle's focus (click or hold, how long, how deep) and Bridge Chains' dives;
+  - cards opened and for how long, profiles opened, Connect, and pauses of 1.5 s or more on a dot;
+  - Separation's and Breach's sections folded, shown and seen;
+  - every This or That duel shown as well as answered, and how the class list is browsed;
+  - each scan's start, every page with its pace, breaks taken or cut short, limits, stops and errors;
+  - the LinkedIn panel's sections, the time spent in each, and Back and Forward;
+  - every setting you change;
+  - errors, slow frames on Network Circle and failed requests, with nothing personal in them.
+- **Every kind of event is documented** in `docs/brain/LEARNING-LOG.md`, with its fields and when
+  it fires, and the tests check that each one has something firing it.
+- **Record my behaviour (local only)** in Settings → Your data, on by default. Off, only your
+  requests and how they went are kept, which the models need.
+- **Your data shows counts per kind,** and the log exports as JSON or as a CSV per kind (a zip).
+- **Readers for analysis:** session summaries, the funnel from card to accepted, time per tab, and
+  This or That calibration (`GET /api/learning?sessions=1`, `funnel=1`, `dwell=1`, `duels=1`).
+
+### Changed
+- The pages' events go in batches every few seconds and as the window closes, with repeats and
+  floods dropped (and counted), so logging never slows the app.
+
+### Fixed
+- The learning log's size in Settings left out every event that has no dedupe key.
+
+### Removed
+- **Messages & follow-ups is gone.** Its page (`/social`) and its CRM (stages, tags, notes and
+  follow-up dates), the reader for your own data export, the Profile's card for it, the Scan
+  page's once-a-day messages sync and the scanner's messages mode (`--messages`) are removed.
+- **What read from it went too.** The Galaxy's *Warmth* colouring, and the job starts and posts
+  marked along the replay's timeline. A layout saved coloured by Warmth opens coloured by tier.
+- **The Social option in Export backup file.** A copy never carries those files now. A backup file
+  exported before this still restores: its Social files are left out, not refused.
+- Nothing is deleted: the `social-`, `social-messages-` and `crm-` files it kept in your data
+  folder stay where they are.
+
 ## [2.9.0] - 2026-10-19
 
 Classes: pick your journey and Sixgree scores everyone for it, a learning log from day one, scan windows of 60 pages, Bridge Chains you can dive into, and Outlink retired.

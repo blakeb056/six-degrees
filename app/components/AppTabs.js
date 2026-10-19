@@ -9,12 +9,14 @@
 // data-tour is what the tour's ring finds it by (lib/help.js TOUR_STEPS).
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { IS_DEMO } from '../../lib/demo';
 import { MODES } from '../../lib/app-tabs';
 import { useScanShows } from './useScanner';
 import useFeature from './useFeature';
 import { useLinkedInPanel } from './linkedInPanelState';
 import { LINKEDIN_BROWSER } from '../../lib/linkedin-browser';
+import { noteTab } from '../../lib/learning-client';
 
 // One calm style for every tab (Blake, 2026-10-05: the tabs looked like "gradient
 // AI" and "the colours make no sense"): the look's secondary words, a touch
@@ -34,8 +36,8 @@ const PAGES = [
   // more sense and not to add a tab"). /insights forwards there.
   // The introductions queue that sat here is gone (Blake, 2026-10-17: "It has no actual
   // beneficiary to the application. We have LinkedIn embedded into the app. Separation is
-  // what you want to do anyway"). Messages & follow-ups is /social again, a page of its
-  // own with no tab: Profile and Scan link to it.
+  // what you want to do anyway"). Messages & follow-ups (/social) went too (Blake,
+  // 2026-10-19: "I don't want Messages and follow-ups").
   // Only with a scanner to scan with: a scanner plugin, or the built-in one (lib/scanner-capabilities.js).
   { key: 'scan', href: '/setup', label: 'Scan', own: true, scanner: true },
   // LinkedIn's feed, messaging, notifications and jobs, one at a time, in Sixgree's own
@@ -51,6 +53,8 @@ const PAGES = [
  *   Scan, LinkedIn) need your own network, so they hide for the sample or a CSV.
  */
 export default function AppTabs({ active, isMobile = false, csvMode = false, onMode, children, after }) {
+  // The learning log: the tab shown, for its time on screen and what led there (lib/learning-client.js).
+  useEffect(() => { noteTab(active); }, [active]);
   const scanner = useScanShows().scan;
   const browserOn = useFeature(LINKEDIN_BROWSER);
   const panel = useLinkedInPanel();

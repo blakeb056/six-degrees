@@ -15,6 +15,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { profileSlugOf } from '../../lib/linkedin-panel';
+import { track } from '../../lib/learning-client';
 
 export const panelBridge = () => (typeof window !== 'undefined' ? window.sixgreeDesktop?.linkedinPanel ?? null : null);
 
@@ -22,8 +23,21 @@ let state = null;
 const listeners = new Set();
 let watching = null;
 
+// The learning log (lib/learning-client.js): which section of LinkedIn is shown
+// (a section of the LinkedIn tab, a profile, or a scan's), and for how long.
+let shownAs = null;
+function notePanel(next) {
+  const section = next?.visible ? (next.mode === 'section' ? next.section || 'section' : next.mode || 'panel') : null;
+  if ((shownAs?.section ?? null) === section) return;
+  const now = Date.now();
+  if (shownAs) track('panel', 'time', { section: shownAs.section, ms: now - shownAs.at });
+  if (section) track('panel', 'open', { section, from: shownAs?.section ?? null });
+  shownAs = section ? { section, at: now } : null;
+}
+
 function publish(next) {
   state = next;
+  try { notePanel(next); } catch { /* the log is never in the way */ }
   for (const l of listeners) l();
 }
 
@@ -95,9 +109,11 @@ export function panelPersonFor(slug) {
 
 /** Back, and Forward, in the panel's own history (the bar's buttons). */
 export function panelBack() {
+  track('panel', 'nav', { dir: 'back', section: shownAs?.section ?? null });
   panelBridge()?.back?.();
 }
 export function panelForward() {
+  track('panel', 'nav', { dir: 'forward', section: shownAs?.section ?? null });
   panelBridge()?.forward?.();
 }
 

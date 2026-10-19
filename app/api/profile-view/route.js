@@ -51,7 +51,7 @@ export async function POST(request) {
   try {
     const db = getDb();
     const full = row ? db.prepare('SELECT * FROM linkedin_connections WHERE id = ?').get(row.id) : null;
-    recordInteraction(db, { type: 'profile-open', row: full, person: full ? null : personKey(url), data: { counted: Boolean(counted) } });
+    recordInteraction(db, { type: 'profile-open', row: full, person: full ? null : personKey(url), data: { counted: Boolean(counted), via: 'panel' } });
   } catch { /* the view is counted either way */ }
   let profilesLeftToday = null;
   try { profilesLeftToday = linkedinState(dir).profilesLeftToday; } catch { /* the count is written either way */ }

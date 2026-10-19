@@ -861,26 +861,40 @@ test('only the photos of people still in the network travel', () => {
   assert.equal(report.photosInCopy.count, 2);
 });
 
-test('the Social tab\'s files go into a copy when asked, and only then; half-written files never', () => {
-  // Blake, 2026-09-29: everything travels with the network, the CRM notes and
-  // kept messages too, unless the Social box is unticked.
-  const dir = folder('social');
-  const db = seedNetwork(dir, { people: 1, tag: 's' });
-  writeFileSync(path.join(dir, 'social-s-me.json'), JSON.stringify({ keepMessages: true, people: {} }));
-  writeFileSync(path.join(dir, 'social-messages-s-me.json'), JSON.stringify({ threads: { t1: { messages: [{ t: 1, fromMe: false, text: 'INVENTED-KEPT-MESSAGE' }] } } }));
-  writeFileSync(path.join(dir, 'social-messages-s-me.json.incoming'), 'INVENTED-HALF-IMPORT');
-  writeFileSync(path.join(dir, 'crm-s-me.json'), JSON.stringify({ people: { 'https://www.linkedin.com/in/x': { notes: 'INVENTED-CRM-NOTE' } } }));
-  const rels = travellingFiles(dir).map((f) => f.rel);
-  assert.ok(rels.includes('crm-s-me.json') && rels.includes('social-s-me.json') && rels.includes('social-messages-s-me.json'));
-  assert.equal(rels.some((r) => r.endsWith('.incoming')), false);
-  assert.equal(travellingFiles(dir, { includeSocial: false }).some((f) => f.rel.startsWith('social') || f.rel.startsWith('crm')), false);
-  const { out } = exportOf(dir, db);
-  db.close();
-  assert.ok(pathsIn(out).includes('crm-s-me.json'));
-  assert.equal(readFileSync(out).includes('INVENTED-HALF-IMPORT'), false);
-  assert.equal(exportedFileKind('crm-s-me.json'), 'social');
-  assert.equal(exportedFileKind('../crm-s-me.json'), null);
+test('REGRESSION: an older export carrying Messages & follow-ups\' files imports without them', async () => {
+  // Removed on 2026-10-19 (Blake: "I don't want Messages and follow-ups"). An
+  // export made before then may carry social-, social-messages- and
+  // crm-<profile>.json: they are left behind, never refused, and the ones
+  // already on this computer are never touched.
+  const { sha256 } = await import('../lib/data-export.js');
+  const old = {
+    'social-o-me.json': { keepMessages: true, people: {} },
+    'social-messages-o-me.json': { threads: { t1: { messages: [{ t: 1, fromMe: false, text: 'INVENTED-KEPT-MESSAGE' }] } } },
+    'crm-o-me.json': { people: { 'https://www.linkedin.com/in/invented-x': { notes: 'INVENTED-CRM-NOTE' } } },
+  };
+  const file = tampered(goodExport('o', 2), null, (db) => {
+    const put = db.prepare('INSERT INTO sd_export_files (path, bytes, sha256) VALUES (?, ?, ?)');
+    for (const [rel, v] of Object.entries(old)) {
+      const bytes = Buffer.from(JSON.stringify(v));
+      put.run(rel, bytes, sha256(bytes));
+    }
+    recount(db);   // the manifest counts them, as an older export's did
+  });
+  const info = validateImport(file, checks);
+  assert.equal(info.people, 2);
+  assert.equal(info.files, 4, 'only the scanner\'s files');
+  assert.equal(exportedFileKind('crm-o-me.json'), 'retired');
+  assert.equal(exportedFileKind('../crm-o-me.json'), null);
   assert.equal(exportedFileKind('social-messages-x.json.incoming'), null);
+
+  const here = folder('old-social');
+  writeFileSync(path.join(here, 'crm-h-me.json'), JSON.stringify({ people: {}, mark: 'INVENTED-HERE' }));
+  stageImport(uploadInto(here, file), { dir: here, ...checks });
+  applyPendingImport({ dir: here, dbFile: dbIn(here) });
+  assert.deepEqual(namesIn(dbIn(here)), ['o-0', 'o-1']);
+  for (const rel of Object.keys(old)) assert.equal(existsSync(path.join(here, rel)), false, `${rel} is not imported`);
+  // This computer's own file is exactly where it was: nothing deletes it.
+  assert.equal(JSON.parse(readFileSync(path.join(here, 'crm-h-me.json'), 'utf8')).mark, 'INVENTED-HERE');
 });
 
 test('REGRESSION: an avatars folder that is a link to somewhere else is not followed', () => {

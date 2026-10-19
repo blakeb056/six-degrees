@@ -51,7 +51,8 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import useStrategy from './useStrategy';
 import GatekeeperList, { LeverageBadge, GATE } from './GatekeeperList';
 import { TIE_COLOUR } from '../../lib/mutual-web';
-import { logExposure } from '../../lib/learning-client';
+import { logExposure, logInteraction, logSearch, track } from '../../lib/learning-client';
+import { useSeen } from './useBehaviour';
 
 const ORANGE = '#FF6B35';
 const CLASSIC = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -372,7 +373,12 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
   const total = HEAD + list.height + BOTTOM_PAD;
   // Searching, a rarity or a path: a section then says how many of its tier are showing.
   const narrowed = !!q || rarities.size > 0 || !!path;
-  const toggleSection = useCallback((t) => setCollapsed((set) => toggle(set, t)), []);
+  // The learning log: a section folded or shown (React may run this twice; the log keeps one).
+  const toggleSection = useCallback((t) => setCollapsed((set) => {
+    const next = toggle(set, t);
+    track('section', 'toggle', { page: 'separation', section: t, open: !next.has(t) });
+    return next;
+  }), []);
 
   // ── Windowing ────────────────────────────────────────────────────────────
   // Derived from the last published scroll position on every render, so a
@@ -401,9 +407,10 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const changeQuery = (v) => { setQuery(v); toTop(); };
+  const changeQuery = (v) => { setQuery(v); toTop(); logSearch('separation', v); };
   // A tier chip shows or hides its section; All (or every tier picked) is all of them.
   const changeTier = (t) => {
+    track('control', 'filter', { what: 'tier', value: t ?? 'all', where: 'separation' });
     setTiers((set) => {
       if (t == null) return new Set();
       const next = toggle(set, t);
@@ -411,10 +418,11 @@ export default function SeparationView({ connections = [], degree2 = [], degree3
     });
     toTop();
   };
-  const changeRarity = (r) => { setRarities((set) => toggle(set, r)); toTop(); };
+  const changeRarity = (r) => { track('control', 'filter', { what: 'rarity', value: r, where: 'separation' }); setRarities((set) => toggle(set, r)); toTop(); };
   const clearAll = () => { setQuery(''); setTiers(new Set()); setRarities(new Set()); setPath(null); toTop(); };
   const openPath = () => { setPathUsed(true); setPathText(''); setPathOpen(true); };
-  const pickPath = (next) => { setPath(next); setPathOpen(false); toTop(); };
+  // A sector or a company aimed at: its name is a company's or a sector's, never a person's, so it's kept.
+  const pickPath = (next) => { track('control', 'filter', { what: next?.kind || 'path', value: next?.label ?? null, where: 'separation' }); setPath(next); setPathOpen(false); toTop(); };
   const changeAt = (v) => { setAt(Math.max(0, Math.min(100, Math.round(Number(v) || 0)))); toTop(); };
   const onSearchKey = (e) => {
     if (e.key === 'Enter') {
@@ -1177,8 +1185,11 @@ const SectionHead = memo(function SectionHead({ section, top, height, tierColors
   const sub = unranked ? 'found by company scans' : tierLabel(section.tier);
   const count = `${fmt(section.count)}${of != null && of !== section.count ? ` of ${fmt(of)}` : ''}`;
   const people = section.count === 1 && of == null ? 'person' : 'people';
+  // The learning log: this tier's section on screen for a second, once a visit.
+  const seenRef = useRef(null);
+  useSeen(seenRef, 'separation', section.tier);
   return (
-    <div className="sephead seprow" role="heading" aria-level={3} style={{
+    <div ref={seenRef} className="sephead seprow" role="heading" aria-level={3} style={{
       position: 'absolute', top, left: 0, right: 0, height, boxSizing: 'border-box', overflow: 'hidden',
       borderRadius: open ? '10px 10px 0 0' : 10, borderLeft: `3px solid ${c}`,
       background: tint(c, 10), borderBottom: open ? `1px solid ${tint(c, 30)}` : '1px solid transparent',
@@ -1370,7 +1381,7 @@ function Actions({ p, route, status, compact = null }) {
     </span>
   ) : (
     <OpenProfile person={person} stopPropagation className="sepgo" title="Opens their profile, to connect yourself"
-      onOpen={() => { markRequested(person, { bridgeId }).catch(() => {}); }}
+      onOpen={() => { markRequested(person, { bridgeId }).catch(() => {}); logInteraction('connect-click', person, { route: 'linkedin', where: 'separation' }); }}
       style={{ height: compact ? 32 : 26, padding: compact ? '0 16px' : '0 14px' }}>
       Connect{who}
     </OpenProfile>

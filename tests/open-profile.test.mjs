@@ -70,9 +70,9 @@ test('the shared link keeps the rules: the panel, straight there, then counted; 
   // One profile per press: Open All and Open Top 10 went with the introductions queue (Blake, 2026-10-17).
   assert.doesNotMatch(src, /openProfiles|Next profile|setSteps/);
   // Every former link uses it: the person card (Separation's connect and View profile), Paths, Insights,
-  // Messages & follow-ups, and the Map's "Ask … for an intro".
+  // and the Map's "Ask … for an intro".
   for (const file of ['app/components/Sidebar.js', 'app/paths/page.js', 'app/components/insights/parts.js',
-    'app/social/Crm.js', 'app/components/WorldMapLayers.js']) {
+    'app/components/WorldMapLayers.js']) {
     assert.match(fs.readFileSync(path.join(ROOT, file), 'utf8'), /<OpenProfile /, file);
   }
   // Connect marks the request sent as it opens, in the panel or not.

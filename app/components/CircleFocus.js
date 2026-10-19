@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Avatar from './Avatar';
+import { track } from '../../lib/learning-client';
 import useScanner from './useScanner';
 import { degreeName } from '../../lib/galaxy';
 import {
@@ -76,17 +77,24 @@ const reducedMotion = () => (typeof window !== 'undefined' && window.matchMedia?
  * nothing to leave it). Esc closes it. `idRef` is who it's on, null once it's
  * going.
  */
-export function useFocus({ layerRef = null, onGone } = {}) {
+export function useFocus({ layerRef = null, onGone, where = null } = {}) {
   const [focus, setFocus] = useState(null);
   const idRef = useRef(null);
   useEffect(() => { idRef.current = focus && focus.phase !== 'out' ? focus.id : null; }, [focus]);
   const goneRef = useRef(onGone);
   useEffect(() => { goneRef.current = onGone; });
+  // The learning log: how it opened (a click, or the pointer held HOVER_HOLD:
+  // extra.how), for how long, and how deep it went (lib/learning-client.js).
+  const openedRef = useRef(null);
   const open = useCallback((id, extra = {}) => {
     const ease = typeof CSS !== 'undefined' && CSS.supports?.('transition-timing-function', 'linear(0, 1)') ? springEasing() : SPRING_FALLBACK;
     idRef.current = id;
+    const how = extra.how === 'hold' ? 'hold' : 'click';
+    const depth = (extra.trail?.length || 0) + 1;
+    openedRef.current = { id, how, at: Date.now(), max: depth };
+    track('focus', 'open', { how, where, depth }, { person: { id } });
     setFocus({ ...extra, id, phase: 'in', reduced: reducedMotion(), ease, dive: null });
-  }, []);
+  }, [where]);
   const close = useCallback(() => setFocus((f) => (f && f.phase !== 'out' ? { ...f, phase: 'out' } : f)), []);
   // One level in or out (lib/circle-focus.js focusStep): the dive is `focus.dive`,
   // 'in' for its first frame, 'open', then 'out' while it eases back to the focus.
@@ -106,6 +114,24 @@ export function useFocus({ layerRef = null, onGone } = {}) {
   }), []);
   const phase = focus?.phase ?? null;
   const reduced = Boolean(focus?.reduced);
+  useEffect(() => {
+    const o = openedRef.current;
+    if (phase !== 'out' || !o) return;
+    openedRef.current = null;
+    track('focus', 'close', { how: o.how, ms: Date.now() - o.at, where }, { person: { id: o.id } });
+  }, [phase, where]);
+  // How deep: along a chain (Bridge Chains' trail), and a level more in a dive.
+  const depthNow = focus ? (focus.trail?.length || 0) + 1 + (focus.dive && focus.dive !== 'out' ? 1 : 0) : 0;
+  const lastDepth = useRef(0);
+  useEffect(() => {
+    const o = openedRef.current;
+    if (!o || !depthNow || depthNow === lastDepth.current) { lastDepth.current = depthNow; return; }
+    const first = lastDepth.current === 0;
+    lastDepth.current = depthNow;
+    if (first) return;   // the open said its depth
+    o.max = Math.max(o.max, depthNow);
+    track('focus', 'dive', { depth: depthNow, max: o.max }, { person: { id: focus?.id ?? o.id } });
+  }, [depthNow, focus?.id]);
   useEffect(() => {
     if (phase !== 'in') return undefined;
     if (layerRef?.current) void getComputedStyle(layerRef.current).transform;
@@ -338,7 +364,7 @@ export default function CircleFocus({ focus, phase, box, origin, you, look, ease
         {kind === 'circle' && focus.unscanned && <ScanNudge person={person} canScan={canScan} />}
         {kind === 'circle' && <Counts focus={focus} plain={diving} />}
         {kind === 'circle' && !webOff && (
-          <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked ready={web.ready}
+          <ShowTies where="focus" on={showTies} onToggle={() => setShowTies((v) => !v)} picked ready={web.ready}
             count={lines.length} style={{ pointerEvents: 'auto' }} />
         )}
       </div>

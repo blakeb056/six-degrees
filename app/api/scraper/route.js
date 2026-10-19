@@ -41,7 +41,8 @@ import { windowRefusal } from '../../../lib/scan-windows';
 import { experienceCounts, experienceCard } from '../../../lib/experience';
 import { DEFAULT_ROUND, circleRoundArgs, knownCount, personRounds, roundState } from '../../../lib/scan-rounds';
 import { ensureChimes } from '../../../lib/chime-files';
-import { tryRecord, recordInteraction, mirrorAccountLoad } from '../../../lib/learning-log';
+import { tryRecord, recordInteraction, mirrorAccountLoad, recordSettingsChange } from '../../../lib/learning-log';
+import { scrubMessage } from '../../../lib/behavior-taxonomy';
 
 // The app runs the scraper itself.
 //
@@ -207,6 +208,8 @@ function autoSittingEnded(code, stopped, log, failure) {
   }
   a.restUntil = autoNow() + AUTO_PACES[a.pace].rest * 1000;
   a.plan = { kind: 'rest', until: a.restUntil };
+  // The learning log: Auto scan's rest between sittings, as planned.
+  try { tryRecord(getDb(), { kind: 'scan', type: 'break', data: { action: 'auto-bridge', seconds: AUTO_PACES[a.pace].rest, after: null, how: 'planned', mode: 'auto-rest' } }); } catch { /* never in the way */ }
 }
 
 /** Why Auto scan can't start at all, said at Start rather than at 9:00: the checks a sitting runs. */
@@ -238,6 +241,9 @@ const MAX_PAGES_KEPT = 400;
 // newest is kept, so a five-minute break doesn't push the rest of the log out. The
 // scan light reads the newest line (lib/scan-light.js).
 const BREAK_TICK = /^\s*\(break after page \d+: \d+ s, then page \d+\)$/;
+// A break's first line (scrape.py, before _manual_break): "20 pages read: a 30-second break before page 21."
+const BREAK_START = /(\d+) pages? read: a (\d+)-second break before page (\d+)/;
+const BREAK_LEFT = /\(break after page (\d+): (\d+) s, then page \d+\)/;
 // What the scanner says when a limit stops a scan (scrape.py budget_message) is
 // read in lib/scan-exit.js now, only for a scanner from before its exit codes.
 
@@ -287,23 +293,61 @@ function stopChild() {
   }, 20000);
 }
 
+// ── The learning log's view of a running scan (lib/learning-log.js) ─────────
+// Each page as it's read (how many it found, and the gap since the page before:
+// the pace), each break between pages (sat out, or cut short), read from the
+// scanner's own lines. Never in the way of the scan.
+
+function logScan(type, data) {
+  try { tryRecord(getDb(), { kind: 'scan', type, data: { action: state.action, target: state.target?.id ?? null, ...data } }); } catch { /* the log never stops a scan */ }
+}
+
+/** A page's count is in: logged once, with the gap since the last page logged. */
+function logPage(found) {
+  const now = Date.now();
+  logScan('page', { page: state.pages, found, gapMs: state.pageAt ? now - state.pageAt : null });
+  state.pageAt = now;
+}
+
+/** A break that was running has ended: sat out to its last second, or cut short. */
+function closeBreak() {
+  const b = state.breakOn;
+  if (!b) return;
+  state.breakOn = null;
+  logScan('break', { seconds: b.seconds, after: b.after, how: b.left <= 1 ? 'taken' : 'skipped', mode: 'manual' });
+}
+
 function push(line) {
   for (const part of String(line).split('\n')) {
     const t = part.replace(/\s+$/, '');
     if (!t) continue;
+    const left = t.match(BREAK_LEFT);
+    if (left && state.breakOn) state.breakOn.left = Number(left[2]);
     if (BREAK_TICK.test(t) && BREAK_TICK.test(state.log[state.log.length - 1] || '')) {
       state.log[state.log.length - 1] = t;
       continue;
+    }
+    if (!BREAK_TICK.test(t) && state.breakOn?.ticked) closeBreak();
+    if (state.breakOn && BREAK_TICK.test(t)) state.breakOn.ticked = true;
+    const breakStarts = t.match(BREAK_START);
+    if (breakStarts) {
+      closeBreak();
+      state.breakOn = { seconds: Number(breakStarts[2]), after: state.pages, left: Number(breakStarts[2]), ticked: false };
     }
     state.log.push(t);
     if (PAGE_READ.test(t)) {
       state.pages += 1;
       // Fifty of your own list at a time; a page's count comes on its next line.
-      state.found.push(/collected/.test(t) ? 50 : 0);
+      const own = /collected/.test(t);
+      state.found.push(own ? 50 : 0);
       if (state.found.length > MAX_PAGES_KEPT) state.found.splice(0, state.found.length - MAX_PAGES_KEPT);
+      if (own) logPage(50);
     }
     const got = t.match(PAGE_FOUND);
-    if (got && state.found.length) state.found[state.found.length - 1] = Number(got[1]);
+    if (got && state.found.length) {
+      state.found[state.found.length - 1] = Number(got[1]);
+      logPage(Number(got[1]));
+    }
     // Auto's one line saying how the request went (scrape.py main, --connect).
     const result = state.action === 'connect' && connectResultIn(t);
     if (result) state.outcome = result;
@@ -913,12 +957,6 @@ const ACTIONS = {
   mutuals:       { flag: '--mutuals',  needsId: true, label: 'Reading all mutuals with', searches: true },
   // Photos an older version kept as links to LinkedIn: saved here, once each.
   // No browser, no search; every scan does the same at its end.
-  // Experimental, for the Social tab: your messages list, once (who, when, unread; the
-  // newest message's words only while Keep my messages is on).
-  messages:      { flag: '--messages',    label: 'Reading your messages list' },
-  // The same, scrolling until the whole list has loaded (60 scrolls or about
-  // 1,000 conversations at most), for the Social tab's "Read my whole history".
-  'messages-full': { flag: '--messages --full-history', label: 'Reading your whole messages history' },
   photos:        { flag: '--save-photos', label: 'Saving profile photos to this computer' },
   // Auto (Blake, 2026-10-03): one connection request, without a note, to one
   // person pressed on a card. By id, looked up here (connectTarget); the URL
@@ -1206,6 +1244,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     // save that sends every setting back as it is goes through.
     const refused = settingRefusal(capabilitiesHere(), body);
     if (refused) return Response.json({ error: refused }, { status: 409 });
+    let limitsBefore = null;
+    try { limitsBefore = readLimits(dataDir()); } catch { /* logged as new */ }
     const limits = writeLimits(dataDir(), {
       daily: body.daily, pace: body.pace, gentle: body.gentle, profileReads: body.profileReads,
       // Dev mode and manual mode (lib/linkedin-limits.js). The scanner reads both from the
@@ -1220,6 +1260,12 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       // Scanner settings → Scan windows (lib/scan-windows.js): each only ever stricter than its default.
       windowPages: body.windowPages, windowsPerDay: body.windowsPerDay, windowGapHours: body.windowGapHours,
     });
+    // The learning log: each scanner setting that changed, as `scanner.<name>` (lib/learning-log.js recordSettingsChange).
+    try {
+      const keys = Object.keys(limits || {}).filter((k) => body[k] !== undefined);
+      recordSettingsChange(getDb(), Object.fromEntries(keys.map((k) => [`scanner.${k}`, limitsBefore?.[k] ?? null])),
+        Object.fromEntries(keys.map((k) => [`scanner.${k}`, limits[k]])));
+    } catch { /* the save stands */ }
     if (body.dev === false) state.limitHit = null;
     // Manual mode on while Auto scan waits between sittings: it stops now, with why.
     if (body.manual === true && auto().on && !(state.running && state.autoSitting)) autoEnd('stopped', MANUAL_STOPS_AUTO);
@@ -1404,6 +1450,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections', 'breach', 'mutuals'].includes(action);
   if (readsLists && li.limitReached && !sitting) {
     state.limitHit = Date.now();
+    tryRecord(getDb(), { kind: 'scan', type: 'limit', data: { what: 'window', action } });
     return Response.json({ error: limitRefusal(), limitReached: true }, { status: 409 });
   }
   // Auto's caps (15 in any 24 hours, 80 in any 7 days) and the profile view it
@@ -1412,6 +1459,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     const capped = inviteRefusal(li);
     if (capped) {
       if (li.profilesLeftToday === 0) state.limitHit = Date.now();
+      tryRecord(getDb(), { kind: 'scan', type: 'limit', data: { what: li.profilesLeftToday === 0 ? 'profiles' : 'invites', action } });
       return Response.json({ error: capped, ...(li.profilesLeftToday === 0 ? { limitReached: true } : {}) }, { status: 409 });
     }
   }
@@ -1507,7 +1555,20 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   }
   state.pages = 0;
   state.found = [];
+  state.pageAt = null;
+  state.breakOn = null;
   state.stderrTail = [];
+  // The learning log: the job as it starts (what, whose circle, the round, the
+  // mode, how much of the scan window is left, an Auto sitting, limits lifted).
+  if (!['install', 'setup', 'login'].includes(action)) {
+    tryRecord(getDb(), {
+      kind: 'scan', type: 'start',
+      data: {
+        action, target: target?.id ?? null, round: circleRound?.pages ?? null, manual: modeNow() === 'manual',
+        window: Number.isFinite(li?.searchesLeft) ? li.searchesLeft : null, sitting: sitting || null, lifted: liftedAt() != null,
+      },
+    });
+  }
   state.failure = null;
   state.limitHit = null;
   state.invitee = invitee;
@@ -1632,6 +1693,18 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
           },
           dedupe: `scanjob:${state.startedAt}:${state.action}`,
         });
+        // How it ended, when it didn't simply finish: stopped by you, at a limit, LinkedIn pushing back, or failed.
+        closeBreak();
+        const pushback = state.log.some((l) => /pushed back|restricted|unusual activity/i.test(String(l)));
+        const by = stopped ? 'user' : out.limit ? 'limit' : pushback ? 'push-back' : null;
+        if (by) tryRecord(db, { kind: 'scan', type: 'stop', data: { by, action: state.action, target: state.target?.id ?? null, pages: Number(state.pages) || 0 } });
+        if (out.limit && !stopped) tryRecord(db, { kind: 'scan', type: 'limit', data: { what: 'limit', action: state.action } });
+        if (out.failure && !stopped) {
+          tryRecord(db, {
+            kind: 'scan', type: 'error',
+            data: { action: state.action, code: Number.isInteger(code) ? code : null, message: scrubMessage((state.failure || []).slice(-1)[0] || out.line || '') },
+          });
+        }
         mirrorAccountLoad(db, dataDir());
       } catch { /* the log never stops a scan */ }
     }

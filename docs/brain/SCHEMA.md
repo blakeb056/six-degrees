@@ -14,7 +14,7 @@ installed rather than run from a checkout. TRAPS §4.
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |
 | `queue_items` | The send log (`lib/send-log.js`): one row per person asked (`profile_url` is UNIQUE), with `sent_at`, `route` (manual, auto, panel), `result` (pending, accepted, undone), `snapshot` (JSON: the person as known when sent, and what list and rank it was sent from), `attempts` and `attempt_history`, `accepted_at` (when it was seen), `accepted_day` (the connection's own date), `warmth` (1 day very warm, 3 warm, 14 cool, else cold), `sender_tz`, `recipient_tz`, `withdrawn_at`, `last_checked_at`. The older outreach-queue columns stay. |
-| `learning_events` | The learning log (`lib/learning-log.js`): append-only, versioned (`schema_version`), one row per event: `kind` (exposure, interaction, outcome, scan, onboarding, load, snapshot), `type`, `person` (profile key), `lens` (the class active), `snap` (the person's snapshot hash), `dedupe` (UNIQUE: a repeat is a no-op), `data` (JSON). Indexed by person and time, and by kind. Only ever added to; Settings → Your data exports it as JSON and deletes it all. Never sent anywhere. |
+| `learning_events` | The learning log (`lib/learning-log.js`), a complete behaviour logger: append-only, versioned (`schema_version`, 2 since 2026-10-19), one row per event: `kind` (session, nav, control, focus, interaction, section, onboarding, scan, panel, settings, health, exposure, outcome, load, snapshot: the taxonomy in `lib/behavior-taxonomy.js`, every type and field in [`LEARNING-LOG.md`](LEARNING-LOG.md)), `type`, `person` (profile key), `lens` (the class active), `snap` (the person's snapshot hash), `dedupe` (UNIQUE: a repeat is a no-op), `data` (JSON; a page event's carries `sid`, its window session, and `tab`). Indexed by time, by kind, type and time, and by person and time. Only ever added to and kept until deleted; Settings → Your data shows counts per kind, exports JSON or a CSV per kind, deletes it all, and has Record my behaviour (off keeps only outcomes and the send log). Never sent anywhere. |
 | `connection_ties` | The mutual web (`lib/ties.js`): two people seen together, by profile URL, smaller first, one row per pair. `source` is every way it was seen, comma-separated (`circle`: one of your connections in another's circle scan; `card`: a card's mutual line named them, `scrape.py` `mutualNames`; `profile`: a profile's mutual line in Sixgree's LinkedIn panel; `mutual-list`: Read all mutuals); `seen_count` and `last_seen` go up each time it is seen again, `seen_at` is the first time (`lib/ties-store.js recordTies`). Written by `app/api/ingest` and `POST /api/ties`; read by `/api/network` (the extended network, `seen`), `GET /api/ties` and the strategy engine; removed with either person by `app/api/admin-delete`. An older database gains the columns, its ties as `circle`, seen once. A tie means seen together, not close. |
 | `user_profile` | Referenced by `app/api/setup-profile`; absent from the old cloud schema, so created here rather than inherited. `goals` (JSON) is where your class lives (`lib/class-goals.js`): the class picked, the one-time offer, and a saved build per class (its target, every This or That answer with both cards' features, Never show me, and the weights). S2's "about you" fills `role` and `company`. |
 | `company_scores` | A company score **you** set (the Scores tab): `name` (canonical, unique), `score` 1–10. Wins over the curated list and the estimate. See [`SCORING.md`](SCORING.md). |
@@ -122,9 +122,9 @@ New tables need nothing extra.
 ## The export file (`.sixdegrees`)
 
 The backups in `backups/` are this same file (`lib/backups.js`), named
-`<daily|before-update|manual>-<version>-<time>.sixdegrees`, made without the Social tab's
-files. A backup made before an update says in `app_version` which version's data it holds
-(the one before), so that version can restore it.
+`<daily|before-update|manual>-<version>-<time>.sixdegrees`. A backup made before an update
+says in `app_version` which version's data it holds (the one before), so that version can
+restore it.
 
 Settings → Your data saves the network as one file that is itself a SQLite database:
 `VACUUM INTO` of the live one (journal mode DELETE, so no `-wal` travels beside it), plus
@@ -133,7 +133,7 @@ two tables of its own (`lib/data-export.js`):
 | Table | Holds |
 |---|---|
 | `sd_export_manifest(key, value)` | `format` (1), `app_version`, `scoring_version`, `exported_at`, `include_photos`, `people`, `photos`, `files`, and `counts`: rows per app table, as JSON. |
-| `sd_export_files(path, bytes, sha256)` | `avatars/<name>` (names the `/avatars` route would serve) and the six scanner files and a kept CSV import (`csv-network.json`) in `TRAVELLING_FILES` (`lib/data-folder.js`). Nothing else, ever. |
+| `sd_export_files(path, bytes, sha256)` | `avatars/<name>` (names the `/avatars` route would serve) and the six scanner files and a kept CSV import (`csv-network.json`) in `TRAVELLING_FILES` (`lib/data-folder.js`). Nothing else, ever. An older file may also carry Messages & follow-ups' `social-`, `social-messages-` and `crm-<profile>.json` (removed 2026-10-19): an import accepts them and leaves them behind (`RETIRED_FILE`, `lib/data-import.js`). |
 
 An import (`lib/data-import.js`) refuses a file that is newer than the running version,
 fails `PRAGMA integrity_check`, holds any object an export never has (a view, a trigger, a

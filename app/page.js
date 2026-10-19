@@ -31,6 +31,7 @@ import { MODE_KEYS, FIRST_VIEW } from '../lib/app-tabs';
 import Tour from './components/help/Tour';
 import ClassOffer from './components/class/ClassOffer';
 import { TOUR_PARAM, TOUR_REPLAY } from '../lib/help';
+import { track, logGridChange } from '../lib/learning-client';
 
 // One shared empty list, so "no 2nd-degree data" is the same value every render.
 const NO_DEGREE2 = [];
@@ -326,6 +327,8 @@ function HomeInner() {
   // you left it. From the Shape tab and the Physics panel's Layout row alike.
   const gridBeforeDegrees = useRef(null);
   const pickGalaxyLayout = useCallback((key) => {
+    // The learning log: a shape picked (the Wi-Fi fan among them), from the Shape tab or the Physics panel.
+    track('control', 'shape', { value: key, from: layoutNow() });
     pickLayout(key);
     if (showsEveryDegree(key)) {
       // Coming from Rings, say, rather than between Degrees and the fan, whose tiers stay as you set them.
@@ -365,14 +368,23 @@ function HomeInner() {
   // per tier; off, a chip per degree. The same grid as the Filters panel, and
   // tapped with the counts, so a lit chip always goes off (degreeOn).
   const bandLegend = useMemo(() => (mode === 'network' ? bandChips(grids.network, panelCounts) : null), [mode, grids.network, panelCounts]);
-  const toggleLegendBand = useCallback((chip) => setGrids((g) => ({ ...g, network: toggleBand(g.network, chip, panelCounts) })), [panelCounts]);
-  const toggleLegendTiers = useCallback(() => setGrids((g) => ({ ...g, network: toggleTiers(g.network) })), []);
+  // Each tap goes in the learning log too, as what it switched (lib/learning-client.js logGridChange).
+  const toggleLegendBand = useCallback((chip) => setGrids((g) => {
+    const next = toggleBand(g.network, chip, panelCounts);
+    logGridChange(g.network, next, 'network');
+    return { ...g, network: next };
+  }), [panelCounts]);
+  const toggleLegendTiers = useCallback(() => setGrids((g) => {
+    const next = toggleTiers(g.network);
+    logGridChange(g.network, next, 'network');
+    return { ...g, network: next };
+  }), []);
   const notchTabs = useMemo(() => {
     if (!hasNetwork || setupOpen) return null; // none over the setup, which a network can be under (setupOpen)
     return {
       items: viewsForMode(mode).map((v) => ({ key: v.key, label: v.label, icon: v.icon, title: v.desc })),
       current: view.key,
-      onPick: setVisualMode,
+      onPick: (key) => { track('control', 'view', { value: key, where: mode }); setVisualMode(key); },
     };
   }, [mode, view.key, hasNetwork, setupOpen]);
   useNotchTabs(notchTabs);
@@ -452,7 +464,7 @@ function HomeInner() {
           visualMode={view.key}
           grid={grid}
           gridCounts={panelCounts}
-          onGridChange={(next) => setGrids((g) => ({ ...g, [gridKey]: next }))}
+          onGridChange={(next) => setGrids((g) => { logGridChange(g[gridKey], next, mode); return { ...g, [gridKey]: next }; })}
           // Network Circle's Galaxy: the Shape tab, and the Physics panel's Layout row, pick through here.
           shape={layout}
           onPickShape={pickGalaxyLayout}

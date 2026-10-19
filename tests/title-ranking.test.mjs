@@ -72,7 +72,8 @@ test('it is a setting like the others: stored, read back, a bad one refused', ()
   const db = {
     prepare: (sql) => ({
       get: () => (store.has('settings') ? { value: store.get('settings') } : undefined),
-      run: (...args) => { store.set('settings', args.find((a) => typeof a === 'string' && a.startsWith('{'))); },
+      // Only the settings row: a save also writes its change to the learning log (lib/settings.js).
+      run: (...args) => { if (/app_meta/.test(sql)) store.set('settings', args.find((a) => typeof a === 'string' && a.startsWith('{'))); },
     }),
   };
   writeSettings(db, { titleRanking: { points: { owner: 10 }, roles: [] } });

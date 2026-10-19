@@ -7,6 +7,7 @@ import { TIER_COLORS } from '../../lib/themes';
 import EdgeToggle, { useEdgePanel } from './EdgeToggle';
 import { LAB_DEFAULTS, LAYOUTS, drawsByDegree, labNow, setLab, watchLab, showsEveryDegree } from '../../lib/galaxy-lab';
 import { LINE_TIERS, cleanTierLines, toggleLineTier, isPicked, describeTierLines } from '../../lib/tier-lines';
+import { track } from '../../lib/learning-client';
 
 const PANEL_ID = 'sd-filters-panel';
 
@@ -265,7 +266,7 @@ export function TierLines() {
     );
   }
   const choice = cleanTierLines(lab.tierLines);
-  const pick = (next) => setLab({ tierLines: next });
+  const pick = (next) => { track('control', 'lines', { value: next }); setLab({ tierLines: next }); };
   const chip = { flex: 1, minWidth: 0, height: 28, padding: '0 2px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' };
   const plain = (on) => ({
     ...chip,

@@ -146,17 +146,6 @@ html:has([data-field-question]) {
 .notch-pill:focus-visible .notch-pill-tab { box-shadow: 0 0 0 2px var(--sd-blue, #3498DB); }
 @media (prefers-reduced-motion: reduce) { .notch-pill-tab { transition: none; } }
 
-/* The Social tab's CRM (app/social/Crm.js): the list and the person side by
-   side, stacked on a phone. In Pipeline the board takes the whole width and
-   the person sits under it. */
-.crm-grid { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 10px; align-items: start; }
-.crm-grid > .crm-wide { grid-column: 1 / -1; }
-.crm-board { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 10px; padding: 10px; overflow-x: auto; }
-@media (max-width: 760px) {
-  .crm-grid { grid-template-columns: minmax(0, 1fr); }
-  .crm-board { grid-template-columns: minmax(0, 1fr); }
-}
-
 /* ---- How a look draws its buttons (lib/themes.js BUTTONS; html[data-buttons]) ----
    Two ways (Blake, 2026-10-05: "for the buttons lets make frost default and have
    soft as the only other option"): frosted glass, every look's own, or soft,

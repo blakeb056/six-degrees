@@ -8,6 +8,7 @@
 import { useId, useSyncExternalStore } from 'react';
 import { Section } from '../ui';
 import { watchStrategy, strategyOnNow, strategyOnServer, setStrategyOn } from '../../../lib/strategy-client';
+import { track } from '../../../lib/learning-client';
 
 export default function ExperimentalSection() {
   const on = useSyncExternalStore(watchStrategy, strategyOnNow, strategyOnServer);
@@ -15,7 +16,7 @@ export default function ExperimentalSection() {
   return (
     <Section id="experimental" title="Experimental">
       <div data-strategy-switch="" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 8 }}>
-        <input id={id} type="checkbox" checked={on} onChange={(e) => setStrategyOn(e.target.checked)}
+        <input id={id} type="checkbox" checked={on} onChange={(e) => { track('settings', 'change', { key: 'strategyEngine', old: on, new: e.target.checked }); setStrategyOn(e.target.checked); }}
           style={{ marginTop: 3, width: 16, height: 16, accentColor: '#00c870', cursor: 'pointer' }} />
         <div style={{ minWidth: 0 }}>
           <label htmlFor={id} style={{ display: 'block', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>

@@ -14,6 +14,7 @@ import { circleIndex } from '../../lib/circle';
 import { reachIndex, reachState } from '../../lib/reach';
 import { score1 } from '../../lib/separation';
 import { TIER_ORDER } from '../../lib/tiers';
+import { logSearch } from '../../lib/learning-client';
 
 const PAGE = 60;
 const rank = (a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier)
@@ -130,7 +131,7 @@ export default function CirclePanel({ person, connections = [], degree2 = [], sc
       </div>
 
       <input type="search" value={query} placeholder={`Search ${first(person.name)}’s circle`}
-        onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
+        onChange={(e) => { setQuery(e.target.value); setShown(PAGE); logSearch('circle', e.target.value); }}
         style={{
           width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14, boxSizing: 'border-box',
           border: '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)', background: 'rgba(var(--sd-ink, 255, 255, 255), 0.05)', color: 'var(--sd-fg-1, #fff)', outline: 'none',

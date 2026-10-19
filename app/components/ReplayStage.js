@@ -19,9 +19,9 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import * as d3 from 'd3';
 import {
   replayOrder, pacePlan, lineSource, calendarAt, springAt, dashAt, popAt, fitBox, easeView, advance, clampRate,
-  stepRate, RATES, clockText, yearMarks, posOfTime, replayNow, watchReplay, setReplay, closeReplay, finishRecording,
+  stepRate, RATES, clockText, yearMarks, replayNow, watchReplay, setReplay, closeReplay, finishRecording,
 } from '../../lib/replay';
-import { LAB_DEFAULTS, labNow, watchLab, setLab, clockNow, watchClock, colourScheme, chapterAt, milestones } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, labNow, watchLab, setLab, colourScheme } from '../../lib/galaxy-lab';
 import { MAP_LOOK } from '../../lib/themes';
 import { canRecord, startRecorder, saveVideo, recordReplay, CREDIT } from '../../lib/galaxy-export';
 
@@ -441,11 +441,9 @@ function render(ctx, D, P, f) {
   const top0 = narrow ? 46 : 12;
   const t = calendarAt(D.entries, pos);
   const n1 = D.d1Upto[k], all1 = D.d1Upto[D.n];
-  const job = t != null ? chapterAt(f.social, t) : null;
   const when = t == null ? (k ? 'Before the dates' : 'You') : dateText(t, narrow);
   const parts = [when, narrow ? `${n1.toLocaleString()} connections` : `${n1.toLocaleString()} of ${all1.toLocaleString()} connections`];
   if (k > n1) parts.push(`${k.toLocaleString()} people`);
-  if (job && !narrow) parts.push(`at ${job.company}`);
   const stamp = parts.join(' · ');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
@@ -527,7 +525,6 @@ const RATE_TEXT = { 0.25: '¼×', 0.5: '½×', 1: '1×', 2: '2×', 4: '4×' };
 function Stage({ sceneRef, chain, tierColors }) {
   const rs = useSyncExternalStore(watchReplay, replayNow, replayNow);
   const lab = useSyncExternalStore(watchLab, labNow, () => LAB_DEFAULTS);
-  const social = useSyncExternalStore(watchClock, () => clockNow().social, () => undefined);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const barRef = useRef(null);
@@ -537,14 +534,14 @@ function Stage({ sceneRef, chain, tierColors }) {
     data: null, nodes: null, paint: null, paintKey: '', pos: 0, cam: null, free: false, snap: true, dirty: true, settled: false,
     last: 0, size: null, rec: null, frozen: null, uiAt: 0, ended: 0, seek: -1,
   });
-  const props = useRef({ chain, tierColors, lab, rs, social });
+  const props = useRef({ chain, tierColors, lab, rs });
   useEffect(() => {
-    props.current = { chain, tierColors, lab, rs, social };
+    props.current = { chain, tierColors, lab, rs };
     // Anything the picture is drawn from changed: draw it again, even paused.
     live.current.dirty = true;
   });
   const [ui, setUi] = useState({ pos: 0, free: false });
-  const [data, setData] = useState(null);   // the people as built, for the scrubber's marks
+  const [data, setData] = useState(null);   // the people as built, for the scrubber's bursts and years
   const [narrow, setNarrow] = useState(false);
   // How far the stage runs past the bottom of the window (a phone's map does), so the controls sit above it.
   const [below, setBelow] = useState(0);
@@ -657,7 +654,7 @@ function Stage({ sceneRef, chain, tierColors }) {
 
     const frame = (now) => {
       raf = requestAnimationFrame(frame);
-      const { chain: ch, tierColors: tc, lab: lb, rs: st, social: so } = props.current;
+      const { chain: ch, tierColors: tc, lab: lb, rs: st } = props.current;
       // A new start (openReplay, or a recording): from where the store says, the camera handed back.
       if (st.seek !== L.seek) {
         L.seek = st.seek;
@@ -737,7 +734,7 @@ function Stage({ sceneRef, chain, tierColors }) {
       render(ctx, D, L.paint, {
         w, h, dpr, cam: L.cam, pos: L.pos, rate: r, k: placed.k, reduced, font, burst, discs: placed.discs, discOf: placed.discOf,
         follow: lb.replayCamera === 'follow' && !L.free,
-        cluster, labels: lb.labels !== false, lines: lb.lines ?? 1, dotSize: lb.dotSize ?? 1, social: so,
+        cluster, labels: lb.labels !== false, lines: lb.lines ?? 1, dotSize: lb.dotSize ?? 1,
       });
       if (rec) {
         rec.ctx.drawImage(canvas, 0, 0, rec.canvas.width, rec.canvas.height);
@@ -794,19 +791,18 @@ function Stage({ sceneRef, chain, tierColors }) {
 
 
   const showOpts = opts ?? !narrow;
-  // The scrubber's marks change only with the people, so they aren't redrawn as it plays.
+  // The scrubber's busy stretches and years change only with the people, so they aren't redrawn as it plays.
   const strip = useMemo(() => {
     const D = data;
-    if (!D || !total) return { bursts: [], marks: [], years: [] };
+    if (!D || !total) return { bursts: [], years: [] };
     const at = (v) => `${(v / total) * 100}%`;
     const years = [];
     for (const y of D.years) if (!years.length || (y.at - years.at(-1).at) / total > (narrow ? 0.12 : 0.07)) years.push(y);
     return {
       bursts: D.plan.bursts.map((b) => ({ key: `${b.from}-${b.size}`, size: b.size, left: at(b.from), width: at(b.to - b.from) })),
-      marks: milestones(social).map((m) => ({ ...m, at: posOfTime(D.entries, m.t) })).filter((m) => m.at != null).map((m) => ({ ...m, left: at(m.at) })),
       years: years.map((y) => ({ year: y.year, left: at(y.at) })),
     };
-  }, [data, total, social, narrow]);
+  }, [data, total, narrow]);
 
   return (
     <div ref={wrapRef} role="region" aria-label="Replay of your network growing" style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'var(--sd-page, #0a0a1a)', fontFamily: 'var(--sd-font, system-ui, sans-serif)', overflow: 'hidden' }}>
@@ -840,12 +836,6 @@ function Stage({ sceneRef, chain, tierColors }) {
                   position: 'absolute', left: b.left, width: `max(2px, ${b.width})`, bottom: 0,
                   height: `${Math.min(100, 28 + 16 * Math.log2(b.size / 6 + 1))}%`, borderRadius: 1,
                   background: 'var(--sd-accent, #3498db)', opacity: 0.5,
-                }} />
-              ))}
-              {strip.marks.map((m) => (
-                <span key={`${m.kind}-${m.t}`} style={{
-                  position: 'absolute', left: m.left, width: m.kind === 'job' ? 3 : 2, height: m.kind === 'job' ? 12 : 8, bottom: 0,
-                  transform: 'translateX(-50%)', borderRadius: 1, background: m.kind === 'job' ? '#D4AF37' : '#74B9FF',
                 }} />
               ))}
             </div>

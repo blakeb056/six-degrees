@@ -7,7 +7,7 @@ import { reframe, settle, seedAngles, galaxyChain, FULL_CIRCLE, FAN_HALF, fanSpa
 import { reachIndex, readyByCircle } from '../../lib/reach';
 import { roundSegments, RING } from '../../lib/dot-rings';
 import { personRounds } from '../../lib/scan-rounds';
-import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, loadSocial, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
+import { LAB_DEFAULTS, FORCE_KEYS, labNow, watchLab, effectiveLab, clockNow, watchClock, setClock, bornTimes, reachCounts, colourScheme, colourModeOf, drawsByDegree, findMatches, heatColour, DEGREE_COLOURS } from '../../lib/galaxy-lab';
 import { registerGalaxy } from '../../lib/galaxy-export';
 import { MAP_LOOK } from '../../lib/themes';
 import { keyFor, routeIndex } from '../../lib/separation';
@@ -22,6 +22,10 @@ import useTies from './useTies';
 import ShowTies from './ShowTies';
 import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
 import { urlKey } from '../../lib/ties';
+import { frameMeter, logHover } from '../../lib/learning-client';
+
+// The learning log's health summary for the Galaxy: the time between its frames while it moves (lib/learning-client.js).
+const galaxyFrames = frameMeter('galaxy');
 import { coalesceMs, createPainter, viewOf, moveStep, placesKey, seedPlaces, warmStart, coolingFor, createPlaces, snapshotPlaces, recallPlaces, rememberPlaces } from '../../lib/galaxy-perf';
 
 // Connection fields are attacker-reachable: /api/ingest and /api/update-images
@@ -177,14 +181,14 @@ export default function ForceGraph({ connections: givenRows, onSelect, tierColor
   const holdRef = useRef(null);
   // { id, dot, you, node, phase, reduced, ease }; once it has gone, the map moves again, unless another opened meanwhile.
   const { focus, open: startFocus, close: closeFocus, move: moveFocus, idRef: focusIdRef } = useFocus({
-    layerRef: svgRef,
+    layerRef: svgRef, where: 'galaxy',
     onGone: (next) => { if (next == null) sceneRef.current?.freeze(false); },
   });
-  const openFocus = useCallback((id) => {
+  const openFocus = useCallback((id, how = 'click') => {
     const at = sceneRef.current?.screenOf(id);
     if (!at) return;
     sceneRef.current.freeze(true);
-    startFocus(id, at);
+    startFocus(id, { ...at, how });
   }, [startFocus]);
   // What comes forward: built only while focused, from every row on file whatever the filters.
   const focusId = focus?.id ?? null;
@@ -214,7 +218,6 @@ export default function ForceGraph({ connections: givenRows, onSelect, tierColor
     sceneRef.current?.setLab({ ...effectiveLab(lab), bandBy: bandRef.current });
     const c = clockNow();
     sceneRef.current?.setFind(c.find, c.fly);
-    if (lab.on) loadSocial();
   }, [lab]);
   useEffect(() => watchClock(() => {
     const c = clockNow();
@@ -223,11 +226,10 @@ export default function ForceGraph({ connections: givenRows, onSelect, tierColor
   }), []);
 
   // The dots' colours (Colour by, in the lab): tier, or degree with Filters →
-  // Tiers off, or heat, company or warmth (colourModeOf).
+  // Tiers off, or heat or company (colourModeOf).
   // A new scheme recolours in place.
-  const social = useSyncExternalStore(watchClock, () => clockNow().social, () => undefined);
   const colourBy = colourModeOf({ ...effectiveLab(lab), bandBy });
-  const scheme = useMemo(() => colourScheme(colourBy, connections, tierColors, social), [colourBy, connections, tierColors, social]);
+  const scheme = useMemo(() => colourScheme(colourBy, connections, tierColors), [colourBy, connections, tierColors]);
   const schemeRef = useRef(scheme);
   useEffect(() => {
     schemeRef.current = scheme;
@@ -395,7 +397,7 @@ export default function ForceGraph({ connections: givenRows, onSelect, tierColor
         <div className="galaxy-chrome" style={{ position: 'absolute', bottom: 16, left: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
           {colourBy !== 'tier' && colourBy !== 'degree' && <SchemeLegend legend={scheme.legend} />}
           <BandChips legend={bandLegend} tierColors={tierColors} onToggle={onToggleBand} onTiers={onToggleTiers}
-            extra={webOff ? null : <ShowTies on={showTies} onToggle={() => setShowTies((v) => !v)} picked={selectedKey != null} count={tieList.length} ready={web.ready} />} />
+            extra={webOff ? null : <ShowTies where="galaxy" on={showTies} onToggle={() => setShowTies((v) => !v)} picked={selectedKey != null} count={tieList.length} ready={web.ready} />} />
         </div>
       ) : (
         <div className="galaxy-chrome" style={{ position: 'absolute', bottom: 20, left: 20, right: 20, pointerEvents: 'none' }}>
@@ -413,7 +415,7 @@ export default function ForceGraph({ connections: givenRows, onSelect, tierColor
   );
 }
 
-/** What the colours mean, when they're heat, company or warmth: words only, nothing to tap. */
+/** What the colours mean, when they're heat or company: words only, nothing to tap. */
 function SchemeLegend({ legend }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: 'var(--sd-fg-3, #888)' }}>
@@ -1123,7 +1125,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       select(d.id);
       onSelect(d);
       // One of your connections: their circle comes forward too.
-      if (focusApi && canFocus(d)) { intent.stop(); hideHold(); focusApi.open(d.id); }
+      if (focusApi && canFocus(d)) { intent.stop(); hideHold(); focusApi.open(d.id, 'click'); }
     });
   // Resting on one of your connections opens them as a click does, card and all.
   // A mouse or a pen only: a finger has no hover, and taps instead. One
@@ -1134,7 +1136,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
     if (!d || frozen || !focusApi) return;
     select(d.id);
     onSelect(d);
-    focusApi.open(d.id);
+    focusApi.open(d.id, 'hold');
   });
   const pointed = (event) => {
     const d = event.target?.__data__;
@@ -1179,7 +1181,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   // Moving from one dot to the next shouldn't flash the whole Galaxy back on in
   // between: the dimming lifts a moment after the pointer leaves, unless it lands on another.
   let unlight = null;
+  // The learning log: a rest of 1.5 s or more on someone's dot, summed per person (lib/learning-client.js logHover).
+  let resting = null;
   node.on('mouseover', function (event, d) {
+    resting = d.id !== CENTER_ID ? { d, at: performance.now() } : null;
     easeRadius(this, nodeRadius(d) * 1.5, isStill());
     clearTimeout(unlight);
     if (L.on && L.branch && d.id !== CENTER_ID) lightBranch(d);
@@ -1210,6 +1215,7 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
       tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 10) + 'px');
     }
   }).on('mouseout', function (event, d) {
+    if (resting?.d === d) { logHover(d, performance.now() - resting.at, 'galaxy'); resting = null; }
     easeRadius(this, nodeRadius(d), isStill());
     clearTimeout(unlight);
     unlight = setTimeout(() => {
@@ -1334,7 +1340,10 @@ function renderNetworkMode(svg, ring, box, connections, onSelect, tierColors, fo
   simulation.on('end.places', () => { paint({ all: true }); keepPlaces(0, true); });
   let tickedAt = 0;
   simulation.on('tick', () => {
-    tickedAt = performance.now();
+    const now = performance.now();
+    // Frames back to back while it moves: their gaps are its frame times (a pause between moves isn't one).
+    if (tickedAt && now - tickedAt < 1000) galaxyFrames.tick(now - tickedAt);
+    tickedAt = now;
     paint();
     if (fitArmed && simulation.alpha() < SETTLED) { fitArmed = false; fitView(); }
   });

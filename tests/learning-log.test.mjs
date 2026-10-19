@@ -195,7 +195,7 @@ test('interactions: a double click is one, each type from the pages is accepted,
     assert.equal((await twice.json()).recorded, false, `${type} twice`);
   }
   const bad = await post(learningRoute.POST, '/api/learning', { event: 'interaction', type: 'hover', id: 'zoe' });
-  assert.equal(bad.status, 400, 'hover is never logged');
+  assert.equal(bad.status, 400, 'a raw hover is never logged: rests of 1.5 s or more come summed, in a batch (tests/behavior-log.test.mjs)');
 });
 
 test('scan outcomes: each batch of a circle scan, with its tier mix on both lenses', async () => {

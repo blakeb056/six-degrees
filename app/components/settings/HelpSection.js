@@ -11,6 +11,7 @@ import { useId, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Section, Body, Mono, Btn, LINE } from '../ui';
+import { track } from '../../../lib/learning-client';
 import {
   TOUR_REPLAY_HREF, HOW_TOS, PACING_NOTES, SHORTCUTS, readHints, setHintsOff, resetHints, withKeys, isMac,
   watchHelp, hintsRawNow, nothingStored,
@@ -43,6 +44,7 @@ export default function HelpSection({ about }) {
 
       <div data-hints-switch="" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 18 }}>
         <input id={switchId} type="checkbox" checked={!hints.off} onChange={(e) => setHintsOff(!e.target.checked)}
+          onClick={(e) => track('settings', 'change', { key: 'hintsOff', old: Boolean(hints.off), new: !e.target.checked })}
           style={{ marginTop: 3, width: 16, height: 16, accentColor: '#00c870', cursor: 'pointer' }} />
         <div style={{ minWidth: 0 }}>
           <label htmlFor={switchId} style={{ display: 'block', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Show hints</label>

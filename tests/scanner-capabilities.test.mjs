@@ -67,7 +67,7 @@ test('what the pages show in each state', () => {
   assert.deepEqual(show(SCANNER_BUILT_IN), { scan: true, auto: true, manual: true, manualLocked: false, chimes: true }, 'built in: everything, as today');
   assert.deepEqual(show(BOTH), { scan: true, auto: true, manual: true, manualLocked: false, chimes: true }, 'both plugins: everything');
   assert.deepEqual(show(ONLY_MANUAL), { scan: true, auto: false, manual: true, manualLocked: true, chimes: true },
-    'manual only: Scan, the switch on and locked, Sound; no Auto scan, Auto connect, Check for new, company scans, message sync or Dev mode');
+    'manual only: Scan, the switch on and locked, Sound; no Auto scan, Auto connect, Check for new, company scans or Dev mode');
   assert.deepEqual(show(ONLY_AUTO), { scan: true, auto: true, manual: false, manualLocked: false, chimes: false },
     'auto only: no manual-mode switch, no Sound');
   assert.deepEqual(show(SCANNER_NONE), { scan: false, auto: false, manual: false, manualLocked: false, chimes: false },
@@ -87,7 +87,7 @@ test('what only the auto plugin does is refused without it, and nothing else is'
     assert.equal(capabilityRefusal(ONLY_AUTO, action), null, action);
   }
   assert.deepEqual([...AUTO_ACTIONS].sort(),
-    ['auto-start', 'company', 'connect', 'full', 'messages', 'messages-full', 'read-profiles', 'refresh']);
+    ['auto-start', 'company', 'connect', 'full', 'read-profiles', 'refresh']);
 });
 
 test('the settings the plugins decide, and the changes refused', () => {
@@ -286,8 +286,8 @@ async function started(body) {
 /** Every action only the auto plugin unlocks is refused, in plain words, and nothing runs. */
 async function autoRefused() {
   const bodies = [
-    { action: 'full' }, { action: 'refresh' }, { action: 'company', name: 'Invented Co' }, { action: 'messages' },
-    { action: 'messages-full' }, { action: 'connect', id: 'd2-pax' }, { action: 'read-profiles', batch: 10 },
+    { action: 'full' }, { action: 'refresh' }, { action: 'company', name: 'Invented Co' },
+    { action: 'connect', id: 'd2-pax' }, { action: 'read-profiles', batch: 10 },
   ];
   for (const body of bodies) {
     const res = await post(body);

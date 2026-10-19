@@ -3,8 +3,9 @@
 // Separation is what you want to do anyway." Its page, its game, its tab and the
 // old queue route went; the links that led there now go to Separation (who a
 // connection can introduce you to) or open the profile (OpenProfile.js).
-// Messages & follow-ups, which had been folded into it, is /social again, with no
-// tab. Read from the source files; nothing runs.
+// Messages & follow-ups, which had been folded into it and was /social again for
+// a while after, went too on 2026-10-19 (Blake: "I don't want Messages and
+// follow-ups"). Read from the source files; nothing runs.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -43,14 +44,33 @@ test('the page, its game, the tab and the old queue route are gone', () => {
   assert.deepEqual(pages.map(([k]) => k).filter((k) => k !== 'class'), ['paths', 'breach', 'scan', 'linkedin'], 'no tab added in its place');
 });
 
-test('the release checks no longer open /queue, and do open /class and /social', () => {
+// The pages the release checks open on the installed app, read out of the two
+// places that list them: release.yml's `for p in ...` and smoke-desktop.mjs's
+// array. "" is the map (app/page.js).
+const releasePages = () => {
+  const yml = /for p in ([^;\n]+); do/.exec(read('.github/workflows/release.yml'));
+  const smoke = /for \(const p of \[([^\]]*)\]\)/.exec(read('scripts/smoke-desktop.mjs'));
+  assert.ok(yml && smoke, 'both page lists are found');
+  return {
+    'release.yml': yml[1].trim().split(/\s+/).map((p) => p.replace(/^"(.*)"$/, '$1')),
+    'smoke-desktop.mjs': smoke[1].split(',').map((p) => p.trim().replace(/^'(.*)'$/, '$1')),
+  };
+};
+const pageFile = (p) => (p === '' ? 'app/page.js' : p.startsWith('api/') ? `app/${p}/route.js` : `app/${p}/page.js`);
+
+test('the release checks open no removed page (/queue, /social), and still open /class', () => {
   // 2.9.0's first release run failed: the installed-app check still opened /queue.
-  const yml = read('.github/workflows/release.yml');
-  const smoke = read('scripts/smoke-desktop.mjs');
-  for (const src of [yml, smoke]) {
-    assert.doesNotMatch(src, /\bqueue\b(?! is full)/, 'a page list still opens /queue');
-    assert.match(src, /class/);
-    assert.match(src, /social/);
+  for (const [where, pages] of Object.entries(releasePages())) {
+    for (const gone of ['queue', 'social']) assert.ok(!pages.includes(gone), `${where} still opens /${gone}`);
+    assert.ok(pages.includes('class'), `${where} opens /class`);
+    assert.ok(pages.includes(''), `${where} opens the map`);
+  }
+});
+
+test('every page the release checks open exists, so a removed page can\'t be left in either list', () => {
+  for (const [where, pages] of Object.entries(releasePages())) {
+    assert.ok(pages.length >= 5, `${where}: the list was read`);
+    for (const p of pages) assert.ok(exists(pageFile(p)), `${where} opens /${p}, but there is no ${pageFile(p)}`);
   }
 });
 
@@ -67,22 +87,17 @@ test('nothing in the app, lib or the desktop shell links to /queue or says Outli
   assert.doesNotMatch(read('lib/linkedin-panel.js'), /outlinkResultIn|OUTLINK_RESULT/);
 });
 
-test('Messages & follow-ups is /social again: SocialHub under the app\'s header, no tab, linked from Profile and Scan', () => {
-  const page = read('app/social/page.js');
-  assert.match(page, /import SocialHub from '\.\/SocialHub';/);
-  assert.match(page, /<AppHeader active="social" \/>\s*<SocialHub \/>/);
-  assert.match(page, /<OnboardingGate>/);
-  // Not in the public demo, as before.
-  assert.match(page, /if \(IS_DEMO\) \{[\s\S]*Not part of the demo/);
-  assert.doesNotMatch(page, /router\.replace|useRouter|\/queue/);
-  const hub = read('app/social/SocialHub.js');
-  assert.match(hub, /export default function SocialHub\(\) \{/);
-  assert.doesNotMatch(hub, /embedded/);
-  // Its doors: the Profile page's card, where the queue's card was, and the Scan page's messages sync.
-  const profile = read('app/profile/page.js');
-  assert.match(profile, /<Link href="\/social"/);
-  assert.doesNotMatch(profile, /queueStats|\/api\/queue|Queue Progress/);
-  assert.match(read('app/setup/page.js'), /<Link href="\/social"[^>]*>Messages &amp; follow-ups<\/Link>/);
+test('Messages & follow-ups is gone: no page, no route, no daily sync, and nothing links to it', () => {
+  for (const rel of ['app/social', 'app/api/social', 'app/components/SocialAutoSync.js', 'lib/social-crm.js', 'lib/social-store.js', 'lib/linkedin-export.js']) {
+    assert.equal(exists(rel), false, `${rel} is still there`);
+  }
+  const found = [];
+  for (const file of [...sources('app'), ...sources('lib'), ...sources('desktop')]) {
+    const src = read(file);
+    if (/href="\/social\b|['"`]\/social(?:['"`?#/])|\/api\/social\b/.test(src)) found.push(`${file}: /social`);
+    if (/SocialAutoSync/.test(src)) found.push(`${file}: SocialAutoSync`);
+  }
+  assert.deepEqual(found, []);
 });
 
 test('the tour, the hints and the how-tos have no Outlink step', () => {

@@ -46,6 +46,7 @@ import { usePathname } from 'next/navigation';
 import useScanner from './useScanner';
 import { panelWanted, panelLayout, scanHoldsPanel, inviteSentAction, INVITE_NOTE_MS, PANEL_BAR } from '../../lib/linkedin-panel';
 import { markRequested, hasRequest } from '../../lib/requests-client';
+import { logInteraction } from '../../lib/learning-client';
 import { scannerNow } from '../../lib/scraper-client';
 import { watchPanelCover, panelCoveredNow, notCovered } from '../../lib/panel-cover';
 import {
@@ -179,6 +180,8 @@ export default function LinkedInPanel() {
     const off = b.onInviteSent((info) => {
       const act = inviteSentAction(info, { job: scannerNow(), panel: panelNow(), person: panelPersonFor(info?.slug) });
       if (!act) return;
+      // The learning log: LinkedIn's "Invitation sent" seen in the panel (Auto's are logged by the server).
+      logInteraction('invite-detected', act.mark, { outcome: 'invitation sent', route: 'panel' });
       if (!hasRequest(act.mark)) markRequested(act.mark, { bridgeId: act.bridgeId, route: 'panel' }).catch(() => {});
       shownByJob.current = false;
       b.hide();

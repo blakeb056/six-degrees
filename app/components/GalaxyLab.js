@@ -11,12 +11,24 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import {
-  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, drawsByDegree, labNow, setLab, watchLab,
+  LAB_DEFAULTS, LAYOUTS, layoutOf, pickLayout, showsEveryDegree, drawsByDegree, labNow, setLab as setLabStore, watchLab,
   clockNow, setClock, watchClock, stopReplay,
-  layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, milestones,
+  layoutsNow, watchLayouts, saveLayout, applyLayout, forgetLayout, OWN_COLOURS,
 } from '../../lib/galaxy-lab';
 import { savePicture, recordReplay, canRecord } from '../../lib/galaxy-export';
 import { openReplay } from '../../lib/replay';
+import { track, trackSettled, logSearch } from '../../lib/learning-client';
+
+/**
+ * A change made in this panel: kept (lib/galaxy-lab.js setLab), and in the
+ * learning log once each control holds still for a second, so a dragged slider
+ * is one event at the value it stopped on. Reset is one event.
+ */
+function setLab(patch) {
+  if (patch === null) track('control', 'lab', { name: 'reset', value: null });
+  else for (const [name, value] of Object.entries(patch || {})) trackSettled('control', 'lab', { name, value }, { key: `lab/${name}` });
+  setLabStore(patch);
+}
 
 const noLayouts = [];
 
@@ -118,8 +130,6 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
   const [busy, setBusy] = useState(null);     // 'picture' | 'video' while saving
   const [note, setNote] = useState(null);
   const recordable = useSyncExternalStore(() => () => {}, canRecord, () => false);
-  const marks = clock.min != null && clock.max > clock.min
-    ? milestones(clock.social).filter((m) => m.t >= clock.min && m.t <= clock.max) : [];
   const run = async (what, job) => {
     setBusy(what);
     setNote(null);
@@ -152,7 +162,7 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
           <div style={heading}>Find</div>
           <input
             type="search" value={clock.find} placeholder="A name, company or role"
-            onChange={(e) => setClock({ find: e.target.value })}
+            onChange={(e) => { setClock({ find: e.target.value }); logSearch('galaxy-find', e.target.value); }}
             onKeyDown={(e) => { if (e.key === 'Enter') setClock({ fly: clock.fly + 1 }); }}
             style={{
               width: '100%', boxSizing: 'border-box', padding: '6px 9px', borderRadius: 6, fontSize: 11.5,
@@ -203,9 +213,10 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
           <Choice value={lab.sizeBy} options={[['power', 'Power score'], ['links', 'Links'], ['reach', 'Who hangs off them']]} onPick={(v) => setLab({ sizeBy: v })} />
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Colour by</div>
           <Choice
-            value={lab.colourBy === 'degree' ? 'tier' : lab.colourBy}
-            // Degree is Filters → Tiers off now, one switch for tier or degree (lib/galaxy-lab.js colourModeOf).
-            options={[['tier', 'Tier or degree'], ['heat', 'Heat'], ['company', 'Company'], ['warmth', 'Warmth']]}
+            value={OWN_COLOURS.includes(lab.colourBy) ? lab.colourBy : 'tier'}
+            // Degree is Filters → Tiers off now, one switch for tier or degree (lib/galaxy-lab.js colourModeOf);
+            // a Warmth in a layout saved before 2026-10-19 reads as Tier too.
+            options={[['tier', 'Tier or degree'], ['heat', 'Heat'], ['company', 'Company']]}
             onPick={(v) => setLab({ colourBy: v })}
           />
           <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
@@ -217,11 +228,6 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
           {lab.colourBy === 'heat' && (
             <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
               Power as a thermal map: the higher someone&rsquo;s score among the people showing, the hotter, and the hottest glow. Where the glow pools, powerful people cluster.
-            </div>
-          )}
-          {lab.colourBy === 'warmth' && clock.social === null && (
-            <div style={{ ...small, marginTop: -4, marginBottom: 8 }}>
-              Warmth comes from the Social tab: import your data export there first. Until then it&rsquo;s by tier.
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Which names{lab.labels ? '' : ' (Names is off)'}</div>
@@ -242,7 +248,6 @@ export default function GalaxyLab({ onPickLayout = pickLayout }) {
                 How it was built, one person at a time, in the order you connected: a line draws out from whoever each
                 one came through, you or a bridge, and each circle grows round its bridge. A busy day is slowed down and
                 a quiet year passes in a moment, so no one is skipped. Speed, the timeline and the camera are on the replay.
-                {marks.length > 0 ? ' Gold marks on its timeline are your job starts and blue ones your posts, from the Social tab.' : ''}
               </div>
               <div style={{ fontSize: 11, color: 'var(--sd-fg-3, #aab)', marginBottom: 4 }}>Show</div>
               <Choice value={lab.replayView === 'cluster' ? 'cluster' : 'person'} options={[['person', 'Each person'], ['cluster', 'Each circle']]} onPick={(v) => setLab({ replayView: v })} />

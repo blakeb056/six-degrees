@@ -62,20 +62,6 @@ _ENV_LOCAL = _load_env_local()
 # default to somebody else's deployment — that would send a user's network to
 # a server they don't control.
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
-MESSAGING_URL = "https://www.linkedin.com/messaging/"
-# The daily sync reads the top of your messages list: this many scrolls.
-MESSAGE_SCROLLS = 15
-# Full history (--messages --full-history, the Social tab's "Read my whole
-# history"): keep scrolling until the list stops growing, but never past these
-# ceilings, at the same fixed pace as everything else the scanner does.
-MESSAGE_HISTORY_SCROLLS = 60
-MESSAGE_HISTORY_MAX = 1000
-# Scrolls in a row that bring no conversation it hadn't seen: the end of the list.
-MESSAGE_HISTORY_STILL = 3
-# Seconds after each scroll for the list to load. Fixed, on purpose: the
-# scanner is slow on purpose, never made to look like a person with random waits.
-MESSAGE_WAIT = 4
-
 CONNECTIONS_URL = "https://www.linkedin.com/mynetwork/invite-connect/connections/"
 
 # Token for the deployed app's destructive API routes (see middleware.js). Sent
@@ -3945,18 +3931,6 @@ def voyager_total(payload):
     return None
 
 
-_WORDS = {"body", "text", "subject", "attributedBody", "snippet", "messages", "headline", "firstName", "lastName", "rootUrl", "artifacts", "sponsoredPreviewText", "customPronoun", "advertiserLabel"}
-
-
-def _redact_words(x):
-    """A copy of a LinkedIn response with every piece of writing and every name removed."""
-    if isinstance(x, dict):
-        return {k: ("<removed>" if k in _WORDS else _redact_words(v)) for k, v in x.items()}
-    if isinstance(x, list):
-        return [_redact_words(v) for v in x]
-    return x
-
-
 def _wire_sample(data, prefix="search"):
     if EXPERIMENT["wire"] >= WIRE_SAMPLES:
         return
@@ -3966,10 +3940,6 @@ def _wire_sample(data, prefix="search"):
             return
         folder = _home() / "wire-samples"
         folder.mkdir(parents=True, exist_ok=True)
-        if prefix == "messages":
-            # Messaging responses carry what people wrote, and their names: a sample
-            # keeps only the shape (keys, links, dates, counts), never the words.
-            raw = json.dumps(_redact_words(data))
         (folder / f"{prefix}-{int(time.time() * 1000)}.json").write_text(raw)
         EXPERIMENT["wire"] += 1
     except Exception:
@@ -4012,295 +3982,6 @@ def _wire_merge(page, profile_url, page_results, key=None):
     print(f"    LinkedIn's own data: {len(people)} people, {only_wire} not in the page text"
           + (f", list of about {total:,}" if total else ""), flush=True)
     return page_results
-
-
-_PROFILE_LINK = re.compile(r"https://www\.linkedin\.com/in/[^/?#\s\"']+")
-
-
-def _dig(x, *keys):
-    """x[k1][k2]..., or None as soon as a step isn't there."""
-    for k in keys:
-        if not isinstance(x, dict):
-            return None
-        x = x.get(k)
-    return x
-
-
-def _link_key(link):
-    """A profile link as the messages sync compares them: no query, one closing slash."""
-    return link.split("?")[0].rstrip("/") + "/" if isinstance(link, str) and "/in/" in link else None
-
-
-def voyager_conversations(payload):
-    """Conversations in a LinkedIn messaging response (experimental): per conversation,
-    everyone in it (profile links), when it was last active, unread messages, its link,
-    whether it's a group, and the newest message LinkedIn sent along with it (when,
-    from whom, and its words). Anything with a lastActivityAt and participants,
-    wherever it sits. The words are handed to the app only while Keep my messages is
-    on there (sync_messages); a wire sample never has them (_redact_words)."""
-    out = []
-    names = {}
-
-    def text_of(v):
-        return v.get("text", "") if isinstance(v, dict) else (v if isinstance(v, str) else "")
-
-    def latest_of(x):
-        # conversation.messages.elements[]: body.text, deliveredAt, and who sent it
-        # (actor.participantType.member.profileUrl, the same /in/ACoA... link the
-        # participants have, so it tells you from them).
-        msgs = x.get("messages")
-        elements = msgs.get("elements") if isinstance(msgs, dict) else msgs
-        best = None
-        for m in elements if isinstance(elements, list) else []:
-            t = _dig(m, "deliveredAt")
-            if not isinstance(t, (int, float)) or t < 1e12 or (best and t <= best["t"]):
-                continue
-            text = text_of(_dig(m, "body")).strip()
-            best = {"t": int(t), "from": _link_key(_dig(m, "actor", "participantType", "member", "profileUrl")),
-                    "text": text or None}
-        return best
-
-    def people(x):
-        found = set()
-        stack = [x]
-        while stack:
-            v = stack.pop()
-            if isinstance(v, dict):
-                pid = v.get("publicIdentifier")
-                if isinstance(pid, str) and pid and pid != "UNKNOWN":
-                    found.add(f"https://www.linkedin.com/in/{pid}/")
-                # Messaging gives a member's link as /in/ACoA… (their member id), not
-                # the /in/name link your connections list has, so their name comes
-                # along to match them up (the app keeps the match, not the name).
-                key = _link_key(v.get("profileUrl"))
-                if key:
-                    name = f"{text_of(v.get('firstName'))} {text_of(v.get('lastName'))}".strip()
-                    if name:
-                        names[key] = name
-                stack.extend(v.values())
-            elif isinstance(v, list):
-                stack.extend(v)
-            elif isinstance(v, str):
-                for m in _PROFILE_LINK.findall(v):
-                    found.add(m.rstrip("/") + "/")
-        return found
-
-    def walk(x):
-        if isinstance(x, dict):
-            at = x.get("lastActivityAt")
-            parts = [v for k, v in x.items() if "participant" in k.lower()]
-            if isinstance(at, (int, float)) and at > 1e12 and parts:
-                who = set()
-                for v in parts:
-                    who |= people(v)
-                if who:
-                    unread = x.get("unreadCount")
-                    link = x.get("conversationUrl")
-                    group = x.get("groupChat")
-                    out.append({"people": sorted(who), "at": int(at), "unread": int(unread) if isinstance(unread, (int, float)) else None,
-                                "names": {u: names[u] for u in who if u in names},
-                                "url": link if isinstance(link, str) and link.startswith("https://www.linkedin.com/messaging/") else None,
-                                "group": group if isinstance(group, bool) else None,
-                                "latest": latest_of(x)})
-            for v in x.values():
-                walk(v)
-        elif isinstance(x, list):
-            for v in x:
-                walk(v)
-    walk(payload)
-    return out
-
-
-def conversation_id(c):
-    """One conversation, however many of LinkedIn's responses mention it: its link, else who's in it."""
-    return c.get("url") or ",".join(c.get("people") or [])
-
-
-def tally_conversations(seen, convos):
-    """Add these conversations to `seen` (id -> conversation, the newest activity
-    kept) and say how many it didn't have before. The full-history read stops
-    when scrolling stops bringing new ones."""
-    new = 0
-    for c in convos:
-        k = conversation_id(c)
-        if not k:
-            continue
-        if k not in seen:
-            new += 1
-            seen[k] = c
-        elif c.get("at", 0) >= seen[k].get("at", 0):
-            seen[k] = c
-    return new
-
-
-def history_done(new_per_scroll, found, max_scrolls=MESSAGE_HISTORY_SCROLLS,
-                 max_found=MESSAGE_HISTORY_MAX, still=MESSAGE_HISTORY_STILL):
-    """Why a full-history read should stop now, or None to scroll again.
-    `new_per_scroll` is how many new conversations each scroll so far brought;
-    `found` how many there are in all."""
-    if found >= max_found:
-        return f"reached {max_found:,} conversations, the most one read takes"
-    if len(new_per_scroll) >= max_scrolls:
-        return f"reached {max_scrolls} scrolls, the most one read takes"
-    if len(new_per_scroll) >= still and not any(new_per_scroll[-still:]):
-        return "the list stopped growing: that's the whole history"
-    return None
-
-
-def sync_messages(headless=False, full_history=False):
-    """Experimental: read your LinkedIn messages list once, for the Social tab. Opens
-    Messaging in your own Chrome, scrolls the list a few times, and keeps from LinkedIn's
-    own data who each conversation is with, when it was last active, whether it has
-    unread messages, its link and who wrote last. The newest message's words (1:1 only)
-    go to the app only while Keep my messages is on there. No search budget.
-
-    full_history: keep scrolling until no new conversations load (history_done), for
-    the whole list rather than its top. Same fixed waits; opens no conversation."""
-    from playwright.sync_api import sync_playwright
-    kept = []
-    seen = {}
-    with sync_playwright() as p:
-        browser = launch_chrome(p, headless=headless)
-        page = browser.pages[0] if browser.pages else browser.new_page()
-        page.set_default_timeout(120000)
-        if not ensure_logged_in(page):
-            browser.close()
-            return
-        page.on("response", lambda r: kept.append(r) if "/voyager/api/" in r.url and "messag" in r.url.lower() else None)
-
-        def wait(seconds):
-            # Playwright hands over the responses that came in only while it's
-            # being called, so wait through it, not with time.sleep.
-            try:
-                page.wait_for_timeout(seconds * 1000)
-            except Exception:
-                time.sleep(seconds)
-
-        def read_new():
-            got = kept[:]
-            del kept[:len(got)]
-            convos = []
-            for r in got:
-                try:
-                    data = r.json()
-                except Exception:
-                    continue
-                _wire_sample(data, prefix="messages")
-                convos.extend(voyager_conversations(data))
-            return tally_conversations(seen, convos)
-
-        print("Opening your messages list" + (", to read its whole history..." if full_history else "..."))
-        try:
-            page.goto(MESSAGING_URL, wait_until="domcontentloaded")
-        except Exception:
-            pass
-        wait(6)
-        read_new()
-        scrolls = MESSAGE_HISTORY_SCROLLS if full_history else MESSAGE_SCROLLS
-        new_per_scroll = []
-        for i in range(scrolls):
-            if stop_requested() or _window_closed(page):
-                break
-            try:
-                # The list scrolls inside its own panel, not the window: find the panel
-                # that holds the conversation links and scroll that to its end.
-                page.evaluate("""() => {
-                  let l = document.querySelector('.msg-conversations-container__conversations-list, [class*="conversations-list"]');
-                  const a = document.querySelector('a[href*="/messaging/thread/"], li[class*="conversation-listitem"]');
-                  for (let e = a; !l && e; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 20) l = e;
-                  if (l) l.scrollTop = l.scrollHeight; }""")
-            except Exception:
-                pass
-            wait(MESSAGE_WAIT)
-            new_per_scroll.append(read_new())
-            if full_history:
-                print(f"  Reading the list (scroll {i + 1}, {len(seen):,} conversations so far)...", flush=True)
-                why = history_done(new_per_scroll, len(seen))
-                if why:
-                    print(f"  Stopping: {why}.", flush=True)
-                    break
-            else:
-                print(f"  Reading the list ({i + 1} of {scrolls})...", flush=True)
-        browser.close()
-    convos = list(seen.values())
-    me, people = live_people(convos)
-    groups = live_groups(convos, me)
-    print(f"  Found {len(convos)} conversations in LinkedIn's data: {len(people)} with one person, {len(groups)} groups.")
-    # The newest message's words go to the app only if Keep my messages is on
-    # there. The app checks too; this way they don't even leave the scanner.
-    keep = False
-    try:
-        r = requests.get(f"{APP_URL}/api/social", headers=app_headers(json_body=False), timeout=15)
-        keep = r.ok and ((r.json() or {}).get("social") or {}).get("keepMessages") is True
-    except Exception:
-        pass
-    if not keep:
-        for v in people.values():
-            if v.get("preview"):
-                v["preview"]["text"] = None
-    try:
-        r = requests.put(f"{APP_URL}/api/social", json={"live": people, "groups": groups}, headers=app_headers(), timeout=60)
-        got = r.json() if r.ok else {}
-        matched, unmatched = got.get("people", 0), got.get("unmatched", 0)
-        print(f"  Saved for the Social tab: {matched} of your connections, {unmatched} people who aren't connections, "
-              f"{len(groups)} groups.")
-    except Exception as e:
-        print(f"  Couldn't save them: {e}")
-
-
-def live_groups(convos, me):
-    """The messages sync's group conversations: who's in them (everyone but you,
-    with their names for the app to match to your connections; it keeps the names
-    only of people who aren't), when each was last active, unread, its link and
-    whether someone else wrote last. No words: a group's newest message isn't sent."""
-    groups = {}
-    for c in convos:
-        others = [u for u in c["people"] if u != me]
-        if len(others) < 2:
-            continue
-        k = conversation_id(c)
-        if k in groups and c["at"] <= groups[k]["last"]:
-            continue
-        latest = c.get("latest")
-        sender = latest.get("from") if latest else None
-        groups[k] = {"threadUrl": c.get("url"), "people": others,
-                     "names": {u: n for u, n in (c.get("names") or {}).items() if u in others},
-                     "last": c["at"], "unread": c["unread"],
-                     "lastFromThem": (sender != me) if sender in c["people"] else None}
-    return list(groups.values())
-
-
-def live_people(convos):
-    """The messages sync's conversations, per person: you are the one in the most
-    conversations, and only the 1:1 ones are kept. For each person, their newest
-    conversation's last activity, unread count, name (for the app to match them to
-    a connection; it keeps the match, not the name), link, who wrote last and the
-    newest message. Returns (you, {profile link: ...})."""
-    counts = {}
-    for c in convos:
-        for u in c["people"]:
-            counts[u] = counts.get(u, 0) + 1
-    me = max(counts, key=counts.get) if counts else None
-    people = {}
-    for c in convos:
-        others = [u for u in c["people"] if u != me]
-        if len(others) != 1 or c.get("group") is True:
-            continue
-        cur = people.get(others[0])
-        if cur and c["at"] <= cur["last"]:
-            continue
-        entry = {"last": c["at"], "unread": c["unread"], "name": c.get("names", {}).get(others[0]),
-                 "threadUrl": c.get("url"), "lastFromThem": None, "preview": None}
-        latest = c.get("latest")
-        # Who sent it is known only when their link is one of the two in the
-        # conversation; a link in some other form says nothing either way.
-        sender = latest.get("from") if latest else None
-        if sender in (me, others[0]):
-            from_me = sender == me
-            entry["lastFromThem"] = not from_me
-            entry["preview"] = {"t": latest["t"], "fromMe": from_me, "text": latest.get("text")}
-        people[others[0]] = entry
-    return me, people
 
 
 def _drip_wait(label, seconds):
@@ -10044,11 +9725,6 @@ Examples:
     parser.add_argument("--degrees", type=str, default=BREACH_DEGREES,
                         help=f"With --breach: which degrees the search shows, 1, 2 and 3 for 1st, 2nd and 3rd+ "
                              f"({BREACH_DEGREES} if not given: your 1st are already saved)")
-    parser.add_argument("--messages", action="store_true",
-                        help="Experimental: read your messages list once for the Social tab (who, when, unread; the newest message's words only if Keep my messages is on)")
-    parser.add_argument("--full-history", action="store_true",
-                        help=f"With --messages: keep scrolling until the whole list has loaded (at most {MESSAGE_HISTORY_SCROLLS} scrolls "
-                             f"or {MESSAGE_HISTORY_MAX:,} conversations), not just its top")
     parser.add_argument("--experimental", action="store_true",
                         help="Auto-Bridge, experimental: all-day pacing (sittings, rests, daytime only, "
                              "waits for the next scan window) and reading LinkedIn's own data beside the page text")
@@ -10231,8 +9907,6 @@ Examples:
                                       only_unfinished=args.only_unfinished)
             done = sum(1 for r in results if r.get("status") == "done")
             print(f"\nDone. {done}/{len(results)} bridges mapped.")
-        elif args.messages:
-            sync_messages(headless=args.headless, full_history=args.full_history)
         elif args.your_connections:
             scan_your_connections(headless=args.headless, again=args.again)
         elif args.breach:

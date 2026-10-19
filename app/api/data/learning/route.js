@@ -1,8 +1,9 @@
 import { getDb } from '../../../../lib/db-client';
-import { exportLog, deleteLog, logStats } from '../../../../lib/learning-log';
+import { exportLog, exportCsvZip, deleteLog, logStats } from '../../../../lib/learning-log';
 
 // Settings → Your data → Learning log: Export (one JSON file, sent back as a
-// download) and Delete learning log (every event, at once). Gated with the
+// download), Export CSV (a zip with a CSV per kind, lib/learning-log.js
+// csvByKind) and Delete learning log (every event, at once). Gated with the
 // other routes that hand over or destroy data (lib/gate.js DESTRUCTIVE_ROUTES),
 // and a POST, so it takes a click on the app's own page.
 
@@ -11,14 +12,23 @@ export async function POST(request) {
   try { body = await request.json(); } catch { /* said below */ }
   try {
     const db = getDb();
+    const day = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const name = `Sixgree learning log ${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
     if (body?.action === 'export') {
-      const data = JSON.stringify(exportLog(db));
-      const day = new Date();
-      const pad = (n) => String(n).padStart(2, '0');
-      return new Response(data, {
+      return new Response(JSON.stringify(exportLog(db)), {
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Content-Disposition': `attachment; filename="Sixgree learning log ${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}.json"`,
+          'Content-Disposition': `attachment; filename="${name}.json"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+    if (body?.action === 'export-csv') {
+      return new Response(exportCsvZip(db), {
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="${name} (CSV).zip"`,
           'Cache-Control': 'no-store',
         },
       });

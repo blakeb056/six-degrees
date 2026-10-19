@@ -177,8 +177,9 @@ belong in the network schema.
 
 ### How it shipped
 
-`app/components/MappingProgress.js`, rendered on the profile page above Queue
-Progress (since 2026-10-17, the Messages & follow-ups card). Skips are read from the scraper's `bridge-skips.json` through
+`app/components/MappingProgress.js`, rendered on the profile page under the level
+card (it sat above Queue Progress, then above the Messages & follow-ups card; both are
+gone, the second on 2026-10-19). Skips are read from the scraper's `bridge-skips.json` through
 `GET /api/scraper` — the endpoint route, as recommended, so scraper bookkeeping
 stays out of the network schema.
 
