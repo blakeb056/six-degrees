@@ -215,12 +215,7 @@ Power ranks reachability, not people.
 it, in one place: your field (the sectors you work in), how tiers are graded (on your
 network's curve or the fixed scale), and every scanned company's score.
 
-**Outlink** *(needs a scan)*. Getting introduced, as a game. Each mapped connection's
-circle offers its best five people at a time; mark invites as sent to fill the ring and
-unlock the next five. It also shows the next best moves, levels and points (from
-invites sent and people who accepted, never from browsing).
-
-**Auto** *(needs a scan)*. Next to every Connect (a person's card, Outlink), Auto sends
+**Auto** *(needs a scan)*. Next to every Connect (a person's card, Insights), Auto sends
 that one person a connection request for you, from the scanner's Chrome, without a note.
 One press, one person: never a batch, never on a timer. It asks once before the first one.
 If your networking platform wants their email address first, Auto closes that and sends
@@ -243,9 +238,9 @@ that's left, the cooldown lock, and a **Paused** list you can carry on from.
   push, pull and distance; colour by tier, degree, company or warmth; find anyone; and a
   **replay** of your network growing by the date you connected, saved as a picture or a
   video.
-- **Social** (experimental). From your own data export: who's warm, dormant or waiting
-  on a reply, and your career chapters. Message text is kept only if you turn on
-  *Keep my messages*.
+- **Messages & follow-ups** (experimental, from your Profile). From your own data
+  export: who's warm, dormant or waiting on a reply, your own notes and follow-up dates,
+  and your career chapters. Message text is kept only if you turn on *Keep my messages*.
 
 ## Latest news
 
@@ -321,7 +316,7 @@ recommends the CSV import, and has it chosen when it opens:
 - **Explore a sample network**: 150 invented connections and the 598 invented people
   they know. Click through before deciding anything.
 - **Scan my network** (optional): adds who your connections know, the only way to
-  Degrees and Outlink for your own network. It needs a scanner plugin (see *Before you
+  Degrees and Separation for your own network. It needs a scanner plugin (see *Before you
   scan* above) and Google Chrome, and it runs your own account automatically: read the
   warning above first.
 
@@ -330,18 +325,17 @@ recommends the CSV import, and has it chosen when it opens:
 | Setup | ~10 min (the file comes by email) | none | a scanner plugin, and Chrome |
 | Network Circle, Paths | ✅ | ✅ | ✅ |
 | **Degrees** (people you *haven't* met) | — | ✅ | ✅ |
-| **Outlink** (getting introduced) | — | — | ✅ |
 | Profile photos | initials | initials | ✅ |
 | Risk to your account | none | none | **yes**, see above |
 
 **The CSV is the safe path, and the one Sixgree recommends.** It's also deliberately
 the shallower one: the export only contains people you're already connected to, so
-Degrees and Outlink, the views about people you *haven't* met, have nothing to draw.
+Degrees and Separation, the views about people you *haven't* met, have nothing to draw.
 That data exists in no official export; the scanner is the only way to it, and it's
 opt-in for that reason.
 
 While the sample or a CSV is loaded, the top bar shows *Sample network ×* or *Your CSV
-×*, and Outlink and Scan are hidden. Neither is ever added to your network. The sample
+×*, and Breach and Scan are hidden. Neither is ever added to your network. The sample
 lasts as long as the app's window is open. A CSV import is kept on your computer, in the
 data folder (`csv-network.json`), so it's still there after you close the window or
 restart; click × to remove it (your `Connections.csv` itself isn't touched). Once you've

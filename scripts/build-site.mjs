@@ -365,7 +365,7 @@ export const BEFORE = [
   },
   {
     id: 'alpha-3', commits: 20, stage: 'Alpha', date: '2026-06-14', title: 'Alpha 3: who to add next',
-    text: 'A ranked list of who to add next (where Outlink began), a profile page with a level, points and milestones, and cluster cards you could open.',
+    text: 'A ranked list of who to add next (the first introductions queue), a profile page with a level, points and milestones, and cluster cards you could open.',
   },
   {
     id: 'alpha-2', commits: 25, stage: 'Alpha', date: '2026-06-12', title: 'Alpha 2: photos and clusters',

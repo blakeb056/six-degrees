@@ -2,10 +2,10 @@
 
 // The Scan page's radar (Blake, 2026-10-02: "making the scan button more
 // gamified, having the slow medium high scan option"). A round Scan button in
-// the middle, the last 24 hours' searches against the budget round the edge,
+// the middle, the scan window's search pages round the edge (lib/scan-windows.js),
 // and beside it the three speeds with what each means for the rest of the
-// budget. Speed only changes searches an hour (lib/scan-pace.js); the daily
-// budget is still the cap.
+// window. Speed only changes searches an hour (lib/scan-pace.js); the scan
+// windows are still the cap.
 //
 // While a scan runs the Scan button is a hub and the people it finds gather
 // round it as a cluster, as the map draws one (Blake, 2026-10-03: "for the
@@ -20,6 +20,7 @@ import { PACES, PACE_NAMES, paceOf, paceSeconds, searchesPerHour, durationText }
 import { ringLayout } from '../../lib/chain-layout';
 import { TIER_COLORS } from '../../lib/themes';
 import { watchScanner, scannerNow, SCANNER_UNKNOWN } from '../../lib/scraper-client';
+import { windowWords, nextWindowWords } from '../../lib/scan-windows';
 
 const SIZE = 236;
 const C = SIZE / 2;
@@ -66,12 +67,13 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
   const pace = li?.limits?.pace || 'fast';
   // Scanner settings' gentle pacing (on unless turned off): the numbers count what it adds.
   const gentle = li?.limits?.gentle !== false;
-  const daily = li?.limits?.daily || 0;
-  // Lifted for this session (lib/limits-lift.js): no limit to count against.
-  const lifted = li?.lifted === true;
-  const used = li?.unreadable ? daily : li?.searchesToday || 0;
-  const left = daily && !lifted ? Math.max(0, daily - used) : null;
-  const share = daily && !lifted ? Math.min(1, used / daily) : 0;
+  // The scan window (lib/scan-windows.js, Blake, 2026-10-17): the ring is how much of it is used.
+  // It holds lifted for this session or not, at its most then.
+  const win = li?.window || null;
+  const cap = win?.cap || 0;
+  const used = win ? win.used : 0;
+  const left = win ? win.left : null;
+  const share = cap ? Math.min(1, used / cap) : 0;
   const tone = share >= 0.9 ? '#ff6b6b' : share >= 0.6 ? '#FFD700' : '#00ff88';
   const top = -Math.PI / 2;
   const R = C - 10;
@@ -159,17 +161,15 @@ export default function ScanRadar({ li, running, scanning, disabled, label, subl
           })}
         </div>
         <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)', lineHeight: 1.6 }}>
-          {!li
-            ? <>Today&rsquo;s searches show here once the scanner can read them.</>
-            : left == null
-            ? <>Limits lifted for this session: {used} searches in the last 24 hours, and no daily limit until you quit Sixgree.</>
-            // The budget counts a rolling 24 hours (lib/linkedin-limits.js usage), not since midnight.
-            : <><b style={{ color: tone }}>{left}</b> of {daily} searches left, counting the last 24 hours
-              {left > 0 && <> · at {paceOf(pace).label}, {durationText(paceSeconds(pace, left, gentle))} to use them</>}.</>}
+          {!li || !win
+            ? <>The scan window shows here once the scanner can read it.</>
+            // "Window 1 of 2: 34 of 60 · next window opens 15:09" (lib/scan-windows.js windowLine).
+            : <><b style={{ color: tone }}>{windowWords(win)}</b> · {nextWindowWords(win)}
+              {left > 0 && <> · <b>{left}</b> {left === 1 ? 'page' : 'pages'} left, at {paceOf(pace).label} {durationText(paceSeconds(pace, left, gentle))} to use them</>}.</>}
         </div>
         <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--sd-fg-4, #778)', lineHeight: 1.55 }}>
           Fast is how the scanner has always run; Medium and Slow only add waiting, so fewer searches an hour reach
-          LinkedIn. Your searches a day stay the cap at every speed: slower spreads them out, it doesn&rsquo;t shrink them.
+          LinkedIn. The scan windows stay the cap at every speed: slower spreads them out, it doesn&rsquo;t shrink them.
           Lifting the limits for a session keeps the speed exactly as it is.
           Slower lowers the odds of a check from LinkedIn; it can&rsquo;t promise there won&rsquo;t be one.
         </div>

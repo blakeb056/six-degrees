@@ -275,10 +275,10 @@ out['degrees'] = [ns['breach_degrees'](x) for x in ['3, 2', '1,2,3', 'x', '']]`)
   assert.match(scrape, /parser\.add_argument\("--round", type=int, default=None,/);
   assert.match(scrape, /scan_company_search\(args\.breach, degrees=args\.degrees,\s+pages=BREACH_ROUND if args\.round is None else args\.round/);
   assert.match(scrape, /parser\.add_argument\("--degrees", type=str, default=BREACH_DEGREES,/);
-  assert.match(scrape, /elif args\.breach:\n\s+scan_company_search\(args\.breach, degrees=args\.degrees,\n\s+pages=BREACH_ROUND if args\.round is None else args\.round, headless=args\.headless\)/);
+  assert.match(scrape, /elif args\.breach:\n\s+scan_company_search\(args\.breach, degrees=args\.degrees,\n\s+pages=BREACH_ROUND if args\.round is None else args\.round, headless=args\.headless,\n\s+again=args\.again\)/);
 });
 
-test('the app runs a round as its own action, with either plugin, counted against the daily limit', () => {
+test('the app runs a round as its own action, with either plugin, counted in the scan window', () => {
   const route = src('app/api/scraper/route.js');
   assert.match(route, /breach: +\{ flag: '--breach', +needsName: true, label: '[^']+', searches: true \}/);
   assert.match(route, /const readsLists = [^\n]*'breach'/);
@@ -301,7 +301,7 @@ test('the tab is beside the others, for your own network, and asks LinkedIn noth
   const page = src('app/breach/page.js');
   assert.match(page, /<AppHeader active="breach"/);
   assert.doesNotMatch(page, /scraping|ConnectChoice|'connect'/i, 'no automated invites, and "scanning" only');
-  assert.match(page, /runScrape\('breach', \{ name: company, pages: round, degrees, onLog: setLog \}\)/);
+  assert.match(page, /runScrape\('breach', \{ name: company, pages: round, degrees, onLog: setLog, \.\.\.\(finished \? \{ again: true \} : \{\}\) \}\)/);
   assert.match(page, /spread over days/);
 });
 
@@ -456,7 +456,7 @@ out.update({'people': len(people), 'status': status, 'last': reach['last'], 'mor
   assert.match(r.log, /\(waiting: the window isn't on Northwind Labs's list\. Go back to it to carry on\.\)/);
 });
 
-test('a round carries on from its note, reads again from page 1 once done, and saves as the company\'s people', (t) => {
+test('a round carries on from its note, reads again from page 1 once done only when asked, and saves as the company\'s people', (t) => {
   const r = scanner(t, `
 install_browser(types.SimpleNamespace(set_default_timeout=lambda ms: None, set_default_navigation_timeout=lambda ms: None))
 calls = []
@@ -475,11 +475,17 @@ ns['scan_company_search']('Northwind  Labs', degrees='3,2', pages=5)
 out['first'] = note()
 ns['scan_company_search']('Northwind Labs', degrees='2,3', pages=10)
 ns['record_bridge_progress'](key, 'Northwind Labs', 64, False)
-ns['scan_company_search']('Northwind Labs', pages=99)
+# Every page read: nothing opens by itself (Blake, 2026-10-17); Read again from page 1 asks (--again).
+out['finished'] = getattr(ns['scan_company_search']('Northwind Labs', pages=99), 'status', None)
+out['calls_before_again'] = len(calls)
+ns['scan_company_search']('Northwind Labs', pages=99, again=True)
 out['calls'], out['after'] = calls, note()
 out['posted'] = [p['json'] for p in posted if p['url'].endswith('/api/ingest')]`);
   if (!r) return;
   assert.deepEqual(r.out.calls.map((c) => [c.start, c.max]), [[1, 5], [6, 15], [1, 10]], 'a round of pages from where the last stopped; 10 at most');
+  assert.equal(r.out.finished, 'finished', 'a finished list opens nothing unless asked');
+  assert.equal(r.out.calls_before_again, 2, 'no browser, no search, for the finished list');
+  assert.match(r.log, /Every page of the search for Northwind Labs is read already, so nothing was opened\. To read it again from page 1, for new mutual counts, press Read again from page 1\./);
   for (const c of r.out.calls) {
     assert.equal(c.key, 'breach:northwind labs:23');
     assert.equal(c.company, 'Northwind Labs');
@@ -493,7 +499,7 @@ out['posted'] = [p['json'] for p in posted if p['url'].endswith('/api/ingest')]`
     type: 'company', companyName: 'Northwind Labs', userId: null,
   });
   assert.match(r.log, /Breach: mapping Northwind Labs, pages 1 to 5 \(LinkedIn's people search for the name, 2nd, 3rd\+\)/);
-  assert.match(r.log, /A round is 5 pages, each a search counted in your daily limit, so a company is mapped over days\./);
+  assert.match(r.log, /A round is 5 pages, each a search counted in the scan window, so a company is mapped over days\./);
   assert.match(r.log, /Every page of the search for Northwind Labs was read before: reading it again from page 1/);
   assert.match(r.log, /The next round carries on from page 6\./);
 });

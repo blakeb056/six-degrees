@@ -58,7 +58,7 @@ test('the check itself would catch one', () => {
   }
 });
 
-test('the shared link keeps the rules: the panel, straight there, then counted; your browser while a scan has it; several stepped through', () => {
+test('the shared link keeps the rules: the panel, straight there, then counted; your browser while a scan has it; one at a time', () => {
   const src = fs.readFileSync(path.join(ROOT, SHARED), 'utf8');
   // Blake, 2026-10-15: Connect "took like 2-3 min to load", View profile was instant. Both are this
   // one link: the shell takes the panel to the profile at once, and the view is counted after, by the server.
@@ -67,18 +67,17 @@ test('the shared link keeps the rules: the panel, straight there, then counted; 
   assert.match(src, /fetch\('\/api\/profile-view', \{/);
   // No scanner job for a profile any more: nothing waits on a scan, the sign-in check or the gap between views.
   assert.doesNotMatch(src, /beginScrape|'outlink'/);
-  // Several: the first now, the next on "Next profile (N left)", never a burst in the panel.
-  assert.match(src, /Next profile \(\{left\} left\)/);
-  assert.match(src, /setSteps\(\{ people: list, next: 1/);
-  // Every former link uses it: the person card (Separation's connect and View profile), Paths, Insights, Outlink, Messages.
-  for (const file of ['app/components/Sidebar.js', 'app/paths/page.js', 'app/components/insights/parts.js', 'app/queue/page.js',
-    'app/components/OutlinkQuest.js', 'app/social/Crm.js']) {
+  // One profile per press: Open All and Open Top 10 went with the introductions queue (Blake, 2026-10-17).
+  assert.doesNotMatch(src, /openProfiles|Next profile|setSteps/);
+  // Every former link uses it: the person card (Separation's connect and View profile), Paths, Insights,
+  // Messages & follow-ups, and the Map's "Ask … for an intro".
+  for (const file of ['app/components/Sidebar.js', 'app/paths/page.js', 'app/components/insights/parts.js',
+    'app/social/Crm.js', 'app/components/WorldMapLayers.js']) {
     assert.match(fs.readFileSync(path.join(ROOT, file), 'utf8'), /<OpenProfile /, file);
   }
   // Connect marks the request sent as it opens, in the panel or not.
   const card = fs.readFileSync(path.join(ROOT, 'app/components/Sidebar.js'), 'utf8');
   assert.match(card, /<OpenProfile person=\{selected\}\s+title=\{second \? 'Opens their profile, to connect yourself' : undefined\}[\s\S]{0,600}onOpen=\{\(\) => \{[\s\S]{0,300}markRequested\(selected/);
-  assert.match(fs.readFileSync(path.join(ROOT, 'app/queue/page.js'), 'utf8'), /openProfiles\(toOpen, /);
 });
 
 test('no page starts a scanner job to open a profile: the server has no such action now', () => {

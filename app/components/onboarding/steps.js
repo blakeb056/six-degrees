@@ -20,7 +20,8 @@ import { loadScanNotes } from '../../../lib/scraper-client';
 import { useUser } from '../UserProvider';
 import { RISK_POINTS } from '../../../lib/scan-risk';
 import { PACE_NAMES, PACES, DEFAULT_PACE, searchesPerHour, firstCircleSeconds, paceSeconds, durationText } from '../../../lib/scan-pace';
-import { SAFE_LIMITS, RESTRICTED_AT, limitNote } from '../../../lib/search-risk';
+import { RESTRICTED_AT } from '../../../lib/search-risk';
+import { WINDOW_DEFAULTS } from '../../../lib/scan-windows';
 import { watchAllDay, allDayNow, setAllDay } from '../../../lib/experimental-client';
 import { keptCsvProblem, importLines } from '../../../lib/csv';
 import { INDUSTRIES } from '../../../lib/companies';
@@ -29,7 +30,6 @@ import { sectorByKey } from '../../../lib/sector-directory';
 import { MAX_SECTORS } from '../../../lib/sector-focus';
 import { saveField, skipField } from '../FieldStep';
 import SectorPicker from '../settings/SectorPicker';
-import { DailyLimitInput } from '../LinkedInLimits';
 import ClusterSpinner from '../ClusterSpinner';
 import { usePluginInstall, PluginCards } from '../settings/PluginBrowse';
 
@@ -39,7 +39,7 @@ import { fetchPlugins } from '../../../lib/plugins-client';
 import { Ico, Galaxy, MacSettings, ChecksArt, ConnectArt, PaceArt } from './art';
 
 // What the scanner uses when nothing is saved yet (lib/linkedin-limits.js DEFAULT_LIMITS).
-const DEFAULT_LIMITS = { ...SAFE_LIMITS, pace: DEFAULT_PACE };
+const DEFAULT_LIMITS = { daily: 50, ...WINDOW_DEFAULTS, pace: DEFAULT_PACE };
 
 /** One step's screen: its words on the left, its picture on the right. */
 export function Frame({ eyebrow, title, lede, foot, art, error, children }) {
@@ -449,15 +449,17 @@ export function Pace({ ctx }) {
     scan.setting('set-limits', { ...limits, ...change });
   }
 
-  const note = limitNote(limits);
-  const time = durationText(paceSeconds(pace, limits.daily));
+  // The scan windows (lib/scan-windows.js, Blake, 2026-10-17): a window's pages, and the most a day.
+  const windowPages = Number(limits.windowPages) || WINDOW_DEFAULTS.windowPages;
+  const windowsPerDay = Number(limits.windowsPerDay) || WINDOW_DEFAULTS.windowsPerDay;
+  const time = durationText(paceSeconds(pace, windowPages));
   return (
     <Frame
       eyebrow={stepEyebrow('pace', ctx.caps)}
       title="Set your pace"
-      lede="Every page the scanner reads is one LinkedIn search. Slower is quieter, and one daily limit stops a scan. You can change both anytime on the Scan page."
+      lede="Every page the scanner reads is one LinkedIn search. Slower is quieter, and the scan windows stop a scan. You can change both anytime on the Scan page."
       error={scan.error}
-      art={<PaceArt daily={Number(limits.daily)} pace={pace} />}
+      art={<PaceArt daily={windowPages * windowsPerDay} pace={pace} />}
       foot={<>
         <Back onClick={() => ctx.back('pace')} />
         <Spacer />
@@ -473,30 +475,20 @@ export function Pace({ ctx }) {
         ))}
       </div>
       <div className="ob-hintline">{PACE_LINE[pace]} Your first circle shows in {durationText(firstCircleSeconds(pace))}. Slower only adds waiting.</div>
-      {/* One limit (Blake, 2026-10-05): a number, the default already in it. */}
-      <label className="ob-label" htmlFor="ob-daily" style={{ marginTop: 10, display: 'block' }}>Searches a day</label>
-      <div className="ob-dailyrow" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <DailyLimitInput id="ob-daily" value={Number(limits.daily)} onSave={(n) => set({ daily: n })} />
-        {Number(limits.daily) === SAFE_LIMITS.daily && <span className="ob-hintline" style={{ margin: 0 }}>The default</span>}
+      {/* Scan windows (Blake, 2026-10-17), in place of the searches a day: said here, changed on the Scan page. */}
+      <div className="ob-label" style={{ marginTop: 10 }}>Scan windows</div>
+      <div className="ob-hintline">
+        At most {windowPages} search pages a window, {windowsPerDay === 1 ? 'one window' : `${windowsPerDay} windows`} a day, and a new
+        window only {WINDOW_DEFAULTS.windowGapHours} hours after the last began: {windowPages * windowsPerDay} a day at most, by hand or not.
+        {' '}At {PACES[pace].label}, a window&rsquo;s pages are {time} of scanning. A scan stops when the window is used and carries
+        on in the next. The Scan page can make them stricter; nothing makes them looser.
+        {' '}A real account was restricted after {RESTRICTED_AT} searches in 24 hours.
       </div>
-      {note ? (
-        <div className="ob-warn" role="status">
-          <span>{note}</span>
-          <button type="button" className="ob-btn secondary small" onClick={() => set(SAFE_LIMITS)}>Back to {SAFE_LIMITS.daily} a day</button>
-        </div>
-      ) : (
-        <div className="ob-hintline">
-          {Number(limits.daily) === SAFE_LIMITS.daily ? 'The safe default.'
-            : Number(limits.daily) < SAFE_LIMITS.daily ? 'Extra careful.' : 'Still on the safe side.'}
-          {' '}At {PACES[pace].label}, a day’s searches are {time} of scanning. The Scan page can lift the limit for one session.
-          {' '}A real account was restricted after {RESTRICTED_AT} searches in 24 hours.
-        </div>
-      )}
       {/* Auto scan only while circle scans run Automatic, never By hand (lib/scanner-capabilities.js modeChoices). */}
       {modeChoices(ctx.caps, limits.manual === true).autoScan && <button type="button" className="ob-auto" onClick={() => setAllDay(!auto)} aria-pressed={auto} id="ob-auto">
         <span>
           <div className="at">Auto scan <span className="ob-tag exp">Experimental</span></div>
-          <div className="ad">Puts an Auto scan button in the top bar. Press it and the scanner maps who they know in small rounds while the app is open: 9:00 to 18:00, within your searches a day.</div>
+          <div className="ad">Puts an Auto scan button in the top bar. Press it and the scanner maps who they know in small rounds while the app is open: 9:00 to 18:00, within the scan windows.</div>
         </span>
         <span className={`ob-toggle${auto ? ' on' : ''}`} />
       </button>}
@@ -1180,7 +1172,7 @@ export function Final({ ctx, onFinish }) {
         <div className="ob-tiles">
           <div><b>{count.toLocaleString()}</b>connections</div>
           {circles > 0 && <div><b>{circles.toLocaleString()}</b>in their circles</div>}
-          {(kind === 'auto' || kind === 'both') && <div><b>{PACES[limits.pace]?.label || 'Fast'} · {limits.daily} a day</b>your pace</div>}
+          {(kind === 'auto' || kind === 'both') && <div><b>{PACES[limits.pace]?.label || 'Fast'} · {limits.windowPages || WINDOW_DEFAULTS.windowPages} a window</b>your pace</div>}
           {kind === 'manual' && <div><b>Manual scan</b>you turn the pages</div>}
           <div><b>{sectors.length ? fieldLabel(sectors) : 'None for now'}</b>your field</div>
         </div>
