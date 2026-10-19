@@ -8,14 +8,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  scanLight, endedLight, isManualRun, lightLabel, liveFill, searchesToday, timeLeft, timeLeftText,
+  scanLight, endedLight, isManualRun, lightLabel, liveFill, scanWindowOf, timeLeft, timeLeftText,
   NO_LIGHT, LIGHT_WORDS, LIGHT_LINGER_MS,
 } from '../lib/scan-light.js';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
 const NOW = 1_800_000_000_000;
-const BUDGET = { searches: 40, cap: 120, profiles: 3, profileCap: 120, lifted: false, dev: false, devCeiling: 250, pace: 'fast' };
+// The scan window as the route sends it (lib/scan-windows.js scanWindow, 2026-10-17).
+const WINDOW = { index: 1, of: 2, used: 34, cap: 60, left: 26, open: true, full: false, waiting: false, startedAt: NOW - 3_600_000, endsAt: NOW + 18_000_000, nextOpensAt: NOW + 18_000_000, today: 1 };
+const BUDGET = { searches: 40, window: WINDOW, profiles: 3, profileCap: 50, lifted: false, dev: false, pace: 'fast' };
 
 /** A running circle scan of Invented Bridge, by hand, with these lines. */
 function manual(log, extra = {}) {
@@ -258,7 +260,7 @@ const AUTO_LOG = [
   '  Opening their connections...',
   '  Search results loaded!',
   '  About 412 results in their list: 42 pages.',
-  '  Reading from page 1 until their list ends, saving every 10 pages.',
+  "  Reading from page 1 until their list ends, saving each page as it's read.",
   '  Page 1...',
   '10 found (total: 10)',
   '  Page 2...',
@@ -292,7 +294,8 @@ test('by itself, the briefing: whose circle, page N of about M, found, the ring,
   assert.equal(s.pages, 42, 'about 42 pages, as LinkedIn counted them');
   assert.equal(s.about, 412);
   assert.equal(s.found, 120, 'people found this run');
-  assert.deepEqual(s.searches, { used: 40, limit: 120, left: 80, lifted: false, dev: false });
+  assert.deepEqual(s.window, { ...WINDOW, lifted: false, dev: false });
+  assert.equal(s.searches, undefined, 'the scan window, not searches against a daily limit');
   // The ring as lib/reach.js scanFill draws it: 20 of 412 read.
   assert.ok(Math.abs(s.fill.read - 20 / 412) < 1e-9);
   assert.equal(s.fill.words, 'about 20 of 412 scanned, about 392 to go');
@@ -344,7 +347,7 @@ test('just ended: how it ended, for a short while', () => {
   assert.equal(stopped.color, 'red');
   assert.match(stopped.detail, /^What was read is saved, and Resume/, 'not the last instruction, which is over');
   assert.equal(lightLabel(stopped), 'Red: Stopped');
-  assert.equal(endedLight({ action: 'bridge', exitCode: 0, exitKind: 'limit' }).headline, 'Stopped at today\u2019s limit');
+  assert.equal(endedLight({ action: 'bridge', exitCode: 0, exitKind: 'limit' }).headline, 'Stopped at a limit');
   assert.equal(endedLight({ action: 'bridge', exitCode: 10, exitKind: 'pushback' }).headline, 'Stopped: LinkedIn pushed back');
   assert.equal(endedLight({ action: 'bridge', exitCode: 1, exitKind: 'error', failure: ['Traceback…', 'It went wrong.'] }).detail, 'It went wrong.');
   assert.equal(endedLight({ action: 'setup', exitCode: 0, exitKind: 'ok' }), NO_LIGHT);
@@ -367,11 +370,12 @@ test('the light in words, never by colour alone', () => {
   assert.equal(new Set(Object.values(LIGHT_WORDS).map((w) => w.shape)).size, 3, 'a shape of its own for each colour');
 });
 
-test('today\'s searches: the daily limit, Dev mode\'s ceiling, or none while lifted', () => {
-  assert.deepEqual(searchesToday(BUDGET), { used: 40, limit: 120, left: 80, lifted: false, dev: false });
-  assert.deepEqual(searchesToday({ ...BUDGET, dev: true, lifted: true, searches: 300 }), { used: 300, limit: 250, left: 0, lifted: true, dev: true });
-  assert.deepEqual(searchesToday({ ...BUDGET, lifted: true }), { used: 40, limit: null, left: null, lifted: true, dev: false });
-  assert.equal(searchesToday(null), null);
+test('the scan window: as the route sent it, lifted or in Dev mode alike (the windows hold either way)', () => {
+  assert.deepEqual(scanWindowOf(BUDGET), { ...WINDOW, lifted: false, dev: false });
+  assert.deepEqual(scanWindowOf({ ...BUDGET, dev: true, lifted: true }), { ...WINDOW, lifted: true, dev: true });
+  assert.equal(scanWindowOf({ ...BUDGET, window: null }), null);
+  assert.equal(scanWindowOf({ ...BUDGET, window: { used: 'x', cap: 60 } }), null);
+  assert.equal(scanWindowOf(null), null);
 });
 
 test('the ring and the time left: nothing claimed before there is something to go by', () => {

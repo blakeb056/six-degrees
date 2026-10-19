@@ -5,17 +5,17 @@
 // handoff, 2026-10-03; Blake's 1.0 list, item 3). An account was restricted
 // once after 373 searches in 24 hours (TRAPS §16). The notch links here.
 //
-// One limit since 2026-10-05 (Blake: "Just a simple default limit for the day
-// and a button to lift restrictions for this session"): one meter, searches in
-// the last 24 hours against searches a day, with its number and "Lift limits
-// for this session" under it. The month's, the week's and the profile views'
-// meters went with their caps.
+// Scan windows since 2026-10-17 (Blake), in place of the searches a day: one
+// meter, searches in the last 24 hours against the windows' most (120 a day),
+// with the window as it stands ("Window 1 of 2: 34 of 60", and when the next
+// opens), its settings, profile views a day with their number, and "Lift limits
+// for this session" under it. The month's and the week's meters went with their caps.
 //
 // Every number is counted from the scanner's own record on this computer
 // (GET /api/scraper?usage, lib/linkedin-limits.js linkedinUsage) or is a rule
 // that says where it came from (lib/usage.js). LinkedIn publishes no limits and
 // shows no count of its own, so nothing here claims to be LinkedIn's number.
-// What it changes: searches a day, Back to 50 a day, and the lift.
+// What it changes: the scan windows, profile views a day, and the lift.
 
 import { useCallback, useEffect, useState } from 'react';
 import { Section, Body, LINE } from '../ui';
@@ -23,10 +23,10 @@ import {
   AUTO, PEOPLE_PER_SEARCH, DANGER_AT, LEVELS, usageLevel, warningParts, estimate,
   barMax, whenText, untilText, agoText, hoursText, INVITE_CAPS, REPORTED_WEEKLY_INVITES,
 } from '../../../lib/usage';
-import { RESTRICTED_AT, RISKY_DAILY, SAFE_LIMITS } from '../../../lib/search-risk';
+import { RESTRICTED_AT, RISKY_DAILY } from '../../../lib/search-risk';
 import { paceOf, searchesPerHour } from '../../../lib/scan-pace';
 import { LIMITS_CHANGED } from '../../../lib/scraper-client';
-import { DailyLimitInput, LiftLimits, LiftedTag } from '../LinkedInLimits';
+import { DailyLimitInput, LiftLimits, LiftedTag, WindowSettings, WindowLine } from '../LinkedInLimits';
 
 // Looked at again while the page is open, as the Scan page's own checks are.
 const REFRESH_MS = 30 * 1000;
@@ -219,11 +219,12 @@ export default function UsageSection() {
   const dev = u.dev === true;
   const day = u.searchesToday;
   const level = usageLevel({ cooldown: u.cooldown, searchesDay: day, lastPushback: u.lastPushback, searchesSincePushback: u.searchesSincePushback, now });
-  // The level's warning, then the limit's own note when it invites trouble whatever has been
-  // used; the 373 said once between them (lib/usage.js warningParts).
-  const warnings = warningParts(level, { searchesDay: day, cooldown: u.cooldown, lastPushback: u.lastPushback, now }, limits);
-  const aboveSafe = limits.daily > SAFE_LIMITS.daily;
-  const left = estimate({ leftDay: u.leftToday, paused: Boolean(u.cooldown) });
+  // The level's warning (lib/usage.js warningParts).
+  const warnings = warningParts(level, { searchesDay: day, cooldown: u.cooldown, lastPushback: u.lastPushback, now });
+  const win = u.window || null;
+  // The most the windows let through in a day (lib/scan-windows.js): 120 by default.
+  const dayMost = win ? win.cap * win.of : null;
+  const left = estimate({ leftDay: u.searchesLeft, paused: Boolean(u.cooldown) });
   const pace = paceOf(limits.pace);
   const push = u.lastPushback;
   // The limits came back by themselves: LinkedIn pushed back after the lift (lib/linkedin-limits.js sessionLift).
@@ -232,17 +233,11 @@ export default function UsageSection() {
   // The 24-hour bar's colour is its count's own level, so a pause elsewhere doesn't redden it.
   const dayLevel = usageLevel({ searchesDay: day });
   const dayTicks = [
-    { at: SAFE_LIMITS.daily, label: String(SAFE_LIMITS.daily), title: 'The default limit' },
     { at: RISKY_DAILY, label: String(RISKY_DAILY), title: 'Above this is risky', color: '#FF8C42' },
     { at: RESTRICTED_AT, label: String(RESTRICTED_AT), title: 'A real account was restricted here', color: '#ff6b6b' },
   ];
-  if (!lifted && limits.daily && !dayTicks.some((t) => t.at === limits.daily)) {
-    dayTicks.push({ at: limits.daily, label: `${limits.daily} yours`, title: 'Your daily limit', color: 'var(--sd-blue, #3498DB)' });
-  }
-  if (dev && u.devCeiling) {
-    dayTicks.push({ at: u.devCeiling, label: `${u.devCeiling} ceiling`, title: 'Dev mode’s ceiling', color: 'var(--sd-gold, #FFD700)' });
-  } else if (lifted && u.ceiling) {
-    dayTicks.push({ at: u.ceiling, label: `${u.ceiling} ceiling`, title: 'The ceiling lifted limits keep', color: 'var(--sd-gold, #FFD700)' });
+  if (dayMost && !dayTicks.some((t) => t.at === dayMost)) {
+    dayTicks.push({ at: dayMost, label: `${dayMost} most`, title: 'The most the scan windows let through in a day', color: 'var(--sd-blue, #3498DB)' });
   }
   const dayMax = barMax(day, dayTicks.map((t) => t.at));
   const views = u.profilesToday;
@@ -264,13 +259,6 @@ export default function UsageSection() {
           border: `1px solid ${(LEVELS[level] || LEVELS.unknown).color}55`,
         }}>
           {warnings.map((text, i) => <div key={i} style={{ marginTop: i ? 6 : 0 }}>{text}</div>)}
-          {aboveSafe && (
-            <button onClick={() => change({ action: 'set-limits', daily: SAFE_LIMITS.daily })} disabled={saving} style={{
-              marginTop: 9, padding: '6px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 650,
-              cursor: saving ? 'not-allowed' : 'pointer', background: 'rgba(255,215,0,0.08)',
-              color: 'var(--sd-gold, #FFD700)', border: '1px solid rgba(255,215,0,0.4)',
-            }}>{saving ? 'Saving…' : `Back to ${SAFE_LIMITS.daily} a day`}</button>
-          )}
         </div>
       )}
       {backAfterPushback && (
@@ -280,26 +268,18 @@ export default function UsageSection() {
       )}
       {error && <Body style={{ color: 'var(--sd-red, #ff7676)' }}>{error}</Body>}
 
-      <Meter title="Searches in the last 24 hours" used={day} of={dev ? `of ${u.devCeiling}, Dev mode’s ceiling` : lifted ? (u.ceiling ? `of ${u.ceiling}, the ceiling lifted limits keep` : '· no limit for this session') : `of ${limits.daily} a day`}
+      <Meter title="Searches in the last 24 hours" used={day} of={dayMost ? `of ${dayMost} a day at most, in the scan windows` : ''}
         max={dayMax} color={(LEVELS[dayLevel] || LEVELS.unknown).color} ticks={dayTicks}>
-        {u.unreadable ? null : dev
-          ? u.devFreesAt
-            ? <>Dev mode&rsquo;s ceiling of {u.devCeiling} is reached. The next one frees {whenAndUntil(u.devFreesAt, now)}.</>
-            : <>Dev mode: scans don&rsquo;t stop at {limits.daily}, but never pass {u.devCeiling} in 24 hours ({plural(u.devLeftToday, 'search', 'searches')} left), until you turn it off in Scanner settings, or LinkedIn pushes back.</>
-          : lifted
-          ? u.ceilingFreesAt
-            ? <>The ceiling lifted limits keep, {u.ceiling} in 24 hours, is reached. The next one frees {whenAndUntil(u.ceilingFreesAt, now)}.</>
-            : <>Lifted for this session: scans don&rsquo;t stop at {limits.daily} until you put the limits back or quit Sixgree, but never pass {u.ceiling ?? 250} in 24 hours{u.ceilingLeftToday != null ? <> ({plural(u.ceilingLeftToday, 'search', 'searches')} left)</> : null}.</>
-          : u.dayFreesAt
-            ? <>Your {limits.daily} a day are used. The next one frees {whenAndUntil(u.dayFreesAt, now)}.</>
-            : <>{plural(u.leftToday, 'search', 'searches')} left today{u.cooldown ? ', once the pause ends' : ''}.</>}
+        {/* The scan window as it stands, lifted or not (lib/scan-windows.js): "Window 1 of 2: 34 of 60" and when the next opens. */}
+        {u.unreadable ? null : win && <>
+          <b><WindowLine window={win} /></b>.{' '}
+          {win.waiting ? 'Scans wait for it, and carry on from the same page then.' : `${plural(win.left, 'search page', 'search pages')} left in this window${u.cooldown ? ', once the pause ends' : ''}.`}
+          {lifted ? ' Lifted or in Dev mode, the windows stay at their most, which nothing passes.' : ''}
+        </>}
         {u.dayClearAt && <> All clear {whenAndUntil(u.dayClearAt, now)}, when the newest of these turns 24 hours old.</>}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px 12px', flexWrap: 'wrap', marginTop: 10 }}>
-          <label htmlFor="usage-daily" style={{ fontSize: 13, fontWeight: 650, color: 'var(--sd-fg-1, #e8e8ee)' }}>Searches a day</label>
-          <DailyLimitInput id="usage-daily" value={limits.daily} onSave={(daily) => change({ action: 'set-limits', daily })} />
-          <span style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)' }}>
-            {SAFE_LIMITS.daily} is the default{limits.daily > RISKY_DAILY ? `; over ${RISKY_DAILY} is risky` : ''}.
-          </span>
+          <span style={{ fontSize: 13, fontWeight: 650, color: 'var(--sd-fg-1, #e8e8ee)' }}>Scan windows</span>
+          <WindowSettings limits={limits} disabled={saving} onSave={(change2) => change({ action: 'set-limits', ...change2 })} />
         </div>
         <div style={{ marginTop: 10 }}>
           <LiftLimits lifted={lifted} dev={dev} disabled={saving}
@@ -311,10 +291,17 @@ export default function UsageSection() {
             </div>
           )}
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px 12px', flexWrap: 'wrap', marginTop: 10 }}>
+          <label htmlFor="usage-daily" style={{ fontSize: 13, fontWeight: 650, color: 'var(--sd-fg-1, #e8e8ee)' }}>Profile views a day</label>
+          <DailyLimitInput id="usage-daily" value={limits.daily} onSave={(daily) => change({ action: 'set-limits', daily })} />
+          <span style={{ fontSize: 12, color: 'var(--sd-fg-4, #778)' }}>
+            {Number.isFinite(views) ? <b>{count(views)}</b> : '?'}{lifted ? '' : ` of ${limits.daily}`} in the last 24 hours
+            {lifted ? ', no limit on them while lifted' : ''}.
+          </span>
+        </div>
         <div style={small}>
-          Profile views (each circle scan opens the person&rsquo;s profile once) count against the same number:
-          {' '}{Number.isFinite(views) ? <b>{count(views)}</b> : '?'}{lifted ? '' : ` of ${limits.daily}`} in the last 24 hours, never closer
-          together than {pace.profileGap} seconds at {pace.label}.
+          Profile views (a circle scan opens the person&rsquo;s profile once to find their list) aren&rsquo;t in the
+          windows: they have their own number, and are never closer together than {pace.profileGap} seconds at {pace.label}.
           {' '}{RESTRICTED_AT} searches is where a real account was restricted, on Sep 28, 2026, with searches run back to back;
           {' '}{DANGER_AT} (60% of that) or more shows as too close.
         </div>
@@ -331,14 +318,12 @@ export default function UsageSection() {
         <Row label="Can still map">
           {u.unreadable
             ? <>Can&rsquo;t tell until the record of searches can be read.</>
-            : lifted
-            ? <>As many as a scan reaches at its pace: there&rsquo;s no daily limit for this session.</>
             : u.cooldown
             ? <>No one until the pause ends.</>
             : !left || left.searches === 0
-            ? <>No one for now: today&rsquo;s {limits.daily} are used.</>
+            ? <>No one for now: the scan window is used{win?.nextOpensAt ? <>, and the next opens {whenAndUntil(win.nextOpensAt, now)}</> : null}.</>
             : <>
-              About {count(left.people)} people today: {plural(left.searches, 'search', 'searches')} left, at about {PEOPLE_PER_SEARCH} people a search.
+              About {count(left.people)} people in this window: {plural(left.searches, 'search', 'searches')} left, at about {PEOPLE_PER_SEARCH} people a search.
               <span style={{ color: 'var(--sd-fg-4, #778)' }}> An estimate: a page of results shows up to 10 people, and the last page of a list is usually short.</span>
             </>}
         </Row>
@@ -355,7 +340,7 @@ export default function UsageSection() {
             </>}
         </Row>
         <Row label="Auto scan">
-          Auto scan uses the same searches a day, and waits for it to free up instead of stopping. Its own pacing on top:
+          Auto scan uses the same scan windows, and stops when the window is used. Its own pacing on top:
           {' '}only from {hoursText(AUTO.hours)} on this computer&rsquo;s clock,
           {' '}{AUTO.sittingRest === 3600 ? 'an hour’s rest' : `a ${AUTO.sittingRest / 60}-minute rest`} after every {AUTO.sitting} searches,
           {' '}and {AUTO.pushbackRest / 86400} days off after any check from LinkedIn.

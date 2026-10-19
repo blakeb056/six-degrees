@@ -35,5 +35,5 @@ Sixgree itself stays free, and it doesn't need Premium to work: your own connect
 ## Without Premium
 
 - Map your most important circles first (S and A tiers), in small rounds, early in the month.
-- Keep the default daily limit and Medium or Slow speed; see [Is scanning your network against the rules?](/blog/network-scanning-rules-and-risk/).
+- Keep the scan windows at their defaults and Medium or Slow speed; see [Is scanning your network against the rules?](/blog/network-scanning-rules-and-risk/).
 - Import the official Connections.csv export for your first degree at no search cost: [how to export it](/blog/export-network-connections/).

@@ -19,7 +19,7 @@ import {
   readCooldown, budgetFileProblem, mergeBudgetFiles, writeLimits,
 } from '../lib/linkedin-limits.js';
 import { putLimitsBack } from '../lib/limits-lift.js';
-import { RESTRICTED_AT, limitNote, riskyDaily } from '../lib/search-risk.js';
+import { RESTRICTED_AT } from '../lib/search-risk.js';
 import { PYTHON, noPython } from './python.mjs';
 import { SCRAPER, noScanner } from './helpers/scanner.mjs';
 
@@ -111,7 +111,7 @@ test('every level\'s warning is a plain sentence with its numbers, and ok has no
   assert.equal(levelWarning('ok', {}), null);
   assert.match(levelWarning('danger', { searchesDay: 250, now }), /250 searches in the last 24 hours\. A real account was restricted after 373\./);
   assert.match(levelWarning('risky', { searchesDay: 120 }), /More than 100 .* 250 to 350/);
-  assert.match(levelWarning('above-default', { searchesDay: 60 }), /More than the default 50/);
+  assert.match(levelWarning('above-default', { searchesDay: 60 }), /More than 50 searches in the last 24 hours/);
   assert.match(levelWarning('paused', { cooldown: { until: now + DAY * 1000, reason: 'LinkedIn pushed back: a security check' }, now }),
     /^Scanning is paused until .*\. LinkedIn pushed back: a security check\. Nothing that searches/);
   assert.match(levelWarning('paused', { cooldown: { until: now + H * 1000, reason: 'two people in a row with no clear answer' } }), /\. Two people in a row/);
@@ -123,7 +123,7 @@ test('every level\'s warning is a plain sentence with its numbers, and ok has no
   }
 });
 
-test('the warning names the 373 once, whatever the level and the budget', () => {
+test('the warning is the level\'s alone, and names the 373 at most once', () => {
   const now = Date.UTC(2026, 9, 3, 18);
   const states = [
     ['above-default', { searchesDay: 72 }],
@@ -134,24 +134,14 @@ test('the warning names the 373 once, whatever the level and the budget', () => 
     ['unknown', { searchesDay: null }],
     ['ok', { searchesDay: 10 }],
   ];
-  const budgets = [{ daily: 50 }, { daily: 100 }, { daily: 200 }, { daily: 500 }];
   for (const [level, facts] of states) {
-    for (const limits of budgets) {
-      const said = warningParts(level, { ...facts, now }, limits).join(' ');
-      const times = said.split(`restricted after ${RESTRICTED_AT}`).length - 1;
-      assert.ok(times <= 1, `${level} at ${facts.searchesDay} with ${JSON.stringify(limits)}: said ${times} times`);
-      // A risky budget still gets the rest of its note.
-      if (limits.daily > 100) assert.match(said, new RegExp(`${limits.daily} a day can use up`), `${level} ${limits.daily}`);
-      if (riskyDaily(limits.daily)) assert.match(said, new RegExp(`restricted after ${RESTRICTED_AT}`), `${level}: said once, not dropped`);
-    }
+    const parts = warningParts(level, { ...facts, now });
+    assert.deepEqual(parts, [levelWarning(level, { ...facts, now })].filter(Boolean), level);
+    const times = parts.join(' ').split(`restricted after ${RESTRICTED_AT}`).length - 1;
+    assert.ok(times <= 1, `${level} at ${facts.searchesDay}: said ${times} times`);
+    // The scan windows (2026-10-17) took the searches a day away, and its note with it.
+    assert.doesNotMatch(parts.join(' '), /a day can use up/, level);
   }
-  // The danger case from the lead's review: the count's warning says it, so the note doesn't again.
-  assert.deepEqual(warningParts('danger', { searchesDay: 248, now }, { daily: 500 }), [
-    levelWarning('danger', { searchesDay: 248, now }),
-    '500 a day can use up a free account\'s month in a day or two.',
-  ]);
-  // On its own the note says it whole.
-  assert.match(limitNote({ daily: 500 }), /^A real account was restricted after 373 searches in 24 hours\. 500 a day/);
 });
 
 // ── estimate, scales, words ──────────────────────────────────────────────────
@@ -226,10 +216,12 @@ test('the usage report counts the record, and says when things free up', () => {
   assert.equal(u.now, now);
   assert.deepEqual([u.searchesLastHour, u.searchesToday], [5, 30], 'the sixth is exactly an hour old');
   for (const gone of ['searchesMonth', 'leftMonth', 'monthResets', 'searchesWeek']) assert.equal(u[gone], undefined, `${gone}: no month or week any more`);
-  assert.equal(u.leftToday, 0);
-  assert.equal(u.dayFreesAt, freesAt(searches, now, 10));
+  // The scan window (lib/scan-windows.js): the 30 of the last five hours are window 1, opened by the
+  // oldest of them, and the next opens 6 hours after it. Profile views a day are their own number.
+  assert.deepEqual([u.window.index, u.window.used, u.window.cap, u.searchesLeft], [1, 30, 60, 30]);
+  assert.equal(u.windowOpensAt, (s - 30 * 600 + 6 * 3600) * 1000);
   assert.equal(u.dayClearAt, (s - 600 + DAY) * 1000);
-  assert.equal(u.profilesFreeAt, (s - 10 * 120 + DAY) * 1000, 'the same daily number: the oldest of the ten');
+  assert.equal(u.profilesFreeAt, (s - 10 * 120 + DAY) * 1000, 'profile views a day: the oldest of the ten');
   assert.equal(u.lastPushback, null);
   assert.equal(u.searchesSincePushback, 0);
   // The Scan page's own numbers are the same ones.
@@ -242,12 +234,12 @@ test('a record that can\'t be read gives no counts, never zeros', () => {
   const dir = scratch();
   write(dir, 'linkedin-activity.json', '{"searches": [1, 2');
   const u = linkedinUsage(dir);
-  for (const k of ['searchesToday', 'profilesToday', 'searchesLastHour', 'dayFreesAt', 'dayClearAt', 'profilesFreeAt', 'searchesSincePushback']) {
+  for (const k of ['searchesToday', 'profilesToday', 'searchesLastHour', 'windowOpensAt', 'dayClearAt', 'profilesFreeAt', 'searchesSincePushback']) {
     assert.equal(u[k], null, k);
   }
   assert.equal(u.unreadable, true);
   assert.equal(usageLevel({ searchesDay: u.searchesToday }), 'unknown');
-  assert.equal(JSON.parse(JSON.stringify(u)).leftToday, 0, 'the scanner counts the day as used');
+  assert.equal(JSON.parse(JSON.stringify(u)).searchesLeft, 0, 'the scanner counts the window as used');
   rmSync(dir, { recursive: true, force: true });
 });
 

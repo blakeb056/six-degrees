@@ -483,7 +483,7 @@ function ScoringSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// FEATURES GRID — Paths, Outlink, XP
+// FEATURES GRID: Paths, Separation, Network Level, Bridge Clusters
 // ═══════════════════════════════════════════════════════════════
 function FeaturesGrid() {
   const [ref, inView] = useInView();
@@ -497,20 +497,20 @@ function FeaturesGrid() {
       stat: `${SAMPLE_STATS.companies} companies in the sample`,
     },
     {
-      title: 'Outlink',
-      subtitle: 'Strategic Action Queue',
-      desc: 'Your curated list of high-value D2 connections to request. Grouped by bridge, filtered by tier, with batch-open for efficient networking.',
+      title: 'Separation',
+      subtitle: 'Every Way In',
+      desc: 'Everyone past your connections, ranked, with every way in: which of your connections knows them, and how many do.',
       color: '#FF6B35',
       icon: '🚀',
-      stat: `${SAMPLE_STATS.recommendations} recommendations in the sample`,
+      stat: `${SAMPLE_STATS.people - SAMPLE_STATS.degree1} people past your connections in the sample`,
     },
     {
-      title: 'XP System',
-      subtitle: 'Gamified Networking',
-      desc: 'Earn XP for every outreach sent and connection accepted. Higher tier connections = more points. Level up your networking game.',
+      title: 'Network Level',
+      subtitle: 'Network Power',
+      desc: 'Your network gets a level from its tiers, its mapped circles and its catalysts. Map more circles, and it climbs.',
       color: '#FFD700',
       icon: '⚡',
-      stat: 'S-Tier = 25 XP',
+      stat: 'S-Tier connection = 100 power',
     },
     {
       title: 'Bridge Clusters',

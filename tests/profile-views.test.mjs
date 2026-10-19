@@ -151,7 +151,7 @@ out.update(status=status, budget=reach.get('budget'), opened=page.opened, views=
   assert.equal(r.out.views, 50, 'nothing charged');
   assert.deepEqual(r.out.files, [], 'no progress, skip or unclear note about them');
   assert.equal(r.out.left, 0);
-  assert.match(r.out.message, /^Today's limit of 50 profile views is used — it counts the last 24 hours\. The next one frees up at .+\. No profile was opened/);
+  assert.match(r.out.message, /^Today's limit of 50 profile views is used: it counts the last 24 hours\. The next one frees up at .+\. No profile was opened/);
 });
 
 test('the cap is the Scan page\'s searches a day, and a view more than a day old counts no more', (t) => {
@@ -262,7 +262,7 @@ out.update(results=results, opened=[u for u, _ in page.opened], files=written(),
   assert.deepEqual(r.out.files, ['bridge-skips.json']);
   assert.deepEqual(r.out.skips, ['https://www.linkedin.com/in/ada-quill-0000/'], 'only Ada, whose profile opened');
   assert.equal(r.out.views, 10);
-  assert.match(r.log, /Searches: 0 of 10 a day used, counting the last 24 hours/);
+  assert.match(r.log, /Scan window 1 of 2: 0 of 60 search pages \(the next page opens it\); 0 in the last 24 hours/);
   assert.match(r.log, /Profile views: 9 of 10 in the last 24 hours, at least 60s apart/);
   assert.match(r.log, /Today's limit of 10 profile views is used/);
   assert.match(r.log, /Stopped early \(today's profile views\): 0 bridged \/ 1 hidden \/ 0 failed or unclear/);
@@ -304,14 +304,14 @@ test('a daily number of 0 or nonsense reads as the default; profile views are ne
 got = []
 for value in (0, -3, 'lots', None, 2.5, True, 1001, 25, 1000):
     limits(daily=value)
-    got.append(ns['search_limits']())
+    got.append(ns['profile_views_a_day']())
 # A file from before 2026-10-05: its own profile-view cap is ignored.
 limits(daily=200, monthly=250, profiles=10)
-out.update(got=got, old=ns['search_limits']())`);
+out.update(got=got, old=ns['profile_views_a_day']())`);
   if (!r) return;
-  assert.deepEqual(r.out.got.map((l) => l.daily), [50, 50, 50, 50, 50, 50, 50, 25, 1000]);
-  assert.ok(r.out.got.every((l) => l.profiles === l.daily), 'one number for both');
-  assert.deepEqual(r.out.old, { daily: 200, profiles: 200 });
+  // The daily number is profile views a day (search pages are the scan windows', 2026-10-17).
+  assert.deepEqual(r.out.got, [50, 50, 50, 50, 50, 50, 50, 25, 1000]);
+  assert.equal(r.out.old, 200);
 });
 
 test('re-mapping waits out the minute before deleting, and Stop during it deletes nothing', (t) => {
@@ -376,21 +376,21 @@ out.update(ok=ok, waited=round(clock.t - start), hour=datetime.fromtimestamp(clo
   assert.deepEqual(r.out, { ok: true, waited: 12 * 3600, hour: 9 });
 });
 
-test('experimental pacing: at the daily budget it waits for the oldest search to age out, then goes on', (t) => {
+test('experimental pacing: with the scan window used it waits for the next window, then goes on', (t) => {
   const r = run(t, `
 from datetime import datetime
 clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
-limits(daily=50)
-record(searches=[clock.t - 23 * 3600 + i for i in range(50)])
+record(searches=[clock.t - 5 * 3600 + i for i in range(60)])
 ns['EXPERIMENT'].update(on=True, pages=0)
 start = clock.t
 ok = ns['_drip_before_search']()
 out.update(ok=ok, waited=round(clock.t - start), left=ns['searches_left']()[0])`);
   if (!r) return;
   assert.equal(r.out.ok, true);
+  // The window began five hours ago: the next opens in an hour.
   assert.ok(r.out.waited >= 3600 && r.out.waited < 3700, `waited ${r.out.waited}s`);
-  assert.ok(r.out.left >= 1);
-  assert.match(r.log, /Today's searches are used\. Carrying on at \d\d:\d\d\./);
+  assert.equal(r.out.left, 60, 'a whole new window');
+  assert.match(r.log, /The scan window is used\. Carrying on at \d\d:\d\d\./);
 });
 
 test('LinkedIn\'s own data: people and the list total from a response, wherever they sit', (t) => {
@@ -412,12 +412,12 @@ out['counts'] = [ns['mutual_count_text'](s) for s in ('23 mutual connections', '
   assert.deepEqual(r.out.counts, [23, 1, 2, null]);
 });
 
-test('experimental pacing: Auto scan uses the same daily limit, with no 40 a day of its own', (t) => {
+test('experimental pacing: Auto scan uses the same scan windows, with no 40 a day of its own', (t) => {
   const r = run(t, `
 from datetime import datetime
 clock.t = datetime(2026, 9, 21, 12, 0).timestamp()
 limits(daily=100)
-record(searches=[clock.t - 60 * i for i in range(1, 61)])   # 60 today: past the old 40, under 100
+record(searches=[clock.t - 60 * i for i in range(1, 51)])   # 50 in the window: past the old 40, under 60
 ns['EXPERIMENT'].update(on=True, pages=0)
 start = clock.t
 ok = ns['_drip_before_search']()
@@ -427,9 +427,10 @@ out.update(ok=ok, waited=round(clock.t - start), caps=[k for k in ('AUTO_DAY_CAP
 });
 
 // ── Lifted for this session (Blake, 2026-10-05) ─────────────────────────────
-// The daily limit and the cooldown are off; the pace and the stops are not.
+// Profile views a day and the cooldown are off; the pace, the stops and the scan
+// windows (2026-10-17) are not.
 
-test('lifted: the day\'s limit doesn\'t stop a circle scan, and profiles still open at least a minute apart', (t) => {
+test('lifted: profile views a day don\'t stop a circle scan, the window holds, and profiles still open at least a minute apart', (t) => {
   const r = run(t, `
 limits(daily=10)
 record(profiles=[NOW - 20] + [NOW - 600 * i for i in range(1, 30)], searches=[NOW - 30 * i for i in range(1, 40)])
@@ -438,8 +439,8 @@ out.update(status=status, opened=page.opened, left=[ns['searches_left']()[0], ns
            lifted=ns['limits_lifted']())`, { lifted: true });
   if (!r) return;
   assert.equal(r.out.lifted, true);
-  // No daily limit on searches or profile views; searches stop at the ceiling the lift keeps (2026-10-16).
-  assert.deepEqual(r.out.left, [250 - 39, true], 'no daily limit on searches or profile views, up to the ceiling of 250');
+  // No limit on profile views a day; search pages stop at the window, lifted or not (2026-10-17).
+  assert.deepEqual(r.out.left, [60 - 39, true], 'the window\'s 60 less its 39 (their list never opened); no limit on profile views');
   assert.equal(r.out.status, 'private', 'it opened, 30 views over a limit of 10');
   assert.equal(r.out.opened.length, 1);
   assert.ok(r.out.opened[0][1] - (1790000000 - 20) >= 60, 'the minute between profile views holds');
@@ -465,7 +466,7 @@ out.update(paced=paced, ok=ok, rest=rest, night=round(clock.t - start))`, { lift
   if (!r) return;
   assert.deepEqual(r.out.paced, ['slow', 90, 300, 120], 'the same waits as with the limits on');
   assert.equal(r.out.ok, true);
-  assert.equal(r.out.rest, 3600, 'the rest after a sitting, and no wait for the daily limit');
+  assert.equal(r.out.rest, 3600, 'the rest after a sitting, and no wait for profile views a day');
   assert.equal(r.out.night, 12 * 3600, 'searches only from 09:00');
 });
 
@@ -510,10 +511,10 @@ ns['_listen_for_limits']()
 real.sleep(0.3)
 out.update(first=first, lifted=lifted, back=[ns['limits_lifted'](), ns['searches_left'](NOW)[0]])`);
   if (!r) return;
-  assert.equal(r.out.first, 0);
-  assert.deepEqual(r.out.lifted, [true, 250 - 3], 'lifted: no daily limit, up to the ceiling of 250');
-  assert.deepEqual(r.out.back, [false, 0]);
-  assert.match(r.log, /Limits lifted for this session: no daily limit or cooldown\. The pace stays\./);
+  assert.equal(r.out.first, 57);
+  assert.deepEqual(r.out.lifted, [true, 57], 'lifted: the scan window holds, at its 60');
+  assert.deepEqual(r.out.back, [false, 57]);
+  assert.match(r.log, /Limits lifted for this session: no limit on profile views a day and no cooldown\. The scan windows and the pace stay\./);
   assert.match(r.log, /Limits are back on\./);
 });
 
@@ -563,12 +564,11 @@ start = clock.t
 out['go'] = ns['_drip_before_search']()
 out['waited'] = clock.t - start
 ns['EXPERIMENT'].update(pages=0, ended=None)
-limits(daily=3)
-record(searches=[clock.t - 60 * i for i in range(1, 4)])
+record(searches=[clock.t - 60 * i for i in range(1, 61)])
 out['budget'] = ns['_sitting_over']()`);
   if (!r) return;
   assert.equal(r.out.fresh, null);
   assert.equal(r.out.done, "This sitting's 4 searches are done");
   assert.deepEqual([r.out.go, r.out.waited], [false, 0]);
-  assert.match(r.out.budget, /budget|searches/i);
+  assert.match(r.out.budget, /^Scan window 1 of 2 is used: 60 of 60 search pages\. The next window opens at /);
 });

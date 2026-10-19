@@ -1,6 +1,6 @@
 // Who is ready for a circle scan (lib/reach.js): one rule, read by Bridge
-// Chains' halo, the Degrees panel's Ready to scan, Outlink's new doors and the
-// profile page's mapping bar. Backlog 2.4: someone is ready when they're your
+// Chains' halo, the Degrees panel's Ready to scan and the profile page's
+// mapping bar. Backlog 2.4: someone is ready when they're your
 // connection now, came through a circle, their own circle isn't scanned and
 // their list isn't known to be hidden. The old glow never showed because it
 // looked for them in the circle they came from, and accepting takes them out
@@ -9,7 +9,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { reachIndex, circleState, reachState, readyToScan, readyByCircle, circleScanCost, firstCirclePicks, cleanProfileUrl } from '../lib/reach.js';
-import { buildQuest } from '../lib/quest.js';
 
 const url = (id) => `https://www.linkedin.com/in/${id}`;
 const d1 = (id, extra = {}) => ({ id, name: id, degree: 1, tier: 'A', power_score: 6, profile_url: url(id), ...extra });
@@ -96,13 +95,6 @@ test('nothing noted (the sample, a CSV, no answer yet) leaves everyone unscanned
   const n = network();
   const reach = reachIndex(n.connections, n.degree2);
   assert.equal(reachState(n.nia, reach), 'ready');
-});
-
-test("Outlink's new doors follow the same rule, hidden lists left out", () => {
-  const n = network();
-  const added = n.connections.filter((c) => c.unlocked_from_bridge_id);
-  const reach = reachIndex(n.connections, n.degree2, n.notes);
-  assert.deepEqual(buildQuest({ added, reach }).newDoors.map((p) => p.id), ['marcus']);
 });
 
 // The guided setup's first scan (Blake, 2026-10-14): one person's circle,

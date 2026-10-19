@@ -226,7 +226,7 @@ test('only the densest few places glow, and a quiet map not at all', () => {
   assert.equal(glowKeys(places.slice(0, 5), { least: 8 }).size, 0);
 });
 
-test('the map stays offline, draws lines only for what is picked, and asks Outlink for intros', () => {
+test('the map stays offline, draws lines only for what is picked, and shows who can introduce you in Separation', () => {
   const map = read('../app/components/WorldMap.js');
   const parts = read('../app/components/WorldMapParts.js');
   for (const src of [map, parts]) assert.doesNotMatch(src, /https?:\/\//);
@@ -237,13 +237,14 @@ test('the map stays offline, draws lines only for what is picked, and asks Outli
   assert.match(map, /for \(const line of homeLines\)/);
   // From you is off until asked for.
   assert.match(map, /const \[showHome, setShowHome\] = useState\(false\)/);
-  // Ask for an intro is Outlink, filtered to that connection's circle (app/queue/page.js reads view and bridge).
-  assert.match(parts, /`\/queue\?view=recs&bridge=\$\{encodeURIComponent\(id\)\}&groupBy=bridge`/);
-  const queue = read('../app/queue/page.js');
-  assert.match(queue, /params\.get\('bridge'\)/);
-  assert.match(queue, /const VIEWS = \['quest', 'recs'/);
+  // Who a connection can introduce you to is Separation, filtered to their circle, in place:
+  // the map page's showInSeparation, as a card's Insights → Show them (Blake, 2026-10-17).
+  assert.match(map, /const introsVia = onShowInSeparation \? \(b\) => onShowInSeparation\(\{ query: b\.name \}\) : null;/);
+  assert.match(parts, /onIntros && g\.bridge\.name && <button type="button" onClick=\{\(\) => onIntros\(g\.bridge\)\}/);
+  assert.doesNotMatch(parts, /\/queue|outlink/i);
   // The map gets every row it needs from the one props object (app/page.js).
   const page = read('../app/page.js');
+  assert.match(page, /onShowInSeparation: showInSeparation,/);
   assert.match(page, /fullDegree1: degree1,/);
   assert.match(page, /fullDegree2: degree2,/);
 });

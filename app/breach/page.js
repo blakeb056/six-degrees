@@ -33,6 +33,7 @@ import { localPhoto } from '../../lib/photos';
 import { saveSettings } from '../../lib/settings-client';
 import { hasRequest, markRequested, undoRequest } from '../../lib/requests-client';
 import { runScrape, scraperStatus, notReadyMessage, busyReason, startHere } from '../../lib/scraper-client';
+import { windowWords } from '../../lib/scan-windows';
 import {
   BANDS, BREACH_WEEKLY, BREACH_ROUNDS, BREACH_ROUND, BREACH_DEGREES, BREACH_DEGREES_DEFAULT,
   breachPeople, breachScore, weeklyPlan, acceptances, compareCompanies, breachKey, mapSpread,
@@ -460,8 +461,9 @@ function Scan({ company, notes, linkedin, onScanned, onLook }) {
   const n = notes?.[breachKey(company, degrees)] || null;
   const spread = mapSpread(n, round);
   const busy = !mine && job.running ? busyReason(job) : null;
-  const left = linkedin?.leftToday;
-  const daily = linkedin?.limits?.daily;
+  const win = linkedin?.window || null;
+  // Every page read: reading it again from page 1 is only ever asked for (scrape.py --again, Blake, 2026-10-17).
+  const finished = Boolean(n) && !n.more;
 
   async function go() {
     say(null);
@@ -470,7 +472,7 @@ function Scan({ company, notes, linkedin, onScanned, onLook }) {
     setMine(true);
     setLog([]);
     try {
-      const end = await runScrape('breach', { name: company, pages: round, degrees, onLog: setLog });
+      const end = await runScrape('breach', { name: company, pages: round, degrees, onLog: setLog, ...(finished ? { again: true } : {}) });
       if (end?.failure) say(end.failure);
       onScanned();
     } catch (e) {
@@ -495,13 +497,13 @@ function Scan({ company, notes, linkedin, onScanned, onLook }) {
       </p>
       <p style={{ ...SMALL, margin: '0 0 8px', color: 'var(--sd-gold, #FFD700)' }}>
         Mapping a company is search pages, and LinkedIn restricts accounts that read too much at once. So it goes in small rounds,
-        spread over days: each page is a search counted in your daily limit{Number.isFinite(left) && Number.isFinite(daily) ? ` (${left} of ${daily} left today)` : ''}.
+        spread over days: each page is a search counted in the scan window{win ? ` (${windowWords(win)})` : ''}.
       </p>
       <p style={{ ...SMALL, margin: '0 0 10px' }}>
         {!n ? 'Not mapped yet with these filters. The first round reads LinkedIn’s count of people, and the plan for the rest follows.'
           : `Pages 1 to ${n.pages} read${spread ? ` of ${spread.pages} (about ${n.total.toLocaleString('en-US')} people${n.total > 1000 ? '; LinkedIn shows the first 1,000' : ''})` : ''}. `
             + (n.more ? `The next round carries on at page ${n.pages + 1}${spread?.days ? `; one round a day maps the rest in about ${spread.days} day${spread.days === 1 ? '' : 's'}` : ''}.`
-              : 'Every page is read: the next round reads it again from page 1, for new mutual counts.')}
+              : 'Every page is read. Read again from page 1 brings new mutual counts; nothing reads it again by itself.')}
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
         {BREACH_DEGREES.map((d) => (
@@ -524,7 +526,7 @@ function Scan({ company, notes, linkedin, onScanned, onLook }) {
           <button type="button" onClick={go} disabled={mine || Boolean(busy)}
             title={busy ? `${busy}. One scan at a time.` : undefined}
             style={{ ...BUTTON, opacity: mine || busy ? 0.55 : 1, cursor: mine || busy ? 'not-allowed' : 'pointer' }}>
-            {mine ? 'Mapping…' : busy ? 'Scanner busy' : `Map a round (${round} pages)`}
+            {mine ? 'Mapping…' : busy ? 'Scanner busy' : finished ? `Read again from page 1 (${round} pages)` : `Map a round (${round} pages)`}
           </button>
           <span style={SMALL}>{mode === 'manual' ? 'By hand: you page through, and each page is read at its foot.' : mode === 'auto' ? 'Automatic: paced, with breaks, and it stops at any push-back.' : ''}</span>
           <InlineNote note={note} float />

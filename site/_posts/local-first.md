@@ -33,7 +33,7 @@ The app goes online by itself for one thing only: once a day, to ask GitHub whet
 - **GitHub**, once a day while the app is open, and when you click *Check for updates*, to read the newest version number. A newer version shows up in your notifications. With plugins on and one installed, the daily check also reads the plugin list, and a newer version of a plugin shows up there too, to update from Settings → Plugins. In the Mac app, GitHub is also contacted when you then click *Install and restart*, to download it. Nothing about you is sent: GitHub sees an ordinary request from your computer. To turn the daily check off, untick *Check for updates once a day* in **Settings → Updates**.
 - **PyPI and GitHub**, only without the Mac app (with `npx sixgree` or from source), once, when you click *Set up the scanner*: for the scanner's Python packages and, if your computer has no Python it can use, a private copy of Python. Every file is checked against a checksum built into Sixgree.
 
-One experimental feature runs on a timer, and only if you turn it on: the **daily messages sync** in Outlink → Messages & follow-ups opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.
+One experimental feature runs on a timer, and only if you turn it on: the **daily messages sync** in Messages & follow-ups opens the platform once a day, in the daytime, while the app is open. It's off until you tick it.
 
 There is no telemetry, no analytics and no crash reporting. The web framework the app is built on has anonymous usage statistics of its own; they're switched off. The daily update check reads a version number and nothing else, and it never downloads anything by itself.
 

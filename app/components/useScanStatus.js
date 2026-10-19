@@ -3,7 +3,7 @@
 // What the Scan page and the guided setup (app/components/onboarding) both
 // read and do, in one place: the scanner's status (GET /api/scraper, every
 // 1.5 s), your saved settings, and the four things they press: start a job
-// (run), change a scanner setting (searches a day, the session's lift), say "I understand"
+// (run), change a scanner setting (the scan windows, the session's lift), say "I understand"
 // to the scanning risks, and answer the App Management item. Pulled out of
 // app/setup/page.js when the setup arrived, so the two never disagree about
 // what a click does.
@@ -30,7 +30,7 @@ import { IS_DEMO } from '../../lib/demo';
 import useScanner from './useScanner';
 
 const POLL_MS = 1500;
-// The scanner's settings: searches a day and the speed, lifting the limits for
+// The scanner's settings: the scan windows, profile views a day and the speed, lifting the limits for
 // this session, and putting them back.
 const LIMIT_ACTIONS = ['set-limits', 'lift-limits', 'put-limits-back'];
 // An answer that hasn't come in this long isn't coming: ask again.

@@ -18,7 +18,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
-  readLimits, writeLimits, linkedinState, linkedinUsage, devMode, freesAt, DEFAULT_LIMITS, DEV_CEILING,
+  readLimits, writeLimits, linkedinState, devMode, DEFAULT_LIMITS,
 } from '../lib/linkedin-limits.js';
 import { DEV_LINE } from '../lib/limits-lift.js';
 import { inviteRefusal, INVITE_CAPS } from '../lib/auto-connect.js';
@@ -94,7 +94,7 @@ test('Dev mode notes when it was turned on, keeps that through other saves, and 
   }
 });
 
-test('in Dev mode nothing is left "of" a limit, the cooldown is off, and Auto has no caps', () => {
+test('in Dev mode profile views a day and the cooldown are off, Auto has no caps, and the scan window holds', () => {
   const dir = scratch();
   try {
     const s = NOW / 1000;
@@ -106,9 +106,9 @@ test('in Dev mode nothing is left "of" a limit, the cooldown is off, and Auto ha
     assert.equal(li.dev, true);
     assert.equal(li.lifted, true, 'everything that shows "no limit" shows it');
     assert.equal(li.sessionLifted, false, 'and it is not the session’s lift');
-    assert.equal(li.leftToday, null);
     assert.equal(li.profilesLeftToday, null);
-    assert.equal(li.limitReached, false);
+    // The scan window holds in Dev mode too (Blake, 2026-10-17): its 60 are used.
+    assert.deepEqual([li.window.cap, li.searchesLeft, li.limitReached], [60, 0, true]);
     assert.equal(li.cooldown, null);
     assert.equal(li.heldCooldown?.reason, 'LinkedIn pushed back: test');
     assert.equal(li.invitesCapped, false);
@@ -186,8 +186,8 @@ out['gap'] = ns['PROFILE_GAP']`);
     if (!r) return;
     assert.equal(r.out.dev, true);
     assert.equal(r.out.lifted, true);
-    // Past the daily limit of 1; Dev mode's ceiling is the one that counts (2026-10-14).
-    assert.deepEqual(r.out.left, [249, 'daily'], 'no daily limit, only the ceiling');
+    // The scan window counts, at its 60 (2026-10-17): one page in it.
+    assert.deepEqual(r.out.left, [59, 'window'], 'the window, never past it');
     assert.equal(r.out.invite, null, 'past Auto’s 15 a day');
     assert.equal(r.out.invites, 21, 'and still written down');
     assert.equal(r.out.gap, 60, 'the gap between profile views is the speed’s, untouched');
@@ -238,10 +238,10 @@ out['on'] = ns['_sitting_over'](night)`);
   }
 });
 
-// ── Dev mode's ceiling (Fix 1, 2026-10-14) ───────────────────────────────────
-// Blake chose 250 search pages a day after two restrictions: 373 search pages in 24
-// hours (9/28), and 305 with Dev mode on (10/12), which took off every limit Sixgree
-// sets. Dev mode keeps this one, over the daily limit's own rolling 24 hours.
+// ── Dev mode and the scan windows (2026-10-17) ───────────────────────────────
+// Dev mode's ceiling (Fix 1, 2026-10-14: 250 search pages a day, after restrictions
+// at 373 and 305) is the scan windows now: 60 a window, two a day, a new one 6 hours
+// after the last began, which neither Dev mode nor the lift passes.
 
 // A stand-in record of searches, and the settings file, for the scanner's cases.
 const RECORD = `
@@ -255,49 +255,41 @@ def in_day():
     return len([s for s in ns['_read_activity']()['searches'] if s > clock.t - 86400])
 `;
 
-test('Dev mode keeps one limit, its ceiling: 250 search pages over the same rolling 24 hours the daily limit counts', (t) => {
+test('Dev mode keeps the scan windows at their ceilings, whatever the settings say', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${RECORD}
-# 249 in the last 24 hours; 5 exactly a day old and 100 older, which neither limit counts.
-record([NOW_S - 60 * (i + 1) for i in range(249)] + [NOW_S - 86400] * 5 + [NOW_S - 86401 - i for i in range(100)])
-out['ceiling'] = ns['DEV_CEILING']
-settings(daily=1, **DEV)
+# 59 in the last hour: one window, one page left of its 60.
+record([NOW_S - 60 * (i + 1) for i in range(59)])
+settings(daily=1, windowPages=10, **DEV)
 out['dev'] = ns['searches_left']()
-settings(daily=250)
-out['daily'] = ns['searches_left']()
-settings(daily=1, **DEV)
+settings(daily=1, windowPages=10)
+out['off'] = ns['searches_left']()
+settings(daily=1, windowPages=10, **DEV)
 ns['charge_linkedin']('searches')
 out['at'] = ns['searches_left']()
-out['line'] = ns['budget_message']('daily')
+out['line'] = ns['budget_message']('window')
 out['now'] = clock.t`);
     if (!r) return;
-    assert.equal(r.out.ceiling, 250);
-    assert.deepEqual(r.out.dev, [1, 'daily'], 'past the daily limit of 1, one short of the ceiling');
-    assert.deepEqual(r.out.daily, [1, 'daily'], 'a daily limit of 250 counts the very same window');
-    assert.deepEqual(r.out.at, [0, 'daily'], 'reached: it stops wherever the daily limit stops a scan');
-    assert.match(r.out.line, /^Dev mode's ceiling: 250 search pages a day, reached\. Scanning resumes when the oldest of them is a day old, at .+\. The next run carries on from the same page\.$/);
-    assert.doesNotMatch(r.out.line, /Today's limit of|lift limits/i, 'not the daily limit\'s words: the app would offer a lift that doesn\'t lift it');
-
+    assert.deepEqual(r.out.dev, [1, 'window'], 'Dev mode: the window\'s 60, not the setting\'s 10');
+    assert.deepEqual(r.out.off, [0, 'window'], 'off: the setting\'s 10 are long used');
+    assert.deepEqual(r.out.at, [0, 'window'], 'the 60th: nothing more, Dev mode or not');
+    assert.match(r.out.line, /^Scan window 1 of 2 is used: 60 of 60 search pages\. The next window opens at .+\. The next run carries on from the same page\.$/);
+    assert.doesNotMatch(r.out.line, /Today's limit of|lift limits/i, 'not the words that offer a lift: lifting doesn\'t pass a window');
     // The app counts the same window, from the same files.
     const now = r.out.now * 1000;
     const li = linkedinState(home, now);
     assert.equal(li.dev, true);
-    assert.equal(li.devCeiling, DEV_CEILING);
-    assert.equal(li.devLeftToday, 0);
-    assert.equal(li.leftToday, null, 'the daily limit is still off in Dev mode');
-    const searches = JSON.parse(readFileSync(path.join(home, 'linkedin-activity.json'), 'utf8')).searches;
-    assert.equal(linkedinUsage(home, now).devFreesAt, freesAt(searches, now, DEV_CEILING));
+    assert.deepEqual([li.window.cap, li.window.used, li.searchesLeft, li.limitReached], [60, 60, 0, true]);
     writeLimits(home, { dev: false }, now);
     const off = linkedinState(home, now);
-    assert.deepEqual([off.devCeiling, off.devLeftToday, off.leftToday], [null, null, 0], 'Dev mode off: the daily limit, as before');
-    assert.equal(linkedinUsage(home, now).devFreesAt, null);
+    assert.deepEqual([off.window.cap, off.searchesLeft], [10, 0], 'Dev mode off: your stricter setting');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
 });
 
-test('a scan in Dev mode runs past the daily limit below the ceiling, and stops at it with a plain line', (t) => {
+test('a scan in Dev mode stops at the window with a plain line, and never opens a page past it', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${RECORD}
@@ -307,77 +299,69 @@ def run(pages):
     urls, status, reach = read(ResultsPage(pages=pages))
     return {'people': len(urls), 'status': status, 'last': reach['last'], 'more': reach['more'],
             'budget': reach.get('budget'), 'searches': in_day()}
-record([NOW_S - 60 * (i + 1) for i in range(200)])
+record([NOW_S - 60 * (i + 1) for i in range(40)])
 out['below'] = run(3)
-record([NOW_S - 60 * (i + 1) for i in range(248)])
+record([NOW_S - 60 * (i + 1) for i in range(58)])
 out['at'] = run(5)
 out['again'] = run(5)`);
     if (!r) return;
-    assert.deepEqual(r.out.below, { people: 30, status: 'success', last: 3, more: false, budget: null, searches: 203 },
-      'all of a three-page list, past the daily limit of 1');
-    assert.deepEqual(r.out.at, { people: 20, status: 'success', last: 2, more: true, budget: 'daily', searches: 250 },
-      'the list and one Next take it to 250; page 3 is left for later, never noted as read');
-    assert.deepEqual(r.out.again, { people: 0, status: 'budget', last: 0, more: true, budget: 'daily', searches: 250 },
-      'at the ceiling nothing more opens');
-    assert.equal((r.log.match(/^ {2}Dev mode's ceiling: 250 search pages a day, reached\./gm) || []).length, 2);
+    assert.deepEqual(r.out.below, { people: 30, status: 'success', last: 3, more: false, budget: null, searches: 43 },
+      'all of a three-page list, inside the window');
+    assert.deepEqual(r.out.at, { people: 20, status: 'success', last: 2, more: true, budget: 'window', searches: 60 },
+      'the list and one Next take it to 60; page 3 is left for later, never noted as read');
+    assert.deepEqual(r.out.again, { people: 0, status: 'budget', last: 0, more: true, budget: 'window', searches: 60 },
+      'with the window used nothing more opens');
+    assert.equal((r.log.match(/^ {2}Scan window 1 of 2 is used: 60 of 60 search pages\./gm) || []).length, 2);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
 });
 
-test('with Dev mode off the ceiling holds only a lift: the daily limit as before, and a lift for the session stops at it too', (t) => {
+test('lifted for the session or not, the windows hold; a damaged record counts as the window used', (t) => {
   const home = scratch();
   try {
     const r = scanner(t, home, `${RECORD}
 record([NOW_S - 60 * (i + 1) for i in range(300)])
 settings(daily=50)
 out['off'] = ns['searches_left']()
-out['line'] = ns['budget_message']('daily')
-settings(daily=400)
-out['high'] = ns['searches_left']()
 ns['LIMITS']['lifted'] = True
 out['lifted'] = ns['searches_left']()
-out['lifted_line'] = ns['budget_message']('daily')
-record([NOW_S - 60 * (i + 1) for i in range(100)])
+record([NOW_S - 60 * (i + 1) for i in range(30)])
 out['lifted_room'] = ns['searches_left']()
-record([NOW_S - 60 * (i + 1) for i in range(300)])
-settings(daily=50, **DEV)
-out['lifted_dev'] = ns['searches_left']()
+settings(daily=50, windowPages=20)
+out['lifted_setting'] = ns['searches_left']()
 ns['LIMITS']['lifted'] = False
+out['setting'] = ns['searches_left']()
 (ns['_home']() / 'linkedin-activity.json').write_text('{"searches": [1, 2')
 out['damaged'] = ns['searches_left']()`);
     if (!r) return;
-    assert.deepEqual(r.out.damaged, [0, 'daily'], 'a record that can\'t be read counts as the ceiling used, never as room');
-    assert.deepEqual(r.out.off, [0, 'daily']);
-    assert.match(r.out.line, /^Today's limit of 50 searches is used/);
-    assert.deepEqual(r.out.high, [100, 'daily'], 'a daily limit set above 250 is the person\'s choice, as before');
-    // Blake's brief, 2026-10-16: "Lift limits for this session" had no ceiling at all. It keeps Dev mode's.
-    assert.deepEqual(r.out.lifted, [0, 'daily'], '300 in the last 24 hours: past the ceiling the lift keeps');
-    assert.match(r.out.lifted_line, /^The ceiling the lifted limits keep: 250 search pages a day, reached\./);
-    assert.doesNotMatch(r.out.lifted_line, /^Today's limit/, 'not the daily limit\'s words, which offer the lift');
-    assert.deepEqual(r.out.lifted_room, [150, 'daily'], '100 used: 150 of the ceiling left, whatever the daily limit');
-    assert.deepEqual(r.out.lifted_dev, [0, 'daily'], 'Dev mode on as well: its ceiling holds');
+    assert.deepEqual(r.out.damaged, [0, 'window'], 'a record that can\'t be read counts as the window used, never as room');
+    assert.deepEqual(r.out.off, [0, 'window'], '300 in five hours: far past one window');
+    assert.deepEqual(r.out.lifted, [0, 'window'], 'and lifting doesn\'t pass it');
+    assert.deepEqual(r.out.lifted_room, [30, 'window'], '30 used: 30 of the 60 left, lifted or not');
+    assert.deepEqual(r.out.lifted_setting, [30, 'window'], 'lifted: a stricter setting goes back to the ceiling, 60, no further');
+    assert.deepEqual(r.out.setting, [0, 'window'], 'not lifted: your 20 are used');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
 });
 
-test('the notch, LinkedIn usage and the Scan page show Dev mode\'s ceiling, not "no limit"', () => {
+test('the notch, LinkedIn usage and the Scan page show the window, not a daily limit or a ceiling of 250', () => {
   const src = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
-  assert.ok(DEV_LINE.includes(`ceiling of ${DEV_CEILING} search pages`), 'Dev mode\'s own words name the number');
-  // The notch while a scan runs: the route hands it the ceiling, and it shows "N of 250".
-  assert.match(src('app/api/scraper/route.js'), /devCeiling: li\.devCeiling/);
-  assert.match(src('app/components/ScanStatusBar.js'), /\(b\.dev && b\.devCeiling\) \|\| b\.ceiling \? ` of \$\{b\.devCeiling \|\| b\.ceiling\}`/);
-  // LinkedIn usage: the meter is "of 250" with a mark there, never "no limit in Dev mode".
+  assert.match(DEV_LINE, /the scan windows at their most \(60 search pages a window, two windows a day, 6 hours apart\)/);
+  assert.doesNotMatch(DEV_LINE, /250/);
+  // The notch while a scan runs: the route hands it the window, and it shows "Window 1 of 2: 34 of 60".
+  assert.match(src('app/api/scraper/route.js'), /window: li\.window/);
+  assert.match(src('app/components/ScanStatusBar.js'), /<WindowLine window=\{b\.window\} \/>/);
+  // LinkedIn usage: the meter is the day's most in the windows, with the window under it.
   const usage = src('app/components/settings/UsageSection.js');
-  assert.match(usage, /of \$\{u\.devCeiling\}, Dev mode’s ceiling/);
-  assert.match(usage, /label: `\$\{u\.devCeiling\} ceiling`/);
-  assert.doesNotMatch(usage, /no limit in Dev mode/);
+  assert.match(usage, /<WindowLine window=\{win\} \/>/);
+  assert.doesNotMatch(usage, /devCeiling|no limit in Dev mode/);
   // The Scan page's Dev mode switch.
   const page = src('app/setup/page.js');
   const sw = page.slice(page.indexOf('data-dev-mode-switch'), page.indexOf('more={', page.indexOf('data-dev-mode-switch')));
-  assert.match(sw, /a ceiling of \$\{li\.devCeiling\} search pages in any 24 hours/);
-  assert.doesNotMatch(page, /no daily limit in Dev mode/);
+  assert.match(sw, /the scan windows at their most \(60 search pages a window, two windows a day, 6 hours apart\)/);
+  assert.doesNotMatch(page, /devCeiling|no daily limit/);
 });
 
 // ── Manual mode, the scanner's side ──────────────────────────────────────────
@@ -449,7 +433,8 @@ def read_by_hand(page, total=None, max_pages=100, start=1):
         searches = len(ns['_read_activity']()['searches'])
     except Exception:
         searches = None
-    return {'people': len(people), 'status': status, 'last': reach['last'], 'more': reach['more'],
+    # Each page is saved the moment it's read (2026-10-17): the people are what was saved plus anything returned.
+    return {'people': len(people) + sum(n for n, _ in saved), 'status': status, 'last': reach['last'], 'more': reach['more'],
             'budget': reach.get('budget'), 'saved': saved, 'read_at': page.read_at, 'searches': searches,
             'stopped': ns['stop_requested']()}
 `;
@@ -527,21 +512,21 @@ out.update(read_by_hand(page, total=30))`);
   }
 });
 
-test('manual mode keeps the daily limit, and Dev mode takes it off', (t) => {
+test('manual mode keeps the scan window, and stops as its last page is read; Dev mode keeps it at 60', (t) => {
   const home = scratch();
   try {
     const plan = "[[3, 'foot'], [6, 'next'], [9, 'foot'], [12, 'close']]";
     const r = scanner(t, home, `${MANUAL_PAGE}
-(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'daily': 1}))
+(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'windowPages': 1}))
 ns['charge_linkedin']('searches')
 out['limited'] = read_by_hand(ManualPage(3, ${plan}), total=30)
-(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'daily': 1, 'dev': True, 'devSince': clock.t - 60}))
+(ns['_home']() / 'scan-limits.json').write_text(json.dumps({'windowPages': 1, 'dev': True, 'devSince': clock.t - 60}))
 out['dev'] = read_by_hand(ManualPage(3, [[x + 20, w] for x, w in ${plan}]), total=30)`);
     if (!r) return;
     assert.equal(r.out.limited.status, 'budget');
-    assert.equal(r.out.limited.budget, 'daily');
-    assert.equal(r.out.limited.people, 10, 'page 1 was read before the limit held page 2 back');
-    assert.equal(r.out.dev.people, 20, 'in Dev mode page 2 is read too');
+    assert.equal(r.out.limited.budget, 'window');
+    assert.equal(r.out.limited.people, 10, 'page 1, the window\'s one page, is read; then it stops before Next');
+    assert.equal(r.out.dev.people, 20, 'in Dev mode the window is 60, so page 2 is read too');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

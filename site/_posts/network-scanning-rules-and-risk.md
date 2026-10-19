@@ -22,7 +22,7 @@ We have no record of an account being permanently banned for using Sixgree. That
 ## How to keep the risk low
 
 - **Stay on Medium or Slow.** Fast is there for small, occasional rounds. Medium and Slow read like a person who's looking carefully.
-- **Keep the default daily limit** (50 searches a day). It leaves room under limits the platform doesn't publish.
+- **Keep the scan windows at their defaults** (60 search pages a window, two windows a day, 6 hours apart). They leave room under limits the platform doesn't publish, and you can only make them stricter.
 - **After a warning, stop for a day.** Don't press *Lift limits for this session* and carry on: continuing straight after a warning is what turned a warning into a hold both times. Wait about 24 hours, then come back on Slow or Medium with a small round.
 - **Map in rounds, not marathons.** 5 to 10 circles at a time, spread over days, builds the same map with a fraction of the risk.
 - **Leave full profile reads off** unless you need past roles. A profile view is the action the platform watches most closely.
@@ -33,9 +33,9 @@ We have no record of an account being permanently banned for using Sixgree. That
 Since those two holds, the scanner has been rebuilt around them:
 
 - **Human pacing.** Every wait is a little different, each page gets reading time for the people on it, the page is scrolled in uneven steps, and there are short breaks and longer rests, layered on top of the waits that already worked.
-- **One daily limit**, 50 by default, with profile views counted against it and never closer than a minute apart.
+- **Scan windows** (since 17 October 2026): at most 60 search pages a window and two windows a day, by hand or not, which nothing lifts. Profile views have their own number, 50 a day by default, and are never closer than a minute apart.
 - **It stops at the first push-back.** A sign-in wall, a security check, a restriction notice or a "too many requests" reply ends the scan at once and starts a cooldown. It never retries those.
-- **Auto scan keeps office hours.** Small sittings from 9:00 to 18:00 with long rests, and it never runs past your limit.
+- **Auto scan keeps office hours.** Small sittings from 9:00 to 18:00 with long rests, and it never runs past the scan window.
 - **Everything is saved as it goes**, so stopping never loses what was read.
 
 ## The short version

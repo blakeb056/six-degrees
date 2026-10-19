@@ -16,7 +16,7 @@
 // one question (lib/map-lines.js, app/components/WorldMapParts.js):
 //   - a place's list says who gets you there: lines from the connections who
 //     reach the 2nd-degree people in it, as thick as how many, each with
-//     Outlink's "ask for an intro";
+//     who they can introduce you to (Separation, filtered to their circle);
 //   - one connection's reach (from a place's list, the finder, or a route):
 //     lines from where they are to everywhere their circle lives;
 //   - From you, off to start: faint lines from home to your connections' places;
@@ -134,7 +134,7 @@ const MAP_CSS = `
   .sd-map-layer { animation: none; }
 }`;
 
-export default function WorldMap({ connections = [], fullDegree1 = [], fullDegree2 = [], degree3 = [], onSelect, selectedId = null }) {
+export default function WorldMap({ connections = [], fullDegree1 = [], fullDegree2 = [], degree3 = [], onSelect, selectedId = null, onShowInSeparation = null }) {
   const [geo, setGeo] = useState(null);
   const [failed, setFailed] = useState(null);
   useEffect(() => {
@@ -142,6 +142,10 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
     loadGeo().then((g) => { if (live) setGeo(g); }).catch((e) => { if (live) setFailed(e.message || 'The map could not load.'); });
     return () => { live = false; };
   }, []);
+  // Who a connection can introduce you to: Separation, filtered to their circle, as a
+  // card's Insights → Show them does (app/page.js showInSeparation). Blake, 2026-10-17:
+  // "Separation is what you want to do anyway".
+  const introsVia = onShowInSeparation ? (b) => onShowInSeparation({ query: b.name }) : null;
 
   const phone = useIsPhone();
   const reduced = useReducedMotion();
@@ -563,7 +567,7 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
   const flowSteps = legendSteps(drawnFlows.map((f) => f.count));
 
   const pathCard = path && pathPerson ? (
-    <PathCard person={pathPerson} path={path} phone={phone} below={below} canOutlink={!IS_DEMO} homeGuessed={home?.guessed}
+    <PathCard person={pathPerson} path={path} phone={phone} below={below} canAsk={!IS_DEMO} homeGuessed={home?.guessed}
       onStep={(s) => s.place && flyTo(s.place.lon, s.place.lat, 4)}
       onFit={() => fitPlaces(path.steps.filter((s) => s.place).map((s) => s.place))}
       onReach={bridgeIds.has(pathPerson.id) && !(bridge && bridge.id === pathPerson.id) ? () => showReach(pathPerson.id) : null}
@@ -819,11 +823,11 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
           {phone && !(focus || (hubs && !hubsClosed)) && pathCard}
 
           {bridge && reach && (
-            <ReachPanel bridge={bridge} reach={reach} openEnd={focus.end} onOpenEnd={(end) => setFocus({ ...focus, end })} canOutlink={!IS_DEMO}
+            <ReachPanel bridge={bridge} reach={reach} openEnd={focus.end} onOpenEnd={(end) => setFocus({ ...focus, end })} onIntros={introsVia}
               phone={phone} below={below} sheet={Math.round(shownH * 0.46)} selectedId={selectedId} onSelect={onSelect} onClose={() => setFocus(null)} />
           )}
           {picked && (
-            <PlacePanel place={picked} getters={getters} bridgeIds={bridgeIds} onLines={showReach} canOutlink={!IS_DEMO}
+            <PlacePanel place={picked} getters={getters} bridgeIds={bridgeIds} onLines={showReach} onIntros={introsVia}
               openStart={focus.start} isHome={homeKey === picked.key} onHome={() => makeHome(picked.key)} hub={hubRank.get(picked.key)}
               phone={phone} below={below} sheet={Math.round(shownH * 0.46)} selectedId={selectedId} onSelect={onSelect} onClose={() => setFocus(null)} />
           )}
@@ -831,7 +835,7 @@ export default function WorldMap({ connections = [], fullDegree1 = [], fullDegre
             <HubPanel hubs={hubs} pickedKey={null} onPick={onPlace} phone={phone} below={below} sheet={Math.round(shownH * 0.46)} onClose={() => setHubsClosed(true)} />
           )}
           {flowPicked && (
-            <FlowPanel flow={flowPicked} canOutlink={!IS_DEMO} phone={phone} below={below} sheet={Math.round(shownH * 0.46)}
+            <FlowPanel flow={flowPicked} onIntros={introsVia} phone={phone} below={below} sheet={Math.round(shownH * 0.46)}
               selectedId={selectedId} onSelect={onSelect} onLines={showReach} onClose={() => setFocus(null)} />
           )}
           {/* On a phone the lists take the bottom; who isn't on the map comes back when they close. */}
@@ -884,7 +888,7 @@ function Centered({ children }) {
  * their card, and a connection with a circle has its own reach. In Hubs, its
  * rank and reach.
  */
-function PlacePanel({ place, getters, bridgeIds, onLines, canOutlink, openStart, isHome, onHome, hub = null, phone, below = 0, sheet = 320, selectedId, onSelect, onClose }) {
+function PlacePanel({ place, getters, bridgeIds, onLines, onIntros, openStart, isHome, onHome, hub = null, phone, below = 0, sheet = 320, selectedId, onSelect, onClose }) {
   const people = useMemo(() => [...place.people].sort(byStrength), [place]);
   const shown = people.slice(0, 300);
   const reachLine = hub ? ` · #${hub.rank} by reach: ${fmt(hub.reach)}, ${fmt(hub.through)} more through ${plural(hub.bridges, 'connection')} here` : '';
@@ -896,7 +900,7 @@ function PlacePanel({ place, getters, bridgeIds, onLines, canOutlink, openStart,
           {isHome ? 'Home ✓' : 'Make this home'}
         </button>
       )}>
-      <GettersList getters={getters} here={place.name} canOutlink={canOutlink} selectedId={selectedId} onSelect={onSelect} onLines={onLines} openStart={openStart} />
+      <GettersList getters={getters} here={place.name} onIntros={onIntros} selectedId={selectedId} onSelect={onSelect} onLines={onLines} openStart={openStart} />
       {shown.map((p) => (
         <PersonRow key={p.id} p={p} selectedId={selectedId} onSelect={onSelect}
           extra={bridgeIds.has(p.id) ? (

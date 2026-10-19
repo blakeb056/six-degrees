@@ -282,6 +282,13 @@ app restarts. It never touches the pace, the minute between profile views, or th
 LinkedIn's first warning, and a pushback after the lift puts the limits back by itself:
 that stop is the lesson of this entry, and the one thing a lift must never remove.
 
+**Since 2026-10-17** (Blake, after restrictions at 305 and 283 searches in 24 hours, with
+56 to 72 pages in ten minutes) the searches a day are gone: **scan windows** hold every
+search page, by hand or not, to 60 a window, two windows a day, 6 hours apart
+(`lib/scan-windows.js`, `scrape.py scan_window`). Neither the lift nor Dev mode passes them;
+the daily number is profile views a day now. A run of pages that began when no window could
+open (a record from before, an import, a page clicked by hand past the window) opens nothing.
+
 ## 17. Animation frames do not arrive in a hidden tab — so never commit state in one
 
 Both ported views drove their transitions with `requestAnimationFrame`, which is
@@ -435,7 +442,7 @@ line to replace it.
 
 **`body { overflow: hidden }` made every document page unscrollable.** It exists so the
 graph canvas can fill the window, but it applied to the whole app: on Scan, Profile,
-Import and Outlink, anything below the fold was rendered, mounted, *running* — and
+Import and the rest, anything below the fold was rendered, mounted, *running*, and
 unreachable. The tier picker and the update panel were on screen the whole time, past
 the bottom edge, with `/api/update` visible in the server log proving the component was
 alive.
@@ -966,9 +973,7 @@ instead of their circle. Reloading the same address worked every time.
 What holds it now: `app/setup/page.js` and `app/page.js` read `?scan=` and `?chain=` with
 `useSearchParams()`, inside `<Suspense>` (Next requires one for the page to build), as Paths
 does. Next follows `history.replaceState`, so clearing the address there clears the parameter
-too. `app/queue/page.js` still reads `?groupBy=` in an initializer; its one link is a plain
-`<a href>`, which loads the page, so it works, but a `<Link>` there would break it. A browser
-check of a link has to click it.
+too. A browser check of a link has to click it.
 
 ## 42. On Windows, the scanner's "→" ends the scan: a piped stdout is cp1252, and `-E` ignores PYTHONUTF8
 
@@ -1069,7 +1074,7 @@ frame (a `requestAnimationFrame` loop recording the header, the notch's tabs and
   Galaxy's layouts. Every page sets something.
 - **A plain `useEffect` paints one frame of the old page's tabs.** A navigation is a
   transition, so passive effects run after the new page is painted: going to Scan from Paths
-  or Outlink showed their tabs under Scan's header for a frame (dev never shows it; its
+  showed its tabs under Scan's header for a frame (dev never shows it; its
   compile hides everything). `app/components/useNotchTabs.js` sets and clears them in a layout
   effect, in the same commit as the page swap. Pages set their tabs through it, not
   `setNotchTabs` directly.

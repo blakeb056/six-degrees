@@ -184,7 +184,6 @@ function AutoAsk({ onSend, onCancel }) {
 // minWidth: room for "Sending…", so the row doesn't jump when it changes.
 const SIZES = {
   card: { padding: '10px 18px', fontSize: 13, radius: 8, minWidth: 104 },
-  quest: { padding: '7px 14px', fontSize: 12.5, radius: 8, minWidth: 92 },
   row: { padding: '4px 9px', fontSize: 9.5, radius: 4, minWidth: 0 },
   // Insights' Power Index rows: the size of the table's other buttons (Open circle, Scan circle).
   table: { padding: '6px 11px', fontSize: 12, radius: 7, minWidth: 0 },
@@ -220,7 +219,7 @@ const resultColor = (r) => (r.ok ? 'var(--sd-green, #00ff88)' : 'var(--sd-coral,
  * alone, and so it does without the Auto scan plugin, whose Auto this is
  * (lib/scanner-capabilities.js).
  * `size`: 'card' (the person card: a line under it says what Auto does),
- * 'quest' (Outlink's move cards), 'table' (Insights' rows) or 'row' (a list row: the line is the
+ * 'table' (Insights' rows) or 'row' (a list row: the line is the
  * button's tooltip, and how it went shows in a small note under the buttons).
  */
 export default function ConnectChoice({ person, canAuto = true, size = 'card', connect, onSent, style }) {
@@ -283,15 +282,12 @@ function WithAuto({ person, size, connect, onSent, style }) {
   );
 }
 
-/**
- * The page's Connect when it stands second to Auto: the same link, as an
- * outline. `color` and `line` keep a page's own colour (Outlink's blue Add).
- */
-export function secondaryLook(size = 'card', { color = 'var(--sd-gold, #FFD700)', line = 'rgba(255,215,0,0.5)' } = {}) {
+/** The page's Connect when it stands second to Auto: the same link, as a gold outline. */
+export function secondaryLook(size = 'card') {
   const s = SIZES[size] || SIZES.card;
   return {
     padding: s.padding, borderRadius: s.radius, fontSize: s.fontSize, fontWeight: 700,
-    background: 'transparent', color, border: `1px solid ${line}`,
+    background: 'transparent', color: 'var(--sd-gold, #FFD700)', border: '1px solid rgba(255,215,0,0.5)',
     textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   };

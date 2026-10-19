@@ -1,7 +1,7 @@
 // Sixgree's own browser: the pure parts. The panel's links, where it goes in
 // the window, when the debugging port opens, what the scanner is told, and
 // when the page brings the panel forward (desktop/lib.mjs, lib/linkedin-panel.js,
-// lib/outlink-opened.js). No Electron needed. The scanner's half is in
+// lib/profile-opened.js). No Electron needed. The scanner's half is in
 // tests/scanner-panel.test.mjs.
 
 import { test } from 'node:test';
@@ -13,10 +13,10 @@ import {
   isLinkedInUrl, panelRoute, panelBounds, scannerInstalled, devToolsPort, panelEnv, routeFor, LINKEDIN_PANEL_PARTITION,
 } from '../desktop/lib.mjs';
 import {
-  panelEnvOf, scannerEnvWithPanel, hasPanel, panelAsked, panelWanted, outlinkResultIn, scanHoldsPanel,
+  panelEnvOf, scannerEnvWithPanel, hasPanel, panelAsked, panelWanted, scanHoldsPanel,
   PANEL_FRONT, PANEL_AWAY,
 } from '../lib/linkedin-panel.js';
-import { recordOutlinkOpened, readOutlinkOpened, chargeProfileView, OUTLINK_FILE, OUTLINK_KEPT, ACTIVITY_FILE } from '../lib/outlink-opened.js';
+import { recordProfileOpened, readProfileOpened, chargeProfileView, OPENED_FILE, OPENED_KEPT, ACTIVITY_FILE } from '../lib/profile-opened.js';
 import { usage } from '../lib/linkedin-limits.js';
 
 const TARGET = 'A1B2C3D4E5F60718293A4B5C6D7E8F90';
@@ -156,44 +156,36 @@ test('when the page brings the panel forward: the scanner says so, LinkedIn need
   assert.equal(panelWanted(running({ log: [PANEL_FRONT] })), true);
   assert.equal(panelWanted(running({ log: [PANEL_FRONT, PANEL_AWAY] })), false);
   assert.equal(panelWanted(running({ needsYou: "sign in to LinkedIn in Sixgree's own browser." })), true);
-  // Profiles open without a job now (OpenProfile.js): an old --outlink job is a scan like any other.
-  assert.equal(panelWanted(running({ action: 'outlink' })), false);
   assert.equal(panelWanted(running({ action: 'login' })), true);
   assert.equal(panelWanted({ running: false, action: null, log: [PANEL_FRONT], needsYou: 'x' }), false, 'nothing runs: nothing wants it');
   assert.equal(panelWanted(null), false);
 });
 
-test('Outlink’s result line', () => {
-  assert.equal(outlinkResultIn('Outlink result: opened'), 'opened');
-  assert.equal(outlinkResultIn('  Outlink result: no-panel  '), 'no-panel');
-  assert.equal(outlinkResultIn('Connect result: pending'), null);
-  assert.equal(outlinkResultIn('Outlink result: Opened!'), null);
-  assert.equal(outlinkResultIn(undefined), null);
-});
-
-test('Outlink’s record: which profile and when, the newest kept, and a damaged record never stops one', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-outlink-'));
+test('the record of profiles opened: which profile and when, the newest kept, and a damaged record never stops one', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'six-degrees-opened-'));
+  // The file keeps its old name: existing installs already have it.
+  assert.equal(OPENED_FILE, 'outlink-opened.json');
   try {
-    assert.deepEqual(readOutlinkOpened(dir), []);
-    const e = recordOutlinkOpened(dir, { id: 'c1', name: 'Someone Invented', url: 'https://www.linkedin.com/in/someone-invented', at: 1790000000000 });
+    assert.deepEqual(readProfileOpened(dir), []);
+    const e = recordProfileOpened(dir, { id: 'c1', name: 'Someone Invented', url: 'https://www.linkedin.com/in/someone-invented', at: 1790000000000 });
     assert.deepEqual(e, { id: 'c1', name: 'Someone Invented', url: 'https://www.linkedin.com/in/someone-invented', at: 1790000000000 });
-    assert.deepEqual(readOutlinkOpened(dir), [e]);
-    const f = recordOutlinkOpened(dir, { id: 42, url: 'https://www.linkedin.com/in/other' });
+    assert.deepEqual(readProfileOpened(dir), [e]);
+    const f = recordProfileOpened(dir, { id: 42, url: 'https://www.linkedin.com/in/other' });
     assert.equal(f.id, null, 'only an id of ours');
     assert.equal(f.name, null);
     assert.ok(Number.isFinite(f.at));
-    assert.equal(readOutlinkOpened(dir).length, 2);
+    assert.equal(readProfileOpened(dir).length, 2);
 
-    fs.writeFileSync(path.join(dir, OUTLINK_FILE), '{"opened": [');
-    assert.deepEqual(readOutlinkOpened(dir), []);
-    recordOutlinkOpened(dir, { id: 'c2', url: 'https://www.linkedin.com/in/x', at: 1 });
-    assert.equal(readOutlinkOpened(dir).length, 1, 'a damaged record starts again');
+    fs.writeFileSync(path.join(dir, OPENED_FILE), '{"opened": [');
+    assert.deepEqual(readProfileOpened(dir), []);
+    recordProfileOpened(dir, { id: 'c2', url: 'https://www.linkedin.com/in/x', at: 1 });
+    assert.equal(readProfileOpened(dir).length, 1, 'a damaged record starts again');
 
-    const many = Array.from({ length: OUTLINK_KEPT + 5 }, (_, i) => ({ id: `c${i}`, name: null, url: 'u', at: i }));
-    fs.writeFileSync(path.join(dir, OUTLINK_FILE), JSON.stringify({ opened: many }));
-    recordOutlinkOpened(dir, { id: 'last', url: 'u', at: 99999 });
-    const kept = readOutlinkOpened(dir);
-    assert.equal(kept.length, OUTLINK_KEPT);
+    const many = Array.from({ length: OPENED_KEPT + 5 }, (_, i) => ({ id: `c${i}`, name: null, url: 'u', at: i }));
+    fs.writeFileSync(path.join(dir, OPENED_FILE), JSON.stringify({ opened: many }));
+    recordProfileOpened(dir, { id: 'last', url: 'u', at: 99999 });
+    const kept = readProfileOpened(dir);
+    assert.equal(kept.length, OPENED_KEPT);
     assert.equal(kept.at(-1).id, 'last');
     assert.equal(kept[0].id, 'c6');
   } finally {

@@ -1,17 +1,15 @@
 'use client';
 
-// The Scan page's view of what LinkedIn allows: the one daily limit (searches a
-// day, and its number control), "Lift limits for this session", the cooldown
-// lock, and everyone whose list was only partly read, with a way back into
-// each. TRAPS §16, §35. The numbers come from /api/scraper
-// (lib/linkedin-limits.js, lib/paused.js), which reads the same files the
-// scanner writes.
+// The Scan page's view of what LinkedIn allows: the scan windows (their settings,
+// and where they stand), profile views a day (its number control), "Lift limits
+// for this session", the cooldown lock, and everyone whose list was only partly
+// read, with a way back into each. TRAPS §16, §35. The numbers come from
+// /api/scraper (lib/linkedin-limits.js, lib/paused.js), which reads the same
+// files the scanner writes.
 //
-// Blake, 2026-10-05: "we need to simplify this and allow more usage as it's
-// constrained too much. Just a simple default limit for the day and a button
-// to lift restrictions for this session." The budget box's three pickers
-// (a day, a month, profile views) and the cooldown's own "Lift it early" are
-// gone: one number, one button, no pop-up.
+// Blake, 2026-10-05: "Just a simple default limit for the day and a button to
+// lift restrictions for this session." Blake, 2026-10-17: scan windows in place
+// of the searches a day (lib/scan-windows.js), which the lift never passes.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -19,6 +17,7 @@ import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
 import { inProgressSummary, pagesReadText } from '../../lib/in-progress';
 import { LIFT_LINE, DEV_LINE } from '../../lib/limits-lift';
 import { roundWords } from '../../lib/scan-rounds';
+import { WINDOW_DEFAULTS, WINDOW_RANGES, windowLine } from '../../lib/scan-windows';
 
 const LINE = '1px solid rgba(var(--sd-ink, 255, 255, 255), 0.1)';
 const TIER = THEME_TIERS;   // the theme's dot colours (lib/themes.js)
@@ -37,11 +36,11 @@ export function dailyFrom(text) {
 }
 
 /**
- * Searches a day: a number box with a step down and up. Saved once you stop
+ * Profile views a day: a number box with a step down and up. Saved once you stop
  * typing (or press Enter, or leave the box); a number it can't take goes back
  * to the saved one. `small` for the notch.
  */
-export function DailyLimitInput({ value, onSave, disabled, small = false, id }) {
+export function DailyLimitInput({ value, onSave, disabled, small = false, id, label = 'Profile views a day' }) {
   // What's typed, while the box has the focus; null otherwise.
   const [draft, setDraft] = useState(null);
   // A number just saved, and the saved one it replaced: shown until the saved one changes.
@@ -71,10 +70,10 @@ export function DailyLimitInput({ value, onSave, disabled, small = false, id }) 
   };
   return (
     <span data-daily-limit="" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <button type="button" aria-label="Fewer searches a day" disabled={disabled || value <= DAILY_MIN} onClick={() => step(-10)} style={btn}>−</button>
+      <button type="button" aria-label={`Fewer: ${label}`} disabled={disabled || value <= DAILY_MIN} onClick={() => step(-10)} style={btn}>−</button>
       <input
         id={id} type="number" inputMode="numeric" min={DAILY_MIN} max={DAILY_MAX} step={1} value={text} disabled={disabled}
-        aria-label="Searches a day"
+        aria-label={label}
         onFocus={() => setDraft(text)}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => { save(); setDraft(null); }}
@@ -85,9 +84,57 @@ export function DailyLimitInput({ value, onSave, disabled, small = false, id }) 
           fontSize: small ? 12 : 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', MozAppearance: 'textfield',
         }}
       />
-      <button type="button" aria-label="More searches a day" disabled={disabled || value >= DAILY_MAX} onClick={() => step(10)} style={btn}>+</button>
+      <button type="button" aria-label={`More: ${label}`} disabled={disabled || value >= DAILY_MAX} onClick={() => step(10)} style={btn}>+</button>
     </span>
   );
+}
+
+// What each scan window setting offers (lib/scan-windows.js WINDOW_RANGES): each
+// only ever stricter than its default, which is its ceiling.
+const WINDOW_CHOICES = {
+  windowPages: [10, 20, 30, 40, 50, 60],
+  windowsPerDay: [1, 2],
+  windowGapHours: [6, 8, 12, 24],
+};
+const choicesFor = (key, value) => {
+  const { min, max } = WINDOW_RANGES[key];
+  const list = WINDOW_CHOICES[key];
+  return Number.isInteger(value) && value >= min && value <= max && !list.includes(value)
+    ? [...list, value].sort((a, b) => a - b) : list;
+};
+
+/**
+ * Scan windows (Blake, 2026-10-17): pages a window, windows a day and hours between
+ * windows, each a choice no looser than its default. `onSave` gets the one changed,
+ * as set-limits takes it ({ windowPages: 40 }).
+ */
+export function WindowSettings({ limits, onSave, disabled }) {
+  const row = (key, label, word) => {
+    const value = limits?.[key] ?? WINDOW_DEFAULTS[key];
+    return (
+      <label key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--sd-fg-2, #b8c4c4)' }}>
+        {label}
+        <select value={value} disabled={disabled} aria-label={label} onChange={(e) => onSave({ [key]: Number(e.target.value) })} style={sel}>
+          {choicesFor(key, value).map((n) => (
+            <option key={n} value={n}>{word(n)}{n === WINDOW_DEFAULTS[key] ? (key === 'windowGapHours' ? ', the least' : ', the most') : ''}</option>
+          ))}
+        </select>
+      </label>
+    );
+  };
+  return (
+    <span data-window-settings="" style={{ display: 'inline-flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {row('windowPages', 'Pages a window', (n) => `${n}`)}
+      {row('windowsPerDay', 'Windows a day', (n) => `${n}`)}
+      {row('windowGapHours', 'Hours between windows', (n) => `${n} h`)}
+    </span>
+  );
+}
+
+/** "Window 1 of 2: 34 of 60 · next window opens 15:09" (lib/scan-windows.js windowLine). */
+export function WindowLine({ window: w, style = null }) {
+  if (!w) return null;
+  return <span data-scan-window="" style={{ fontVariantNumeric: 'tabular-nums', ...style }}>{windowLine(w)}</span>;
 }
 
 /**

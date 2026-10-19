@@ -35,7 +35,7 @@ Both are scanning, with the same risk as any scan. If you haven't read it yet, [
 
 ## Who gets you here
 
-Pick a place, and its list gains a section called **Who gets you here**: the connections of yours whose circles include 2nd-degree people in that place, most first. Lines run from where each of them lives to the place you picked, as thick as how many people they reach there. Each has **Ask for an intro**, which opens Outlink filtered to that connection's circle.
+Pick a place, and its list gains a section called **Who gets you here**: the connections of yours whose circles include 2nd-degree people in that place, most first. Lines run from where each of them lives to the place you picked, as thick as how many people they reach there. Each has **Who they can introduce**, which opens Separation filtered to that connection's circle.
 
 In the sample network, Austin has 22 people two steps away, reached through 10 of your connections. The first is Bodhi Pereira, who reaches four of them, two of tier S. Bodhi's own location isn't known, so the list names them but draws no line, and says so. A person known by two of your connections counts under both, since either could introduce you, and once in the total.
 
@@ -58,7 +58,7 @@ The finder takes a person, a company or a place. Type words and press Enter to k
 - **Travel.** Before a trip, pick the city and see who you already know there, and who could introduce you to whom.
 - **Relocating.** A new city goes better with a few warm conversations. *Who gets you here* lists the people who could start them.
 - **Hiring in a city.** Filter by a title word, pick the city, and see which connections reach those people.
-- **Finding an intro in Austin**, or anywhere: pick the place, read the list, and use *Ask for an intro*. Then write the request yourself, with [a message your connection can forward](/blog/network-warm-introduction/).
+- **Finding an intro in Austin**, or anywhere: pick the place, read the list, and use *Who they can introduce*. Then write the request yourself, with [a message your connection can forward](/blog/network-warm-introduction/).
 
 ## What it can't tell you
 
