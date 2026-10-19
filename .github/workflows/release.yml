@@ -232,7 +232,7 @@ jobs:
           }
 
           start_app "$RUNNER_TEMP/app.log"
-          for p in "" paths queue setup settings api/network api/company-scores api/scraper api/settings; do
+          for p in "" paths class social setup settings api/network api/company-scores api/scraper api/settings; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url/$p"); echo "  /$p $code"
             [ "$code" = 200 ] || exit 1
           done
