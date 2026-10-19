@@ -9,7 +9,7 @@ installed rather than run from a checkout. TRAPS §4.
 
 | Table | Holds |
 |---|---|
-| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. Nothing in the app writes `sectors`; the Sidebar and Outlink read it as free text. The sectors you pick in Settings live in `app_meta` 'settings'. |
+| `users` | One row per local profile. `sectors`, `goals`, `company_prestige_config` are JSON-in-TEXT. Nothing in the app writes `sectors`; the Sidebar reads it as free text. The sectors you pick in Settings live in `app_meta` 'settings'. |
 | `linkedin_connections` | Everyone in the network, all degrees. The main table. |
 | `user_stats` | XP, level, streak, last scrape. |
 | `notifications` | In-app notifications. |

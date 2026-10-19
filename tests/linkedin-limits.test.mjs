@@ -1,10 +1,11 @@
-// The one daily limit and the cooldown lock, as the Scan page reads them. The
-// scanner writes the same files, and its own Python is run on them here so the
-// two can't disagree about what the limit is or what's left of it.
+// Profile views a day, the scan windows and the cooldown lock, as the Scan page
+// reads them. The scanner writes the same files, and its own Python is run on
+// them here so the two can't disagree about what a limit is or what's left of it.
 //
-// Blake, 2026-10-05: "we need to simplify this and allow more usage as it's
-// constrained too much. Just a simple default limit for the day and a button
-// to lift restrictions for this session."
+// Blake, 2026-10-05: "Just a simple default limit for the day and a button to
+// lift restrictions for this session." Blake, 2026-10-17: scan windows in place
+// of the searches a day (tests/scan-windows.test.mjs has their maths); the
+// daily number is profile views a day now.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
@@ -34,9 +35,11 @@ import ast, json, os, sys, time
 from datetime import datetime
 from pathlib import Path
 tree = ast.parse(open(sys.argv[1]).read())
-want = {'_home', '_read_activity', 'linkedin_usage', 'search_limits', 'searches_left', 'profiles_left',
-        'limits_lifted', '_write_json_atomic', 'read_cooldown', '_cooldown_on_file', '_scan_settings', 'dev_mode'}
-consts = {'DEFAULT_DAILY_SEARCHES', 'DAILY_MAX', 'LIMITS', 'DAY_SECONDS', 'INVITE_DAY_CAP', 'DEV_CEILING'}
+want = {'_home', '_read_activity', 'linkedin_usage', 'profile_views_a_day', 'searches_left', 'profiles_left',
+        'limits_lifted', '_write_json_atomic', 'read_cooldown', '_cooldown_on_file', '_scan_settings', 'dev_mode',
+        'window_rules', 'windows_in', 'scan_window'}
+consts = {'DEFAULT_DAILY_SEARCHES', 'DAILY_MAX', 'LIMITS', 'DAY_SECONDS', 'INVITE_DAY_CAP', 'WINDOW_PAGES',
+          'WINDOWS_PER_DAY', 'WINDOW_GAP_HOURS', 'WINDOW_RANGES'}
 body = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name in want)
         or (isinstance(n, ast.Assign) and any(getattr(x, 'id', '') in consts for x in n.targets))]
 ns = {'json': json, 'os': os, 'Path': Path, 'time': time, 'datetime': datetime, 'sys': sys}
@@ -64,31 +67,31 @@ test('usage counts the last 24 hours: searches, profile views, and Auto\'s reque
   rmSync(dir, { recursive: true, force: true });
 });
 
-test('a damaged record reads as the day used up, never as nothing searched', () => {
+test('a damaged record reads as the window used up, never as nothing searched', () => {
   const dir = scratch();
   writeFileSync(path.join(dir, 'linkedin-activity.json'), '{"searches": [1, 2');
   const st = linkedinState(dir);
-  assert.equal(st.leftToday, 0);
+  assert.equal(st.searchesLeft, 0);
   assert.equal(st.profilesLeftToday, 0, 'profile views too, as the scanner reads it');
   assert.equal(st.limitReached, true);
   assert.equal(st.unreadable, true);
   rmSync(dir, { recursive: true, force: true });
 });
 
-test('one limit: searches a day, 50 by default, any whole number from 1 to 1000', () => {
+test('profile views a day: 50 by default, any whole number from 1 to 1000', () => {
   const dir = scratch();
-  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 });
+  assert.deepEqual(DEFAULT_LIMITS, { daily: 50, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 });
   assert.deepEqual(DAILY_RANGE, { min: 1, max: 1000 });
   assert.deepEqual(readLimits(dir), DEFAULT_LIMITS);
   writeLimits(dir, { daily: 137 });
-  assert.deepEqual(readLimits(dir), { daily: 137, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 }, 'not just the old menu’s numbers');
+  assert.deepEqual(readLimits(dir), { daily: 137, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 }, 'not just the old menu’s numbers');
   for (const daily of [0, -5, 1001, 12.5, '80', null, undefined, true]) {
     writeLimits(dir, { daily });
     assert.equal(readLimits(dir).daily, 137, `${daily} keeps what is saved`);
   }
   writeLimits(dir, { daily: 1 });
   writeLimits(dir, { pace: 'slow' });
-  assert.deepEqual(readLimits(dir), { daily: 1, pace: 'slow', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 }, 'saving the speed keeps the number');
+  assert.deepEqual(readLimits(dir), { daily: 1, pace: 'slow', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 }, 'saving the speed keeps the number');
   writeLimits(dir, { daily: 1000 });
   assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 1000, pace: 'slow', gentle: true, profileReads: false }, 'only these four are written');
   assert.ok(validDaily(1) && validDaily(1000) && !validDaily(0) && !validDaily(1001));
@@ -98,62 +101,65 @@ test('one limit: searches a day, 50 by default, any whole number from 1 to 1000'
 test('a saved file from before keeps its daily number; the monthly and profile-view caps are dropped silently', () => {
   const dir = scratch();
   write(dir, 'scan-limits.json', { daily: 200, monthly: 250, profiles: 10, pace: 'medium' });
-  assert.deepEqual(readLimits(dir), { daily: 200, pace: 'medium', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 });
+  assert.deepEqual(readLimits(dir), { daily: 200, pace: 'medium', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 });
   const st = linkedinState(dir);
   assert.equal(st.leftMonth, undefined, 'no monthly budget');
-  assert.equal(st.profilesLeftToday, 200, 'profile views count against the daily number, not the old 10');
+  assert.equal(st.profilesLeftToday, 200, 'profile views a day are the daily number, not the old 10');
   writeLimits(dir, { daily: 150 });
   assert.deepEqual(read(dir, 'scan-limits.json'), { daily: 150, pace: 'medium', gentle: true, profileReads: false }, 'the first save drops the rest');
   // The old "0, no daily limit" is not a number the app saves: the default.
   write(dir, 'scan-limits.json', { daily: 0, monthly: 0, profiles: 0 });
-  assert.deepEqual(readLimits(dir), { daily: 50, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 });
+  assert.deepEqual(readLimits(dir), { daily: 50, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 });
   rmSync(dir, { recursive: true, force: true });
 });
 
-test('the single daily limit is enforced on searches and on profile views, each on its own count', () => {
+test('profile views a day hold profile views; search pages are the scan window\'s, not that number', () => {
   const dir = scratch();
   const now = Date.UTC(2026, 8, 24, 12);
   const s = (hoursAgo) => now / 1000 - hoursAgo * 3600;
   writeLimits(dir, { daily: 10 });
-  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 9 }, (_, i) => s(i + 1)), profiles: [s(1), s(30)] });
+  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 12 }, (_, i) => s(5) + i * 60), profiles: [s(1), s(30)] });
   let st = linkedinState(dir, now);
-  assert.deepEqual([st.leftToday, st.limitReached, st.profilesLeftToday], [1, false, 9]);
-  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 12 }, (_, i) => s(i + 1)), profiles: [] });
+  assert.deepEqual([st.searchesLeft, st.limitReached, st.profilesLeftToday], [48, false, 9], '12 of the window\'s 60, not of the 10');
+  write(dir, 'linkedin-activity.json', { searches: [], profiles: Array.from({ length: 12 }, (_, i) => s(i + 1)) });
   st = linkedinState(dir, now);
-  assert.deepEqual([st.leftToday, st.limitReached], [0, true], 'never below 0 when the number was lowered');
-  // A search 24 hours old has stopped counting: a rolling day, not since midnight.
-  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 10 }, () => s(24)), profiles: [] });
-  assert.equal(linkedinState(dir, now).limitReached, false);
+  assert.equal(st.profilesLeftToday, 0, 'never below 0 when the number was lowered');
+  assert.equal(st.limitReached, false, 'profile views don\'t hold search pages back');
+  // A view 24 hours old has stopped counting: a rolling day, not since midnight.
+  write(dir, 'linkedin-activity.json', { searches: [], profiles: Array.from({ length: 10 }, () => s(24)) });
+  assert.equal(linkedinState(dir, now).profilesLeftToday, 10);
   rmSync(dir, { recursive: true, force: true });
 });
 
-test('lifting for this session: no daily limit and no cooldown, until it is put back', () => {
+test('lifting for this session: no profile views a day and no cooldown, until it is put back; the window holds', () => {
   const dir = scratch();
   const now = Date.now();
   writeLimits(dir, { daily: 5 });
-  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 8 }, (_, i) => now / 1000 - 60 * (i + 1)), profiles: [now / 1000 - 30] });
+  write(dir, 'linkedin-activity.json', { searches: Array.from({ length: 8 }, (_, i) => now / 1000 - 60 * (i + 1)), profiles: Array.from({ length: 5 }, (_, i) => now / 1000 - 30 - i) });
   write(dir, 'linkedin-cooldown.json', { until: now / 1000 + 3600, reason: 'LinkedIn pushed back: a security check', set_at: now / 1000 - 600 });
   let st = linkedinState(dir, now);
-  assert.equal(st.limitReached, true);
+  assert.equal(st.profilesLeftToday, 0);
+  assert.equal(st.searchesLeft, 52);
   assert.ok(st.cooldown);
 
   liftLimits(now);
   st = linkedinState(dir, now);
   assert.equal(st.lifted, true);
   assert.equal(st.liftedAt, now);
-  assert.equal(st.leftToday, null, 'nothing is left "of" a limit');
-  assert.equal(st.profilesLeftToday, null);
+  assert.equal(st.profilesLeftToday, null, 'no limit on profile views a day');
+  assert.equal(st.searchesLeft, 52, 'the window holds, lifted or not (Blake, 2026-10-17)');
+  assert.equal(st.window.cap, 60);
   assert.equal(st.limitReached, false);
   assert.equal(st.cooldown, null, 'the cooldown is off');
   assert.match(st.heldCooldown.reason, /security check/, 'and comes back with the limits');
   assert.equal(st.searchesToday, 8, 'still counted');
-  assert.deepEqual(readLimits(dir), { daily: 5, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 }, 'the saved number is untouched');
+  assert.deepEqual(readLimits(dir), { daily: 5, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 }, 'the saved number is untouched');
   assert.ok(readCooldown(dir, now), 'and so is the pause on file: nothing is written');
 
   putLimitsBack();
   st = linkedinState(dir, now);
   assert.equal(st.lifted, false);
-  assert.equal(st.limitReached, true);
+  assert.equal(st.profilesLeftToday, 0);
   assert.ok(st.cooldown);
   assert.equal(liftEnded().why, 'by-hand');
   rmSync(dir, { recursive: true, force: true });
@@ -202,11 +208,11 @@ test('the scanner reads the number the Scan page saved, and old or odd files the
   for (const [limits, want] of cases) {
     const dir = scratch();
     if (limits) write(dir, 'scan-limits.json', limits);
-    const py = scanner(t, dir, 'search_limits()');
+    const py = scanner(t, dir, 'profile_views_a_day()');
     const js = readLimits(dir).daily;
     rmSync(dir, { recursive: true, force: true });
     if (py === undefined) return;
-    assert.deepEqual(py, { daily: want, profiles: want }, JSON.stringify(limits));
+    assert.equal(py, want, JSON.stringify(limits));
     assert.equal(js, want, `the page agrees for ${JSON.stringify(limits)}`);
   }
 });
@@ -223,17 +229,17 @@ test('the scanner and the Scan page agree on what\'s left, limits on and lifted'
   const on = scanner(t, dir, '[searches_left(float(argv[0])), profiles_left(float(argv[0])), read_cooldown() is not None]', { args: [String(sec)] });
   if (on === undefined) return;
   const js = linkedinState(dir, now);
-  assert.deepEqual(on, [[0, 'daily'], 9, true]);
-  assert.deepEqual([js.leftToday, js.profilesLeftToday, Boolean(js.cooldown)], [0, 9, true]);
+  assert.deepEqual(on, [[48, 'window'], 9, true], 'the window\'s 60 less its 12; ten profile views a day less one');
+  assert.deepEqual([js.searchesLeft, js.profilesLeftToday, Boolean(js.cooldown)], [48, 9, true]);
 
   const lifted = scanner(t, dir, '[searches_left(float(argv[0])), profiles_left(float(argv[0])) >= 10 ** 9, read_cooldown(), _cooldown_on_file() is not None]',
     { lifted: true, args: [String(sec)] });
-  // No daily limit and no cooldown; the pause is still on file. Searches keep Dev mode's ceiling (2026-10-16).
-  assert.deepEqual(lifted, [[250 - 12, 'daily'], true, null, true], 'no daily limit, up to the ceiling; no cooldown; the pause is still on file');
+  // No limit on profile views and no cooldown; the pause is still on file. The window holds (2026-10-17).
+  assert.deepEqual(lifted, [[48, 'window'], true, null, true], 'the window as before; no cooldown; the pause is still on file');
   liftLimits(now);   // after the pause was set, so it doesn't end the lift
   const st = linkedinState(dir, now);
-  assert.deepEqual([st.leftToday, st.profilesLeftToday, st.cooldown], [null, null, null]);
-  assert.deepEqual([st.ceiling, st.ceilingLeftToday], [250, 250 - 12], 'the app says the same ceiling, and what\'s left of it');
+  assert.deepEqual([st.searchesLeft, st.profilesLeftToday, st.cooldown], [48, null, null]);
+  assert.deepEqual([st.window.cap, st.window.of], [60, 2], 'the app says the same window');
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -248,9 +254,9 @@ test('a limits file from another computer is held to the rules the app writes by
   assert.equal(budgetFileProblem('scan-limits.json', { daily: 25, note: 'extra keys are ignored' }), null);
   assert.equal(budgetFileProblem('scan-limits.json', {}), null, 'missing values read as the defaults');
   // REGRESSION (review R2): a number the app would never save is refused, not passed on.
-  assert.match(budgetFileProblem('scan-limits.json', { daily: 0 }), /daily limit \(0\) is not one Sixgree offers/);
-  assert.match(budgetFileProblem('scan-limits.json', { daily: 5000 }), /daily limit \(5000\)/);
-  assert.match(budgetFileProblem('scan-limits.json', { daily: '50' }), /daily limit/);
+  assert.match(budgetFileProblem('scan-limits.json', { daily: 0 }), /profile views a day \(0\) is not a number Sixgree offers/);
+  assert.match(budgetFileProblem('scan-limits.json', { daily: 5000 }), /profile views a day \(5000\)/);
+  assert.match(budgetFileProblem('scan-limits.json', { daily: '50' }), /profile views a day/);
   assert.match(budgetFileProblem('scan-limits.json', [50, 250]), /not a JSON object/);
 
   assert.equal(budgetFileProblem('linkedin-activity.json', { searches: [1758800000.123456, 1758800000], profiles: [] }), null);
@@ -295,7 +301,7 @@ test('REGRESSION: importing onto a computer that has scanned keeps its searches,
   assert.equal(state.profilesToday, 1);
   assert.equal(state.cooldown.until, (sec + 86400) * 1000, 'the pause that ends later');
   assert.equal(state.cooldown.reason, 'A security check');
-  assert.deepEqual(state.limits, { daily: 25, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 }, 'the limit chosen here stays');
+  assert.deepEqual(state.limits, { daily: 25, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 }, 'the limit chosen here stays');
 
   // A pause here that ends later than the copy's stays as it is.
   write(from, 'linkedin-cooldown.json', { until: sec + 60, reason: 'shorter', set_at: sec });
@@ -328,14 +334,14 @@ test('a computer with no limits file takes the copy\'s daily number, and nothing
   for (const dir of [bare, from]) rmSync(dir, { recursive: true, force: true });
 });
 
-test('a record here that can\'t be read is left alone: the scanner reads it as today used up', () => {
+test('a record here that can\'t be read is left alone: the scanner reads it as the window used up', () => {
   const here = scratch();
   const from = scratch();
   writeFileSync(path.join(here, 'linkedin-activity.json'), '{"searches": [1, 2');
   write(from, 'linkedin-activity.json', { searches: [100], profiles: [] });
   mergeBudgetFiles({ dir: here, from });
   assert.equal(readFileSync(path.join(here, 'linkedin-activity.json'), 'utf8'), '{"searches": [1, 2');
-  assert.equal(linkedinState(here).leftToday, 0);
+  assert.equal(linkedinState(here).searchesLeft, 0);
   for (const dir of [here, from]) rmSync(dir, { recursive: true, force: true });
 });
 

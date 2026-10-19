@@ -43,7 +43,7 @@ Tick *Light up a branch on hover* and hovering a dot lights up its **branch**: e
 - **Heat**: power as a thermal map, the higher someone's score among the people showing, the hotter;
 - **Degree**: your connections, the people they know, and anyone further out;
 - **Company**: the eight most common companies in view, and everyone else in grey;
-- **Warmth**: how recently you've been in touch, from the platform's data export read in Outlink → Messages & follow-ups (experimental).
+- **Warmth**: how recently you've been in touch, from the platform's data export read in Messages & follow-ups (experimental, from your Profile).
 
 **Find** takes a name, a company or a role from two letters. Everyone who matches lights up and the rest dim; Enter flies to the best match and opens their card.
 

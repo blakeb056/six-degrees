@@ -11,7 +11,7 @@ import { setNotchTabs } from '../../lib/island';
  * A layout effect, not a plain one, and that is the point of this hook. A plain
  * effect runs after the new page has been painted, so in a production build the
  * Scan page came up for one frame with the page before's tabs still in the notch
- * (Paths' Map · Companies, Outlink's Circles…). A layout effect runs in the same
+ * (Paths' Map · Companies, Breach's Company · Companies…). A layout effect runs in the same
  * commit as the page swap: the old page's cleanup and the new page's tabs both
  * land before that frame is drawn, and the notch reads them in one go.
  */

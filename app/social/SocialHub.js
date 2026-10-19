@@ -13,7 +13,6 @@
 // you've been in touch with, and your own stage, tags, notes and follow-ups.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useUser } from '../components/UserProvider';
 import { loadNetwork } from '../../lib/network';
 import {
@@ -24,7 +23,6 @@ import { keyFor } from '../../lib/separation';
 import { runScrape, watchScanner, scannerNow } from '../../lib/scraper-client';
 import { scanShows } from '../../lib/scanner-capabilities';
 import { Body, LINE, FONT } from '../components/ui';
-import { IS_DEMO } from '../../lib/demo';
 import Crm from './Crm';
 
 const WARMTH = { warm: ['Warm', '#ff9f43'], cool: ['Cool', '#3498DB'], dormant: ['Dormant', '#8899aa'], never: ['Never messaged', '#556'] };
@@ -64,12 +62,12 @@ async function sendInviteNotes(invitations) {
 }
 
 /**
- * Social, the CRM and your LinkedIn export, as part of Outlink (Blake,
- * 2026-10-02: "make outlink a one thing with the dms follow up and etc mixed
- * with the social aspect of adding those people and keeping track"). `embedded`
- * leaves out its own header: Outlink's tabs and notch are above it.
+ * Messages & follow-ups: the CRM, your data export and the messages sync, the
+ * whole of the /social page under the app's header (app/social/page.js, which
+ * also keeps it out of the public demo). Blake, 2026-10-17: a page of its own
+ * again, with no tab, now the introductions queue it sat in is gone.
  */
-export default function SocialHub({ embedded = false }) {
+export default function SocialHub() {
   const { userId } = useUser();
   const [social, setSocial] = useState(undefined);
   const [net, setNet] = useState(null);
@@ -240,21 +238,17 @@ export default function SocialHub({ embedded = false }) {
     return counts;
   }, [net, merged, asOf]);
 
-  if (IS_DEMO) return <div style={{ minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-3, #aaa)', padding: 40, fontFamily: FONT }}>Not part of the demo.</div>;
   const running = job?.running;
   const box = { padding: '12px 14px', borderRadius: 8, border: LINE, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.03)', marginTop: 10 };
   const h2 = { fontSize: 16, margin: '24px 0 6px' };
 
   return (
-    <div style={embedded ? { color: 'var(--sd-fg-1, #fff)', fontFamily: FONT } : { minHeight: '100vh', background: 'var(--sd-page)', color: 'var(--sd-fg-1, #fff)', fontFamily: FONT }}>
-      {!embedded && (
-        <header style={{ padding: '16px 24px', borderBottom: LINE, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/" style={{ color: 'var(--sd-fg-3, #888)', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 6, background: 'rgba(var(--sd-ink, 255, 255, 255), 0.06)', border: LINE }}>← Back to Map</Link>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--sd-gold, #FFD700)' }}>Social <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', fontWeight: 600 }}>experimental</span></h1>
-        </header>
-      )}
+    <div style={{ color: 'var(--sd-fg-1, #fff)', fontFamily: FONT }}>
       <main style={{ maxWidth: 1180, margin: '0 auto', padding: '8px 16px 64px' }}>
-        <Body style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, margin: '20px 0 0', color: 'var(--sd-gold, #FFD700)' }}>
+          Messages &amp; follow-ups <span style={{ fontSize: 12, color: 'var(--sd-fg-3, #8b9a9a)', fontWeight: 600 }}>experimental</span>
+        </h2>
+        <Body style={{ marginTop: 10 }}>
           Everyone you&rsquo;ve been in touch with, connections or not: who&rsquo;s waiting on you, who
           hasn&rsquo;t answered, what you&rsquo;ve sent and received, and your own notes and follow-ups on each, from
           your own data export. Only dates, who wrote last, counts and names are kept on this computer, and what

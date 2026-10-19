@@ -15,7 +15,7 @@ import ScanRadar from '../components/ScanRadar';
 import AppHeader from '../components/AppHeader';
 import useNotchTabs from '../components/useNotchTabs';
 import { durationText, firstCircleSeconds, paceLine, paceOf } from '../../lib/scan-pace';
-import { CooldownBanner, PausedList, LiftedTag, DailyLimitInput } from '../components/LinkedInLimits';
+import { CooldownBanner, PausedList, LiftedTag, DailyLimitInput, WindowSettings, WindowLine } from '../components/LinkedInLimits';
 import FieldStep, { FieldAnswer } from '../components/FieldStep';
 import ClassQuestion from '../components/class/ClassQuestion';
 import { TIER_COLORS as THEME_TIERS } from '../../lib/themes';
@@ -130,7 +130,7 @@ function SetupInner() {
 
   // Setup's steps opened or closed by their chevron: { [key]: true | false }.
   const [openSteps, setOpenSteps] = useState({});
-  // The Social tab's once-a-day messages sync, switchable here too once there
+  // Messages & follow-ups' once-a-day messages sync (/social), switchable here too once there
   // are messages to sync (GET /api/social; PATCH as app/social/SocialHub.js does).
   const [social, setSocial] = useState(null);
   useEffect(() => {
@@ -441,16 +441,16 @@ function SetupInner() {
                 </div>}
                 <YourConnectionsSearch
                   s={s} mode={modes.mode} running={running} disabled={!canScanList}
-                  tooOld={pluginTooOld(c.scanner, 'your-connections')} onScan={() => run('your-connections')}
+                  tooOld={pluginTooOld(c.scanner, 'your-connections')} onScan={(opts) => run('your-connections', opts)}
                 />
                 {why && <Why>{why}</Why>}
               </Part>}
 
               {/* ---- Their circles: Auto-Bridge, the radar with today's budget round it ---- */}
               <Part title="Their circles" hint={<>
-                Reads who your connections know, one at a time, for Degrees, Separation and Outlink. The first
+                Reads who your connections know, one at a time, for Degrees, Separation and the Map. The first
                 circle shows in {firstCircle}; the rest fills in over days,{' '}
-                {devOn ? `up to Dev mode’s ceiling of ${li.devCeiling} searches a day` : li?.lifted ? `with no daily limit for this session, up to a ceiling of ${li.ceiling ?? 250} searches a day` : li?.limits?.daily ? `${li.limits.daily} searches a day` : 'a few searches a day'}, each round carrying on where the last stopped.
+                {li?.window ? `in scan windows of ${li.window.cap} search pages, ${li.window.of === 1 ? 'one a day' : `${li.window.of} a day`}` : 'in scan windows'}, each round carrying on where the last stopped.
               </>}>
                 {/* Lifting the limits for this session lifts the pause too (lib/limits-lift.js). */}
                 <CooldownBanner cooldown={li?.cooldown} disabled={busy} onLift={() => run('lift-limits')} />
@@ -589,7 +589,7 @@ function SetupInner() {
                   <div style={{ marginTop: 4 }}>
                     The scanner still opens their profile and the first page of their list; from there nothing on
                     the page moves unless you move it. A page is read once you reach its foot, and only once. Every
-                    page you open is still a LinkedIn search on your account, counted against your searches a day,
+                    page you open is still a LinkedIn search on your account, counted in the scan window,
                     and a stop the moment LinkedIn pushes back. In a round of several people, closing the window
                     moves on to the next person; Stop ends the round. Ten minutes with no new page ends that
                     person&rsquo;s read. Your own connections, company scans and profile reads still run by themselves.
@@ -621,7 +621,7 @@ function SetupInner() {
                     more={<>
                       Hover or click Auto scan to pick its pace (Slow, Medium or Fast: how many searches in a sitting and how
                       long it rests after) and which tiers&rsquo; circles it scans, then Start. It searches only from 9:00 to
-                      18:00, with no browser open while it rests; it stops at your daily limit and after any check from
+                      18:00, with no browser open while it rests; it stops when the scan window is used and after any check from
                       LinkedIn; anything you queue goes first; and it saves every page. Scans you start yourself never keep
                       its hours. It also reads LinkedIn&rsquo;s own data beside the page text, to fill gaps and measure how the
                       two compare.
@@ -631,23 +631,36 @@ function SetupInner() {
                   <SettingTitle title="Auto scan" line={AUTO_NEEDS_AUTOMATIC} />
                 )}
               </div>}
-              {/* One limit (Blake, 2026-10-05): this number replaces the old searches a day, a month and
-                  profile views a day. The lift and the meter are under LinkedIn usage below. */}
+              {/* Scan windows (Blake, 2026-10-17), in place of the searches a day: at most 60 search pages a
+                  window, two windows a day, a new one 6 hours or more after the last began (lib/scan-windows.js).
+                  Every search page counts, by hand or not; profile pages don't. Each setting can only be made
+                  stricter, and neither the lift nor Dev mode passes the defaults. */}
+              <div data-scan-windows="" style={rowStyle}>
+                <SettingTitle title="Scan windows" line="Every search page, by hand or automatic, counts in a window: at most 60 pages a window, two windows a day, and a new window only 6 hours after the last began. A scan stops when the window is used and carries on in the next. Lifting the limits and Dev mode never pass these." />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 8 }}>
+                  <WindowSettings limits={li?.limits} disabled={busy} onSave={(change) => run('set-limits', change)} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 650, color: 'var(--sd-fg-2, #cfd8d8)', marginTop: 8 }}>
+                  <WindowLine window={li?.window} />
+                  {li?.lifted && <> <LiftedTag dev={devOn} /> <span style={{ fontWeight: 400, color: 'var(--sd-fg-3, #8b9a9a)' }}>at the windows&rsquo; most, which nothing passes</span></>}
+                </div>
+              </div>
+              {/* Profile views a day: the number that was searches a day too until the windows came. */}
               <div style={rowStyle}>
-                <SettingTitle title="Searches a day" line="The one limit, counting the last 24 hours: a scan, and Auto scan, stops at it and carries on next time. Profile views count against the same number." />
+                <SettingTitle title="Profile views a day" line="Profiles a scan opens (to find someone’s list, to dig deeper or to read profiles), counting the last 24 hours, and never two less than a minute apart. A scan stops at it and carries on next time." />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--sd-fg-2, #b8c4c4)' }}>
                   {li?.limits?.daily != null && (
                     <DailyLimitInput id="settings-daily" value={li.limits.daily} onSave={(daily) => run('set-limits', { daily })} />
                   )}
                   {devOn
-                    ? <><LiftedTag dev /> <span>No daily limit until you turn Dev mode off, under Safety, but never past Dev mode’s ceiling of {li.devCeiling} in the last 24 hours.</span></>
+                    ? <><LiftedTag dev /> <span>No limit on profile views a day until you turn Dev mode off, under Safety.</span></>
                     : li?.lifted
-                    ? <><LiftedTag /> <span>No daily limit until you quit Sixgree, but never past a ceiling of {li.ceiling ?? 250} in the last 24 hours, as in Dev mode.</span></>
-                    : <span>{li?.searchesToday != null && Number.isFinite(li.searchesToday) ? `${li.searchesToday} used in the last 24 hours.` : ''}</span>}
+                    ? <><LiftedTag /> <span>No limit on profile views a day until you quit Sixgree.</span></>
+                    : <span>{li?.profilesToday != null && Number.isFinite(li.profilesToday) ? `${li.profilesToday} used in the last 24 hours.` : ''}</span>}
                   {!devOn && <a href="#usage" style={{ color: 'var(--sd-blue, #3498DB)', textDecoration: 'none', fontWeight: 600 }}>{li?.lifted ? 'Put limits back' : 'Lift it for this session'} &rarr;</a>}
                 </div>
               </div>
-              {/* Blake, 2026-10-05: gentle pacing, on. Saved with the daily limit (scan-limits.json), so the
+              {/* Blake, 2026-10-05: gentle pacing, on. Saved with the scan windows (scan-limits.json), so the
                   scanner reads it at the start of each scan. It only ever adds waiting to the read as it was. */}
               <div style={rowStyle}>
                 <Toggle checked={gentle} disabled={running || busy} onChange={(on) => run('set-limits', { gentle: on })}
@@ -734,13 +747,13 @@ function SetupInner() {
                 <Toggle checked={showChrome} disabled={running} onChange={setShowChrome}
                   title="Show the scanner’s Chrome window"
                   line="Scans run in a Chrome window in front of you, to watch it work. Off, it stays out of sight until LinkedIn needs you."
-                  more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or your daily limit." />
+                  more="The notch shows what it’s doing either way, and Stop works the same. It changes nothing about pacing or the scan windows." />
               </div>
               {social && shows.auto && (
                 <div style={rowStyle}>
                   <Toggle checked={social.autoSync === true} disabled={running} onChange={syncMessages} tag="Experimental"
                     title="Sync messages once a day"
-                    line="Brings your LinkedIn conversations up to date for the Social tab, once a day, with the scanner." />
+                    line={<>Brings your LinkedIn conversations up to date in <Link href="/social" style={{ color: 'var(--sd-fg-2, #aab7c4)' }}>Messages &amp; follow-ups</Link>, once a day, with the scanner.</>} />
                 </div>
               )}
             </Group>
@@ -754,16 +767,16 @@ function SetupInner() {
               </div>
               {/* Blake, 2026-10-12: Dev mode ("a dev mode that basically removes the limits", the speed
                   excepted), marked as advanced. Saved in scan-limits.json; the scanner reads it as it goes
-                  (scrape.py dev_mode). It keeps one limit: the ceiling on search pages a day. */}
+                  (scrape.py dev_mode). The scan windows stay, at their most (lib/scan-windows.js). */}
               {shows.auto && <div data-dev-mode-switch="" style={rowStyle}>
                 <Toggle checked={devOn} disabled={busy} onChange={(on) => run('set-limits', { dev: on })}
-                  title="Dev mode: no limits but a ceiling" tag="Advanced · your account, your risk"
+                  title="Dev mode: no limits but the scan windows" tag="Advanced · your account, your risk"
                   line={devOn
-                    ? `On: no daily limit but a ceiling of ${li.devCeiling} search pages in any 24 hours, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.`
-                    : `Takes off every limit Sixgree sets but a ceiling of ${li?.devCeiling ?? 250} search pages a day, until you turn it off. The speed you pick still sets every wait.`}
+                    ? 'On: the scan windows at their most (60 search pages a window, two windows a day, 6 hours apart), no limit on profile views a day, no cooldown, no caps on Auto’s requests, no hours for Auto scan and no cap on the queue. Stays on until you turn it off.'
+                    : 'Takes off every limit Sixgree sets but the scan windows, which stay at their most (60 search pages a window, two a day), until you turn it off. The speed you pick still sets every wait.'}
                   more={<>
-                    What stays on whatever this says: the ceiling on search pages in any 24 hours, set below
-                    where accounts were restricted; the speed (Slow, Medium or Fast) and everything it sets,
+                    What stays on whatever this says: the scan windows, at most 120 search pages a day, set well
+                    below where accounts were restricted; the speed (Slow, Medium or Fast) and everything it sets,
                     the pause before each page, the gap between profile views and Auto scan&rsquo;s sittings and
                     rests; one scan at a time; and a stop the moment LinkedIn shows a sign-in, a security check or a
                     restriction. LinkedIn pushing back also turns Dev mode off, and it stays off until you turn it on
@@ -799,7 +812,7 @@ function ScanOne({ pick, li, running, s, canSearch, busy, onStart, onUnpick }) {
   const size = roundOf(li?.limits?.roundPages);
   const cost = circleScanCost(size, li?.limits?.pace, li?.limits?.gentle !== false);
   const theirs = running && s?.target?.id === person.id;
-  const short = !li?.lifted && li?.leftToday != null && li.leftToday < cost.searches;
+  const short = li?.searchesLeft != null && li.searchesLeft < cost.searches;
   // Part read: the next round carries on. Read to the end: a rescan, from page 1.
   const started = Boolean(rounds?.pages) && rounds.next != null;
   const finished = Boolean(rounds?.done);
@@ -824,7 +837,7 @@ function ScanOne({ pick, li, running, s, canSearch, busy, onStart, onUnpick }) {
       )}
       {theirs ? (
         <div style={{ marginTop: 10 }}>
-          <b>Scanning {first}&rsquo;s circle, one round.</b> It saves every 10 pages, and{' '}
+          <b>Scanning {first}&rsquo;s circle, one round.</b> It saves each page as it&rsquo;s read, and{' '}
           <Link href={`/?chain=${encodeURIComponent(person.id)}`} style={{ color: 'var(--sd-green, #00ff88)' }}>Bridge Chains shows it filling in →</Link>
         </div>
       ) : (
@@ -832,9 +845,7 @@ function ScanOne({ pick, li, running, s, canSearch, busy, onStart, onUnpick }) {
           <div style={{ color: 'var(--sd-fg-2, #b8c4c4)', marginTop: 10 }}>
             A round is up to {cost.searches} pages of their list, about {cost.minutes} minutes: <b>one LinkedIn search
             for every page</b>{started ? '' : <>, and <b>{cost.profileViews} profile view</b> to find their list</>}.
-            {li?.dev ? <> Dev mode is on, so it reads at its pace with no daily limit, up to its ceiling of {li.devCeiling} searches in 24 hours (<b>{li.devLeftToday}</b> left).</>
-              : li?.lifted ? <> The limits are lifted for this session, so it reads at its pace with no daily limit, up to a ceiling of {li.ceiling ?? 250} searches in 24 hours{li.ceilingLeftToday != null ? <> (<b>{li.ceilingLeftToday}</b> left)</> : null}.</>
-              : li?.leftToday != null && <> <b>{li.leftToday}</b> of your {li.limits?.daily} searches a day are left{short ? '; the round stops when they run out, and the next carries on from that page' : ''}.</>}
+            {li?.window && <> <WindowLine window={li.window} style={{ fontWeight: 650 }} />: <b>{li.searchesLeft}</b> {li.searchesLeft === 1 ? 'page' : 'pages'} left now{short ? '; the round stops when the window is used, and the next carries on from that page' : ''}.</>}
           </div>
           {started && (
             <div style={{ color: 'var(--sd-fg-3, #9aa)', fontSize: 12.5, marginTop: 6 }}>
@@ -1023,11 +1034,13 @@ function Part({ title, hint, children }) {
 function YourConnectionsSearch({ s, mode, running, disabled, tooOld, onScan }) {
   const on = Boolean(running && s.action === 'your-connections');
   const note = s.yourList;
+  // Every page read: reading them again from page 1 is only ever asked for (scrape.py --again, Blake, 2026-10-17).
+  const finished = note?.pages > 0 && !note.more;
   return (
     <div data-your-connections="" style={{ marginTop: 14 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Btn onClick={onScan} disabled={disabled || Boolean(tooOld)} active={on}>
-          {on ? 'Adding…' : note?.more ? `Carry on from page ${note.pages + 1}` : 'Add locations and mutuals'}
+        <Btn onClick={() => onScan(finished ? { again: true } : {})} disabled={disabled || Boolean(tooOld)} active={on}>
+          {on ? 'Adding…' : note?.more ? `Carry on from page ${note.pages + 1}` : finished ? 'Read again from page 1' : 'Add locations and mutuals'}
         </Btn>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--sd-fg-2, #aab7c4)' }}>
           {mode === 'manual' ? 'By hand' : mode === 'auto' ? 'Automatic' : ''}
@@ -1035,12 +1048,12 @@ function YourConnectionsSearch({ s, mode, running, disabled, tooOld, onScan }) {
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--sd-fg-3, #8b9a9a)', lineHeight: 1.6, marginTop: 6, maxWidth: 640 }}>
         Reads your connections through LinkedIn&rsquo;s search, which shows where each one is and the mutual
-        connections you share. About 100 pages for 1,000 connections, each page a search counted in your daily
-        limit, so it spreads over days and carries on where it stopped. It runs the way circle scans do, as
+        connections you share. About 100 pages for 1,000 connections, each page a search counted in the scan
+        window, so it spreads over days and carries on where it stopped. It runs the way circle scans do, as
         chosen in Scanner settings. LinkedIn&rsquo;s search shows 1,000 people at most.
         {note?.pages > 0 && (note.more
           ? ` Read to page ${note.pages} so far.`
-          : ` All ${note.pages} pages read: the next scan reads them again from page 1.`)}
+          : ` All ${note.pages} pages read. Read again from page 1 brings locations and mutual counts up to date; nothing reads them again by itself.`)}
       </div>
       {tooOld && <Why>{tooOld}</Why>}
     </div>

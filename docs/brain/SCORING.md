@@ -11,7 +11,7 @@ pinning it down. Everything scores through it:
 | `lib/companies.js` | Paths reads titles, companies and each company's industry through the same functions, so Paths and the score never disagree |
 | `lib/sector-focus.js` `previewSectorFocus()` | Scores → Your sector, before saving: reads the network once (`readForScoring()`, as a save does) and scores it twice in memory (saved focus, new focus), then counts what moves. Writes nothing. A save counts with the same function (`rescoreAll({compareWith})`), so the two say the same |
 | `lib/legacy-offer.js` `legacyOffer()` | The Scores tab's one-time offer to keep the curated list's old scores: compares each company's built-in score now (`companyScore()`) with the one the old list gave it. Writes nothing until it's answered |
-| `app/queue/page.js`, `app/components/Sidebar.js` | The Queue's order (+1 at a top company) and the person panel's notes ("At Google (10/10)", "Former Adobe (8/10)") read the scores the model stored: `rowCompanyScore()`, `topCompanies()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 each kept its own list of one person's favourite names, matched anywhere in the headline |
+| `app/components/Sidebar.js` | The person panel's notes ("At Google (10/10)", "Former Adobe (8/10)") read the scores the model stored: `topCompanies()`, `scoredCompany()`, `TOP_COMPANY` (8). Of two roles alike, the panel names the one the stored working (`score_why`) names, since your own score or your sector can make either the stronger. Until September 2026 it, and the introductions queue's order (removed 2026-10-17), each kept its own list of one person's favourite names, matched anywhere in the headline |
 | `app/api/company-scores/route.js` | The Scores tab: each company scored from the same read as rescoring, through `companyScoreIn()` |
 
 Until 0.1.10 there were three scorers that disagreed. The hosted era's SQL scorers
@@ -858,8 +858,7 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   next map load retry. No promotion notifications fire: those belong to scans
   (`/api/ingest`).
 - **The ripple:** more people at A/S raises circles' elite share, so bridge boosts and
-  catalyst flags can change. Outlink's priority multiplies by tier, and the profile's Network
-  Power and milestones count tiers. All of that follows the new tiers. The scanner's default
+  catalyst flags can change. The profile's Network Power and milestones count tiers. All of that follows the new tiers. The scanner's default
   order, newest connections first, doesn't look at tiers; only when you pick *Highest tier
   first* on the Scan page does it read bridges' circles by stored tier and apply its tier
   filter (`scrape.py`, the bridge order; `app/setup/page.js`). The Settings page says so.
@@ -887,7 +886,7 @@ everything reading `{score, source}` is unchanged. The working names the pick:
   *Skip for now* saves only `fieldAsked`. It isn't asked again, nor of anyone with a
   network or a sector picked (`lib/scanner-setup.js askForField`), nor in the demo.
 - `users.sectors` (free text, never written by the app) is a different thing: the
-  Sidebar's "Shared sector" insight and Outlink's priority still read it. The profile's
+  Sidebar's "Shared sector" insight still reads it. The profile's
   *Your Sectors* shows the Settings choice.
 
 ## The sector directory
@@ -1107,8 +1106,8 @@ company scores under a sector focus only, never title points. Re-run the title-t
 check on a real network with school clubs in it. A database the unreleased build scored
 kept its old school readings until its next rescore (any import, company score or Settings
 save); since the rule tables joined the list stamp (Staleness, above) the next load redoes
-them, as it does a focus stamped before industries included their sectors. The Queue and the
-person panel read the stored scores, so they change with them.
+them, as it does a focus stamped before industries included their sectors. The person panel
+reads the stored scores, so it changes with them.
 
 **Government and military titles (still `SCORING_VERSION` 6, and new rule tables):**
 four rounds of adversarial review ran about 8,500 invented headlines through the reader

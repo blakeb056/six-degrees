@@ -36,6 +36,7 @@ import { focusSubgraph } from '../lib/circle-focus.js';
 import { MUTUALS_MARK, MUTUAL_WATCH_JS, INVITE_WATCH_WORLD, mutualsSeenFor } from '../desktop/lib.mjs';
 import { PLUGIN_SINCE, pluginTooOld, capabilityRefusal, AUTO_ACTIONS } from '../lib/scanner-capabilities.js';
 import { SHIPPED_PLUGIN_VERSION } from '../lib/plugins-shipped.js';
+import { compareVersions } from '../lib/release.js';
 import { scanDoneNotification } from '../lib/notifications.js';
 import { busyReason } from '../lib/scraper-client.js';
 
@@ -575,7 +576,7 @@ out['url'] = ns['mutual_search_url']('ACoAAInvented')`);
   assert.equal(r.out.posted[1].list, false, 'a list is counted once, at its first round');
   assert.equal(r.out.url, 'https://www.linkedin.com/search/results/people/?network=%5B%22F%22%5D&connectionOf=%5B%22ACoAAInvented%22%5D');
   assert.match(r.log, /Read all mutuals: reading the mutual connections you share with Invented Vp, pages 1 to 5/);
-  assert.match(r.log, /each a search counted in your daily limit/);
+  assert.match(r.log, /each a search counted in the scan window/);
 });
 
 test('the reader drops the names in each card\'s line from a full mutual list: they know you, not them', (t) => {
@@ -606,7 +607,7 @@ test('the app runs it as its own action by id, any degree, with either plugin, i
   assert.ok(!AUTO_ACTIONS.includes('mutuals'));
   assert.equal(capabilityRefusal({ auto: false, manual: true }, 'mutuals'), null, 'by hand runs it too');
   assert.equal(PLUGIN_SINCE.mutuals, '1.0.11');
-  assert.equal(SHIPPED_PLUGIN_VERSION, '1.0.11');
+  assert.ok(compareVersions(SHIPPED_PLUGIN_VERSION, '1.0.11') >= 0);
   const plugin = (version) => ({ from: 'plugin', plugin: { name: 'Manual scan', version } });
   assert.match(pluginTooOld(plugin('1.0.10'), 'mutuals'), /version 1\.0\.11 or newer of the Manual scan plugin/);
   assert.equal(pluginTooOld(plugin('1.0.11'), 'mutuals'), null);
@@ -617,7 +618,8 @@ test('the app runs it as its own action by id, any degree, with either plugin, i
   assert.equal(offersMutualList({ profile_url: url('a'), degree: 1, tier: 'B' }), false);
   assert.equal(offersMutualList({ profile_url: url('a'), degree: 3, tier: 'C' }, { summit: true }), true);
   assert.equal(offersMutualList({ profile_url: url('a'), degree: 2, seen_via: 'ties' }, { summit: true }), false);
-  assert.match(src('app/components/ReadAllMutuals.js'), /startHere\('mutuals', \{ id, name: person\.name, pages \}\)/);
+  // Read all mutuals again asks for page 1 (--again, 2026-10-17); nothing starts a finished list by itself.
+  assert.match(src('app/components/ReadAllMutuals.js'), /startHere\('mutuals', \{ id, name: person\.name, pages, \.\.\.\(how === 'every page read' \? \{ again: true \} : \{\}\) \}\)/);
   for (const file of ['lib/auto-scan.js', 'lib/scan-queue.js']) assert.ok(!/'mutuals'/.test(src(file)), `${file} never starts it`);
   // How far an earlier read got.
   const notes = mutualNotes({ [`mutuals:${url('a')}`]: { pages: 5, more: true }, [url('a')]: { pages: 9 }, 'breach:x:23': { pages: 2 } });

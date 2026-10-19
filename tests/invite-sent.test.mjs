@@ -1,7 +1,7 @@
 // "Invitation sent" puts Sixgree's own browser away (Blake, 2026-10-16: "when they click
 // connect on the person we will detect in the bottom left corner where it says connection
-// has been sent, to close out so they can continue in the Outlink or Separation or
-// bridge"). The watcher in the panel's page (desktop/lib.mjs INVITE_WATCH_JS), what the
+// has been sent, to close out so they can continue in the ... Separation or bridge").
+// The watcher in the panel's page (desktop/lib.mjs INVITE_WATCH_JS), what the
 // shell passes on (inviteSentFor), and what the page does with it (lib/linkedin-panel.js
 // inviteSentAction). No Electron, no LinkedIn: a stand-in page. Every name is invented.
 
@@ -153,7 +153,7 @@ test('wired through: the shell watches each page in a world of its own and tells
   assert.match(bar, /inviteSentAction\(info, \{ job: scannerNow\(\), panel: panelNow\(\), person: panelPersonFor\(info\?\.slug\) \}\)/);
   // Marked as from the panel, for the send log (lib/send-log.js).
   assert.match(bar, /if \(!hasRequest\(act\.mark\)\) markRequested\(act\.mark, \{ bridgeId: act\.bridgeId, route: 'panel' \}\)\.catch\(\(\) => \{\}\);/);
-  assert.match(bar, /endProfileSteps\(\);\s*b\.hide\(\);/);
+  assert.match(bar, /shownByJob\.current = false;\s*b\.hide\(\);/);
   assert.match(bar, /role="status" aria-live="polite" data-invite-sent=""/);
   for (const src of [read('../desktop/lib.mjs'), bar, read('../lib/linkedin-panel.js')]) assert.doesNotMatch(src, /—/);
 });

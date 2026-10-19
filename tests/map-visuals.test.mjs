@@ -204,7 +204,7 @@ test('the path to someone: you at home, then each person along their chain, a le
   assert.ok(loop.steps.length <= 3);
 });
 
-test('the views stay offline, draw only the busiest routes, and the path asks Outlink for the intro', () => {
+test('the views stay offline, draw only the busiest routes, and the path opens the profile to ask for the intro', () => {
   const map = read('../app/components/WorldMap.js');
   const layers = read('../app/components/WorldMapLayers.js');
   for (const src of [map, layers]) assert.doesNotMatch(src, /https?:\/\//);
@@ -212,9 +212,12 @@ test('the views stay offline, draw only the busiest routes, and the path asks Ou
   // Routes: the busiest few, never every one.
   assert.match(map, /topFlows\(flowData\.flows, \{ max:/);
   assert.match(layers, /const FLOW_STEPS = \[20, 40, 80\];/);
-  // The path is galaxyChain's chain, and the intro is Outlink filtered to a connection's circle.
+  // The path is galaxyChain's chain, and the intro is asked by hand: the connection's profile opens
+  // (OpenProfile), never in the public demo. A route's carriers show who they can introduce, in Separation.
   assert.match(map, /galaxyChain\(rows, \{ all: rows \}\)/);
-  assert.match(layers, /outlinkFor\(ask\.id\)/);
+  assert.match(layers, /<OpenProfile person=\{ask\}/);
+  assert.match(map, /canAsk=\{!IS_DEMO\}/);
+  assert.match(layers, /onIntros && bridge\.name && <button type="button" onClick=\{\(\) => onIntros\(bridge\)\}/);
   // A route's moving dash and the views' fade go when less motion is asked for.
   assert.match(map, /a\.kind === 'flow' && motion\.draw > 0/);
   assert.match(map, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.sd-map-layer \{ animation: none; \}/);

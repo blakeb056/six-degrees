@@ -530,6 +530,8 @@ function HomeInner() {
             onOpenCircle: openCircle,
             onCircle: setChainIn,
             preset: separationPreset,
+            // The Map's "Who they can introduce": Separation, filtered to a connection's circle.
+            onShowInSeparation: showInSeparation,
             // Network Circle: the chips under the map, and whether the map goes by tier or by degree (Filters → Tiers).
             bandLegend,
             onToggleBand: toggleLegendBand,

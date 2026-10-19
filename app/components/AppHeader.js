@@ -4,7 +4,7 @@
 // tabs in the exact middle of the window, and the same buttons on the right
 // everywhere — Settings, notifications, ↻ Check for new and your profile.
 // While a scan runs, the scan light comes first of them (ScanLight).
-// Blake, 2026-10-03: on Paths, Outlink and Scan "the profile settings and
+// Blake, 2026-10-03: on Paths and Scan "the profile settings and
 // refresh buttons aren't there, every section should have the same buttons",
 // and "align the button bar to the exact middle".
 //

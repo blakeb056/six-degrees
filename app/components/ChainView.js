@@ -18,6 +18,14 @@
 //   a click outside, or scrolling or pinching out goes back. One
 //   implementation for both views: app/components/CircleFocus.js and
 //   lib/circle-focus.js.
+// - One level deeper (Blake, 2026-10-17: "click on the actual core, and it will
+//   bring them into the regular original layout where it's not blurred and kind
+//   of pops them in more... or they can scroll in even more"): in the focus, a
+//   click on the person in the middle, or scrolling or pinching in, dives into
+//   their circle full size, unblurred, in tier rings, S nearest; the chains
+//   round it fade. Back, Esc or scrolling out comes back to the focus, then to
+//   here. Scrolling in over a bridge opens its focus, so it's one zoom all the
+//   way: overview → focus → dive (CircleFocus.js CircleDive, lib/circle-focus.js focusStep).
 // - That replaced the circle opened in place on a click, and the preview on a
 //   hover. Its trail is kept, in the focus, under the circle: a bridge met
 //   through another's circle reads You → that one → them, and a press on any
@@ -29,16 +37,16 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { circleIndex, MAX_DEGREE } from '../../lib/circle';
-import { localPhoto } from '../../lib/photos';
 import { reachIndex, readyByCircle, scanFill, scanFillWords } from '../../lib/reach';
 import { fillArcs, RING } from '../../lib/dot-rings';
 import { ringLayout, previewBand, circleActivity, clusterRings, outerClusterLayout } from '../../lib/chain-layout';
-import { HOVER_HOLD, canFocus, focusSubgraph, focusLook, focusLayer, hoverIntent } from '../../lib/circle-focus';
+import { HOVER_HOLD, canFocus, focusSubgraph, focusLook, focusLayer, hoverIntent, wheelIn } from '../../lib/circle-focus';
 import { noteCircle } from '../../lib/notifications';
 import { useUser } from './UserProvider';
 import { redundancy } from '../../lib/brokerage';
 import { hasRequest } from '../../lib/requests-client';
 import CircleFocus, { useFocus, FocusHold } from './CircleFocus';
+import { NodeFace, Halo } from './TierRings';
 import useTies from './useTies';
 import ShowTies from './ShowTies';
 import { tieLines, TIE_COLOUR } from '../../lib/mutual-web';
@@ -48,7 +56,6 @@ import { TIER_COLORS } from '../../lib/themes';
 
 const DEGREE_COLORS = { 1: '#FFD700', 2: '#FF6B35', 3: '#3498DB', 4: '#9B59B6', 5: '#00ff88', 6: '#ff5050' };
 const TAU = Math.PI * 2;
-const GREEN = '#00ff88';
 const NO_TRAIL = [];
 // Back's row in the focus: under the notch that holds this tab's four view
 // buttons, and clear of the Filters and people panels' tabs at either edge,
@@ -84,7 +91,8 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   const requests = useRequests();
   // The focus (app/components/CircleFocus.js): { id, node, trail, phase, reduced, ease },
   // `trail` the ids before them along the chain. The overview's <svg> is the layer that zooms and blurs.
-  const { focus, open: startFocus, close: closeFocus, move: moveFocus, idRef: focusIdRef } = useFocus({ layerRef: svgRef });
+  // `focus.dive` is the level past it: their circle full size (CircleFocus.js CircleDive).
+  const { focus, open: startFocus, close: closeFocus, move: moveFocus, step: stepFocus, idRef: focusIdRef } = useFocus({ layerRef: svgRef });
   // The bridge the pointer rests on, its ring filling.
   const [holding, setHolding] = useState(null);
   const intentRef = useRef(null);
@@ -250,6 +258,15 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
     intentRef.current?.stop(id);
     setHolding((h) => (h === id ? null : h));
   };
+  // Scrolling in over a bridge opens it as a click does: the first step of one
+  // zoom, overview → focus → dive (CircleFocus.js), added up so a nudge doesn't.
+  const zoomInRef = useRef(null);
+  const wheelOn = (e, id) => {
+    if (focusIdRef.current != null || !(e.deltaY < 0)) { zoomInRef.current = null; return; }
+    const state = wheelIn(zoomInRef.current?.id === id ? zoomInRef.current.state : null, e, e.timeStamp);
+    zoomInRef.current = state.in ? null : { id, state };
+    if (state.in) openBridge(id);
+  };
   const fireRef = useRef(null);
   useEffect(() => { fireRef.current = (id) => { setHolding(null); openBridge(id); }; });
   useEffect(() => {
@@ -299,7 +316,9 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
   // drawn on it) and blurred while it's open, back as it was while it goes.
   const box = { width: dims.w, height: dims.h };
   const focusDot = focus ? (posById.has(focus.id) ? onScreen(posById.get(focus.id)) : { x: cx, y: cy }) : null;
-  const look = focused ? focusLook(focused.kind, { reduced: focus.reduced }) : null;
+  // Diving, the map behind carries on in under the dive's cover (lib/circle-focus.js focusLook).
+  const diving = Boolean(focus?.dive) && focus.dive !== 'out';
+  const look = focused ? focusLook(focused.kind, { reduced: focus.reduced, dive: diving }) : null;
   const layer = focused ? focusLayer({ ...focus, dot: focusDot }, box, look) : null;
   // The ring filling round the bridge the pointer rests on, just clear of its glow.
   const held = holding != null && !focus ? posById.get(holding) : null;
@@ -434,6 +453,7 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
               onPointerEnter={(e) => rest(e, b.id)}
               onPointerLeave={() => leave(b.id)}
               onPointerDown={() => { intentRef.current?.stop(); setHolding(null); }}
+              onWheel={(e) => wheelOn(e, b.id)}
               style={{ cursor: 'pointer' }}>
               <title>{bridgeTitle(b, ready, fill)}</title>
               {/* Glow */}
@@ -545,42 +565,16 @@ export default function ChainView({ connections, degree2 = [], onSelect, userNam
       {focused && (
         <CircleFocus focus={focused} phase={focus.phase} box={box} origin={focusDot} you={{ x: cx, y: cy }} look={look}
           ease={focus.ease} reduced={focus.reduced} tierColors={tierColors} selectedId={selectedId}
-          onSelect={onSelect} onClose={closeFocus} onPick={pick} canScan={canScan} bar={UNDER_NOTCH} degree1={all1} webOff={webOff} />
+          onSelect={onSelect} onClose={closeFocus} onPick={pick} canScan={canScan} bar={UNDER_NOTCH} degree1={all1} webOff={webOff}
+          canDive dive={focus.dive} onStep={stepFocus} />
       )}
     </div>
   );
 }
 
-/**
- * A person's dot on an overview: in their tier's colour, with their photo or
- * initial. Bridge Chains draws each bridge with it, and Degrees' Unscanned view
- * each connection not scanned yet (UnscannedView.js). `r` is its radius (11 at
- * full size, 13 hovered); `scale` shrinks everything else with it, for a ring
- * that has closed up.
- */
-export function NodeFace({ row, x, y, r, hov = false, clipId, scale = 1, bare = false }) {
-  // `bare`: too small for a photo or a letter to read, so just the dot.
-  const photo = bare ? null : localPhoto(row.profile_image_url);
-  const inset = r - 2 * scale;
-  return (
-    <>
-      <circle className="sd-dot" cx={x} cy={y} r={r}
-        fill={photo ? '#1a1a2e' : TIER_COLORS[row.tier]}
-        stroke={hov ? 'var(--sd-fg-1, #fff)' : TIER_COLORS[row.tier]}
-        strokeWidth={(hov ? 2.5 : 2) * scale} />
-      {photo && (
-        <>
-          <clipPath id={clipId}><circle cx={x} cy={y} r={inset} /></clipPath>
-          <image href={photo} x={x - inset} y={y - inset} width={inset * 2} height={inset * 2} clipPath={`url(#${clipId})`} />
-        </>
-      )}
-      {!photo && !bare && (
-        <text x={x} y={y + 4 * scale} textAnchor="middle" fill={row.tier === 'S' ? '#000' : 'var(--sd-fg-1, #fff)'}
-          fontSize={11 * scale} fontWeight={700}>{row.name?.charAt(0)}</text>
-      )}
-    </>
-  );
-}
+// A person's dot (NodeFace) and the halo on someone ready to scan (Halo) live with
+// the tier rings now (TierRings.js); kept here too for the views that import them from here.
+export { NodeFace, Halo };
 
 /** What a bridge's ring and number mean, in words, for its tooltip. */
 function bridgeTitle(b, ready, fill) {
@@ -591,16 +585,6 @@ function bridgeTitle(b, ready, fill) {
   if (b.chains) parts.push(`${b.chains} scanned since, with ${b.chains === 1 ? 'a cluster' : 'clusters'} of their own`);
   if (fill) parts.push(scanFillWords(fill));
   return parts.length ? parts.join(' · ') : `${firstName(b)}’s circle`;
-}
-
-/** The soft breathing halo on someone ready for a circle scan. Still when Reduce Motion is on. */
-export function Halo({ x, y, r, still }) {
-  return (
-    <circle cx={x} cy={y} r={r} fill={GREEN} fillOpacity={0.16} stroke={GREEN} strokeWidth={0.8} strokeOpacity={0.45} pointerEvents="none">
-      {!still && <animate attributeName="fill-opacity" values="0.06;0.24;0.06" dur="2.8s" repeatCount="indefinite" />}
-      {!still && <animate attributeName="stroke-opacity" values="0.25;0.7;0.25" dur="2.8s" repeatCount="indefinite" />}
-    </circle>
-  );
 }
 
 export function ZoomButtons({ onIn, onReset, onOut }) {

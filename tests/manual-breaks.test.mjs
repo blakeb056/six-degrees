@@ -666,13 +666,16 @@ test('a page of 10 people with 14 names in their mutual lines: 10 found, and all
 page = HandPage(2, mutuals=14)
 people, status, reach = by_hand(page, total=20)
 report(page, people, status)
-out['found'] = reach['found']`);
+out['found'] = reach['found']
+out['saved'] = saved`);
   if (!r) return;
   assert.match(r.log, /^ {2}Page 1\.\.\. 10 found \(total: 10\)$/m);
   assert.match(r.log, /^ {2}Page 2\.\.\. 10 found \(total: 20\)$/m);
   assert.match(r.log, /^LinkedIn needs you: page 1 is read \(10 people\)\. Click Next/m);
   assert.equal(r.out.found, 20);
-  assert.equal(r.out.people, 34, '20 people and the 14 mutuals, each once');
+  // Each page is saved the moment it's read (2026-10-17): its 10 people and the 14 mutuals, each once.
+  assert.deepEqual(r.out.saved, [24, 24], 'each page saved as it is read, its people and mutuals each once');
+  assert.equal(r.out.people, 0, 'nothing left unsaved at the end');
   assert.equal(r.out.marked, 0, 'the mark never reaches the app');
 });
 

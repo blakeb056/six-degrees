@@ -32,8 +32,10 @@ const PAGES = [
   // Insights isn't a tab: it's in your Profile, behind ✦ Insights (Blake, 2026-10-04:
   // "insights that should be in the profile where the button already is as that makes
   // more sense and not to add a tab"). /insights forwards there.
-  // Social is part of Outlink now (Messages & follow-ups); /social forwards there.
-  { key: 'outlink', href: '/queue', label: 'Outlink', own: true },
+  // The introductions queue that sat here is gone (Blake, 2026-10-17: "It has no actual
+  // beneficiary to the application. We have LinkedIn embedded into the app. Separation is
+  // what you want to do anyway"). Messages & follow-ups is /social again, a page of its
+  // own with no tab: Profile and Scan link to it.
   // Only with a scanner to scan with: a scanner plugin, or the built-in one (lib/scanner-capabilities.js).
   { key: 'scan', href: '/setup', label: 'Scan', own: true, scanner: true },
   // LinkedIn's feed, messaging, notifications and jobs, one at a time, in Sixgree's own
@@ -45,8 +47,8 @@ const PAGES = [
  * @param {{ active: string, isMobile?: boolean, csvMode?: boolean, onMode?: (key: string) => void,
  *   children?: any, after?: any }} props
  *   `children` sits after the map's tabs (the map page's sample or CSV chip),
- *   `after` at the end of the row (the Auto scan button). `own` pages (Outlink,
- *   Scan) need your own network, so they hide for the sample or a CSV.
+ *   `after` at the end of the row (the Auto scan button). `own` pages (Breach,
+ *   Scan, LinkedIn) need your own network, so they hide for the sample or a CSV.
  */
 export default function AppTabs({ active, isMobile = false, csvMode = false, onMode, children, after }) {
   const scanner = useScanShows().scan;

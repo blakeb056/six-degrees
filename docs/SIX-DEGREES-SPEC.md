@@ -69,12 +69,16 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
 Scanning runs the user's own LinkedIn account, so some protections are not settings.
 **Blake, 2026-10-05:** *"we need to simplify this and allow more usage as it's constrained
 too much. Just a simple default limit for the day and a button to lift restrictions for
-this session."* So there is **one limit**, searches a day (50 by default, profile views
-counted against the same number), and **Lift limits for this session**, which turns the
-daily limit and the cooldown off until the app restarts. It lives in the server's memory,
-never in a file, and LinkedIn pushing back again puts the limits back by itself. The
-monthly budget, the separate profile-view cap and Auto scan's own day and week caps are
-gone.
+this session."* So there was **one limit**, searches a day, and **Lift limits for this
+session**. **Blake, 2026-10-17:** scan windows replace the searches a day: at most **60
+search pages a window, two windows a day, a new one 6 hours or more after the last began**
+(120 a day at most), every search page counted, by hand or not, profile pages not. They are
+settings that can only be made stricter, and **neither the lift nor Dev mode passes them**.
+Profile views have their own number, profile views a day (50 by default). The lift turns
+profile views a day and the cooldown off until the app restarts. It lives in the server's
+memory, never in a file, and LinkedIn pushing back again puts the limits back by itself. The
+monthly budget and Auto scan's own day and week caps are gone, and no other guardrail was
+added with the windows (Blake declined caps on profile opens and new cool-downs).
 
 These hold **always, lifted or not**, because they protect the account and cost the user
 nothing:
@@ -121,5 +125,6 @@ Written down so the same idea does not arrive every few months looking fresh.
 | Defeating Google's OAuth block | Google blocks its sign-in flow inside automation-controlled browsers deliberately. Working around an anti-automation control is out of scope; the tool tells the user to use email and password instead. |
 | A login gate on the local app | It runs on `127.0.0.1`. A password on a loopback service is theatre that costs real usability. |
 | Auto-updating, or downloading updates on launch or in the background | Invariant 2. A download nobody asked for is a change nobody chose. The daily check (invariant 2) only reads a version number and leaves a notification, and Settings → Updates turns it off. Installing is a press (in the Mac app, a second press after a check that offered that version), and nothing is downloaded ahead of time. |
-| A monthly budget, per-speed caps, or a lift that survives a restart | Blake, 2026-10-05: one daily limit and a lift for the session. More limits were what made it "constrained too much"; a lift kept on disk would outlive the session it was asked for. |
+| A monthly budget, per-speed caps, or a lift that survives a restart | Blake, 2026-10-05: one daily limit and a lift for the session (the scan windows since 2026-10-17). More limits were what made it "constrained too much"; a lift kept on disk would outlive the session it was asked for. |
+| A lift or Dev mode past the scan windows | Blake, 2026-10-17: 60 a window and two windows a day are fixed ceilings. |
 | Discarding a user's local changes to force an update | The update refuses on a dirty tree and says which files. The single exception is `package-lock.json`, which npm regenerates and nobody edits on purpose. |

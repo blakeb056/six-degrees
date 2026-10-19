@@ -15,7 +15,7 @@ you chose.
 - It is your own LinkedIn account, browsed by you. Sixgree reads nothing on
   its own and clicks nothing. Browsing the tab is not a scan and isn't counted
   against the scan budget.
-- A profile you open from Sixgree (Connect, View profile, Outlink) opens in the
+- A profile you open from Sixgree (Connect, View profile, Ask for an intro) opens in the
   same window and counts as one of the day's profile views, as it does without
   this plugin when a scanner plugin is installed.
 - The window identifies as plain Chrome (its user agent with the Sixgree and

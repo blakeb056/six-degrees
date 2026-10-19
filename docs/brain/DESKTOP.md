@@ -123,8 +123,8 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
   40-pixel bar and the notch, times the page's zoom) and when it shows. It brings the panel
   forward when the job wants it (`panelWanted`: LinkedIn needs you, signing in, or the
   scanner's `Sixgree's browser: in front` line) and puts it back when that's through.
-  *Back to Sixgree* hides it; *Show LinkedIn* brings it back while a scan runs or on
-  Outlink. Hiding never stops a scan.
+  *Back to Sixgree* hides it; *Show LinkedIn* brings it back while a scan runs. Hiding
+  never stops a scan.
 - **Back and Forward** (Blake, 2026-10-15: "there's no way to go back and forwards", and
   "use my blue and yellow buttons"): two buttons at the left of the bar, the map's round
   edge pucks (`EdgeToggle.js`, `.sd-edge`) at 30 px (`.sd-edge-inline`): Back the blue one
@@ -175,18 +175,18 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
   `at` (`sectionOf` the panel's page); once they differ, the bar offers *Back to <section>*.
   The tab's notch buttons and the tab itself don't put the panel away; any other page does.
 - **Every profile link** is `app/components/OpenProfile.js` (`tests/open-profile.test.mjs`
-  keeps it so): Connect, View profile and Outlink's Open profile alike. With the panel, the
+  keeps it so): Connect, View profile and the Map's *Ask … for an intro* alike. With the panel, the
   page sends `linkedin-panel:profile` (an `invoke`, answered true or false); main
   (`showProfile`) loads `profileAddress(url)` (`https://www.linkedin.com/in/<slug>/`, built
   from the slug alone; the test page's `/in/<slug>/` in a checkout) and shows the panel with
   `mode: 'profile'` at once. Then the page posts to `/api/profile-view`, which counts one
-  profile view in `linkedin-activity.json` (`lib/outlink-opened.js chargeProfileView`) and
-  writes `outlink-opened.json`: no scanner job, no sign-in check on the feed, no gap between
-  views. In 2.5.0 it was a `--outlink` scanner job, which took minutes (Blake,
-  2026-10-15: "it took like 2-3 min to load and it's not snappy like the view profile
-  button"). While a scan drives the panel (`scanHoldsPanel`) and without a panel: the
-  user's browser. Several at once are stepped through (`openProfiles`, *Next profile* in
-  the bar).
+  profile view in `linkedin-activity.json` (`lib/profile-opened.js chargeProfileView`) and
+  writes `outlink-opened.json` (its old name, kept: installs already have it): no scanner
+  job, no sign-in check on the feed, no gap between views. In 2.5.0 it was a scanner job,
+  which took minutes (Blake, 2026-10-15: "it took like 2-3 min to load and it's not snappy
+  like the view profile button"). While a scan drives the panel (`scanHoldsPanel`) and
+  without a panel: the user's browser. One profile per press: opening several at once went
+  with the introductions queue (2026-10-17).
 - [ ] With a real LinkedIn sign-in: Connect, Back and Forward, and an overlay over a real
       LinkedIn page (Blake). Checked against a local test page only.
 
@@ -194,8 +194,9 @@ screen of sixgree so it's all in house". Built on branch `embedded-browser`.
       Checked only against a local test page: the scanner's own `launch_chrome` attached to
       the panel by its target id (never the app's page), clicked and scrolled while it was
       hidden, read the panel's cookies (the app session's had none), was refused a `file:`
-      link, and closing only disconnected. The route answered an Outlink request through to
-      looking the person up, so the server had the panel's address.
+      link, and closing only disconnected. The route answered a profile-open request (2.5.0's
+      scanner job, since removed) through to looking the person up, so the server had the
+      panel's address.
 
 ### D1 — Electron app for the Mac (Blake's priority: he uses a Mac)
 

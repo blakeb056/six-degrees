@@ -924,7 +924,7 @@ test('REGRESSION: importing onto a computer that has scanned keeps its LinkedIn 
   const after = linkedinState(here, now);
   assert.equal(after.searchesToday, 40);
   assert.ok(after.cooldown, 'still paused');
-  assert.deepEqual(after.limits, { daily: 25, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25 }, 'its daily number; the old monthly cap is ignored');
+  assert.deepEqual(after.limits, { daily: 25, pace: 'fast', gentle: true, profileReads: false, dev: false, devSince: null, manual: false, digDeeper: false, chimes: true, chimeVolume: 0.6, breakEvery: 10, breakSeconds: null, roundPages: 25, windowPages: 60, windowsPerDay: 2, windowGapHours: 6 }, 'its daily number; the old monthly cap is ignored');
   assert.deepEqual(namesIn(dbIn(here)), ['v-0', 'v-1'], 'while the network itself was replaced');
   // A copy of the budget as it was is kept with the rest, for an undo.
   assert.equal(JSON.parse(readFileSync(path.join(here, done.keptFiles, 'linkedin-activity.json'), 'utf8')).searches.length, 40);
@@ -941,9 +941,9 @@ test('REGRESSION: a copy whose scan limits the app never offers is refused', asy
     recount(db);
   });
   assert.throws(() => validateImport(forged('scan-limits.json', { daily: 0, monthly: 0 }), checks),
-    refusedWith(/“scan-limits\.json” inside this file can't be used \(its daily limit \(0\) is not one Sixgree offers\)/));
+    refusedWith(/“scan-limits\.json” inside this file can't be used \(its profile views a day \(0\) is not a number Sixgree offers\)/));
   assert.throws(() => validateImport(forged('scan-limits.json', { daily: 5000 }), checks),
-    refusedWith(/its daily limit \(5000\) is not one Sixgree offers/));
+    refusedWith(/its profile views a day \(5000\) is not a number Sixgree offers/));
   assert.throws(() => validateImport(forged('linkedin-activity.json', { searches: ['soon'] }), checks),
     refusedWith(/“linkedin-activity\.json” inside this file can't be used/));
   assert.throws(() => validateImport(forged('linkedin-cooldown.json', { reason: 'no end' }), checks),

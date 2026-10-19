@@ -3,7 +3,7 @@
 // Read all mutuals, the mutual web's paid step (lib/mutual-web.js): the "N other
 // mutual connections" of one person read in full, one round at a time, each of
 // your connections on it kept as a tie (scrape.py scan_mutual_list). Only when
-// pressed, never by itself: every page is one of today's searches, so it is
+// pressed, never by itself: every page is a search in the scan window, so it is
 // offered on Breach's Summit and your top-tier bridges only (offersMutualList).
 // Starts like every Scan button (lib/scraper-client.js startHere), greys out
 // while anything runs, and says why it didn't start beside it.
@@ -26,13 +26,14 @@ export default function ReadAllMutuals({ person, note = null, pages = MUTUAL_ROU
   const busy = scan.running && !mine ? busyReason(scan) : null;
   const go = async () => {
     setAsking(true);
-    const why = await startHere('mutuals', { id, name: person.name, pages });
+    // Every page read: "Read all mutuals again" is the asking (scrape.py --again, Blake, 2026-10-17).
+    const why = await startHere('mutuals', { id, name: person.name, pages, ...(how === 'every page read' ? { again: true } : {}) });
     setAsking(false);
     say(why ? `Didn’t start: ${why}` : null);
   };
   const how = mutualListNote(note);
   const title = `The mutual connections you share with ${person.name || 'them'}, read in full, ${pages} pages a round: `
-    + 'each page is one of today’s searches, and each of your connections on it is kept as a tie (seen together, not close). '
+    + 'each page is a search in the scan window, and each of your connections on it is kept as a tie (seen together, not close). '
     + 'Only when you press it.' + (how ? ` Read before: ${how}.` : '');
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, ...style }}>

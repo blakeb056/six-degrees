@@ -254,6 +254,7 @@ test('the first scan: reading pages and the people on them, then done', () => {
   assert.deepEqual(firstScan(ended({ network: { ...PEOPLE, second: 29 } }), 7000), { ...IDLE, state: 'done', who: 'Ada Quill' });
   // At today's limit, or stopped: a calm end, everything read is kept.
   assert.equal(firstScan(ended({ log: ['Stopped at today’s limit.'] }), 7000).state, 'done');
+  assert.equal(firstScan(ended({ log: ['Stopped at a limit.'] }), 7000).state, 'done', 'the scan window, 2026-10-17');
   assert.equal(firstScan(ended({ exitCode: null, exitKind: 'stopped', log: ['Stopped.'] }), 7000).state, 'done');
   // Nothing watched: an old circle scan's end is never the setup's.
   assert.equal(firstScan(ended(), null).state, 'idle');

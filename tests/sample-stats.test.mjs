@@ -11,7 +11,6 @@ test('the launch page\'s numbers are the invented sample\'s, counted from the fi
   assert.equal(demo.meta.synthetic, true);
   const { degree1: d1, degree2: d2 } = demo;
   const rows = [...d1, ...d2];
-  const connected = new Set(d1.map((r) => r.profile_url));
   assert.deepEqual(SAMPLE_STATS, {
     connections: rows.length,
     degree1: d1.length,
@@ -19,7 +18,5 @@ test('the launch page\'s numbers are the invented sample\'s, counted from the fi
     people: new Set(rows.map((r) => r.profile_url)).size,
     bridges: new Set(d2.map((r) => r.source_connection_id).filter(Boolean)).size,
     companies: buildCompanyIndex(rows).size,
-    // As app/queue/page.js builds its recommendations.
-    recommendations: d2.filter((r) => ['S', 'A', 'B'].includes(r.tier) && !connected.has(r.profile_url)).length,
   });
 });

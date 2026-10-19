@@ -669,7 +669,7 @@ export function sectionOf(url, { testOrigin = null } = {}) {
 
 // ── "Invitation sent": the panel goes back (Blake, 2026-10-16) ───────────────
 // "when they click connect on the person we will detect in the bottom left corner where
-// it says connection has been sent, to close out so they can continue in the Outlink or
+// it says connection has been sent, to close out so they can continue in the ...
 // Separation or bridge." After you press Connect on a profile the app opened in the
 // panel, LinkedIn says so in a small notice ("Invitation sent", "Invitation sent to X",
 // "Your invitation to X was sent"). A watcher in the panel's page sees it (by its words,
@@ -768,7 +768,7 @@ export function inviteSentFor(message, { url = '', mode = null, visible = false,
 // ── The mutual web: a profile's mutual line, read where it already is ───────
 // Blake, 2026-10-16: "scanning always for mutuals no matter what ... whenever a new
 // connection is showing with the mutuals listed, then it should be tracked to map a web
-// of who knows who". A profile open in the panel (Outlink, Separation, Breach, the
+// of who knows who". A profile open in the panel (Separation, Breach, the Map, the
 // LinkedIn tab) shows its mutual line in its top card: "Maya Chen, Leo Park and 103
 // other mutual connections". A watcher in the panel's page, in the same world of its own
 // as the invitation watcher, reads it once a profile (by its words and the page's own

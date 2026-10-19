@@ -1,5 +1,5 @@
 // The scanner in Sixgree's own browser (scripts/scrape.py launch_chrome,
-// attach_panel, PanelContext, open_outlink; lib/linkedin-panel.js). Blake,
+// attach_panel, PanelContext; lib/linkedin-panel.js). Blake,
 // 2026-10-15: LinkedIn in a panel inside Sixgree's window, the scanner driving
 // that panel instead of a Chrome of its own.
 //
@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { PYTHON, noPython } from './python.mjs';
 import { SCRAPER, noScanner } from './helpers/scanner.mjs';
-import { PANEL_FRONT, PANEL_AWAY, panelAsked, outlinkResultIn } from '../lib/linkedin-panel.js';
+import { PANEL_FRONT, PANEL_AWAY, panelAsked } from '../lib/linkedin-panel.js';
 import { needsYou } from '../lib/scan-progress.js';
 
 const PANEL_ID = 'A1B2C3D4E5F60718293A4B5C6D7E8F90';
@@ -347,38 +347,9 @@ out['unnamed_asked'] = chromium.asked
   assert.match(said[0], /ECONNREFUSED.*so this uses a Chrome window instead/);
 });
 
-test('Outlink: opens the profile in the panel, takes one profile view first, clicks nothing, and lets go', (t) => {
-  const r = run(t, `
-e = electron(panel_url='https://www.linkedin.com/feed/', jar=[{'name': 'li_at', 'value': 'a-stand-in'}])
-name_panel()
-fake = types.SimpleNamespace(chromium=Chromium(e.browser))
-class Playwright:
-    def __enter__(self):
-        return fake
-    def __exit__(self, *a):
-        return False
-sys.modules['playwright'] = types.ModuleType('playwright')
-api = types.ModuleType('playwright.sync_api')
-api.sync_playwright = lambda: Playwright()
-sys.modules['playwright.sync_api'] = api
-taken = []
-ns['take_profile_view'] = lambda now=None: taken.append(1) or 0
-url = 'https://www.linkedin.com/in/someone-invented/'
-out['result'] = ns['open_outlink'](url, name='Someone Invented')
-out['visits'] = e.panel.visits
-out['taken'] = len(taken)
-out['closed'] = list(closed)
-out['app_visits'] = e.app.visits
-del env['SIX_DEGREES_PANEL_CDP']
-out['no_panel'] = ns['open_outlink'](url)
-`);
-  if (!r) return;
-  assert.equal(r.out.result, 'opened');
-  assert.deepEqual(r.out.visits, ['https://www.linkedin.com/feed/', 'https://www.linkedin.com/in/someone-invented/'],
-    'checked signed in (the feed), then the profile, and nothing else');
-  assert.equal(r.out.taken, 1, 'one profile view, taken before it opened');
-  assert.deepEqual(r.out.closed, ['disconnected'], 'the panel stays open on the profile');
-  assert.deepEqual(r.out.app_visits, []);
-  assert.equal(r.out.no_panel, 'no-panel');
-  assert.equal(outlinkResultIn('Outlink result: opened'), 'opened');
+// Outlink and the scanner's --outlink went on 2026-10-17 (Blake: "it has no actual beneficiary to the
+// application"): a profile opens in the panel without a scanner job (OpenProfile, app/api/profile-view).
+test('the scanner has no --outlink any more', () => {
+  const src = fs.readFileSync(SCRAPER, 'utf8');
+  assert.doesNotMatch(src, /--outlink|open_outlink|OUTLINK_RESULTS|Outlink result/);
 });

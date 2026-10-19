@@ -65,11 +65,10 @@ function ProfileInner() {
   const profile = userProfile || { name: userName || 'User', headline: '', sectors: [], goals: [] };
   const [stats, setStats] = useState(null);   // null while the profile loads
   const [notifications, setNotifications] = useState([]);
-  const [queueStats, setQueueStats] = useState({ total: 0, sent: 0, accepted: 0 });
   const [mapping, setMapping] = useState({ degree1: [], degree2: [], skips: [] });
   // "Your Sectors" is what you picked in Settings → Scores → Your field. (users.sectors,
   // which this card used to show, is never written by anything; the Sidebar
-  // and Outlink still read it as free text.) null while it loads; a load that
+  // still reads it as free text.) null while it loads; a load that
   // fails says so rather than showing "none picked" (TRAPS §7).
   const [sectorFocus, setSectorFocus] = useState(null);
   // What Insights reports: how many each board ranks (for the notch), and the level.
@@ -126,16 +125,7 @@ function ProfileInner() {
         .then((d) => setMapping({ degree1: d1, degree2: d2, skips: d.skips || [] }))
         .catch(() => setMapping({ degree1: d1, degree2: d2, skips: [] }));
 
-      // Fetch notifications and queue stats
       fetch(`/api/notifications?userId=${userId}`).then(r => r.json()).then(data => setNotifications(data.notifications || [])).catch(() => {});
-      fetch('/api/queue').then(r => r.json()).then(data => {
-        const items = data.items || [];
-        setQueueStats({
-          total: items.length,
-          sent: items.filter(i => i.status === 'sent').length,
-          accepted: items.filter(i => i.status === 'accepted').length,
-        });
-      }).catch(() => {});
     }
     load();
   }, [userId, view]);
@@ -187,14 +177,14 @@ function ProfileInner() {
           ? <InsightsBoards board={board} onBoard={pickBoard} isMobile={isMobile} onCounts={setCounts} onLevel={setInsightsLevel} />
           : !stats
             ? <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--sd-fg-3, #888)' }}>Loading profile…</div>
-            : <ProfileBody s={stats} profile={profile} mapping={mapping} queueStats={queueStats} notifications={notifications} sectorFocus={sectorFocus} />}
+            : <ProfileBody s={stats} profile={profile} mapping={mapping} notifications={notifications} sectorFocus={sectorFocus} />}
       </main>
     </div>
   );
 }
 
-/** The profile itself: your level, how much is mapped, what you've asked, and your sectors. */
-function ProfileBody({ s, profile, mapping, queueStats, notifications, sectorFocus }) {
+/** The profile itself: your level, how much is mapped, your messages and follow-ups, and your sectors. */
+function ProfileBody({ s, profile, mapping, notifications, sectorFocus }) {
   const tierColors = TIER_COLORS;   // the theme's (lib/themes.js)
 
   // Milestones
@@ -265,28 +255,19 @@ function ProfileBody({ s, profile, mapping, queueStats, notifications, sectorFoc
         skips={mapping.skips}
       />
 
-      {/* === QUEUE PROGRESS === */}
+      {/* === MESSAGES & FOLLOW-UPS === */}
+      {/* Blake, 2026-10-17: the queue's card that sat here went with it. Messages & follow-ups
+          has no tab, so this is its door (app/social/page.js); the Scan page's messages sync is the other. */}
       <div style={{
         background: 'rgba(255,107,53,0.06)', borderRadius: 12, padding: 20, marginBottom: 24,
         border: '1px solid rgba(255,107,53,0.2)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--sd-orange, #FF6B35)' }}>Queue Progress</h3>
-          <Link href="/queue" style={{ fontSize: 11, color: 'var(--sd-orange, #FF6B35)', textDecoration: 'none', fontWeight: 600 }}>View Queue &rarr;</Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--sd-orange, #FF6B35)' }}>Messages &amp; follow-ups</h3>
+          <Link href="/social" style={{ fontSize: 11, color: 'var(--sd-orange, #FF6B35)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Open &rarr;</Link>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#FFA500' }}>{queueStats.total}</div>
-            <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>In Queue</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sd-blue, #3498DB)' }}>{queueStats.sent}</div>
-            <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>Sent</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sd-green, #00ff88)' }}>{queueStats.accepted}</div>
-            <div style={{ fontSize: 10, color: 'var(--sd-fg-3, #888)' }}>Accepted</div>
-          </div>
+        <div style={{ fontSize: 12, color: 'var(--sd-fg-3, #888)', lineHeight: 1.5 }}>
+          Everyone you&rsquo;ve been in touch with, who&rsquo;s waiting on you, and your own notes and follow-up dates, from your data export or the messages sync.
         </div>
       </div>
 

@@ -40,30 +40,31 @@ test('paces: Slow, Medium and Fast change only a sitting and its rest', () => {
   assert.equal(cleanPace('ludicrous'), 'medium');
 });
 
-test('the pace line says what a pace means, and when it reaches the daily limit', () => {
-  assert.equal(paceLine('slow', 50), 'Slow: about 20 people an hour, 90 minutes’ rest after every 4 searches.');
-  assert.equal(paceLine('medium', 50), 'Medium: about 70 people an hour, an hour’s rest after every 8 searches. It stops at your 50 a day, about 7 hours in.');
-  assert.equal(paceLine('fast', 50), 'Fast: about 180 people an hour, 30 minutes’ rest after every 12 searches. It stops at your 50 a day, about 3 hours in.');
+test('the pace line says what a pace means, and when it uses the scan window', () => {
+  assert.equal(paceLine('slow', 60), 'Slow: about 20 people an hour, 90 minutes’ rest after every 4 searches.');
+  assert.equal(paceLine('medium', 60), 'Medium: about 70 people an hour, an hour’s rest after every 8 searches. It stops when the scan window’s 60 pages are used, about 8 hours in.');
+  assert.equal(paceLine('fast', 60), 'Fast: about 180 people an hour, 30 minutes’ rest after every 12 searches. It stops when the scan window’s 60 pages are used, about 3 hours in.');
   assert.equal(paceLine('fast'), 'Fast: about 180 people an hour, 30 minutes’ rest after every 12 searches.');
 });
 
-test('Fast never goes past today\'s limit: a sitting is at most what is left, and at none it stops', () => {
+test('Fast never goes past the scan window: a sitting is at most what is left, and at none it stops', () => {
   const noon = at(12);
-  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 50 }), { kind: 'go', sitting: 12 });
-  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: 5 }), { kind: 'go', sitting: 5 });
-  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', leftToday: 3 }), { kind: 'go', sitting: 3 });
-  // One limit (2026-10-05): no month of its own any more.
-  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', leftToday: 50, leftMonth: 0 }), { kind: 'go', sitting: 4 });
-  // Lifted for the session: no daily limit (leftToday null), only the pace's sitting, hours and rests.
-  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', leftToday: null }), { kind: 'go', sitting: 12 });
-  assert.equal(autoPlan({ now: at(20), pace: 'fast', leftToday: null }).kind, 'hours');
-  assert.equal(autoPlan({ now: noon, pace: 'fast', leftToday: null, restUntil: noon + HOUR }).kind, 'rest');
-  const done = autoPlan({ now: noon, pace: 'fast', leftToday: 0, daily: 50 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', left: 50 }), { kind: 'go', sitting: 12 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', left: 5 }), { kind: 'go', sitting: 5 });
+  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', left: 3 }), { kind: 'go', sitting: 3 });
+  // No month of its own.
+  assert.deepEqual(autoPlan({ now: noon, pace: 'slow', left: 50, leftMonth: 0 }), { kind: 'go', sitting: 4 });
+  // Not known: only the pace's sitting, hours and rests.
+  assert.deepEqual(autoPlan({ now: noon, pace: 'fast', left: null }), { kind: 'go', sitting: 12 });
+  assert.equal(autoPlan({ now: at(20), pace: 'fast', left: null }).kind, 'hours');
+  assert.equal(autoPlan({ now: noon, pace: 'fast', left: null, restUntil: noon + HOUR }).kind, 'rest');
+  const done = autoPlan({ now: noon, pace: 'fast', left: 0, opensAt: at(15, 30) });
   assert.equal(done.kind, 'stop');
   assert.equal(done.as, 'limit');
-  assert.equal(done.reason, 'Today’s limit of 50 searches is reached, so Auto scan has stopped for today.');
+  assert.equal(done.reason, 'The scan window is used, and the next opens at 15:30, so Auto scan has stopped.');
+  assert.equal(autoPlan({ now: noon, pace: 'fast', left: 0 }).reason, 'The scan window is used, so Auto scan has stopped.');
   // A pushback stops it too, whatever the pace.
-  const pushed = autoPlan({ now: noon, pace: 'slow', leftToday: 50, cooldown: { until: noon + HOUR, reason: 'a security check' } });
+  const pushed = autoPlan({ now: noon, pace: 'slow', left: 50, cooldown: { until: noon + HOUR, reason: 'a security check' } });
   assert.deepEqual([pushed.kind, pushed.as], ['stop', 'stopped']);
 });
 
@@ -75,9 +76,9 @@ test('hours: 9:00 to 18:00 on this computer\'s clock; at 20:00 Auto scan waits f
   assert.equal(inHours(at(18)), false);
   assert.equal(nextHoursStart(at(20)), at(9, 0, 6));
   assert.equal(nextHoursStart(at(7)), at(9));
-  assert.deepEqual(autoPlan({ now: at(20), pace: 'medium', leftToday: 50 }), { kind: 'hours', until: at(9, 0, 6) });
+  assert.deepEqual(autoPlan({ now: at(20), pace: 'medium', left: 50 }), { kind: 'hours', until: at(9, 0, 6) });
   // Resting after a sitting.
-  assert.deepEqual(autoPlan({ now: at(12), pace: 'medium', restUntil: at(13), leftToday: 50 }), { kind: 'rest', until: at(13) });
+  assert.deepEqual(autoPlan({ now: at(12), pace: 'medium', restUntil: at(13), left: 50 }), { kind: 'rest', until: at(13) });
   assert.equal(clockText(at(14, 5), at(12)), '14:05');
   assert.equal(clockText(at(9, 0, 6), at(20)), 'tomorrow 9:00');
 });
@@ -212,33 +213,38 @@ test('Auto scan at 20:00 waits for 9:00, then runs a sitting of its pace in the 
   await until(() => runs().length === 2, 'the next sitting after the rest');
 });
 
-test('Fast\'s sitting is only what is left of the daily limit', async () => {
+test('Fast\'s sitting is only what is left of the scan window', async () => {
   const now = clock / 1000;
-  writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 45 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
+  writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 55 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
   await post({ action: 'auto-start', pace: 'fast', tiers: ['S'] });
   await until(() => runs().length === 1, 'a sitting');
   assert.match(runs()[0], /--sitting=5\b/);
 });
 
-test('at the daily limit Auto scan stops calmly, saying so', async () => {
+test('with the scan window used Auto scan stops calmly, saying when the next opens', async () => {
   const now = clock / 1000;
-  writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 50 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
+  writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 60 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
   const { auto } = await (await post({ action: 'auto-start', pace: 'fast', tiers: ['S'] })).json();
   assert.equal(auto.on, false);
   assert.deepEqual(auto.ended.phase, 'limit');
-  assert.match(auto.ended.reason, /Today’s limit of 50 searches is reached/);
+  assert.match(auto.ended.reason, /^The scan window is used, and the next opens at \d{1,2}:\d{2}, so Auto scan has stopped\.$/);
   assert.equal(runs().length, 0);
 });
 
-test('lifted for the session: past the daily limit Auto scan runs its pace\'s sitting, and still keeps its hours and rests', async () => {
+test('lifted for the session: the scan window still holds Auto scan, and so do its hours and rests', async () => {
   const { liftLimits, putLimitsBack } = await import('../lib/limits-lift.js');
   const now = clock / 1000;
   writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 60 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
   liftLimits();
   try {
+    // The window's 60 are used: lifting never passes them (Blake, 2026-10-17).
+    const { auto: held } = await (await post({ action: 'auto-start', pace: 'fast', tiers: ['S'] })).json();
+    assert.deepEqual([held.on, held.ended.phase], [false, 'limit']);
+    assert.equal(runs().length, 0, 'nothing runs past the window, lifted or not');
+    writeFileSync(path.join(HOME, 'linkedin-activity.json'), JSON.stringify({ searches: Array.from({ length: 30 }, (_, i) => now - 60 * (i + 1)), profiles: [] }));
     await post({ action: 'auto-start', pace: 'fast', tiers: ['S'] });
-    await until(() => runs().length === 1, 'a sitting past 60 of 50');
-    assert.match(runs()[0], /--experimental --sitting=12\b/, 'the whole sitting: no daily cap while lifted');
+    await until(() => runs().length === 1, 'a sitting with 30 of the window left');
+    assert.match(runs()[0], /--experimental --sitting=12\b/, 'its pace\'s whole sitting, inside the window');
     await until(async () => (await job()).auto.phase === 'rest', 'the rest after it');
     assert.equal((await job()).auto.until, clock + 30 * 60 * 1000, 'Fast still rests 30 minutes');
     clock = at(19);

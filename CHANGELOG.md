@@ -46,6 +46,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and scanning more; accepted requests still carry the XP.
 - **The places file can carry each city's time zone** (`scripts/build-places.mjs` keeps GeoNames'
   zone column), for best-time-to-send later. The shipped file gains zones when it's next rebuilt.
+- **Tier rings, and no dotted lines.** Degrees → Unscanned was one giant disc of dots; it now rings
+  everyone by tier round you: S (gold) nearest and biggest, then A, B and C, D furthest out, small
+  and muted, with a gap and a letter for each tier and names under S and A once they fit. Bridge
+  Chains' dive, its focus on a circle seen outside the scan only, and a circle built in Unscanned
+  once it settles all use the same rings and dots. Your line to a circle stops at its edge instead
+  of running dotted across it, and in Bridge Chains someone seen outside the scan is a lighter dot,
+  not a dashed one.
+- **Scan windows replace the daily search limit.** Every search page counts in a window, by hand
+  or automatic, your connections, Breach and Read all mutuals alike: at most 60 search pages a
+  window, at most two windows a day, and a new window only 6 hours after the last one began, so
+  120 a day at most. Profile pages don't count in it. A scan stops when the window is used, saves
+  what it read and says when the next window opens. The Scan page, the notch and the scan light
+  show "Window 1 of 2: 34 of 60" and when the next window opens.
+- **The windows are settings that only get stricter.** Pages a window, windows a day and hours
+  between windows are in Scanner settings, with 60, 2 and 6 as both the defaults and the most.
+  Lifting the limits for a session and Dev mode put them back to those and never past them; Dev
+  mode's old ceiling of 250 a day is gone. The breaks by hand and the speeds are as they were.
+- **Profile views a day** is the old daily number, now for profile views only (50 by default).
+  Lifting the limits still takes it and the cooldown off for the session.
+- **Outlink is gone.** Its tab, the Circles game, the To add and Pending lists, Open All and Open
+  Top 10, the Profile's Queue Progress card and the old `/api/queue` route are removed. Separation
+  does the same job. Requests you marked sent stay marked everywhere.
+- **Who they can introduce.** On the Map and on a connection's card, the button that opened
+  Outlink now shows Separation filtered to that connection's circle. The Map's chain card's *Ask X
+  for an intro* opens X's profile, in Sixgree's own browser where it can.
+- **Messages & follow-ups is a page of its own again** (`/social`), under the same header as every
+  page, with no tab: your Profile has a card for it, and the Scan page's daily messages sync links
+  to it.
 
 ### Fixed
 - **A company scan no longer moves everyone's tiers.** The curve's S and A cut-offs counted the people
@@ -53,6 +81,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from your own connections only.
 - **A company scan no longer lifts an unknown company's score.** Its people counted toward the company's
   headcount in your network, raising it from 5 to 6. Only your 1st and 2nd degree count now.
+- **Bridge Chains goes one level deeper.** In a bridge's focus, click the person in the middle, or
+  scroll or pinch in, and their circle opens full size: unblurred, filling the view, in tier rings,
+  the chains round it faded away. Hover anyone for who they are, click for their card, drag and
+  scroll to zoom. Back, Esc or scrolling out comes back to the focus, then to the overview, and
+  scrolling in over a bridge opens its focus, so it is one zoom all the way in. Network Circle's
+  focus is unchanged.
+- **No more search pages read for nothing.** A scan saves each page as it's read, so Stop loses
+  nothing read (it saved every 10 pages, and up to nine read pages were lost and read again). An
+  automatic round that reaches pages an earlier run read ends there, and the next round opens the
+  first page not read yet instead of clicking through them again.
+- **Finished lists start again only when you ask.** Your connections, a Breach company and Read
+  all mutuals no longer go back to page 1 by themselves once every page is read (up to 100 more
+  search pages for your connections): their button says *Read again from page 1* then.
+- **Every page you load by hand counts.** Previous, going back to a page already read, a reload
+  and the address bar were not counted, and now are, so the window and LinkedIn usage are true.
+- **Auto scan's LinkedIn data no longer breaks a page.** When LinkedIn's own data gave the list's
+  total, the page failed after it was counted and its people weren't saved; two in a row set a
+  six-hour pause.
+- The scanner plugins are 1.0.12.
 
 ## [2.8.0] - 2026-10-17
 

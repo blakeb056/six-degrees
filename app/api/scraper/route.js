@@ -37,6 +37,7 @@ import { enqueue, nextUp, removeItem, skipItem, clearQueue, queueView, queueKind
 import { loadQueue, saveQueue } from '../../../lib/scan-queue-store';
 import { AUTO_PACES, autoPlan, cleanPace, cleanTiers, tierList, MANUAL_STOPS_AUTO } from '../../../lib/auto-scan';
 import { exitOutcome } from '../../../lib/scan-exit';
+import { windowRefusal } from '../../../lib/scan-windows';
 import { experienceCounts, experienceCard } from '../../../lib/experience';
 import { DEFAULT_ROUND, circleRoundArgs, knownCount, personRounds, roundState } from '../../../lib/scan-rounds';
 import { ensureChimes } from '../../../lib/chime-files';
@@ -75,7 +76,7 @@ const state = registerScanState({
   invitee: null,   // Auto's person: { id, name, profileUrl, userId, bridgeId }, looked up here (connectTarget)
   outcome: null,   // how Auto's request went: the scanner's "Connect result: …" line (lib/auto-connect.js)
   port: null,      // the port this app was last asked on, for the job the queue starts by itself
-  limitHit: null,  // when the daily limit last held a scan back (a press refused, or a scan that stopped at it), ms
+  limitHit: null,  // when a limit last held a scan back (the scan window, or profile views a day: a press refused, or a scan that stopped at it), ms
   autoSitting: false,  // the running job is one of Auto scan's sittings (autoTick)
 });
 
@@ -111,11 +112,10 @@ function auto() {
 const autoNow = () => globalThis[Symbol.for('six-degrees.auto-clock')]?.() ?? Date.now();const AUTO_TICK_MS = Number(process.env.SIX_DEGREES_AUTO_TICK_MS) > 0 ? Number(process.env.SIX_DEGREES_AUTO_TICK_MS) : 20000;
 
 /**
- * What Auto scan would do now, from the daily limit and the cooldown. While the
- * limits are lifted for this session linkedinState gives neither (leftToday and
- * cooldown are null), so only Auto scan's hours and rests hold it back; in Dev
- * mode its rests, which are its pace, and Dev mode's ceiling, which it stops at
- * as at the daily limit (the scanner holds it either way). Manual mode stops it.
+ * What Auto scan would do now, from the scan window and the cooldown. While the
+ * limits are lifted for this session linkedinState gives no cooldown, so Auto
+ * scan's hours, its rests and the windows (at their ceilings) hold it back; in
+ * Dev mode its rests, which are its pace, and the windows. Manual mode stops it.
  */
 function autoPlanNow() {
   const a = auto();
@@ -123,8 +123,7 @@ function autoPlanNow() {
   const li = linkedinState(dataDir(), now);
   return autoPlan({
     now, pace: a.pace, restUntil: a.restUntil,
-    leftToday: li.dev ? li.devLeftToday : li.leftToday,
-    daily: li.dev ? li.devCeiling : li.limits?.daily ?? null, cooldown: li.cooldown,
+    left: li.searchesLeft, opensAt: li.window?.nextOpensAt ?? null, cooldown: li.cooldown,
     anyHour: li.dev === true, manual: li.limits?.manual === true,
   });
 }
@@ -175,7 +174,7 @@ async function autoTick() {
     const plan = autoPlanNow();
     a.plan = plan;
     if (plan.kind === 'stop') {
-      // At the daily limit the notch offers to lift it, as for a press held back.
+      // At a limit the notch says which, as for a press held back.
       if (plan.as === 'limit') state.limitHit = Date.now();
       return autoEnd(plan.as, plan.reason);
     }
@@ -239,8 +238,8 @@ const MAX_PAGES_KEPT = 400;
 // newest is kept, so a five-minute break doesn't push the rest of the log out. The
 // scan light reads the newest line (lib/scan-light.js).
 const BREAK_TICK = /^\s*\(break after page \d+: \d+ s, then page \d+\)$/;
-// What the scanner says when the daily limit stops a scan (scrape.py budget_message)
-// is read in lib/scan-exit.js now, only for a scanner from before its exit codes.
+// What the scanner says when a limit stops a scan (scrape.py budget_message) is
+// read in lib/scan-exit.js now, only for a scanner from before its exit codes.
 
 /** Stop the running job without orphaning the browser it opened.
  *
@@ -703,7 +702,7 @@ function job() {
     log: state.log.slice(-120),
     recent: state.recent,
     budget: state.running ? budgetNow() : null,
-    // The daily limit for the notch: lifted for this session, or just reached.
+    // The limits for the notch: lifted for this session, or the scan window just used.
     limits: limitsNow(),
     // What waits to run after this (lib/scan-queue.js queueView), for the notch and the buttons.
     queue: queueView(queue(), { cap: queueCap() }),
@@ -736,20 +735,18 @@ function capabilitiesSeen() {
   }
 }
 
-/** Today's searches against the daily limit, for the notch every page shows while a scan runs. */
+/** The scan window and today's profile views, for the notch every page shows while a scan runs. */
 function budgetNow() {
   try {
     const li = linkedinState(dataDir());
     return {
-      searches: li.searchesToday ?? 0, cap: li.limits?.daily ?? null,
-      // Profile views count against the same daily number.
-      profiles: li.profilesToday ?? 0, profileCap: li.limits?.daily ?? null,
+      searches: li.searchesToday ?? 0,
+      // The scan window (lib/scan-windows.js scanWindow): "Window 1 of 2: 34 of 60", and when the next opens.
+      window: li.window,
+      // Profile views a day: their own number, off while lifted.
+      profiles: li.profilesToday ?? 0, profileCap: li.lifted ? null : li.limits?.daily ?? null,
       lifted: li.lifted,
       dev: li.dev,
-      // Dev mode's ceiling (lib/linkedin-limits.js DEV_CEILING): the notch shows it in place of "no limit".
-      devCeiling: li.devCeiling,
-      // The same ceiling, which lifting the limits for the session keeps too.
-      ceiling: li.ceiling,
       // The speed it reads at, for the clock a forming circle keeps (lib/forming-circle.js).
       pace: li.limits?.pace ?? null,
     };
@@ -759,8 +756,8 @@ function budgetNow() {
 }
 
 /**
- * The daily limit as the notch shows it, idle or not: { lifted, reached,
- * searches, daily }. `reached` only once the limit has held a scan back
+ * The limits as the notch shows them, idle or not: { lifted, reached, searches,
+ * window, profilesReached }. `reached` only once a limit has held a scan back
  * (state.limitHit), and only while it still would. Nothing is read from disk
  * unless the limits are lifted or one was just held back, so the poll every
  * page makes stays as cheap as the rest of job().
@@ -769,13 +766,17 @@ function limitsNow() {
   if (liftedAt() == null && !state.limitHit && !readLimits(dataDir()).dev) return { lifted: false, reached: false };
   try {
     const li = linkedinState(dataDir());
-    const reached = !li.lifted && (li.limitReached || li.profilesLeftToday === 0);
+    const profilesOut = li.profilesLeftToday === 0;
+    const reached = li.limitReached || profilesOut;
     if (!reached) state.limitHit = null;
     return {
       lifted: li.lifted,
       ...(li.dev ? { dev: true } : {}),
       reached: Boolean(state.limitHit) && reached,
       searches: Number.isFinite(li.searchesToday) ? li.searchesToday : null,
+      window: li.window,
+      // Only profile views held it back: the lift would carry on (the windows it never passes).
+      profilesReached: profilesOut && !li.limitReached,
       daily: li.limits.daily,
     };
   } catch {
@@ -783,18 +784,18 @@ function limitsNow() {
   }
 }
 
-/** The refusal when the daily limit holds a scan back, with when the next search frees up. */
+/** The refusal when a limit holds a scan back: the scan window, with when the next opens, or profile views a day. */
 function limitRefusal() {
-  let freeAt = null;
-  let daily = null;
   try {
     const u = linkedinUsage(dataDir());
-    daily = u.limits.daily;
-    freeAt = u.leftToday === 0 ? u.dayFreesAt : u.profilesFreeAt;
-  } catch { /* said without a time */ }
-  return `Today’s limit${daily ? ` of ${daily}` : ''} is used: it counts the last 24 hours.`
-    + `${freeAt ? ` The next search frees up ${new Date(freeAt).toLocaleString()}.` : ''}`
-    + ' Lift limits for this session to carry on now.';
+    if (u.limitReached) return windowRefusal(u.window);
+    const freeAt = u.profilesFreeAt;
+    return `Today’s limit of ${u.limits.daily} profile views is used: it counts the last 24 hours.`
+      + `${freeAt ? ` The next one frees up ${new Date(freeAt).toLocaleString()}.` : ''}`
+      + ' Lift limits for this session to carry on now.';
+  } catch {
+    return 'A limit is used. The Scan page says which, and when it frees up.';
+  }
 }
 
 /** Tell the running scanner the limits changed, so a scan under way follows at once (scrape.py _listen_for_limits). */
@@ -928,10 +929,11 @@ const ACTIONS = {
   // power first, each a profile view. Its own action, never added to another
   // scan's views (scrape.py read_profiles).
   'read-profiles': { flag: '--read-profiles', label: 'Reading full profiles', searches: true },
-  // Profiles opened for you (Connect, View profile, Outlink) are no job: the
-  // desktop app's panel goes straight to them, and app/api/profile-view counts
-  // the view. The scanner's own --outlink is never started from here.
+  // Profiles opened for you (Connect, View profile) are no job: the desktop
+  // app's panel goes straight to them, and app/api/profile-view counts the view.
 };
+/** The lists read in rounds whose finished list is read again only when asked (scrape.py --again). */
+const LIST_AGAIN = ['your-connections', 'breach', 'mutuals'];
 /** The rounds Read profiles offers (scrape.py PROFILE_READ_BATCHES). */
 const PROFILE_READ_BATCHES = [5, 10, 25];
 
@@ -1165,6 +1167,8 @@ function queueUp(body, action, target) {
     ...(PAGE_CAPS.includes(body.maxPages) ? { maxPages: body.maxPages } : {}),
     // Rescan from the start, kept as pressed: otherwise its turn would carry on with the next round.
     ...(body.fromStart === true ? { fromStart: true } : {}),
+    // Read again from page 1 (a list read to its end), kept as pressed too.
+    ...(body.again === true ? { again: true } : {}),
   };
   if (target.name) request.name = target.name;
   const cap = queueCap();
@@ -1213,6 +1217,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       breakEvery: body.breakEvery, breakSeconds: body.breakSeconds,
       // Scanner settings → Pages a round (lib/scan-rounds.js): what a scan of one person's circle reads.
       roundPages: body.roundPages,
+      // Scanner settings → Scan windows (lib/scan-windows.js): each only ever stricter than its default.
+      windowPages: body.windowPages, windowsPerDay: body.windowsPerDay, windowGapHours: body.windowGapHours,
     });
     if (body.dev === false) state.limitHit = null;
     // Manual mode on while Auto scan waits between sittings: it stops now, with why.
@@ -1223,7 +1229,13 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
   // only, so a restart puts them back. A scan under way is told at once.
   if (action === 'lift-limits') {
     liftLimits();
-    state.limitHit = null;
+    // What held a scan back is cleared only if the lift lets it go: profile views a day
+    // do, a used scan window doesn't (limitsNow looks again on the next poll).
+    try {
+      if (!linkedinState(dataDir()).limitReached) state.limitHit = null;
+    } catch {
+      state.limitHit = null;
+    }
     tellScanner('limits: lifted');
     return Response.json({ ok: true, lifted: true });
   }
@@ -1379,15 +1391,15 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     return Response.json({ error: 'An import is waiting to finish. Restart Sixgree first (Settings → Your data), then scan.' }, { status: 409 });
   }
   // While the limits are lifted for this session there is no cooldown here
-  // (lib/linkedin-limits.js linkedinState) and no daily limit.
+  // (lib/linkedin-limits.js linkedinState); the scan windows hold either way.
   const li = linkedinState(dataDir());
   const cooldown = li.cooldown;
   if (searches && cooldown) {
     return Response.json({ error: `Scanning is paused until ${new Date(cooldown.until).toLocaleString()}: ${cooldown.reason}.`, cooldown }, { status: 409 });
   }
-  // The daily limit, said before a process starts (the scanner checks it
+  // The scan window, said before a process starts (the scanner checks it
   // before every search too). Auto scan's sittings are planned against the same
-  // limit (autoPlan ends Auto scan at it, in its own words), so they aren't
+  // window (autoPlan ends Auto scan at it, in its own words), so they aren't
   // counted as a press held back.
   const readsLists = action.startsWith('auto-bridge') || ['bridge', 'rescrape', 'resume', 'resume-all', 'company', 'your-connections', 'breach', 'mutuals'].includes(action);
   if (readsLists && li.limitReached && !sitting) {
@@ -1450,6 +1462,10 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
       ...(circleRound ? circleRound.args : []),
       // A Breach round: its pages (3, 5 or 10) and the degrees the search shows, a fixed set.
       ...(action === 'breach' ? breachRoundArgs({ pages: body.pages, degrees: body.degrees }) : []),
+      // A list read to its end (your connections, Breach, Read all mutuals) is read again from page 1
+      // only when its button asked (Blake, 2026-10-17); without --again the scanner opens nothing for it.
+      // An older plugin doesn't know the flag, and starts again by itself as it always did.
+      ...(body.again === true && LIST_AGAIN.includes(action) && pluginHas(scanner, 'list-again') ? ['--again'] : []),
       ...(maxBridges && (action.startsWith('auto-bridge') || action === 'resume-all') ? [`--max-bridges=${maxBridges}`] : []),
       ...(tiers.length && action.startsWith('auto-bridge') ? [`--tiers=${tiers.join(',')}`] : []),
       ...(action.startsWith('auto-bridge') ? [`--order=${order}`] : []),
@@ -1527,8 +1543,8 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     ...(root ? { SIX_DEGREES_ROOT: root } : {}),
     // So the scraper's hints name the Scan page's settings, not its flags.
     SIX_DEGREES_FROM_APP: '1',
-    // Lifted for this session, or not: the scanner skips the daily limit and the
-    // cooldown while it is, and keeps its pace and its stops either way.
+    // Lifted for this session, or not: the scanner skips profile views a day and the
+    // cooldown while it is, and keeps the scan windows, its pace and its stops either way.
     SIX_DEGREES_LIMITS_LIFTED: liftedAt() != null ? '1' : '0',
   };
 
@@ -1584,7 +1600,7 @@ async function startJob(body, { queued = null, sitting = 0 } = {}) {
     const stopped = state.stopping;
     const wasSitting = state.autoSitting;
     state.autoSitting = false;
-    // Stopped at the daily limit (scrape.py budget_message): the notch offers to lift it. Auto scan says so in its own words.
+    // Stopped at a limit (scrape.py budget_message): the notch says so, and offers the lift when it would help. Auto scan says so in its own words.
     if (!stopped && !wasSitting && out.limit) state.limitHit = Date.now();
     push(state.stopping ? 'Stopped.' : out.line);
     state.stopping = false;

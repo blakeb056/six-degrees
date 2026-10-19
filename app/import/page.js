@@ -236,8 +236,8 @@ export default function ImportPage() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sd-gold, #FFD700)', letterSpacing: 2, marginBottom: 10 }}>HONEST CAVEAT</div>
           <p style={{ margin: '0 0 12px', color: 'rgba(var(--sd-ink, 255, 255, 255), 0.55)', fontSize: 14, lineHeight: 1.7 }}>
             The export contains no profile photos, so everyone renders as initials on a tier-colored circle.
-            It also only covers people you are <em>already</em> connected to, so <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Degrees</strong> and
-            the <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Outlink queue</strong> stay empty, because those map the people you
+            It also only covers people you are <em>already</em> connected to, so <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Degrees</strong> and{' '}
+            <strong style={{ color: 'var(--sd-fg-1, #fff)' }}>Separation</strong> stay empty, because those map the people you
             haven&rsquo;t met yet. A person with no profile link in the file is left out, and the import says how many.
           </p>
           <p style={{ margin: 0, color: 'var(--sd-fg-4, #666)', fontSize: 13, lineHeight: 1.7 }}>

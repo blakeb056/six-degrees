@@ -14,7 +14,7 @@
 // familiar as the buttons for that": the map's round blue and yellow edge
 // buttons; Cmd+[ and Cmd+] too, desktop/main.mjs), says what
 // LinkedIn is doing there, and has Back to Sixgree. Hidden, a small Show
-// LinkedIn brings it back while a scan runs or on Outlink. Hiding never stops
+// LinkedIn brings it back while a scan runs. Hiding never stops
 // a scan: its page keeps working out of sight.
 //
 // Nothing of Sixgree's is ever under it (Blake, 2026-10-15: "I want the top
@@ -36,7 +36,7 @@
 // when a profile link is pressed anywhere in the app (OpenProfile.js), which
 // stays for you until you press Connect there: once LinkedIn says "Invitation
 // sent", the request is marked sent, the panel goes back to where you were
-// (Outlink, Separation, Bridge Chains) and "Request sent to X" shows for a
+// (Separation, Bridge Chains, Breach) and "Request sent to X" shows for a
 // moment (Blake, 2026-10-16; desktop/main.mjs inviteSent).
 // Outside the desktop app (npm, a plain browser) there is no panel and this
 // draws nothing.
@@ -52,7 +52,6 @@ import {
   useLinkedInPanel, showLinkedInPanel, panelBridge as bridge, panelNow, openLinkedInSection, panelBack, panelForward, LINKEDIN_SECTION_TABS,
   panelPersonFor,
 } from './linkedInPanelState';
-import { ProfileSteps, endProfileSteps } from './OpenProfile';
 
 export { useLinkedInPanel, showLinkedInPanel };
 
@@ -182,7 +181,6 @@ export default function LinkedInPanel() {
       if (!act) return;
       if (!hasRequest(act.mark)) markRequested(act.mark, { bridgeId: act.bridgeId, route: 'panel' }).catch(() => {});
       shownByJob.current = false;
-      endProfileSteps();
       b.hide();
       clearTimeout(timer);
       setSentNote(act.note);
@@ -200,7 +198,6 @@ export default function LinkedInPanel() {
   useEffect(() => {
     if (lastPath.current === pathname) return;
     lastPath.current = pathname;
-    endProfileSteps();
     if (panelNow()?.visible && pathname !== LINKEDIN_TAB) bridge()?.hide();
   }, [pathname]);
   useEffect(() => {
@@ -228,8 +225,8 @@ export default function LinkedInPanel() {
   ) : null;
 
   if (!visible) {
-    // Something to go back to: LinkedIn's open there, and a scan runs or you're on Outlink.
-    if (!panel.linkedin || !(job.running || pathname === '/queue')) return sentPill;
+    // Something to go back to: LinkedIn's open there, and a scan runs.
+    if (!panel.linkedin || !job.running) return sentPill;
     return (
       <>
         <button type="button" onClick={() => b.show()} title="Show LinkedIn in Sixgree's own browser" style={{ ...PILL, top: `calc(${barTop || 0}px + 10px)` }}>
@@ -278,8 +275,7 @@ export default function LinkedInPanel() {
               Back to {section.label}
             </button>
           )}
-          <ProfileSteps buttonStyle={BACK} />
-          <button type="button" onClick={() => { shownByJob.current = false; endProfileSteps(); b.hide(); }} style={BACK}>Back to Sixgree</button>
+          <button type="button" onClick={() => { shownByJob.current = false; b.hide(); }} style={BACK}>Back to Sixgree</button>
         </span>
       </div>
       {sentPill}

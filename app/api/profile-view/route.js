@@ -3,12 +3,12 @@ import { getDb } from '../../../lib/db-client';
 import { resolveProfile } from '../../../lib/profile';
 import { cleanProfileUrl } from '../../../lib/reach';
 import { linkedinState } from '../../../lib/linkedin-limits';
-import { chargeProfileView, recordOutlinkOpened } from '../../../lib/outlink-opened';
+import { chargeProfileView, recordProfileOpened } from '../../../lib/profile-opened';
 import { recordInteraction, personKey } from '../../../lib/learning-log';
 
 // One profile opened in Sixgree's own browser (app/components/OpenProfile.js):
 // counted as one of the day's profile views and written down
-// (lib/outlink-opened.js). The panel is already on the profile when this is
+// (lib/profile-opened.js). The panel is already on the profile when this is
 // asked (desktop/main.mjs showProfile), so nothing here waits on a scan, the
 // gap between views or LinkedIn: it only writes two small files. Blake,
 // 2026-10-15: "it took like 2-3 min to load and it's not snappy like the view
@@ -46,7 +46,7 @@ export async function POST(request) {
   if (!url) return Response.json({ error: 'That isn’t a LinkedIn profile link.' }, { status: 400 });
   const dir = dataDir();
   const counted = chargeProfileView(dir);
-  recordOutlinkOpened(dir, { id: row?.id ?? null, name: cleanName(row?.name ?? body?.name), url });
+  recordProfileOpened(dir, { id: row?.id ?? null, name: cleanName(row?.name ?? body?.name), url });
   // The learning log: a profile opened in the panel, with the person as known now.
   try {
     const db = getDb();
