@@ -24,7 +24,7 @@
 //   dots, never more than a page ahead of what it has read, and as it saves
 //   people they take those places in their tier colours. The words under the
 //   core say what it has really found and saved. When it ends the leftover
-//   dots fade, the circle settles into tier bands as an opened circle's do, and
+//   dots fade, the circle settles into tier rings as Bridge Chains' do, and
 //   the person belongs to Bridge Chains, which a link opens.
 // - Everything drawn comes from the scan's start time and the scanner's counts,
 //   so leaving the view, the tab or the page and coming back shows the circle
@@ -35,8 +35,7 @@ import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'reac
 import { circleIndex } from '../../lib/circle';
 import { localPhoto } from '../../lib/photos';
 import { reachIndex, reachState, circleState, notScannedYet, circleScanCost } from '../../lib/reach';
-import { RING } from '../../lib/dot-rings';
-import { ringLayout, previewBand, tierBandLayout, dotRadius } from '../../lib/chain-layout';
+import { dotRadius, tierRings, TIER_RING } from '../../lib/chain-layout';
 import { formingCount, formingSlots, formingPlan, formingSpacing, PER_PAGE } from '../../lib/forming-circle';
 import { score, compareBridges } from '../../lib/separation';
 import { watchScanner, scannerNow, isCircleScan, startHere, busyReason, willQueue, queuedFor } from '../../lib/scraper-client';
@@ -45,7 +44,8 @@ import useScanner from './useScanner';
 import { scanShows } from '../../lib/scanner-capabilities';
 import InlineNote, { useFadingNote } from './InlineNote';
 import { FormingCluster } from './ClusterSpinner';
-import { NodeFace, Halo, Tip, ZoomButtons, HALO_TEXT } from './ChainView';
+import { Tip, ZoomButtons, HALO_TEXT } from './ChainView';
+import { NodeFace, Halo, TierBands, TierDots, TierLetters, TierCounts } from './TierRings';
 import { TIER_COLORS } from '../../lib/themes';
 
 const GREEN = '#00ff88';
@@ -148,19 +148,22 @@ export default function UnscannedView({ connections, onSelect, userName, fullDeg
 }
 
 /**
- * Where the overview rings its people: as Bridge Chains rings its bridges (a
- * ring at 55% of the way out, more rings with room for the names under them),
- * and, once that would run off the window, closer rings and smaller dots with
- * the names on hover, rather than a circle bigger than the window.
+ * Where the overview rings its people: in rings by tier round you, S nearest
+ * and biggest, then A, B and C, D furthest out, small and muted (Blake,
+ * 2026-10-17: "for unscanned it's just a big giant circle with a bunch of
+ * unscanned ones ... so they can focus on the yellow, which is more priority,
+ * purple, and then blue and green, and the other ones don't really matter that
+ * much so they can be further out"). The same tier rings as Bridge Chains'
+ * dive (lib/chain-layout.js tierRings, TierRings.js), so the two look alike.
+ * The list comes strongest first, so each tier's best sit nearest you.
  */
-function overviewLayout(n, maxR) {
-  const roomy = ringLayout(n, { inner: maxR * 0.55, innerMin: maxR * 0.4, outer: maxR * 0.62, spacing: 46, minSpacing: 20, ringGap: 62 });
-  const edge = Math.max(0, ...roomy.rings.map((r) => r.radius));
-  // Roomy while a first name fits between two dots (about 34 apart), as it does on Bridge Chains' first rings.
-  if (edge <= maxR * 0.86 && roomy.spacing >= 34) return { ...roomy, edge, roomy: true, dot: 11 };
-  const tight = ringLayout(n, { inner: maxR * 0.3, innerMin: Math.max(48, maxR * 0.15), outer: maxR * 0.9, spacing: 46, minSpacing: 3 });
-  return { ...tight, edge: Math.max(0, ...tight.rings.map((r) => r.radius)), roomy: false, dot: Math.max(1.6, Math.min(11, tight.spacing * 0.4)) };
+function overviewLayout(list, maxR) {
+  return tierRings(list, { inner: 28, outer: maxR * 0.94, spacing: 40, maxDot: 11, labelRoom: 12 });
 }
+
+// A small list has the room to name everyone but D; a big one names S and A as they fit.
+const NAMED_FEW = Object.freeze(['S', 'A', 'B', 'C']);
+const NAMED_MANY = Object.freeze(['S', 'A']);
 
 function Overview({ people, reach, dims, still, buildingId, userName, canScan, onOpen }) {
   const [hovered, setHovered] = useState(null);     // a person's id
@@ -172,54 +175,21 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
   const cy = dims.h / 2;
   const maxR = Math.min(cx, cy) - 30;
   const list = people.list;
-  const layout = useMemo(() => overviewLayout(list.length, maxR), [list.length, maxR]);
-  // The home zoom Bridge Chains uses, so the two look alike at the same size.
-  const reachesTo = Math.max(previewBand(maxR, layout.rings).outer, layout.edge + 24);
-  const homeZoom = Math.max(0.6, Math.min(1.3, Math.min(cx, cy) / (reachesTo + 8)));
+  const layout = useMemo(() => overviewLayout(list, maxR), [list, maxR]);
+  // The whole circle in the window, clear of the view buttons over its top.
+  const homeZoom = Math.max(0.6, Math.min(1.3, Math.min(cx, cy - 40) / (layout.edge + 16)));
   const view = viewSet ?? { k: homeZoom, x: 0, y: 0 };
   const k = view.k;
   const setView = (next) => setViewSet((v) => (typeof next === 'function' ? next(v ?? { k: homeZoom, x: 0, y: 0 }) : next));
 
   const dots = useMemo(() => list.map((row, i) => {
     const p = layout.points[i];
-    return { row, x: cx + p.x, y: cy + p.y, ready: reachState(row, reach) === 'ready' };
+    return { row, x: cx + p.x, y: cy + p.y, r: p.r, ready: reachState(row, reach) === 'ready' };
   }), [list, layout, cx, cy, reach]);
   const byId = useMemo(() => new Map(dots.map((d) => [d.row.id, d])), [dots]);
-  // Names under the dots while there's room for them, as in Bridge Chains; the
-  // score under that while there's one ring. Zooming in brings them back.
-  const named = layout.roomy || layout.spacing * k >= 44;
-  const counted = layout.roomy && layout.rings.length <= 1;
-  const r0 = layout.dot;
-  const s = r0 / 11;
-
-  // Drawn once per layout and zoom; hovering only draws on top.
-  const drawn = useMemo(() => dots.map(({ row, x, y, ready }) => (
-    <g key={row.id} data-person={row.id}>
-      <circle className="sd-dot" cx={x} cy={y} r={18 * s} fill={`${TIER_COLORS[row.tier] || '#555'}08`} />
-      {ready && <Halo x={x} y={y} r={r0 * 2.1} still={still} />}
-      {/* A dashed ring tight on the dot: no circle scanned yet */}
-      <circle cx={x} cy={y} r={r0 + 3.6 * s} fill="none" stroke={ready ? GREEN : RING.empty} strokeOpacity={ready ? 0.7 : 1}
-        strokeWidth={Math.max(0.6, s)} strokeDasharray={`${2.4 * s} ${2 * s}`} pointerEvents="none" />
-      <NodeFace row={row} x={x} y={y} r={r0} scale={s} clipId={'un-' + row.id} bare={r0 < 6} />
-      {/* The name: as Bridge Chains has it while the rings are roomy; once they
-          close up, only when zoomed in far enough, at a size that reads there */}
-      {named && (layout.roomy ? (
-        <text x={x} y={y + r0 + 11} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={9} fontWeight={600} pointerEvents="none">
-          {row.name?.split(' ')[0]}
-        </text>
-      ) : (
-        <text x={x} y={y + r0 + 9 / k} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={8.5 / k} fontWeight={600} pointerEvents="none"
-          stroke="var(--sd-bg)" strokeWidth={2.4 / k} paintOrder="stroke">
-          {row.name?.split(' ')[0]}
-        </text>
-      ))}
-      {counted && (
-        <text x={x} y={y + r0 + 21} textAnchor="middle" fill="var(--sd-fg-3, #888)" fontSize={7} pointerEvents="none">
-          {row.tier} · {score(row).toFixed(1)}
-        </text>
-      )}
-    </g>
-  )), [dots, named, counted, r0, s, k, layout.roomy, still]);
+  // Ready to scan: the soft green halo, as before.
+  const mark = useMemo(() => (row, i) => (dots[i]?.ready ? { glow: true } : null), [dots]);
+  const named = list.length <= 60 ? NAMED_FEW : NAMED_MANY;
 
   const hitAt = (clientX, clientY) => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -230,7 +200,7 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
     let bestD = Infinity;
     for (const d of dots) {
       const dist = Math.hypot(d.x - wx, d.y - wy);
-      if (dist < bestD && dist <= Math.max(r0 * 1.8, 9 / k)) { bestD = dist; best = d; }
+      if (dist < bestD && dist <= Math.max(d.r * 1.8, 9 / k)) { bestD = dist; best = d; }
     }
     return best;
   };
@@ -273,6 +243,7 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
   const building = buildingId != null ? byId.get(buildingId) : null;
   const toScreen = (d) => ({ x: (d.x - cx) * k + cx + view.x, y: (d.y - cy) * k + cy + view.y });
   const left = people.hidden + people.read;
+  const r0 = 11;
 
   return (
     <>
@@ -280,16 +251,15 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
         style={{ display: 'block', touchAction: 'none', cursor: hov ? 'pointer' : 'grab' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
         onPointerLeave={() => { if (!drag.current) setHovered(null); }} onWheel={onWheel}
-        role="img" aria-label={`${list.length} ${list.length === 1 ? 'connection' : 'connections'} whose circle isn’t scanned yet`}>
+        role="img" aria-label={`${list.length} ${list.length === 1 ? 'connection' : 'connections'} whose circle isn’t scanned yet, in rings by tier`}>
         <g transform={`translate(${cx * (1 - k) + view.x}, ${cy * (1 - k) + view.y}) scale(${k})`}>
-          {/* A guide line for every ring, as Bridge Chains draws */}
-          {layout.rings.map((ring) => (
-            <circle key={'ring-' + ring.radius} cx={cx} cy={cy} r={ring.radius} fill="none" stroke="#FFD70010" strokeWidth={1} pointerEvents="none" />
-          ))}
-          {drawn}
+          {/* A faint band behind each tier, and its letter over the dots, as Bridge Chains' circles have them */}
+          <TierBands layout={layout} cx={cx} cy={cy} k={k} />
+          <TierDots rows={list} layout={layout} cx={cx} cy={cy} k={k} mark={mark} still={still} named={named} ids="un" />
+          <TierLetters layout={layout} cx={cx} cy={cy} k={k} />
           {/* The one under the pointer, on top, bigger and named */}
           {hov && hov !== building && (() => {
-            const hr = Math.max((r0 * 13) / 11, 6 / k);
+            const hr = Math.max((hov.r * 13) / 11, 6 / k);
             return (
               <g pointerEvents="none">
                 <circle cx={hov.x} cy={hov.y} r={(hr * 21) / 13} fill={`${TIER_COLORS[hov.row.tier] || '#555'}14`} />
@@ -302,8 +272,8 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
           {/* Whose circle is being built: the cluster forming on their dot, to find it again */}
           {building && (
             <g pointerEvents="none">
-              <FormingCluster x={building.x} y={building.y} r={34 / k} hub={Math.max(r0, 9 / k)} still={still} />
-              <NodeFace row={building.row} x={building.x} y={building.y} r={Math.max(r0 * 1.2, 9 / k)} hov scale={Math.max(r0 * 1.2, 9 / k) / 13} clipId={'unb-' + building.row.id} />
+              <FormingCluster x={building.x} y={building.y} r={34 / k} hub={Math.max(building.r, 9 / k)} still={still} />
+              <NodeFace row={building.row} x={building.x} y={building.y} r={Math.max(building.r * 1.2, 9 / k)} hov scale={Math.max(building.r * 1.2, 9 / k) / 13} clipId={'unb-' + building.row.id} />
               <text x={building.x} y={building.y + 34 / k * 1.24 + 13 / k} textAnchor="middle" fill="var(--sd-fg-1, #fff)" fontSize={10 / k} fontWeight={700}
                 stroke="var(--sd-bg)" strokeWidth={2.6 / k} paintOrder="stroke">Building {firstName(building.row)}’s circle</text>
             </g>
@@ -320,7 +290,7 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
             : hov.ready ? `Ready to scan · met through ${firstName({ name: hov.row.unlocked_from_name })}’s circle`
             : 'Their circle isn’t scanned yet';
           return (
-            <Tip x={at.x} y={at.y - Math.max(r0 * k, 6) - 4} w={dims.w} accent={hov.ready ? GREEN : TIER_COLORS[hov.row.tier]}
+            <Tip x={at.x} y={at.y - Math.max((hov.r || r0) * k, 6) - 4} w={dims.w} accent={hov.ready ? GREEN : TIER_COLORS[hov.row.tier]}
               lines={[hov.row.name, `${hov.row.tier}-tier · ${score(hov.row).toFixed(1)}`, status,
                 canScan ? 'Click to open it and build it' : 'Click to open it']} />
           );
@@ -338,19 +308,20 @@ function Overview({ people, reach, dims, still, buildingId, userName, canScan, o
 
       <ZoomButtons onIn={() => zoomBy(1.3)} onReset={() => setViewSet(null)} onOut={() => zoomBy(1 / 1.3)} />
 
-      {/* How many, as Bridge Chains' depth tracker: words over the map, no box */}
+      {/* How many, by tier, as Bridge Chains' circles count them: words over the map, no box */}
       {list.length > 0 && (
         <div title={[
           `${list.length.toLocaleString('en-US')} of your connections the filter shows have no circle scanned yet`,
           left > 0 ? `${left.toLocaleString('en-US')} more are left out: the scanner has read their list (${[people.hidden ? `${people.hidden} hidden` : null, people.read ? `${people.read} read with nobody new` : null].filter(Boolean).join(', ')})` : null,
-          'S nearest you, strongest first. Click anyone to open their circle and build it',
+          'In rings by tier: S nearest you, strongest first. Click anyone to open their circle and build it',
         ].filter(Boolean).join('\n')}
-        style={{ position: 'absolute', bottom: 18, left: 18, display: 'flex', gap: 14, alignItems: 'center', fontSize: 10.5, color: 'var(--sd-fg-3, #aab)', textShadow: HALO_TEXT }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', border: `1.5px dashed ${TIER_COLORS.S}` }} />
-            <b style={{ color: 'var(--sd-fg-1, #fff)', fontVariantNumeric: 'tabular-nums' }}>{list.length.toLocaleString('en-US')}</b> not scanned yet
-          </span>
-          {left > 0 && <span>{left.toLocaleString('en-US')} already read, left out</span>}
+        style={{ position: 'absolute', bottom: 18, left: 18, maxWidth: 'calc(100% - 110px)', textShadow: HALO_TEXT }}>
+          <TierCounts rows={list} extra={(
+            <>
+              <span><b style={{ color: 'var(--sd-fg-1, #fff)', fontVariantNumeric: 'tabular-nums' }}>{list.length.toLocaleString('en-US')}</b> not scanned yet</span>
+              {left > 0 && <span>{left.toLocaleString('en-US')} already read, left out</span>}
+            </>
+          )} />
         </div>
       )}
     </>
@@ -431,10 +402,11 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
   const want = Math.max(count.shown + 1, last.ended ? last.shown : 0);
   const spacing = formingSpacing(formingPlan(want), { inner, outer });
   const slots = useMemo(() => formingSlots(want, { inner, spacing }), [want, inner, spacing]);
-  // Once it's over, the circle settles into tier bands, as an opened circle's do.
-  const bands = useMemo(() => (mine || !real.length ? null : tierBandLayout(real, {
-    inner, outer, spacing: Math.max(14, Math.min(24, maxR * 0.085)), minSpacing: 4, gap: Math.max(10, maxR * 0.04),
-  })), [mine, real, inner, outer, maxR]);
+  // Once it's over, the circle settles into tier rings round them, S nearest, as
+  // Bridge Chains' dive and this view's overview have them (lib/chain-layout.js tierRings).
+  const bands = useMemo(() => (mine || !real.length ? null : tierRings(real, {
+    inner: 34, outer, spacing: 34, maxDot: 11, labelRoom: 12,
+  })), [mine, real, outer]);
   const ghostR = Math.max(1.4, Math.min(5.5, spacing * 0.3));
   const shown = count.shown;
   const { ended: lastEnded, shown: lastShown, from: lastFrom } = last;
@@ -451,7 +423,7 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
   const [costShown, setCostShown] = useState(false);   // the button's tip: what a press costs
 
   const placeOf = (j) => (bands ? bands.points[j] : slots[j]);
-  const realR = (row) => dotRadius(bands ? bands.spacing : spacing, row.tier);
+  const realR = (j) => (bands ? bands.points[j].r : dotRadius(spacing, real[j].tier));
 
   const dots = useMemo(() => {
     const out = [];
@@ -462,7 +434,7 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
       out.push(
         <g key={row.id} className="fm-slot" style={{ transform: `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)` }}>
           <circle className={fresh ? 'sd-dot fm-real' : 'sd-dot'} style={fresh ? { '--d': `${Math.min(700, j * 7)}ms` } : undefined}
-            r={dotRadius(bands ? bands.spacing : spacing, row.tier)} fill={TIER_COLORS[row.tier] || '#555'} fillOpacity={0.92} />
+            r={bands ? p.r : dotRadius(spacing, row.tier)} fill={TIER_COLORS[row.tier] || '#555'} fillOpacity={0.92 * (bands ? TIER_RING[p.tier].fade : 1)} />
         </g>,
       );
     });
@@ -505,19 +477,21 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
     const wx = (clientX - rect.left - cx - view.x) / k;
     const wy = (clientY - rect.top - cy - view.y) / k;
     let best = null;
-    let bestD = Math.max(8 / k, (bands ? bands.spacing : spacing) * 0.6);
+    let bestD = Infinity;
+    // Within reach of a dot: its own size once settled, the forming spacing while it forms.
+    const reach = (p) => Math.max(8 / k, bands && p.r ? p.r * 1.6 : spacing * 0.6);
     real.forEach((row, j) => {
       const p = placeOf(j);
       if (!p) return;
       const d = Math.hypot(p.x - wx, p.y - wy);
-      if (d < bestD) { bestD = d; best = { kind: 'real', i: j }; }
+      if (d < bestD && d <= reach(p)) { bestD = d; best = { kind: 'real', i: j }; }
     });
     if (mine) {
       for (let j = real.length; j < count.shown; j++) {
         const p = slots[j];
         if (!p) break;
         const d = Math.hypot(p.x - wx, p.y - wy);
-        if (d < bestD) { bestD = d; best = { kind: 'ghost', i: j }; }
+        if (d < bestD && d <= Math.max(8 / k, spacing * 0.6)) { bestD = d; best = { kind: 'ghost', i: j }; }
       }
     }
     return best;
@@ -582,16 +556,13 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
         onPointerLeave={() => { if (!drag.current) setHover(null); }} onWheel={onWheel}
         role="img" aria-label={`${person.name}’s circle: ${real.length} saved${mine ? `, ${found} found so far` : ''}`}>
         <g transform={`translate(${cx + view.x} ${cy + view.y}) scale(${k})`}>
-          {/* Where the circle forms: faint rings, until someone is in it */}
+          {/* Where the circle forms: faint solid rings, until someone is in it (nothing dotted across it) */}
           {real.length === 0 && count.shown === 0 && [0, 1, 2].map((i) => (
-            <circle key={'guide' + i} r={inner + i * 26} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.07)"
-              strokeWidth={1 / k} strokeDasharray={`${3 / k} ${5 / k}`} pointerEvents="none" />
+            <circle key={'guide' + i} r={inner + i * 26} fill="none" stroke="rgba(var(--sd-ink, 255, 255, 255), 0.05)"
+              strokeWidth={1 / k} pointerEvents="none" />
           ))}
-          {/* Once it has settled: a faint band behind each tier, as an opened circle has */}
-          {bands && bands.bands.map((b) => (
-            <circle key={b.tier} r={(b.inner + b.outer) / 2} fill="none" stroke={TIER_COLORS[b.tier] || 'var(--sd-fg-5, #555)'} strokeOpacity={0.07}
-              strokeWidth={Math.max(1 / k, b.outer - b.inner + bands.spacing)} pointerEvents="none" />
-          ))}
+          {/* Once it has settled: a faint band behind each tier and its letter, as Bridge Chains' circles have */}
+          {bands && <TierBands layout={bands} k={k} />}
           {/* The newest dot, joined to the core */}
           {newest && (
             <line key={'spoke' + count.shown} className={still ? undefined : 'fm-spoke'} x1={0} y1={0} x2={newest.x} y2={newest.y}
@@ -599,6 +570,7 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
               strokeWidth={0.8 / k} strokeOpacity={still ? 0.25 : undefined} pointerEvents="none" />
           )}
           <g pointerEvents="none">{dots}</g>
+          {bands && <TierLetters layout={bands} k={k} />}
           {/* The next place */}
           {next && (count.nextIn != null ? (
             <circle key={'next' + count.shown} className="fm-next" cx={next.x} cy={next.y} r={ghostR + 1.5 / k} fill="none"
@@ -611,7 +583,7 @@ function BuildCircle({ person, index, reach, dims, still, canScan, onBack, onSel
           ))}
           {/* The one under the pointer */}
           {hovAt && (
-            <circle cx={hovAt.x} cy={hovAt.y} r={(hover.kind === 'real' ? realR(hovReal) : ghostR) + 2 / k} fill="none" stroke="var(--sd-fg-1, #fff)" strokeWidth={1.4 / k} pointerEvents="none" />
+            <circle cx={hovAt.x} cy={hovAt.y} r={(hover.kind === 'real' ? realR(hover.i) : ghostR) + 2 / k} fill="none" stroke="var(--sd-fg-1, #fff)" strokeWidth={1.4 / k} pointerEvents="none" />
           )}
           {/* The core: the person, glowing while their circle is built */}
           {(mine || starting) && (
