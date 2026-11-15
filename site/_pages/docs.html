@@ -116,9 +116,9 @@ updated: 2026-10-14
       </ul>
       <p class="fine center" id="this-website">This website (not the app) has no cookies and no ad trackers. It counts
         visits and download clicks on its own counter: how many, to which page, and from which site and country. To count
-        each day's unique visitors it keeps a one-way hash of your IP address and browser, mixed with a secret, which is
-        deleted when the day ends; the address itself is never kept. Nothing is counted when your browser asks not to be
-        tracked. The totals, including which sites sent visitors, are public at
+        each day's unique visitors it keeps a one-way hash of your IP address and browser, made with a secret key; the
+        counter deletes the hash the next day (its database's automatic backups hold it for up to 30 days) and never
+        stores your address. Nothing is counted when your browser asks not to be tracked. The totals, including which sites sent visitors, are public at
         <a href="https://stats.sixgree.com/stats">stats.sixgree.com/stats</a>. To show the latest version and the number
         of stars, it asks GitHub.</p>
     </section>

@@ -1166,9 +1166,18 @@ Found 2026-11-15 building sixgree.com's own visit counter (`workers/stats`, `sit
   finish while a download click navigates, and a `text/plain` body keeps it a simple request
   with no preflight.
 - **Swallowed errors in `waitUntil` read as "nobody came".** A missing table rolls back the whole
-  D1 batch (it is one transaction), so views stop while downloads go on counting. Every failure
-  is now logged (Workers Logs), `/stats` answers 500 rather than zeros, and `schema.sql` runs
-  before any code that needs a new table.
+  D1 batch (it is one transaction), so views stop while downloads go on counting. Every failed
+  write or read is now logged (Workers Logs), `/stats` answers 500 rather than zeros, and
+  `schema.sql` runs before any code that needs a new table. A request the counter *refuses* (a
+  wrong Origin, a robot, a bad body) is still dropped without a log line, so the rule below
+  still applies.
+- **Workers Logs' defaults would have kept every visitor's IP.** `observability: {enabled: true}`
+  alone turns on invocation logs, which store each request's headers (`cf-connecting-ip`
+  included) for 3–7 days, and the site promises no IP is kept. Deploy with
+  `logs: {enabled: true, invocation_logs: false}`: the Worker's own `console.error` lines stay.
+- **The site and the Worker deploy separately.** Merging deploys the site's wording at once; the
+  Worker is uploaded by hand. Deploy the Worker (and its cron) first, so the page never promises
+  what the live counter doesn't do yet.
 
 The rule: when a counter reads zero, prove the pipe with one request of your own (a POST with the
 site's Origin and a browser's User-Agent, then `/stats`, then delete the row) before believing it.

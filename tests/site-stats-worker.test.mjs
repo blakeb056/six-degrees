@@ -1,11 +1,13 @@
 // The sixgree.com visit and download counter (workers/stats): what it counts,
-// what it refuses, and that it keeps nothing personal. Runs the Worker against
+// what it refuses, and that it keeps no IP address or browser string, only a
+// salted hash for the day. Runs the Worker against
 // node:sqlite standing in for D1, with D1's batch semantics: one transaction,
 // statements in order, all or nothing.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import vm from 'node:vm';
 import worker from '../workers/stats/index.js';
 
 const SCHEMA = readFileSync(new URL('../workers/stats/schema.sql', import.meta.url), 'utf8');
@@ -46,11 +48,11 @@ function quietErrors() {
   return { seen, restore: () => { console.error = original; } };
 }
 
-async function send(env, body, { origin = 'https://sixgree.com', ua = CHROME, ip = '203.0.113.7', country = 'US', raw } = {}) {
+async function send(env, body, { origin = 'https://sixgree.com', ua = CHROME, ip = '203.0.113.7', country = 'US', raw, headers = {} } = {}) {
   const waits = [];
   const req = new Request('https://stats.sixgree.com/e', {
     method: 'POST', body: raw ?? JSON.stringify(body),
-    headers: { ...(origin ? { origin } : {}), 'user-agent': ua, 'cf-connecting-ip': ip, 'content-type': 'text/plain' },
+    headers: { ...(origin ? { origin } : {}), 'user-agent': ua, 'cf-connecting-ip': ip, 'content-type': 'text/plain', ...headers },
   });
   Object.defineProperty(req, 'cf', { value: { country } });
   const res = await worker.fetch(req, env, { waitUntil: (p) => waits.push(p) });
@@ -89,14 +91,35 @@ test('robots, other sites, junk and oversized bodies are never counted', async (
   await send(env, { t: 'view', p: '/' }, { origin: 'https://evil.example' });
   await send(env, { t: 'view', p: '/' }, { origin: 'null' });
   await send(env, { t: 'view', p: '/' }, { origin: null });
+  await send(env, { t: 'view', p: '/' }, { headers: { dnt: '1' } });
+  await send(env, { t: 'download', p: 'windows' }, { headers: { 'sec-gpc': '1' } });
   await send(env, { t: 'click', p: '/' });
   await send(env, { t: 'view', p: 'x'.repeat(2000) });
-  await send(env, null, { raw: 'null' });
-  await send(env, null, { raw: '"view"' });
-  await send(env, null, { raw: '{not json' });
   const s = await stats(env);
   assert.equal(s.totals.views, 0);
   assert.equal(s.totals.downloadClicks, 0);
+});
+
+test('junk bodies are refused quietly, never thrown', async () => {
+  const errors = quietErrors();
+  try {
+    const env = { DB: fakeD1(), SALT: 's' };
+    for (const raw of ['null', '"view"', '{not json', '[]', '7', '']) await send(env, null, { raw });
+    assert.deepEqual(errors.seen, []);
+    assert.equal((await stats(env)).totals.views, 0);
+  } finally { errors.restore(); }
+});
+
+test('a body that can\'t be read is logged, and the page still gets its 204', async () => {
+  const errors = quietErrors();
+  try {
+    const env = { DB: fakeD1(), SALT: 's' };
+    const req = { method: 'POST', url: 'https://stats.sixgree.com/e', headers: new Headers({ origin: 'https://sixgree.com' }),
+      text: () => Promise.reject(new Error('body already closed')) };
+    const res = await worker.fetch(req, env, { waitUntil() {} });
+    assert.equal(res.status, 204);
+    assert.ok(errors.seen.some((m) => /body read failed: body already closed/.test(m)));
+  } finally { errors.restore(); }
 });
 
 test('a real Chrome on a Cubot phone is a person, not a robot', async () => {
@@ -105,18 +128,24 @@ test('a real Chrome on a Cubot phone is a person, not a robot', async () => {
   assert.equal((await stats(env)).totals.views, 1);
 });
 
-test('bad page paths and referrers are filed safely, and nothing personal is stored', async () => {
+test('bad page paths and referrers are filed safely, and no IP address or browser string is stored', async () => {
   const env = { DB: fakeD1(), SALT: 's' };
   await send(env, { t: 'view', p: 'javascript:alert(1)' }, { ip: '192.0.2.55' });
   await send(env, { t: 'view', p: '/A/../..//x' });
+  await send(env, { t: 'view', p: '/a/../b/' });
+  await send(env, { t: 'view', p: '/a//b/' });
   await send(env, { t: 'view', p: '/Docs/' });
   await send(env, { t: 'view', p: '/', r: '-.-' });
   await send(env, { t: 'view', p: '/', r: '192.168.1.10' });
   await send(env, { t: 'view', p: '/', r: 'localhost' });
   await send(env, { t: 'view', p: '/', r: 'News.YCombinator.com' });
+  await send(env, { t: 'view', p: '/', r: 'example.com.' });
+  await send(env, { t: 'view', p: '/', r: 'xn--d1acufc.xn--p1ai' });
+  await send(env, { t: 'view', p: '/', r: 'com.google.android.gm' });
   const s = await stats(env);
-  assert.deepEqual(s.pages, [{ page: '/', views: 4 }, { page: '/other', views: 2 }, { page: '/docs/', views: 1 }]);
-  assert.deepEqual(s.referrers, [{ site: 'news.ycombinator.com', views: 1 }], 'only real host names, lower case');
+  assert.deepEqual(s.pages, [{ page: '/', views: 7 }, { page: '/other', views: 4 }, { page: '/docs/', views: 1 }]);
+  assert.deepEqual(s.referrers.map((x) => x.site).sort(),
+    ['com.google.android.gm', 'example.com', 'news.ycombinator.com', 'xn--d1acufc.xn--p1ai'], 'only real host names, lower case');
   const rows = env.DB.db.prepare('SELECT * FROM visitors').all();
   assert.ok(rows.length >= 1);
   for (const r of rows) assert.match(r.h, /^[0-9a-f]{16}$/);
@@ -140,7 +169,7 @@ test('only the site itself gets CORS for sending; stats are public', async () =>
   assert.equal((await worker.fetch(new Request('https://stats.sixgree.com/nope'), env, { waitUntil() {} })).status, 404);
 });
 
-test('unique visitors: a returning visitor is counted once, with one lookup per view, never a recount', async () => {
+test('unique visitors: a returning visitor is counted once a day', async () => {
   const env = { DB: fakeD1(), SALT: 's' };
   for (const ip of ['a', 'b', 'a', 'c', 'b', 'a'].map((x) => `203.0.113.${x.charCodeAt(0)}`)) {
     await send(env, { t: 'view', p: '/' }, { ip });
@@ -148,8 +177,15 @@ test('unique visitors: a returning visitor is counted once, with one lookup per 
   const s = await stats(env);
   assert.equal(s.totals.views, 6);
   assert.equal(s.totals.visitorDays, 3);
-  const src = readFileSync(new URL('../workers/stats/index.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(src, /COUNT\(\*\)\s+FROM visitors/i, 'no per-view count of the whole day (D1 bills every row read)');
+});
+
+test('a new visitor adds one to the stored count; the day is never recounted (D1 bills every row read)', async () => {
+  const env = { DB: fakeD1(), SALT: 's' };
+  const ins = env.DB.db.prepare('INSERT INTO visitors (day, h) VALUES (?, ?)');
+  for (let i = 0; i < 5; i++) ins.run(today(), `${i}`.repeat(16));
+  env.DB.db.prepare('INSERT INTO daily_visitors (day, n) VALUES (?, ?)').run(today(), 40);
+  await send(env, { t: 'view', p: '/' });
+  assert.equal((await stats(env)).totals.visitorDays, 41, 'a recount of the hashes would say 6');
 });
 
 test('REGRESSION: a day keeps its visitor count after its hashes are deleted', async () => {
@@ -164,20 +200,35 @@ test('REGRESSION: a day keeps its visitor count after its hashes are deleted', a
   assert.equal(s.totals.views, 3);
 });
 
-test('hashes are kept only for today and yesterday, and the daily cron leaves only today', async () => {
+test('hashes are kept only for today: a view deletes every earlier one, and so does the daily cron', async () => {
   const env = { DB: fakeD1(), SALT: 's' };
   const ins = env.DB.db.prepare('INSERT INTO visitors (day, h) VALUES (?, ?)');
   ins.run(daysAgo(40), 'aaaaaaaaaaaaaaaa');
   ins.run(daysAgo(2), 'bbbbbbbbbbbbbbbb');
   ins.run(daysAgo(1), 'cccccccccccccccc');
-  await send(env, { t: 'view', p: '/' });
   const left = () => env.DB.db.prepare('SELECT day FROM visitors ORDER BY day').all().map((r) => r.day);
-  assert.deepEqual(left(), [daysAgo(1), today()], 'every view deletes hashes older than yesterday');
+  assert.equal((await stats(env)).oldestVisitorHash, daysAgo(40), '/stats shows the oldest hash held');
+  await send(env, { t: 'view', p: '/' });
+  assert.deepEqual(left(), [today()], 'the first view of the day deletes every earlier hash');
+  assert.equal((await stats(env)).oldestVisitorHash, today());
+
+  ins.run(daysAgo(1), 'dddddddddddddddd');   // a day nobody visited after
   const waits = [];
   await worker.scheduled({ cron: '5 0 * * *' }, env, { waitUntil: (p) => waits.push(p) });
   await Promise.all(waits);
   assert.deepEqual(left(), [today()], 'the cron deletes everything before today');
   assert.equal((await stats(env)).totals.visitorDays, 1, 'counts are untouched');
+});
+
+test('a failing cron cleanup is logged and fails the run, so Cloudflare\'s cron history shows it', async () => {
+  const errors = quietErrors();
+  try {
+    const env = { DB: fakeD1('CREATE TABLE unrelated (x)'), SALT: 's' };
+    const waits = [];
+    await worker.scheduled({ cron: '5 0 * * *' }, env, { waitUntil: (p) => waits.push(p) });
+    await assert.rejects(Promise.all(waits), /visitors/);
+    assert.ok(errors.seen.some((m) => /hash cleanup failed/.test(m)));
+  } finally { errors.restore(); }
 });
 
 test('without the SALT secret, views count but no hash is stored', async () => {
@@ -208,14 +259,25 @@ test('REGRESSION: a failed write is logged, never silent, and /stats says it fai
   } finally { errors.restore(); }
 });
 
-test('schema.sql can be run again, and fills in a count for a day that only has hashes', () => {
+test('schema.sql can be run again: it raises a day\'s count to its hashes, and never lowers one', () => {
   const db = new DatabaseSync(':memory:');
   db.exec(SCHEMA.slice(0, SCHEMA.indexOf('-- Each day\'s unique-visitor count')));
-  db.prepare('INSERT INTO visitors (day, h) VALUES (?, ?)').run(today(), 'aaaaaaaaaaaaaaaa');
-  db.prepare('INSERT INTO visitors (day, h) VALUES (?, ?)').run(today(), 'bbbbbbbbbbbbbbbb');
+  const ins = db.prepare('INSERT INTO visitors (day, h) VALUES (?, ?)');
+  ins.run(today(), 'aaaaaaaaaaaaaaaa');
+  ins.run(today(), 'bbbbbbbbbbbbbbbb');
   db.exec(SCHEMA);
   db.exec(SCHEMA);
-  assert.deepEqual(db.prepare('SELECT day, n FROM daily_visitors').all().map((r) => ({ ...r })), [{ day: today(), n: 2 }]);
+  const counts = () => db.prepare('SELECT day, n FROM daily_visitors ORDER BY day').all().map((r) => ({ ...r }));
+  assert.deepEqual(counts(), [{ day: today(), n: 2 }]);
+  // Hashes an older Worker stored after the first run, without counting them.
+  ins.run(today(), 'cccccccccccccccc');
+  ins.run(today(), 'eeeeeeeeeeeeeeee');
+  db.exec(SCHEMA);
+  assert.deepEqual(counts(), [{ day: today(), n: 4 }], 'raised to the hashes');
+  db.prepare('INSERT INTO daily_visitors (day, n) VALUES (?, ?)').run(daysAgo(3), 50);   // its hashes long gone
+  db.prepare('UPDATE daily_visitors SET n = 9 WHERE day = ?').run(today());
+  db.exec(SCHEMA);
+  assert.deepEqual(counts(), [{ day: daysAgo(3), n: 50 }, { day: today(), n: 9 }], 'never lowered');
 });
 
 test('/stats windows: 90 days at most, whole days only, and days with only some kinds of rows', async () => {
@@ -243,11 +305,19 @@ test('/stats windows: 90 days at most, whole days only, and days with only some 
 test('/stats says when a list was cut at 25 rows', async () => {
   const env = { DB: fakeD1(), SALT: 's' };
   for (let i = 0; i < 30; i++) await send(env, { t: 'view', p: `/blog/post-${i}/` });
-  const s = await stats(env);
+  let s = await stats(env);
   assert.equal(s.pages.length, 25);
   assert.equal(s.cut.pages, true);
   assert.equal(s.cut.referrers, false);
+  assert.equal(s.cut.countries, false);
   assert.equal(s.totals.views, 30, 'the totals are never cut');
+  for (let i = 0; i < 30; i++) {
+    await send(env, { t: 'view', p: '/', r: `site${i}.example.com` }, { country: `Q${String.fromCharCode(65 + (i % 26))}${i}` });
+  }
+  s = await stats(env);
+  assert.equal(s.referrers.length, 25);
+  assert.equal(s.cut.referrers, true);
+  assert.equal(s.cut.countries, true);
 });
 
 test('REGRESSION: the site counts with a CORS fetch, not sendBeacon (no-referrer makes a beacon\'s Origin null in Firefox and Safari)', () => {
@@ -261,6 +331,31 @@ test('REGRESSION: the site counts with a CORS fetch, not sendBeacon (no-referrer
   assert.match(counting, /navigator\.webdriver/, 'automated browsers are not counted');
   const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
   assert.match(html, /connect-src[^;"]*https:\/\/stats\.sixgree\.com/);
+});
+
+// Runs site/app.js §9 as a browser would, with a stand-in page and fetch.
+function runCounting({ navigator = {}, hostname = 'sixgree.com' } = {}) {
+  const app = readFileSync(new URL('../site/app.js', import.meta.url), 'utf8');
+  const calls = [];
+  const fetch = (url, opts) => { calls.push({ url, opts }); return Promise.resolve(); };
+  const ctx = { navigator, location: { hostname, pathname: '/docs/' }, document: { referrer: 'https://www.reddit.com/r/x', addEventListener() {} }, fetch, URL };
+  ctx.window = { fetch };
+  vm.runInNewContext(app.slice(app.indexOf('// 9. Counting')), ctx);
+  return calls;
+}
+
+test('the page sends one view, and nothing for automated browsers, Do Not Track, Global Privacy Control or other hosts', () => {
+  const [one, ...rest] = runCounting();
+  assert.equal(rest.length, 0);
+  assert.equal(one.url, 'https://stats.sixgree.com/e');
+  assert.equal(one.opts.mode, 'cors');
+  assert.equal(one.opts.keepalive, true);
+  assert.equal(one.opts.credentials, 'omit');
+  assert.deepEqual(JSON.parse(one.opts.body), { t: 'view', p: '/docs/', r: 'www.reddit.com' });
+  assert.equal(runCounting({ navigator: { webdriver: true } }).length, 0);
+  assert.equal(runCounting({ navigator: { doNotTrack: '1' } }).length, 0);
+  assert.equal(runCounting({ navigator: { globalPrivacyControl: true } }).length, 0);
+  assert.equal(runCounting({ hostname: 'blakeb056.github.io' }).length, 0);
 });
 
 test('the download counter counts installers only, not the checksums file', () => {

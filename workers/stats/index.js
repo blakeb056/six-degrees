@@ -6,12 +6,15 @@
 // What it keeps, and only this: per day, how many page views each page had,
 // which site sent them (the referrer's host name), which country (from
 // Cloudflare), and how many download buttons were clicked per platform. Each
-// day's unique visitors are counted with a one-way hash of (secret salt, day,
-// IP, browser). The hashes are deleted when the day ends (a cron at 00:05 UTC,
-// and every view deletes any older than yesterday); only the day's count
-// stays, in daily_visitors. No IP address, cookie or browser fingerprint is
-// ever stored. Browsers that send Do Not Track or Global Privacy Control are
-// never counted (site/app.js doesn't send for them).
+// day's unique visitors are told apart by a one-way hash of (secret salt, day,
+// IP, browser). The counter deletes the hashes the next day (the first view
+// after midnight UTC, or the cron at 00:05 UTC, whichever comes first); only
+// the day's count stays, in daily_visitors. D1 Time Travel can still restore
+// the database, hashes included, for 7 days (free plan) or 30 (paid); see
+// README. No IP address or cookie is ever stored in D1; the day's hash is the
+// only value per visitor. Browsers that send Do Not Track or Global Privacy
+// Control are never counted: site/app.js doesn't send for them, and the
+// counter refuses a request carrying either header.
 //
 // POST /e     {t: "view" | "download", p: path or platform, r: referrer host}
 //             sent by site/app.js as a CORS fetch (keepalive); always 204.
@@ -26,7 +29,7 @@ const PLATFORMS = new Set(['mac-apple-silicon', 'mac-intel', 'windows', 'linux-d
 const BOT = /(?<!cu)bot|crawl|spider|slurp|preview|fetch|monitor|headless|lighthouse|inspectiontool|python|curl|wget|httpclient|scanner/i;
 const PATH = /^\/[a-z0-9\-/._]{0,80}$/;
 // A host name: dot-separated labels, ending in letters (no IP addresses, no "localhost").
-const HOST = /^(?=.{4,80}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+const HOST = /^(?=.{4,80}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
 // The lists /stats shows are cut at this many rows; it says when one was cut.
 const LIST = 25;
 
@@ -37,7 +40,7 @@ export default {
     if (req.method === 'POST' && url.pathname === '/e') {
       // The body is read before answering: once the response has gone,
       // Cloudflare has closed it (the first deploy counted nothing).
-      const raw = await req.text().catch(() => '');
+      const raw = await req.text().catch((e) => { console.error('stats: body read failed:', e && e.message); return ''; });
       // Never a silent zero (TRAPS §7): a failed write is logged (Workers Logs).
       ctx.waitUntil(record(req, raw, env).catch((e) => console.error('stats: record failed:', e && e.message)));
       return withCors(new Response(null, { status: 204 }), req);
@@ -47,10 +50,11 @@ export default {
   },
 
   // Daily at 00:05 UTC (the Worker's cron trigger): forget every hash from
-  // before today, so none outlives its day even when nobody visits.
+  // before today, so none outlives its day even when nobody visits. A failure
+  // is logged and thrown again, so the cron's Past Events show it failed.
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(env.DB.prepare('DELETE FROM visitors WHERE day < ?').bind(today()).run()
-      .catch((e) => console.error('stats: hash cleanup failed:', e && e.message)));
+      .catch((e) => { console.error('stats: hash cleanup failed:', e && e.message); throw e; }));
   },
 };
 
@@ -65,7 +69,6 @@ function withCors(res, req) {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
-const dayBefore = (day) => new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 
 async function hash(text) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -82,13 +85,15 @@ function pagePath(p) {
 
 function refHost(r) {
   if (typeof r !== 'string') return '';
-  const host = r.toLowerCase().replace(/^www\./, '');
+  const host = r.toLowerCase().replace(/\.$/, '').replace(/^www\./, '');
   return HOST.test(host) && host !== 'sixgree.com' ? host : '';
 }
 
 async function record(req, raw, env) {
-  // Only requests from the site's own pages, from something that isn't a robot.
+  // Only requests from the site's own pages, from something that isn't a
+  // robot, from a browser that hasn't asked not to be tracked.
   if (!ORIGINS.has(req.headers.get('origin'))) return;
+  if (req.headers.get('dnt') === '1' || req.headers.get('sec-gpc') === '1') return;
   const ua = req.headers.get('user-agent') || '';
   if (!ua || BOT.test(ua)) return;
   if (!raw || raw.length > 1000) return;
@@ -118,8 +123,9 @@ async function record(req, raw, env) {
     const h = await hash(`${env.SALT}|${day}|${ip}|${ua}`);
     // A D1 batch is one transaction, run in order. First the day's count goes
     // up by one if this hash is new today (one indexed lookup, never a count
-    // of the whole day), then the hash is kept, then hashes older than
-    // yesterday go (the cron's backstop).
+    // of the whole day), then the hash is kept, then every hash from before
+    // today goes: the first view after midnight clears yesterday's, and the
+    // cron does it on a day nobody visits.
     writes.push(
       env.DB.prepare(
         `INSERT INTO daily_visitors (day, n) SELECT ?, 1
@@ -127,7 +133,7 @@ async function record(req, raw, env) {
          ON CONFLICT (day) DO UPDATE SET n = n + 1`,
       ).bind(day, day, h),
       env.DB.prepare('INSERT OR IGNORE INTO visitors (day, h) VALUES (?, ?)').bind(day, h),
-      env.DB.prepare('DELETE FROM visitors WHERE day < ?').bind(dayBefore(day)),
+      env.DB.prepare('DELETE FROM visitors WHERE day < ?').bind(day),
     );
   }
   await env.DB.batch(writes);
@@ -153,13 +159,15 @@ async function stats(url, env) {
          GROUP BY country ORDER BY views DESC, country LIMIT ${LIST + 1}`),
       q(`SELECT key AS platform, SUM(n) AS clicks FROM events WHERE day >= ? AND kind = 'download'
          GROUP BY key ORDER BY clicks DESC, key`),
+      // So anyone can check that the hashes really go: the oldest day still held.
+      env.DB.prepare('SELECT MIN(day) AS day FROM visitors').all().then((r) => r.results),
     ]);
   } catch (e) {
     // Say it failed; never answer zeros (TRAPS §7).
     console.error('stats: read failed:', e && e.message);
     return json({ error: 'the counter could not be read', detail: String(e && e.message) }, 500);
   }
-  const [daily, visitors, pages, refs, countries, downloads] = rows;
+  const [daily, visitors, pages, refs, countries, downloads, [oldest]] = rows;
   const byDay = new Map(daily.map((d) => [d.day, { ...d, visitors: 0 }]));
   for (const v of visitors) byDay.set(v.day, { ...(byDay.get(v.day) || { day: v.day, views: 0, downloads: 0 }), visitors: v.visitors });
   const perDay = [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
@@ -170,8 +178,11 @@ async function stats(url, env) {
     perDay,
     pages: pages.slice(0, LIST), referrers: refs.slice(0, LIST), countries: countries.slice(0, LIST), downloads,
     cut: { pages: pages.length > LIST, referrers: refs.length > LIST, countries: countries.length > LIST, at: LIST },
-    note: 'Counted by sixgree.com itself: no cookies, no IP addresses kept, robots and Do Not Track excluded. '
-      + 'Referring sites are host names only. The lists are cut at 25 rows; "cut" says which were.',
+    oldestVisitorHash: (oldest && oldest.day) || null,
+    note: 'Counted by sixgree.com itself: no cookies and no IP addresses kept (unique visitors are told apart by a '
+      + 'salted hash, deleted the next day; oldestVisitorHash shows the oldest day still held). Robots that say so, '
+      + 'automated browsers, and browsers that send Do Not Track or Global Privacy Control are not counted. '
+      + `Referring sites are host names only. The lists are cut at ${LIST} rows; "cut" says which were.`,
   });
 }
 

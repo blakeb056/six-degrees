@@ -19,10 +19,10 @@
 //   9. Counting: one request per page view and per download click to
 //      sixgree.com's own counter (workers/stats). No cookies and no IP address
 //      kept: it keeps daily totals by page, referring site and country, and,
-//      to count unique visitors, a salted hash of IP and browser that is
-//      deleted when the day ends. Skipped when the browser sends Do Not Track
-//      or Global Privacy Control, for automated browsers, and anywhere but
-//      sixgree.com itself.
+//      to count unique visitors, a salted hash of IP and browser, deleted the
+//      next day (D1 backups keep it up to 30 days). Skipped when the browser
+//      sends Do Not Track or Global Privacy Control, for automated browsers,
+//      and anywhere but sixgree.com itself.
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
