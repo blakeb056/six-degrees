@@ -1150,3 +1150,34 @@ started himself said *Resting overnight. Carrying on at 08:59* and sat for 700 m
 
 The rule: a scan you start yourself runs now, inside the budget and the cooldown. Only Auto
 scan keeps hours, and it keeps them in the app, never by sleeping inside the scanner.
+
+## 50. The site's counter: a beacon loses its Origin in Firefox and Safari, and a Worker loses a body it reads late
+
+Found 2026-11-15 building sixgree.com's own visit counter (`workers/stats`, `site/app.js` §9).
+
+- **A Worker that reads the body after answering gets nothing.** The first deploy returned 204
+  at once and read `req.text()` inside `ctx.waitUntil`; by then Cloudflare had closed the body,
+  the read failed, and the failure was swallowed. Read the body first, then answer.
+- **`sendBeacon` is a no-cors POST, and the site's `<meta name="referrer" content="no-referrer">`
+  makes Firefox and Safari send it with `Origin: null`.** The counter only takes its own two
+  origins, so every Firefox and Safari visit would have been dropped. Chrome is the odd one: it
+  keeps the real origin (it fails the WPT test for this), so testing in Chrome alone hides the
+  bug. A `fetch` with `mode: 'cors'` always carries the page's origin; `keepalive: true` lets it
+  finish while a download click navigates, and a `text/plain` body keeps it a simple request
+  with no preflight.
+- **Swallowed errors in `waitUntil` read as "nobody came".** A missing table rolls back the whole
+  D1 batch (it is one transaction), so views stop while downloads go on counting. Every failed
+  write or read is now logged (Workers Logs), `/stats` answers 500 rather than zeros, and
+  `schema.sql` runs before any code that needs a new table. A request the counter *refuses* (a
+  wrong Origin, a robot, a bad body) is still dropped without a log line, so the rule below
+  still applies.
+- **Workers Logs' defaults would have kept every visitor's IP.** `observability: {enabled: true}`
+  alone turns on invocation logs, which store each request's headers (`cf-connecting-ip`
+  included) for 3–7 days, and the site promises no IP is kept. Deploy with
+  `logs: {enabled: true, invocation_logs: false}`: the Worker's own `console.error` lines stay.
+- **The site and the Worker deploy separately.** Merging deploys the site's wording at once; the
+  Worker is uploaded by hand. Deploy the Worker (and its cron) first, so the page never promises
+  what the live counter doesn't do yet.
+
+The rule: when a counter reads zero, prove the pipe with one request of your own (a POST with the
+site's Origin and a browser's User-Agent, then `/stats`, then delete the row) before believing it.
