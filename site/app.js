@@ -16,10 +16,13 @@
 //   6. The home page's 1-2-3 strip steps through itself; its tabs pick a step.
 //   7. The home page's tour plays its chapters over the screenshots.
 //   8. Under the hero film, the step it's showing lights up as it plays.
-//   9. Counting: one anonymous request per page view and per download click to
-//      sixgree.com's own counter (workers/stats). No cookies, nothing stored
-//      about you; skipped when the browser sends Do Not Track or Global
-//      Privacy Control, and anywhere but sixgree.com itself.
+//   9. Counting: one request per page view and per download click to
+//      sixgree.com's own counter (workers/stats). No cookies and no IP address
+//      kept: it keeps daily totals by page, referring site and country, and,
+//      to count unique visitors, a salted hash of IP and browser that is
+//      deleted when the day ends. Skipped when the browser sends Do Not Track
+//      or Global Privacy Control, for automated browsers, and anywhere but
+//      sixgree.com itself.
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
@@ -346,13 +349,15 @@ const DOWNLOADS = {
 (() => {
   try {
     if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl) return;
+    if (navigator.webdriver) return; // Playwright, Puppeteer, Selenium: not a person
     if (!/^(www\.)?sixgree\.com$/.test(location.hostname) || !window.fetch) return;
     let ref = '';
     try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch { /* no referrer */ }
-    // A CORS fetch, not sendBeacon: the site's no-referrer policy makes a
-    // beacon (a no-cors POST) send `Origin: null`, which the counter rejects,
-    // so the first version counted nothing. In cors mode the Origin header
-    // stays, and keepalive lets it finish while a download click navigates.
+    // A CORS fetch, not sendBeacon: a beacon is a no-cors POST, and under the
+    // site's no-referrer policy Firefox and Safari send it with `Origin: null`,
+    // which the counter rejects (Chrome keeps the origin). In cors mode every
+    // browser sends the Origin header, and keepalive lets it finish while a
+    // download click navigates (TRAPS §50).
     const send = (t, p) => {
       try {
         fetch('https://stats.sixgree.com/e', {
@@ -361,9 +366,11 @@ const DOWNLOADS = {
         }).catch(() => {});
       } catch { /* counting never breaks the page */ }
     };
-    // Which download a link is, from its file name.
+    // Which download a link is, from its file name. The checksums file, and
+    // anything else that isn't an installer, isn't a download.
     const platformOf = (href) => {
       if (!/github\.com\/blakeb056\/six-degrees\/releases\/(latest\/)?download\//.test(href)) return null;
+      if (/SHA256SUMS|\.(sig|asc|blockmap|ya?ml|txt|json)$/i.test(href)) return null;
       if (/Apple-Silicon|arm64\.dmg/i.test(href)) return 'mac-apple-silicon';
       if (/Intel|x64\.dmg/i.test(href)) return 'mac-intel';
       if (/\.exe$/i.test(href)) return 'windows';

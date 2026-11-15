@@ -54,6 +54,9 @@ These are load-bearing. Breaking one is a breaking change, not a refactor.
    by hand. Anything that downloads or installs on a timer, on launch, or in the
    background is the forbidden thing, and so is any other check: the daily one above is
    the only one. *(The second press was added on 2026-09-25, for the Mac app only.)*
+   The website, sixgree.com, is not the tool: it counts its own visits and download
+   clicks (`workers/stats`, no cookies, Do Not Track and Global Privacy Control respected;
+   see its README). Nothing in the app may ever call that counter. *(Added on 2026-11-15.)*
 3. **Never commit real network data.** Not a CSV, not an avatar, not a snapshot. CI
    fails the build if any appears. The sample network is generated and every person in
    it is invented.
