@@ -16,6 +16,10 @@
 //   6. The home page's 1-2-3 strip steps through itself; its tabs pick a step.
 //   7. The home page's tour plays its chapters over the screenshots.
 //   8. Under the hero film, the step it's showing lights up as it plays.
+//   9. Counting: one anonymous beacon per page view and per download click to
+//      sixgree.com's own counter (workers/stats). No cookies, nothing stored
+//      about you; skipped when the browser sends Do Not Track or Global
+//      Privacy Control, and anywhere but sixgree.com itself.
 
 // Downloads that aren't built yet show as dimmed "Coming soon" buttons, which
 // aren't links and do nothing. THE SWITCH: to turn one on, put its file's address
@@ -333,4 +337,36 @@ const DOWNLOADS = {
       seen.observe(v);
     }
   }
+})();
+
+// 9. Counting (workers/stats): how many people visit, from where, and how many
+// click a download. GitHub's own download counts are mostly link crawlers, so
+// this is the honest number. Separate from the helpers above so a page that
+// returns early still counts.
+(() => {
+  try {
+    if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl) return;
+    if (!/^(www\.)?sixgree\.com$/.test(location.hostname) || !navigator.sendBeacon) return;
+    let ref = '';
+    try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch { /* no referrer */ }
+    const send = (t, p) => {
+      try { navigator.sendBeacon('https://stats.sixgree.com/e', JSON.stringify({ t, p, r: ref })); } catch { /* counting never breaks the page */ }
+    };
+    // Which download a link is, from its file name.
+    const platformOf = (href) => {
+      if (!/github\.com\/blakeb056\/six-degrees\/releases\/(latest\/)?download\//.test(href)) return null;
+      if (/Apple-Silicon|arm64\.dmg/i.test(href)) return 'mac-apple-silicon';
+      if (/Intel|x64\.dmg/i.test(href)) return 'mac-intel';
+      if (/\.exe$/i.test(href)) return 'windows';
+      if (/\.deb$/i.test(href)) return 'linux-deb';
+      if (/\.tar\.gz$/i.test(href)) return 'linux-tar';
+      return 'other';
+    };
+    send('view', location.pathname);
+    document.addEventListener('click', (e) => {
+      const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      const p = a && platformOf(a.href);
+      if (p) send('download', p);
+    }, true);
+  } catch { /* counting never breaks the page */ }
 })();

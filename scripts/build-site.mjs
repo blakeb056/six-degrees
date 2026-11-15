@@ -119,7 +119,7 @@ export function layout(site, { path: pagePath, title, description, graph, main, 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${t}</title>
   <meta name="description" content="${d}">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com https://stats.sixgree.com; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="author" content="Blake Burford">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
