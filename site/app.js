@@ -16,7 +16,7 @@
 //   6. The home page's 1-2-3 strip steps through itself; its tabs pick a step.
 //   7. The home page's tour plays its chapters over the screenshots.
 //   8. Under the hero film, the step it's showing lights up as it plays.
-//   9. Counting: one anonymous beacon per page view and per download click to
+//   9. Counting: one anonymous request per page view and per download click to
 //      sixgree.com's own counter (workers/stats). No cookies, nothing stored
 //      about you; skipped when the browser sends Do Not Track or Global
 //      Privacy Control, and anywhere but sixgree.com itself.
@@ -346,11 +346,20 @@ const DOWNLOADS = {
 (() => {
   try {
     if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl) return;
-    if (!/^(www\.)?sixgree\.com$/.test(location.hostname) || !navigator.sendBeacon) return;
+    if (!/^(www\.)?sixgree\.com$/.test(location.hostname) || !window.fetch) return;
     let ref = '';
     try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch { /* no referrer */ }
+    // A CORS fetch, not sendBeacon: the site's no-referrer policy makes a
+    // beacon (a no-cors POST) send `Origin: null`, which the counter rejects,
+    // so the first version counted nothing. In cors mode the Origin header
+    // stays, and keepalive lets it finish while a download click navigates.
     const send = (t, p) => {
-      try { navigator.sendBeacon('https://stats.sixgree.com/e', JSON.stringify({ t, p, r: ref })); } catch { /* counting never breaks the page */ }
+      try {
+        fetch('https://stats.sixgree.com/e', {
+          method: 'POST', mode: 'cors', credentials: 'omit', keepalive: true,
+          headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ t, p, r: ref }),
+        }).catch(() => {});
+      } catch { /* counting never breaks the page */ }
     };
     // Which download a link is, from its file name.
     const platformOf = (href) => {

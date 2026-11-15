@@ -7,12 +7,13 @@
 // which site sent them (the referrer's host name), which country (from
 // Cloudflare), and how many download buttons were clicked per platform. Daily
 // unique visitors are counted from a hash of (secret salt, day, IP, browser)
-// that changes every day and is deleted after 35 days; no IP address, cookie
-// or browser fingerprint is ever stored. Browsers that send Do Not Track or
+// that changes every day and is deleted after 35 days (each day's count is kept
+// on its own in daily_visitors); no IP address, cookie or browser fingerprint
+// is ever stored. Browsers that send Do Not Track or
 // Global Privacy Control are never counted (site/app.js doesn't send for them).
 //
 // POST /e     {t: "view" | "download", p: path or platform, r: referrer host}
-//             sent by site/app.js with navigator.sendBeacon; always 204.
+//             sent by site/app.js as a CORS fetch (keepalive); always 204.
 // GET /stats  ?days=28 (1–90): the totals as JSON, public, no personal data.
 //
 // Deployed by hand through the Cloudflare API (see README.md beside this file).
@@ -86,6 +87,12 @@ async function record(req, raw, env) {
     const ip = req.headers.get('cf-connecting-ip') || '';
     writes.push(env.DB.prepare('INSERT OR IGNORE INTO visitors (day, h) VALUES (?, ?)')
       .bind(day, await hash(`${env.SALT}|${day}|${ip}|${ua}`)));
+    // The day's count, kept apart from the hashes so deleting old hashes
+    // never erases how many visitors a day had.
+    writes.push(env.DB.prepare(
+      `INSERT INTO daily_visitors (day, n) VALUES (?, (SELECT COUNT(*) FROM visitors WHERE day = ?))
+       ON CONFLICT (day) DO UPDATE SET n = excluded.n`,
+    ).bind(day, day));
   }
   // Now and then, forget the daily hashes past 35 days.
   if (Math.random() < 0.02) {
@@ -102,7 +109,7 @@ async function stats(url, env) {
     q(`SELECT day, SUM(CASE WHEN kind = 'view' THEN n ELSE 0 END) AS views,
               SUM(CASE WHEN kind = 'download' THEN n ELSE 0 END) AS downloads
        FROM events WHERE day >= ? GROUP BY day ORDER BY day`),
-    q('SELECT day, COUNT(*) AS visitors FROM visitors WHERE day >= ? GROUP BY day ORDER BY day'),
+    q('SELECT day, n AS visitors FROM daily_visitors WHERE day >= ? ORDER BY day'),
     q(`SELECT key AS page, SUM(n) AS views FROM events WHERE day >= ? AND kind = 'view'
        GROUP BY key ORDER BY views DESC LIMIT 25`),
     q(`SELECT ref AS site, SUM(n) AS views FROM events WHERE day >= ? AND kind = 'view' AND ref != ''

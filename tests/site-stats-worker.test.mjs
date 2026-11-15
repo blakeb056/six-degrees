@@ -91,3 +91,27 @@ test('only the site itself gets CORS for sending; stats are public', async () =>
   assert.equal(res.headers.get('access-control-allow-origin'), '*');
   assert.equal((await worker.fetch(new Request('https://stats.sixgree.com/nope'), env, { waitUntil() {} })).status, 404);
 });
+
+test('REGRESSION: a day keeps its visitor count after its hashes are deleted', async () => {
+  const env = { DB: fakeD1(), SALT: 's' };
+  await send(env, { t: 'view', p: '/' }, { ip: '203.0.113.1' });
+  await send(env, { t: 'view', p: '/' }, { ip: '203.0.113.2' });
+  await send(env, { t: 'view', p: '/docs/' }, { ip: '203.0.113.2' });
+  assert.equal((await stats(env)).totals.visitorDays, 2);
+  env.DB.db.exec('DELETE FROM visitors');   // what the 35-day cleanup does to old days
+  const s = await stats(env);
+  assert.equal(s.totals.visitorDays, 2, 'the count outlives the hashes');
+  assert.equal(s.totals.views, 3);
+});
+
+test('REGRESSION: the site counts with a CORS fetch, not sendBeacon (no-referrer makes a beacon\'s Origin null)', () => {
+  const app = readFileSync(new URL('../site/app.js', import.meta.url), 'utf8');
+  const counting = app.slice(app.indexOf('// 9. Counting'));
+  assert.ok(counting.length > 100, 'the counting section is there');
+  assert.doesNotMatch(counting, /sendBeacon\(/);
+  assert.match(counting, /fetch\('https:\/\/stats\.sixgree\.com\/e'/);
+  assert.match(counting, /mode: 'cors'/);
+  assert.match(counting, /keepalive: true/);
+  const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  assert.match(html, /connect-src[^;"]*https:\/\/stats\.sixgree\.com/);
+});

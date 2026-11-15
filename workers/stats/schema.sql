@@ -15,3 +15,8 @@ CREATE TABLE IF NOT EXISTS visitors (
   h   TEXT NOT NULL,
   PRIMARY KEY (day, h)
 );
+-- Each day's unique-visitor count, kept after that day's hashes are deleted.
+CREATE TABLE IF NOT EXISTS daily_visitors (
+  day TEXT PRIMARY KEY,
+  n   INTEGER NOT NULL DEFAULT 0
+);
