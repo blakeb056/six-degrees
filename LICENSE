@@ -1,0 +1,42 @@
+Sixgree licence
+
+Copyright (c) 2026 Blake Burford. All rights reserved.
+
+Sixgree is free to download and use. It is not open source.
+
+1. What you may do. You may download, install and use Sixgree, free of charge,
+   for yourself or your work, on any computers you use.
+
+2. What you may not do. Without written permission from Blake Burford, you may
+   not:
+   a. copy, modify, translate or adapt Sixgree or any part of it, or make
+      anything based on it;
+   b. sell, rent, lend, share, publish, sublicense or otherwise distribute
+      Sixgree or any part of it, on its own or inside another product or
+      service, including a hosted or online one;
+   c. decompile, disassemble or reverse engineer Sixgree, except where the law
+      allows it despite this restriction;
+   d. remove or change any copyright notice, trademark or this licence;
+   e. use the name "Sixgree", its logo or its icon for any other product,
+      service or company.
+
+3. Earlier versions. Versions up to and including 2.10.0 were released under
+   the MIT License. Anyone who already received one of those versions keeps the
+   rights the MIT License gave them for that version. This licence applies to
+   every later version.
+
+4. Other people's software. Sixgree includes software by others (for example
+   Electron, Next.js, Node.js and Python), each under its own licence, which
+   applies to that software.
+
+5. No warranty. SIXGREE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+   EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
+   OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+   ARISING FROM, OUT OF OR IN CONNECTION WITH SIXGREE OR THE USE OF OR OTHER
+   DEALINGS IN SIXGREE.
+
+6. Ending. If you break this licence, your right to use Sixgree ends.
+
+Questions or permission requests: https://sixgree.com/about/
