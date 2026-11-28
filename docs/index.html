@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sixgree docs: getting started, your data, privacy and questions</title>
+  <meta name="description" content="How to bring your network into Sixgree (the CSV export we recommend, the sample, or an optional scan), where your data lives, what the app contacts and when, and answers to common questions.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com https://stats.sixgree.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="author" content="Blake Burford">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://sixgree.com/docs/">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sixgree">
+  <meta property="og:url" content="https://sixgree.com/docs/">
+  <meta property="og:title" content="Sixgree docs: getting started, your data, privacy and questions">
+  <meta property="og:description" content="How to bring your network into Sixgree (the CSV export we recommend, the sample, or an optional scan), where your data lives, what the app contacts and when, and answers to common questions.">
+  <meta property="og:image" content="https://sixgree.com/img/og-sixgree.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sixgree docs: getting started, your data, privacy and questions">
+  <meta name="twitter:description" content="How to bring your network into Sixgree (the CSV export we recommend, the sample, or an optional scan), where your data lives, what the app contacts and when, and answers to common questions.">
+  <meta name="twitter:image" content="https://sixgree.com/img/og-sixgree.jpg">
+  <meta name="theme-color" content="#fbfbfd">
+  <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://sixgree.com/docs/#page",
+      "url": "https://sixgree.com/docs/",
+      "name": "Sixgree docs: getting started, your data, privacy and questions",
+      "description": "How to bring your network into Sixgree (the CSV export we recommend, the sample, or an optional scan), where your data lives, what the app contacts and when, and answers to common questions.",
+      "isPartOf": {
+        "@id": "https://sixgree.com/#website"
+      },
+      "about": {
+        "@id": "https://sixgree.com/#app"
+      },
+      "inLanguage": "en",
+      "dateModified": "2026-10-14"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Sixgree",
+          "item": "https://sixgree.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Docs",
+          "item": "https://sixgree.com/docs/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://sixgree.com/docs/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Sixgree free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. It's free to download and use, with no account, no subscription and no paid tier."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it upload my network data anywhere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Your network stays on your Mac, in a hidden .six-degrees folder. There's no telemetry, no analytics and no crash reports. It goes online when you act (the platform when you scan or press Auto, GitHub when you check for an update or browse plugins), and once a day to ask GitHub for the newest version number (and, with plugins on, the plugin list), which Settings → Updates turns off."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work on Windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, in beta: a one-click Setup.exe for Windows 10 or 11, the same app as on the Mac (how). There's a Linux app too (.deb or .tar.gz)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the Mac app signed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. If macOS says it can't check the app for malware, that's a copy of 0.8.0 or earlier, from before it was signed: download the newest one, or allow that copy once in System Settings → Privacy & Security → Open Anyway."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Could scanning violate the platform's terms?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Automated access may violate the platform's terms, and the platform can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample and a CSV import do not automate access to your account."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why did macOS ask about App Management while scanning?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "That's Google Chrome updating itself. The scanner starts Chrome, Chrome's own updater then tries to update the Chrome app, and macOS asks whether Sixgree, which started Chrome, can manage apps. Either answer is fine: scanning works the same, and if you say no, Chrome updates itself the next time you open it. To stop the question, allow Sixgree once in System Settings → Privacy & Security → App Management (the Scan page's first step has a button that opens it)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do I need to get started?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A Mac (or Windows or Linux, in beta) and, optionally, the official Connections.csv export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does “six degrees” mean here?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is someone's score worked out?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "From their title and their company: power = title × (0.45 + 0.055 × company score), plus a small bonus for reach and for a strong circle. It estimates network position, not what anyone is worth as a person. Scanned and sample people show the working on their card."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/style.css?v=2026-11-26-1">
+  <script src="/app.js?v=2026-11-26-1" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+  <p class="notice-bar"><a href="/blog/connections-export-december-2026/"><strong>From December 2026 the connections export drops company and job title.</strong> <span>Download yours now →</span></a></p>
+  <header class="top">
+    <div class="top-bar">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <nav aria-label="Main">
+        <a href="/#how">How it works</a>
+        <a href="/#features">Features</a>
+        <a href="/docs/" aria-current="page">Docs</a>
+        <a href="/releases/">Releases</a>
+        <a href="/blog/">Blog</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/about/">About</a>
+      </nav>
+      <a class="top-get" href="/download/">Download</a>
+      <a class="gh" href="https://github.com/blakeb056/six-degrees" aria-label="Sixgree on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <header class="page-hero">
+      <p class="kicker">Docs</p>
+      <h1>Getting started, and questions</h1>
+      <p class="lede">Everything you need once it's <a href="/download/">installed</a>: how to bring your network in, where it
+        lives, and what the app does and doesn't do.</p>
+    </header>
+
+    <nav class="on-page" aria-label="On this page">
+      <a href="#get-started">Get started</a>
+      <a href="#your-data">Your data</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">Questions</a>
+      <a href="#more">Go deeper</a>
+    </nav>
+
+    <section class="ways" id="get-started">
+      <p class="kicker">Get started</p>
+      <h2>Bring your network in</h2>
+      <p class="intro">The app opens on three ways in. We recommend the official connections export: it carries no risk
+        to your account. The sample needs nothing at all. Scanning is optional, added by a plugin, and the only way to see who <em>your
+        connections</em> know, but it runs your own account automatically, at your own risk.</p>
+      <div class="cards" id="network">
+        <article>
+          <p class="risk none">Recommended · No account risk</p>
+          <h3>Import the connections export</h3>
+          <p>The official <code>Connections.csv</code> export, read on your computer: Settings &amp; Privacy → Data privacy → Get
+            a copy of your data → Connections. It shows the people you know, not who they know: Insights ranks them, but
+            Degrees and Separation need a scan. <strong>From December 2026 new exports leave out company and job title</strong>,
+            which the ranking needs, so <a href="/blog/connections-export-december-2026/">download yours before then</a>.</p>
+        </article>
+        <article>
+          <p class="risk none">No account risk</p>
+          <h3>Explore a sample</h3>
+          <p>150 invented connections and the 598 people they know. Every view except Class, Jobs and Scan, which need your
+            own network.</p>
+        </article>
+        <article>
+          <p class="risk some">Optional · Your account, your risk</p>
+          <h3>Scan your network</h3>
+          <p>The only way to see who <em>your connections</em> know. Install the Auto scan or Manual scan plugin from
+            <strong>Settings → Plugins</strong>. The app opens Google Chrome with a profile of its own, you sign into your
+            account in that window yourself, and it reads slowly, in scan windows of 60 search pages, two a day. Auto scan works in the background, its
+            window coming forward only if the platform needs you; with Manual scan, you scroll and click Next yourself.</p>
+        </article>
+      </div>
+      <figure class="video" id="export">
+        <video controls muted playsinline preload="metadata" poster="/video/export-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: importing the connections export">
+          <source src="/video/export.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>Importing the connections export</strong> (half a minute): download your Connections file from the platform,
+          then drop it on the app. No sign-in, and no risk to your account.</figcaption>
+      </figure>
+      <p class="warning"><strong>Scanning uses your own account, and the platform may restrict accounts that
+        automate it.</strong> Automated access may violate the platform's terms. The scanner reads slowly, keeps to a
+        budget and stops at the first push-back, but the risk is yours. The sample and CSV import do not automate access to
+        your account. <a href="/blog/scanning-slowly/">How scanning works</a>.</p>
+      <figure class="video" id="scanning">
+        <video controls muted playsinline preload="metadata" poster="/video/scan-poster.jpg?v=0.2.1" width="1920" height="1080" aria-label="Video: how scanning works">
+          <source src="/video/scan.mp4?v=0.2.1" type="video/mp4">
+        </video>
+        <figcaption><strong>How scanning works</strong> (under a minute): sign into your account in the Chrome window it opens,
+          scan the people you know, then map who they know a few at a time.</figcaption>
+      </figure>
+    </section>
+
+    <section class="your-data" id="your-data">
+      <p class="kicker">Your data</p>
+      <h2>One folder, on your computer</h2>
+      <div class="prose narrow">
+        <p>Your network lives in a hidden folder in your home folder, <code>.six-degrees</code>. Open it any time with
+          <em>Help → Show the Data Folder</em>, and see what each part takes up in <strong>Settings → Your data</strong>.</p>
+        <ul>
+          <li><strong>Backups.</strong> Sixgree backs up your network, photos and all, into <code>backups/</code>
+            once a day while it's open, before each new version first opens it, and before an import or a restore. Each
+            one is checked as it's made. Settings → Your data shows the last one and puts any of them back with
+            <em>Restore</em>.</li>
+          <li><strong>Moving to a new computer.</strong> Settings → Your data → <em>Export backup file…</em> makes
+            one file. Move it yourself, and restore it on the other computer. Your sign-in to the platform never goes into it.</li>
+          <li><strong>The one thing to guard.</strong> <code>chrome-profile/</code> holds the scanner's signed-in session on
+            the platform. Never copy, sync or share it; deleting it just means signing in again.</li>
+        </ul>
+        <p>Every detail, including how to undo an import, is in the
+          <a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored">README</a>.</p>
+      </div>
+    </section>
+
+    <section class="privacy-list" id="privacy">
+      <p class="kicker">Privacy</p>
+      <h2>What it contacts, and when</h2>
+      <ul role="list">
+        <li><strong>No account, no server.</strong> Everything stays on your computer: your network (and an imported
+          CSV, until you remove it) in the hidden <code>.six-degrees</code> folder, and the app window's own storage in
+          <code>~/Library/Application Support/Six Degrees</code>.</li>
+        <li><strong>Nothing is uploaded.</strong> No telemetry, no analytics, no crash reports.</li>
+        <li><strong>Otherwise it only goes online when you act:</strong> the platform when you scan or press Auto (profile photos are saved on your
+          computer as they're read, and shown only from there), and GitHub when you check for updates (and to download
+          one, if you click Install). Scanning comes as a plugin: GitHub is asked for the plugin list only when you
+          open Settings → Plugins with plugins on, press Check for plugin updates there or install one, and by the daily
+          check below; a plugin, with what it needs to run, is downloaded only when you install it.</li>
+        <li><strong>One request on a timer, on until you turn it off:</strong> once a day, while it's open, Sixgree asks
+          GitHub for the newest version number and, if there's a newer one, tells you in its notifications. With plugins
+          on, it also reads the plugin list then, and tells you when an installed plugin has a newer version. Nothing about
+          you is sent (GitHub sees an ordinary request from your computer), and nothing is downloaded until you choose to
+          update. Untick <em>Check for updates once a day</em> in Settings → Updates to turn it off.</li>
+        <li><strong>Security.</strong> <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>
+          describes what the app trusts, and how to report a problem.</li>
+      </ul>
+      <p class="fine center" id="this-website">This website (not the app) has no cookies and no ad trackers. It counts
+        visits and download clicks on its own counter: how many, to which page, and from which site and country. To count
+        each day's unique visitors it keeps a one-way hash of your IP address and browser, made with a secret key; the
+        counter deletes the hash the next day (its database's automatic backups hold it for up to 30 days) and never
+        stores your address. Nothing is counted when your browser asks not to be tracked. The totals, including which sites sent visitors, are public at
+        <a href="https://stats.sixgree.com/stats">stats.sixgree.com/stats</a>. To show the latest version and the number
+        of stars, it asks GitHub.</p>
+    </section>
+
+    <section class="faq" id="faq">
+      <p class="kicker">Questions</p>
+      <h2>Questions people ask</h2>
+      <dl>
+        <div>
+          <dt>Is Sixgree free?</dt>
+          <dd>Yes. It's free to download and use, with no account, no subscription and no paid tier.</dd>
+        </div>
+        <div>
+          <dt>Does it upload my network data anywhere?</dt>
+          <dd>No. Your network stays on your Mac, in a hidden <code>.six-degrees</code> folder. There's no telemetry, no analytics and no crash reports. It goes online when you act (the platform when you scan or press Auto, GitHub when you check for an update or browse plugins), and once a day to ask GitHub for the newest version number (and, with plugins on, the plugin list), which Settings → Updates turns off.</dd>
+        </div>
+        <div>
+          <dt>Does it work on Windows?</dt>
+          <dd>Yes, in beta: a one-click Setup.exe for Windows 10 or 11, the same app as on the Mac (<a href="/download/#windows">how</a>). There's a Linux app too (.deb or .tar.gz).</dd>
+        </div>
+        <div>
+          <dt>Is the Mac app signed?</dt>
+          <dd>Yes. Signed by Blake Burford and notarized by Apple: it opens like any Mac app. If macOS says it can't check the app for malware, that's a copy of 0.8.0 or earlier, from before it was signed: download the newest one, or allow that copy once in System Settings → Privacy &amp; Security → Open Anyway.</dd>
+        </div>
+        <div>
+          <dt>Could scanning violate the platform's terms?</dt>
+          <dd>Automated access may violate the platform's terms, and the platform can restrict an account for it. Scanning is optional, slow on purpose, kept to a daily budget, and stops at the first push-back. The sample and a CSV import do not automate access to your account.</dd>
+        </div>
+        <div>
+          <dt>Why did macOS ask about App Management while scanning?</dt>
+          <dd>That's Google Chrome updating itself. The scanner starts Chrome, Chrome's own updater then tries to update the Chrome app, and macOS asks whether Sixgree, which started Chrome, can manage apps. Either answer is fine: scanning works the same, and if you say no, Chrome updates itself the next time you open it. To stop the question, allow Sixgree once in System Settings → Privacy &amp; Security → App Management (the Scan page's first step has a button that opens it).</dd>
+        </div>
+        <div>
+          <dt>What do I need to get started?</dt>
+          <dd>A Mac (or Windows or Linux, in beta) and, optionally, the official <code>Connections.csv</code> export (Settings → Data privacy → Get a copy of your data). Or nothing: a sample network of 150 invented people ships with the app, so you can explore every view before importing anything.</dd>
+        </div>
+        <div>
+          <dt>What does “six degrees” mean here?</dt>
+          <dd>The idea that anyone is reachable through a short chain of people who know each other. The app draws your chain: who you know, who they know, and the shortest introduction path from you to someone you haven't met.</dd>
+        </div>
+        <div>
+          <dt>How is someone's score worked out?</dt>
+          <dd>From their title and their company: power = title × (0.45 + 0.055 × company score), plus a small bonus for reach and for a strong circle. It estimates network position, not what anyone is worth as a person. Scanned and sample people show the working on their card.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="docs" id="more">
+      <p class="kicker">Go deeper</p>
+      <h2>The full documentation</h2>
+      <ul class="doc-grid" role="list">
+        <li><a href="/blog/network-scanning-rules-and-risk/"><strong>How scanning works</strong><span>What the scanner reads, its budgets, and what it risks.</span></a></li>
+        <li><a href="/blog/who-can-introduce-you/"><strong>How scoring works</strong><span>The power score, the tiers, and what you can change.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees#how-your-data-is-stored"><strong>Your data, in detail</strong><span>Where it lives, moving computers, undoing an import.</span></a></li>
+        <li><a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md"><strong>Security model</strong><span>What the app trusts, and how to report a problem.</span></a></li>
+        <li><a href="/blog/"><strong>The blog</strong><span>How it ranks who can introduce you, local-first, the physics lab, scanning.</span></a></li>
+      </ul>
+    </section>
+
+  </main>
+
+<footer class="foot">
+    <div class="foot-top">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="28" height="28"> <span class="wordmark small" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <p class="foot-tag">Six degrees of your network. Locally built. Completely free. Made for you.</p>
+    </div>
+    <nav class="foot-links" aria-label="Everything on this site">
+      <a href="/#how">How it works</a>
+      <a href="/#features">Features</a>
+      <a href="/#compare">Compare</a>
+      <a href="/download/">Download</a>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/#faq">Questions</a>
+      <a href="/blog/">Blog</a>
+      <a href="/releases/">Release notes</a>
+      <a href="/roadmap/">Roadmap</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/blakeb056/six-degrees/issues">Report a problem</a>
+    </nav>
+    <div class="foot-bottom">
+      <p class="fine">Free to use (<a href="https://github.com/blakeb056/six-degrees/blob/main/LICENSE">licence</a>) · No accounts, no cookies, no ad trackers (<a href="/docs/#this-website">what the site counts</a>) ·
+        Every person shown on this site is invented ·
+        Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
+      <p class="fine">Power ranks reachability, not people: it estimates network position, not what anyone is worth as a person.
+        Independent software, not affiliated with any networking platform.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sixgree: six degrees of your network, as a map of what it's worth</title>
+  <meta name="description" content="See who your network can really reach. Sixgree maps your network out to six degrees on your own computer: who you know, who they know, every person in a tier, and the shortest way in to anyone. Free, with no account.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com https://stats.sixgree.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="author" content="Blake Burford">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://sixgree.com/">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sixgree">
+  <meta property="og:url" content="https://sixgree.com/">
+  <meta property="og:title" content="Sixgree: six degrees of your network">
+  <meta property="og:description" content="See who your network can really reach. A free app that maps your network out to six degrees: every person in a tier, and the shortest way in to anyone. Nothing is uploaded.">
+  <meta property="og:image" content="https://sixgree.com/img/og-sixgree.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Sixgree: the app icon and wordmark, and the line See who your network can really reach.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sixgree: six degrees of your network">
+  <meta name="twitter:description" content="See who your network can really reach. Free, on your own computer: who you know, who they know, and the shortest way in to anyone.">
+  <meta name="twitter:image" content="https://sixgree.com/img/og-sixgree.jpg">
+  <meta name="theme-color" content="#fbfbfd">
+    <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://sixgree.com/#app",
+      "name": "Sixgree",
+      "alternateName": [
+        "Six Degrees",
+        "6 Degrees",
+        "Sixgree app",
+        "Sixgrees",
+        "Six Gree"
+      ],
+      "url": "https://sixgree.com/",
+      "description": "Six degrees of your network. A free app that maps your network as a galaxy: who you know, who they know, who bridges you into new circles, and the shortest path to someone you haven't met. Runs on your own Mac; nothing is uploaded.",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Professional networking",
+      "operatingSystem": "macOS 13.5 or later; Windows 10 or 11 (beta); Linux (beta)",
+      "softwareVersion": "2.10.4",
+      "datePublished": "2026-09-24",
+      "dateModified": "2026-11-27",
+      "isAccessibleForFree": true,
+      "license": "https://github.com/blakeb056/six-degrees/blob/main/LICENSE",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "downloadUrl": "https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg",
+      "installUrl": "https://sixgree.com/download/#install",
+      "releaseNotes": "https://github.com/blakeb056/six-degrees/releases",
+      "image": "https://sixgree.com/img/og-sixgree.jpg",
+      "screenshot": [
+        "https://sixgree.com/img/app/hero.jpg",
+        "https://sixgree.com/img/app/separation.jpg",
+        "https://sixgree.com/img/app/power-index.jpg",
+        "https://sixgree.com/img/app/bridge-chains.jpg",
+        "https://sixgree.com/img/app/scan-page.jpg"
+      ],
+      "featureList": [
+        "Network Circle: your connections on rings by how much they can open up for you",
+        "Degrees: each connection's circle, and the chains that lead on from them",
+        "Separation: people two steps away, ranked, with who can introduce you",
+        "Jobs: every company someone you know works at, ranked by your best way in",
+        "Jobs: every company someone you know works at, or used to, ranked by how good your way in is for a referral, with the one person to ask",
+        "Insights: the Power Index, everyone within two steps ranked by power, with Kingmakers and Gatekeepers",
+        "The Map: your network on a world map, and which connections get you to each place",
+        "Who only one connection reaches: each connection's exclusive reach",
+        "Network health: how much of your 2nd degree you reach two or more ways",
+        "A physics lab for the Galaxy, and a replay of your network growing",
+        "Themes: six looks, light or dark, or your own colours for everything",
+        "Import the official Connections.csv export",
+        "Optional scanning of your own network in a Chrome window you sign into, with the Auto scan or Manual scan plugin",
+        "Auto (with the Auto scan plugin): one press sends a connection request, without a note",
+        "Updates in one click",
+        "Backups every day, photos and all, restored in one click",
+        "A usage page: how close your account is to the line",
+        "Export your network to move to another Mac"
+      ],
+      "author": {
+        "@id": "https://blakeburford.com/#person"
+      },
+      "sameAs": [
+        "https://github.com/blakeb056/six-degrees"
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://blakeburford.com/#person",
+      "name": "Blake Burford",
+      "url": "https://blakeburford.com/",
+      "sameAs": [
+        "https://github.com/blakeb056"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://sixgree.com/#website",
+      "url": "https://sixgree.com/",
+      "name": "Sixgree",
+      "alternateName": [
+        "Sixgrees",
+        "Six Degrees"
+      ],
+      "inLanguage": "en",
+      "about": {
+        "@id": "https://sixgree.com/#app"
+      },
+      "publisher": {
+        "@id": "https://blakeburford.com/#person"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://sixgree.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is it really free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. No paid tier, no account and no trial. Sixgree is free to download and use."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is Sixgree for?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Anyone who wants to see their professional connections rather than scroll through them: people starting out with a handful of connections, people with thousands who want to see what they add up to, climbers looking for peers at the top, and founders looking for other founders, or a co-founder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does my network leave my computer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. There is no Sixgree server. Your network is one folder on your computer, and the app goes online only when you ask it to (the platform when you scan, GitHub when you check for an update or browse plugins), apart from one request a day to GitHub for the newest version number (and, with plugins on, the plugin list), which you can turn off in Settings → Updates. Why local-first."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Could scanning restrict my account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It can: automated scanning is against the platform's terms, and we say so plainly. In the cases we've recorded, the platform warned first and any hold was temporary, and both holds came from carrying on after a warning. Stay on Medium or Slow, let the scan windows hold you to 60 search pages at a time and 120 a day, and after a warning stop for a day. The scanner paces itself like a person and stops at the first push-back. To avoid scanning risk, import a Connections.csv export or try the sample. What really happens, and how to stay safe."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do the tiers S, A, B, C and D mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each person gets a power score from their title and their company, and the tiers group those scores: S is the top. Power ranks reachability, not people: it estimates how many doors someone can open, never what they're worth. The formula is open."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What's a bridge, and what does six degrees mean here?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A bridge is a connection whose circle you've scanned: everyone they know joins your map, two steps from you. Scan circles further out and the map keeps going, out to six degrees."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does it run on?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "macOS 13.5 or later, on Apple Silicon or Intel, signed and notarized by Apple. Windows 10 or 11 and Linux are in beta. All downloads."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/style.css?v=2026-11-26-1">
+  <script src="/app.js?v=2026-11-15-2" defer></script>
+</head>
+<body class="home">
+<!-- gen:header -->
+<a class="skip" href="#main">Skip to the page</a>
+  <p class="notice-bar"><a href="/blog/connections-export-december-2026/"><strong>From December 2026 the connections export drops company and job title.</strong> <span>Download yours now →</span></a></p>
+  <header class="top">
+    <div class="top-bar">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <nav aria-label="Main">
+        <a href="/#how">How it works</a>
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/releases/">Releases</a>
+        <a href="/blog/">Blog</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/about/">About</a>
+      </nav>
+      <a class="top-get" href="/download/">Download</a>
+      <a class="gh" href="https://github.com/blakeb056/six-degrees" aria-label="Sixgree on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </header>
+<!-- /gen:header -->
+
+  <main id="main">
+    <!-- The hero: one short headline, the two downloads, then the 1-2-3 strip
+         (app.js steps through it; without JavaScript it shows the whole map). -->
+    <section class="hero" aria-labelledby="hero-h">
+      <a class="badge" href="/releases/">
+        <span class="badge-dot" aria-hidden="true"></span>
+        <span>v<!-- gen:latest-version -->2.10.4<!-- /gen:latest-version --> · <!-- gen:latest-date --><time datetime="2026-11-27">27 November 2026</time><!-- /gen:latest-date --></span>
+        <span class="badge-cta"><span class="badge-cta-text">What's new </span>→</span>
+      </a>
+      <h1 id="hero-h">See who your network <br>can <span class="hl">really reach.</span></h1>
+      <p class="lede"><strong>Sixgree: six degrees of your network.</strong> Drop in your connections export:
+        everyone you know, ranked and mapped, at no risk to your account. An optional scanner plugin adds who they know, out
+        to six degrees, at your own risk.</p>
+
+      <p class="not-mac" id="not-mac" role="status" hidden>
+        Sixgree runs on a Mac, and now on Windows and Linux too (beta).
+        <a href="/download/">All downloads</a>.
+      </p>
+
+      <!-- Two downloads. The first is for this computer: app.js shows one of the three
+           (Mac without JavaScript). The second offers Windows to a Mac, and hides on
+           Windows and Linux, where the first already is theirs. -->
+      <div class="cta-row">
+        <div class="cta-main" data-for="mac">
+          <a class="dl primary" id="dl-main" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Apple-Silicon.dmg">
+            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Mac</span>
+              <span class="dl-sub" id="dl-main-sub">Free · Apple Silicon</span>
+            </span>
+          </a>
+        </div>
+        <div class="cta-main" data-for="linux" hidden>
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb">
+            <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Linux</span>
+              <span class="dl-sub">Free · beta · .deb for Ubuntu and Debian</span>
+            </span>
+          </a>
+        </div>
+        <div class="cta-main" data-for="windows" hidden>
+          <a class="dl primary" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe">
+            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="1.5" width="10" height="10" fill="#F25022"/><rect x="12.5" y="1.5" width="10" height="10" fill="#7FBA00"/><rect x="1.5" y="12.5" width="10" height="10" fill="#00A4EF"/><rect x="12.5" y="12.5" width="10" height="10" fill="#FFB900"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Windows</span>
+              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
+            </span>
+          </a>
+        </div>
+        <div class="cta-main" data-for="mac">
+          <a class="dl" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Windows-Setup.exe">
+            <svg class="dl-icon dl-logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="1.5" width="10" height="10" fill="#F25022"/><rect x="12.5" y="1.5" width="10" height="10" fill="#7FBA00"/><rect x="1.5" y="12.5" width="10" height="10" fill="#00A4EF"/><rect x="12.5" y="12.5" width="10" height="10" fill="#FFB900"/></svg>
+            <span class="dl-text">
+              <span class="dl-title">Download for Windows</span>
+              <span class="dl-sub">Free · beta · Windows 10 or 11</span>
+            </span>
+          </a>
+        </div>
+      </div>
+      <!-- On the roadmap, not out yet: dimmed, not links. -->
+      <div class="cta-row cta-soon">
+        <span class="dl is-soon" aria-disabled="true">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2" width="11" height="20" rx="2.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Sixgree for mobile</span>
+            <span class="dl-sub">Coming soon</span>
+          </span>
+        </span>
+        <span class="dl is-soon" aria-disabled="true">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.5v7l5.5-3.5z" fill="currentColor"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Try the demo</span>
+            <span class="dl-sub">Coming soon · in your browser</span>
+          </span>
+        </span>
+      </div>
+      <p class="dl-alt"><span data-for="mac"><span id="dl-alt-label">Intel Mac?</span> <a id="dl-alt" href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Mac-Intel.dmg">Download for Intel</a> · </span><a href="https://github.com/blakeb056/six-degrees/releases/latest/download/Sixgree-Linux-x64.deb">Linux (beta)</a> · <a href="/download/">All downloads and install help</a></p>
+      <p class="fine" id="version-line">macOS 13.5 or later · Windows 10 or 11 (beta) · Linux (beta)</p>
+
+      <!-- Shown once a Mac download starts (app.js): what to do with the file. -->
+      <section class="after-dl" id="after-dl" aria-labelledby="after-dl-title" tabindex="-1" hidden>
+        <h2 id="after-dl-title">Your download has started. Then:</h2>
+        <ol>
+          <li><strong>Drag it into Applications.</strong> Open the file you downloaded and drag Sixgree onto
+            the Applications folder.</li>
+          <li><strong>Open it.</strong> Signed by Blake Burford and notarized by Apple: it opens like any Mac app.
+            The first time, macOS asks whether to open an app downloaded from the internet: click <strong>Open</strong>.</li>
+        </ol>
+        <p class="fine"><a href="/download/#install">The install guide, with a one-line Terminal way</a></p>
+      </section>
+
+      <!-- The film: Sixgree in fifteen seconds, playing by itself (silent, looping, at twice
+           its real speed), its edges fading into the page. app.js plays it while it's on
+           screen and leaves it still for reduced motion: then the poster shows. -->
+      <figure class="video hero-film" id="how">
+        <video muted loop playsinline preload="auto" poster="/video/hero-poster.jpg?v=1.1.0" width="1600" height="900" aria-label="Video: Sixgree mapping a network, building a circle and finding the way in, on an invented network">
+          <source src="/video/hero.mp4?v=1.1.0" type="video/mp4">
+        </video>
+      </figure>
+
+      <!-- The film's three chapters: the one it's on lights up as it plays (app.js, 8). -->
+      <ol class="film-steps" aria-label="How it works, in three steps">
+        <li data-from="0" data-to="3.4"><span class="demo-n">1</span> Map your network</li>
+        <li data-from="3.4" data-to="9.5"><span class="demo-n">2</span> Build bridges</li>
+        <li data-from="9.5" data-to="15"><span class="demo-n">3</span> Find the way in</li>
+      </ol>
+
+      <ul class="trust" aria-label="In short">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Stays on your computer</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Optional scanning, paced and capped</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free, no account</li>
+      </ul>
+    </section>
+
+    <!-- A new way: four small cards, each with its own little picture. -->
+    <section class="band" id="features" aria-labelledby="new-way-h">
+      <div class="wrap">
+        <h2 id="new-way-h" class="big-h">A new way to see <br>who you know.</h2>
+        <p class="intro">Your networking platform gives you a list. Sixgree gives you the map: who you know, who they know, how much
+          each of them can open up for you, and the shortest way in to anyone.</p>
+        <div class="way-grid">
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><circle class="ring" cx="60" cy="32" r="26"/><circle class="ring" cx="60" cy="32" r="15"/><path class="sweep" d="M60 32 L60 6 A26 26 0 0 1 84.5 23.5 Z"/><circle class="dot t-s" cx="74" cy="20" r="3.2"/><circle class="dot t-a" cx="44" cy="44" r="2.8"/><circle class="dot t-b" cx="70" cy="49" r="2.6"/><circle class="dot t-c" cx="41" cy="22" r="2.4"/><circle class="you-dot" cx="60" cy="32" r="4"/></svg>
+            <h3>Bring your network in</h3>
+            <p>Drop in the official connections export, with no risk to your account. Scanning is an optional plugin: slow,
+              in scan windows, and at your own risk.</p>
+            <a class="more" href="/docs/#get-started">The ways in <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><path class="link" d="M30 32 H90"/><circle class="dot t-a" cx="30" cy="32" r="6"/><circle class="dot t-b" cx="90" cy="32" r="6"/><g class="cloud"><circle cx="14" cy="18" r="2.4"/><circle cx="10" cy="34" r="2.4"/><circle cx="16" cy="48" r="2.4"/><circle cx="24" cy="12" r="2.4"/><circle cx="106" cy="16" r="2.4"/><circle cx="111" cy="31" r="2.4"/><circle cx="104" cy="47" r="2.4"/><circle cx="96" cy="54" r="2.4"/></g><circle class="you-dot" cx="60" cy="32" r="4"/></svg>
+            <h3>Build bridges</h3>
+            <p>With the optional scan, a connection's circle joins your map: everyone they know. Each one is a bridge into a new crowd.</p>
+            <a class="more" href="/docs/#scanning">How bridges work <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><g class="tiers"><rect class="t-s" x="14" y="10" width="92" height="7" rx="3.5"/><rect class="t-a" x="14" y="20" width="74" height="7" rx="3.5"/><rect class="t-b" x="14" y="30" width="58" height="7" rx="3.5"/><rect class="t-c" x="14" y="40" width="40" height="7" rx="3.5"/><rect class="t-d" x="14" y="50" width="24" height="7" rx="3.5"/></g></svg>
+            <h3>See the scale</h3>
+            <p>Everyone in tiers, S to D, out to six degrees. Power ranks how far someone can open doors, not who they are.</p>
+            <a class="more" href="/blog/who-can-introduce-you/">How the tiers work <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="way">
+            <svg class="way-art" viewBox="0 0 120 64" aria-hidden="true"><path class="track" d="M14 40 H106"/><path class="track-on" d="M14 40 H74"/><circle class="thumb" cx="74" cy="40" r="7"/><text class="tick" x="14" y="22">rare</text><text class="tick end" x="106" y="22">easy</text></svg>
+            <h3>Find the way in</h3>
+            <p>Separation's slider runs from the rarest ways in to the most mutual. The score meter finds who is worth it.</p>
+            <a class="more" href="/blog/who-can-introduce-you/">How Separation works <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+        <figure class="video hero-film features-film">
+          <video muted loop playsinline preload="metadata" poster="/video/features-poster.jpg?v=1.1.0" width="1600" height="900" aria-label="Video: Sixgree mapping a network in tiers, finding the circles not mapped yet, building one, and ranking who you can reach, on an invented network">
+            <source src="/video/features.mp4?v=1.1.0" type="video/mp4">
+          </video>
+          <figcaption>Sixgree in thirty seconds, at twice its speed. Every person in it is invented.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Who it's for: Blake's four audiences. -->
+    <section class="for" id="for" aria-labelledby="for-h">
+      <h2 id="for-h" class="big-h">Made for you, <br>wherever you start.</h2>
+      <p class="intro">It can feel cold to score people by their employer and title. But your network is your net
+        worth, and you deserve to see it. <strong>Power ranks reachability, not people.</strong></p>
+      <div class="for-grid">
+        <article class="for-card">
+          <div class="for-shot"><div class="win"><div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Degrees · Unscanned</span></div><picture><img src="/img/home/card-unscanned-light-560.webp" srcset="/img/home/card-unscanned-light-560.webp 560w, /img/home/card-unscanned-light-1120.webp 1120w" sizes="(max-width: 860px) calc(100vw - 72px), 488px" alt="Unscanned: the invented connections whose circles aren't scanned yet, on rings around You, each one a circle you can build" width="560" height="350" loading="lazy"></picture></div></div>
+          <div class="for-text">
+            <p class="for-who">Just starting out</p>
+            <h3>A few connections is plenty.</h3>
+            <p>With the optional scan, your few friends' circles open up the map: everyone they know, ranked, one introduction away.</p>
+          </div>
+        </article>
+        <article class="for-card">
+          <div class="for-shot"><div class="win"><div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Network Circle</span></div><picture><img src="/img/home/card-galaxy-light-560.webp" srcset="/img/home/card-galaxy-light-560.webp 560w, /img/home/card-galaxy-light-1120.webp 1120w" sizes="(max-width: 860px) calc(100vw - 72px), 488px" alt="The Galaxy up close: invented connections around You, named and coloured by tier" width="560" height="350" loading="lazy"></picture></div></div>
+          <div class="for-text">
+            <p class="for-who">Already well connected</p>
+            <h3>See the fibre of your network.</h3>
+            <p>Thousands of connections, drawn: the quality of each, the clusters they form, and what the whole thing is really worth.</p>
+          </div>
+        </article>
+        <article class="for-card">
+          <div class="for-shot"><div class="win"><div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Separation</span></div><picture><source media="(max-width: 560px)" srcset="/img/home/card-separation-m-light-420.webp 420w, /img/home/card-separation-m-light-840.webp 840w" sizes="calc(100vw - 60px)" width="420" height="260"><img src="/img/home/card-separation-light-560.webp" srcset="/img/home/card-separation-light-560.webp 560w, /img/home/card-separation-light-1120.webp 1120w" sizes="(max-width: 860px) calc(100vw - 72px), 488px" alt="Separation: the most powerful invented people two steps away, ranked, each drawn to the connections who can introduce you" width="560" height="350" loading="lazy"></picture></div></div>
+          <div class="for-text">
+            <p class="for-who">Climbing</p>
+            <h3>Reach peers at the top.</h3>
+            <p>Separation lists the most powerful people two steps away, and which of your connections are mutual with each.</p>
+          </div>
+        </article>
+        <article class="for-card">
+          <div class="for-shot"><div class="win"><div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Insights</span></div><picture><source media="(max-width: 560px)" srcset="/img/home/card-power-index-m-light-420.webp 420w, /img/home/card-power-index-m-light-840.webp 840w" sizes="calc(100vw - 60px)" width="420" height="260"><img src="/img/home/card-power-index-light-560.webp" srcset="/img/home/card-power-index-light-560.webp 560w, /img/home/card-power-index-light-1120.webp 1120w" sizes="(max-width: 860px) calc(100vw - 72px), 488px" alt="The Power Index: invented founders and C-suite people within two steps, ranked by power" width="560" height="350" loading="lazy"></picture></div></div>
+          <div class="for-text">
+            <p class="for-who">Founders, and co-founder hunters</p>
+            <h3>Find the founders a founder knows.</h3>
+            <p>With the optional scan, one founder's circle puts every founder in it on the Power Index. Faster than whoever is hunting the same people.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Plugins: Sixgree ships without a scanner; scanning is a plugin you choose to add. -->
+    <section class="band" id="plugins" aria-labelledby="plugins-h">
+      <div class="wrap split">
+        <div class="split-text">
+          <p class="kicker">Plugins</p>
+          <h2 id="plugins-h" class="left">Add only <br>what you want.</h2>
+          <p>Sixgree ships without a scanner. Scanning is a plugin you choose to add, in one click from
+            Settings → Plugins or right in the guided setup.</p>
+          <ul class="checks">
+            <li><strong>Off until you turn it on.</strong> Plugins start switched off, and Sixgree only goes online for them when you ask.</li>
+            <li><strong>Checked before it installs.</strong> Each package is matched against the published list, and you confirm before anything is added.</li>
+            <li><strong>Auto scan.</strong> Turns the pages by itself, paced and capped, and stops at the first push-back.</li>
+            <li><strong>Manual scan.</strong> You scroll and click Next yourself, and it reads each page as you go.</li>
+          </ul>
+          <p class="stat-line"><span class="mono"><!-- gen:test-count -->2,147<!-- /gen:test-count --></span> automated tests ·
+            <span class="mono"><!-- gen:release-count -->59<!-- /gen:release-count --></span> releases since <!-- gen:first-release --><time datetime="2026-09-24">24 September 2026</time><!-- /gen:first-release --></p>
+          <p class="fine">Scanning uses your own account, and the platform may restrict accounts that automate it.
+            <a href="/blog/scanning-slowly/">The honest risk</a>. The official CSV export, the way in we recommend,
+            needs no plugin and carries none.</p>
+        </div>
+        <figure class="frame tight">
+          <div class="win plug-win" role="img" aria-label="Settings, Plugins in Sixgree: plugins turned on, Manual scan installed and Auto scan ready to install">
+            <div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sixgree · Settings</span></div>
+            <div class="plug-body" aria-hidden="true">
+              <div class="plug-head">
+                <span class="plug-title">Plugins</span>
+                <span class="plug-switch"><span class="plug-knob"></span>Allow plugins</span>
+              </div>
+              <div class="plug-card">
+                <span class="plug-ic plug-ic-manual"><svg viewBox="0 0 24 24"><path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12m0-1.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13c0 4-2.5 7-6 7s-5-2-6.5-4.5L3.2 12.8a1.5 1.5 0 0 1 2.4-1.8L8 13.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="plug-text"><strong>Manual scan <span class="mono">1.0.0</span></strong><span>You scroll and click Next. It reads each page as you go, with chimes.</span></span>
+                <span class="plug-btn done">Installed</span>
+              </div>
+              <div class="plug-card">
+                <span class="plug-ic plug-ic-auto"><svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17.5 3.5v4h-4M6.5 20.5v-4h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="plug-text"><strong>Auto scan <span class="mono">1.0.0</span></strong><span>Turns the pages by itself, paced and capped.</span></span>
+                <span class="plug-btn">Install</span>
+              </div>
+              <p class="plug-note"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Checked against the published list before installing</p>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- What you already have, and what it doesn't show. -->
+    <section class="compare" id="compare" aria-labelledby="compare-h">
+      <h2 id="compare-h" class="big-h">Your connections are already listed online. <br>Here is what that list doesn't show.</h2>
+      <p class="intro">A professional networking platform is good at finding one person. It
+        isn't built to show you the whole shape.</p>
+      <div class="vs">
+        <article class="vs-card">
+          <h3>On the platform</h3>
+          <ul>
+            <li>Your connections, as a list to scroll</li>
+            <li>2nd-degree people one search at a time, with mutuals on each profile</li>
+            <li>No map, no tiers, no ranking of who matters most</li>
+            <li>Who only one of your connections reaches: not shown</li>
+          </ul>
+        </article>
+        <article class="vs-card us">
+          <h3><span class="wordmark tiny" aria-hidden="true">Sixgree</span><span class="sr-only">In Sixgree</span></h3>
+          <ul>
+            <li>Everyone you know and everyone they know, drawn as one galaxy</li>
+            <li>Every person in a tier, S to D, out to six degrees, with the score's working shown</li>
+            <li>Separation: the most valuable targets, or the rarest ways in, on one slider</li>
+            <li>Who in your clusters is mutual, and who is your only door</li>
+          </ul>
+        </article>
+      </div>
+      <details class="full-compare">
+        <summary>The full comparison, with spreadsheets and network tools</summary>
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Sixgree compared with platform search, spreadsheets and CRMs, and general network-analysis tools</caption>
+            <thead>
+              <tr>
+                <th scope="col">What you want</th>
+                <th scope="col" class="us">Sixgree</th>
+                <th scope="col">Platform search</th>
+                <th scope="col">Spreadsheets and CRMs</th>
+                <th scope="col">Network tools (SocNetV, Gephi)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Your connections, from the connections export</th>
+                <td class="us yes" data-label="Sixgree">Yes: drop in <code>Connections.csv</code></td>
+                <td class="yes" data-label="Platform search">Yes: it's where they live</td>
+                <td class="yes" data-label="Spreadsheets and CRMs">Yes: import the CSV</td>
+                <td class="partly" data-label="Network tools">Partly: as nodes, with no ties between them</td>
+              </tr>
+              <tr>
+                <th scope="row">Everyone two steps away, ranked, with who can introduce you</th>
+                <td class="us yes" data-label="Sixgree">Yes: Separation and Insights (needs a scan, or the sample)</td>
+                <td class="partly" data-label="Platform search">Partly: search 2nd-degree people, and see mutual connections on each</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No: the export holds 1st degree only</td>
+                <td class="partly" data-label="Network tools">If you bring the ties yourself</td>
+              </tr>
+              <tr>
+                <th scope="row">Who only one of your connections reaches</th>
+                <td class="us yes" data-label="Sixgree">Yes: for every scanned circle</td>
+                <td class="no" data-label="Platform search">Not shown</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No</td>
+                <td class="partly" data-label="Network tools">Partly: brokerage measures, on data you bring</td>
+              </tr>
+              <tr>
+                <th scope="row">A score per person, with the working shown</th>
+                <td class="us yes" data-label="Sixgree">Yes: title × company, and the formula is open</td>
+                <td class="no" data-label="Platform search">Not shown</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Your own formulas</td>
+                <td class="partly" data-label="Network tools">General centrality measures</td>
+              </tr>
+              <tr>
+                <th scope="row">Your network by company and industry</th>
+                <td class="us yes" data-label="Sixgree">Yes: Jobs</td>
+                <td class="partly" data-label="Platform search">Partly: filter a search by company</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Pivot tables, by hand</td>
+                <td class="partly" data-label="Network tools">Partly: by any attribute you import</td>
+              </tr>
+              <tr>
+                <th scope="row">A layout you can tune, and a replay by date</th>
+                <td class="us yes" data-label="Sixgree">Yes: the Galaxy's physics lab (experimental)</td>
+                <td class="no" data-label="Platform search">No</td>
+                <td class="no" data-label="Spreadsheets and CRMs">No</td>
+                <td class="yes" data-label="Network tools">Yes: many layouts, and Gephi's timeline</td>
+              </tr>
+              <tr>
+                <th scope="row">Any network, any data, research-grade statistics</th>
+                <td class="us no" data-label="Sixgree">No: professional networks only</td>
+                <td class="no" data-label="Platform search">No</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Any data, few network tools</td>
+                <td class="yes" data-label="Network tools">Yes: what they're built for</td>
+              </tr>
+              <tr>
+                <th scope="row">Runs on your computer, with no account</th>
+                <td class="us yes" data-label="Sixgree">Yes</td>
+                <td class="no" data-label="Platform search">No: an online service tied to your account</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Varies: most CRMs are online</td>
+                <td class="yes" data-label="Network tools">Yes: desktop apps</td>
+              </tr>
+              <tr>
+                <th scope="row">Price</th>
+                <td class="us yes" data-label="Sixgree">Free, no paid tier</td>
+                <td class="partly" data-label="Platform search">Free, with paid plans</td>
+                <td class="partly" data-label="Spreadsheets and CRMs">Free to paid</td>
+                <td class="yes" data-label="Network tools">Free, open source</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="fine center">Something here out of date, or unfair to another tool?
+          <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a> and it'll be put right.</p>
+      </details>
+    </section>
+
+    <!-- The questions people ask first. -->
+    <section class="faq-home" id="questions" aria-labelledby="faq-h">
+      <h2 id="faq-h" class="big-h left-on-wide">The questions people ask first</h2>
+      <div class="qa">
+        <details>
+          <summary>Is it really free?</summary>
+          <p>Yes. No paid tier, no account and no trial. Sixgree is free to download and use.</p>
+        </details>
+        <details>
+          <summary>Who is Sixgree for?</summary>
+          <p>Anyone who wants to see their professional connections rather than scroll through them: people starting out with a handful of
+            connections, people with thousands who want to see what they add up to, climbers looking for peers at the top,
+            and founders looking for other founders, or a co-founder.</p>
+        </details>
+        <details>
+          <summary>Does my network leave my computer?</summary>
+          <p>No. There is no Sixgree server. Your network is one folder on your computer, and the app goes online only when you
+            ask it to (the platform when you scan, GitHub when you check for an update or browse plugins), apart from one
+            request a day to GitHub for the newest version number (and, with plugins on, the plugin list), which you can
+            turn off in Settings → Updates. <a href="/blog/local-first/">Why local-first</a>.</p>
+        </details>
+        <details>
+          <summary>Could scanning restrict my account?</summary>
+          <p>It can: automated scanning is against the platform's terms, and we say so plainly. In the cases we've recorded, the platform
+            warned first and any hold was temporary, and both holds came from carrying on after a warning. Stay on Medium or Slow,
+            let the scan windows hold you to 60 search pages at a time and 120 a day, and after a warning stop for a day. The scanner paces itself like a person and
+            stops at the first push-back. To avoid scanning risk, import a <code>Connections.csv</code> export or try the sample.
+            <a href="/blog/network-scanning-rules-and-risk/">What really happens, and how to stay safe</a>.</p>
+        </details>
+        <details>
+          <summary>What do the tiers S, A, B, C and D mean?</summary>
+          <p>Each person gets a power score from their title and their company, and the tiers group those scores: S is the
+            top. Power ranks reachability, not people: it estimates how many doors someone can open, never what they're worth.
+            The formula is open.</p>
+        </details>
+        <details>
+          <summary>What's a bridge, and what does six degrees mean here?</summary>
+          <p>A bridge is a connection whose circle you've scanned: everyone they know joins your map, two steps from you. Scan
+            circles further out and the map keeps going, out to six degrees.</p>
+        </details>
+        <details>
+          <summary>What does it run on?</summary>
+          <p>macOS 13.5 or later, on Apple Silicon or Intel, signed and notarized by Apple. Windows 10 or 11 and Linux are in
+            beta. <a href="/download/">All downloads</a>.</p>
+        </details>
+      </div>
+      <p class="fine center more-q"><a href="/docs/#faq">More questions, answered in the docs</a></p>
+    </section>
+
+    <!-- Everything else in the box. -->
+    <section class="extras" aria-labelledby="extras-h">
+      <h2 id="extras-h" class="big-h">Everything else in the box</h2>
+      <p class="intro">Eight tools on one map of your network. All of them free, all of them on your computer.</p>
+      <ul class="tool-grid">
+        <li><a href="/blog/galaxy-physics-lab/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.6"/></svg></span><span class="tool-t"><strong>Galaxy</strong><span>Your whole network on tier rings, with a physics lab and a replay.</span></span></a></li>
+        <li><a href="/docs/#scanning"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5" fill="currentColor"/><circle cx="12" cy="6" r="2.5" fill="currentColor"/><circle cx="19" cy="12" r="2.5" fill="currentColor"/><path d="M7 11 10.2 7.6M13.8 7.6 17 11" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="tool-t"><strong>Degrees and Bridge Chains</strong><span>Each scanned circle, and the chains that lead on from it.</span></span></a></li>
+        <li><a href="/blog/who-can-introduce-you/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="15" r="3.4" fill="currentColor"/><path d="M5 9h4M15 9h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="tool-t"><strong>Separation</strong><span>Everyone two steps away, ranked, with who can introduce you.</span></span></a></li>
+        <li><a href="/docs/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="14" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="18" r="2.2" fill="currentColor"/></svg></span><span class="tool-t"><strong>Jobs</strong><span>Where someone you know can refer you, and who to ask.</span></span></a></li>
+        <li><a href="/blog/who-can-introduce-you/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M10 19V5M15 19v-6M20 19V8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><span class="tool-t"><strong>Insights and the Power Index</strong><span>Everyone within two steps ranked by power, with Kingmakers and Gatekeepers.</span></span></a></li>
+        <li><a href="/blog/where-your-network-lives/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5Z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span><span class="tool-t"><strong>The Map</strong><span>Your network on a world map, and who gets you to each place.</span></span></a></li>
+        <li><a href="/blog/scanning-slowly/"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 12 18 6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg></span><span class="tool-t"><strong>Auto scan</strong><span>A plugin: circles mapped a few at a time, under its own stricter limits.</span></span></a></li>
+        <li><a href="/docs/#your-data"><span class="tool-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Zm0 0v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="tool-t"><strong>Backups and CSV</strong><span>Daily backups restored in one click, and the connections CSV in or out.</span></span></a></li>
+      </ul>
+      <p class="center"><a class="pill-link" href="/docs/">See everything in the docs <span aria-hidden="true">→</span></a></p>
+    </section>
+
+    <section class="news" id="latest" aria-labelledby="latest-h">
+      <div class="section-head">
+        <h2 id="latest-h">Latest releases</h2>
+        <a href="/releases/">All release notes →</a>
+      </div>
+      <div class="posts"><!-- gen:news -->
+        <article class="post latest-post">
+          <p class="post-meta"><time datetime="2026-11-27">27 November 2026</time><span class="tag">v2.10.4</span><span class="tag latest">Latest</span></p>
+          <h3><a href="/releases/#v2.10.4">Paths</a></h3>
+          <ul class="chips" aria-label="What changed"><li class="k-removed">1 removed</li></ul>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-11-27">27 November 2026</time><span class="tag">v2.10.3</span></p>
+          <h3><a href="/releases/#v2.10.3">An oldest supported version</a></h3>
+          <ul class="chips" aria-label="What changed"><li class="k-added">1 added</li></ul>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-11-27">27 November 2026</time><span class="tag">v2.10.2</span></p>
+          <h3><a href="/releases/#v2.10.2">The app carries only what it runs</a></h3>
+          <p class="post-more">Also: Scanner plugins 1.1.0 come compiled · Scanning from a copy without the app's own Python needs Python 3.11 to 3.14 · Updated Next.js, Electron and the scanner's image library</p>
+          <ul class="chips" aria-label="What changed"><li class="k-changed">3 changed</li><li class="k-security">1 security</li></ul>
+        </article>
+        <!-- /gen:news --></div>
+      <div class="section-head">
+        <h2 id="blog-h">From the blog</h2>
+        <a href="/blog/">All posts →</a>
+      </div>
+      <div class="posts"><!-- gen:blog-teaser -->
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-11-26">26 November 2026</time><span>3 min read</span></p>
+          <h3><a href="/blog/connections-export-december-2026/">Your connections export loses company and job title in December 2026</a></h3>
+          <p class="post-more">The platform's data download is dropping your connections' email addresses, current companies and job titles in December 2026. Download yours before then and keep it. Here is what still works afterwards, in Sixgree and elsewhere.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>5 min read</span></p>
+          <h3><a href="/blog/browse-with-your-network/">Browse with your network beside you</a></h3>
+          <p class="post-more">The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>4 min read</span></p>
+          <h3><a href="/blog/page-speed-not-page-count/">Page speed matters more than page count</a></h3>
+          <p class="post-more">In our own testing, roughly the same number of search pages led to a restriction at about 4 seconds apart and to nothing at about 50. Here's what that taught us, and why scanning by hand now takes a 20-second break every 10 pages.</p>
+        </article>
+        <!-- /gen:blog-teaser --></div>
+    </section>
+
+    <!-- The close: the six dots, the tagline, the downloads. -->
+    <section class="close" id="get" aria-labelledby="close-h">
+      <!-- The wordmark's dots, one per degree, rippling along the line (still for reduced motion). -->
+      <ol class="six six-dots" aria-label="Six degrees">
+        <li><span class="sr-only">1</span></li><li><span class="sr-only">2</span></li><li><span class="sr-only">3</span></li><li><span class="sr-only">4</span></li><li><span class="sr-only">5</span></li><li class="ring"><span class="sr-only">6</span></li>
+      </ol>
+      <h2 id="close-h" class="big-h">Locally built. Completely free. <br><span class="hl">Made for you.</span></h2>
+      <p class="intro">Start with your own network, build a few bridges, and see how far six degrees really goes.</p>
+      <div class="cta-row">
+        <a class="dl primary" href="/download/">
+          <svg class="dl-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dl-text">
+            <span class="dl-title">Download Sixgree</span>
+            <span class="dl-sub">Free · Mac · Windows and Linux in beta</span>
+          </span>
+        </a>
+      </div>
+      <ul class="points" aria-label="In short">
+        <li>Free, no paid tier</li>
+        <li>On your computer, no account</li>
+        <li>Paced scans in scan windows</li>
+      </ul>
+      <p class="fine">Sixgree: six degrees of your network. Independent software, not affiliated with any networking platform.</p>
+    </section>
+  </main>
+
+<!-- gen:footer -->
+<footer class="foot">
+    <div class="foot-top">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="28" height="28"> <span class="wordmark small" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <p class="foot-tag">Six degrees of your network. Locally built. Completely free. Made for you.</p>
+    </div>
+    <nav class="foot-links" aria-label="Everything on this site">
+      <a href="/#how">How it works</a>
+      <a href="/#features">Features</a>
+      <a href="/#compare">Compare</a>
+      <a href="/download/">Download</a>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/#faq">Questions</a>
+      <a href="/blog/">Blog</a>
+      <a href="/releases/">Release notes</a>
+      <a href="/roadmap/">Roadmap</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/blakeb056/six-degrees/issues">Report a problem</a>
+    </nav>
+    <div class="foot-bottom">
+      <p class="fine">Free to use (<a href="https://github.com/blakeb056/six-degrees/blob/main/LICENSE">licence</a>) · No accounts, no cookies, no ad trackers (<a href="/docs/#this-website">what the site counts</a>) ·
+        Every person shown on this site is invented ·
+        Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
+      <p class="fine">Power ranks reachability, not people: it estimates network position, not what anyone is worth as a person.
+        Independent software, not affiliated with any networking platform.</p>
+    </div>
+  </footer>
+<!-- /gen:footer -->
+</body>
+</html>

@@ -1,0 +1,1081 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>https://sixgree.com/blog/</id>
+  <title>Sixgree blog</title>
+  <subtitle>How Sixgree works, and why.</subtitle>
+  <link rel="self" href="https://sixgree.com/blog/feed.xml"/>
+  <link rel="alternate" type="text/html" href="https://sixgree.com/blog/"/>
+  <updated>2026-11-26T00:00:00Z</updated>
+  <author><name>Blake Burford</name><uri>https://blakeburford.com/</uri></author>
+  <icon>https://sixgree.com/img/icon.svg</icon>
+  <entry>
+    <id>https://sixgree.com/blog/connections-export-december-2026/</id>
+    <title>Your connections export loses company and job title in December 2026</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/connections-export-december-2026/"/>
+    <published>2026-11-26T00:00:00Z</published>
+    <updated>2026-11-26T00:00:00Z</updated>
+    <summary>The platform&apos;s data download is dropping your connections&apos; email addresses, current companies and job titles in December 2026. Download yours before then and keep it. Here is what still works afterwards, in Sixgree and elsewhere.</summary>
+    <content type="html">&lt;p&gt;The platform&apos;s &lt;strong&gt;Get a copy of your data&lt;/strong&gt; page now carries a notice: from December 2026, the download no longer includes your connections&apos; &lt;strong&gt;email addresses, current companies or job titles&lt;/strong&gt;. The notice names no day, so treat &lt;strong&gt;November 30&lt;/strong&gt; as the deadline.&lt;/p&gt;
+&lt;p&gt;If you have ever wanted a list of who you know and where they work, download it this week.&lt;/p&gt;
+&lt;h2 id=&quot;what-changes&quot;&gt;What changes&lt;/h2&gt;
+&lt;p&gt;Today, &lt;strong&gt;Connections.csv&lt;/strong&gt; has seven columns: first name, last name, profile link, email address (only when that person allows it), company, position, and the date you connected.&lt;/p&gt;
+&lt;p&gt;After the change it is expected to keep only:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;first name and last name&lt;/li&gt;
+&lt;li&gt;the profile link&lt;/li&gt;
+&lt;li&gt;the date you connected&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The notice lists what is removed. It does not show the new file, so the list of what stays is what the notice implies, not something anyone has seen yet. We&apos;ll update this post when the first December downloads arrive.&lt;/p&gt;
+&lt;p&gt;The notice also says you can still see what your connections share on their own profiles. That&apos;s true, but it means opening profiles one at a time instead of having one file.&lt;/p&gt;
+&lt;h2 id=&quot;what-to-do-before-december&quot;&gt;What to do before December&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;Request your connections export now. The steps take about ten minutes, on a computer or a phone: &lt;a href=&quot;/blog/export-network-connections/&quot;&gt;How to export your network connections&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;When the email arrives, download the zip and keep it somewhere safe, with your other important files.&lt;/li&gt;
+&lt;li&gt;Write the date on it. A file downloaded now is a record of where your connections worked in November 2026.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;A file you have already downloaded is yours. The change affects new downloads, not files on your computer.&lt;/p&gt;
+&lt;h2 id=&quot;what-this-means-in-sixgree&quot;&gt;What this means in Sixgree&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;A file downloaded before the change works in full.&lt;/strong&gt; Sixgree reads it on your computer and ranks everyone by role and company in tiers S to D. It keeps the import in your data folder, so you can open it again any time, even after the platform stops sending those columns.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;A file downloaded after the change can still be imported&lt;/strong&gt;, with names, links and dates. But Sixgree&apos;s ranking is built on role and company, so without them it can&apos;t tell your connections apart: everyone gets the same score. Jobs and the company views need companies too.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Scanning can fill them in.&lt;/strong&gt; The Auto scan and Manual scan plugins, from &lt;strong&gt;Settings → Plugins&lt;/strong&gt;, read each person&apos;s headline from the platform&apos;s own pages, and with &lt;em&gt;Dig deeper&lt;/em&gt; their current and past roles. That is the only way Sixgree has to fill in a network without the columns. It runs your own account automatically, slowly and within a daily limit, and the platform may restrict accounts that automate it; the risk is yours. Read &lt;a href=&quot;/blog/network-scanning-rules-and-risk/&quot;&gt;The rules and the risk of scanning&lt;/a&gt; before you turn it on.&lt;/p&gt;
+&lt;p&gt;If you have both, use both: import the file you downloaded before December, then scan to add who your connections know.&lt;/p&gt;
+&lt;h2 id=&quot;why-it-matters&quot;&gt;Why it matters&lt;/h2&gt;
+&lt;p&gt;The export was the one safe way to get your network out in a form you could sort, search and keep. Names and links alone are an address book without the addresses. Who you know is only half the picture; where they work is what turns it into a list of companies you can get into, and people who can introduce you.&lt;/p&gt;
+&lt;p&gt;That half is still yours if you download it this month.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/browse-with-your-network/</id>
+    <title>Browse with your network beside you</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/browse-with-your-network/"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>The desktop app can now show the platform in a panel inside Sixgree&apos;s own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.</summary>
+    <content type="html">&lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;Update, 17 October 2026:&lt;/strong&gt; Outlink, which this post mentions, has been removed: Separation does its job, and a profile opens one per press.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Update, 19 October 2026:&lt;/strong&gt; Messages &amp;amp; follow-ups, whose Messages card this post mentions, has been removed too.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;Update, 2.5.1:&lt;/strong&gt; the header button and the people list described below are gone. The browser plugin is now the LinkedIn tab (Feed, Messaging, Notifications, Jobs), with Back and Forward, and every profile opens straight in the panel. See the &lt;a href=&quot;/releases/#v2.5.1&quot;&gt;release notes&lt;/a&gt;.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Sixgree tells you who connects you to someone. Until now, though, it lived in one window and the platform in another, and you switched between them to remember who could introduce you.&lt;/p&gt;
+&lt;p&gt;Since &lt;a href=&quot;/releases/#v2.5.0&quot;&gt;2.5.0&lt;/a&gt;, the desktop app can put the two side by side. This post covers what that looks like, what Sixgree does and doesn&apos;t do while you browse, and the trade-offs, which are real.&lt;/p&gt;
+&lt;h2 id=&quot;sixgrees-own-browser&quot;&gt;Sixgree&apos;s own browser&lt;/h2&gt;
+&lt;p&gt;It started in &lt;a href=&quot;/releases/#v2.4.0&quot;&gt;2.4.0&lt;/a&gt; as a way for scans to run inside Sixgree. In the desktop app, with a scanner plugin installed, the platform shows in a panel under Sixgree&apos;s header, so the tabs, the notch and the scan light stay in sight, and the scanner drives that panel instead of opening a separate Chrome window. A thin bar over it says what&apos;s happening there, with &lt;em&gt;Back to Sixgree&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;2.5.0 opens that panel to your own browsing.&lt;/p&gt;
+&lt;h2 id=&quot;the-browser-plugin&quot;&gt;The browser plugin&lt;/h2&gt;
+&lt;p&gt;Install the &lt;strong&gt;browser plugin&lt;/strong&gt; from &lt;strong&gt;Settings → Plugins&lt;/strong&gt;. It&apos;s a new kind of plugin, a feature plugin: the package holds a description and no code, and the feature itself is part of Sixgree, shown only while the plugin is installed and switched on.&lt;/p&gt;
+&lt;p&gt;With it, a button at the top right of the header, beside the bell and Settings, opens the platform inside Sixgree for your own browsing. Scroll, click, search and message as you would anywhere. On the right sits Sixgree&apos;s people list:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Search your network&lt;/strong&gt; by name, company or place, and see each person&apos;s card.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Open someone&apos;s profile&lt;/strong&gt; in the panel in one click.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;See who&apos;s on screen.&lt;/strong&gt; On anyone&apos;s profile, the list shows what Sixgree already knows about them: their degree, tier, location, mutuals, and who connects you. Or it says they aren&apos;t in your network data.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;It&apos;s handy in practice: you land on a profile from a post or a message, and the sidebar already says whether you&apos;re two steps away and through whom. It&apos;s the &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;who can introduce you&lt;/a&gt; question, answered on the page you&apos;re looking at.&lt;/p&gt;
+&lt;p&gt;The match happens on your computer. All the app&apos;s page learns about the panel is whether it&apos;s showing and which profile address it&apos;s on, and that address is compared with the network you already have. Nothing is sent anywhere.&lt;/p&gt;
+&lt;h2 id=&quot;section-tabs&quot;&gt;Section tabs&lt;/h2&gt;
+&lt;p&gt;The same plugin adds a tab whose buttons in the notch open the panel straight on &lt;strong&gt;Feed&lt;/strong&gt;, &lt;strong&gt;Messaging&lt;/strong&gt;, &lt;strong&gt;Notifications&lt;/strong&gt; or &lt;strong&gt;Jobs&lt;/strong&gt;, under the header and the notch. Wander off from there and the bar offers &lt;em&gt;Back to Feed&lt;/em&gt;, or whichever section you came from. It&apos;s your own browsing, so nothing is read or counted.&lt;/p&gt;
+&lt;h2 id=&quot;what-counts-and-what-doesnt&quot;&gt;What counts, and what doesn&apos;t&lt;/h2&gt;
+&lt;p&gt;This is the line worth knowing:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Your own browsing isn&apos;t a scan and isn&apos;t counted.&lt;/strong&gt; Sixgree reads nothing on its own and clicks nothing while you browse. The platform sees you browsing, as it would in any browser.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A profile Sixgree opens for you is a profile view.&lt;/strong&gt; Opening a profile from the people list goes through Outlink. It counts as one of the day&apos;s profile views, against the same daily limit as the views a scan makes, and Sixgree writes down which profile and when.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;That second rule now covers every profile link in the app, where it can: the person card&apos;s &lt;em&gt;View profile&lt;/em&gt; and &lt;em&gt;Connect&lt;/em&gt;, Insights&apos; &lt;em&gt;Ask&lt;/em&gt;, Outlink&apos;s lists and the Messages card all open in Sixgree&apos;s own browser, each counted. Opening several at once, with &lt;em&gt;Open All&lt;/em&gt; or &lt;em&gt;Open Top 10&lt;/em&gt;, no longer fires a burst of tabs: the first opens, then &lt;em&gt;Next profile (N left)&lt;/em&gt; in the bar steps through the rest, one at a time.&lt;/p&gt;
+&lt;p&gt;Why count them? Profile views are something the platform watches closely, and a budget only helps if it sees everything Sixgree opens. &lt;a href=&quot;/blog/page-speed-not-page-count/&quot;&gt;Page speed matters more than page count&lt;/a&gt; explains why pace matters too.&lt;/p&gt;
+&lt;p&gt;Opening profiles this way needs a scanner plugin too. With only the browser plugin installed, a profile from the people list says it needs one. Without the panel at all, links open your own browser, as before.&lt;/p&gt;
+&lt;h2 id=&quot;the-trade-offs&quot;&gt;The trade-offs&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;You sign in again, inside Sixgree.&lt;/strong&gt; The panel has its own sign-in and its own storage, apart from your usual browser. So you sign in to the platform once more, in the panel. Sixgree doesn&apos;t ask for or store your password: you type it into the platform&apos;s own page.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;It&apos;s desktop only.&lt;/strong&gt; The panel needs the desktop app. In a plain browser, there&apos;s no panel, and a scanner uses its own Chrome window.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;A local debugging connection lets the scanner drive the panel.&lt;/strong&gt; This one needs a careful explanation.&lt;/p&gt;
+&lt;p&gt;The scanner controls the panel the way it controls Chrome: over Chromium&apos;s debugging protocol. For that, the desktop app turns on a debugging port when a scanner plugin is installed. It listens on &lt;code&gt;127.0.0.1&lt;/code&gt; only, on a port the system picks at each start, and only while the app is running. It has no password.&lt;/p&gt;
+&lt;p&gt;What that means: &lt;strong&gt;any program running on your computer could attach to it while the app is open&lt;/strong&gt;, read the panel&apos;s signed-in session and drive the app&apos;s own page. That&apos;s about as far as such a program could already reach, since it could read Sixgree&apos;s data folder and call the app&apos;s local server anyway. Nothing on another computer can reach the port.&lt;/p&gt;
+&lt;p&gt;If you&apos;d rather keep it shut, start the app with &lt;code&gt;SIX_DEGREES_PANEL=0&lt;/code&gt;. The scanner then opens its own Chrome window, as it used to. And with only the browser plugin installed, no scanner, the port stays shut and the panel is there just for your browsing.&lt;/p&gt;
+&lt;p&gt;A few more boundaries. The panel shows the platform&apos;s own pages only; any other link opens in your usual browser. It gets no access to the app&apos;s internals. And the browse button is hidden while a scan is using the panel. The full threat model is in &lt;a href=&quot;https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md&quot;&gt;SECURITY.md&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;nothing-hidden-underneath&quot;&gt;Nothing hidden underneath&lt;/h2&gt;
+&lt;p&gt;The bell&apos;s list, the scan light&apos;s briefing, the notch and the notes under the header&apos;s buttons all open in full over the panel, which starts below the whole header at any width or zoom. Choosing another page or tab puts it away.&lt;/p&gt;
+&lt;h2 id=&quot;is-it-for-you&quot;&gt;Is it for you?&lt;/h2&gt;
+&lt;p&gt;If you mostly explore the map, you don&apos;t need it. If you spend time on the platform anyway, it puts your network beside all of it, and counts the profiles Sixgree opens for you.&lt;/p&gt;
+&lt;p&gt;Your network stays in one folder on your computer, as it always has: &lt;a href=&quot;/blog/local-first/&quot;&gt;local-first&lt;/a&gt; still applies. Everything that changed is in the &lt;a href=&quot;/releases/&quot;&gt;release notes&lt;/a&gt;.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/outlink.jpg&quot; alt=&quot;Outlink: the next best people to meet, each through a connection of yours&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Outlink, on an invented network. Its profile links now open inside Sixgree.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/page-speed-not-page-count/</id>
+    <title>Page speed matters more than page count</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/page-speed-not-page-count/"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>In our own testing, roughly the same number of search pages led to a restriction at about 4 seconds apart and to nothing at about 50. Here&apos;s what that taught us, and why scanning by hand now takes a 20-second break every 10 pages.</summary>
+    <content type="html">&lt;p&gt;&lt;strong&gt;Short version:&lt;/strong&gt; how fast you move through pages of search results seems to matter more than how many pages you read. So since &lt;a href=&quot;/releases/#v2.5.0&quot;&gt;2.5.0&lt;/a&gt;, scanning by hand takes a 20-second break after every 10 pages, and the next page can&apos;t load early.&lt;/p&gt;
+&lt;p&gt;This post explains why, using what happened in our own testing. It&apos;s evidence, not proof. The platform doesn&apos;t publish its limits, and nothing here makes scanning safe.&lt;/p&gt;
+&lt;h2 id=&quot;what-the-platform-sees-when-you-page-through-results&quot;&gt;What the platform sees when you page through results&lt;/h2&gt;
+&lt;p&gt;Every page of someone&apos;s connections is a &lt;strong&gt;people search&lt;/strong&gt; on the platform. Whether you click &lt;em&gt;Next&lt;/em&gt; yourself or the scanner reads the page, the platform sees the same thing: a request for the next page of results, from your account, at a certain moment.&lt;/p&gt;
+&lt;p&gt;It can count those requests, and it can see the gaps between them. A person reading a list stops to look at names, opens one, comes back. Pages that arrive a few seconds apart, one after another, for hundreds of pages, don&apos;t look like that, whoever is doing the clicking.&lt;/p&gt;
+&lt;p&gt;That last part surprised us. We&apos;d assumed that reading by hand, in a window you drive yourself, was the gentle option. It&apos;s gentler in some ways: nothing clicks for you. But the platform doesn&apos;t see your hand. It sees the pace.&lt;/p&gt;
+&lt;h2 id=&quot;what-happened-in-our-own-testing&quot;&gt;What happened in our own testing&lt;/h2&gt;
+&lt;p&gt;Three days of testing on our own accounts, all reading search pages:&lt;/p&gt;
+&lt;div class=&quot;table-wrap prose-table&quot;&gt;&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Pages&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Gap between pages&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;What happened&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;About 300 in a day&lt;/th&gt;&lt;td&gt;Roughly 4 seconds&lt;/td&gt;&lt;td&gt;A restriction&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;About 290&lt;/th&gt;&lt;td&gt;Roughly 50 seconds&lt;/td&gt;&lt;td&gt;Nothing&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;70, by hand&lt;/th&gt;&lt;td&gt;About 3 seconds&lt;/td&gt;&lt;td&gt;A warning about viewing a lot of data; no restriction&lt;/td&gt;&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
+&lt;p&gt;The first two rows are the ones that changed our thinking. The number of pages was close. The pace was more than ten times different, and so was the outcome.&lt;/p&gt;
+&lt;p&gt;The third row was a short session by hand: 70 pages in under ten minutes. The platform showed a warning about going through a lot of data. Nothing was restricted, but a warning is the platform asking you to slow down, and &lt;a href=&quot;/blog/network-scanning-rules-and-risk/&quot;&gt;after a warning, the right move is to stop for a day&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Three days are not a study. We can&apos;t say which signal the platform acted on, other things may have mattered too, and the same pace may be treated differently on another account or another day. What we can say is that in every case we have, fast pages went with trouble and slow pages didn&apos;t.&lt;/p&gt;
+&lt;h2 id=&quot;what-changed-breaks-by-hand&quot;&gt;What changed: breaks by hand&lt;/h2&gt;
+&lt;p&gt;Automatic scans already wait between pages, with longer rests on top, as &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;Scanning slowly and safely&lt;/a&gt; describes. Those are unchanged. Scanning by hand had no waits at all, because you set the pace. Now it has one.&lt;/p&gt;
+&lt;p&gt;With the scanner plugins at 1.0.6, after every &lt;strong&gt;10 pages&lt;/strong&gt; you read by hand, the next page waits &lt;strong&gt;20 seconds&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;You can see it.&lt;/strong&gt; A clear layer over the page shows the countdown, and the scan light at the top right turns yellow and says so: &lt;em&gt;Break: 14 s, then page 21&lt;/em&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;You can hear it.&lt;/strong&gt; A quiet tick plays each second, at the chimes&apos; volume. Turn the chimes off and it&apos;s silent.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;It holds.&lt;/strong&gt; The layer takes the clicks on &lt;em&gt;Next&lt;/em&gt; and the page numbers, so they do nothing during the break. A page asked for any other way, from the address bar, say, waits and loads when the break ends.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;You can change it.&lt;/strong&gt; Both numbers are in Scanner settings, under &lt;em&gt;How circle scans run&lt;/em&gt;: a break every 1 to 25 pages, for 10 to 300 seconds. A change reaches a scan already under way.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;It works the same in a Chrome window and in the panel inside the desktop app. &lt;em&gt;Stop&lt;/em&gt;, or closing the window, ends a break within a second.&lt;/p&gt;
+&lt;p&gt;Twenty seconds every ten pages is a small cost. It doesn&apos;t turn 3-second pages into 50-second pages. What it does is break up the long, unbroken runs of fast pages that came before both the warning and the restriction. If you want more margin, raise it: a break every 5 pages, or a minute instead of 20 seconds, costs you a little time and nothing else.&lt;/p&gt;
+&lt;h2 id=&quot;slower-is-safer-not-safe&quot;&gt;Slower is safer, not safe&lt;/h2&gt;
+&lt;p&gt;It&apos;s worth saying plainly what this doesn&apos;t do:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;It doesn&apos;t make scanning allowed.&lt;/strong&gt; Automated access is against the platform&apos;s terms, and reading by hand through the scanner is still the scanner reading.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;It doesn&apos;t guarantee anything.&lt;/strong&gt; Slower lowers the odds of a warning or a restriction. It can&apos;t promise there won&apos;t be one.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;It isn&apos;t the only limit.&lt;/strong&gt; Your daily search budget still applies, the scanner still stops at the first push-back, and free accounts still meet the &lt;a href=&quot;/blog/network-premium-and-search-limit/&quot;&gt;monthly search limit&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If you&apos;d rather carry no risk at all, the official Connections.csv export never touches scanning. It&apos;s a file you download from the platform&apos;s own settings and import on your own computer. It won&apos;t show who your connections know, but it shows everyone you know, as a map, with nothing sent anywhere. &lt;a href=&quot;/blog/export-network-connections/&quot;&gt;Here&apos;s how to export it&lt;/a&gt;, and &lt;a href=&quot;/blog/network-csv/&quot;&gt;how to read it in Sixgree&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;what-wed-suggest&quot;&gt;What we&apos;d suggest&lt;/h2&gt;
+&lt;p&gt;If you scan by hand:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Keep the breaks on, at least at the defaults.&lt;/li&gt;
+&lt;li&gt;Don&apos;t race the countdown. Read the names on the page; that&apos;s the point of the scan anyway.&lt;/li&gt;
+&lt;li&gt;Spread a big list over days rather than one sitting.&lt;/li&gt;
+&lt;li&gt;If the platform warns you, stop, and come back the next day with a short round.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Every change to the scanner is in the &lt;a href=&quot;/releases/&quot;&gt;release notes&lt;/a&gt;.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/scan-page.jpg&quot; alt=&quot;The Scan page: the scanner&apos;s speed choices, the daily budget, and the risk said out loud before your first scan&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The Scan page.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/where-your-network-lives/</id>
+    <title>Where your network lives: the Map, and who gets you there</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/where-your-network-lives/"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>The Map tab puts your network on a world map, matched on your own computer against GeoNames cities. Pick a city to see which connections reach people there, or pick a connection to see where their circle lives.</summary>
+    <content type="html">&lt;p&gt;Many questions about a network have a place in them. &lt;em&gt;Who do I know in Austin? I&apos;m moving to London: who could I meet there?&lt;/em&gt; A list of connections can&apos;t answer those well. A map can.&lt;/p&gt;
+&lt;p&gt;Since &lt;a href=&quot;/releases/#v2.2.0&quot;&gt;2.2.0&lt;/a&gt;, Sixgree has a &lt;strong&gt;Map&lt;/strong&gt; tab beside Network Circle, Degrees and Separation. This post explains where its places come from, what it does with them, and what it can&apos;t tell you.&lt;/p&gt;
+&lt;h2 id=&quot;places-matched-offline&quot;&gt;Places, matched offline&lt;/h2&gt;
+&lt;p&gt;Everyone goes on the map by the location their profile shows. One dot per place, sized by how many people are there and split like a pie by their tiers or degrees. Click a place to see who&apos;s there, and a person to open their card.&lt;/p&gt;
+&lt;p&gt;The matching happens entirely on your computer. Sixgree ships with a list of places built from &lt;strong&gt;GeoNames&lt;/strong&gt;: every city of 15,000 people or more, about 34,000 of them, with their regions and countries. Since &lt;a href=&quot;/releases/#v2.3.0&quot;&gt;2.3.0&lt;/a&gt; that list replaced an older one of about 300, so far more people land on their own city instead of the middle of their region. &lt;strong&gt;Nothing is looked up online&lt;/strong&gt;: the world map and the places are files inside the app, the same way &lt;a href=&quot;/blog/local-first/&quot;&gt;everything else stays local&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;It reads the forms profiles actually use:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;City, Region, Country&lt;/strong&gt;, where a known region is strict: Springfield, Illinois is never the one in Massachusetts;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;the platform&apos;s metro forms&lt;/strong&gt;, like &amp;quot;Greater Seattle Area&amp;quot;, &amp;quot;London Area, United Kingdom&amp;quot; or &amp;quot;San Francisco Bay Area&amp;quot;;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;a country or region alone&lt;/strong&gt;, which goes to its middle and is &lt;strong&gt;marked approximate&lt;/strong&gt; with a dashed ring.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Anything it can&apos;t place, like &amp;quot;Remote&amp;quot; or &amp;quot;Planet Earth&amp;quot;, is &lt;strong&gt;counted and listed, never guessed&lt;/strong&gt;. The panel at the bottom left says how many people have no location yet, and which locations it didn&apos;t recognise. The top of the map counts who is placed: in the sample network that ships with the app, &lt;em&gt;676 of 748 located&lt;/em&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;where-the-locations-come-from&quot;&gt;Where the locations come from&lt;/h2&gt;
+&lt;p&gt;A Connections.csv export has no locations, so an import of one leaves them empty. Locations come from the optional scanner plugins, in two ways:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;From list cards during scans.&lt;/strong&gt; Each card in a list shows where someone is, and since 2.2.0 a scan keeps it: in a circle&apos;s list, by hand or by itself, in a company&apos;s people, and in your own connections when their cards show it. Only a line that reads as a place is kept, and a scan that shows none never clears one already read.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;From your own connections&apos; search.&lt;/strong&gt; Your connections list never shows where anyone is, but the platform&apos;s search of them does, along with how many mutual connections you share. &lt;em&gt;Add locations and mutuals&lt;/em&gt;, under &lt;em&gt;Your connections&lt;/em&gt; on the Scan page, reads that search page by page. Each page is a search counted in your daily limit, so about 100 pages for 1,000 connections spreads over days. The platform&apos;s search shows 1,000 people at most, so a larger network is read that far.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Both are scanning, with the same risk as any scan. If you haven&apos;t read it yet, &lt;a href=&quot;/blog/network-scanning-rules-and-risk/&quot;&gt;is scanning against the rules?&lt;/a&gt; says plainly what that risk is.&lt;/p&gt;
+&lt;h2 id=&quot;who-gets-you-here&quot;&gt;Who gets you here&lt;/h2&gt;
+&lt;p&gt;Pick a place, and its list gains a section called &lt;strong&gt;Who gets you here&lt;/strong&gt;: the connections of yours whose circles include 2nd-degree people in that place, most first. Lines run from where each of them lives to the place you picked, as thick as how many people they reach there. Each has &lt;strong&gt;Who they can introduce&lt;/strong&gt;, which opens Separation filtered to that connection&apos;s circle.&lt;/p&gt;
+&lt;p&gt;In the sample network, Austin has 22 people two steps away, reached through 10 of your connections. The first is Bodhi Pereira, who reaches four of them, two of tier S. Bodhi&apos;s own location isn&apos;t known, so the list names them but draws no line, and says so. A person known by two of your connections counts under both, since either could introduce you, and once in the total.&lt;/p&gt;
+&lt;p&gt;That&apos;s the question the tab was built for. It works the same way &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;Separation ranks your ways in&lt;/a&gt;, narrowed to one city.&lt;/p&gt;
+&lt;h2 id=&quot;through-whom&quot;&gt;Through whom&lt;/h2&gt;
+&lt;p&gt;Turn it around. Pick one of your connections, with &lt;strong&gt;Reach&lt;/strong&gt; in a place&apos;s list, the finder, or the button that shows while their card is open, and lines run from where they live to every place their circle lives. Click a line&apos;s end to see who&apos;s there.&lt;/p&gt;
+&lt;p&gt;In the sample, Bodhi&apos;s circle of 69 spreads across 28 places, most in San Francisco, New York City and Chicago.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;From you&lt;/strong&gt;, off to start, draws faint lines from home to your connections&apos; places. Sixgree doesn&apos;t know where you are: you pick home with &lt;em&gt;Make this home&lt;/em&gt;, or it guesses from where most of your connections are and says it&apos;s a guess.&lt;/p&gt;
+&lt;h2 id=&quot;narrowing-it-down&quot;&gt;Narrowing it down&lt;/h2&gt;
+&lt;p&gt;The finder takes a person, a company or a place. Type words and press Enter to keep only people with those words in their name, company, title or headline, so &lt;em&gt;founder&lt;/em&gt; shows where the founders you know are. &lt;strong&gt;Declutter&lt;/strong&gt; hides places with fewer than N people, or fewer than N of tier S or A, and &lt;em&gt;Heat&lt;/em&gt; shades where the network is thickest.&lt;/p&gt;
+&lt;h2 id=&quot;what-people-use-it-for&quot;&gt;What people use it for&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Travel.&lt;/strong&gt; Before a trip, pick the city and see who you already know there, and who could introduce you to whom.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Relocating.&lt;/strong&gt; A new city goes better with a few warm conversations. &lt;em&gt;Who gets you here&lt;/em&gt; lists the people who could start them.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Hiring in a city.&lt;/strong&gt; Filter by a title word, pick the city, and see which connections reach those people.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Finding an intro in Austin&lt;/strong&gt;, or anywhere: pick the place, read the list, and use &lt;em&gt;Who they can introduce&lt;/em&gt;. Then write the request yourself, with &lt;a href=&quot;/blog/network-warm-introduction/&quot;&gt;a message your connection can forward&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;what-it-cant-tell-you&quot;&gt;What it can&apos;t tell you&lt;/h2&gt;
+&lt;p&gt;A dot says where a profile &lt;em&gt;says&lt;/em&gt; someone is, which may be out of date, and a missing dot may mean missing data, not that nobody&apos;s there. The map only knows the circles you&apos;ve mapped, so a city with no lines may simply be a city you haven&apos;t scanned toward. And a line is a possible route, not a promise: whether someone is happy to introduce you is still a human question.&lt;/p&gt;
+&lt;h2 id=&quot;credit&quot;&gt;Credit&lt;/h2&gt;
+&lt;p&gt;The places come from &lt;a href=&quot;https://www.geonames.org/&quot;&gt;GeoNames&lt;/a&gt;, under the &lt;a href=&quot;https://creativecommons.org/licenses/by/4.0/&quot;&gt;CC BY 4.0&lt;/a&gt; licence, and the country outlines from Natural Earth, in the public domain. The Map credits both at its bottom right.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/separation.jpg&quot; alt=&quot;Separation: everyone two steps away in an invented network, ranked, with who can introduce you&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Separation, on an invented network. The Map asks the same question by place.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/the-eigenvector-effect/</id>
+    <title>The Eigenvector effect: how an account with under 200 connections reached the global C-suite</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/the-eigenvector-effect/"/>
+    <published>2026-10-08T00:00:00Z</published>
+    <updated>2026-10-08T00:00:00Z</updated>
+    <summary>Why degree centrality fails on professional networks, how triadic closure creates an 80% acceptance surge, and how transitive trust collapses social distance.</summary>
+    <content type="html">&lt;p&gt;Most people treat professional networking like a lottery: add 5,000 strangers, post generic industry platitudes, send cold messages into executive inboxes, and hope a 1.5% reply rate yields a meeting.&lt;/p&gt;
+&lt;p&gt;In August, we tested a completely different hypothesis.&lt;/p&gt;
+&lt;p&gt;We spun up a new account. Two months in, it has &lt;strong&gt;fewer than 200 total connections&lt;/strong&gt;. No mass invite automations. No engagement pods. No paid sponsored messages.&lt;/p&gt;
+&lt;p&gt;Yet right now, looking at the network graph:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;1st-Degree (Direct Connections):&lt;/strong&gt;&lt;ul&gt;
+&lt;li&gt;The Chief Operating Officer of one of the world&apos;s three largest tech giants (overseeing their flagship productivity suite and AI copilot ecosystem)&lt;/li&gt;
+&lt;li&gt;The former President of Worldwide Advertising at a major global streaming platform and former Chief Business Officer of a top-tier social network&lt;/li&gt;
+&lt;li&gt;The Global Head of Sports at the world&apos;s most valuable consumer hardware company&lt;/li&gt;
+&lt;li&gt;A member of the British House of Lords who serves as Chief Diversity Officer at a global mobility giant&lt;/li&gt;
+&lt;li&gt;A Vice President at a top-5 Fortune retailer and early advertising leader at Meta&lt;/li&gt;
+&lt;li&gt;An executive Managing Director at Google Cloud leading entertainment, media, and gaming&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;2nd-Degree (Exactly One Introduction / Mutual Away):&lt;/strong&gt;&lt;ul&gt;
+&lt;li&gt;The President of Global Partnerships &amp;amp; Corporate Development at Alphabet (the architect who executed acquisitions of DeepMind, Android, and Nest)&lt;/li&gt;
+&lt;li&gt;The President of Americas at Google (commanding an ad engine responsible for $100B+ in annual revenue)&lt;/li&gt;
+&lt;li&gt;A Group Partner at Y Combinator who leads AI batches&lt;/li&gt;
+&lt;li&gt;The sitting CEO of a public Fortune 500 manufacturing titan&lt;/li&gt;
+&lt;li&gt;The Corporate EVP &amp;amp; President of North America for the world&apos;s most iconic beverage brand&lt;/li&gt;
+&lt;li&gt;Senior leadership / VP of Global Integrity at OpenAI&lt;/li&gt;
+&lt;li&gt;Elite system software and partner engineering directors at NVIDIA&lt;/li&gt;
+&lt;li&gt;A Vice President at a $14B autonomous defense-tech powerhouse&lt;/li&gt;
+&lt;li&gt;Public company CFOs across gaming, e-commerce, and social media&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;When people look at an executive roster like this, their default assumption is that building it takes a decade of follower farming or raising a massive venture round.&lt;/p&gt;
+&lt;p&gt;Neither is true. This is the direct mathematical result of &lt;strong&gt;graph theory, network sociology, and transitive trust&lt;/strong&gt;.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/hero.jpg&quot; alt=&quot;Network Galaxy Visualization&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The Network Galaxy: Force simulation clustering professional connections by structural density and mutual affinity.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;1-the-fallacy-of-degree-centrality-why-vanity-follower-counts-fail&quot;&gt;1. The fallacy of degree centrality: why vanity follower counts fail&lt;/h2&gt;
+&lt;p&gt;In graph theory, there are two primary ways to measure how important a node is in a network:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Degree Centrality:&lt;/strong&gt; How many direct edges (connections) a node has. A creator with 30,000 random connections has high degree centrality.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Eigenvector Centrality:&lt;/strong&gt; Not just how many people you know, but &lt;em&gt;how well-connected the people you know are&lt;/em&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;When you chase raw connection count, you optimize for degree centrality. You connect horizontally with thousands of peripheral contacts. In the graph, your edges point outward into low-density clusters.&lt;/p&gt;
+&lt;p&gt;When an executive receives an invitation from a profile with 3,000 random connections and zero mutual relationships, their psychological spam filter activates instantly:&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Who is this? Why are they messaging me? What are they trying to sell?&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;In contrast, &lt;strong&gt;eigenvector centrality&lt;/strong&gt; measures your connection to power hubs. If you have direct edges to just &lt;strong&gt;three individuals&lt;/strong&gt; who possess immense network centrality, your eigenvector centrality surges exponentially.&lt;/p&gt;
+&lt;p&gt;You don&apos;t need 10,000 edges. You need three structural bridges.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/power-index.jpg&quot; alt=&quot;Power Index Scoring&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Power Index Scoring: Ranking nodes across institutional seniority, company prestige, and market capital.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;2-triadic-closure-why-mutual-connections-melt-the-corporate-wall&quot;&gt;2. Triadic closure: why mutual connections melt the corporate wall&lt;/h2&gt;
+&lt;p&gt;Why does an executive who ignores 99% of cold outreach accept a request from an account with under 200 connections?&lt;/p&gt;
+&lt;p&gt;The answer was first formalized by sociologist Georg Simmel in 1908 and later proven in modern network science by Mark Granovetter: &lt;strong&gt;The Principle of Triadic Closure&lt;/strong&gt;.&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;                       [ Traditional Connection Farming ]
+                    5,000+ Disconnected Nodes (Low Centrality)
+                         (No Transitive Trust / High Noise)
+
+                                        vs.
+
+                        [ The Graph-Engineered Network ]
+                                     YOU
+                                   ( &amp;lt;200 )
+                                   /  |   \
+                     [Bridge Node]   [Bridge Node]   [Bridge Node]
+                     (Google EVP)     (Media Titan)    (VC Partner)
+                           |               |               |
+                    [Alphabet M&amp;amp;A]    [Fortune 500]   [OpenAI / YC]&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;If Node A is connected to Node B, and Node B is connected to Node C, there is natural topological pressure for an edge to form between Node A and Node C.&lt;/p&gt;
+&lt;p&gt;Human beings use &lt;strong&gt;shared nodes as social heuristics&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;A senior executive receives dozens of inbound requests every day. They cannot perform due diligence on every individual. Instead, their brain searches for a single high-signal heuristic:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Who do we know in common?&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If the answer is &lt;strong&gt;0 mutual connections&lt;/strong&gt;, you are an unknown stranger.&lt;/li&gt;
+&lt;li&gt;If the answer is a peripheral acquaintance, you are background noise.&lt;/li&gt;
+&lt;li&gt;But if the mutual connection is &lt;strong&gt;someone they worked alongside for years, someone on their board, or a former C-suite colleague they deeply respect&lt;/strong&gt;, the calculation flips entirely.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The barrier disappears.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/bridge-chains.jpg&quot; alt=&quot;Bridge Chains View&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Bridge Chains: Mapping the exact one-hop warm introduction path to high-power institutional targets.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;3-the-empirical-proof-the-20-to-80-phase-shift&quot;&gt;3. The empirical proof: the 20% to 80% phase shift&lt;/h2&gt;
+&lt;p&gt;This is not just intuitive psychology; it has been rigorously proven in peer-reviewed empirical research.&lt;/p&gt;
+&lt;p&gt;In a landmark social network study conducted across large-scale social graphs (published in &lt;em&gt;ACM CCS&lt;/em&gt; by researchers from the University of British Columbia and Cornell), researchers measured the exact probability of an invitation being accepted based on mutual connection count:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;Connection Request Acceptance Rate by Mutual Connection Count
+────────────────────────────────────────────────────────────────
+0 Mutual Connections:     ████ 18% - 20%
+1 - 2 Mutual Connections: █████████ 45%
+3 - 5 Mutual Connections: ████████████ 58%
+6 - 10 Mutual Connections: ██████████████ 68%
+11+ Mutual Connections:   ████████████████ 81%
+────────────────────────────────────────────────────────────────
+(Data: Boshmaf et al., ACM Conference on Computer and Communications Security)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The data reveals a non-linear phase shift:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;At 0 mutuals&lt;/strong&gt;, acceptance sits at &lt;strong&gt;~18% to 20%&lt;/strong&gt;. You are fighting cold odds.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;At just 1 to 2 mutuals&lt;/strong&gt;, acceptance jumps to &lt;strong&gt;45%&lt;/strong&gt;—more than doubling your reach immediately.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;At 11+ mutuals&lt;/strong&gt;, acceptance surges to &lt;strong&gt;over 80%&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The presence of high-reputation mutual connections transforms cold outreach into a warm introduction without either party speaking a word.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/separation.jpg&quot; alt=&quot;Degrees of Separation Collapsing&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Degrees of Separation: Collapsing the social graph from 6 degrees to 2 degrees via targeted bridge hubs.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;4-transitive-trust-and-status-spillover&quot;&gt;4. Transitive trust and status spillover&lt;/h2&gt;
+&lt;p&gt;Two sociological mechanisms drive this phase shift:&lt;/p&gt;
+&lt;h3 id=&quot;transitive-trust-james-coleman-1988&quot;&gt;Transitive Trust (James Coleman, 1988)&lt;/h3&gt;
+&lt;p&gt;In social capital theory, trust is transitive. If Person A trusts Person B, and Person B trusts Person C, Person A extends a default presumption of competence and legitimacy to Person C.&lt;/p&gt;
+&lt;p&gt;When an industry leader sees that you are connected to their longtime friend or former C-suite peer, they do not care that your account has under 200 connections. They conclude that if their respected colleague vetted and connected with you, you are credible.&lt;/p&gt;
+&lt;p&gt;The trust of the bridge node transfers to you.&lt;/p&gt;
+&lt;h3 id=&quot;status-spillover-joel-podolny&quot;&gt;Status Spillover (Joel Podolny)&lt;/h3&gt;
+&lt;p&gt;Sociologist Joel Podolny established that in markets with high information asymmetry, market participants assess an unknown entity&apos;s quality based on the status of its network ties.&lt;/p&gt;
+&lt;p&gt;If your network is composed of high-caliber engineers, founders, and executives, your perceived status inherits the characteristics of the cluster. &lt;strong&gt;Network proximity is a proxy for credibility.&lt;/strong&gt;&lt;/p&gt;
+&lt;h2 id=&quot;5-how-to-engineer-your-graph&quot;&gt;5. How to engineer your graph&lt;/h2&gt;
+&lt;p&gt;If you want to build a high-leverage professional network, stop treating your contact list as an address book and start treating it as a &lt;strong&gt;directed graph&lt;/strong&gt;:&lt;/p&gt;
+&lt;h3 id=&quot;1-stop-lateral-expansion-find-the-bridge-nodes&quot;&gt;1. Stop lateral expansion; find the bridge nodes&lt;/h3&gt;
+&lt;p&gt;Stop sending 50 connection requests a week to peers in your exact role. Identify the &lt;strong&gt;super-connectors&lt;/strong&gt; in your ecosystem—people who have moved between top companies, served on boards, or advised early-stage startups.&lt;/p&gt;
+&lt;p&gt;Connecting with &lt;strong&gt;one&lt;/strong&gt; bridge node gives you immediate 2nd-degree access to their entire historical career tree.&lt;/p&gt;
+&lt;h3 id=&quot;2-quality-over-volume&quot;&gt;2. Quality over volume&lt;/h3&gt;
+&lt;p&gt;An account with 150 curated connections consisting of domain experts, founders, and executives has a far higher topological value than an account with 8,000 unvetted contacts. High-signal accounts attract high-signal connections.&lt;/p&gt;
+&lt;h3 id=&quot;3-let-triadic-closure-do-the-heavy-lifting&quot;&gt;3. Let triadic closure do the heavy lifting&lt;/h3&gt;
+&lt;p&gt;Once you establish two or three anchor connections in an ecosystem, your subsequent requests to leaders in that same vertical will show multiple high-trust mutual connections.&lt;/p&gt;
+&lt;p&gt;At that point, you are not doing cold outreach anymore. You are stepping into a room where the host has already nodded at you.&lt;/p&gt;
+&lt;h2 id=&quot;the-architecture-of-access&quot;&gt;The architecture of access&lt;/h2&gt;
+&lt;p&gt;We are taught that career advancement is linear: work hard, collect business cards, and slowly climb a corporate ladder over thirty years.&lt;/p&gt;
+&lt;p&gt;Graph theory proves that human networks are &lt;strong&gt;small-world networks&lt;/strong&gt;. As Milgram demonstrated in 1967, and modern graph research verified across 1.59 billion people, the average distance between any two people on Earth is not six degrees—it is &lt;strong&gt;3.57 degrees&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;The barrier between where you are today and the people who can change your trajectory is not thousands of miles or millions of dollars.&lt;/p&gt;
+&lt;p&gt;It is usually just two well-chosen edges in a graph.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/how-network-clusters-work/</id>
+    <title>How network clusters work: community detection and force simulation</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/how-network-clusters-work/"/>
+    <published>2026-10-07T00:00:00Z</published>
+    <updated>2026-10-07T00:00:00Z</updated>
+    <summary>How Sixgree discovers clusters in your network connections, balances physical force layouts, and reveals your real professional circles without manual tagging.</summary>
+    <content type="html">&lt;p&gt;When you look at a spreadsheet of 1,000 professional contacts, every name looks equal. In reality, networks are not flat lists; they are dense, overlapping communities held together by shared history, past companies, and mutual circles.&lt;/p&gt;
+&lt;p&gt;Sixgree groups your connections into &lt;strong&gt;clusters&lt;/strong&gt; visually and mathematically. This guide explains how our clustering engine works, why force simulations reveal your natural groups, and how to read the clusters across your map.&lt;/p&gt;
+&lt;h2 id=&quot;what-is-a-network-cluster&quot;&gt;What is a network cluster?&lt;/h2&gt;
+&lt;p&gt;A cluster (or community) is a group of people who are connected more densely to one another than to the rest of your network.&lt;/p&gt;
+&lt;p&gt;In a typical career graph, you rarely have one homogeneous network. Instead, you have distinct islands:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Alumni clusters&lt;/strong&gt;: classmates, professors, and lab partners from university.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Past company hubs&lt;/strong&gt;: former coworkers, engineers, and managers from a previous employer.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Industry circles&lt;/strong&gt;: investors, advisors, founders, or specialists you met through conferences or sector meetups.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sixgree detects these groups automatically, without requiring you to manually assign tags or organize folders.&lt;/p&gt;
+&lt;h2 id=&quot;force-simulation-turning-relationships-into-physics&quot;&gt;Force simulation: turning relationships into physics&lt;/h2&gt;
+&lt;p&gt;Rather than rendering your connections in rigid rows or arbitrary charts, Sixgree treats your network as a &lt;strong&gt;physical particle system&lt;/strong&gt;:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Repulsion (The Coulomb Force)&lt;/strong&gt;: Every person acts like a charged particle pushing other dots away. This prevents clutter and spreads unconnected people apart.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Attraction (Spring Links)&lt;/strong&gt;: Mutual ties and shared circles act like springs pulling connected people toward each other.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Centering &amp;amp; Rings&lt;/strong&gt;: Key connectors and high-power catalysts are drawn toward the core, while distant acquaintances naturally settle along outer orbits.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;When the physics simulation runs, tightly interlinked groups pull inward toward a common center of gravity, naturally forming distinct visual clusters separated by empty space.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/lab-clusters.jpg&quot; alt=&quot;Network clusters settled in the physics lab&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Clusters separated by natural repulsive and link forces.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;community-detection-without-cloud-processing&quot;&gt;Community detection without cloud processing&lt;/h2&gt;
+&lt;p&gt;Most social graph tools upload your address book to a server to run heavy graph algorithms. Sixgree runs all community detection and physics calculations &lt;strong&gt;locally on your machine&lt;/strong&gt; inside your browser or native desktop app:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Local SQLite adjacency&lt;/strong&gt;: Mutual links are queried directly from your local SQLite database.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Real-time relaxation&lt;/strong&gt;: The force engine stabilizes in seconds on consumer hardware.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Privacy preservation&lt;/strong&gt;: Your clusters never leave your device. Nobody else sees how your network partitions into communities.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;what-clusters-tell-you-about-your-reach&quot;&gt;What clusters tell you about your reach&lt;/h2&gt;
+&lt;p&gt;Reading your clusters gives you strategic clarity that a standard search bar cannot:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Bridging connectors&lt;/strong&gt;: Notice the individual dots suspended &lt;em&gt;between&lt;/em&gt; two distinct clusters? Those are your rare bridge contacts—people who have feet in both worlds (e.g., an ex-colleague who joined a venture firm). They are often your highest-value warm intro paths.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Isolated silos&lt;/strong&gt;: Clusters with very few cross-links to the rest of your network represent untapped reach into new industries or regions.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Network health&lt;/strong&gt;: A balanced multi-cluster graph indicates a resilient career network, whereas a single giant clump suggests vulnerability to shifts in a single company or market.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;You can tune link strength, repulsion, and cluster presets directly in the Galaxy&apos;s &lt;strong&gt;Physics Lab&lt;/strong&gt; under the Filters panel.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/sixgree-or-sixgrees/</id>
+    <title>Sixgree or Sixgrees? The story behind the name</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/sixgree-or-sixgrees/"/>
+    <published>2026-10-07T00:00:00Z</published>
+    <updated>2026-10-07T00:00:00Z</updated>
+    <summary>Whether you type Sixgree, Sixgrees, or Six Degrees, here is why the project exists, how the name came to be, and what it means for discovering your network.</summary>
+    <content type="html">&lt;p&gt;If you found this page by searching for &lt;strong&gt;Sixgrees&lt;/strong&gt; (with an &lt;em&gt;s&lt;/em&gt;) or &lt;strong&gt;Sixgree&lt;/strong&gt; (without one), you are in the right place.&lt;/p&gt;
+&lt;p&gt;The project is &lt;strong&gt;Sixgree&lt;/strong&gt; (often referred to as &lt;strong&gt;Six Degrees&lt;/strong&gt; or &lt;strong&gt;Sixgrees&lt;/strong&gt;), a free, local-first intelligence engine designed to map the hidden reach of your professional network.&lt;/p&gt;
+&lt;p&gt;Here is why the name exists, why people search for both, and what the tool does.&lt;/p&gt;
+&lt;h2 id=&quot;six-degrees-of-separation&quot;&gt;Six degrees of separation&lt;/h2&gt;
+&lt;p&gt;The name originates from the classic concept of &lt;strong&gt;six degrees of separation&lt;/strong&gt;: the theory that anyone on Earth can be connected to any other person through an unbroken chain of six or fewer acquaintances.&lt;/p&gt;
+&lt;p&gt;In modern professional life, however, you rarely need six steps. For almost any target company, hiring manager, or founder you want to reach, you are almost always just &lt;strong&gt;two degrees away&lt;/strong&gt;:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;First degree (1st)&lt;/strong&gt;: The people you know directly—colleagues, mentors, alumni, and former managers.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Second degree (2nd)&lt;/strong&gt;: The thousands of people &lt;em&gt;they&lt;/em&gt; know directly.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The tragedy of modern networking platforms is that while your 1st-degree connections are visible, your 2nd-degree paths are buried under algorithms, pagination limits, and ad feeds. You cannot see the direct bridge connecting you to the person you need to speak with.&lt;/p&gt;
+&lt;h2 id=&quot;why-sixgree-and-sixgrees&quot;&gt;Why &amp;quot;Sixgree&amp;quot; and &amp;quot;Sixgrees&amp;quot;?&lt;/h2&gt;
+&lt;p&gt;When we built the native desktop app and website, we combined &lt;em&gt;Six&lt;/em&gt; and &lt;em&gt;Degrees&lt;/em&gt; into the shorthand &lt;strong&gt;Sixgree&lt;/strong&gt; (domain: &lt;a href=&quot;https://sixgree.com/&quot;&gt;sixgree.com&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;Because natural language makes it tempting to pluralize, many engineers, founders, and community members naturally type &lt;strong&gt;Sixgrees&lt;/strong&gt; into search bars or GitHub. Both refer to the exact same software project:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The repository&lt;/strong&gt;: &lt;a href=&quot;https://github.com/blakeb056/six-degrees&quot;&gt;github.com/blakeb056/six-degrees&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The official domain&lt;/strong&gt;: &lt;a href=&quot;https://sixgree.com&quot;&gt;sixgree.com&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The desktop app&lt;/strong&gt;: Six Degrees / Sixgree for macOS and Linux.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;what-sixgree-actually-does&quot;&gt;What Sixgree actually does&lt;/h2&gt;
+&lt;p&gt;Regardless of how you spell it, the core mission remains the same: give you transparent, local control over your professional graph.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Jobs &amp;amp; Separation&lt;/strong&gt;: Search any company (e.g., Stripe, OpenAI, Datadog) or role to immediately reveal which mutual contact bridges you to a decision-maker.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Power &amp;amp; Catalyst Scoring&lt;/strong&gt;: Identify the top 5% of connectors in your network who hold the keys to the most diverse industry circles.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;100% Local &amp;amp; Private&lt;/strong&gt;: Sixgree stores everything in an offline SQLite database on your computer. Your contacts and network insights never leave your machine, and no SaaS subscription is required.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Whether you searched for &lt;strong&gt;Sixgrees&lt;/strong&gt;, &lt;strong&gt;Sixgree&lt;/strong&gt;, or &lt;strong&gt;Six Degrees&lt;/strong&gt;, welcome to the project. Download the app at &lt;a href=&quot;/download/&quot;&gt;sixgree.com/download/&lt;/a&gt;.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/scanner-safety-and-rd/</id>
+    <title>The R&amp;D behind our scanner: finding breaking points so you don&apos;t have to</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/scanner-safety-and-rd/"/>
+    <published>2026-10-07T00:00:00Z</published>
+    <updated>2026-10-07T00:00:00Z</updated>
+    <summary>How we stress-tested scanning limits, analyzed session boundaries, and engineered hard stops and pacing to protect your account.</summary>
+    <content type="html">&lt;p&gt;When people first hear about a desktop tool that maps second-degree connections, their first question is almost always about account safety: &lt;em&gt;“Will this get my account restricted or banned?”&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;It is a fair question. Aggressive, irresponsible cloud tools and browser extensions have burned accounts for years by hammering servers with hundreds of rapid requests per minute.&lt;/p&gt;
+&lt;p&gt;From day one, our design priority for Sixgree was not raw speed. It was deep &lt;strong&gt;R&amp;amp;D on the platform&apos;s detection boundaries, rate limits, and behavioral breaking points&lt;/strong&gt; so we could engineer hard stops, human-mimicking pacing, and multi-layer safeguards.&lt;/p&gt;
+&lt;p&gt;Here is what our research uncovered, where the actual limits lie, and how our scanner is engineered to keep your account safe.&lt;/p&gt;
+&lt;h2 id=&quot;the-testing-mapping-the-limits&quot;&gt;The testing: mapping the limits&lt;/h2&gt;
+&lt;p&gt;To understand where platforms draw the line, we conducted extensive testing across real sessions:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Volume ceilings vs. Burst rate&lt;/strong&gt;: We discovered that total daily connections read mattered far less than &lt;em&gt;burst velocity&lt;/em&gt;. Navigating 50 profiles in 3 minutes triggers instant security checks, whereas browsing 50 connections spaced over an hour with variable human-like pauses looks completely organic.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Session continuity&lt;/strong&gt;: Opening parallel headless browsers or injecting artificial DOM queries from unauthenticated cloud IPs is an immediate red flag for anti-automation systems. &lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Pagination friction&lt;/strong&gt;: Rapidly paginating through deep search result lists without human scroll intervals triggers challenge checkpoints (CAPTCHA / email PINs).&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&quot;what-we-learned-where-the-breaking-points-are&quot;&gt;What we learned: where the breaking points are&lt;/h2&gt;
+&lt;p&gt;Our research identified the core triggers that cause automated account warnings:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Exceeding &lt;strong&gt;100 connection profile inspections per day&lt;/strong&gt; on standard accounts without pauses.&lt;/li&gt;
+&lt;li&gt;Fixed-interval requests (e.g., exactly 2.0 seconds between every click), which automated bot-detectors easily flag.&lt;/li&gt;
+&lt;li&gt;Headless user-agents missing legitimate browser signatures, cookies, or hardware acceleration headers.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Once we knew the breaking points, we built Sixgree to stay well below them.&lt;/p&gt;
+&lt;h2 id=&quot;the-safeguards-engineered-into-sixgree&quot;&gt;The safeguards engineered into Sixgree&lt;/h2&gt;
+&lt;p&gt;Instead of pushing the limits, Sixgree operates with strict, non-negotiable conservative boundaries:&lt;/p&gt;
+&lt;h3 id=&quot;1-you-sign-in-the-app-never-touches-your-password&quot;&gt;1. You sign in; the app never touches your password&lt;/h3&gt;
+&lt;p&gt;The scanner runs inside a real, dedicated Chrome window on your local machine. You sign in directly through the platform’s official login page. Sixgree never sees, stores, or transmits your credentials. All cookies stay within your own local session.&lt;/p&gt;
+&lt;h3 id=&quot;2-strict-daily-and-monthly-budgets&quot;&gt;2. Strict daily and monthly budgets&lt;/h3&gt;
+&lt;p&gt;Sixgree caps its scan rate with conservative default budgets:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Daily safety caps&lt;/strong&gt;: Default pacing caps reads at low, realistic thresholds (e.g., 20–50 connections per day depending on your pace setting).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Monthly ceilings&lt;/strong&gt;: Automatic halts prevent you from approaching monthly search or commercial usage limits.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&quot;3-jittered-human-like-pacing&quot;&gt;3. Jittered human-like pacing&lt;/h3&gt;
+&lt;p&gt;Rather than robotic intervals, Sixgree introduces randomized delays, scroll offsets, and pause intervals between each connection read, mirroring how an actual person browses their network.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/scan-budget.jpg&quot; alt=&quot;Scanner pacing and budget controls&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Visual budget caps and rate limits configured inside Sixgree.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h3 id=&quot;4-instant-hard-stops-at-the-first-sign-of-friction&quot;&gt;4. Instant hard stops at the first sign of friction&lt;/h3&gt;
+&lt;p&gt;The scanner is programmed with an immediate fail-safe:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If a rate limit notice, unexpected redirect, or security prompt appears, the scanner &lt;strong&gt;instantly terminates&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;It does not attempt to bypass challenges, solve CAPTCHAs, or retry automatically. It halts immediately and logs the reason locally.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;the-safest-path-optional-scanning-or-zero-risk-csv&quot;&gt;The safest path: optional scanning or zero-risk CSV&lt;/h2&gt;
+&lt;p&gt;Finally, we designed Sixgree so you never &lt;em&gt;have&lt;/em&gt; to scan if you don&apos;t want to:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The platform&apos;s official data archive&lt;/strong&gt;: You can download your official connection CSV directly from the platform (&lt;em&gt;Settings &amp;amp; Privacy → Data Privacy → Get a copy of your data&lt;/em&gt;) and import it into Sixgree with &lt;strong&gt;zero automation and zero account risk&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Interactive sample network&lt;/strong&gt;: Test every visualization, cluster, and path feature with our built-in 150-connection sample network before ever connecting a real account.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;We spent months finding the breaking points of web automation so you don&apos;t have to risk your account. Sixgree is built to be a reliable, local-first intelligence engine that respects both your privacy and your long-term reputation.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/export-network-connections/</id>
+    <title>How to export your network connections, on a computer or an iPhone</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/export-network-connections/"/>
+    <published>2026-10-06T00:00:00Z</published>
+    <updated>2026-11-26T00:00:00Z</updated>
+    <summary>Download your network connections as a CSV from the platform&apos;s own settings, on Mac, Windows or iPhone, what the file contains and what it leaves out, and how to see the people in it as a map with tiers.</summary>
+    <content type="html">&lt;p&gt;You can export your network connections from the platform&apos;s own settings, on a computer or a phone, in about ten minutes. You get a file called &lt;strong&gt;Connections.csv&lt;/strong&gt; with each connection&apos;s name, company, position and the date you connected. It&apos;s the platform&apos;s official export, so it carries no risk to your account.&lt;/p&gt;
+&lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;From December 2026 the export leaves out company, position and email address.&lt;/strong&gt; Download yours before then and keep it: &lt;a href=&quot;/blog/connections-export-december-2026/&quot;&gt;what changes, and what still works&lt;/a&gt;.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;h2 id=&quot;on-a-computer-mac-or-windows&quot;&gt;On a computer (Mac or Windows)&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;Open the platform&apos;s website, click your photo, then &lt;strong&gt;Settings &amp;amp; Privacy&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Open &lt;strong&gt;Data privacy&lt;/strong&gt;, then &lt;strong&gt;Get a copy of your data&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Choose &lt;strong&gt;Want something in particular?&lt;/strong&gt; and tick &lt;strong&gt;Connections&lt;/strong&gt; only. That&apos;s the quick one.&lt;/li&gt;
+&lt;li&gt;Click &lt;strong&gt;Request archive&lt;/strong&gt; and confirm with your password.&lt;/li&gt;
+&lt;li&gt;The platform emails you a download link, usually within about ten minutes. Download the zip and open it: &lt;strong&gt;Connections.csv&lt;/strong&gt; is inside.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&quot;on-an-iphone&quot;&gt;On an iPhone&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;In the platform&apos;s app, tap your photo, then &lt;strong&gt;Settings&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Tap &lt;strong&gt;Data privacy&lt;/strong&gt;, then &lt;strong&gt;Get a copy of your data&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pick &lt;strong&gt;Connections&lt;/strong&gt; only and tap &lt;strong&gt;Request archive&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;When the email arrives, open the link in Safari and download the zip. The Files app opens it; &lt;strong&gt;Connections.csv&lt;/strong&gt; is inside.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;If the app sends you to a web page for any step, finish there: it&apos;s the same setting.&lt;/p&gt;
+&lt;h2 id=&quot;what-the-file-has-and-what-it-doesnt&quot;&gt;What the file has, and what it doesn&apos;t&lt;/h2&gt;
+&lt;p&gt;The CSV lists your &lt;strong&gt;first-degree&lt;/strong&gt; connections: first and last name, profile link, company, position, the date you connected, and an email address only when that person allows it (most don&apos;t). From December 2026, new downloads are expected to keep only the names, profile link and date. It does &lt;strong&gt;not&lt;/strong&gt; include who &lt;em&gt;they&lt;/em&gt; know. Your 2nd and 3rd degree, the bridges between people and the shortest way in to someone, aren&apos;t in any export from the platform.&lt;/p&gt;
+&lt;h2 id=&quot;turning-the-file-into-a-map&quot;&gt;Turning the file into a map&lt;/h2&gt;
+&lt;p&gt;Sixgree reads a Connections.csv on your own computer and shows every person in the Galaxy, ranked in tiers S to D, with nothing uploaded. That covers your first degree straight away. To see who your connections can introduce you to, Sixgree&apos;s scanner reads their circles too, slowly and within a daily limit; see &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;Scanning slowly and safely&lt;/a&gt; and &lt;a href=&quot;/blog/network-connection-degrees/&quot;&gt;Network connection degrees explained&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;A version that reads your CSV right here on sixgree.com, in your browser and on your phone, is on the &lt;a href=&quot;/roadmap/&quot;&gt;roadmap&lt;/a&gt;.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-scanning-rules-and-risk/</id>
+    <title>Is scanning your network against the rules? What really happens, and how to stay safe</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-scanning-rules-and-risk/"/>
+    <published>2026-10-06T00:00:00Z</published>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary>Plainly, automated scanning is against the platform&apos;s terms. Here&apos;s what the risk looks like in practice (warnings and temporary holds, not bans, in every case we&apos;ve recorded), what to do after a warning, and how Sixgree paces itself.</summary>
+    <content type="html">&lt;p&gt;&lt;strong&gt;Yes: automated scanning is against the platform&apos;s terms.&lt;/strong&gt; Those terms prohibit using software or scripts to copy data from the service. Sixgree&apos;s scanner reads your network in a Chrome window signed into your own account, so using it is a choice you make about your own account, and we&apos;d rather you make it knowing exactly what that means.&lt;/p&gt;
+&lt;p&gt;The good news is that the risk is gradual, visible and recoverable, and you control most of it.&lt;/p&gt;
+&lt;h2 id=&quot;what-actually-happens-when-the-platform-pushes-back&quot;&gt;What actually happens when the platform pushes back&lt;/h2&gt;
+&lt;p&gt;In the cases we have on record, the platform &lt;strong&gt;warned first&lt;/strong&gt; and any restriction was &lt;strong&gt;temporary&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A warning&lt;/strong&gt; during a run: an unusual-activity notice or a security check. Nothing is lost; it&apos;s the platform asking you to slow down.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A temporary hold&lt;/strong&gt;: on 9 September 2026 a test account that kept mapping circles for about an hour, after a warning had already appeared, was restricted with a day&apos;s notice and released the same evening. On 28 September another was held after 373 searches in 24 hours, run back to back with the daily limit raised far past the default.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;We have no record of an account being permanently banned for using Sixgree. That&apos;s a record, not a promise: the platform decides, and it doesn&apos;t publish its limits. Both holds came from pushing well past the defaults, and both came after a warning that was ignored.&lt;/p&gt;
+&lt;h2 id=&quot;how-to-keep-the-risk-low&quot;&gt;How to keep the risk low&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Stay on Medium or Slow.&lt;/strong&gt; Fast is there for small, occasional rounds. Medium and Slow read like a person who&apos;s looking carefully.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Keep the scan windows at their defaults&lt;/strong&gt; (60 search pages a window, two windows a day, 6 hours apart). They leave room under limits the platform doesn&apos;t publish, and you can only make them stricter.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;After a warning, stop for a day.&lt;/strong&gt; Don&apos;t press &lt;em&gt;Lift limits for this session&lt;/em&gt; and carry on: continuing straight after a warning is what turned a warning into a hold both times. Wait about 24 hours, then come back on Slow or Medium with a small round.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Map in rounds, not marathons.&lt;/strong&gt; 5 to 10 circles at a time, spread over days, builds the same map with a fraction of the risk.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Leave full profile reads off&lt;/strong&gt; unless you need past roles. A profile view is the action the platform watches most closely.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;No risk at all:&lt;/strong&gt; import the official Connections.csv export (&lt;a href=&quot;/blog/export-network-connections/&quot;&gt;here&apos;s how&lt;/a&gt;) or explore the invented sample.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;what-sixgree-does-for-you&quot;&gt;What Sixgree does for you&lt;/h2&gt;
+&lt;p&gt;Since those two holds, the scanner has been rebuilt around them:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Human pacing.&lt;/strong&gt; Every wait is a little different, each page gets reading time for the people on it, the page is scrolled in uneven steps, and there are short breaks and longer rests, layered on top of the waits that already worked.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Scan windows&lt;/strong&gt; (since 17 October 2026): at most 60 search pages a window and two windows a day, by hand or not, which nothing lifts. Profile views have their own number, 50 a day by default, and are never closer than a minute apart.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;It stops at the first push-back.&lt;/strong&gt; A sign-in wall, a security check, a restriction notice or a &amp;quot;too many requests&amp;quot; reply ends the scan at once and starts a cooldown. It never retries those.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Auto scan keeps office hours.&lt;/strong&gt; Small sittings from 9:00 to 18:00 with long rests, and it never runs past the scan window.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Everything is saved as it goes&lt;/strong&gt;, so stopping never loses what was read.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;the-short-version&quot;&gt;The short version&lt;/h2&gt;
+&lt;p&gt;Scanning is against the platform&apos;s terms, and that&apos;s your call to make. If you do scan: stay on Medium or Slow, keep the default limit, and treat a warning as a day off, not a speed bump. In the cases we&apos;ve recorded, that was the difference between a map and a hold.&lt;/p&gt;
+&lt;p&gt;More on how the scanner paces itself: &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;Scanning slowly and safely&lt;/a&gt;.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-premium-and-search-limit/</id>
+    <title>The monthly search limit, and why Sixgree works best with Premium</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-premium-and-search-limit/"/>
+    <published>2026-10-06T00:00:00Z</published>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary>Free accounts hit a monthly limit on people searches; after it, people outside your first degree show with no name. Here&apos;s what that means for mapping your network with Sixgree, and why a paid account gives the best experience.</summary>
+    <content type="html">&lt;p&gt;Sixgree maps who your connections know by reading their connection lists, and every page of a list is a &lt;strong&gt;people search&lt;/strong&gt; on the platform. That makes the monthly search limit the one limit that matters most, and it&apos;s why &lt;strong&gt;Sixgree works best with a paid account&lt;/strong&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;what-the-limit-looks-like&quot;&gt;What the limit looks like&lt;/h2&gt;
+&lt;p&gt;Free accounts on the platform get a monthly allowance of people searches. The platform doesn&apos;t publish the number. Once you pass it:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;A box appears among your results: &lt;em&gt;&amp;quot;You&apos;ve reached the monthly limit for profile searches. Upgrade to Premium…&amp;quot;&lt;/em&gt; It isn&apos;t a pop-up; you can scroll past it.&lt;/li&gt;
+&lt;li&gt;The results are still listed, but people outside your first degree show with no name, only a &lt;strong&gt;View&lt;/strong&gt; button. There&apos;s nothing to map.&lt;/li&gt;
+&lt;li&gt;It lasts until the limit resets at the start of the next month.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;what-sixgree-does-when-it-hits-it&quot;&gt;What Sixgree does when it hits it&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;If people on the page still have names, it reads them and carries on.&lt;/li&gt;
+&lt;li&gt;If everyone is hidden, it stops that list and &lt;strong&gt;keeps its place&lt;/strong&gt;, so nothing is lost and nothing is marked finished. The next run, after the reset or after you upgrade, carries on from the same page.&lt;/li&gt;
+&lt;li&gt;It never counts this as the platform pushing back on your account: it&apos;s a plan limit, not a warning.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;why-premium-gives-the-best-experience&quot;&gt;Why Premium gives the best experience&lt;/h2&gt;
+&lt;p&gt;With a paid &lt;strong&gt;Premium&lt;/strong&gt; plan on the platform, the people-search limit is lifted, so:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Every page of every circle shows names, and &lt;strong&gt;2nd and 3rd degree fill in properly&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Big circles map in days, not months.&lt;/li&gt;
+&lt;li&gt;Separation, Jobs and the Strategy engine have whole circles to work with, so their rankings are better.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sixgree itself stays free, and it doesn&apos;t need Premium to work: your own connections, the map, tiers and everything you&apos;ve already scanned work on any account. Premium is what removes the platform&apos;s cap on reading &lt;em&gt;further&lt;/em&gt;. The platform often offers a free first month, which is a good time to map your core circles.&lt;/p&gt;
+&lt;h2 id=&quot;without-premium&quot;&gt;Without Premium&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Map your most important circles first (S and A tiers), in small rounds, early in the month.&lt;/li&gt;
+&lt;li&gt;Keep the scan windows at their defaults and Medium or Slow speed; see &lt;a href=&quot;/blog/network-scanning-rules-and-risk/&quot;&gt;Is scanning your network against the rules?&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Import the official Connections.csv export for your first degree at no search cost: &lt;a href=&quot;/blog/export-network-connections/&quot;&gt;how to export it&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/design-choices/</id>
+    <title>How Sixgree got its look: every icon, wordmark, name and colour we tried</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/design-choices/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary>The full design history of Sixgree, with pictures: from Next.js&apos;s default favicon to a gold S that reads as a 6, every wordmark we drew, the name change, the tier palettes in each look, and the design rules behind them.</summary>
+    <content type="html">&lt;p&gt;Sixgree maps your network out to six degrees, so every piece of its look tries to say one of two things: &lt;em&gt;degrees&lt;/em&gt; and &lt;em&gt;tiers&lt;/em&gt;. This is the whole history, with the versions we threw away.&lt;/p&gt;
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;21 August 2026:&lt;/strong&gt; the first commit of Six Degrees ships with Next.js&apos;s default favicon, a white triangle that is Vercel&apos;s mark, not ours.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;24 September 2026:&lt;/strong&gt; the first Mac app (0.2.0 beta) gets a placeholder icon: you as a white dot, your circles round you in the tier colours.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;28 September 2026:&lt;/strong&gt; &lt;em&gt;Orbits&lt;/em&gt;, the first designed icon: tier rings round a gold centre.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;29 September 2026:&lt;/strong&gt; a gold 6 drawn in one line around a glowing core, ending in a small degree ring.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;4 October 2026:&lt;/strong&gt; Six Degrees becomes &lt;strong&gt;Sixgree&lt;/strong&gt;. A wordmark in Manrope ExtraBold with a gold dot over the i and the tier dots stacked above it, fading out.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;5 October 2026:&lt;/strong&gt; a dozen icon candidates and as many wordmarks on one canvas. The family vote picks &lt;strong&gt;F1&lt;/strong&gt; and the &lt;strong&gt;flat line&lt;/strong&gt;. Tier C turns green. Sixgree 1.2.0 brings frosted glass, a macOS-style Daylight and plain tabs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;6 October 2026:&lt;/strong&gt; the website gets a bigger header, pill links in tier colours, and black and white versions of the logo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;6 October 2026, later:&lt;/strong&gt; films in the new look go on the site: a looping film in the hero with its 1-2-3 lighting up as it plays, another in Features, a narrated install video, and a link preview that shows the logo.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;the-name&quot;&gt;The name&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;Six Degrees&lt;/em&gt; said exactly what the app does, which is why it was hard to own: it&apos;s a phrase, not a name, and the domain was &lt;em&gt;sixdegreesapp.com&lt;/em&gt;. &lt;strong&gt;Sixgree&lt;/strong&gt; keeps both halves, the &lt;em&gt;six&lt;/em&gt; and the &lt;em&gt;degree&lt;/em&gt;, in one word nobody else uses. It reads &amp;quot;six-gree&amp;quot;, and its tagline does the explaining: &lt;em&gt;Sixgree: six degrees of your network.&lt;/em&gt; sixgree.com is home; sixdegreesapp.com, sixgree.app and the likely typo sixgrees.com all redirect there. The GitHub repo kept its old name on purpose, so every installed copy keeps updating.&lt;/p&gt;
+&lt;h2 id=&quot;the-icon-from-a-triangle-to-an-s-that-is-also-a-6&quot;&gt;The icon: from a triangle to an S that is also a 6&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/icon-history.jpg&quot; alt=&quot;Every Sixgree icon and favicon on file, newest first: the original Next.js triangle, the first Mac icon, Orbits, the gold 6 and its favicon&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Every icon and favicon on file, from the first commit to the 6. Each shown at app size and at 64, 32 and 16 px.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The placeholder explained the app but looked like every network app. Orbits was prettier and still generic. The gold 6 was the first that said &lt;em&gt;six degrees&lt;/em&gt;, but its thin line and glow went to mush at 16 pixels.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/icon-candidates.jpg&quot; alt=&quot;Twelve icon candidates: the orbit becoming a 6, F1, F3, F5, drops and morphs, light and navy&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The candidates. F1 (top row, fourth) won.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The candidates tried three ideas: the orbit turning into the 6 (top left), a single curve that draws an &lt;strong&gt;S&lt;/strong&gt; (F1, F3, F5), and lighter, flatter takes. &lt;strong&gt;F1&lt;/strong&gt; won: one tapered gold curve draws the S, a round gold dot in its lower bowl makes it a &lt;strong&gt;6&lt;/strong&gt; and is &lt;em&gt;you&lt;/em&gt;, and a small ring at the top closes it as a degree sign. It works by &lt;strong&gt;figure and ground&lt;/strong&gt;: the same stroke is an S, a 6 and a path out to a degree, depending on what you look at. The app icon adds faint tier rings and a glow; the favicon drops them, because detail that disappears at 16 px only makes a small icon muddy.&lt;/p&gt;
+&lt;h2 id=&quot;the-wordmark-dots-that-run-into-a-degree&quot;&gt;The wordmark: dots that run into a degree&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/logo-canvas.jpg&quot; alt=&quot;The full logo canvas: wordmarks (fade, dotted i, fade with degree, plain word with degree, original stack, wind) on white and navy, and every app icon candidate&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Every wordmark and icon on one page, each on white and on navy, with the small sizes underneath.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The first wordmark stacked the tier dots above the i and faded them out. Then came &lt;em&gt;wind&lt;/em&gt;, the dots blowing to the right, and from wind a row of straighter lines and &lt;em&gt;comets&lt;/em&gt; rising like the icon&apos;s curve.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/wordmark-straight-lines.jpg&quot; alt=&quot;Four straight-line wordmark variations&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Wind, straightened: the line of dots made level and even.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/wordmark-comets.jpg&quot; alt=&quot;Five comet wordmark variations rising from the i&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Comets: the dots rising like the icon&apos;s curve. Fun, but they fought the letters.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The &lt;strong&gt;flat line&lt;/strong&gt; won the vote: one level row from the i&apos;s dot across the whole word, gold, purple, blue, green, grey. Then the last dot became a ring, then an all-gold version was tried and dropped, because a row of one colour loses the tiers.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/wordmark-flat-variations.jpg&quot; alt=&quot;Flat line variations: tier colours, last dot a degree ring, all gold, all gold with a ring&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The flat line and its variations. Top right is the one we kept.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The final version runs the five tier dots level to a gold ring the same size and height as the i&apos;s dot, so the name ends on a degree sign: &lt;strong&gt;Sixgree°&lt;/strong&gt;. On white the word is ink and the colour lives in the dots; on a dark look the word is gold. For single-colour uses there are black and white versions.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/wordmark-final.jpg&quot; alt=&quot;The final wordmark in colour on white, in black, and in white on black&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The wordmark today: colour, black, white.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;colour-a-rarity-ladder&quot;&gt;Colour: a rarity ladder&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/tier-palettes.png&quot; alt=&quot;Tier colours S, A, B, C, D in each of Sixgree&apos;s six looks&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The tier palette in every look. Each look tunes the shades for its background; the order and meaning never change.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;Tiers run S, A, B, C, D, and their colours borrow a ladder people already know from games: &lt;strong&gt;gold, purple, blue, green, grey&lt;/strong&gt;. Using a convention people have learned elsewhere means nobody needs a legend to see that gold outranks grey. C used to be a muddy colour too close to D; green made the five read as steps at a glance. Each look tunes the shades to its background (Daylight darkens the gold so it holds up on white; High contrast pushes everything brighter), but a tier is always the same hue family.&lt;/p&gt;
+&lt;h2 id=&quot;glass-contrast-and-fewer-choices&quot;&gt;Glass, contrast and fewer choices&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/daylight-glass.jpg&quot; alt=&quot;Daylight: white frosted panels over the Galaxy with dark, readable text&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Daylight with macOS-style glass. Invented people.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The app used to offer six button styles and eight looks. Every option is a decision for the person using it and another thing to keep readable, so we cut to two button styles (frosted glass, or soft) and six looks. Daylight became macOS-style glass: translucent white panels, a strong blur, a hairline edge, a soft shadow. Apple&apos;s own secondary grey is only 3.6:1 on white, below the accessibility line for small text, so Sixgree&apos;s greys are darker: body text 16.8:1, secondary 7.5:1, the faintest 5.1:1.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/tabs-before-after.jpg&quot; alt=&quot;The page tabs before (a gradient and a colour per tab) and after (one calm style, the open tab a solid pill)&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The tabs before and after. Colour should mean something, and here it didn&apos;t.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The tabs had a colour each and a gradient on one of them. None of it meant anything, and colour that means nothing teaches people to ignore colour that does. Now the open tab is a solid pill and the rest are plain.&lt;/p&gt;
+&lt;h2 id=&quot;the-website&quot;&gt;The website&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/site-header.jpg&quot; alt=&quot;The website header: icon, wordmark, grey pill links with the current page filled green&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The site header: the page you&apos;re on fills with a tier colour, in the wordmark&apos;s order.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The site is light only, with soft white download keys carrying the Apple and Microsoft marks. The header carries the icon and wordmark large enough to read, and each link is a quiet grey pill; the page you&apos;re on fills with a tier colour, in the wordmark&apos;s order.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/site-hero-film.jpg&quot; alt=&quot;The home page&apos;s hero: the film plays in place, its edges fading into the page, with the three steps underneath&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The hero film: no frame, no player, its edges fading into the page. Invented people.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The home page opens on a film rather than a screenshot. It plays silently at twice its speed, its four edges fade into the page so it has no frame, and the 1-2-3 underneath lights up the step it&apos;s showing. Shared links show the icon and the wordmark, not a screenshot:&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/og-sixgree.jpg&quot; alt=&quot;The link preview: the icon, the wordmark and the line See who your network can really reach&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;What a shared sixgree.com link looks like.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;the-films&quot;&gt;The films&lt;/h2&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/blog/design/film-stills.jpg&quot; alt=&quot;Three stills from the films: the guided setup in Daylight, 35,704 people in tier rings on a night sky, and circles with the catalyst at the centre&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The install video in Daylight, and the night-sky film. Every person invented.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;p&gt;The films use the same rules as the app: the real app on invented people, the tier colours, and rings for degrees. The light ones sit on white with a soft gold, purple and blue glow, like the site. The night-sky one draws every person as a point of light, and the tier rings open out from you. Each one keeps &amp;quot;It ranks reachability, not people.&amp;quot; in frame wherever a score shows.&lt;/p&gt;
+&lt;h2 id=&quot;the-rules-underneath&quot;&gt;The rules underneath&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Colour always means tier; rings always mean degrees.&lt;/strong&gt; Anything that blurs either one loses.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Small first.&lt;/strong&gt; Every icon and wordmark was judged at 16 to 32 px, not just big.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;One idea, many readings.&lt;/strong&gt; The S is a 6 is a path; the dots are the i&apos;s dot, the tiers and a degree.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Fewer, better choices.&lt;/strong&gt; Two button styles and six looks, each kept readable, beat many that aren&apos;t.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Readable beats faithful.&lt;/strong&gt; Where Apple&apos;s own colours fall below accessible contrast, Sixgree goes darker.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-warm-introduction/</id>
+    <title>How to ask for a warm introduction through your network, with message templates</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-warm-introduction/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-05T00:00:00Z</updated>
+    <summary>Use Sixgree to inspect possible bridges, then ask a mutual connection for an introduction with clear, respectful messages and a forwardable blurb.</summary>
+    <content type="html">&lt;p&gt;To ask for a warm introduction through your network, identify a possible mutual connection, check whether they know the person well enough to help, and explain why you want to talk. Give them a short message they can forward, with an easy way to decline.&lt;/p&gt;
+&lt;p&gt;Sixgree helps you inspect possible bridges in your mapped network. It does not decide who trusts whom, guarantee a reply or make a connection record into permission to contact someone.&lt;/p&gt;
+&lt;h2 id=&quot;find-a-bridge-before-writing-the-request&quot;&gt;Find a bridge before writing the request&lt;/h2&gt;
+&lt;p&gt;In Sixgree&apos;s &lt;strong&gt;Separation&lt;/strong&gt; view, find the person or company you&apos;re interested in and inspect the recorded ways in. A way in is a connection through whom the person appears in your mapped data. It is not a prediction that an introduction will happen.&lt;/p&gt;
+&lt;p&gt;If the person has several ways in, start with the bridge whose relationship with you makes the request reasonable. Consider whether you&apos;ve worked together, spoken recently and have enough context to explain your purpose honestly.&lt;/p&gt;
+&lt;p&gt;An official CSV alone cannot establish these second-degree routes. Use mapped circle data if you already have it, or inspect mutual connections yourself on the platform. See &lt;a href=&quot;/blog/network-connection-degrees/&quot;&gt;connection degrees explained&lt;/a&gt; and &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;how the app counts ways in&lt;/a&gt; for the boundaries.&lt;/p&gt;
+&lt;p&gt;Whatever the route, understand the connection before you ask. The templates below are original examples, not platform features or messages sent by Sixgree.&lt;/p&gt;
+&lt;h2 id=&quot;ask-about-the-relationship-not-just-the-introduction&quot;&gt;Ask about the relationship, not just the introduction&lt;/h2&gt;
+&lt;p&gt;A short first message can save everyone an awkward forward. Ask whether your bridge knows the person, then make the request conditional on their comfort.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;General introduction request:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;&lt;p&gt;Hi [Bridge], I noticed you&apos;re connected to [Person]. I&apos;m working on [specific project] and would value their perspective on [specific question]. Do you know them well enough to ask whether they&apos;d be open to a conversation? No problem if not. I can send a short note you can forward.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Replace every placeholder and remove anything you cannot substantiate. If you already know the bridge well, write in your usual voice rather than copying a formal template word for word.&lt;/p&gt;
+&lt;h2 id=&quot;a-job-search-introduction-is-not-the-same-as-a-referral&quot;&gt;A job-search introduction is not the same as a referral&lt;/h2&gt;
+&lt;p&gt;An introduction opens a conversation. A referral may ask someone to endorse your suitability for a role or submit your details through an employer&apos;s process. Don&apos;t quietly turn the first request into the second.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Job-search introduction request:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;&lt;p&gt;Hi [Bridge], I&apos;m exploring [role or team] at [Company]. My relevant background is [one concrete sentence]. I&apos;d like to understand [specific question about the work]. Do you know someone there who might be comfortable talking? I&apos;m asking for a conversation, not an endorsement, and it&apos;s fine if the timing isn&apos;t right.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Mention a specific job if you have one in mind, but don&apos;t imply that your bridge can bypass the hiring process. The &lt;a href=&quot;/blog/network-job-search/&quot;&gt;network-audit guide&lt;/a&gt; helps you prepare a focused shortlist before reaching out.&lt;/p&gt;
+&lt;h2 id=&quot;give-your-bridge-something-easy-to-forward&quot;&gt;Give your bridge something easy to forward&lt;/h2&gt;
+&lt;p&gt;Once the bridge agrees, send a compact explanation that stands on its own. It should tell the recipient who you are, why they are relevant and what you want.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Forwardable blurb:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;&lt;p&gt;[Your name] is [your role or relevant background]. They&apos;re working on [specific project] and would appreciate your perspective on [one question]. They&apos;re asking for [a short conversation or another small, clear action]. If you&apos;re open to it, [Bridge] can introduce you both.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Keep claims factual. Don&apos;t have your bridge say they recommend you unless they have actually offered to do so. Let them adapt the wording or choose not to forward it.&lt;/p&gt;
+&lt;h2 id=&quot;ask-permission-on-both-sides&quot;&gt;Ask permission on both sides&lt;/h2&gt;
+&lt;p&gt;The bridge should be comfortable making the introduction, and the recipient should have a chance to agree before their contact details are shared. That makes the introduction a mutual choice rather than an obligation.&lt;/p&gt;
+&lt;p&gt;If they agree, respond with your context and a clear next step. If they decline, thank them and move on. A useful network map is not a reason to keep pushing through alternative bridges after someone has said no.&lt;/p&gt;
+&lt;h2 id=&quot;follow-up-without-turning-it-into-a-campaign&quot;&gt;Follow up without turning it into a campaign&lt;/h2&gt;
+&lt;p&gt;If the request is still unanswered, a brief check-in may be appropriate depending on your relationship and the timing. Don&apos;t stack reminders, send the same request through several people or interpret silence as consent.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Low-pressure follow-up:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;&lt;p&gt;Hi [Bridge], checking whether the introduction I mentioned would be comfortable for you. If not, or if now isn&apos;t a good time, no action needed. Thanks for considering it.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Write your note and decide how to send it yourself. This guide is not an automated outreach workflow. Sixgree&apos;s route display does not send these template messages.&lt;/p&gt;
+&lt;h2 id=&quot;avoid-the-mistakes-a-map-cant-fix&quot;&gt;Avoid the mistakes a map can&apos;t fix&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Choosing by title alone.&lt;/strong&gt; Seniority doesn&apos;t tell you how well your bridge knows the person.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Asking for “any introductions.”&lt;/strong&gt; Give one person or a precise question, so the bridge can judge the fit.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Using stale company data.&lt;/strong&gt; Check the person&apos;s current profile before mentioning their role.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Treating exclusive reach as a reply probability.&lt;/strong&gt; “Only through” is a property of the mapped network, not a response forecast.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Forwarding private details without permission.&lt;/strong&gt; Share only what both people have agreed to share.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href=&quot;/blog/network-connections-at-company/&quot;&gt;Find connections at a target company&lt;/a&gt; if you haven&apos;t selected a person yet. Or &lt;a href=&quot;/download/&quot;&gt;download Sixgree&lt;/a&gt; and try the invented sample to learn how the routes work before mapping your own network.&lt;/p&gt;
+&lt;p&gt;Sixgree is not affiliated with any networking platform.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-job-search/</id>
+    <title>How to audit your network before a job search</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-job-search/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-05T00:00:00Z</updated>
+    <summary>Review your network connections with Sixgree, find target-company coverage and possible bridges, and build a focused job-search shortlist without mass outreach.</summary>
+    <content type="html">&lt;p&gt;A useful network audit answers three questions: &lt;strong&gt;who do I already know, which target companies appear in my network, and what possible routes need checking?&lt;/strong&gt; Use Sixgree to inspect your local network, then turn those answers into a small list of conversations you can justify.&lt;/p&gt;
+&lt;p&gt;The goal is not to maximize a connection count or collect high-scoring people. It is to understand where your existing relationships may help you learn about a role, team or company. A network score is not a job-readiness score.&lt;/p&gt;
+&lt;h2 id=&quot;1-define-the-search-before-judging-your-network&quot;&gt;1. Define the search before judging your network&lt;/h2&gt;
+&lt;p&gt;Write down the type of work you&apos;re looking for, the constraints that matter and a short list of companies or teams you&apos;d like to understand. Be specific enough that a contact can offer useful context.&lt;/p&gt;
+&lt;p&gt;“I&apos;m interested in product operations for a small team” gives someone more to work with than “I&apos;m looking for anything.” You can change the brief as you learn; it is a starting point, not a commitment to one employer.&lt;/p&gt;
+&lt;p&gt;Staying organized and using your network are both part of the search. Sixgree adds a local view of the people and recorded routes you already have. It is not a job board, an application tracker or a predictor of hiring outcomes.&lt;/p&gt;
+&lt;h2 id=&quot;2-choose-a-data-source-you-are-comfortable-with&quot;&gt;2. Choose a data source you are comfortable with&lt;/h2&gt;
+&lt;p&gt;Start with the invented sample if you want to learn the app without accessing the platform. For your own direct connections, &lt;a href=&quot;/blog/network-csv/&quot;&gt;import the official Connections.csv&lt;/a&gt;. That gives you the people and company fields in the file, not their connection lists.&lt;/p&gt;
+&lt;p&gt;If you already have mapped circle data, you can also inspect people beyond your direct network and the routes recorded through your connections. Missing circle data means incomplete coverage, not a failed network.&lt;/p&gt;
+&lt;p&gt;Scanning is optional. Automating access to the platform may breach its rules and can lead to account restrictions. You do not need to start a scan to perform a useful direct-network audit. Read &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;the scanning guide&lt;/a&gt; before deciding whether you want to gather more data.&lt;/p&gt;
+&lt;h2 id=&quot;3-review-people-before-scores&quot;&gt;3. Review people before scores&lt;/h2&gt;
+&lt;p&gt;Open your network map and inspect the people you recognize. Ask what you actually know about each relationship:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Have we worked or studied together?&lt;/li&gt;
+&lt;li&gt;Have we spoken recently?&lt;/li&gt;
+&lt;li&gt;Do they know my work well enough to offer relevant context?&lt;/li&gt;
+&lt;li&gt;Is the company or role in my data still current?&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sixgree&apos;s tier and score can help you inspect the app&apos;s model of network position. They cannot tell you whether someone will remember you, recommend you or have an open role. Use the card&apos;s information as a prompt to investigate, not as a ranking of who deserves your attention.&lt;/p&gt;
+&lt;h2 id=&quot;4-check-target-company-coverage-in-jobs&quot;&gt;4. Check target-company coverage in Jobs&lt;/h2&gt;
+&lt;p&gt;Open &lt;strong&gt;Jobs&lt;/strong&gt; and find the companies on your shortlist. Open one to see the people recorded there and the best person to ask. Separate direct connections from people found beyond them.&lt;/p&gt;
+&lt;p&gt;If a target company is absent, check spelling, subsidiaries and whether the information is simply missing. Don&apos;t assume it is unreachable. Your map is an observed network, not a complete directory of the platform or every employer.&lt;/p&gt;
+&lt;p&gt;The &lt;a href=&quot;/blog/network-connections-at-company/&quot;&gt;company-search guide&lt;/a&gt; explains how to combine the local view with the platform&apos;s current-company and connection filters. Confirm a person&apos;s present role before sending a request based on an old export.&lt;/p&gt;
+&lt;h2 id=&quot;5-compare-possible-bridges-in-separation&quot;&gt;5. Compare possible bridges in Separation&lt;/h2&gt;
+&lt;p&gt;With mapped circle data, search &lt;strong&gt;Separation&lt;/strong&gt; for a person, role or company. Inspect the ways in shown for a result. If several connections appear, compare how well you know each bridge and whether your question fits their relationship with the person.&lt;/p&gt;
+&lt;p&gt;A card&apos;s &lt;strong&gt;only through&lt;/strong&gt; count can identify a connection whose mapped circle contains people you haven&apos;t found through another bridge. It does not mean you should immediately ask them for introductions, or that they are your strongest personal relationship.&lt;/p&gt;
+&lt;p&gt;Don&apos;t penalize an unscanned connection for having little recorded reach. You&apos;re comparing available evidence, not the full network they have in real life. See &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;how ways in are counted&lt;/a&gt; for the calculation and its limits.&lt;/p&gt;
+&lt;h2 id=&quot;6-build-a-worksheet-outside-the-score&quot;&gt;6. Build a worksheet outside the score&lt;/h2&gt;
+&lt;p&gt;Use a short table to turn the map into decisions. This is a planning worksheet you keep yourself, not a new Sixgree feature.&lt;/p&gt;
+&lt;div class=&quot;table-wrap prose-table&quot;&gt;&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Field&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;What to record&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Company or team&lt;/th&gt;&lt;td&gt;Where you want to learn more.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Person&lt;/th&gt;&lt;td&gt;Someone relevant to the question.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Relationship or bridge&lt;/th&gt;&lt;td&gt;A direct contact, or a recorded route to check.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Evidence&lt;/th&gt;&lt;td&gt;The profile, export or circle data supporting it.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Unknowns&lt;/th&gt;&lt;td&gt;Current role, relationship strength, willingness to help.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Next step&lt;/th&gt;&lt;td&gt;One reasonable question, or a decision to leave it alone.&lt;/td&gt;&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
+&lt;p&gt;Include “no action” as a valid outcome. You might learn that you already have enough information, that the contact is not relevant, or that a direct application is more appropriate than an introduction request.&lt;/p&gt;
+&lt;h2 id=&quot;7-make-one-clear-request-not-a-broadcast&quot;&gt;7. Make one clear request, not a broadcast&lt;/h2&gt;
+&lt;p&gt;Ask for context before asking someone to advocate for you. Explain the role or team, your relevant background and the question you&apos;re trying to answer. Leave room for them to decline.&lt;/p&gt;
+&lt;p&gt;An illustrative opener: “I&apos;m exploring roles on this team and trying to understand the work. Since you&apos;ve worked in a similar area, would you be comfortable sharing your perspective? No problem if you&apos;re busy.”&lt;/p&gt;
+&lt;p&gt;If you need an introduction, use the &lt;a href=&quot;/blog/network-warm-introduction/&quot;&gt;warm-introduction templates&lt;/a&gt;. Replace the placeholders and write in your own voice. A mapped route is not consent, and no template guarantees an interview or a reply.&lt;/p&gt;
+&lt;h2 id=&quot;what-a-useful-audit-leaves-you-with&quot;&gt;What a useful audit leaves you with&lt;/h2&gt;
+&lt;p&gt;You should finish with a clearer search brief, a handful of relevant relationships, a distinction between known routes and missing data, and next steps you can explain. You do not need a perfect map or a higher score before applying for work.&lt;/p&gt;
+&lt;p&gt;Keep the audit private. If you share a real-network view, use Names Off and check for other identifying details before posting it. The &lt;a href=&quot;/blog/local-first/&quot;&gt;local-first guide&lt;/a&gt; explains where the data lives and what the app contacts.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/download/&quot;&gt;Download Sixgree&lt;/a&gt; to explore the sample first, then bring in the data you&apos;re comfortable using.&lt;/p&gt;
+&lt;p&gt;Sixgree is not affiliated with any networking platform.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-connections-at-company/</id>
+    <title>How to find your network connections at a company with Sixgree</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-connections-at-company/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-05T00:00:00Z</updated>
+    <summary>Find people you know at a target company, inspect mapped introduction paths in Sixgree, and separate direct connections from incomplete second-degree data.</summary>
+    <content type="html">&lt;p&gt;To find your network connections at a company, start with a people search and filter by &lt;strong&gt;Current company&lt;/strong&gt; and &lt;strong&gt;Connections&lt;/strong&gt;. In Sixgree, use &lt;strong&gt;Jobs&lt;/strong&gt; to see the people at that company in your local network, ranked by your best way in. If you have mapped their circles, use &lt;strong&gt;Separation&lt;/strong&gt; to inspect possible ways in beyond your direct connections.&lt;/p&gt;
+&lt;p&gt;These are different views of the question. The platform helps you find profiles. Sixgree helps you understand the company and introduction routes in the data you&apos;ve already collected. Neither a company label nor a connection badge guarantees someone can refer you.&lt;/p&gt;
+&lt;h2 id=&quot;start-with-the-company-and-a-specific-question&quot;&gt;Start with the company and a specific question&lt;/h2&gt;
+&lt;p&gt;“Who do I know at this company?” is a better starting point than “Who has the biggest title?” Choose what you need:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Someone who can explain how a team works.&lt;/li&gt;
+&lt;li&gt;A former colleague who can tell you about their experience there.&lt;/li&gt;
+&lt;li&gt;A possible bridge to a relevant person you haven&apos;t met.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Keep current and former employees separate. Both may have useful context, but a past job is not evidence of a current role or an active referral relationship.&lt;/p&gt;
+&lt;h2 id=&quot;find-direct-connections-on-the-platform&quot;&gt;Find direct connections on the platform&lt;/h2&gt;
+&lt;p&gt;Enter a company or a relevant person&apos;s name in the platform&apos;s search bar, then choose &lt;strong&gt;People&lt;/strong&gt;. Use the available filters to narrow the result to the company and first-degree connections. If a filter is not visible, look in &lt;strong&gt;All filters&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;The platform&apos;s own help pages explain its search categories and list the company and connection filters. Use them if the layout differs from what you see.&lt;/p&gt;
+&lt;p&gt;You can also look at second-degree results. That is a starting point for checking mutual connections, not permission to assume every mutual knows the person well. Read &lt;a href=&quot;/blog/network-connection-degrees/&quot;&gt;what the connection degrees mean&lt;/a&gt; before treating them as an introduction plan.&lt;/p&gt;
+&lt;h2 id=&quot;explore-the-company-in-sixgree&quot;&gt;Explore the company in Sixgree&lt;/h2&gt;
+&lt;p&gt;Open &lt;strong&gt;Jobs&lt;/strong&gt; and find the company (or type it into &lt;em&gt;Find a company&lt;/em&gt;). Open it to see who works there now and who used to, with how you know each of them and the one person to ask.&lt;/p&gt;
+&lt;p&gt;The company list comes from your current network data, including company information saved with those people. It is not a live employee directory, an organizational chart supplied by the employer, or a list of everyone who works there.&lt;/p&gt;
+&lt;p&gt;Use the view to separate two questions:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Who is already a direct connection?&lt;/strong&gt; Start with people you can reasonably contact yourself.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Who appears beyond my direct network?&lt;/strong&gt; Look for a recorded path before choosing a bridge.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Check each person&apos;s card rather than relying on a company&apos;s rank alone.&lt;/p&gt;
+&lt;h2 id=&quot;inspect-ways-in-not-just-a-targets-name&quot;&gt;Inspect ways in, not just a target&apos;s name&lt;/h2&gt;
+&lt;p&gt;In &lt;strong&gt;Separation&lt;/strong&gt;, a search can look through a person&apos;s name, headline, company, role and recorded bridges. Search for the target company or a specific person, then inspect the routes shown for a matching person.&lt;/p&gt;
+&lt;p&gt;If several direct connections lead to them, compare the relationships you actually have with those bridges. A former teammate you know well may be a better first conversation than a higher-scored contact you have never spoken to.&lt;/p&gt;
+&lt;p&gt;A connection&apos;s &lt;strong&gt;only through&lt;/strong&gt; count describes people found exclusively through that connection among your mapped circles. It can reveal a distinct part of your network. It does not measure how likely they are to introduce you to a particular person.&lt;/p&gt;
+&lt;p&gt;For the counts behind that distinction, see &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;how Sixgree ranks your ways in&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;know-which-results-your-data-supports&quot;&gt;Know which results your data supports&lt;/h2&gt;
+&lt;div class=&quot;table-wrap prose-table&quot;&gt;&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Data you have&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;What you can reasonably inspect&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Official Connections.csv&lt;/th&gt;&lt;td&gt;Direct connections and the company fields in that export.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Mapped circle data&lt;/th&gt;&lt;td&gt;Additional people and the routes recorded through your connections.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Invented sample network&lt;/th&gt;&lt;td&gt;A way to learn the views, not evidence about your own reach.&lt;/td&gt;&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
+&lt;p&gt;A &lt;a href=&quot;/blog/network-csv/&quot;&gt;CSV import&lt;/a&gt; cannot show who your connections know. An empty company or route result can mean the information is missing, stale or stored under a different company name. It is not proof that you have no route there.&lt;/p&gt;
+&lt;p&gt;Sixgree has an optional company scan, marked experimental in the app. It is not needed to inspect an existing company view, and you should not use it just because a result is empty. Any automated scanning carries account risk; read &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;the scanning guide&lt;/a&gt; before deciding.&lt;/p&gt;
+&lt;h2 id=&quot;turn-the-search-into-one-useful-conversation&quot;&gt;Turn the search into one useful conversation&lt;/h2&gt;
+&lt;p&gt;Write down the person, the company, the possible bridge and what you still need to check. Confirm current employment on the person&apos;s profile before acting on older data. Then ask the person you know whether they are comfortable helping.&lt;/p&gt;
+&lt;p&gt;For example: “I&apos;m learning about the product team at this company. Do you still work with anyone there who might be open to a short conversation? No problem if not.”&lt;/p&gt;
+&lt;p&gt;That is a request for context, not a demand for a referral. The &lt;a href=&quot;/blog/network-warm-introduction/&quot;&gt;warm-introduction guide&lt;/a&gt; gives you templates for the next step.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/download/&quot;&gt;Download Sixgree&lt;/a&gt; to try the company and route views on the invented sample before bringing in your own network. Your local network is not uploaded to a Sixgree cloud account.&lt;/p&gt;
+&lt;p&gt;Sixgree is not affiliated with any networking platform.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-csv/</id>
+    <title>How to visualize your network from a CSV export</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-csv/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-05T00:00:00Z</updated>
+    <summary>Turn the official Connections.csv export into a private network map with Sixgree. Learn how to import it, explore your connections and understand what the export leaves out.</summary>
+    <content type="html">&lt;p&gt;You can visualize your network without scanning: download your official &lt;strong&gt;Connections.csv&lt;/strong&gt;, then import it into &lt;a href=&quot;/download/&quot;&gt;Sixgree&lt;/a&gt;. The file is read and kept on your computer. You get a map of your direct connections, not a complete map of everyone they know.&lt;/p&gt;
+&lt;p&gt;That distinction matters. A CSV is a useful starting point for understanding the people already in your network. It cannot reveal a second-degree introduction path that isn&apos;t in the file.&lt;/p&gt;
+&lt;h2 id=&quot;1-get-your-connections-export&quot;&gt;1. Get your connections export&lt;/h2&gt;
+&lt;p&gt;On the platform&apos;s website, open &lt;strong&gt;Me → Settings &amp;amp; Privacy → Data privacy&lt;/strong&gt;. Find &lt;strong&gt;Download your data&lt;/strong&gt;, sometimes labelled &lt;strong&gt;Get a copy of your data&lt;/strong&gt;. Request an archive that includes Connections, then use the platform&apos;s email to download it. Unzip the archive and find &lt;strong&gt;Connections.csv&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;The platform&apos;s own help pages explain the available categories and how to request the larger archive. Labels and available options can differ, so use those official instructions if your settings don&apos;t match.&lt;/p&gt;
+&lt;p&gt;The connections file can include names, profile URLs, companies, positions and connection dates. Missing email addresses do not mean the export failed: the platform only includes an address when the connection&apos;s privacy settings allow it.&lt;/p&gt;
+&lt;p&gt;Download the archive on a computer you trust. It contains other people&apos;s information as well as yours. You don&apos;t need to upload the archive to a website to make the map.&lt;/p&gt;
+&lt;h2 id=&quot;2-import-connectionscsv-into-sixgree&quot;&gt;2. Import Connections.csv into Sixgree&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&quot;/download/&quot;&gt;Download Sixgree&lt;/a&gt; and open it. Choose the CSV import during setup, or open the &lt;strong&gt;Import a CSV&lt;/strong&gt; screen. Drop &lt;strong&gt;Connections.csv&lt;/strong&gt; into the drop area, or choose the file from your computer.&lt;/p&gt;
+&lt;p&gt;Use the CSV itself, not the ZIP archive or an unrelated file from the archive. Sixgree looks for the connections header, including fields such as First Name, Last Name, URL, Company and Position. The explanatory lines the platform puts above the header are supported.&lt;/p&gt;
+&lt;p&gt;The importer reads the rows locally and turns them into the app&apos;s direct-network view. The import is kept on your computer so it remains available after closing the window. It is separate from a network collected by scanning. Importing the file does not sign you into the platform or start a scan.&lt;/p&gt;
+&lt;h2 id=&quot;3-read-the-map-not-just-the-dots&quot;&gt;3. Read the map, not just the dots&lt;/h2&gt;
+&lt;p&gt;Start with a question rather than trying to interpret the whole picture at once:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Who do I know at a particular company?&lt;/strong&gt; Look for the company or search for a person you remember working with.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Which roles are represented?&lt;/strong&gt; Inspect the positions in your export and the score breakdown on a person&apos;s card.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;What does my direct network look like?&lt;/strong&gt; Explore the layout, then return to individual cards for the details behind it.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sixgree&apos;s scores are estimates based on the app&apos;s model and the information available. They aren&apos;t a measure of a person&apos;s worth, relationship strength or willingness to help. An old job title in the export is still an old job title when it appears on a map.&lt;/p&gt;
+&lt;p&gt;If you want to learn the controls before importing anyone, choose the invented sample network instead. The &lt;a href=&quot;/blog/galaxy-physics-lab/&quot;&gt;physics-lab guide&lt;/a&gt; explains how layouts, dot sizes and forces change the picture.&lt;/p&gt;
+&lt;h2 id=&quot;what-a-network-csv-can-and-cannot-show&quot;&gt;What a network CSV can and cannot show&lt;/h2&gt;
+&lt;div class=&quot;table-wrap prose-table&quot;&gt;&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Question&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;What the connections export supports&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Who am I directly connected to?&lt;/th&gt;&lt;td&gt;The first-degree people listed in the file.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;What company or role is listed for them?&lt;/th&gt;&lt;td&gt;The fields present in that export, which may be incomplete or stale.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Who are their connections?&lt;/th&gt;&lt;td&gt;Not included in your Connections.csv.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Who can introduce me to a specific second-degree person?&lt;/th&gt;&lt;td&gt;Not established by the CSV alone.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;How strong is our relationship?&lt;/th&gt;&lt;td&gt;Not established by a connection record.&lt;/td&gt;&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
+&lt;p&gt;An empty second-degree view after a CSV import is a data boundary, not evidence that your network has no reach. The platform says its connections export covers first-degree connections. It does not include their connection lists.&lt;/p&gt;
+&lt;p&gt;For a clearer explanation of the steps between people, read &lt;a href=&quot;/blog/network-connection-degrees/&quot;&gt;Network connection degrees explained&lt;/a&gt;. If you choose to gather more data, Sixgree&apos;s optional scanner has a different workflow and real account risk. Read &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;the scanning guide&lt;/a&gt; before deciding; importing a CSV does not require it.&lt;/p&gt;
+&lt;h2 id=&quot;if-the-import-doesnt-work&quot;&gt;If the import doesn&apos;t work&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;The app cannot find the header.&lt;/strong&gt; Check that you selected Connections.csv. A file of invitations, contacts or messages is not the same format. Keep an untouched copy of the connections export rather than rebuilding it in a spreadsheet.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;The file has no connections.&lt;/strong&gt; Check its contents on your own computer and confirm the archive includes the Connections category. Follow the platform&apos;s official export instructions if it is missing.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Some information is missing.&lt;/strong&gt; Sixgree can&apos;t recover information the export doesn&apos;t contain. Missing emails are expected for some connections; absent companies and positions should not be treated as proof of a person&apos;s current employment.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;There are no second-degree routes.&lt;/strong&gt; That is expected with CSV-only data. To try those features without accessing the platform, switch to the invented sample.&lt;/p&gt;
+&lt;h2 id=&quot;keep-the-map-private-until-you-decide-to-share-it&quot;&gt;Keep the map private until you decide to share it&lt;/h2&gt;
+&lt;p&gt;Local-first means your imported network stays on your computer, not in a Sixgree cloud account. A screenshot you post is different: it can expose names, employers and connections. Review it before sharing and use Names Off when showing a real network publicly.&lt;/p&gt;
+&lt;p&gt;The &lt;a href=&quot;/blog/local-first/&quot;&gt;local-first guide&lt;/a&gt; explains storage, backups and what the app contacts. When you&apos;re ready, &lt;a href=&quot;/download/&quot;&gt;download Sixgree&lt;/a&gt; and begin with the sample or your official CSV.&lt;/p&gt;
+&lt;p&gt;Sixgree is not affiliated with any networking platform.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/network-connection-degrees/</id>
+    <title>Network connection degrees explained: first, second and third</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/network-connection-degrees/"/>
+    <published>2026-10-05T00:00:00Z</published>
+    <updated>2026-10-05T00:00:00Z</updated>
+    <summary>Understand first-, second- and third-degree connections, how introduction paths work, and what Sixgree can show from the network data you have.</summary>
+    <content type="html">&lt;p&gt;&lt;strong&gt;First-degree connections are people you&apos;re directly connected to. Second-degree connections are connected to your direct connections. Third-degree connections are connected to your second-degree connections.&lt;/strong&gt; The degree describes distance in a connection network, not how well you know someone or whether they&apos;ll introduce you.&lt;/p&gt;
+&lt;p&gt;The platform&apos;s own definitions of the degrees, in its help pages, are the starting point. Sixgree helps you explore the paths in the network data available on your computer. Those views serve different purposes: the platform supplies its labels; Sixgree makes observed routes easier to inspect.&lt;/p&gt;
+&lt;h2 id=&quot;first-degree-a-direct-connection&quot;&gt;First degree: a direct connection&lt;/h2&gt;
+&lt;p&gt;Think of a first-degree connection as one recorded step from you to another person. A connection invitation has been accepted. That says something about your network, but little about the relationship.&lt;/p&gt;
+&lt;p&gt;A former teammate, a recent conference contact and someone you barely remember may all carry the same first-degree label. Before asking for help, consider your actual relationship and when you last spoke.&lt;/p&gt;
+&lt;p&gt;Following is different. Following someone&apos;s posts does not, by itself, make them a direct connection. The platform&apos;s own help pages explain that distinction.&lt;/p&gt;
+&lt;h2 id=&quot;second-degree-one-possible-bridge&quot;&gt;Second degree: one possible bridge&lt;/h2&gt;
+&lt;p&gt;A second-degree person sits one connection beyond someone you know: &lt;strong&gt;you → a direct connection → them&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;That middle person is a possible bridge. There may be several bridges to the same person, which gives you a choice. The best person to ask is not automatically the most senior or the one with the largest circle. They need enough context to feel comfortable making the introduction.&lt;/p&gt;
+&lt;p&gt;Suppose an invented colleague knows an invented product leader you&apos;d like to meet. You have a possible route. You don&apos;t yet know whether they work together, have spoken recently or would welcome your request. A connection map cannot answer those human questions on its own.&lt;/p&gt;
+&lt;h2 id=&quot;third-degree-another-step-not-a-guaranteed-introduction&quot;&gt;Third degree: another step, not a guaranteed introduction&lt;/h2&gt;
+&lt;p&gt;A third-degree route adds one more connection: &lt;strong&gt;you → someone you know → someone they know → the person you want to meet&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;It is harder to act on because another person must understand and support the request. Rather than forwarding a vague request through a chain, start with the person you know. Explain who you&apos;d like to meet and why, then ask whether they can suggest a sensible next step.&lt;/p&gt;
+&lt;div class=&quot;table-wrap prose-table&quot;&gt;&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Degree&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Connection distance&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;What it does not establish&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;First&lt;/th&gt;&lt;td&gt;One step from you&lt;/td&gt;&lt;td&gt;That you know each other well.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Second&lt;/th&gt;&lt;td&gt;Through a direct connection&lt;/td&gt;&lt;td&gt;That the bridge will introduce you.&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Third&lt;/th&gt;&lt;td&gt;Through a second-degree connection&lt;/td&gt;&lt;td&gt;That every link is active or willing.&lt;/td&gt;&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
+&lt;p&gt;Degrees count steps. They do not count trust.&lt;/p&gt;
+&lt;h2 id=&quot;a-degree-label-is-not-a-complete-introduction-plan&quot;&gt;A degree label is not a complete introduction plan&lt;/h2&gt;
+&lt;p&gt;A profile&apos;s degree badge tells you a connection category. It doesn&apos;t tell you which route fits your purpose, whether a mutual connection remembers the person, or whether the information is current.&lt;/p&gt;
+&lt;p&gt;There are two separate questions:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Is a connection path visible in the data?&lt;/strong&gt; This is a network question.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Is this a good introduction to ask for?&lt;/strong&gt; This needs your judgment and the people involved.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Sixgree helps with the first. You still decide the second.&lt;/p&gt;
+&lt;h2 id=&quot;what-sixgree-can-show-depends-on-what-youve-brought-in&quot;&gt;What Sixgree can show depends on what you&apos;ve brought in&lt;/h2&gt;
+&lt;p&gt;With an official &lt;strong&gt;Connections.csv&lt;/strong&gt;, you can explore your direct connections. The file does not contain their connection lists, so it cannot establish second- or third-degree routes. The &lt;a href=&quot;/blog/network-csv/&quot;&gt;CSV visualization guide&lt;/a&gt; walks through that starting point.&lt;/p&gt;
+&lt;p&gt;With circle data collected by the optional scanner, Sixgree can show people beyond your direct connections and the connections through whom they were found. &lt;strong&gt;Separation&lt;/strong&gt; lets you inspect those people and their ways in. A connection&apos;s card can show their exclusive reach: people found only through that connection among the circles you&apos;ve mapped.&lt;/p&gt;
+&lt;p&gt;The app also supports exploring longer chains when the recorded links exist. It does not invent a chain to fill an empty degree. A missing route can mean missing data, not that the two people are disconnected on the platform.&lt;/p&gt;
+&lt;p&gt;This is why a route in Sixgree may differ from the platform&apos;s degree badge: the app only knows the graph you&apos;ve collected. Its shortest observed path is not proof of the shortest path across the platform&apos;s whole network.&lt;/p&gt;
+&lt;p&gt;Start with the &lt;a href=&quot;/docs/#get-started&quot;&gt;invented sample&lt;/a&gt; to explore these ideas without accessing your account. Scanning is optional and can put an account at risk; read &lt;a href=&quot;/blog/scanning-slowly/&quot;&gt;how scanning works&lt;/a&gt; before choosing it.&lt;/p&gt;
+&lt;h2 id=&quot;how-to-turn-a-possible-route-into-a-respectful-request&quot;&gt;How to turn a possible route into a respectful request&lt;/h2&gt;
+&lt;p&gt;Once you&apos;ve found a possible bridge, make it easy for them to judge the request:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Say why this person.&lt;/strong&gt; Give a specific professional reason, not just a title or employer.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Ask the bridge first.&lt;/strong&gt; Find out whether they know the person well enough to help.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Offer a short, forwardable explanation.&lt;/strong&gt; State who you are, why you want to talk and what you&apos;re asking for.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Leave room for no.&lt;/strong&gt; A map is not permission to use someone&apos;s relationship.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;An illustrative request could be: “I&apos;m researching how teams handle product onboarding. Do you know this person well enough to ask whether they&apos;d be open to a short conversation? No problem if not.”&lt;/p&gt;
+&lt;p&gt;If you have several ways in, compare your relationships with the bridges rather than treating a score as the answer. &lt;a href=&quot;/blog/who-can-introduce-you/&quot;&gt;Who can introduce you?&lt;/a&gt; explains the app&apos;s ways-in and exclusive-reach calculations in more detail.&lt;/p&gt;
+&lt;h2 id=&quot;does-six-degrees-mean-sixgree-maps-everyone&quot;&gt;Does six degrees mean Sixgree maps everyone?&lt;/h2&gt;
+&lt;p&gt;No. The name refers to the idea of short chains between people. It is not a promise that your local map contains everyone, that six steps always suffice, or that every path can become an introduction.&lt;/p&gt;
+&lt;p&gt;The useful question is smaller: &lt;strong&gt;what routes can I see, and which one would be reasonable to ask about?&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/download/&quot;&gt;Download Sixgree&lt;/a&gt; to explore the sample first. Your own network stays on your computer, with no Sixgree account or cloud upload. For the boundaries, read &lt;a href=&quot;/blog/local-first/&quot;&gt;the privacy guide&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Sixgree is not affiliated with any networking platform.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/galaxy-physics-lab/</id>
+    <title>Inside the Galaxy physics lab, and the replay of your network growing</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/galaxy-physics-lab/"/>
+    <published>2026-09-29T00:00:00Z</published>
+    <updated>2026-10-19T00:00:00Z</updated>
+    <summary>The Galaxy is a force simulation. The physics lab hands you its controls: what each slider does, the Clusters preset, colour by, find, and a replay of your network by the day you connected that you can save as a video.</summary>
+    <content type="html">&lt;p&gt;The Galaxy is the first thing Sixgree shows you: you in the middle, your connections on rings around you, the ones who can open the most doors closest in. It&apos;s drawn by a &lt;strong&gt;force simulation&lt;/strong&gt;, the same idea behind graph views in tools like Obsidian: every dot pushes the others away, lines pull connected dots together, and the picture settles where the forces balance.&lt;/p&gt;
+&lt;p&gt;The &lt;strong&gt;physics lab&lt;/strong&gt; hands you the controls. It&apos;s experimental, and it lives in the Galaxy&apos;s Filters panel, under &lt;em&gt;Physics&lt;/em&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;the-forces&quot;&gt;The forces&lt;/h2&gt;
+&lt;p&gt;Five sliders set how the Galaxy lays itself out, under the names Obsidian gives its graph&apos;s forces:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Center force&lt;/strong&gt; (0 to 3): a pull in towards you. Higher keeps the whole network a tighter, rounder disc.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Repel force&lt;/strong&gt; (0 to 300): how hard dots push each other apart, the space between clusters.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Link force&lt;/strong&gt; (0 to 15×): how tightly a line holds: your connections to you, a circle to its connection, and someone in several circles to each of them.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Link distance&lt;/strong&gt; (0.05 to 6×): how long the lines are: how far a circle sits from its connection, and your connections from you.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rings&lt;/strong&gt; (0 to 5×): how hard each tier holds its ring. At the default, S sits nearest and D furthest out. At &lt;strong&gt;0 the rings let go&lt;/strong&gt;, and the Galaxy finds its own shape.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;A sixth, &lt;strong&gt;Orbit&lt;/strong&gt;, sets the whole map slowly turning round you, every circle with it, so nothing loses its shape. At 0 it holds still.&lt;/p&gt;
+&lt;p&gt;Two more set the look: &lt;strong&gt;node size&lt;/strong&gt; and &lt;strong&gt;link thickness&lt;/strong&gt;. Dots can be sized by power score, by their lines, or by how many people hang off them, and names can show for the hubs, the S tier and catalysts only, or for all your connections. A &lt;em&gt;Names&lt;/em&gt; switch in Filters turns them off altogether.&lt;/p&gt;
+&lt;p&gt;Everything moves the Galaxy in place, and &lt;strong&gt;Reset to today&apos;s layout&lt;/strong&gt; puts it back.&lt;/p&gt;
+&lt;h2 id=&quot;clusters&quot;&gt;Clusters&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;Layout&lt;/em&gt; picks Rings, Orbit or &lt;strong&gt;Clusters&lt;/strong&gt;, the fastest way to see the lab do something. Clusters draws your network the way Obsidian draws a graph: it lets the rings go (Rings 0), sets Center force 0.8, Repel force 6, Link force 6× and Link distance 0.15×, and sizes dots by their lines. Each connection with a scanned circle becomes a big hub with their circle round them, anyone in two circles ties them together, and your network turns from rings into neighbourhoods.&lt;/p&gt;
+&lt;p&gt;Tick &lt;em&gt;Light up a branch on hover&lt;/em&gt; and hovering a dot lights up its &lt;strong&gt;branch&lt;/strong&gt;: everyone behind it, and the chain back to you. The rest dims.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/lab-clusters.jpg&quot; alt=&quot;The physics lab beside the Galaxy, laid out as Clusters, in an invented network&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Clusters, on an invented network.&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;colour-find-and-names&quot;&gt;Colour, find and names&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Colour by&lt;/strong&gt; repaints the Galaxy four ways, each with a legend:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tier&lt;/strong&gt;, the default, from S to D;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Heat&lt;/strong&gt;: power as a thermal map, the higher someone&apos;s score among the people showing, the hotter;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Degree&lt;/strong&gt;: your connections, the people they know, and anyone further out;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Company&lt;/strong&gt;: the eight most common companies in view, and everyone else in grey.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Find&lt;/strong&gt; takes a name, a company or a role from two letters. Everyone who matches lights up and the rest dim; Enter flies to the best match and opens their card.&lt;/p&gt;
+&lt;h2 id=&quot;the-replay&quot;&gt;The replay&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Replay&lt;/strong&gt; plays your network growing. Each connection appears on the day you connected, and their circle arrives with them. There&apos;s a time slider, a length of 5 seconds, 15 (the default), 30 or a minute, and &lt;em&gt;Loop&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;The replay needs &amp;quot;connected on&amp;quot; dates, which come from a scan or from the official connections export. The invented sample network has none, so there&apos;s nothing to replay until you bring your own network in.&lt;/p&gt;
+&lt;h2 id=&quot;saving-it&quot;&gt;Saving it&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Save a picture&lt;/strong&gt; makes a PNG of the Galaxy at twice its size on screen, with its legend.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Record the replay&lt;/strong&gt; saves it as a video: MP4 (H.264) where your computer&apos;s window supports it, otherwise WebM, at 12 frames a second. The button only appears where the window can record.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Saved layouts&lt;/strong&gt; keep a set of slider settings under a name, so a layout you like is one click away.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Beside &lt;em&gt;Save a picture&lt;/em&gt;, the lab reminds you that it shows real names, so check it before you post it. Nothing leaves your computer unless you share the file yourself.&lt;/p&gt;
+&lt;h2 id=&quot;why-a-physics-lab&quot;&gt;Why a physics lab?&lt;/h2&gt;
+&lt;p&gt;Because rings are a good first picture and a poor only picture. Letting the rings go shows who gathers people around them. Colouring by company shows where your network clusters. And the replay shows something no list can: how your network grew, and which chapters of your working life it came from.&lt;/p&gt;
+&lt;p&gt;The layout is covered by its own tests, run for every change.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/local-first/</id>
+    <title>Local-first: why Sixgree has no account, no server and no telemetry</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/local-first/"/>
+    <published>2026-09-29T00:00:00Z</published>
+    <updated>2026-10-19T00:00:00Z</updated>
+    <summary>Sixgree keeps your network in one folder on your own computer. What that means in practice, what the app contacts and when, and the protections that come with running on localhost.</summary>
+    <content type="html">&lt;p&gt;&lt;strong&gt;Scanning now comes as a plugin&lt;/strong&gt; from Settings → Plugins: Sixgree asks GitHub for the plugin list only when you browse plugins, and downloads one only when you install it. &lt;strong&gt;And it checks for updates once a day&lt;/strong&gt; (with plugins on, the plugin list too), which you can turn off in Settings → Updates.&lt;/p&gt;
+&lt;p&gt;A map of your network is a map of other people: their names, their jobs, who they know. That&apos;s a good reason not to send it anywhere. So Sixgree doesn&apos;t. There&apos;s no account to create, no server that holds your data, and no telemetry. The app, and everything it knows, runs on your own computer.&lt;/p&gt;
+&lt;p&gt;This post explains what that means in practice, and where the edges are.&lt;/p&gt;
+&lt;h2 id=&quot;one-folder&quot;&gt;One folder&lt;/h2&gt;
+&lt;p&gt;Everything Sixgree knows about your network lives in one hidden folder in your home folder, &lt;code&gt;.six-degrees&lt;/code&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;your network itself, in a single SQLite database file;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;backups/&lt;/code&gt;, your network with its photos, backed up once a day while the app is open, before each new version first opens it, and before an import or a restore, each one checked as it&apos;s made;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;avatars/&lt;/code&gt;, the profile photos a scan saved;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;chrome-profile/&lt;/code&gt;, the scanner&apos;s signed-in Chrome, if you scan;&lt;/li&gt;
+&lt;li&gt;small files for the scanner&apos;s budget, cooldown and progress.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Settings → Your data&lt;/strong&gt; shows where the folder is, what each part takes up, and the backups in it. Delete the folder and Sixgree knows nothing. A Connections.csv you import is kept there too, in &lt;code&gt;csv-network.json&lt;/code&gt;, apart from any network you scan, until you remove it.&lt;/p&gt;
+&lt;h2 id=&quot;what-the-app-contacts-and-when&quot;&gt;What the app contacts, and when&lt;/h2&gt;
+&lt;p&gt;The app goes online by itself for one thing only: once a day, to ask GitHub whether there&apos;s a newer version of it, or, with plugins on, of a plugin you installed. Otherwise it waits for you. The app contacts:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Your networking platform&lt;/strong&gt;, only while you scan, or when you press &lt;em&gt;Auto&lt;/em&gt; to send someone a connection request. Each profile photo is saved on your computer as the scan reads it, and the app shows photos only from there, so browsing your network never contacts the platform.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;GitHub&lt;/strong&gt;, once a day while the app is open, and when you click &lt;em&gt;Check for updates&lt;/em&gt;, to read the newest version number. A newer version shows up in your notifications. With plugins on and one installed, the daily check also reads the plugin list, and a newer version of a plugin shows up there too, to update from Settings → Plugins. In the Mac app, GitHub is also contacted when you then click &lt;em&gt;Install and restart&lt;/em&gt;, to download it. Nothing about you is sent: GitHub sees an ordinary request from your computer. To turn the daily check off, untick &lt;em&gt;Check for updates once a day&lt;/em&gt; in &lt;strong&gt;Settings → Updates&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;PyPI and GitHub&lt;/strong&gt;, only on Linux, once, when you click &lt;em&gt;Set up the scanner&lt;/em&gt;: for the scanner&apos;s Python packages and, if your computer has no Python it can use, a private copy of Python. Every file is checked against a checksum built into Sixgree.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;There is no telemetry, no analytics and no crash reporting. The web framework the app is built on has anonymous usage statistics of its own; they&apos;re switched off. The daily update check reads a version number and nothing else, and it never downloads anything by itself.&lt;/p&gt;
+&lt;h2 id=&quot;local-and-locked-to-your-computer&quot;&gt;Local, and locked to your computer&lt;/h2&gt;
+&lt;p&gt;The app is a small web server that listens only on your own computer, at &lt;code&gt;127.0.0.1&lt;/code&gt;, and opens in a window (or your browser, on Linux). Running on localhost brings its own risks, and the app guards against them:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Other websites can&apos;t drive it.&lt;/strong&gt; Any web page you visit can try to send requests to a local server. Sixgree refuses writes whose browser headers say they came from another site, including another port on your own computer, and answers requests addressed to any other hostname with an error, which blocks a trick called DNS rebinding.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;If it&apos;s ever exposed, the dangerous routes lock.&lt;/strong&gt; The ten routes that delete, replace or export your data, start the scanner or update the app need an &lt;code&gt;ADMIN_TOKEN&lt;/code&gt; whenever the server is bound to any address other than your own computer. Unset, they refuse every caller.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The full threat model is in &lt;a href=&quot;https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md&quot;&gt;SECURITY.md&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;moving-it-yourself&quot;&gt;Moving it yourself&lt;/h2&gt;
+&lt;p&gt;Because there&apos;s no account, there&apos;s no sync. To take your network to another computer, &lt;strong&gt;Settings → Your data → Export backup file…&lt;/strong&gt; makes one file that you move yourself. It&apos;s built from an allow-list: your network, your settings, the scanner&apos;s progress and its budget, and photos if you want them. Your sign-in to the platform never goes in.&lt;/p&gt;
+&lt;p&gt;The other computer treats the file as untrusted. It checks the database&apos;s integrity and its structure, and each file&apos;s SHA-256, before anything changes, and applies it the next time the app starts. What was there before goes into &lt;code&gt;backups/&lt;/code&gt;, and stays for at least 30 days.&lt;/p&gt;
+&lt;h2 id=&quot;updates-you-can-check&quot;&gt;Updates you can check&lt;/h2&gt;
+&lt;p&gt;When the Mac app updates itself, it checks the download against the release&apos;s published &lt;code&gt;SHA256SUMS&lt;/code&gt; file and verifies its code signature, bundle and version before putting it in place. If the new version won&apos;t open, the old one is put back. The one-line Terminal install does the same checksum check. Since 1.0.0 the Mac app is also signed by Blake Burford and notarized by Apple, which macOS checks when you open it.&lt;/p&gt;
+&lt;h2 id=&quot;open-so-you-can-check&quot;&gt;Open, so you can check&lt;/h2&gt;
+&lt;p&gt;None of this has to be taken on trust, and checking it takes no code: Sixgree has no account and no server of its own to send anything to, Settings → Your data shows the one folder your network lives in, and the sample and a CSV import work with your computer offline. That&apos;s the other half of local-first: a tool that reads your network should be one you can check.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/your-data.jpg&quot; alt=&quot;Settings, Your data: your network, profile photos, backups and the scanner&apos;s sign-in, all in one folder&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Settings → Your data.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/scanning-slowly/</id>
+    <title>Scanning slowly and safely: pacing, budgets and the honest risk</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/scanning-slowly/"/>
+    <published>2026-09-29T00:00:00Z</published>
+    <updated>2026-10-14T00:00:00Z</updated>
+    <summary>How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.</summary>
+    <content type="html">&lt;p&gt;&lt;strong&gt;Scanning now comes as a plugin:&lt;/strong&gt; install Auto scan or Manual scan from Settings → Plugins, and the Scan page this post describes appears.&lt;/p&gt;
+&lt;p&gt;Sixgree can show you who your connections know, but only if it can read their connection lists. The platform&apos;s own data export doesn&apos;t include them: it lists the people you&apos;re connected to, and nobody else. So the app has an optional &lt;strong&gt;scanner&lt;/strong&gt; that reads them from the platform, in a Chrome window you sign into yourself.&lt;/p&gt;
+&lt;p&gt;This post is about how that scanner behaves, and why. Start with the part that matters most.&lt;/p&gt;
+&lt;h2 id=&quot;the-risk-in-plain-words&quot;&gt;The risk, in plain words&lt;/h2&gt;
+&lt;blockquote&gt;&lt;p&gt;Automating access to the platform may break its User Agreement, and the platform can restrict accounts that do it. The scanner reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;Accounts have been restricted for this, and no amount of pacing makes the risk zero. That&apos;s why scanning is &lt;strong&gt;optional&lt;/strong&gt;, and why the two other ways in carry no risk at all:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The sample network&lt;/strong&gt;: 150 invented connections and the 598 people they know, built into the app, for trying every view.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The official connections export&lt;/strong&gt;: &lt;em&gt;Settings &amp;amp; Privacy → Data privacy → Get a copy of your data → Connections&lt;/em&gt;. It&apos;s read on your computer and shows the people you know, though not who they know.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If you do scan, everything below is there to keep it slow, easy to follow and easy to stop.&lt;/p&gt;
+&lt;h2 id=&quot;you-sign-in-not-the-app&quot;&gt;You sign in, not the app&lt;/h2&gt;
+&lt;p&gt;The scanner drives your own installed Google Chrome, with a profile of its own that the app keeps in its data folder. You sign into your account in that window yourself, once. The app never asks for, sees or stores your password. That signed-in profile is the one thing in the data folder that grants access to your account, so the app never puts it into a copy of your network, and the docs ask you never to sync or share it.&lt;/p&gt;
+&lt;h2 id=&quot;a-budget-not-a-race&quot;&gt;A budget, not a race&lt;/h2&gt;
+&lt;p&gt;Every page of someone&apos;s connections is a search on the platform, and every circle scan opens their profile once. The scanner counts both, against limits you set on the Scan page:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Searches&lt;/strong&gt;: 50 a day and 250 a month by default. The month follows the platform&apos;s own, from midnight Pacific time on the 1st.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Profile views&lt;/strong&gt;: 50 a day by default, and &lt;strong&gt;at least 60 seconds between any two&lt;/strong&gt;, even across separate scans. There&apos;s no &amp;quot;no limit&amp;quot; choice.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;When a budget is used, a scan saves what it read and stops. The next one carries on from the same page. Picking more than 100 searches a day, or no monthly cap, makes the page &lt;strong&gt;ask first&lt;/strong&gt;, and a note stays under the budget, with a button back to 50 and 250, for as long as it&apos;s that high.&lt;/p&gt;
+&lt;h2 id=&quot;slow-on-purpose&quot;&gt;Slow on purpose&lt;/h2&gt;
+&lt;p&gt;Between the budgets, the pacing is deliberately unhurried:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;20 seconds&lt;/strong&gt; before each page of results, and &lt;strong&gt;a minute more&lt;/strong&gt; after every 10 pages;&lt;/li&gt;
+&lt;li&gt;about &lt;strong&gt;two minutes&lt;/strong&gt; between one person&apos;s circle and the next;&lt;/li&gt;
+&lt;li&gt;so a long list can take &lt;strong&gt;around 55 minutes&lt;/strong&gt; for one person.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The waits are fixed. They&apos;re never randomised to look like a person: the scanner doesn&apos;t pretend to be anything it isn&apos;t. It reads each list to the end by default (or 10, 25 or 50 pages if you choose), saves every 10 pages, and a read that stops carries on from the same page next time. An &lt;strong&gt;In progress&lt;/strong&gt; list on the Scan page shows everyone whose scan stopped partway, with &lt;em&gt;Resume&lt;/em&gt; beside each and &lt;em&gt;Resume all&lt;/em&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;it-stops-at-the-first-push-back&quot;&gt;It stops at the first push-back&lt;/h2&gt;
+&lt;p&gt;The scanner reads what&apos;s on the page, and it stops the moment the platform pushes back: a page that won&apos;t open, an unusual-activity warning, restricted viewing, the search limit, a security check or a sign-in wall. It saves what it had read, and keeps a copy of what the page said in the data folder, so you can see exactly what happened.&lt;/p&gt;
+&lt;p&gt;Then a &lt;strong&gt;cooldown lock&lt;/strong&gt; blocks anything that searches, for a day, or until the 1st for the monthly limit. The Scan page shows when it lifts, and you can lift it early if you choose.&lt;/p&gt;
+&lt;p&gt;And a scanner that can&apos;t read its page says so. It never reports &amp;quot;you have no connections&amp;quot; because a page failed to load.&lt;/p&gt;
+&lt;h2 id=&quot;out-of-your-way&quot;&gt;Out of your way&lt;/h2&gt;
+&lt;p&gt;The scanner&apos;s Chrome works in the background. Once you&apos;ve signed in, its window stays out of sight (hidden, on a Mac), so it doesn&apos;t cover the app or keep your typing, and Chrome doesn&apos;t stop it to ask about saving a password, translating, notifications or restoring pages. It comes forward only when the platform needs you: to sign in again, or to finish a check it asks for, and the notch says so on every page while it waits. If you&apos;d rather watch it work, &lt;strong&gt;Show the scanner&apos;s Chrome window&lt;/strong&gt; in the Scan page&apos;s &lt;em&gt;Fine-tune&lt;/em&gt; keeps it in front.&lt;/p&gt;
+&lt;h2 id=&quot;what-its-doing-on-every-page&quot;&gt;What it&apos;s doing, on every page&lt;/h2&gt;
+&lt;p&gt;While a scan runs, the &lt;strong&gt;notch&lt;/strong&gt;, a small bar hanging under the header&apos;s tabs, says on every page what it&apos;s doing and how far it&apos;s got, and a dot collects along the header&apos;s line for each page read. Hover or click the notch to open it: who it&apos;s scanning, your searches over the last 24 hours against your budget, the latest line, and &lt;strong&gt;Stop&lt;/strong&gt;. Stop saves what was read, and &lt;em&gt;Resume&lt;/em&gt; on the Scan page carries on from that page.&lt;/p&gt;
+&lt;h2 id=&quot;the-one-thing-it-sends&quot;&gt;The one thing it sends&lt;/h2&gt;
+&lt;p&gt;The scanner reads. The one thing it sends is a connection request, without a note, and only when you press &lt;strong&gt;Auto&lt;/strong&gt; on someone: one press is one person, never a batch and never on a timer. Auto stops at 15 requests in any 24 hours and 80 in any 7 days, opens their profile once like a scan does, and waits while a scan runs.&lt;/p&gt;
+&lt;h2 id=&quot;the-experimental-parts&quot;&gt;The experimental parts&lt;/h2&gt;
+&lt;p&gt;One newer option is marked experimental on the Scan page, and off by default:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;All-day pacing (Auto-Bridge)&lt;/strong&gt;, with an &lt;strong&gt;Auto scan&lt;/strong&gt; button once it&apos;s ticked. Up to 8 pages in a sitting, then &lt;strong&gt;an hour&apos;s rest&lt;/strong&gt;; searches only between &lt;strong&gt;09:00 and 18:00&lt;/strong&gt; on your computer&apos;s clock; never more than 40 searches in a day or 200 in a week, however high your budget; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn&apos;t yet been tried on a live account, which is why it&apos;s labelled the way it is.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;There used to be a second, &lt;em&gt;Hide the Chrome window while scanning&lt;/em&gt;, which ran Chrome with no window at all. Every scan now runs out of sight in a real Chrome window instead, which comes forward when the platform needs you, so that option is gone.&lt;/p&gt;
+&lt;h2 id=&quot;why-go-to-this-trouble&quot;&gt;Why go to this trouble?&lt;/h2&gt;
+&lt;p&gt;Because the people your connections know are the most useful part of your network, and the one part no official export contains. The scanner exists to get that part, for your own use, on your own computer, as gently as possible, with the risk said out loud rather than buried.&lt;/p&gt;
+&lt;p&gt;Every change to the scanner is in the &lt;a href=&quot;/releases/&quot;&gt;release notes&lt;/a&gt;.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/scan-budget.jpg&quot; alt=&quot;The Scan page&apos;s budget: searches in the last 24 hours and this month, and profile views in the last 24 hours&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;The budget, on the Scan page.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/blog/who-can-introduce-you/</id>
+    <title>Who can introduce you? How Sixgree ranks your way in</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/blog/who-can-introduce-you/"/>
+    <published>2026-09-29T00:00:00Z</published>
+    <updated>2026-10-04T00:00:00Z</updated>
+    <summary>How Sixgree ranks everyone two steps away, counts every way in, and finds the people only one of your connections can reach, with the formulas, and the invented sample network as the example.</summary>
+    <content type="html">&lt;p&gt;The question Sixgree is built to answer is simple: &lt;strong&gt;who can introduce me?&lt;/strong&gt; Not &amp;quot;who do I know&amp;quot;, which a list of connections already tells you, but who your connections know, and which of them is the way to each person.&lt;/p&gt;
+&lt;p&gt;This post walks through how the app works that out: how it ranks the people two steps away, how it counts the ways in to each of them, and how it finds the people only one of your connections can reach. Every example comes from the sample network that ships with the app: 150 invented connections and the 598 invented people they know.&lt;/p&gt;
+&lt;h2 id=&quot;two-steps-away&quot;&gt;Two steps away&lt;/h2&gt;
+&lt;p&gt;Your 1st degree is the people you know. Your 2nd degree is the people &lt;em&gt;they&lt;/em&gt; know and you don&apos;t. Sixgree gets the 2nd degree from circle scans: when it reads one of your connection&apos;s own connections, each person on that list becomes someone you can reach through them.&lt;/p&gt;
+&lt;p&gt;A person can turn up in more than one circle. In the sample, the 14 scanned circles hold 723 rows, but only 598 different people, because some people are known by two or three of your connections. That difference is the whole point of the next section.&lt;/p&gt;
+&lt;h2 id=&quot;ways-in&quot;&gt;Ways in&lt;/h2&gt;
+&lt;p&gt;For each person two steps away, a &lt;strong&gt;way in&lt;/strong&gt; is one of your connections whose scanned circle contains them. The app matches people by their profile address (ignoring any query or trailing slash), so the same person found in three circles counts once, with three ways in.&lt;/p&gt;
+&lt;p&gt;In the sample network:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;503&lt;/strong&gt; of the 598 people have exactly one way in;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;65&lt;/strong&gt; have two;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;30&lt;/strong&gt; have three.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;So 84% of the sample&apos;s 2nd degree hangs on a single connection each. Real networks vary, but the pattern is common: most of the people you can reach, you can reach one way.&lt;/p&gt;
+&lt;h2 id=&quot;separation-the-ranked-list&quot;&gt;Separation: the ranked list&lt;/h2&gt;
+&lt;p&gt;The &lt;strong&gt;Separation&lt;/strong&gt; tab lists everyone two steps away. It ranks them by their own score first, the same power score every card shows (worked out from their title and their company), and then by how many ways in they have. Ties on both share a rank, shown as &amp;quot;#8=&amp;quot;, so no one is ranked above someone identical by accident.&lt;/p&gt;
+&lt;p&gt;Each row says who can introduce you, and how many others could. A slider reorders the list: 50, the default, is by power; slide towards 100 for the most mutual connections first, the list to work from when you want the warmest route rather than the most senior person, or towards 0 for the rarest ways in. It only reorders: scores, tiers and ranks stay as they are.&lt;/p&gt;
+&lt;p&gt;Beside each person&apos;s tier sits their &lt;strong&gt;rarity&lt;/strong&gt;: how many mutual connections lead to them. It uses the platform&apos;s own mutual count when a scan saved one, and the number of ways in otherwise, in five bands: &lt;em&gt;only way in&lt;/em&gt; (1), &lt;em&gt;rare&lt;/em&gt; (2 to 3), &lt;em&gt;uncommon&lt;/em&gt; (4 to 10), &lt;em&gt;common&lt;/em&gt; (11 to 30) and &lt;em&gt;warm&lt;/em&gt; (31 or more). Rarity never changes anyone&apos;s score; it just tells you how easy they are to reach.&lt;/p&gt;
+&lt;h2 id=&quot;who-only-they-can-reach&quot;&gt;Who only they can reach&lt;/h2&gt;
+&lt;p&gt;Now turn it around. Instead of asking &amp;quot;how do I reach this person?&amp;quot;, ask &amp;quot;what would I lose if I lost touch with this connection?&amp;quot;&lt;/p&gt;
+&lt;p&gt;For each of your connections with a scanned circle, Sixgree counts:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;total&lt;/strong&gt;: everyone in their circle who isn&apos;t already your connection;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;only&lt;/strong&gt;: the people in their circle &lt;em&gt;no other connection of yours reaches&lt;/em&gt;;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;reach&lt;/strong&gt;: their share of everyone, where a person with &lt;em&gt;k&lt;/em&gt; ways in counts 1 ÷ &lt;em&gt;k&lt;/em&gt; to each of those &lt;em&gt;k&lt;/em&gt; connections.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In the sample, the connection with the largest exclusive reach is Bodhi Pereira, a managing director at an invented company called Northwind Labs. Their circle holds 69 people, and &lt;strong&gt;51 of them, 74%, are reachable only through Bodhi&lt;/strong&gt;. The card says it plainly: &lt;em&gt;only through Bodhi&lt;/em&gt;. &lt;em&gt;Show them&lt;/em&gt; opens Separation filtered to exactly those 51.&lt;/p&gt;
+&lt;p&gt;The &lt;em&gt;reach&lt;/em&gt; number has a name in network research: it&apos;s &lt;strong&gt;ego betweenness&lt;/strong&gt; (Everett and Borgatti, 2005). On a network shaped like this one, you in the middle, your connections around you and their circles beyond them, it gives the same answer as Brandes&apos; betweenness centrality, in one pass over the data. The app ranks your connections by it: the &lt;em&gt;rank&lt;/em&gt; on a card&apos;s Insights panel is by reach, not the plain &amp;quot;only&amp;quot; count.&lt;/p&gt;
+&lt;h2 id=&quot;opening-the-same-doors&quot;&gt;Opening the same doors&lt;/h2&gt;
+&lt;p&gt;Two connections can reach mostly the same people. A card shows which of your other connections overlaps theirs most, measured as the share of either circle that both reach (the Jaccard index: both ÷ (their total + the other&apos;s total − both)). It only says so when the overlap is real: &lt;strong&gt;15% or more, and at least 3 people in common&lt;/strong&gt;. &amp;quot;Opens the same doors as…&amp;quot; is a hint that one introduction may do the job of two.&lt;/p&gt;
+&lt;h2 id=&quot;network-health&quot;&gt;Network health&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Network health&lt;/strong&gt;, under Insights on your profile (the round level button at the top right), puts it together for your whole network:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Reached two or more ways&lt;/strong&gt;: of everyone you reach through a circle, the share with more than one way in. It&apos;s 1 minus (the sum of every connection&apos;s &lt;em&gt;only&lt;/em&gt;, divided by the sum of every connection&apos;s &lt;em&gt;reach&lt;/em&gt;). In the sample it&apos;s &lt;strong&gt;16%&lt;/strong&gt;. Higher is safer: lose touch with one connection and those people are still reachable.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Effective reach&lt;/strong&gt;: Ronald Burt&apos;s &lt;em&gt;effective size&lt;/em&gt; of your own network, N − 2t ÷ N, where N is your connections and t the ties between them that circle scans have kept. It discounts connections who all know each other. The sample has no ties between its connections, so its effective reach is simply its 150.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Your five connections who reach the most people no one else does&lt;/strong&gt;, each with &lt;em&gt;Explore&lt;/em&gt; to open their circle.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;With fewer than five circles scanned, it says the numbers are an early estimate. And it never shows a percentile against other people: there&apos;s no one else&apos;s data to compare with, and that&apos;s by design.&lt;/p&gt;
+&lt;h2 id=&quot;what-the-numbers-are-not&quot;&gt;What the numbers are not&lt;/h2&gt;
+&lt;p&gt;A score in Sixgree estimates &lt;strong&gt;network position&lt;/strong&gt;, not what anyone is worth as a person. The app explains every score in Settings, under how scores work. If a number looks wrong to you, &lt;a href=&quot;https://github.com/blakeb056/six-degrees/issues&quot;&gt;open an issue&lt;/a&gt; and it&apos;ll be looked at.&lt;/p&gt;
+&lt;figure&gt;&lt;img src=&quot;/img/app/separation.jpg&quot; alt=&quot;Separation: everyone two steps away in an invented network, ranked, with who can introduce you&quot; loading=&quot;lazy&quot;&gt;&lt;figcaption&gt;Separation, on an invented network.&lt;/figcaption&gt;&lt;/figure&gt;</content>
+  </entry>
+</feed>

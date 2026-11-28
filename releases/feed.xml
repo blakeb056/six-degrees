@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>https://sixgree.com/releases/</id>
+  <title>Sixgree releases</title>
+  <subtitle>What each version added, changed and fixed.</subtitle>
+  <link rel="self" href="https://sixgree.com/releases/feed.xml"/>
+  <link rel="alternate" type="text/html" href="https://sixgree.com/releases/"/>
+  <updated>2026-11-27T00:00:00Z</updated>
+  <author><name>Blake Burford</name><uri>https://blakeburford.com/</uri></author>
+  <icon>https://sixgree.com/img/icon.svg</icon>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.10.4</id>
+    <title>Sixgree 2.10.4: Paths</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.10.4"/>
+    <published>2026-11-27T00:00:00Z</published>
+    <updated>2026-11-27T00:00:00Z</updated>
+    <summary>1 removed</summary>
+    <content type="html">&lt;p&gt;Paths is gone: Jobs shows who you know at a company, and the way in.&lt;/p&gt;
+&lt;h3&gt;Removed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Paths.&lt;/strong&gt; Its company bubbles answered the same question as Jobs, less clearly: who you know at a company, and how to get in. Jobs does that now, ranked by your best way in, with the one person to ask. A link or bookmark to Paths opens Jobs.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.10.3</id>
+    <title>Sixgree 2.10.3: An oldest supported version</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.10.3"/>
+    <published>2026-11-27T00:00:00Z</published>
+    <updated>2026-11-27T00:00:00Z</updated>
+    <summary>1 added</summary>
+    <content type="html">&lt;p&gt;Sixgree can now tell an out-of-date copy to update before it scans.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;An oldest supported version.&lt;/strong&gt; The daily update check also reads the oldest version still supported for scanning. A copy older than that stops scanning and says to update in Settings → Updates; everything else keeps working, and your network is never touched. It asks nothing about you, uses the same daily request as the update check, and is off when that check is off.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.10.2</id>
+    <title>Sixgree 2.10.2: The app carries only what it runs</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.10.2"/>
+    <published>2026-11-27T00:00:00Z</published>
+    <updated>2026-11-27T00:00:00Z</updated>
+    <summary>3 changed, 1 security</summary>
+    <content type="html">&lt;p&gt;The app and its scanner plugins no longer carry their code in readable form; security updates.&lt;/p&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The app carries only what it runs.&lt;/strong&gt; A download used to hold Sixgree&apos;s own code as written, notes and comments included. Now it holds only the compiled, minified app: nothing to read, and less to download.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Scanner plugins 1.1.0 come compiled.&lt;/strong&gt; Auto scan and Manual scan 1.1.0 carry the scanner as compiled Python instead of its source, for Sixgree 2.10.2 and later. They scan exactly as before; Settings → Plugins offers the update. An older Sixgree keeps the scanner it has.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Scanning from a copy without the app&apos;s own Python needs Python 3.11 to 3.14.&lt;/strong&gt; The app brings its own, so nothing changes there.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Security&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Updated Next.js, Electron and the scanner&apos;s image library.&lt;/strong&gt; Next.js 16.4.6, Electron 44.11.6, Pillow 13.0.0 and certifi 2026.11.20, each with published security fixes.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.10.1</id>
+    <title>Sixgree 2.10.1: Sixgree is free to use, and no longer open source</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.10.1"/>
+    <published>2026-11-26T00:00:00Z</published>
+    <updated>2026-11-26T00:00:00Z</updated>
+    <summary>1 changed, 1 fixed</summary>
+    <content type="html">&lt;p&gt;Sixgree is free to use and no longer open source; Jobs keeps everyone at a company however its name is written.&lt;/p&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree is free to use, and no longer open source.&lt;/strong&gt; From this version on, the code is private and Sixgree comes under its own licence: free to download and use, but not to copy, change, resell or take apart. Versions up to and including 2.10.0 stay under the MIT License for anyone who has them. Downloads, updates, the one-line install and sixgree.com work exactly as before. Sixgree is no longer published to npm: on Linux, use the .deb or .tar.gz.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Jobs no longer drops people when a company&apos;s name is written two ways.&lt;/strong&gt; &amp;quot;Acme Labs&amp;quot; and &amp;quot;acme labs&amp;quot; are one company, with everyone from both.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.10.0</id>
+    <title>Sixgree 2.10.0: Jobs counts who used to work there</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.10.0"/>
+    <published>2026-11-26T00:00:00Z</published>
+    <updated>2026-11-26T00:00:00Z</updated>
+    <summary>9 added, 2 changed, 2 fixed, 4 removed</summary>
+    <content type="html">&lt;p&gt;Jobs: where someone can refer you, counting who used to work there; a scanner step after import; exports without titles say so; Breach hidden for now.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Jobs counts who used to work there.&lt;/strong&gt; Someone who left a company can&apos;t refer you, but can introduce you to their old team, so former employees now count too: half as much as the same person there now, less the longer ago they left, by the role they held there. Their past jobs come from profiles a scan read (Dig deeper, with dates: &amp;quot;2019–2023&amp;quot;) or a headline&apos;s &amp;quot;Former PM at Acme&amp;quot; or &amp;quot;ex-Acme&amp;quot;. A company you&apos;d only reach through someone who left is listed too, marked &lt;em&gt;Former only&lt;/em&gt;, with &amp;quot;Ask Kai Moreno, who used to work there, for an introduction&amp;quot;. An open company lists &lt;em&gt;Work there now&lt;/em&gt; and &lt;em&gt;Used to work there&lt;/em&gt; side by side, with faces, as Breach does; the page now has the other tabs&apos; width and headings.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Jobs, a tab of its own: where someone can refer you.&lt;/strong&gt; Every company someone you know works at now, ranked by a referral score out of 100, with the one person to ask: &amp;quot;Ask Ada Quill for a referral&amp;quot;, or &amp;quot;Ask Leo Park to introduce you to Ada Quill&amp;quot; for someone you&apos;d reach through a connection. The score weighs how you know them, how close they sit to hiring, how strong the connection who&apos;d introduce you is, and whether their role was read from their profile or only from their headline; &lt;em&gt;How the score works&lt;/em&gt; says it in words. Add the companies you&apos;re applying to: they come first, and Open in Breach maps who works there.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;After an import, the setup asks you to install a scanner.&lt;/strong&gt; With no scanner yet, the import&apos;s result becomes &lt;em&gt;Now fill in your network&lt;/em&gt;: the Auto scan and Manual scan cards with Install as the main button, each card&apos;s risk in sight, and &lt;em&gt;Skip for now&lt;/em&gt; as a small link. Installing still shows what the plugin is before anything installs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A connections export with no job titles or companies says so.&lt;/strong&gt; From December 2026 the platform&apos;s export leaves them out. Such a file is still imported (names, profile links, the dates you connected), and the preview and the result say plainly that everyone gets the same score until a scan reads their headlines, and that an export from before December is better.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The learning log records how you use Sixgree, not only what you send.&lt;/strong&gt; Kept on this computer only and never sent anywhere, so later models and analysis have real data to work from:&lt;ul&gt;
+&lt;li&gt;your sessions (open, close, active time, version, plugins, class, look, window size);&lt;/li&gt;
+&lt;li&gt;each tab and sub-tab, how long it was shown and what led there (the header, the notch, a link or a card);&lt;/li&gt;
+&lt;li&gt;filters, the Tiers switch, shapes, sorts, Map views, Show ties and searches. A search for a person keeps only its length, never the name; company and sector searches keep their words;&lt;/li&gt;
+&lt;li&gt;a circle&apos;s focus (click or hold, how long, how deep) and Bridge Chains&apos; dives;&lt;/li&gt;
+&lt;li&gt;cards opened and for how long, profiles opened, Connect, and pauses of 1.5 s or more on a dot;&lt;/li&gt;
+&lt;li&gt;Separation&apos;s and Breach&apos;s sections folded, shown and seen;&lt;/li&gt;
+&lt;li&gt;every This or That duel shown as well as answered, and how the class list is browsed;&lt;/li&gt;
+&lt;li&gt;each scan&apos;s start, every page with its pace, breaks taken or cut short, limits, stops and errors;&lt;/li&gt;
+&lt;li&gt;the LinkedIn panel&apos;s sections, the time spent in each, and Back and Forward;&lt;/li&gt;
+&lt;li&gt;every setting you change;&lt;/li&gt;
+&lt;li&gt;errors, slow frames on Network Circle and failed requests, with nothing personal in them.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Every kind of event is documented&lt;/strong&gt; in &lt;code&gt;docs/brain/LEARNING-LOG.md&lt;/code&gt;, with its fields and when it fires, and the tests check that each one has something firing it.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Record my behaviour (local only)&lt;/strong&gt; in Settings → Your data, on by default. Off, only your requests and how they went are kept, which the models need.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Your data shows counts per kind,&lt;/strong&gt; and the log exports as JSON or as a CSV per kind (a zip).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Readers for analysis:&lt;/strong&gt; session summaries, the funnel from card to accepted, time per tab, and This or That calibration (&lt;code&gt;GET /api/learning?sessions=1&lt;/code&gt;, &lt;code&gt;funnel=1&lt;/code&gt;, &lt;code&gt;dwell=1&lt;/code&gt;, &lt;code&gt;duels=1&lt;/code&gt;).&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Breach is hidden for now; Jobs takes its place.&lt;/strong&gt; The tab, its tour step, hint and how-to are gone, and Jobs is in the tour instead. Breach&apos;s page and code stay (Jobs reads a company the way Breach does), so it can come back. In Jobs, &lt;em&gt;I&apos;m applying here&lt;/em&gt; puts a company at the top.&lt;/li&gt;
+&lt;li&gt;The pages&apos; events go in batches every few seconds and as the window closes, with repeats and floods dropped (and counted), so logging never slows the app.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A connection with no position or company in the export no longer has their name read as a headline&lt;/strong&gt;, where a first name such as Dean or Major could score as a job title.&lt;/li&gt;
+&lt;li&gt;The learning log&apos;s size in Settings left out every event that has no dedupe key.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Removed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Messages &amp;amp; follow-ups is gone.&lt;/strong&gt; Its page (&lt;code&gt;/social&lt;/code&gt;) and its CRM (stages, tags, notes and follow-up dates), the reader for your own data export, the Profile&apos;s card for it, the Scan page&apos;s once-a-day messages sync and the scanner&apos;s messages mode (&lt;code&gt;--messages&lt;/code&gt;) are removed.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;What read from it went too.&lt;/strong&gt; The Galaxy&apos;s &lt;em&gt;Warmth&lt;/em&gt; colouring, and the job starts and posts marked along the replay&apos;s timeline. A layout saved coloured by Warmth opens coloured by tier.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The Social option in Export backup file.&lt;/strong&gt; A copy never carries those files now. A backup file exported before this still restores: its Social files are left out, not refused.&lt;/li&gt;
+&lt;li&gt;Nothing is deleted: the &lt;code&gt;social-&lt;/code&gt;, &lt;code&gt;social-messages-&lt;/code&gt; and &lt;code&gt;crm-&lt;/code&gt; files it kept in your data folder stay where they are.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.9.0</id>
+    <title>Sixgree 2.9.0: Classes</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.9.0"/>
+    <published>2026-10-19T00:00:00Z</published>
+    <updated>2026-10-19T00:00:00Z</updated>
+    <summary>9 added, 9 changed, 8 fixed</summary>
+    <content type="html">&lt;p&gt;Classes: pick your journey and Sixgree scores everyone for it, a learning log from day one, scan windows of 60 pages, Bridge Chains you can dive into, and Outlink retired.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Classes.&lt;/strong&gt; Pick a class for what you&apos;re after: Poacher (sales), Founder, Seeker (investors), Grower (your local circle), Cartographer (your network&apos;s structure) or Infiltrator (a job). Your class ranks the same network its own way, as a second lens: every person gets a class tier beside their network tier (&amp;quot;Class S · Network A&amp;quot;), and your network tiers stay exactly as they were. Each class card flips to show what it would find in your own network.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Name your target.&lt;/strong&gt; One question per class: who you sell to and where, what you&apos;re building, what kind of capital, where you grow, or where you want to work (which also becomes your Breach targets), with an optional line about you.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;This or That.&lt;/strong&gt; About 16 quick duels, two cards side by side: pick the one you&apos;d rather have, or say both are great, or neither. Each class asks its own questions: the Grower about sectors and kinds of people, the others about positions, seniority and companies. Cards mix real titles from your network with made-up ones where yours has no good example, and never show a name or a photo. The pairs are chosen to learn the most from each answer, it stops when your answers are enough, and keys work too (left, right, up for both, down for neither, space to skip, Z to undo). It runs while your first scan reads, where the field question was, and still sets your field when you hadn&apos;t picked one.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Never show me.&lt;/strong&gt; Students, recruiters, sectors or companies you&apos;d rather not see ranked: Less pushes them down, Never takes them off every class list.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Your build.&lt;/strong&gt; What your answers weigh, as five bars (sector, role, place, company, reach), your new top 5 to say &amp;quot;more like this&amp;quot; or &amp;quot;not this one&amp;quot; to, and how many people moved into class S.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The Class tab.&lt;/strong&gt; Your class, your build, the people it ranks highest (with Ask), and a map of class worth against network worth: act first, destinations, bridges, background.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Settings → Class.&lt;/strong&gt; Switch class any time. Each class keeps its own answers, so switching back brings its scoring back exactly; a class with none asks its questions. Retune or retake one class without touching the others. Networks from before classes are offered the pick once.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The learning log.&lt;/strong&gt; Sixgree now keeps a record, on this computer only, of who was shown where, what you opened, sent and skipped, how each request went (when it was sent and accepted, and how warm: within a day very warm, 3 days warm, 14 days cool, later cold), each scan&apos;s yield, your This or That answers and LinkedIn&apos;s load by the hour, so later versions can learn what works for you. Settings → Your data shows its size, exports it as JSON, and deletes it. It is never sent anywhere.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The send log.&lt;/strong&gt; Every connection request now records when it was sent, how (a Connect, Auto or the LinkedIn panel), the person as known then, and every attempt, and an accept records the day it happened.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A send earns a token 1 XP&lt;/strong&gt;, whoever it&apos;s to. Paying more for S-tier sends pushed toward sending and scanning more; accepted requests still carry the XP.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The places file can carry each city&apos;s time zone&lt;/strong&gt; (&lt;code&gt;scripts/build-places.mjs&lt;/code&gt; keeps GeoNames&apos; zone column), for best-time-to-send later. The shipped file gains zones when it&apos;s next rebuilt.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Tier rings, and no dotted lines.&lt;/strong&gt; Degrees → Unscanned was one giant disc of dots; it now rings everyone by tier round you: S (gold) nearest and biggest, then A, B and C, D furthest out, small and muted, with a gap and a letter for each tier and names under S and A once they fit. Bridge Chains&apos; dive, its focus on a circle seen outside the scan only, and a circle built in Unscanned once it settles all use the same rings and dots. Your line to a circle stops at its edge instead of running dotted across it, and in Bridge Chains someone seen outside the scan is a lighter dot, not a dashed one.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Scan windows replace the daily search limit.&lt;/strong&gt; Every search page counts in a window, by hand or automatic, your connections, Breach and Read all mutuals alike: at most 60 search pages a window, at most two windows a day, and a new window only 6 hours after the last one began, so 120 a day at most. Profile pages don&apos;t count in it. A scan stops when the window is used, saves what it read and says when the next window opens. The Scan page, the notch and the scan light show &amp;quot;Window 1 of 2: 34 of 60&amp;quot; and when the next window opens.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The windows are settings that only get stricter.&lt;/strong&gt; Pages a window, windows a day and hours between windows are in Scanner settings, with 60, 2 and 6 as both the defaults and the most. Lifting the limits for a session and Dev mode put them back to those and never past them; Dev mode&apos;s old ceiling of 250 a day is gone. The breaks by hand and the speeds are as they were.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Profile views a day&lt;/strong&gt; is the old daily number, now for profile views only (50 by default). Lifting the limits still takes it and the cooldown off for the session.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Outlink is gone.&lt;/strong&gt; Its tab, the Circles game, the To add and Pending lists, Open All and Open Top 10, the Profile&apos;s Queue Progress card and the old &lt;code&gt;/api/queue&lt;/code&gt; route are removed. Separation does the same job. Requests you marked sent stay marked everywhere.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Who they can introduce.&lt;/strong&gt; On the Map and on a connection&apos;s card, the button that opened Outlink now shows Separation filtered to that connection&apos;s circle. The Map&apos;s chain card&apos;s &lt;em&gt;Ask X for an intro&lt;/em&gt; opens X&apos;s profile, in Sixgree&apos;s own browser where it can.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Messages &amp;amp; follow-ups is a page of its own again&lt;/strong&gt; (&lt;code&gt;/social&lt;/code&gt;), under the same header as every page, with no tab: your Profile has a card for it, and the Scan page&apos;s daily messages sync links to it.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A company scan no longer moves everyone&apos;s tiers.&lt;/strong&gt; The curve&apos;s S and A cut-offs counted the people a company scan found, so one Breach scan of a big company shifted your whole network. They now come from your own connections only.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A company scan no longer lifts an unknown company&apos;s score.&lt;/strong&gt; Its people counted toward the company&apos;s headcount in your network, raising it from 5 to 6. Only your 1st and 2nd degree count now.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Bridge Chains goes one level deeper.&lt;/strong&gt; In a bridge&apos;s focus, click the person in the middle, or scroll or pinch in, and their circle opens full size: unblurred, filling the view, in tier rings, the chains round it faded away. Hover anyone for who they are, click for their card, drag and scroll to zoom. Back, Esc or scrolling out comes back to the focus, then to the overview, and scrolling in over a bridge opens its focus, so it is one zoom all the way in. Network Circle&apos;s focus is unchanged.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;No more search pages read for nothing.&lt;/strong&gt; A scan saves each page as it&apos;s read, so Stop loses nothing read (it saved every 10 pages, and up to nine read pages were lost and read again). An automatic round that reaches pages an earlier run read ends there, and the next round opens the first page not read yet instead of clicking through them again.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Finished lists start again only when you ask.&lt;/strong&gt; Your connections, a Breach company and Read all mutuals no longer go back to page 1 by themselves once every page is read (up to 100 more search pages for your connections): their button says &lt;em&gt;Read again from page 1&lt;/em&gt; then.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Every page you load by hand counts.&lt;/strong&gt; Previous, going back to a page already read, a reload and the address bar were not counted, and now are, so the window and LinkedIn usage are true.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Auto scan&apos;s LinkedIn data no longer breaks a page.&lt;/strong&gt; When LinkedIn&apos;s own data gave the list&apos;s total, the page failed after it was counted and its people weren&apos;t saved; two in a row set a six-hour pause.&lt;/li&gt;
+&lt;li&gt;The scanner plugins are 1.0.12.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.8.0</id>
+    <title>Sixgree 2.8.0: The mutual web</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.8.0"/>
+    <published>2026-10-17T00:00:00Z</published>
+    <updated>2026-10-17T00:00:00Z</updated>
+    <summary>7 added, 8 changed, 1 fixed</summary>
+    <content type="html">&lt;p&gt;The mutual web, new Map views, focus on Bridge Chains, a cleaner Separation, a replay that shows every dot, and a Network Circle that stays smooth at ten thousand.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The mutual web.&lt;/strong&gt; Every mutual line Sixgree already reads (&amp;quot;Maya Chen, Leo Park &amp;amp; 103 other mutual connections&amp;quot;) is now kept as ties: that person was seen with Maya, and with Leo. They come from every card a scan reads (a circle, your connections, a company for Breach) and from any profile you have open in Sixgree&apos;s LinkedIn browser, its mutual line read where it already shows. Nothing is opened just to collect them. A tie seen again counts up, with the date it was last seen. A tie means seen together, never close.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Past the 1,000.&lt;/strong&gt; Someone seen with one of your connections is reachable through them, even when that connection&apos;s circle scan stopped at LinkedIn&apos;s 1,000 or was never run. They show as &amp;quot;seen outside the scan&amp;quot;, lighter and with a dashed ring, in Network Circle, Bridge Chains&apos; focus, Separation (marked on the way in) and Breach. They are never counted as scanned, and a circle with only them in it still offers Scan their circle.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Known through.&lt;/strong&gt; A person&apos;s card, and each dot in the focus, says how you know them: &amp;quot;Known through: Maya Chen, Leo Park (seen together 3 times, last on Oct 16, 2026)&amp;quot;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Show ties.&lt;/strong&gt; A switch under Network Circle, in Bridge Chains and in the focus draws thin lines between people who were seen together, for the person or circle in hand only, never the whole web at once.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Warm doors in Breach.&lt;/strong&gt; A door whose mutual line named one of your connections says who to ask (&amp;quot;Ask Maya Chen&amp;quot;), counts that as a mutual, and comes first.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Read all mutuals.&lt;/strong&gt; On Breach&apos;s Summit and on your S and A tier connections, a button reads the &amp;quot;N other mutual connections&amp;quot; list in full, in rounds of 5 pages, by itself or by hand, with the same breaks, daily limit and push-back as a circle scan. Each person on it becomes a tie. It only ever runs when you press it.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Settings → Your data&lt;/strong&gt; says how big the web is, as what was seen (&amp;quot;1,240 ties from 3,100 cards, 12 profiles and circle scans&amp;quot;), never as if it were complete.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The replay shows your network growing one person at a time.&lt;/strong&gt; It used to run the calendar in a straight line, so most people arrived in the last few seconds, a scanned circle landed all in one frame, and a recording showed little but the end. Now it plays on a stage of its own over Network Circle, paced by people rather than dates: each one arrives on their own, in the order you connected, your connections dashing out from you along their line and each circle springing out round the person it came through, with S and A named as they arrive. A busy day (a conference, a scanned circle) is slowed down and a quiet year passes in under a second, so no one is skipped. Speeds from 0.25x to 4x, a timeline you can drag that shows the busy stretches, the years, and your job starts and posts, and the options: each person or each circle (a bubble beside its bridge that grows as its people arrive), tier or degree colours, the whole map or a camera that follows whoever is arriving, names on or off, and Loop. Wheel, drag or pinch to look around. A recording is the same replay at the speed you set, a frame for every step, so the video shows each person arriving; it saves on this computer. It stays smooth with 15,000 people on the map, in every look, Daylight included, and fits a phone. Saved pictures and videos are named by this computer&apos;s date, not tomorrow&apos;s after 8 pm.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Network Circle stays smooth at ten thousand dots, and filters apply without starting over.&lt;/strong&gt; Tapping a tier or degree chip, the Tiers switch, or anything in Filters used to throw the whole layout away and lay it out again from the middle, 30 to 45 seconds of a busy map at 13,000 people. Now everyone already on the map keeps their place, newcomers start beside whoever they came through, and the map settles in about a second; hiding a tier and showing it again puts everyone back exactly where they were. Coming back to the tab, reopening Sixgree, or switching Rings to Degrees and back starts from the layout you left, kept in this browser only. While a big map does settle, each frame writes only the dots and lines that moved enough to see and none off screen, so it settles faster and smoother; a quick run of taps is drawn once, after the last. The look, the forces and the settled shape are the same as before. Filters also groups its controls under On the map, shows how many of everyone are showing, says how many people are at each degree, and has &lt;strong&gt;Reset filters&lt;/strong&gt;, which brings back every tier at the degrees the tab opens with and leaves the Tiers switch as it is.&lt;/li&gt;
+&lt;li&gt;The scanner plugins are 1.0.11.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The Map&apos;s views: Heat, Flows and Hubs, from one tidy card.&lt;/strong&gt; The finder, a switch between four views and the legend for the one showing now share one card, with Declutter and From you folded under it. &lt;em&gt;Heat&lt;/em&gt; is a smooth density surface of everyone, tier S, S and A, or one degree, with a legend and its densest place a click away. &lt;em&gt;Flows&lt;/em&gt; draws the busiest 20, 40 or 80 routes from your connections to where the people in their circles live, as thick as how many, a dash running the way each goes; a route lists who carries it, each with &lt;em&gt;Their reach&lt;/em&gt; and &lt;em&gt;Ask for an intro&lt;/em&gt;. &lt;em&gt;Hubs&lt;/em&gt; ranks places by reach (the people there plus everyone your connections there can introduce you to), rings the top ten as wide as their reach, and lists them in &lt;em&gt;Top places&lt;/em&gt;, each a click from the map flying there. The view is remembered in this browser.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The chain to someone, on the Map.&lt;/strong&gt; While a person&apos;s card is open, the map draws you, then each person along their chain (the one Network Circle draws), numbered at their places, with a card to step along it, fit it on screen, and ask the right connection for an intro.&lt;/li&gt;
+&lt;li&gt;The Map&apos;s dots are a little smaller at the whole-world view, its legends and buttons take the look&apos;s own colours, and a view fades in unless the system asks for less motion. Heat is a view now, not a box to tick under the options.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Separation, in tiers.&lt;/strong&gt; The people to connect with are in sections, S to D, each with a header in its tier&apos;s colour, how many it holds, its scores and a fold. The tier chips show and hide whole sections, more than one at a time; inside a section the order is the list&apos;s own (rank, or the slider&apos;s). Each person is a card that reads You → your connection → them, the connection in their own tier&apos;s colour whatever the chips show, with one clear next step: Connect, which opens their profile and marks the request sent, or, once asked, a plain &amp;quot;✓ Request sent&amp;quot; in its place, and View profile beside it, both in Sixgree&apos;s own browser where they can. No colour stands for two things any more (gold is S&apos;s alone, Path is no longer C&apos;s green), words read on Daylight, the search box keeps clear of the side buttons, and on a phone the chips wrap instead of scrolling sideways.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Bridge Chains opens the same focus as Network Circle.&lt;/strong&gt; Click a bridge, or rest the pointer on it for 3.5 seconds (a ring fills round it as you wait), and the overview eases in on it and softly blurs while its circle comes forward sharp, with every catalyst&apos;s circle chained outward, rings by degree counted along the chain. A bridge you met through another&apos;s circle shows the trail to it under the circle, and a press on any step before it brings that one&apos;s circle forward. With nothing scanned you see just them and Scan their circle. Esc, Back, a click outside, or scrolling or pinching out eases you back, and their card opens as it does in Network Circle. It replaces the hover preview and the circle opened in place on a click; links to someone&apos;s circle open the focus too. Both views share one implementation, so they look and move the same, in every look, Daylight included, and at any width.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Opening someone&apos;s card from the Map&apos;s finder no longer leaves the map showing open sea: the map narrows for the card, and the flight to their place is aimed again at the new size.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.7.0</id>
+    <title>Sixgree 2.7.0: Circle scans in rounds</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.7.0"/>
+    <published>2026-10-16T00:00:00Z</published>
+    <updated>2026-10-16T00:00:00Z</updated>
+    <summary>3 added, 2 changed, 7 fixed</summary>
+    <content type="html">&lt;p&gt;Scan in rounds of 25 pages, a tour and Help, and a slider for breaks.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Circle scans in rounds.&lt;/strong&gt; Scanning one person&apos;s circle now reads one round of their list, 25 pages (about 250 people) by default or 50, the most, set under Scanner settings → Pages a round. Each round carries on where the last one stopped, automatically or by hand, so the 100 pages LinkedIn shows of anyone&apos;s list take 4 rounds, or 2. Never-scanned people start at page 1; Rescan from the start reads a round from page 1 again. The person card, the Scan page and the In progress list say &amp;quot;Round 2 of 4&amp;quot; and offer Scan next round. Breach&apos;s company rounds are as they were.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rounds round the dot.&lt;/strong&gt; In Network Circle, each bridge&apos;s dot has a quiet ring of 4 arcs (2 with rounds of 50) in the look&apos;s own colours, filling as their list is read: pages read out of their page total, which is their connection count divided by 10 when it&apos;s known (100 at most), else 100. Only on your connections who have a circle, or could have one scanned.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Break length by hand.&lt;/strong&gt; Scanner settings → Breaks by hand has a slider for how long each break is, 5 to 120 seconds. It starts at the scan speed&apos;s length (5, 10 or 30 seconds), moving it sets your own, and Use pace default goes back to the speed&apos;s. The scanner follows it at the next break, even mid-scan.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Lift limits for this session keeps a ceiling.&lt;/strong&gt; Lifted, scans still stop at 250 search pages in 24 hours, Dev mode&apos;s ceiling; before, the lift had no ceiling at all. The Scan page, LinkedIn usage and the notch say so, with how many are left.&lt;/li&gt;
+&lt;li&gt;The scanner plugins are 1.0.10.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Network Circle&apos;s degree chips count what the map draws.&lt;/strong&gt; The chips under the map, and the Filters grid, counted the degree each person was saved at, so they could read &amp;quot;3rd 0&amp;quot; beside dots in the 3rd&apos;s colour. They now count, and show or hide, the degree each person is drawn at along the chain, the 4th to the 6th included, and picking Degrees or the fan turns them all on.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;An in-app update no longer stops at &amp;quot;ENOENT … mkdtemp&amp;quot;.&lt;/strong&gt; If the temporary folder Sixgree was started with has been deleted since, the update makes it again, or works in /tmp (or the data folder) instead, and the app it reopens is no longer handed that folder.&lt;/li&gt;
+&lt;li&gt;When there&apos;s no scanner, buttons now say to install the Auto scan or Manual scan plugin, not that &amp;quot;the scanner files are missing from this install&amp;quot;.&lt;/li&gt;
+&lt;li&gt;Signing in, or a security check, in Sixgree&apos;s own browser no longer tells you to use &amp;quot;the Chrome window&amp;quot;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A short tour at the start.&lt;/strong&gt; Once the guided setup is done, the map offers a minute&apos;s tour: a film first (a marked slot for now, for a later release to fill), then a step for each place, with a ring round the real tab or button: Network Circle and its tiers, focusing on someone&apos;s circle, Degrees and Bridge Chains, Separation, Outlink, the Map, Breach, Scan with its breaks, and the LinkedIn tab when its plugin is on. Back, Next, Skip tour and Esc. It&apos;s offered once, never while a scan runs, and only has the steps for the tabs you have.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Settings → Help.&lt;/strong&gt; Replay the tour, a switch for hints, short how-tos that each link to the place they&apos;re about, what scanning&apos;s pace and limits mean (LinkedIn can restrict an account: slow is safer, never a guarantee), the keyboard shortcuts (⌘[ and ⌘] in the LinkedIn panel, Esc, ⌘. and ⌘,), and where your data lives.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Hints.&lt;/strong&gt; A small card the first times you open a place, one at a time, until you press Got it: &amp;quot;Hold the pointer on one of your connections for 3.5 s… to focus on their circle&amp;quot;, &amp;quot;Breach: start with Doors&amp;quot;, and one for each tab. Never during a scan, never over the tour. Settings → Help turns them all off, or brings back the ones you dismissed. Remembered on this computer, in this window only.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.6.0</id>
+    <title>Sixgree 2.6.0: Breach, a tab of its own</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.6.0"/>
+    <published>2026-10-16T00:00:00Z</published>
+    <updated>2026-10-16T00:00:00Z</updated>
+    <summary>4 added, 2 changed, 3 fixed</summary>
+    <content type="html">&lt;p&gt;Breach a company, focus on anyone in your circle, and the LinkedIn panel closes itself when an invitation is sent.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Breach, a tab of its own.&lt;/strong&gt; Pick a company you have no way into, and Breach shows how far in you are: the company as an orb, its people on seniority rings with the top seats at the top, a line into the orb for each of your connections inside, and a breach meter (&amp;quot;Breach 62 · highest seat VP Sales&amp;quot;) with milestones for the first door, director, VP and C-suite. The score is graded: mapping the company counts a little, and each person inside counts by their seat, a VP a big jump and C-suite or a founder the most. Companies only for now.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Doors, Climb and Summit.&lt;/strong&gt; People there are sorted into the likeliest to accept (a mutual, a lower seat, recruiters, your city or school), middle managers, and the top seats, and they move up a band as their mutual counts rise on rescans. This week&apos;s doors suggests 10 requests a week, each opened for you to press Connect yourself; nothing is ever sent for you.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Mapping a company through LinkedIn&apos;s people search for its name&lt;/strong&gt;, with the 1st, 2nd and 3rd+ filters, by itself or by hand, in small rounds of 3, 5 or 10 pages that carry on where the last one stopped, with the same daily limit, breaks and push-back as a circle scan. The tab says a company is mapped over days. It marks who works there now, from their headline, apart from alumni and people who only mention it. The scanner plugins are 1.0.9.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Companies side by side&lt;/strong&gt;: which are open, which are cold, and where a door is waiting unused, from what&apos;s already saved. Acceptances come from Check for new and the requests you marked sent.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Connect on a profile sends you back.&lt;/strong&gt; In Sixgree&apos;s own browser, once LinkedIn says &amp;quot;Invitation sent&amp;quot; on a profile you opened from the app, the request is marked sent, the panel closes so you&apos;re back in Outlink, Separation or Bridge Chains, and &amp;quot;Request sent to&amp;quot; their name shows for a moment. Only on the profile you opened, once per profile, and never during a scan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Breaks by hand lock at once.&lt;/strong&gt; The break&apos;s lock is now ready before the page that starts it: that page opens under the cover from its first paint, is read under it, and the next page can&apos;t load however fast you click Next. A wheel over the cover still scrolls the page. The scanner plugins are 1.0.8.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Someone a company scan found who accepts your request now becomes one of your connections on the next Check for new, keeping their company and the request, instead of staying unconnected.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Focus on one of your connections in Network Circle.&lt;/strong&gt; Click one of your connections, or rest the pointer on their dot for 3.5 seconds (a ring fills round it as you wait), and the map eases in on them while the rest of it softly blurs and dims. If anything round them is scanned, their circle comes forward sharp, with every catalyst&apos;s circle (someone in it whose own circle is scanned) fanned out behind them, so the whole chain reads: you, them, their people, the catalyst&apos;s people. Tier colours, hover cards and clicking through to a card all work inside it. With nothing scanned, the blur is lighter and you see just them and a Scan their circle button (the same scan as their card&apos;s). Esc, Back, a click outside, or scrolling or pinching out eases you back. Their card still opens as before. With Reduce Motion it cross-fades instead of zooming, and it works in every look, Daylight included.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Separation&apos;s tier filter picks only the people to connect with.&lt;/strong&gt; Every connection who leads to them, and everyone in between, shows whatever their tier, and Gatekeepers lists all your connections.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.5.2</id>
+    <title>Sixgree 2.5.2: Breaks by hand follow the scan speed</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.5.2"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>1 changed, 1 fixed</summary>
+    <content type="html">&lt;p&gt;Every degree chains in Network Circle, and breaks by hand follow your pace.&lt;/p&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Breaks by hand follow the scan speed.&lt;/strong&gt; The break after every 10 pages read by hand is now as long as the Scan page&apos;s speed says: 30 seconds at Slow, 10 at Medium (and when no speed is saved), 5 at Fast. The break-length slider is hidden for now; its saved setting and range are kept for an adjuster to come. Everything else about breaks is as it was. The scanner plugins are 1.0.7.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Every degree chains on the Network Circle.&lt;/strong&gt; A circle scanned from someone you met through one of your connections now hangs off that person, at every step: you, then your connection, then the person you met through them, then their circle, and on to the 6th. Each dot has its line and pull to whoever they came through, by the same rules as the 2nd degree, sits in its own degree&apos;s band and colour in Degrees and the Wi-Fi fan, and hovering or picking someone lights the whole chain back to you. A bridge hidden by a filter, or filed under another row, no longer cuts their circle loose.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.5.1</id>
+    <title>Sixgree 2.5.1: Back and Forward in Sixgree&apos;s own browser</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.5.1"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>1 added, 5 changed, 2 fixed</summary>
+    <content type="html">&lt;p&gt;Rings by degree in Bridge Chains, one Tiers switch, instant profile opens, and Back and Forward in Sixgree&apos;s own browser.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Back and Forward in Sixgree&apos;s own browser.&lt;/strong&gt; The bar over LinkedIn in the desktop app now starts with Back and Forward: the map&apos;s round blue and yellow buttons (Filters&apos; blue for Back, Details&apos; gold for Forward), the same look, sized for the bar. Each is greyed out where there is nowhere to go, and both wait while a scan is using the page. Cmd+[ and Cmd+] (Ctrl+[ and Ctrl+] on Windows and Linux) do the same.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Bridge Chains: a ring for each degree.&lt;/strong&gt; A circle scanned from someone you met through another circle used to be drawn only inside that circle, once opened. Now the overview keeps your own bridges on the first ring, as before, and puts each cluster further along a chain on the next ring out: a circle scanned from a 2nd-degree person (3rd-degree people) on ring 2, theirs on ring 3, and so on to the 6th degree. Each sits at its parent&apos;s angle, just outside it, siblings fanned either side, with a faint line back to the cluster it came from and the ring named for its degree. Hover any of them for the preview, click to open the circle with its whole chain in the trail, and the degree dots at the bottom count the people on each ring. With no chained scans the overview looks as it always has.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Network Circle: one switch for tiers or degrees.&lt;/strong&gt; The chips under the map are the filter in every shape: with Tiers on, a chip for each tier, S to D, in the tiers&apos; colours; with Tiers off, a chip for each degree, coloured by degree, and the whole map goes by degree. The Wi-Fi fan and Degrees draw a bar for each tier, or each degree with Tiers off. Colour by Degree is gone from the Physics panel, since the Tiers switch says it.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Filters is a popover&lt;/strong&gt; beside its button, over the map&apos;s corner. It no longer pushes the map over like a side panel, and a click anywhere else or Esc closes it.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Connect opens the profile at once&lt;/strong&gt;, exactly like View profile. In 2.5.0, Connect on a person card (Separation, the map, Outlink) started a scanner job that checked your sign-in on the feed and waited out the gap between profile views, so it could take two or three minutes and showed the feed meanwhile. Now every profile link in the app goes straight to the profile in Sixgree&apos;s own browser, and you connect by hand. It still counts as one of the day&apos;s profile views and is still written down, by the app in the background, so it never waits for a scan or slows anything. Connect still marks the request as sent. While a scan is using Sixgree&apos;s browser, a profile opens in your own browser instead, so the scan keeps its place.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The LinkedIn browser plugin is the LinkedIn tab alone&lt;/strong&gt; (1.0.1). The LinkedIn button at the top right of the header and the people list beside the browser are gone; the tab&apos;s Feed, Messaging, Notifications and Jobs, now with Back and Forward, are the way in. Its description and README say so.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The degree chips under the map did the opposite of what they showed.&lt;/strong&gt; A chip lit whenever any tier showed that degree, but a tap turned it on for every tier, so tapping a lit 2nd with one tier off at the 2nd put more people on the map instead of taking them off. Chips and the grid now share one rule (&lt;code&gt;lib/tier-grid.js&lt;/code&gt; &lt;code&gt;degreeOn&lt;/code&gt;), and a degree with nobody at it is never lit.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Settings → Plugins → Browse no longer flickers to older versions.&lt;/strong&gt; It showed the plugins as shipped, then replaced them with the online list even when that list was older (a cache served the list from before a release for minutes after it). Now each plugin shows the newer version of the two, and a plugin either list has is never dropped.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.5.0</id>
+    <title>Sixgree 2.5.0: The LinkedIn browser plugin</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.5.0"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>5 added, 5 changed</summary>
+    <content type="html">&lt;p&gt;Browse LinkedIn inside Sixgree with your network beside it, breaks every 10 pages by hand, and lines on the Map.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The LinkedIn browser plugin&lt;/strong&gt; (&lt;code&gt;linkedin-browser&lt;/code&gt;, 1.0.0; the desktop app). A &lt;strong&gt;LinkedIn&lt;/strong&gt; button at the top right of the header, beside the bell and Settings, opens LinkedIn inside Sixgree&apos;s own browser for your own browsing: scroll, click, search and message as you would anywhere. Beside it on the right is Sixgree&apos;s people list: find people in your network by name, company or place, with their card; open their profile in the panel in one click; and on anyone&apos;s profile, see what Sixgree already knows about them (degree, tier, location, mutuals, who connects you) or that they aren&apos;t in your network data. Browsing isn&apos;t a scan and isn&apos;t counted; a profile opened from the list goes through Outlink, so it is one of the day&apos;s profile views and is written down. The button shows only with the plugin installed and plugins on, never while a scan is using the browser, and not outside the desktop app.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A LinkedIn tab&lt;/strong&gt; (with the same plugin, in the desktop app): its buttons in the notch, Feed, Messaging, Notifications and Jobs, open Sixgree&apos;s own browser straight on that part of LinkedIn, live, under the header and the notch. Gone elsewhere from there, the bar offers &lt;em&gt;Back to Feed&lt;/em&gt; (or whichever it was). It is your own browsing, so nothing is read or counted. The whole website, with the people list, stays the header&apos;s LinkedIn button.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Feature plugins.&lt;/strong&gt; A new kind of plugin, &lt;code&gt;&amp;quot;feature&amp;quot;&lt;/code&gt;, whose package is a manifest and a README with no code: the feature is part of Sixgree and shows only while its plugin is installed, sound and switched on, the way the scan screens show only with a scanner plugin. The LinkedIn browser is the first. &lt;code&gt;npm run build:plugins&lt;/code&gt; builds it beside the scanners, at its own version.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Breaks by hand&lt;/strong&gt; (manual mode; the scanner plugins, 1.0.6). After every 10 pages you read by hand, the next page waits 20 seconds. The window holds it: a clear layer over LinkedIn&apos;s page takes the clicks on Next and the page numbers, with the countdown on it, and a page asked for any other way waits until the break is over. A quiet tick plays each second, at the chimes&apos; volume (off with them), and the scan light shows the break in yellow, counting down (&amp;quot;Break: 14 s, then page 21&amp;quot;). Both numbers are in Scanner settings, under How circle scans run: every 1 to 25 pages, for 10 to 300 seconds. Pages read seconds apart are what LinkedIn notices. Automatic scans keep their own pace, unchanged.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Map: lines, filters and a finder&lt;/strong&gt; (Blake, 2026-10-15). Pick a place and lines run back to the connections who reach the 2nd-degree people there, as thick as how many each reaches; its list names them, each with &lt;em&gt;Ask for an intro&lt;/em&gt; (Outlink, filtered to their circle). Pick one of your connections (&lt;em&gt;Reach&lt;/em&gt; in a place&apos;s list, the new finder, or the button that shows while their card is open) and lines run from where they are to everywhere their circle lives; a line&apos;s end lists who&apos;s there. &lt;em&gt;From you&lt;/em&gt;, off to start, draws faint lines from home to your connections&apos; places. Lines follow great circles and draw in, unless the system asks for less motion, and only for what&apos;s picked. The finder takes a person, a company or a place; Enter keeps the words as a filter on names, companies and headlines. Filters show as chips you clear one by one, with &lt;em&gt;Clear all&lt;/em&gt;. &lt;em&gt;Declutter&lt;/em&gt; hides places with fewer than N people, or fewer than N of tier S or A. The top of the map counts who is located (&lt;em&gt;676 of 748 located&lt;/em&gt;), the densest places glow, and &lt;em&gt;Heat&lt;/em&gt; shades where the network is thickest. All offline, in both dark and light looks. Docs: &lt;code&gt;docs/PLACES.md&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree&apos;s own browser identifies as plain Chrome.&lt;/strong&gt; Its user agent is now the one Electron gives it with the &lt;code&gt;Sixgree/x&lt;/code&gt; and &lt;code&gt;Electron/x&lt;/code&gt; tokens taken out, worked out from the real one at each start, so the Chrome version is always the one running. Only the panel&apos;s session gets it; the app&apos;s own pages keep the default. Nothing else is changed: no client hints, no &lt;code&gt;navigator.webdriver&lt;/code&gt;, no fingerprint.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Nothing of Sixgree&apos;s is hidden under the LinkedIn panel.&lt;/strong&gt; The bell&apos;s list, the scan light&apos;s briefing, the notch opened, Auto scan&apos;s panel and the notes under the header&apos;s buttons now open in full over it: while one is open, the panel is swapped for a still picture of itself and comes back when it closes. The panel starts below the whole header, its tabs and the notch at any window width and zoom, measured again as they change; the thin LinkedIn bar keeps beside or under the notch, never over a tab; and a banner along the bottom stays in sight. Choosing a page or a tab puts the panel away, so the page you chose is what you see.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Every profile link opens in Sixgree&apos;s own browser&lt;/strong&gt; where it can, not only Outlink&apos;s: the person card&apos;s &lt;em&gt;View profile&lt;/em&gt; and &lt;em&gt;Connect&lt;/em&gt; (so connecting from Separation stays inside Sixgree), Paths&apos; &lt;em&gt;Add&lt;/em&gt;, Insights&apos; &lt;em&gt;Ask&lt;/em&gt;, Outlink&apos;s lists and the Messages card. Each is one of the day&apos;s profile views, recorded as Outlink&apos;s are; without the panel, or with a scanner plugin before 1.0.5, they open your browser as before.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Opening several profiles at once steps through them.&lt;/strong&gt; Outlink&apos;s &lt;em&gt;Open All&lt;/em&gt;, &lt;em&gt;Open All S&lt;/em&gt; and &lt;em&gt;Open Top 10&lt;/em&gt; open the first in Sixgree&apos;s own browser, then one at a time from &lt;em&gt;Next profile (N left)&lt;/em&gt; in its bar, each counted, instead of a burst of tabs. Without the panel they open the page of links in your browser, as before.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The scanner plugins are 1.0.6&lt;/strong&gt;: the breaks by hand, and a page&apos;s &amp;quot;found&amp;quot; count is the people it lists, by hand or automatic. A page of 10 people used to say &amp;quot;24 found&amp;quot;, counting the names in their mutual lines; those names are still saved, as before. Driving Sixgree&apos;s own panel, manual mode&apos;s first line says &amp;quot;in the LinkedIn panel&amp;quot; instead of the Chrome window.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.4.0</id>
+    <title>Sixgree 2.4.0: Sixgree&apos;s own browser: LinkedIn inside Sixgree&apos;s window</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.4.0"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>2 added, 1 changed</summary>
+    <content type="html">&lt;p&gt;LinkedIn inside Sixgree: scans and Outlink use a panel in Sixgree&apos;s own window instead of a separate Chrome.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree&apos;s own browser: LinkedIn inside Sixgree&apos;s window&lt;/strong&gt; (the desktop app, with a scanner plugin installed; the scanner plugins, 1.0.5). LinkedIn shows in a panel under the app&apos;s top bar, so the tabs, the notch and the scan light stay in sight, and scanning drives that panel instead of opening a Chrome window. It stays out of sight until it&apos;s needed: signing in, a security check or a manual read bring it forward by themselves, and a thin bar over it says what LinkedIn is doing there, with &lt;em&gt;Back to Sixgree&lt;/em&gt;. Hiding it never stops a scan; &lt;em&gt;Show LinkedIn&lt;/em&gt; brings it back while one runs. It has its own sign-in, so you sign in to LinkedIn once more, inside Sixgree; its pages are LinkedIn&apos;s alone, and any other link opens in your own browser. LinkedIn sees Sixgree&apos;s browser (Electron&apos;s own Chromium, its usual user agent), not Google Chrome. If the panel can&apos;t be reached, the scanner says so in one line and opens Chrome as before; &lt;code&gt;SIX_DEGREES_PANEL=0&lt;/code&gt; turns it off. The npm package and a plain browser keep the scanner&apos;s own Chrome.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Outlink opens profiles inside Sixgree.&lt;/strong&gt; In the desktop app with the panel, &lt;em&gt;Open profile&lt;/em&gt; and &lt;em&gt;Profile&lt;/em&gt; on Outlink open the profile in Sixgree&apos;s own browser instead of your browser. The scanner only takes it there and clicks nothing on it; you act. Each one is one of the day&apos;s profile views, counted against the daily limit like the views a scan makes, and Sixgree writes down which profile and when (&lt;code&gt;outlink-opened.json&lt;/code&gt; in the data folder). Without the panel, or with a scanner plugin before 1.0.5, Outlink opens your browser as before.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The scanner plugins are 1.0.5&lt;/strong&gt;: they can drive Sixgree&apos;s own browser and open Outlink&apos;s profiles there. Chrome is still what they use everywhere else.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.3.0</id>
+    <title>Sixgree 2.3.0: Locations and mutuals for your own connections</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.3.0"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>1 added, 1 changed</summary>
+    <content type="html">&lt;p&gt;Your own connections get their locations and mutual counts, and the Map knows about 34,000 cities.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Locations and mutuals for your own connections&lt;/strong&gt; (the scanner plugins, 1.0.4). Your connections list never shows where anyone is, but LinkedIn&apos;s search of them (&lt;em&gt;Search with filters&lt;/em&gt; on the connections page) does, along with how many mutual connections you share. The Scan page&apos;s &lt;em&gt;Your connections&lt;/em&gt; has &lt;em&gt;Add locations and mutuals&lt;/em&gt;, which reads that search the way a circle scan reads someone&apos;s list: by itself or by hand, as chosen in Scanner settings, with the same chimes and scan light by hand. Each page is a search counted in your daily limit, so about 100 pages for 1,000 connections spreads over days; it saves as it goes and carries on where it stopped. Everyone already saved gets their location and mutual count filled in, never clearing one already read, and anyone not saved yet is added. LinkedIn&apos;s search shows 1,000 people at most; a larger network is read that far. An older scanner plugin is asked to update first.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The Map knows about 34,000 cities, not 300.&lt;/strong&gt; Its list of places now comes from GeoNames (every city of 15,000 people or more, with its region and country), so far more people land on their own city instead of their region&apos;s middle. It still works entirely on your computer. The Map credits GeoNames at its bottom right.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.2.0</id>
+    <title>Sixgree 2.2.0: The Map tab: your network on a world map</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.2.0"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>2 added, 1 fixed</summary>
+    <content type="html">&lt;p&gt;The Map tab shows where your network is, and every scan now keeps where people are and their follower counts.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The Map tab: your network on a world map.&lt;/strong&gt; A new tab beside Network Circle, Degrees and Separation puts everyone on a map by where their profile says they are: one dot per place, sized by how many people are there and split, like a pie, by the mix of their tiers or their degrees. Zoom and pan; click a place for who&apos;s there (name, title, tier, degree) and a person for their card. The Filters panel picks tiers and degrees, as on Network Circle. It reads &amp;quot;City, Region, Country&amp;quot;, the usual metro forms (&amp;quot;Greater Seattle Area&amp;quot;, &amp;quot;London Area, United Kingdom&amp;quot;, &amp;quot;San Francisco Bay Area&amp;quot;) and a country alone, which sits at the country&apos;s middle, marked approximate. Anything it can&apos;t place is counted and listed at the bottom left, never guessed, beside how many people have no location yet. It all works offline: the world map and the list of places ship with the app (their sources and credits are in docs/PLACES.md), and nothing is looked up online. The sample network&apos;s invented people have invented places, so the tab shows something there too.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Where people are, and their follower counts, from every scan&lt;/strong&gt; (the scanner plugins, 1.0.3). Each card in a list shows where someone is (&amp;quot;Seattle, Washington, United States&amp;quot;) and often their followers (&amp;quot;3,766 followers&amp;quot;), and a scan now keeps both instead of throwing them away: in a circle&apos;s list, scanning by hand or by itself, in a company&apos;s people, and in your own connections when their cards show them. With &lt;em&gt;Dig deeper&lt;/em&gt; on, the profile&apos;s own top card says where they are too. Only a line that reads as a place is kept, never the headline, the mutual line or the follower count, and a scan that shows none never clears one already read. The person card shows where they are under their headline, and the Map tab places it. A follower count from a list counts in their score the way a profile&apos;s does, until &lt;em&gt;Dig deeper&lt;/em&gt; reads their profile, whose count then wins. A network file can say where someone is (&lt;code&gt;location&lt;/code&gt;); a Connections export has no locations, so an import of one leaves them empty.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The npm package is back in step.&lt;/strong&gt; 2.1.0 didn&apos;t reach npm: its check found the scanner&apos;s code swept into the package by the build, and stopped it. The package now leaves it out, as the apps do, so &lt;code&gt;npx sixgree&lt;/code&gt; gets 2.2.0.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.1.0</id>
+    <title>Sixgree 2.1.0: The scan light</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.1.0"/>
+    <published>2026-10-15T00:00:00Z</published>
+    <updated>2026-10-15T00:00:00Z</updated>
+    <summary>2 added, 1 changed, 2 fixed</summary>
+    <content type="html">&lt;p&gt;A scan light that tells you what a scan needs, update notices for the app and its plugins, and scans by hand that remember every page they read.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The scan light.&lt;/strong&gt; While a scan runs, a small light at the top right says what it needs from you, without the chimes: green to click Next, yellow while it reads or waits for you to scroll, red to wait for a page to load, go back, or because it has stopped. Each colour has its own shape and words too. Click it for the instruction in large type with whose list and which page; for a scan that runs by itself, a briefing of whose circle, page N of about M, people found, their ring&apos;s fill, today&apos;s searches, about how long is left, and Stop.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree tells you when there&apos;s a new version.&lt;/strong&gt; Once a day, while it&apos;s open, it asks GitHub for the newest release&apos;s version number: one request, the same one &lt;em&gt;Check for updates&lt;/em&gt; makes, with nothing about you in it (GitHub sees an ordinary request from your computer). When there&apos;s a newer version, a notification says so, once per version, and the ⚙ button gets a small dot. Opening either takes you to Settings → Updates and checks, where &lt;em&gt;Install and restart&lt;/em&gt; updates the app, or, where it can&apos;t update itself, it says what to do instead. Nothing is ever downloaded until you choose to update. With plugins on and one installed, the same daily check also reads the plugin list, and a newer version of an installed plugin gets a notification of its own (&amp;quot;Auto scan 1.0.1 is out&amp;quot;), once per version, which opens Settings → Plugins. It&apos;s on to begin with: untick &lt;em&gt;Check for updates once a day&lt;/em&gt; in Settings → Updates to turn it off, and it asks only when you press &lt;em&gt;Check for updates&lt;/em&gt;. Offline, it says nothing and tries again the next day.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Scanning by hand says each change the moment it happens&lt;/strong&gt; (the scanner plugins, 1.0.1): on a new page after Next, a page still loading, back on their list, and their Experience showing, scrolled past or back, so the scan light follows you at once instead of seconds later.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A circle scan that opens a page ahead no longer loses the pages you read&lt;/strong&gt; (the scanner plugins, 1.0.2). Started from page 1, the platform could open someone&apos;s list on page 2; by hand, every page after it was read but page 1 never was, so the card and the ring round their dot still said page 1, with nothing read. Now a scan from page 1 that opens on page 2 says to click Previous back to page 1 first (and the scan light turns red: &lt;em&gt;Go back to page 1&lt;/em&gt;), and one that runs by itself goes back a page on its own, as a resumed scan already did. Every page read is remembered, not only the ones read in order from the start: read page 1 later and the scan carries on from page 15, not page 2. The card says what is read (&amp;quot;Pages 2–14 read; page 1 still to read&amp;quot;), and the ring counts every page read. &lt;em&gt;Scan&lt;/em&gt; and &lt;em&gt;Rescan from the start&lt;/em&gt; still read every page again, to find anyone new.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A newer plugin shows its Update button.&lt;/strong&gt; Settings → Plugins could keep showing an installed plugin as &lt;em&gt;Installed&lt;/em&gt; after a newer version was out, with no way to look again but leaving the page. With plugins on, Browse reads the plugin list when it comes into view and on the new &lt;em&gt;Check for plugin updates&lt;/em&gt; button (&amp;quot;Checked just now; all up to date&amp;quot;, or how many updates); an older installed plugin shows &lt;em&gt;Update&lt;/em&gt; in its card, which asks from which version to which before anything installs, then says &amp;quot;Updated to 1.0.1 ✓&amp;quot;.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v2.0.0</id>
+    <title>Sixgree 2.0.0: Settings → Plugins</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v2.0.0"/>
+    <published>2026-10-14T00:00:00Z</published>
+    <updated>2026-10-14T00:00:00Z</updated>
+    <summary>7 added, 11 changed, 6 fixed, 1 security</summary>
+    <content type="html">&lt;p&gt;Sixgree no longer includes a scanner. It maps the Connections.csv you export, and scanning, if you want it, comes from the Auto scan or Manual scan plugin in Settings → Plugins. Everything you&apos;ve mapped stays.&lt;/p&gt;
+&lt;h3&gt;Added&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Settings → Plugins.&lt;/strong&gt; An &lt;em&gt;Enable plugins&lt;/em&gt; switch, off until you turn it on, then &lt;em&gt;Browse&lt;/em&gt;, on or off: the available plugins as cards, each with what it does, its risk and its version, and one-click &lt;em&gt;Install&lt;/em&gt;, &lt;em&gt;Installed&lt;/em&gt; or &lt;em&gt;Update&lt;/em&gt; when a newer version is out. With plugins off, &lt;em&gt;Install&lt;/em&gt; turns them on, and says so before anything installs. Then, with plugins on, the plugins installed on this computer, each with Uninstall, and a closed &lt;em&gt;Advanced&lt;/em&gt; with &lt;em&gt;Install from a file&lt;/em&gt; (&lt;code&gt;.sgplugin&lt;/code&gt;) and &lt;em&gt;Install from a link&lt;/em&gt;. An install from a card happens in that card: a bar while it downloads, then its name, version, what it does, any risk it carries and where it came from, and nothing goes in without your yes; a bar while it installs, then &lt;em&gt;Installed&lt;/em&gt;, or what went wrong. Every package is checked first: its files must match the checksums it lists, one from the plugin list must match the list&apos;s own checksum, and one made for another version of Sixgree is refused. A scanner plugin, once installed, is what scans run. Off, every plugin stays installed and none is used.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The scan screens follow the scanner plugins.&lt;/strong&gt; Scan, Auto scan and &lt;em&gt;Check for new&lt;/em&gt; show only with a scanner. &lt;em&gt;Auto scan&lt;/em&gt; unlocks the automatic features and Dev mode, &lt;em&gt;Manual scan&lt;/em&gt; unlocks manual mode and its chimes, and with only the manual one circle scans are always manual.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Other ways to bring in your network, in the guided setup.&lt;/strong&gt; Under the CSV import, a titled section with both scanners&apos; cards in sight at once, each with its risk, and &lt;em&gt;Install&lt;/em&gt;, which turns plugins on. The CSV stays the main way in, and nothing in the setup waits for it.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree never goes online for plugins by itself.&lt;/strong&gt; The cards come from a copy of the plugin list that ships with the app. The live list is fetched only when you open Settings → Plugins with plugins on, press &lt;em&gt;Try again&lt;/em&gt;, or press a card&apos;s &lt;em&gt;Install&lt;/em&gt;, and a package is downloaded only when you press &lt;em&gt;Install&lt;/em&gt;; where the live list differs, it wins. Both are https only, capped in size and time, and send no cookies. When the list can&apos;t be had, it says so and offers &lt;em&gt;Try again&lt;/em&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Circle scans by hand.&lt;/strong&gt; Scanner settings starts with &lt;em&gt;How circle scans run&lt;/em&gt;, one choice of two: &lt;em&gt;Automatic&lt;/em&gt;, where the scanner turns the pages and Auto scan can run in the background, or &lt;em&gt;By hand&lt;/em&gt;. Never both: By hand, Auto scan isn&apos;t offered and can&apos;t start. A choice whose plugin isn&apos;t installed says which to install, and with only one installed it&apos;s chosen and locked. By hand, a circle scan opens the scanner&apos;s Chrome in front of you at the person&apos;s list, and nothing on the page moves unless you move it: each page is read once you scroll to its foot, and you click Next yourself. Every page is still counted against your searches a day, and a stop the moment the platform pushes back is unchanged. Closing the window is &amp;quot;done with this person&amp;quot;, and a round moves on to the next one. A tap answers each Next the moment you click, and a chime says each page is read, one step higher for every page in a row, with a flourish when a list is finished. &lt;strong&gt;Settings → Sound&lt;/strong&gt; turns them off, sets the volume and plays each one.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Dev mode.&lt;/strong&gt; A switch in Scanner settings that takes off every limit Sixgree sets until you turn it off: the daily limit, the cooldown, Auto&apos;s caps on connection requests, Auto scan&apos;s hours and the queue&apos;s length. The speed you pick still sets every wait, and the platform pushing back still stops the scan and turns Dev mode off. The notch and the usage page say &lt;em&gt;Dev mode&lt;/em&gt; in gold the whole time it&apos;s on.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Dig deeper.&lt;/strong&gt; A switch in Scanner settings, in place of &lt;em&gt;Read full profiles&lt;/em&gt;. While a circle scan has someone&apos;s profile open, it reads their current and past roles too, so their score counts what they actually do, not only their headline, and their followers count as recognition. Manual mode reads it as you scroll through their Experience and moves on once you&apos;re past it. Every profile a scan opens has its follower and connection counts read, and each person&apos;s card shows what was read: followers, connections and their roles, each with its company&apos;s logo. A company the page names only by its number takes its name from the role&apos;s description, or from anyone&apos;s profile that named it. Roles are read by their company links, so several roles at one company show under it once, and someone is read again on their next scan until every role has its company.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The app no longer includes the scanner; install Auto scan or Manual scan from Settings → Plugins.&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Settings opens on Plugins,&lt;/strong&gt; first on the page and first in its sections, since the scanner comes from them now.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A calmer Scan page.&lt;/strong&gt; Scanner settings is a few short groups with plain headings: &lt;em&gt;How circle scans run&lt;/em&gt;, &lt;em&gt;Speed&lt;/em&gt;, &lt;em&gt;What it reads&lt;/em&gt; and &lt;em&gt;Safety&lt;/em&gt;, one control a row with a line on what it does, and the risk and limit notes kept. Dev mode is under Safety, marked as advanced, with its ceiling of 250 search pages a day. &lt;em&gt;Show the scanner&apos;s Chrome window&lt;/em&gt; and the messages sync moved in from Extras.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The guided setup sets up scanning only with a scanner, and the CSV is recommended, never required.&lt;/strong&gt; The welcome screen no longer offers &lt;em&gt;Scan my network&lt;/em&gt;: the CSV import is the way in, with the sample beside it. Once Auto scan or Manual scan is installed, the CSV step also offers &lt;em&gt;Continue without a CSV: set up scanning&lt;/em&gt;, and an import&apos;s result offers &lt;em&gt;Set up scanning&lt;/em&gt; beside &lt;em&gt;Skip, see your galaxy&lt;/em&gt;; with no scanner, &lt;em&gt;See your galaxy&lt;/em&gt;. Setting up is Get ready, Connect, Pace (left out with Manual scan alone) and a first scan that follows what&apos;s there: with your people in, one circle, the highest scored person you know whose circle isn&apos;t mapped yet or anyone you pick, three pages of their list, gentle on your account; with nobody yet and Auto scan, a scan of your connections; with nobody yet and Manual scan alone, which can&apos;t bring them in, the way to: import your Connections.csv or install Auto scan. &lt;em&gt;Later, from the Scan tab&lt;/em&gt; is always there. With no scanner, the setup and the Scan page say to install Auto scan or Manual scan from Settings → Plugins, instead of downloading the app again.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Dev mode keeps one limit: 250 search pages a day.&lt;/strong&gt; Everything else Dev mode takes off stays off, but a scan in Dev mode now stops at 250 search pages in the last 24 hours, counted over the same rolling 24 hours as the daily limit, and says so in a plain line: scanning resumes when the oldest of them is a day old. Auto scan stops there too. The notch, the usage page and the Scan page&apos;s Dev mode switch show the ceiling instead of &amp;quot;no limit&amp;quot;. An account was restricted at 373 search pages in 24 hours, and again at 305 with Dev mode on. Profile views and Auto&apos;s connection requests are unchanged.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A CSV import goes into your network.&lt;/strong&gt; Your connections export (Connections.csv) is now added to your own network on this computer, the same one scanning fills, instead of being kept beside it. The welcome screen takes the file itself: pick it, or drop it anywhere on the setup. Before anything changes you see what it adds: new connections, people brought up to date, and how many people had no profile link (they&apos;re left out, since the link is how Sixgree tells people apart). Importing a newer export later from the Import page adds anyone new and picks up job changes, never removes anyone, and leaves what a scan read as it was. Your network is backed up first whenever there&apos;s one to lose. Outlink, your Profile, Insights and Settings → Scores now work for an imported network, scored with your own settings.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A CSV import an older version kept moves in by itself.&lt;/strong&gt; The next time Sixgree starts, it backs up your network with the kept import in the backup, adds the import to your network, and only then removes the kept file. There&apos;s nothing to click. If it can&apos;t be moved yet, the kept import stays as it was and is tried again at the next start.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Network Circle&apos;s shapes, by degree.&lt;/strong&gt; Its Filters panel has a Shape tab with a picture of each layout: Rings, Clusters, Orbit, and two new ones, &lt;em&gt;Degrees&lt;/em&gt; (a ring for each degree) and &lt;em&gt;Wi-Fi fan&lt;/em&gt; (you at the bottom, each degree a bar fanning out above you). Both are drawn by degree alone, 1st out to 6th: one band per degree, an empty one a thin bar, every dot in a degree its colour and size, spread evenly with each circle kept together, no tier, catalyst or name marks, and lines only for the person you pick or point at. Picking either shows every degree, and a legend under the map turns a degree on or off; picking another shape brings back the filter you had. The layout tabs above the map are gone, since the Shape tab does their job. A third-degree person reached through a company scan no longer draws a line from you as if you knew them.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;A Tiers switch.&lt;/strong&gt; The word &lt;em&gt;Tiers&lt;/em&gt; above the tier rows is a switch: off, tiers stop mattering and one row of degrees with their counts takes their place, so you pick by degree alone. Turning it back on brings the tier rows back as they were.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The welcome screen recommends the CSV import, not scanning.&lt;/strong&gt; &lt;em&gt;Import a connections CSV&lt;/em&gt; now comes first, marked Recommended and already chosen, so the button a new install opens on says &lt;em&gt;Import a CSV&lt;/em&gt; instead of leading into the scanner&apos;s setup: the official export carries no risk to your account. The sample comes next, and &lt;em&gt;Scan my network&lt;/em&gt; last, as the opt-in that adds who your connections know, with its risk line as before. Insights&apos; empty page leads with &lt;em&gt;Import a CSV&lt;/em&gt;, and the Import page and Degrees, which suggested the scanner to people with a CSV, now say it&apos;s optional and what it risks. The README, the website and its llms.txt lead with the CSV import and the sample too, and call scanning optional, with every warning kept.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The ring round a scanned connection&apos;s dot is one line that fills as their list is read.&lt;/strong&gt; It is measured against their whole network: the search&apos;s own count, else their exact connection count, else, when their profile says only &amp;quot;500+&amp;quot;, their follower count, which is about their connections plus people who only follow them, so the ring never shows more read than there is. The platform&apos;s search stops at page 100, about 1,000 people, so for someone with 6,100 followers a ring read as far as it goes shows about a sixth, and says so; a list that ends before then is the whole ring. With no length known, its last 30% is a dashed band for the unknown part, which fills as the list is read on. Their card says the same in words: &amp;quot;about 220 of about 6,100 scanned, about 5,880 to go (going by their 6,100 followers)&amp;quot;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;An automatic scan can carry a list on.&lt;/strong&gt; Asked for a page part-way through someone&apos;s list, the platform sometimes opens the page after it, and an automatic scan stopped there every time, so it never carried a list on. When the page bar or the address shows exactly one page ahead, it now clicks Previous once, at the usual pace and counted as a search page, checks that the page bar shows the page it asked for, and reads on from there. Any other page, or a Previous that doesn&apos;t land on it, still stops with no page noted as read. Manual mode is unchanged.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Manual Dig deeper says when someone&apos;s Experience hasn&apos;t loaded.&lt;/strong&gt; The platform loads the jobs in a profile&apos;s Experience only while that part is on screen, so scrolling straight past it left the heading with nothing under it, and the read waited in silence. It now says to scroll back up to it and stop a moment, and gives that time.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Manual mode goes back for the page a list opened for.&lt;/strong&gt; Carrying on someone&apos;s list could open with the page bar one page ahead; every page after was read but that one never was, so each scan started there again. It now asks you to click Previous to it first, says when a page before the one you&apos;re on is still unread, and no longer guesses a page from the address while the page bar is being redrawn (which counted a search for a page nobody opened).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Manual mode stops when LinkedIn shows its own notice anywhere in the window.&lt;/strong&gt; Sent from a list to &amp;quot;Your account has been temporarily restricted&amp;quot;, it said the window wasn&apos;t on the list and waited, so no pause was written and Dev mode stayed on. A notice on any page now stops the read, writes the pause and turns Dev mode off, as on the list itself.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Each scan keeps its own log.&lt;/strong&gt; In the data folder&apos;s &lt;code&gt;logs&lt;/code&gt; folder on this computer, the newest 40, so a run that went wrong can be read after the next one has started.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Mutual connection counts.&lt;/strong&gt; The platform now writes &amp;quot;A, B &amp;amp; 8 other mutual connections&amp;quot;, and only &amp;quot;and&amp;quot; was understood, so every count was saved as 1. Both forms are read now.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Security&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Next.js 16.3.8 and sharp 0.35.5, for published security fixes.&lt;/strong&gt; Both ship inside the app. Sixgree&apos;s server only answers your own computer (&lt;code&gt;127.0.0.1&lt;/code&gt;), and it uses none of the affected features: images fetched from other sites, cached pages behind a catch-all route or the Pages Router, draft mode with Cache Components, metadata image routes, and sharp reading SVG files. The one advisory for Next&apos;s development server reaches only people running &lt;code&gt;npm run dev&lt;/code&gt; on Sixgree&apos;s code. source-map-js, used only while building, moves to 1.2.2.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v1.2.8</id>
+    <title>Sixgree 1.2.8: Sixgree talks about your network, not one platform</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v1.2.8"/>
+    <published>2026-10-09T00:00:00Z</published>
+    <updated>2026-10-09T00:00:00Z</updated>
+    <summary>1 changed, 1 fixed</summary>
+    <content type="html">&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Sixgree talks about your network, not one platform.&lt;/strong&gt; The welcome screen offers &lt;em&gt;Scan my network&lt;/em&gt; and &lt;em&gt;Import a connections CSV&lt;/em&gt;; profile links read &lt;em&gt;View profile&lt;/em&gt; and &lt;em&gt;Open conversation&lt;/em&gt;; mutual counts read &amp;quot;the platform&apos;s count&amp;quot;; the Import page, the Social tab and Insights describe the official export in plain terms. The scanner&apos;s own screens (signing in, searches spent, limits, cooldowns and the risk warning) still name the site the scanner signs in to, because that is where your account is at stake. The README, the website, these release notes and the Linux package&apos;s description use the same wording, and the website&apos;s older article addresses ask search engines to drop them in favour of the new ones.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;The README no longer says message text is never kept.&lt;/strong&gt; It is kept when you turn on &lt;em&gt;Keep my messages&lt;/em&gt; in the Social tab, as the app has always said.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v1.2.7</id>
+    <title>Sixgree 1.2.7: Separation&apos;s top ten moves on as you ask</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v1.2.7"/>
+    <published>2026-10-06T00:00:00Z</published>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary>1 fixed</summary>
+    <content type="html">&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Separation&apos;s top ten moves on as you ask.&lt;/strong&gt; Once Auto sent a request, the person kept their place in &amp;quot;Top 10 you haven&apos;t asked&amp;quot; until a reload when the request had waited in the scan queue, or when you&apos;d opened someone else&apos;s card before it finished: the list of requests was read once per page and only the button that sent it ever updated it. Now a request being sent takes the person out at once and the next-best fills their place; one waiting in the queue stays, marked Queued, until its turn sends it; one that fails puts them back; and the list of requests is read again whenever an Auto request ends.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+  <entry>
+    <id>https://sixgree.com/releases/#v1.2.6</id>
+    <title>Sixgree 1.2.6: App Management is required in the guided setup on macOS 13 and later</title>
+    <link rel="alternate" type="text/html" href="https://sixgree.com/releases/#v1.2.6"/>
+    <published>2026-10-06T00:00:00Z</published>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary>1 changed, 1 fixed</summary>
+    <content type="html">&lt;h3&gt;Changed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;App Management is required in the guided setup on macOS 13 and later.&lt;/strong&gt; The Get ready step now asks macOS whether Sixgree may manage apps (rechecked every 2 seconds and whenever the window comes back), and Continue stays off until it is really on. &amp;quot;I&apos;ve allowed it&amp;quot; no longer counts while macOS says it is off. Turning it on makes macOS quit and reopen Sixgree, so the setup keeps its step with your settings and reopens on that same step, ticked. Where macOS can&apos;t be asked, the setup says so, logs why, and goes on once you say you&apos;ve allowed it. If the check keeps saying off about 20 seconds after &amp;quot;I&apos;ve allowed it&amp;quot; (or twice after coming back from System Settings), &amp;quot;It&apos;s on, but Sixgree can&apos;t tell: continue anyway&amp;quot; lets you go on, and is kept.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;Fixed&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;A page of hidden people pauses that list instead of finishing it.&lt;/strong&gt; Over the platform&apos;s monthly search limit (no Premium), results come back hidden, with no name, the same as people out of your network deep in a list. Such a page now keeps the person&apos;s list at that page for later and moves on to the next person, so a capped month never marks lists as done.&lt;/li&gt;
+&lt;/ul&gt;</content>
+  </entry>
+</feed>

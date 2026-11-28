@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browse with your network beside you · Sixgree</title>
+  <meta name="description" content="The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com https://stats.sixgree.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="author" content="Blake Burford">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://sixgree.com/blog/browse-with-your-network/">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Sixgree">
+  <meta property="og:url" content="https://sixgree.com/blog/browse-with-your-network/">
+  <meta property="og:title" content="Browse with your network beside you · Sixgree">
+  <meta property="og:description" content="The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.">
+  <meta property="og:image" content="https://sixgree.com/img/app/outlink.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Browse with your network beside you · Sixgree">
+  <meta name="twitter:description" content="The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.">
+  <meta name="twitter:image" content="https://sixgree.com/img/app/outlink.jpg">
+  <meta name="theme-color" content="#fbfbfd">
+  <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://sixgree.com/blog/browse-with-your-network/#post",
+      "url": "https://sixgree.com/blog/browse-with-your-network/",
+      "mainEntityOfPage": "https://sixgree.com/blog/browse-with-your-network/",
+      "headline": "Browse with your network beside you",
+      "description": "The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.",
+      "datePublished": "2026-10-15",
+      "dateModified": "2026-10-15",
+      "author": {
+        "@type": "Person",
+        "@id": "https://blakeburford.com/#person",
+        "name": "Blake Burford",
+        "url": "https://blakeburford.com/"
+      },
+      "publisher": {
+        "@id": "https://blakeburford.com/#person"
+      },
+      "image": "https://sixgree.com/img/app/outlink.jpg",
+      "isPartOf": {
+        "@id": "https://sixgree.com/blog/#blog"
+      },
+      "about": {
+        "@id": "https://sixgree.com/#app"
+      },
+      "keywords": "desktop, browsing, privacy, plugins",
+      "wordCount": 1167,
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Sixgree",
+          "item": "https://sixgree.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://sixgree.com/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Browse with your network beside you",
+          "item": "https://sixgree.com/blog/browse-with-your-network/"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/style.css?v=2026-11-26-1">
+  <script src="/app.js?v=2026-11-26-1" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+  <p class="notice-bar"><a href="/blog/connections-export-december-2026/"><strong>From December 2026 the connections export drops company and job title.</strong> <span>Download yours now →</span></a></p>
+  <header class="top">
+    <div class="top-bar">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <nav aria-label="Main">
+        <a href="/#how">How it works</a>
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/releases/">Releases</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/about/">About</a>
+      </nav>
+      <a class="top-get" href="/download/">Download</a>
+      <a class="gh" href="https://github.com/blakeb056/six-degrees" aria-label="Sixgree on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <article class="article">
+      <header class="page-hero article-head">
+        <p class="kicker"><a href="/blog/">Blog</a></p>
+        <h1>Browse with your network beside you</h1>
+        <p class="lede">The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.</p>
+        <p class="post-meta center"><time datetime="2026-10-15">15 October 2026</time><span>5 min read</span><span>By Blake Burford</span></p>
+      </header>
+      <div class="prose">
+<blockquote><p><strong>Update, 17 October 2026:</strong> Outlink, which this post mentions, has been removed: Separation does its job, and a profile opens one per press.</p>
+<p><strong>Update, 19 October 2026:</strong> Messages &amp; follow-ups, whose Messages card this post mentions, has been removed too.</p></blockquote>
+<blockquote><p><strong>Update, 2.5.1:</strong> the header button and the people list described below are gone. The browser plugin is now the LinkedIn tab (Feed, Messaging, Notifications, Jobs), with Back and Forward, and every profile opens straight in the panel. See the <a href="/releases/#v2.5.1">release notes</a>.</p></blockquote>
+<p>Sixgree tells you who connects you to someone. Until now, though, it lived in one window and the platform in another, and you switched between them to remember who could introduce you.</p>
+<p>Since <a href="/releases/#v2.5.0">2.5.0</a>, the desktop app can put the two side by side. This post covers what that looks like, what Sixgree does and doesn't do while you browse, and the trade-offs, which are real.</p>
+<h2 id="sixgrees-own-browser">Sixgree's own browser</h2>
+<p>It started in <a href="/releases/#v2.4.0">2.4.0</a> as a way for scans to run inside Sixgree. In the desktop app, with a scanner plugin installed, the platform shows in a panel under Sixgree's header, so the tabs, the notch and the scan light stay in sight, and the scanner drives that panel instead of opening a separate Chrome window. A thin bar over it says what's happening there, with <em>Back to Sixgree</em>.</p>
+<p>2.5.0 opens that panel to your own browsing.</p>
+<h2 id="the-browser-plugin">The browser plugin</h2>
+<p>Install the <strong>browser plugin</strong> from <strong>Settings → Plugins</strong>. It's a new kind of plugin, a feature plugin: the package holds a description and no code, and the feature itself is part of Sixgree, shown only while the plugin is installed and switched on.</p>
+<p>With it, a button at the top right of the header, beside the bell and Settings, opens the platform inside Sixgree for your own browsing. Scroll, click, search and message as you would anywhere. On the right sits Sixgree's people list:</p>
+<ul>
+<li><strong>Search your network</strong> by name, company or place, and see each person's card.</li>
+<li><strong>Open someone's profile</strong> in the panel in one click.</li>
+<li><strong>See who's on screen.</strong> On anyone's profile, the list shows what Sixgree already knows about them: their degree, tier, location, mutuals, and who connects you. Or it says they aren't in your network data.</li>
+</ul>
+<p>It's handy in practice: you land on a profile from a post or a message, and the sidebar already says whether you're two steps away and through whom. It's the <a href="/blog/who-can-introduce-you/">who can introduce you</a> question, answered on the page you're looking at.</p>
+<p>The match happens on your computer. All the app's page learns about the panel is whether it's showing and which profile address it's on, and that address is compared with the network you already have. Nothing is sent anywhere.</p>
+<h2 id="section-tabs">Section tabs</h2>
+<p>The same plugin adds a tab whose buttons in the notch open the panel straight on <strong>Feed</strong>, <strong>Messaging</strong>, <strong>Notifications</strong> or <strong>Jobs</strong>, under the header and the notch. Wander off from there and the bar offers <em>Back to Feed</em>, or whichever section you came from. It's your own browsing, so nothing is read or counted.</p>
+<h2 id="what-counts-and-what-doesnt">What counts, and what doesn't</h2>
+<p>This is the line worth knowing:</p>
+<ul>
+<li><strong>Your own browsing isn't a scan and isn't counted.</strong> Sixgree reads nothing on its own and clicks nothing while you browse. The platform sees you browsing, as it would in any browser.</li>
+<li><strong>A profile Sixgree opens for you is a profile view.</strong> Opening a profile from the people list goes through Outlink. It counts as one of the day's profile views, against the same daily limit as the views a scan makes, and Sixgree writes down which profile and when.</li>
+</ul>
+<p>That second rule now covers every profile link in the app, where it can: the person card's <em>View profile</em> and <em>Connect</em>, Insights' <em>Ask</em>, Outlink's lists and the Messages card all open in Sixgree's own browser, each counted. Opening several at once, with <em>Open All</em> or <em>Open Top 10</em>, no longer fires a burst of tabs: the first opens, then <em>Next profile (N left)</em> in the bar steps through the rest, one at a time.</p>
+<p>Why count them? Profile views are something the platform watches closely, and a budget only helps if it sees everything Sixgree opens. <a href="/blog/page-speed-not-page-count/">Page speed matters more than page count</a> explains why pace matters too.</p>
+<p>Opening profiles this way needs a scanner plugin too. With only the browser plugin installed, a profile from the people list says it needs one. Without the panel at all, links open your own browser, as before.</p>
+<h2 id="the-trade-offs">The trade-offs</h2>
+<p><strong>You sign in again, inside Sixgree.</strong> The panel has its own sign-in and its own storage, apart from your usual browser. So you sign in to the platform once more, in the panel. Sixgree doesn't ask for or store your password: you type it into the platform's own page.</p>
+<p><strong>It's desktop only.</strong> The panel needs the desktop app. In a plain browser, there's no panel, and a scanner uses its own Chrome window.</p>
+<p><strong>A local debugging connection lets the scanner drive the panel.</strong> This one needs a careful explanation.</p>
+<p>The scanner controls the panel the way it controls Chrome: over Chromium's debugging protocol. For that, the desktop app turns on a debugging port when a scanner plugin is installed. It listens on <code>127.0.0.1</code> only, on a port the system picks at each start, and only while the app is running. It has no password.</p>
+<p>What that means: <strong>any program running on your computer could attach to it while the app is open</strong>, read the panel's signed-in session and drive the app's own page. That's about as far as such a program could already reach, since it could read Sixgree's data folder and call the app's local server anyway. Nothing on another computer can reach the port.</p>
+<p>If you'd rather keep it shut, start the app with <code>SIX_DEGREES_PANEL=0</code>. The scanner then opens its own Chrome window, as it used to. And with only the browser plugin installed, no scanner, the port stays shut and the panel is there just for your browsing.</p>
+<p>A few more boundaries. The panel shows the platform's own pages only; any other link opens in your usual browser. It gets no access to the app's internals. And the browse button is hidden while a scan is using the panel. The full threat model is in <a href="https://github.com/blakeb056/six-degrees/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+<h2 id="nothing-hidden-underneath">Nothing hidden underneath</h2>
+<p>The bell's list, the scan light's briefing, the notch and the notes under the header's buttons all open in full over the panel, which starts below the whole header at any width or zoom. Choosing another page or tab puts it away.</p>
+<h2 id="is-it-for-you">Is it for you?</h2>
+<p>If you mostly explore the map, you don't need it. If you spend time on the platform anyway, it puts your network beside all of it, and counts the profiles Sixgree opens for you.</p>
+<p>Your network stays in one folder on your computer, as it always has: <a href="/blog/local-first/">local-first</a> still applies. Everything that changed is in the <a href="/releases/">release notes</a>.</p>
+<figure><img src="/img/app/outlink.jpg" alt="Outlink: the next best people to meet, each through a connection of yours" loading="lazy"><figcaption>Outlink, on an invented network. Its profile links now open inside Sixgree.</figcaption></figure>
+      </div>
+      <footer class="article-foot">
+        <p class="fine">Every person named in this post is invented: they're from the sample network that ships with Sixgree.
+          Something wrong? <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a>.</p>
+        <nav class="post-nav" aria-label="More posts">
+          <a href="/blog/page-speed-not-page-count/"><span>Older</span>Page speed matters more than page count</a>
+          <a class="newer" href="/blog/connections-export-december-2026/"><span>Newer</span>Your connections export loses company and job title in December 2026</a>
+        </nav>
+      </footer>
+    </article>
+    <section class="more-posts">
+      <h2>More from the blog</h2>
+      <div class="posts">
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-11-26">26 November 2026</time><span>3 min read</span></p>
+          <h3><a href="/blog/connections-export-december-2026/">Your connections export loses company and job title in December 2026</a></h3>
+          <p class="post-more">The platform's data download is dropping your connections' email addresses, current companies and job titles in December 2026. Download yours before then and keep it. Here is what still works afterwards, in Sixgree and elsewhere.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>4 min read</span></p>
+          <h3><a href="/blog/page-speed-not-page-count/">Page speed matters more than page count</a></h3>
+          <p class="post-more">In our own testing, roughly the same number of search pages led to a restriction at about 4 seconds apart and to nothing at about 50. Here's what that taught us, and why scanning by hand now takes a 20-second break every 10 pages.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>5 min read</span></p>
+          <h3><a href="/blog/where-your-network-lives/">Where your network lives: the Map, and who gets you there</a></h3>
+          <p class="post-more">The Map tab puts your network on a world map, matched on your own computer against GeoNames cities. Pick a city to see which connections reach people there, or pick a connection to see where their circle lives.</p>
+        </article>
+        </div>
+      <p class="more-links"><a class="button" href="/download/">Download Sixgree</a> <a href="/blog/">All posts</a></p>
+    </section>
+  </main>
+
+<footer class="foot">
+    <div class="foot-top">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="28" height="28"> <span class="wordmark small" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <p class="foot-tag">Six degrees of your network. Locally built. Completely free. Made for you.</p>
+    </div>
+    <nav class="foot-links" aria-label="Everything on this site">
+      <a href="/#how">How it works</a>
+      <a href="/#features">Features</a>
+      <a href="/#compare">Compare</a>
+      <a href="/download/">Download</a>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/#faq">Questions</a>
+      <a href="/blog/">Blog</a>
+      <a href="/releases/">Release notes</a>
+      <a href="/roadmap/">Roadmap</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/blakeb056/six-degrees/issues">Report a problem</a>
+    </nav>
+    <div class="foot-bottom">
+      <p class="fine">Free to use (<a href="https://github.com/blakeb056/six-degrees/blob/main/LICENSE">licence</a>) · No accounts, no cookies, no ad trackers (<a href="/docs/#this-website">what the site counts</a>) ·
+        Every person shown on this site is invented ·
+        Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
+      <p class="fine">Power ranks reachability, not people: it estimates network position, not what anyone is worth as a person.
+        Independent software, not affiliated with any networking platform.</p>
+    </div>
+  </footer>
+</body>
+</html>

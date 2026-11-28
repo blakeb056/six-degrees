@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scanning slowly and safely: pacing, budgets and the honest risk · Sixgree</title>
+  <meta name="description" content="How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://api.github.com https://stats.sixgree.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="author" content="Blake Burford">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://sixgree.com/blog/scanning-slowly/">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree blog" href="/blog/feed.xml">
+  <link rel="alternate" type="application/atom+xml" title="Sixgree releases" href="/releases/feed.xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Sixgree">
+  <meta property="og:url" content="https://sixgree.com/blog/scanning-slowly/">
+  <meta property="og:title" content="Scanning slowly and safely: pacing, budgets and the honest risk · Sixgree">
+  <meta property="og:description" content="How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.">
+  <meta property="og:image" content="https://sixgree.com/img/app/scan-budget.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Scanning slowly and safely: pacing, budgets and the honest risk · Sixgree">
+  <meta name="twitter:description" content="How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.">
+  <meta name="twitter:image" content="https://sixgree.com/img/app/scan-budget.jpg">
+  <meta name="theme-color" content="#fbfbfd">
+  <link rel="icon" href="/img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://sixgree.com/blog/scanning-slowly/#post",
+      "url": "https://sixgree.com/blog/scanning-slowly/",
+      "mainEntityOfPage": "https://sixgree.com/blog/scanning-slowly/",
+      "headline": "Scanning slowly and safely: pacing, budgets and the honest risk",
+      "description": "How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.",
+      "datePublished": "2026-09-29",
+      "dateModified": "2026-10-14",
+      "author": {
+        "@type": "Person",
+        "@id": "https://blakeburford.com/#person",
+        "name": "Blake Burford",
+        "url": "https://blakeburford.com/"
+      },
+      "publisher": {
+        "@id": "https://blakeburford.com/#person"
+      },
+      "image": "https://sixgree.com/img/app/scan-budget.jpg",
+      "isPartOf": {
+        "@id": "https://sixgree.com/blog/#blog"
+      },
+      "about": {
+        "@id": "https://sixgree.com/#app"
+      },
+      "keywords": "scanning, safety",
+      "wordCount": 1226,
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Sixgree",
+          "item": "https://sixgree.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://sixgree.com/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Scanning slowly and safely: pacing, budgets and the honest risk",
+          "item": "https://sixgree.com/blog/scanning-slowly/"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/style.css?v=2026-11-26-1">
+  <script src="/app.js?v=2026-11-26-1" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+  <p class="notice-bar"><a href="/blog/connections-export-december-2026/"><strong>From December 2026 the connections export drops company and job title.</strong> <span>Download yours now →</span></a></p>
+  <header class="top">
+    <div class="top-bar">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="30" height="30"> <span class="wordmark" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <nav aria-label="Main">
+        <a href="/#how">How it works</a>
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/releases/">Releases</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/about/">About</a>
+      </nav>
+      <a class="top-get" href="/download/">Download</a>
+      <a class="gh" href="https://github.com/blakeb056/six-degrees" aria-label="Sixgree on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <article class="article">
+      <header class="page-hero article-head">
+        <p class="kicker"><a href="/blog/">Blog</a></p>
+        <h1>Scanning slowly and safely: pacing, budgets and the honest risk</h1>
+        <p class="lede">How the optional Sixgree scanner paces itself, the daily and monthly budgets it keeps to, why it stops at the first push-back, and what the risk to your account really is.</p>
+        <p class="post-meta center"><time datetime="2026-09-29">29 September 2026</time><span>6 min read</span><span>By Blake Burford</span></p>
+      </header>
+      <div class="prose">
+<p><strong>Scanning now comes as a plugin:</strong> install Auto scan or Manual scan from Settings → Plugins, and the Scan page this post describes appears.</p>
+<p>Sixgree can show you who your connections know, but only if it can read their connection lists. The platform's own data export doesn't include them: it lists the people you're connected to, and nobody else. So the app has an optional <strong>scanner</strong> that reads them from the platform, in a Chrome window you sign into yourself.</p>
+<p>This post is about how that scanner behaves, and why. Start with the part that matters most.</p>
+<h2 id="the-risk-in-plain-words">The risk, in plain words</h2>
+<blockquote><p>Automating access to the platform may break its User Agreement, and the platform can restrict accounts that do it. The scanner reads slowly, keeps to a budget and stops at the first push-back, but the risk is yours.</p></blockquote>
+<p>Accounts have been restricted for this, and no amount of pacing makes the risk zero. That's why scanning is <strong>optional</strong>, and why the two other ways in carry no risk at all:</p>
+<ul>
+<li><strong>The sample network</strong>: 150 invented connections and the 598 people they know, built into the app, for trying every view.</li>
+<li><strong>The official connections export</strong>: <em>Settings &amp; Privacy → Data privacy → Get a copy of your data → Connections</em>. It's read on your computer and shows the people you know, though not who they know.</li>
+</ul>
+<p>If you do scan, everything below is there to keep it slow, easy to follow and easy to stop.</p>
+<h2 id="you-sign-in-not-the-app">You sign in, not the app</h2>
+<p>The scanner drives your own installed Google Chrome, with a profile of its own that the app keeps in its data folder. You sign into your account in that window yourself, once. The app never asks for, sees or stores your password. That signed-in profile is the one thing in the data folder that grants access to your account, so the app never puts it into a copy of your network, and the docs ask you never to sync or share it.</p>
+<h2 id="a-budget-not-a-race">A budget, not a race</h2>
+<p>Every page of someone's connections is a search on the platform, and every circle scan opens their profile once. The scanner counts both, against limits you set on the Scan page:</p>
+<ul>
+<li><strong>Searches</strong>: 50 a day and 250 a month by default. The month follows the platform's own, from midnight Pacific time on the 1st.</li>
+<li><strong>Profile views</strong>: 50 a day by default, and <strong>at least 60 seconds between any two</strong>, even across separate scans. There's no &quot;no limit&quot; choice.</li>
+</ul>
+<p>When a budget is used, a scan saves what it read and stops. The next one carries on from the same page. Picking more than 100 searches a day, or no monthly cap, makes the page <strong>ask first</strong>, and a note stays under the budget, with a button back to 50 and 250, for as long as it's that high.</p>
+<h2 id="slow-on-purpose">Slow on purpose</h2>
+<p>Between the budgets, the pacing is deliberately unhurried:</p>
+<ul>
+<li><strong>20 seconds</strong> before each page of results, and <strong>a minute more</strong> after every 10 pages;</li>
+<li>about <strong>two minutes</strong> between one person's circle and the next;</li>
+<li>so a long list can take <strong>around 55 minutes</strong> for one person.</li>
+</ul>
+<p>The waits are fixed. They're never randomised to look like a person: the scanner doesn't pretend to be anything it isn't. It reads each list to the end by default (or 10, 25 or 50 pages if you choose), saves every 10 pages, and a read that stops carries on from the same page next time. An <strong>In progress</strong> list on the Scan page shows everyone whose scan stopped partway, with <em>Resume</em> beside each and <em>Resume all</em>.</p>
+<h2 id="it-stops-at-the-first-push-back">It stops at the first push-back</h2>
+<p>The scanner reads what's on the page, and it stops the moment the platform pushes back: a page that won't open, an unusual-activity warning, restricted viewing, the search limit, a security check or a sign-in wall. It saves what it had read, and keeps a copy of what the page said in the data folder, so you can see exactly what happened.</p>
+<p>Then a <strong>cooldown lock</strong> blocks anything that searches, for a day, or until the 1st for the monthly limit. The Scan page shows when it lifts, and you can lift it early if you choose.</p>
+<p>And a scanner that can't read its page says so. It never reports &quot;you have no connections&quot; because a page failed to load.</p>
+<h2 id="out-of-your-way">Out of your way</h2>
+<p>The scanner's Chrome works in the background. Once you've signed in, its window stays out of sight (hidden, on a Mac), so it doesn't cover the app or keep your typing, and Chrome doesn't stop it to ask about saving a password, translating, notifications or restoring pages. It comes forward only when the platform needs you: to sign in again, or to finish a check it asks for, and the notch says so on every page while it waits. If you'd rather watch it work, <strong>Show the scanner's Chrome window</strong> in the Scan page's <em>Fine-tune</em> keeps it in front.</p>
+<h2 id="what-its-doing-on-every-page">What it's doing, on every page</h2>
+<p>While a scan runs, the <strong>notch</strong>, a small bar hanging under the header's tabs, says on every page what it's doing and how far it's got, and a dot collects along the header's line for each page read. Hover or click the notch to open it: who it's scanning, your searches over the last 24 hours against your budget, the latest line, and <strong>Stop</strong>. Stop saves what was read, and <em>Resume</em> on the Scan page carries on from that page.</p>
+<h2 id="the-one-thing-it-sends">The one thing it sends</h2>
+<p>The scanner reads. The one thing it sends is a connection request, without a note, and only when you press <strong>Auto</strong> on someone: one press is one person, never a batch and never on a timer. Auto stops at 15 requests in any 24 hours and 80 in any 7 days, opens their profile once like a scan does, and waits while a scan runs.</p>
+<h2 id="the-experimental-parts">The experimental parts</h2>
+<p>One newer option is marked experimental on the Scan page, and off by default:</p>
+<ul>
+<li><strong>All-day pacing (Auto-Bridge)</strong>, with an <strong>Auto scan</strong> button once it's ticked. Up to 8 pages in a sitting, then <strong>an hour's rest</strong>; searches only between <strong>09:00 and 18:00</strong> on your computer's clock; never more than 40 searches in a day or 200 in a week, however high your budget; and at the daily budget it waits for the budget to free up instead of stopping. A monthly limit or a cooldown still stops it. It hasn't yet been tried on a live account, which is why it's labelled the way it is.</li>
+</ul>
+<p>There used to be a second, <em>Hide the Chrome window while scanning</em>, which ran Chrome with no window at all. Every scan now runs out of sight in a real Chrome window instead, which comes forward when the platform needs you, so that option is gone.</p>
+<h2 id="why-go-to-this-trouble">Why go to this trouble?</h2>
+<p>Because the people your connections know are the most useful part of your network, and the one part no official export contains. The scanner exists to get that part, for your own use, on your own computer, as gently as possible, with the risk said out loud rather than buried.</p>
+<p>Every change to the scanner is in the <a href="/releases/">release notes</a>.</p>
+<figure><img src="/img/app/scan-budget.jpg" alt="The Scan page's budget: searches in the last 24 hours and this month, and profile views in the last 24 hours" loading="lazy"><figcaption>The budget, on the Scan page.</figcaption></figure>
+      </div>
+      <footer class="article-foot">
+        <p class="fine">Every person named in this post is invented: they're from the sample network that ships with Sixgree.
+          Something wrong? <a href="https://github.com/blakeb056/six-degrees/issues">Open an issue</a>.</p>
+        <nav class="post-nav" aria-label="More posts">
+          <a href="/blog/who-can-introduce-you/"><span>Older</span>Who can introduce you? How Sixgree ranks your way in</a>
+          <a class="newer" href="/blog/local-first/"><span>Newer</span>Local-first: why Sixgree has no account, no server and no telemetry</a>
+        </nav>
+      </footer>
+    </article>
+    <section class="more-posts">
+      <h2>More from the blog</h2>
+      <div class="posts">
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-11-26">26 November 2026</time><span>3 min read</span></p>
+          <h3><a href="/blog/connections-export-december-2026/">Your connections export loses company and job title in December 2026</a></h3>
+          <p class="post-more">The platform's data download is dropping your connections' email addresses, current companies and job titles in December 2026. Download yours before then and keep it. Here is what still works afterwards, in Sixgree and elsewhere.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>5 min read</span></p>
+          <h3><a href="/blog/browse-with-your-network/">Browse with your network beside you</a></h3>
+          <p class="post-more">The desktop app can now show the platform in a panel inside Sixgree's own window, with your network in a sidebar. What the browser plugin does, what counts as a profile view, and the trade-offs, including a local debugging connection.</p>
+        </article>
+        <article class="post">
+          <p class="post-meta"><time datetime="2026-10-15">15 October 2026</time><span>4 min read</span></p>
+          <h3><a href="/blog/page-speed-not-page-count/">Page speed matters more than page count</a></h3>
+          <p class="post-more">In our own testing, roughly the same number of search pages led to a restriction at about 4 seconds apart and to nothing at about 50. Here's what that taught us, and why scanning by hand now takes a 20-second break every 10 pages.</p>
+        </article>
+        </div>
+      <p class="more-links"><a class="button" href="/download/">Download Sixgree</a> <a href="/blog/">All posts</a></p>
+    </section>
+  </main>
+
+<footer class="foot">
+    <div class="foot-top">
+      <a class="brand" href="/"><img src="/img/icon.svg" alt="" width="28" height="28"> <span class="wordmark small" role="img" aria-label="Sixgree"><span aria-hidden="true">S<span class="wm-i">ı<svg class="wm-dots" viewBox="0 0 2900 140" width="2.9em" height="0.14em" aria-hidden="true" focusable="false"><circle cx="70" cy="70" r="70" fill="#ffd700"/><circle cx="622" cy="70" r="64.4" fill="#9b59b6"/><circle cx="1174" cy="70" r="60.2" fill="#3498db" fill-opacity="0.96"/><circle cx="1726" cy="70" r="56.7" fill="#4caf63" fill-opacity="0.92"/><circle cx="2278" cy="70" r="53.9" fill="#a4afba" fill-opacity="0.9"/><circle cx="2830" cy="70" r="51.8" fill="none" stroke="#ffd700" stroke-width="36.4"/></svg></span>xgree</span></span></a>
+      <p class="foot-tag">Six degrees of your network. Locally built. Completely free. Made for you.</p>
+    </div>
+    <nav class="foot-links" aria-label="Everything on this site">
+      <a href="/#how">How it works</a>
+      <a href="/#features">Features</a>
+      <a href="/#compare">Compare</a>
+      <a href="/download/">Download</a>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/#faq">Questions</a>
+      <a href="/blog/">Blog</a>
+      <a href="/releases/">Release notes</a>
+      <a href="/roadmap/">Roadmap</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/blakeb056/six-degrees/issues">Report a problem</a>
+    </nav>
+    <div class="foot-bottom">
+      <p class="fine">Free to use (<a href="https://github.com/blakeb056/six-degrees/blob/main/LICENSE">licence</a>) · No accounts, no cookies, no ad trackers (<a href="/docs/#this-website">what the site counts</a>) ·
+        Every person shown on this site is invented ·
+        Feeds: <a href="/blog/feed.xml">blog</a>, <a href="/releases/feed.xml">releases</a></p>
+      <p class="fine">Power ranks reachability, not people: it estimates network position, not what anyone is worth as a person.
+        Independent software, not affiliated with any networking platform.</p>
+    </div>
+  </footer>
+</body>
+</html>
